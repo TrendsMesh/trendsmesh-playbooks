@@ -1,0 +1,155 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "PB3 gate / delivery page data (tools/pb3/gate_page.py)",
+ "type": "object",
+ "required": [
+  "title",
+  "run",
+  "gate",
+  "date",
+  "items"
+ ],
+ "properties": {
+  "lang": {
+   "enum": [
+    "en",
+    "pl"
+   ]
+  },
+  "title": {
+   "type": "string"
+  },
+  "run": {
+   "type": "string"
+  },
+  "gate": {
+   "enum": [
+    "images",
+    "video",
+    "edit"
+   ]
+  },
+  "date": {
+   "type": "string"
+  },
+  "lede": {
+   "type": "string"
+  },
+  "items": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "label"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "proposal": {
+      "type": "string"
+     },
+     "label": {
+      "type": "string"
+     },
+     "question": {
+      "type": "string"
+     },
+     "options": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "src"
+       ],
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "src": {
+         "description": "path relative to the run folder (png/jpg/mp4/mp3)",
+         "type": "string"
+        },
+        "caption": {
+         "type": "string"
+        },
+        "pick": {
+         "type": "boolean"
+        },
+        "square": {
+         "type": "boolean"
+        },
+        "download": {
+         "type": "object",
+         "required": [
+          "src"
+         ],
+         "properties": {
+          "src": {
+           "type": "string"
+          },
+          "filename": {
+           "type": "string"
+          },
+          "label": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "refs": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": [
+        "src"
+       ],
+       "properties": {
+        "id": {
+         "type": "string"
+        },
+        "src": {
+         "description": "path relative to the run folder (png/jpg/mp4/mp3)",
+         "type": "string"
+        },
+        "caption": {
+         "type": "string"
+        },
+        "pick": {
+         "type": "boolean"
+        },
+        "square": {
+         "type": "boolean"
+        },
+        "download": {
+         "type": "object",
+         "required": [
+          "src"
+         ],
+         "properties": {
+          "src": {
+           "type": "string"
+          },
+          "filename": {
+           "type": "string"
+          },
+          "label": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "kit": {
+      "$ref": "pb3_kit.schema.json"
+     }
+    }
+   }
+  }
+ },
+ "description": "Choices land in the artifact db collection gate_<gate>: one document per item {choice, action: accept|redo|drop, note, platforms[], thumbnail}."
+}

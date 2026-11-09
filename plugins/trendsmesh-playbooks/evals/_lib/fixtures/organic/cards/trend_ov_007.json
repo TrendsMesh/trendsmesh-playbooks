@@ -1,0 +1,85 @@
+{
+ "id": "trend_ov_007",
+ "kind": "hook_trend",
+ "name": "psa: _",
+ "what_it_is": "Public service announcement: _ — a mock or real heads-up. Creators open with it to warn, reveal, or joke about something, usually in a playful, informal register. The blank is the announcement itself, e.g. “don’t laugh at bison.”",
+ "status": "unconfirmed",
+ "confidence": 1.0,
+ "since": "2026-07-30T19:58:31Z",
+ "active_for_days": 84,
+ "momentum": "holding",
+ "why_it_popped": [
+  "3 creators in 76 days, in 1 language"
+ ],
+ "reach": {
+  "videos": 3,
+  "creators": 3,
+  "views": 7849804,
+  "platforms": {
+   "tiktok": 3
+  }
+ },
+ "examples": [
+  {
+   "asset_id": "asset_0032",
+   "url": "https://example.com/v/32",
+   "platform": "tiktok",
+   "creator": "creator_0030",
+   "published": "2026-07-30T19:58:31Z",
+   "views": 7124273,
+   "likes": 466263,
+   "shares": 24295,
+   "excerpt": "PSA: don’t laugh at bison ",
+   "is_sensitive": false,
+   "hook_text": "PSA: don’t laugh at bison",
+   "hook_source": "caption",
+   "appears_at_s": null,
+   "slot_fill": "don’t laugh at bison",
+   "creator_id": "creator_0030"
+  },
+  {
+   "asset_id": "asset_0033",
+   "url": "https://example.com/v/33",
+   "platform": "tiktok",
+   "creator": "creator_0031",
+   "published": "2026-10-15T15:58:50Z",
+   "views": 689732,
+   "likes": 94754,
+   "shares": 3068,
+   "excerpt": "We know all the moves. #teach #relatable #middleschool #highschool ",
+   "is_sensitive": false,
+   "hook_text": "PSA: We know y'all cheating when you try to pull off this fake thinking hard move",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "We know y'all cheating when you try to pull off this fake thinking hard move",
+   "creator_id": "creator_0031"
+  },
+  {
+   "asset_id": "asset_0034",
+   "url": "https://example.com/v/34",
+   "platform": "tiktok",
+   "creator": "creator_0032",
+   "published": "2026-08-30T12:56:28Z",
+   "views": 35799,
+   "likes": 1586,
+   "shares": 158,
+   "excerpt": "🍁 PSA: Metro Detroit is about to look like THIS…😍🎃   Cider + donuts. ...",
+   "is_sensitive": false,
+   "hook_text": "PSA: this is what Detroit will look like in 2 weeks",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "this is what Detroit will look like in 2 weeks",
+   "creator_id": "creator_0032"
+  }
+ ],
+ "what_we_now_know": "",
+ "sensitivity_level": "none",
+ "visible_until": null,
+ "rank": null,
+ "original_phrase": "psa: _",
+ "formula": "psa: _",
+ "languages": [
+  "en"
+ ],
+ "format": null
+}

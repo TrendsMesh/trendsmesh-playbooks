@@ -1,0 +1,219 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "PB3 generation pack (pack/1, the plugin's): the recipe at D1, the whole pack at E2",
+ "description": "Written by the agent in the page language as 03_wip/pack_vNN.json. exclusiveMinimum is not read by tm.json_schema; organic_pack.check holds those bounds. The recipe stage needs the keys under required; the pack stage needs speech, models, stages, resolution, cost, facts, risk and sound too (organic_pack.PACK_KEYS). The values the spec fixes (production types, risk items, product levels, budget kinds) are checked by organic_pack.check.",
+ "type": "object",
+ "required": ["schema", "id", "lang", "title", "channel", "production", "sound_led", "sections", "product", "host",
+              "script", "taste", "style_spec"],
+ "properties": {
+  "schema": {"const": "pack/1"},
+  "id": {"type": "string"},
+  "lang": {"enum": ["en", "pl"]},
+  "title": {"type": "string"},
+  "channel": {"type": "string"},
+  "production": {"type": "string"},
+  "sound_led": {"type": "boolean"},
+  "sections": {
+   "type": "array",
+   "minItems": 1,
+   "items": {
+    "type": "object",
+    "required": ["id", "type", "model", "from", "to"],
+    "properties": {
+     "id": {"type": "string"},
+     "type": {"type": "string"},
+     "model": {"type": ["string", "null"]},
+     "from": {"type": "number"},
+     "to": {"type": "number"}
+    }
+   }
+  },
+  "product": {
+   "type": "object",
+   "required": ["level", "packshots"],
+   "properties": {
+    "level": {"type": "string"},
+    "packshots": {"type": "array", "items": {"type": "string"}}
+   }
+  },
+  "host": {
+   "type": "object",
+   "required": ["kind", "image"],
+   "properties": {
+    "kind": {"enum": ["image", "description", "none"]},
+    "image": {"type": ["string", "null"]}
+   }
+  },
+  "script": {
+   "type": "object",
+   "required": ["lines", "words", "seconds"],
+   "properties": {
+    "lines": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": ["n", "text", "speaker", "shot", "at"],
+      "properties": {
+       "n": {"type": "integer"},
+       "text": {"type": "string"},
+       "speaker": {"enum": ["host", "narrator", "none"]},
+       "shot": {"type": "string"},
+       "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}
+      }
+     }
+    },
+    "words": {"type": "integer"},
+    "seconds": {"type": "number"}
+   }
+  },
+  "speech": {
+   "type": "object",
+   "required": ["route", "alternative_reason", "voice", "voice_reference"],
+   "properties": {
+    "route": {"enum": ["h3_native", "h3_narrator", "elevenlabs_narrator", "elevenlabs_lipsync", "none"]},
+    "alternative_reason": {"type": ["string", "null"]},
+    "voice": {"type": ["string", "null"]},
+    "voice_reference": {
+     "type": ["object", "null"],
+     "required": ["user_words", "sample_s"],
+     "properties": {
+      "user_words": {"type": "string"},
+      "sample_s": {"type": "number"}
+     }
+    }
+   }
+  },
+  "taste": {
+   "type": "object",
+   "required": ["style", "voice", "music", "by", "why"],
+   "properties": {
+    "style": {"type": ["string", "null"]},
+    "voice": {"type": ["string", "null"]},
+    "music": {"type": ["string", "null"]},
+    "by": {"enum": ["user", "profile", "agent"]},
+    "why": {"type": ["string", "null"]}
+   }
+  },
+  "models": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": ["component", "model", "why", "recipe", "ranking", "user_named", "criteria"],
+    "properties": {
+     "component": {"type": "string"},
+     "model": {"type": "string"},
+     "why": {"type": "string"},
+     "recipe": {"type": ["string", "null"]},
+     "ranking": {
+      "type": "object",
+      "required": ["source", "date"],
+      "properties": {"source": {"type": "string"}, "date": {"type": "string"}}
+     },
+     "user_named": {"type": "boolean"},
+     "criteria": {"type": ["object", "null"]}
+    }
+   }
+  },
+  "stages": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": ["stage", "items"],
+    "properties": {
+     "stage": {"type": "string"},
+     "items": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "required": ["name", "model"],
+       "properties": {
+        "name": {"type": "string"},
+        "model": {"type": ["string", "null"]},
+        "images": {"type": "integer", "exclusiveMinimum": 0},
+        "seconds": {"type": "number", "exclusiveMinimum": 0}
+       }
+      }
+     }
+    }
+   }
+  },
+  "resolution": {
+   "type": ["object", "null"],
+   "required": ["choice", "options"],
+   "properties": {
+    "choice": {"type": ["string", "null"]},
+    "options": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": ["id", "cost"],
+      "properties": {"id": {"type": "string"}, "cost": {"type": "number"}}
+     }
+    }
+   }
+  },
+  "cost": {
+   "type": "object",
+   "required": ["lines", "totals", "currency_note"],
+   "properties": {
+    "lines": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": ["what", "item", "model", "criteria", "unit_price", "unit", "units", "cost", "kind", "price_file",
+                   "checked"],
+      "properties": {
+       "what": {"type": "string"},
+       "item": {"type": ["string", "null"]},
+       "model": {"type": "string"},
+       "criteria": {"type": ["string", "null"]},
+       "unit_price": {"type": "number", "exclusiveMinimum": 0},
+       "unit": {"type": "string"},
+       "units": {"type": "number", "exclusiveMinimum": 0},
+       "cost": {"type": "number", "exclusiveMinimum": 0},
+       "kind": {"type": "string"},
+       "price_file": {"type": ["string", "null"]},
+       "checked": {"type": ["string", "null"]},
+       "redo": {"type": "boolean", "description": "true: one requested redo of the item, priced like its own line"}
+      }
+     }
+    },
+    "totals": {
+     "type": "object",
+     "required": ["ai_usd", "voice_credits"],
+     "properties": {"ai_usd": {"type": "number"}, "voice_credits": {"type": "number"}}
+    },
+    "currency_note": {"type": ["string", "null"]}
+   }
+  },
+  "facts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": ["claim", "source"],
+    "properties": {"claim": {"type": "string"}, "source": {"type": "string"}}
+   }
+  },
+  "risk": {
+   "type": "object",
+   "required": ["level", "hits"],
+   "properties": {
+    "level": {"enum": ["low", "medium", "high"]},
+    "hits": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": ["item", "mitigation"],
+      "properties": {"item": {"type": "string"}, "mitigation": {"type": "string"}}
+     }
+    }
+   }
+  },
+  "style_spec": {"type": ["object", "null"]},
+  "sound": {
+   "type": "object",
+   "required": ["track", "trending"],
+   "properties": {"track": {"type": ["string", "null"]}, "trending": {"type": ["string", "null"]}}
+  }
+ }
+}

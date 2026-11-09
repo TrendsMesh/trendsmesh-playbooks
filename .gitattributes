@@ -1,0 +1,44 @@
+# Line endings for the scripts the plugin runs, whatever core.autocrlf says. Git for Windows sets
+# core.autocrlf=true by default and a marketplace install is a git clone, so without these lines
+# the shell scripts would come out with CRLF and stop working under Git Bash.
+
+# sh and awk read a CR as part of the line ("then\r", "in\r"): LF only, on every system.
+*.sh text eol=lf
+*.awk text eol=lf
+plugins/trendsmesh-playbooks/bin/tm text eol=lf
+
+# cmd.exe misparses batch files with bare LF (labels, long lines), so CRLF. PowerShell reads
+# either; CRLF is what Windows PowerShell 5.1 and its editors write, so the .ps1 files match it.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# The animatic's bundled scripts are copied byte for byte into every storyboard, which must equal
+# the handoff's (LF): LF on every system.
+plugins/trendsmesh-playbooks/engine/src/tm/animatic_js/*.js text eol=lf
+
+# Organic video (playbook 03): the handoff's schemas are copied as they are, and the test fixtures
+# (plugin blocks, packs, goldens) are compared and copied byte for byte: LF on every system.
+plugins/trendsmesh-playbooks/engine/src/tm/schemas/pb3_*.json text eol=lf
+plugins/trendsmesh-playbooks/engine/tests/fixtures/organic/** text eol=lf
+# The organic pages' stylesheet goes into every page byte for byte (the handoff's, compared with its golden).
+plugins/trendsmesh-playbooks/engine/src/tm/organic_pages/*.css text eol=lf
+# The posting-kit reference is the handoff's best_practices_2026-11.md verbatim (test_organic_skill compares them).
+plugins/trendsmesh-playbooks/references/posting-kit.md text eol=lf
+# The model recipes: four are the handoff's resources/model-prompting/ verbatim (test_organic_skill compares them), five
+# the plugin's own beside them.
+plugins/trendsmesh-playbooks/references/model-prompting/*.md text eol=lf
+# The spec copy and the skill's templates are the handoff's files made LF (test_organic_skill compares them
+# with the handoff as text and checks these lines): LF on every system.
+plugins/trendsmesh-playbooks/skills/organic-video/templates/** text eol=lf
+# The handoff's organic edit composition, as written there (test_organic_final compares it with the handoff as text).
+plugins/trendsmesh-playbooks/remotion/src/OrganicCaptions.tsx text eol=lf
+# The handoff's quiz and ranking compositions, as written there (test_organic_sections compares them with the handoff as text).
+plugins/trendsmesh-playbooks/remotion/src/QuizGrid.tsx text eol=lf
+plugins/trendsmesh-playbooks/remotion/src/RankingList.tsx text eol=lf
+plugins/trendsmesh-playbooks/remotion/src/RankingSplit.tsx text eol=lf
+# Our style library (issue #75): the build prompt quotes its code and the pages inline it, the same bytes on every
+# system (test_atlas_prompt compares the prompt with the files); the storyboard script is copied byte for byte next
+# to node_modules, like render.mjs.
+plugins/trendsmesh-playbooks/data/styles/** text eol=lf
+plugins/trendsmesh-playbooks/atlas/storyboard.mjs text eol=lf
+plugins/trendsmesh-playbooks/atlas/layout_check.mjs text eol=lf

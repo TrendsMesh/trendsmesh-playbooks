@@ -1,0 +1,146 @@
+# The trend research acceptance (trend research plan Task 16).
+# A person runs it with the agent as the operator: /trendsmesh-playbooks:acceptance trends.
+# Spec: the playbook handoff trend-research_v01 (VARIANTS V3 and V23, the weekly schedule GS).
+#
+# Each case: id, title, proves, needs (file | key | budget | meta | trendsmesh | artifacts |
+# human_verdict, asked one at a time), steps (what the agent does, in this case's run folder),
+# pass (what must hold), judge (what the person looks at; null when recorded results prove the
+# case, and then the agent records the result).
+#
+# Trend research spends no money: no case needs a budget, and the report has no spend lines.
+# T6 is listed last because it waits for day 7; the others run in one sitting.
+# T2, T6 and T8 share a category: T2's run is the one T6 updates and T8 reads the seeds of.
+# Every case is worked from the suite folder (acceptance/<date>_trends/, commands/acceptance.md
+# step 2): it holds the case runs, their library/ and the collector's marker. T1 has T2's category
+# too, so T6 names T2's run to follow instead of looking for it.
+
+playbook: 04-trend-research
+budget: {}
+
+cases:
+  - id: T1
+    title: "First real pull: the collector saves one search_trends and one get_trend_videos answer"
+    proves: "Decision 3 (the collector reads the real MCP's tool names and summary), the saved answers hold every field the engine needs"
+    needs: [trendsmesh]
+    steps:
+      - "Ask for the person's category in a few words (a phrase), market and language."
+      - "Run the doctor's trend research checks, then start this case's run (Check every step) and let the first pull go as far as one `search_trends` and one `get_trend_videos` call, each saved by the collector."
+      - "Run `tm trends check-fields` on the run."
+      - "Note in the record the exact tool names the session showed (the TrendsMesh tools as the real MCP names them, and as claude.ai connectors name them if that is what this session has) and the one-line summary Claude saw for each answer."
+      - "Leave this run where it stops: T6 follows T2's run, never this one."
+    pass: >-
+      The doctor says ready; one search_trends and one get_trend_videos answer are saved by the
+      collector (not typed by the agent); `tm trends check-fields` exits 0. The note holds the
+      tool names and the summary Claude saw.
+    judge: null
+
+  - id: T2
+    title: "The person's own category at Check every step, to the map check-in (G1)"
+    proves: "the category map is right for a real category: split no deeper than depth 2, dropped items listed with reasons"
+    needs: [trendsmesh, human_verdict]
+    steps:
+      - "Use the category from T1 (ask again only if T1 was left out). Offer T1's answers as one question: the same category, market and language?"
+      - "Run the playbook in this case's run folder at Check every step, up to the category map check-in (G1), then show the map."
+      - "Show what was dropped, each with its reason, next to the map."
+    pass: >-
+      The map is split to no more than depth 2; every dropped item is listed with its reason;
+      the person gave their verdict at the check-in.
+    judge: >-
+      Look at the map. Does it hold the sub-categories you expect, and nothing off-topic?
+
+  - id: T3
+    title: "The picks card (G2): could the person act on each pick?"
+    proves: "the picks are worded so a person can act, and no number is shown without its sample"
+    needs: [human_verdict]
+    steps:
+      - "Go on from T2's run folder to the picks check-in (G2)."
+      - "Show the picks card as it is, without adding anything the person would have to ask for."
+    pass: >-
+      The picks card is shown with each pick's evidence and number, and the person gave their
+      verdict.
+    judge: >-
+      Read each pick. Could you act on it without more research? Is any number shown without its
+      sample?
+
+  - id: T4
+    title: "Paid versus organic on the live Ad Library"
+    proves: "the paid view reads the real Ad Library, and a \"none found\" is true"
+    needs: [meta, human_verdict]
+    steps:
+      - "Go on from T2's run folder, with the paid view on, to the Ad Library step. Meta's Ad Library search must be connected."
+      - "Run `tm research paid check --run <the run> --file 02_research/ad_library_summary_vNN.json` on the saved reading (the newest version)."
+      - "Pick one trend the reading calls \"none found\" and give the person its search words, to check on facebook.com/ads/library themselves."
+    pass: >-
+      `tm research paid check` exits 0 on the run's ad library summary.
+    judge: >-
+      Open facebook.com/ads/library and search the words given for one trend the report calls
+      "none found". Do you find no ads for it there too?
+
+  - id: T5
+    title: "The page: a private artifact with three views, on a phone"
+    proves: "the report page is published, private, with its three views and working clips"
+    needs: [artifacts, human_verdict]
+    steps:
+      - "Go on from T2's run folder to the page (the report's step), published as a private artifact. Do not make it public."
+      - "Give the person the page's link and say what to try: switch between the three views, and open a few clips."
+    pass: >-
+      The page is published as a private artifact with three views, and its link was given to the
+      person.
+    judge: >-
+      Open the link on your phone. Does the view switch work, and do the clips open?
+
+  - id: T7
+    title: "The weekly schedule (GS)"
+    proves: "the schedule question is asked once, and its answer is kept"
+    needs: [human_verdict]
+    steps:
+      - "This case depends on T2's run reaching the picks. At the schedule question (after the picks), ask whether they want the report updated every Monday automatically. The person says yes or no."
+      - "On yes with `create_scheduled_task` in the session, create the task with the weekly prompt and run `tm research schedule`; otherwise say how to do it by hand and put that note in the final report. The task's workspace is the suite folder (the folder that holds T2's `runs/`)."
+    pass: >-
+      A scheduled task exists with the weekly prompt, or the by-hand note is in the final report.
+    judge: >-
+      Do you want the report updated every week on its own: yes or no? (Your answer is recorded
+      as it is, and a no is a pass when the by-hand note is in the final report.)
+
+  - id: T8
+    title: "Seeds: the accepted picks wait for the creative brief"
+    proves: "the accepted picks are saved as seeds with a validity of 14 days"
+    needs: [trendsmesh]
+    steps:
+      - "This case depends on T2's run: if T2 did not reach the picks, record it blocked with that note. Make sure `tm research seeds --run <T2's run>` has run (it is the playbook's own step after the picks), then, from the suite folder (its `library/seeds.jsonl` holds them), run `tm seeds list --source pb4`."
+      - "Compare it with the picks the person accepted in T2."
+    pass: >-
+      `tm seeds list --source pb4` lists T2's accepted picks, each with `valid_until` equal to
+      the run's as-of date plus 14 days.
+    judge: null
+
+  - id: T9
+    title: "A product link as the input (V3)"
+    proves: "V3: a product link is not supported yet, said plainly, and the run goes on with a phrase"
+    needs: [trendsmesh]
+    steps:
+      - "Start a new run in a scratch name, from the suite folder, and give a product page link as the category."
+      - "Expected: the plain \"not supported yet\" message with the issue link, then one question for a phrase; give a short phrase other than T2's category and see the run go on (stop it after its first step)."
+    pass: >-
+      The plain "not supported yet" message and the issue link are shown, and the run goes on
+      with a phrase.
+    judge: null
+
+  - id: T6
+    title: "Forward test (V23): the weekly update, seven or more days after T2"
+    proves: "V23: next week's run follows the same page and checks last week's calls"
+    needs: [trendsmesh]
+    steps:
+      - "This case waits for a later day: the acceptance continues from the same place. When T2 was run less than seven days ago, say the date it is due, record nothing and go to the next case (T6 stays to do)."
+      - "Seven or more days after T2, from the suite folder, the person says \"update my trend report\". The run to follow is T2's case run, named here: never T1's, which has the same category and stopped after its first pull. This case's own run folder stays unused."
+      - "When T7 created a scheduled task, this is its weekly update: start it once with `run_scheduled_task`, wait until `list_task_runs` shows the run finished, then check it: a new run under the suite folder's `runs/04-trend-research/` that follows T2's case run, its TrendsMesh answers saved by the collector (files in its `02_research/`, not typed by the agent), and its page republished to T2's slug. Say in the note what happened, each of the three, including what failed. Then skip the next step."
+      - "Without a task (T7 was by hand, a no, or blocked), do the weekly run here: `tm run new --playbook trend-research --name T2 --after <T2's case run> --json` from the suite folder, then the playbook's weekly run on that run (`tm config write --from-previous`, then `tm next`, Hands-off)."
+      - "Check the new run's slug, its `04_final/report_v01/`, and the rows in the suite folder's `library/trend_calls.jsonl`. Give the new run's `run.json` and `04_final/report_v01/` as evidence."
+      - "When a scheduled task exists, ask whether to keep it now that the acceptance is done; to stop it, follow \"Stopping the schedule\" in the plugin's `references/schedule.md`."
+    pass: >-
+      The new run follows T2's case run; its page has the same slug as T2's; it holds
+      `04_final/report_v01/`; the suite folder's `library/trend_calls.jsonl` holds rows for T2's
+      calls. When a scheduled task made the run, the note says where its run landed, whether the
+      collector saved its answers and whether the page was republished. Before day 7 the agent
+      says the date it is due and records nothing.
+    judge: null

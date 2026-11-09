@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review: $run_id</title>
+<style>
+body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 1100px; padding: 1.5rem; color: #1b1b1b; }
+h1 { font-size: 1.5rem; } h2 { margin-top: 2.2rem; border-bottom: 1px solid #ddd; padding-bottom: .3rem; }
+.pair { margin: 1rem 0 2rem; } .players { display: flex; gap: 1rem; } .players figure { flex: 1; margin: 0; }
+video { width: 100%; background: #000; } figcaption, .muted { color: #666; font-size: .85rem; word-break: break-all; }
+.controls { display: flex; gap: .75rem; align-items: center; margin-top: .5rem; } .controls input[type=range] { flex: 1; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .5rem; }
+.grid img { width: 100%; display: block; border: 1px solid #ddd; } .grid figure { margin: 0; }
+table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #ddd; padding: .3rem .5rem; text-align: left; vertical-align: top; }
+pre { white-space: pre-wrap; background: #f6f6f6; padding: 1rem; }
+</style>
+</head>
+<body>
+<h1>Review: $run_id</h1>
+<p class="muted">Read-only view of this run. Decisions are made in chat. Regenerated each time; edits here are lost.</p>
+<h2>Before and after</h2>
+$pairs
+<h2>Frame grids and QA strips</h2>
+$grids
+<h2>Change register</h2>
+$register
+<h2>Decision log</h2>
+$decisions
+<script>
+document.querySelectorAll('.pair').forEach(function (pair) {
+  var vids = pair.querySelectorAll('video');
+  var play = pair.querySelector('.play'), seek = pair.querySelector('.seek');
+  if (vids.length < 2 || !play || !seek) return;
+  var a = vids[0], b = vids[1];
+  function dur() { return Math.max(a.duration || 0, b.duration || 0); }
+  play.addEventListener('click', function () {
+    if (a.paused) { a.play(); b.play(); play.textContent = 'Pause'; }
+    else { a.pause(); b.pause(); play.textContent = 'Play'; }
+  });
+  seek.addEventListener('input', function () {
+    var t = (seek.value / 1000) * dur(); a.currentTime = t; b.currentTime = t;
+  });
+  a.addEventListener('timeupdate', function () {
+    if (dur()) seek.value = Math.round(a.currentTime / dur() * 1000);
+    if (Math.abs(a.currentTime - b.currentTime) > 0.15) b.currentTime = a.currentTime;
+  });
+  a.addEventListener('ended', function () { b.pause(); play.textContent = 'Play'; });
+});
+</script>
+</body>
+</html>

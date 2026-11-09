@@ -1,0 +1,135 @@
+{
+ "lang": "en",
+ "id": "M5",
+ "version": "v01",
+ "date": "2026-11-06",
+ "title": "Few parents know the age rule for ChatGPT",
+ "channel": "ExampleEdu (English version)",
+ "format": "Direct to camera: a fact most parents miss, then one thing to do tonight",
+ "length": "15–17 s",
+ "goal": "Parents learn ChatGPT’s age rule and one easy next step: ask their kid about it at dinner and look at one chat together.",
+ "trends": [
+  "hook: “few people realize that _” (a reveal hook on the rise)",
+  "topic: kids doing schoolwork with ChatGPT (6 videos, 4M views)"
+ ],
+ "hook": {
+  "line": "Few parents know the age rule for ChatGPT.",
+  "on_screen": "The ChatGPT age rule 👀",
+  "why": "Opening on a rule parents assume they know makes them wait for the answer; the text on screen carries it for viewers with the sound off."
+ },
+ "shots": [
+  {
+   "n": 1,
+   "time": "0–3 s",
+   "framing": "Vertical, chest-up, the phone level with your eyes. A home desk, a lamp and a bookshelf behind you.",
+   "action": "Eyebrows up on “age rule”, as if sharing a secret.",
+   "line": "Few parents know the age rule for ChatGPT.",
+   "on_screen": "The ChatGPT age rule 👀"
+  },
+  {
+   "n": 2,
+   "time": "3–8 s",
+   "framing": "Same angle, a little closer (a zoom in the edit works too).",
+   "action": "Hold up one finger, then a second one on “eighteen”.",
+   "line": "It’s actually thirteen. And until eighteen, your kid can only use it with your permission.",
+   "on_screen": "13+ · under 18 only with you"
+  },
+  {
+   "n": 3,
+   "time": "8–11 s",
+   "framing": "B-roll: a dinner table from above, an adult’s and a kid’s hands passing a bowl (no faces).",
+   "action": "Hands only, an easy, ordinary moment.",
+   "line": "Tonight at dinner, calmly ask your kid if they already have an account.",
+   "on_screen": "Ask at dinner"
+  },
+  {
+   "n": 4,
+   "time": "11–15 s",
+   "framing": "Back to the desk shot.",
+   "action": "Warm smile, point at the lens on the last word.",
+   "line": "Then ask them to show you their last chat.",
+   "on_screen": "Look at one chat together"
+  },
+  {
+   "n": 5,
+   "time": "15–16 s",
+   "framing": "Hold.",
+   "action": "Freeze on the smile for a beat before the loop.",
+   "line": "",
+   "on_screen": ""
+  }
+ ],
+ "word_count": 45,
+ "filming": [
+  "Shoot vertical (9:16) at 1080p or 4K, 30 fps; lock focus and exposure on your face.",
+  "Put the phone on a shelf or a tripod level with your eyes, so you never look down at it.",
+  "Face a window or a soft lamp; avoid a bright window behind you.",
+  "Use a clip-on mic, or keep the phone close in a quiet room; record without music.",
+  "Film each line twice, with a short pause before and after it, so the cuts are clean.",
+  "Stay in the centre of the frame: the bottom holds the captions and the right edge the app’s buttons."
+ ],
+ "edit": [
+  "Trim every pause between lines to 0.3 s at most.",
+  "Shot 2: zoom in 10–15% at the 3 s mark.",
+  "Spoken words as short caption groups low in the safe zone; the on-screen lines at the top.",
+  "Mix your voice to about −14 LUFS; for a bed, a quiet piano track from Mixkit, or a trending sound picked in TikTok, kept near 10%."
+ ],
+ "sound": "Just your voice; at most a quiet music bed or a trending sound in the app, about 10% under you.",
+ "kit": {
+  "tiktok": {
+   "caption": "Few parents know the age rule for ChatGPT 👀\nDid you know it before today?",
+   "hashtags": [
+    "#chatgpt",
+    "#parenting",
+    "#dadtok",
+    "#screentime",
+    "#parentingtips"
+   ],
+   "ai_label": "Not needed (filmed by you)",
+   "sound": "Your own voice; a trending sound in TikTok at about 10% if you like"
+  },
+  "instagram": {
+   "caption": "Few parents know the age rule for ChatGPT 👀\nDid you know it before today?",
+   "hashtags": [
+    "#chatgpt",
+    "#parenting",
+    "#parentingtips",
+    "#kidsonline",
+    "#screentime"
+   ],
+   "ai_label": "Not needed (filmed by you)",
+   "sound": "Your own voice"
+  },
+  "youtube": {
+   "title": "The ChatGPT age rule most parents miss 👀",
+   "description": "ChatGPT is for kids 13 and older, and until 18 only with a parent’s permission. Ask your kid about it at dinner tonight, and look at one chat together.\n#chatgpt #parenting",
+   "ai_label": "No (filmed by you)",
+   "sound": "Your voice"
+  },
+  "facebook": {
+   "caption": "Few parents know the age rule for ChatGPT 👀 Did you know it before today?",
+   "hashtags": [
+    "#chatgpt",
+    "#parenting"
+   ],
+   "ai_label": "Not needed (filmed by you)",
+   "sound": "Your voice"
+  }
+ },
+ "facts": [
+  {
+   "claim": "ChatGPT: users must be 13 or older (older where a country sets a higher age of consent); users under 18 need a parent’s or legal guardian’s permission.",
+   "source": "OpenAI Terms of Use",
+   "url": "https://openai.com/policies/terms-of-use/",
+   "note": "Keep it off the post: it is for checking. A few EU countries set the consent age higher, up to 16."
+  }
+ ],
+ "generate_instead": {
+  "note": "To generate it instead of filming: one 15 s MiniMax H3 take with English speech, its first frame from an AI host image (about $1.33: the image $0.13, the take $1.20).",
+  "host_image_prompt": "A photo that looks like a still from a selfie video: a dad of about forty sits at his home desk and talks to his phone, which leans on a pile of books; shoulders and head in frame, his face near the centre, caught mid-sentence with his eyebrows a little raised; grey hoodie, short beard, natural skin; behind him a desk lamp, a mug of tea and a shelf of board games; warm light from the lamp on the right, a little grain. Natural look only: no retouching, no studio light, and nothing written, no logos, no watermarks.",
+  "video_prompt": "Start from Image 1, unchanged, as the first frame. [0 to 3 seconds] The dad lifts his eyebrows and says: \"Few parents know the age rule for ChatGPT.\" [3 to 8 seconds] The camera creeps in; he shows one finger, then two: \"It's actually thirteen. And until eighteen, your kid can only use it with your permission.\" [8 to 11 seconds] Cut to a dinner table from above, an adult's and a kid's hands passing a bowl, while he keeps talking: \"Tonight at dinner, calmly ask your kid if they already have an account.\" [11 to 15 seconds] Cut back to the desk; he smiles and points at the lens: \"Then ask them to show you their last chat.\" Audio: only his own voice, near and clear, over a quiet room; no music. Keep the picture clean: no captions, no stickers, no watermarks."
+ },
+ "plugin": {
+  "lang_request": "English version"
+ }
+}

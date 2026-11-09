@@ -1,0 +1,2400 @@
+[
+ {
+  "date_start": "2026-08-07",
+  "date_stop": "2026-08-07",
+  "amount_spent": {
+   "value": "93.22",
+   "unit": "PLN"
+  },
+  "impressions": "1166",
+  "frequency": "1.145383",
+  "cpm": {
+   "value": "79.95",
+   "unit": "PLN"
+  },
+  "ctr": "14.24%",
+  "unique_link_clicks_ctr": "3.831041",
+  "video_play_actions": "955",
+  "video_thruplay_watched_actions": "133",
+  "video_p25_watched_actions": "329",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "2"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "46.61",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-08",
+  "date_stop": "2026-08-08",
+  "amount_spent": {
+   "value": "109.96",
+   "unit": "PLN"
+  },
+  "impressions": "1276",
+  "frequency": "1.196998",
+  "cpm": {
+   "value": "86.18",
+   "unit": "PLN"
+  },
+  "ctr": "13.71%",
+  "unique_link_clicks_ctr": "4.502814",
+  "video_play_actions": "940",
+  "video_thruplay_watched_actions": "152",
+  "video_p25_watched_actions": "337",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "3"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "36.65",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-09",
+  "date_stop": "2026-08-09",
+  "amount_spent": {
+   "value": "170.76",
+   "unit": "PLN"
+  },
+  "impressions": "2727",
+  "frequency": "1.183594",
+  "cpm": {
+   "value": "62.62",
+   "unit": "PLN"
+  },
+  "ctr": "12.36%",
+  "unique_link_clicks_ctr": "3.385417",
+  "video_play_actions": "1947",
+  "video_thruplay_watched_actions": "305",
+  "video_p25_watched_actions": "662",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "6"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "28.46",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-10",
+  "date_stop": "2026-08-10",
+  "amount_spent": {
+   "value": "213",
+   "unit": "PLN"
+  },
+  "impressions": "4433",
+  "frequency": "1.157139",
+  "cpm": {
+   "value": "48.05",
+   "unit": "PLN"
+  },
+  "ctr": "13.40%",
+  "unique_link_clicks_ctr": "3.315061",
+  "video_play_actions": "3480",
+  "video_thruplay_watched_actions": "525",
+  "video_p25_watched_actions": "1160",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "14"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "15.21",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-11",
+  "date_stop": "2026-08-11",
+  "amount_spent": {
+   "value": "293.79",
+   "unit": "PLN"
+  },
+  "impressions": "7029",
+  "frequency": "1.188938",
+  "cpm": {
+   "value": "41.8",
+   "unit": "PLN"
+  },
+  "ctr": "12.33%",
+  "unique_link_clicks_ctr": "3.788904",
+  "video_play_actions": "5663",
+  "video_thruplay_watched_actions": "756",
+  "video_p25_watched_actions": "1738",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "14"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "20.99",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-12",
+  "date_stop": "2026-08-12",
+  "amount_spent": {
+   "value": "263.38",
+   "unit": "PLN"
+  },
+  "impressions": "7607",
+  "frequency": "1.14305",
+  "cpm": {
+   "value": "34.62",
+   "unit": "PLN"
+  },
+  "ctr": "12.09%",
+  "unique_link_clicks_ctr": "3.335838",
+  "video_play_actions": "5908",
+  "video_thruplay_watched_actions": "795",
+  "video_p25_watched_actions": "1814",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "13"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "20.26",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-13",
+  "date_stop": "2026-08-13",
+  "amount_spent": {
+   "value": "239.4",
+   "unit": "PLN"
+  },
+  "impressions": "7595",
+  "frequency": "1.190625",
+  "cpm": {
+   "value": "31.52",
+   "unit": "PLN"
+  },
+  "ctr": "12.03%",
+  "unique_link_clicks_ctr": "3.370434",
+  "video_play_actions": "5991",
+  "video_thruplay_watched_actions": "718",
+  "video_p25_watched_actions": "1811",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "12"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "19.95",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-14",
+  "date_stop": "2026-08-14",
+  "amount_spent": {
+   "value": "266.67",
+   "unit": "PLN"
+  },
+  "impressions": "7782",
+  "frequency": "1.160107",
+  "cpm": {
+   "value": "34.27",
+   "unit": "PLN"
+  },
+  "ctr": "11.63%",
+  "unique_link_clicks_ctr": "3.413834",
+  "video_play_actions": "6154",
+  "video_thruplay_watched_actions": "799",
+  "video_p25_watched_actions": "1856",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "4"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "66.67",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-15",
+  "date_stop": "2026-08-15",
+  "amount_spent": {
+   "value": "292.97",
+   "unit": "PLN"
+  },
+  "impressions": "8173",
+  "frequency": "1.187763",
+  "cpm": {
+   "value": "35.85",
+   "unit": "PLN"
+  },
+  "ctr": "11.76%",
+  "unique_link_clicks_ctr": "3.807586",
+  "video_play_actions": "6616",
+  "video_thruplay_watched_actions": "836",
+  "video_p25_watched_actions": "1981",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "9"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "32.55",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-16",
+  "date_stop": "2026-08-16",
+  "amount_spent": {
+   "value": "264.25",
+   "unit": "PLN"
+  },
+  "impressions": "7519",
+  "frequency": "1.137003",
+  "cpm": {
+   "value": "35.14",
+   "unit": "PLN"
+  },
+  "ctr": "10.73%",
+  "unique_link_clicks_ctr": "3.054589",
+  "video_play_actions": "5615",
+  "video_thruplay_watched_actions": "679",
+  "video_p25_watched_actions": "1607",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "6"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "44.04",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-17",
+  "date_stop": "2026-08-17",
+  "amount_spent": {
+   "value": "210.46",
+   "unit": "PLN"
+  },
+  "impressions": "6475",
+  "frequency": "1.177487",
+  "cpm": {
+   "value": "32.5",
+   "unit": "PLN"
+  },
+  "ctr": "11.63%",
+  "unique_link_clicks_ctr": "3.055101",
+  "video_play_actions": "4792",
+  "video_thruplay_watched_actions": "628",
+  "video_p25_watched_actions": "1405",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "2"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "105.23",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-18",
+  "date_stop": "2026-08-18",
+  "amount_spent": {
+   "value": "85.12",
+   "unit": "PLN"
+  },
+  "impressions": "2722",
+  "frequency": "1.097138",
+  "cpm": {
+   "value": "31.27",
+   "unit": "PLN"
+  },
+  "ctr": "10.29%",
+  "unique_link_clicks_ctr": "3.305119",
+  "video_play_actions": "2037",
+  "video_thruplay_watched_actions": "244",
+  "video_p25_watched_actions": "591",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "3"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "28.37",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-19",
+  "date_stop": "2026-08-19",
+  "amount_spent": {
+   "value": "29.88",
+   "unit": "PLN"
+  },
+  "impressions": "758",
+  "frequency": "1.087518",
+  "cpm": {
+   "value": "39.42",
+   "unit": "PLN"
+  },
+  "ctr": "9.89%",
+  "unique_link_clicks_ctr": "4.160689",
+  "video_play_actions": "497",
+  "video_thruplay_watched_actions": "65",
+  "video_p25_watched_actions": "153",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "1"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "29.88",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-20",
+  "date_stop": "2026-08-20",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-21",
+  "date_stop": "2026-08-21",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-22",
+  "date_stop": "2026-08-22",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-23",
+  "date_stop": "2026-08-23",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-24",
+  "date_stop": "2026-08-24",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-25",
+  "date_stop": "2026-08-25",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-26",
+  "date_stop": "2026-08-26",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-27",
+  "date_stop": "2026-08-27",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-28",
+  "date_stop": "2026-08-28",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-29",
+  "date_stop": "2026-08-29",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-30",
+  "date_stop": "2026-08-30",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-08-31",
+  "date_stop": "2026-08-31",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-01",
+  "date_stop": "2026-09-01",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-02",
+  "date_stop": "2026-09-02",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-03",
+  "date_stop": "2026-09-03",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-04",
+  "date_stop": "2026-09-04",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-05",
+  "date_stop": "2026-09-05",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-06",
+  "date_stop": "2026-09-06",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-07",
+  "date_stop": "2026-09-07",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-08",
+  "date_stop": "2026-09-08",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-09",
+  "date_stop": "2026-09-09",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-10",
+  "date_stop": "2026-09-10",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-11",
+  "date_stop": "2026-09-11",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-12",
+  "date_stop": "2026-09-12",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-13",
+  "date_stop": "2026-09-13",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-14",
+  "date_stop": "2026-09-14",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-15",
+  "date_stop": "2026-09-15",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-16",
+  "date_stop": "2026-09-16",
+  "amount_spent": {
+   "value": "60.34",
+   "unit": "PLN"
+  },
+  "impressions": "1182",
+  "frequency": "1.117202",
+  "cpm": {
+   "value": "51.05",
+   "unit": "PLN"
+  },
+  "ctr": "10.24%",
+  "unique_link_clicks_ctr": "5.671078",
+  "video_play_actions": "1040",
+  "video_thruplay_watched_actions": "118",
+  "video_p25_watched_actions": "270",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "1"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "60.34",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-17",
+  "date_stop": "2026-09-17",
+  "amount_spent": {
+   "value": "74.75",
+   "unit": "PLN"
+  },
+  "impressions": "1604",
+  "frequency": "1.116992",
+  "cpm": {
+   "value": "46.6",
+   "unit": "PLN"
+  },
+  "ctr": "8.23%",
+  "unique_link_clicks_ctr": "4.665738",
+  "video_play_actions": "1442",
+  "video_thruplay_watched_actions": "129",
+  "video_p25_watched_actions": "314",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "2"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "37.38",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-18",
+  "date_stop": "2026-09-18",
+  "amount_spent": {
+   "value": "59.29",
+   "unit": "PLN"
+  },
+  "impressions": "1123",
+  "frequency": "1.172234",
+  "cpm": {
+   "value": "52.8",
+   "unit": "PLN"
+  },
+  "ctr": "9.08%",
+  "unique_link_clicks_ctr": "4.697286",
+  "video_play_actions": "979",
+  "video_thruplay_watched_actions": "97",
+  "video_p25_watched_actions": "218",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "values": [
+    {
+     "attribution_windows": [
+      "default"
+     ],
+     "value": "1"
+    }
+   ]
+  },
+  "cost_per_result": {
+   "value": "59.29",
+   "unit": "PLN",
+   "conversion_type": "Website purchases"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-19",
+  "date_stop": "2026-09-19",
+  "amount_spent": {
+   "value": "55.3",
+   "unit": "PLN"
+  },
+  "impressions": "902",
+  "frequency": "1.084135",
+  "cpm": {
+   "value": "61.31",
+   "unit": "PLN"
+  },
+  "ctr": "8.54%",
+  "unique_link_clicks_ctr": "4.326923",
+  "video_play_actions": "800",
+  "video_thruplay_watched_actions": "70",
+  "video_p25_watched_actions": "181",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-20",
+  "date_stop": "2026-09-20",
+  "amount_spent": {
+   "value": "30.11",
+   "unit": "PLN"
+  },
+  "impressions": "546",
+  "frequency": "1.096386",
+  "cpm": {
+   "value": "55.15",
+   "unit": "PLN"
+  },
+  "ctr": "9.34%",
+  "unique_link_clicks_ctr": "5.823293",
+  "video_play_actions": "497",
+  "video_thruplay_watched_actions": "60",
+  "video_p25_watched_actions": "133",
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-21",
+  "date_stop": "2026-09-21",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-22",
+  "date_stop": "2026-09-22",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-23",
+  "date_stop": "2026-09-23",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-24",
+  "date_stop": "2026-09-24",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-25",
+  "date_stop": "2026-09-25",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-26",
+  "date_stop": "2026-09-26",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-27",
+  "date_stop": "2026-09-27",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-28",
+  "date_stop": "2026-09-28",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-29",
+  "date_stop": "2026-09-29",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-09-30",
+  "date_stop": "2026-09-30",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-01",
+  "date_stop": "2026-10-01",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-02",
+  "date_stop": "2026-10-02",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-03",
+  "date_stop": "2026-10-03",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-04",
+  "date_stop": "2026-10-04",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-05",
+  "date_stop": "2026-10-05",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-06",
+  "date_stop": "2026-10-06",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-07",
+  "date_stop": "2026-10-07",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-08",
+  "date_stop": "2026-10-08",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-09",
+  "date_stop": "2026-10-09",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-10",
+  "date_stop": "2026-10-10",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-11",
+  "date_stop": "2026-10-11",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-12",
+  "date_stop": "2026-10-12",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-13",
+  "date_stop": "2026-10-13",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-14",
+  "date_stop": "2026-10-14",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-15",
+  "date_stop": "2026-10-15",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-16",
+  "date_stop": "2026-10-16",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-17",
+  "date_stop": "2026-10-17",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-18",
+  "date_stop": "2026-10-18",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-19",
+  "date_stop": "2026-10-19",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-20",
+  "date_stop": "2026-10-20",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-21",
+  "date_stop": "2026-10-21",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-22",
+  "date_stop": "2026-10-22",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-23",
+  "date_stop": "2026-10-23",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-24",
+  "date_stop": "2026-10-24",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-25",
+  "date_stop": "2026-10-25",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-26",
+  "date_stop": "2026-10-26",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-27",
+  "date_stop": "2026-10-27",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-28",
+  "date_stop": "2026-10-28",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-29",
+  "date_stop": "2026-10-29",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-30",
+  "date_stop": "2026-10-30",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-10-31",
+  "date_stop": "2026-10-31",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-11-01",
+  "date_stop": "2026-11-01",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ },
+ {
+  "date_start": "2026-11-02",
+  "date_stop": "2026-11-02",
+  "amount_spent": {
+   "value": "0",
+   "unit": "PLN"
+  },
+  "impressions": "0",
+  "frequency": "0",
+  "cpm": null,
+  "ctr": null,
+  "unique_link_clicks_ctr": null,
+  "video_play_actions": null,
+  "video_thruplay_watched_actions": null,
+  "video_p25_watched_actions": null,
+  "results": {
+   "indicator": "actions:offsite_conversion.fb_pixel_purchase",
+   "value": "Not available"
+  },
+  "cost_per_result": {
+   "value": "Not available (Website purchases)"
+  },
+  "name": "Ad 3 (video)",
+  "id": "90000000000001"
+ }
+]

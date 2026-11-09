@@ -1,0 +1,378 @@
+{
+ "_source": "Meta Ads MCP ads_library_search, countries=[US], ad_active_status=ACTIVE, 2026-11-04. v02 = the 8 checks of v01 (ad_library_summary.json, limit 15-25) + 18 new checks (limit 8-10) for every 'act now' and 'still rising' trend and the 4 largest 'too late' trends. Responses came back inline; relevant advertisers transcribed (page name, title, example ad id). Matching is loose: unrelated ads (novels, fridge shelves, language apps) left out. Titles only.",
+ "paid_levels": {
+  "none": "no relevant advertiser in the top results ('none found in Ad Library titles')",
+  "found": "1-3 relevant advertisers",
+  "crowded": "4 or more relevant advertisers, or a very large estimated count with relevant top results",
+  "not_checkable": "hook structures cannot be matched in titles without Foreplay"
+ },
+ "checks": [
+  {
+   "trend_id": "trend_beauty_045",
+   "trend": "Cat-eye magnetic nail art manicures",
+   "query": "cat eye nails",
+   "level": "none",
+   "estimated": 1505,
+   "advertisers": [
+    "Chloe Rose (generic at-home nails, not cat-eye)"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_042",
+   "trend": "Leopard-print cat-eye nail art tutorials",
+   "query": "cat eye nails (same check)",
+   "level": "none",
+   "estimated": 1505,
+   "advertisers": [],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_041",
+   "trend": "Fall almond nail art designs",
+   "query": "almond nails",
+   "level": "found",
+   "estimated": 851,
+   "advertisers": [
+    "Target (Kiss / Impress holiday press-ons, medium almond)"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_004",
+   "trend": "Sephora Savings Event sale hauls and picks",
+   "query": "Sephora Savings Event",
+   "level": "crowded",
+   "estimated": 2602,
+   "advertisers": [
+    "PHLUR",
+    "Mane",
+    "Dr.FORHAIR U.S",
+    "Sephora",
+    "Rare Beauty",
+    "DAMDAM",
+    "Maed Beauty",
+    "by rosie jane",
+    "Ebb Ocean Club ('Ebb at the Sephora Savings Event, Ends 11/9', seen in the keratin check, id )"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_033",
+   "trend": "Lip combo liner and gloss routine",
+   "query": "lip combo",
+   "level": "crowded",
+   "estimated": 1389,
+   "advertisers": [
+    "Nude Envie ('Juicy Peach Lip Combo')",
+    "AMUSE SEOUL ('Pick Your Tints. Mix & Match')",
+    "The Lip Bar",
+    "HERA US"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_026",
+   "trend": "Eyelash extensions and false lash tutorials",
+   "query": "lash clusters",
+   "level": "crowded",
+   "estimated": 925,
+   "advertisers": [
+    "Lash Buddy",
+    "Dreamybond",
+    "VeyesBeauty",
+    "Ivy beauty",
+    "Target / Falscara"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_017",
+   "trend": "Hair extension and wig transformations",
+   "query": "hair extensions",
+   "level": "crowded",
+   "estimated": 8580,
+   "advertisers": [
+    "CurlyMe",
+    "Ywigs_official",
+    "Key Salon",
+    "Announcerk / Adesignty.S (clip-in bangs)",
+    "Viethairmarket",
+    "TYMO Beauty"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_050",
+   "trend": "Medicube K-beauty skincare hauls and routines",
+   "query": "Medicube",
+   "level": "found",
+   "estimated": 2104,
+   "advertisers": [
+    "Korean Holy Grails ('Korean Pharmacy Serum Stuns US Derms')",
+    "Walmart (beauty gifts)"
+   ],
+   "note": "Medicube itself not in the top titles",
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_012",
+   "trend": "Curly hair care and styling routines",
+   "query": "curly hair products",
+   "level": "found",
+   "estimated": 2209,
+   "advertisers": [
+    "Ultimate Curl Guide ('I Fell in Love With Her Curls Again')",
+    "TYMO Beauty",
+    "CurlyMe"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_001",
+   "trend": "Ulta Beauty product hauls and store finds",
+   "query": "Ulta Beauty",
+   "level": "found",
+   "estimated": 2177,
+   "advertisers": [
+    "COSRX Global ('Shop now at ULTA')",
+    "stila cosmetics"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_022",
+   "trend": "Curly vs straight hair content",
+   "query": "hair straightener",
+   "level": "found",
+   "estimated": 2708,
+   "advertisers": [
+    "TYMO Beauty Straightening (several ads)",
+    "ManeRowe"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_024",
+   "trend": "Lace-front wig showcases and vendor promos",
+   "query": "lace front wig",
+   "level": "crowded",
+   "estimated": 1374,
+   "advertisers": [
+    "IDefineWig",
+    "Luvme Hair",
+    "AltaMoro Living",
+    "Jaliza Braided Wigs",
+    "CurlyMe",
+    "Lilyrhyme",
+    "OQ HAIR"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_027",
+   "trend": "Eyelash lift and tint treatments",
+   "query": "lash lift",
+   "level": "none",
+   "estimated": 3601,
+   "advertisers": [],
+   "note": "only lash-cluster and mascara ads (MoxieLash, ForChics), no lift or tint service",
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_028",
+   "trend": "Venom makeup and couple transformation trend",
+   "query": "Venom makeup",
+   "level": "none",
+   "estimated": 436,
+   "advertisers": [],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_046",
+   "trend": "Long acrylic nail art and extensions",
+   "query": "acrylic nails",
+   "level": "found",
+   "estimated": 2235,
+   "advertisers": [
+    "Poorguy shop (nail store)",
+    "Suny Supply Nail LLC",
+    "Jade Nails & Spa"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_002",
+   "trend": "Beauty product hauls, unboxings and packing",
+   "query": "beauty haul",
+   "level": "found",
+   "estimated": 806,
+   "advertisers": [
+    "Timephoria ('Choose Your Beauty Haul')",
+    "Victoria's Secret PINK ('Beauty Minis & More')",
+    "Kollab-la ('K-Beauty Blackout')"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_003",
+   "trend": "Beauty product unboxing hauls",
+   "query": "beauty haul (same check)",
+   "level": "found",
+   "estimated": 806,
+   "advertisers": [
+    "Timephoria",
+    "Victoria's Secret PINK",
+    "Kollab-la"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_007",
+   "trend": "Hair loss remedies and hair recovery",
+   "query": "hair loss",
+   "level": "crowded",
+   "estimated": 64686,
+   "advertisers": [
+    "Haircare Guide ('Get Your Thick Hair Back!')",
+    "Life with Intention / Erin Olson (scalp brush offer)"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_009",
+   "trend": "Wash day hair transformation routines",
+   "query": "wash day",
+   "level": "none",
+   "estimated": 106757,
+   "advertisers": [],
+   "note": "results were skincare, novels and a scalp-brush offer, nothing about wash day",
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_010",
+   "trend": "Karseell collagen hair mask promo skits",
+   "query": "Karseell",
+   "level": "found",
+   "estimated": 6,
+   "advertisers": [
+    "Guangzhou Karseell Cosmetics (private-label B2B: 'Launch Your Own Hair Care Line')",
+    "Your Hair and Wig (reseller)"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_011",
+   "trend": "Hair braiding and long-hair styling",
+   "query": "braiding hair",
+   "level": "crowded",
+   "estimated": 1930,
+   "advertisers": [
+    "PrimeHair & Fashion",
+    "beautisa",
+    "kenza_hair_braiding",
+    "Styles By Chaqui",
+    "Nadia Hair Braiding ('Boho Braids')",
+    "Ywigs_official",
+    "Cozy Glow"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_014",
+   "trend": "Keratin hair straightening salon transformations",
+   "query": "keratin treatment",
+   "level": "none",
+   "estimated": 2918,
+   "advertisers": [],
+   "note": "no keratin title; hair-thickening and Sephora-event ads only",
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_036",
+   "trend": "Bridal makeup and wedding-day styling",
+   "query": "bridal makeup",
+   "level": "found",
+   "estimated": 1993,
+   "advertisers": [
+    "Glam by Duaa (makeup artist)",
+    "Makeup by Aarushi (makeup artist, INR)"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_032",
+   "trend": "Glam makeup transformations and beauty looks",
+   "query": "makeup transformation",
+   "level": "none",
+   "estimated": 1640,
+   "advertisers": [],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_015",
+   "trend": "Salon and barbershop hair transformations",
+   "query": "hair salon transformation",
+   "level": "found",
+   "estimated": 848,
+   "advertisers": [
+    "TYMO Beauty",
+    "oVertone (gray-transition colour)"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_043",
+   "trend": "Nail art transformations and manicure showcase",
+   "query": "nail art",
+   "level": "found",
+   "estimated": 4917,
+   "advertisers": [
+    "Nail Art Supply",
+    "Shoplarke / LivoWish ('DIY salon nails at home')"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_051",
+   "trend": "Skincare routines and product demos",
+   "query": "skincare routine",
+   "level": "crowded",
+   "estimated": 38128,
+   "advertisers": [
+    "Morgan Shopmy ('Test Your Routine Free')",
+    "Revella",
+    "Jena Injects",
+    "abby_thome",
+    "Ashley Kirby (AI skin scanner)"
+   ],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_066",
+   "trend": "day _ of _",
+   "query": null,
+   "level": "not_checkable",
+   "advertisers": [],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_067",
+   "trend": "your sign to _",
+   "query": null,
+   "level": "not_checkable",
+   "advertisers": [],
+   "example_id": null
+  },
+  {
+   "trend_id": "trend_beauty_068",
+   "trend": "get ready with _ to _",
+   "query": "get ready with me",
+   "level": "not_checkable",
+   "estimated": 669495,
+   "advertisers": [],
+   "note": "loose matching returned fitness, home and novel ads",
+   "example_id": null
+  }
+ ]
+}

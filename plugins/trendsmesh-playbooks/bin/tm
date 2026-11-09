@@ -1,0 +1,20 @@
+#!/bin/sh
+# Runs the TrendsMesh engine in the plugin's pixi environment. Arguments pass through unchanged.
+pj="$HOME/.trendsmesh/paths.json"
+field() { [ -f "$pj" ] && sed -n "s/^ *\"$1\" *: *\"\\(.*\\)\",\\{0,1\\} *\$/\\1/p" "$pj" | sed 's/\\\\/\\/g; s/\\"/"/g'; }
+ROOT=${TM_PLUGIN_ROOT:-$(field plugin_root)}
+DATA=${TM_PLUGIN_DATA:-$(field plugin_data)}
+if [ -z "$ROOT" ] || [ -z "$DATA" ]; then
+  echo "tm: the plugin has not set itself up yet. Start a new Claude Code session, then try again. Never install anything yourself for it; if this stays, run /trendsmesh-playbooks:doctor." >&2
+  exit 1
+fi
+export PIXI_HOME="$DATA/pixi" PIXI_NO_PATH_UPDATE=1 TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$DATA"
+if [ ! -x "$PIXI_HOME/bin/pixi" ] && [ ! -x "$PIXI_HOME/bin/pixi.exe" ]; then
+  echo "tm: the plugin's tools are not set up: pixi is missing from the plugin's data folder (its download at session start failed: no internet connection, a proxy or firewall, or a cut-off download). Never install pixi yourself or change PATH: run /trendsmesh-playbooks:doctor, and ask the user to check the connection and start a new Claude Code session, which installs it again." >&2
+  exit 1
+fi
+if [ ! -f "$PIXI_HOME/config.toml" ]; then
+  mkdir -p "$PIXI_HOME"
+  printf 'detached-environments = "%s/envs"\n' "$(printf '%s' "$DATA" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$PIXI_HOME/config.toml"
+fi
+exec "$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm "$@"

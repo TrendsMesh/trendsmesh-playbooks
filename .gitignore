@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+.pixi/
+__pycache__/
+*.pyc
+.secrets/
+.env
+.env.*
+runs/
+**/evals/results/
+.superpowers/
+*.egg-info/
+.worktrees/

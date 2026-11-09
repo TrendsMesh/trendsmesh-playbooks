@@ -1,0 +1,66 @@
+# Check-in catalogue for playbook 02 "Creative brief". The keys (route, card, choices, on_choice
+# and its effects) are those of data/checkins.yaml (refresh-ad), which explains each one.
+#
+# Source: handoff/creative-brief_v02 FLOWS.md section G (G1 to G4, each AUTO rule in `rule`
+# here). The rest is the plugin's:
+# - G0, the intake card: FLOWS.md A1's "card confirmation (AUTO: logged)", given an id as in
+#   trend research;
+# - G1's "(lowest cost per result)": PLAYBOOK.md step 1's AUTO column; `tm audience pick` applies
+#   the rule;
+# - G2's `tm brief pick`, which applies the rule; G3's and G4's "as is" (FLOWS.md "published");
+# - every choice is `accept`: what changes is recorded with `tm brief choose` and on the page,
+#   and the check-in is then closed with `tm decide` (decisions §5);
+# - the mapping to the levels: the plan's decision 5. Check every step asks G0 to G4 each on its
+#   own; Just the big calls asks three times: "Approve the setup" (G0 and G1, after B1), G2 on
+#   its own, and "Approve the briefs" (G3 and G4, after E1); Hands-off decides all five by rule.
+# PB2 has no money check-in: nothing in it spends.
+
+levels:
+  every_step: Check every step
+  big_calls: Just the big calls
+  hands_off: Hands-off
+
+cards:
+  approve_setup:
+    name: Approve the setup
+    ask: last
+  approve_briefs:
+    name: Approve the briefs
+    ask: last
+
+checkins:
+  - id: G0
+    name: Confirm the intake card
+    card: approve_setup
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "logged: the card as derived (FLOWS A1, AUTO: logged)"
+    choices: [accept]
+
+  - id: G1
+    name: Accept the persona and target segment
+    card: approve_setup
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: >-
+      ≥ 10 results per segment (lowest cost per result), else the thin-data fallback: largest
+      directional cluster, cross-checked, marked directional (`tm audience pick`)
+    choices: [accept]
+
+  - id: G2
+    name: Choose the concepts
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "top N by score, diversity passed (`tm brief pick`)"
+    choices: [accept]
+
+  - id: G3
+    name: Accept the briefs and animatics
+    card: approve_briefs
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "published as is"
+    choices: [accept]
+
+  - id: G4
+    name: Accept the production views
+    card: approve_briefs
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "published as is"
+    choices: [accept]

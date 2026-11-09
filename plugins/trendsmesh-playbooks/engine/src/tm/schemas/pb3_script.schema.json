@@ -1,0 +1,303 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "PB3 script to film (tools/pb3/script_page.py)",
+ "type": "object",
+ "required": [
+  "lang",
+  "id",
+  "version",
+  "date",
+  "title",
+  "channel",
+  "format",
+  "length",
+  "goal",
+  "hook",
+  "shots",
+  "filming",
+  "edit",
+  "sound",
+  "kit"
+ ],
+ "properties": {
+  "lang": {
+   "enum": [
+    "en",
+    "pl"
+   ]
+  },
+  "id": {
+   "type": "string"
+  },
+  "version": {
+   "type": "string"
+  },
+  "date": {
+   "type": "string"
+  },
+  "title": {
+   "type": "string"
+  },
+  "channel": {
+   "type": "string"
+  },
+  "format": {
+   "type": "string"
+  },
+  "length": {
+   "type": "string"
+  },
+  "goal": {
+   "type": "string"
+  },
+  "trends": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "hook": {
+   "type": "object",
+   "required": [
+    "line",
+    "on_screen",
+    "why"
+   ],
+   "properties": {
+    "line": {
+     "type": "string"
+    },
+    "on_screen": {
+     "type": "string"
+    },
+    "why": {
+     "type": "string"
+    }
+   }
+  },
+  "shots": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "n",
+     "time",
+     "framing",
+     "action",
+     "line",
+     "on_screen"
+    ],
+    "properties": {
+     "n": {
+      "type": "integer"
+     },
+     "time": {
+      "type": "string"
+     },
+     "framing": {
+      "type": "string"
+     },
+     "action": {
+      "type": "string"
+     },
+     "line": {
+      "type": "string"
+     },
+     "on_screen": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "word_count": {
+   "type": "integer"
+  },
+  "filming": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "edit": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "sound": {
+   "type": "string"
+  },
+  "kit": {
+   "type": "object",
+   "properties": {
+    "tiktok": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "instagram": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "youtube": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "facebook": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   }
+  },
+  "facts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "claim",
+     "source",
+     "url"
+    ],
+    "properties": {
+     "claim": {
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     },
+     "url": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "generate_instead": {
+   "type": "object",
+   "properties": {
+    "note": {
+     "type": "string"
+    },
+    "host_image_prompt": {
+     "type": "string"
+    },
+    "video_prompt": {
+     "type": "string"
+    }
+   }
+  }
+ }
+}

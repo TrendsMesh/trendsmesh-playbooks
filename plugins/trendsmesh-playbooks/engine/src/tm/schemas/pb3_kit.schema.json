@@ -1,0 +1,188 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "PB3 posting kit",
+ "type": "object",
+ "required": [
+  "id",
+  "version",
+  "date",
+  "channel",
+  "video",
+  "platforms"
+ ],
+ "properties": {
+  "id": {
+   "type": "string"
+  },
+  "version": {
+   "type": "string"
+  },
+  "date": {
+   "type": "string"
+  },
+  "channel": {
+   "type": "string"
+  },
+  "language": {
+   "type": "string"
+  },
+  "video": {
+   "type": "string"
+  },
+  "cover": {
+   "type": "object",
+   "properties": {
+    "file": {
+     "type": "string"
+    },
+    "frame_sec": {
+     "type": "number"
+    },
+    "text": {
+     "type": "string"
+    }
+   }
+  },
+  "product": {
+   "type": "string"
+  },
+  "ai_label": {
+   "type": "string"
+  },
+  "platforms": {
+   "type": "object",
+   "properties": {
+    "tiktok": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "instagram": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "youtube": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    },
+    "facebook": {
+     "type": "object",
+     "properties": {
+      "title": {
+       "type": "string"
+      },
+      "caption": {
+       "type": "string"
+      },
+      "description": {
+       "type": "string"
+      },
+      "cover": {
+       "type": "string"
+      },
+      "ai_label": {
+       "type": "string"
+      },
+      "sound": {
+       "type": "string"
+      },
+      "product": {
+       "type": "string"
+      },
+      "hashtags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
+      }
+     }
+    }
+   },
+   "additionalProperties": false
+  }
+ },
+ "description": "Checks: TikTok 3-5 hashtags, Instagram <=5 and first caption line <=125 chars, YouTube title <=100 and 2-3 hashtags, Facebook 1-3; no sources in any text."
+}

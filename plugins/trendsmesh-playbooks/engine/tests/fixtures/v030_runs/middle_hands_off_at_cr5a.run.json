@@ -1,0 +1,111 @@
+{
+  "run_id": "2026-11-05_Ad-3",
+  "playbook": "01-refresh-ad",
+  "created": "2026-11-05",
+  "level": "hands_off",
+  "outputs": [
+    "edited_video"
+  ],
+  "step": "CR5a",
+  "decisions": [
+    {
+      "checkin": "G1",
+      "choice": "ok",
+      "by": "rule",
+      "rule": "#1 from the ranking (R1)",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G1a",
+      "choice": "refresh",
+      "by": "rule",
+      "rule": "R2 table",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G1b",
+      "choice": "ok",
+      "by": "rule",
+      "rule": "segment with the lowest cost per purchase (≥ 10 purchases)",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G2",
+      "choice": "ok",
+      "by": "rule",
+      "rule": "the strongest confirmed and rising trend; in a middle run, recut (the re-cut of the middle)",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G3",
+      "choice": "ok",
+      "by": "rule",
+      "rule": "top 1–2, only those consistent with the image; in a middle run, the register of the diagnosed causes and the re-cut direction",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G3r",
+      "choice": "ok",
+      "by": "rule",
+      "rule": "variants for the causes marked \"yes\", L0–L2 first; never a new voiceover line (it waits: its voice match needs a person)",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "RB",
+      "choice": "approve",
+      "by": "rule",
+      "rule": "limit from the config (budget.ai_usd, budget.voice_credits)",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    }
+  ],
+  "spend": {},
+  "budgets": {
+    "ai_usd": 50.0,
+    "voice_credits": 50000.0,
+    "test": 500.0
+  },
+  "approvals": [],
+  "stops": [],
+  "measurements_due": [],
+  "measurements_done": [],
+  "status": "active",
+  "flows": [],
+  "diagnosis": {
+    "stage": "middle",
+    "refresh": true,
+    "evidence": {
+      "hook_rate": [
+        0.3,
+        0.2
+      ]
+    },
+    "also_seen": [],
+    "account_check": {},
+    "target_stage": "middle",
+    "note": "",
+    "ladder": {},
+    "structural": null
+  },
+  "material": "text_cards",
+  "test_plan": {
+    "feasible": true,
+    "variants": 1,
+    "calculation": "a feasible R4 plan"
+  },
+  "ended": null,
+  "evidence": "trendsmesh",
+  "evidence_log": [],
+  "register": {
+    "file": "04_final/change_register_v01.json",
+    "proof": 1,
+    "guess": 0
+  },
+  "recut": null
+}

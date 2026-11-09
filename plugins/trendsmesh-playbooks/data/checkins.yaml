@@ -1,0 +1,248 @@
+# Check-in catalogue for playbook 01 "Refresh an ad".
+#
+# Source: handoff/refresh-ad_v02/playbook-01-refresh-ad/FLOWS.md section G (ids and the
+# AUTO defaults, copied verbatim into `rule`) and VARIANTS.md section 4 (flow V: V1c, GV).
+# G2's and G3's "in a middle run, ..." clauses are the plugin's (controller ruling, Task 12 fix
+# round 1): a middle run walks A5-A7 for the re-cut, and its variants are chosen at G3r.
+# Flow R (path C-R, re-cuts): handoff/refresh-ad_v03 FLOWS.md section G (G3r, G5r, and the 💰
+# check-in for L3-L5, RB here); G5r stays a person's call in Just the big calls (music is
+# accepted by ear) and goes by 🔍 in Hands-off, where final music has no beat-cut joints.
+# G3r is asked on its own at Just the big calls, not on the "Approve the changes" card, so that
+# card (G2, G3, G4) stays where v1 asks it and the brief is never handed over before G4; its
+# rule's "never a new voiceover line" clause is the plugin's (PR C review: in Hands-off flow V's
+# voice match, V1c, needs a person, so such a variant waits and is listed in the final report).
+# Levels and the mapping to them: the design, section 5.
+#
+# route, per level:
+#   own   the check-in is shown on its own, before or after the work of its step
+#   card  it is merged into `card`, shown once at the card's `ask` step
+#   rule  Claude decides by `rule` and records it with `tm decide ... --by rule`
+#   stop  the run stops until the user decides (`stop` says what and what to do)
+#
+# money: true marks a decision that lets money be spent or ads go live. While the run has an
+# open stop, the engine refuses it (and `tm budget approve` and `tm budget spend`), except for
+# the check-in the stop itself is about.
+#
+# rule_guess: the rule in a run without TrendsMesh data (`tm evidence guess`), where `rule`
+#   needs trend data it does not have.
+#
+# on_choice effects:
+#   end           the run ends here, with this message
+#   stop          the run stops (what, todo) until the choice is changed
+#   measure_days  the live test's measurement days, counted from the decision; a choice of the
+#                 same check-in without it clears them
+#   needs         {check-in: choice} that must already be decided that way
+#   skips         the plain note for the steps this choice skips (steps.yaml skip_when), shown
+#                 when it is recorded and in the final report
+#   requires      step checks (tm.stepchecks) that pass before this choice is recorded
+#
+# Which step a check-in comes before or after (and so which outputs and flows it belongs to)
+# is set in steps.yaml. Changing which level shows what is
+# an edit to this file, not to the engine.
+
+levels:
+  every_step: Check every step
+  big_calls: Just the big calls
+  hands_off: Hands-off
+
+# A card is asked at the step of its `first` or `last` member, or before the first step that
+# spends money in the run (`before_first_spend`).
+cards:
+  pick_the_ad:
+    name: Pick the ad
+    ask: last
+  approve_changes:
+    name: Approve the changes
+    ask: last
+  approve_spending:
+    name: Approve the spending
+    ask: before_first_spend   # one card before the first step that spends, whichever output it is
+  approve_launch:
+    name: Approve the launch
+    ask: last
+  act_on_results:
+    name: Act on the results
+    ask: last
+
+checkins:
+  - id: G1
+    name: Pick the ad to refresh
+    card: pick_the_ad
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "#1 from the ranking (R1)"
+
+  - id: G1a
+    name: Accept the diagnosis
+    card: pick_the_ad
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "R2 table"
+    on_choice:
+      do_not_refresh:
+        end: >-
+          The diagnosis says this ad should not be refreshed, so the run ends here.
+          The diagnosis report is the result of this run, and nothing was spent.
+
+  - id: G1b
+    name: Accept the persona
+    card: pick_the_ad
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "segment with the lowest cost per purchase (≥ 10 purchases)"
+
+  - id: G2
+    name: Choose the direction of changes
+    card: approve_changes
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "the strongest confirmed and rising trend; in a middle run, recut (the re-cut of the middle)"
+    rule_guess: "the strongest evergreen structure from the account's own winners that is not saturated in the Ad Library; in a middle run, recut (the re-cut of the middle)"
+
+  - id: G3
+    name: Approve the hooks and the change register
+    card: approve_changes
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "top 1–2, only those consistent with the image; in a middle run, the register of the diagnosed causes and the re-cut direction"
+
+  - id: G4
+    name: Approve the creative brief
+    card: approve_changes
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "sent"
+
+  - id: G3r
+    name: Choose the re-cut variants
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: 'variants for the causes marked "yes", L0–L2 first; never a new voiceover line (it waits: its voice match needs a person)'
+
+  - id: VB
+    name: Approve the voice budget
+    card: approve_spending
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "limit from the config (budget.voice_credits)"
+    choices: [approve, reject]
+    money: true
+    on_choice:
+      reject:
+        skips: >-
+          The voice budget was not approved, so the new voiceover line and the rest of the edited
+          video are not made, and nothing is spent on ElevenLabs.
+
+  - id: V1c
+    name: Confirm the voice match after listening
+    route: {every_step: own, big_calls: own, hands_off: stop}
+    rule: "none: VARIANTS.md reserves this for a person"
+    choices: [voice_matches, none_matches, original_voice_found]   # the candidate goes in --note
+    stop:
+      what: Confirming which voice matches the ad needs a person to listen, so Hands-off leaves it to you.
+      todo: >-
+        Listen to the top voice candidates next to the voice in the ad, then tell Claude which
+        one matches, or that none does.
+
+  - id: GV
+    name: Blind listening test of the voice clone
+    route: {every_step: own, big_calls: own, hands_off: stop}
+    rule: "none: VARIANTS.md reserves this for a person"
+    stop:
+      what: The blind listening test of the voice clone needs a person, so Hands-off leaves it to you.
+      todo: >-
+        Listen to the original line and the clone's line without knowing which is which, then
+        tell Claude whether you could tell them apart.
+
+  - id: RB
+    name: Approve the re-cut budget
+    card: approve_spending
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "limit from the config (budget.ai_usd, budget.voice_credits)"
+    choices: [approve, reject]
+    money: true
+    on_choice:
+      reject:
+        skips: >-
+          The re-cut budget was not approved, so the variants that need paid repairs, new shots,
+          music or lines (levels L3 to L5) are not made, and nothing is spent on Replicate or
+          ElevenLabs for them. The variants at L0 to L2 are still rendered.
+
+  - id: G5
+    name: Approve the edited video
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: "🔍 green"
+
+  - id: G5r
+    name: Approve each re-cut variant (listen to it)
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "🔍 green"
+
+  - id: G6
+    name: Approve the AI video plan and budget
+    card: approve_spending
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "limit from the config"
+    choices: [approve, reject]
+    money: true
+    on_choice:
+      reject:
+        skips: >-
+          The AI video plan was not approved, so the AI video is not made, and nothing is spent
+          on Replicate.
+
+  - id: G7
+    name: Choose the first frame
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: "consistency QA"
+
+  - id: G8
+    name: Accept the clip or regenerate it
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: "🔍 green, max N attempts"
+
+  - id: G9
+    name: Approve the AI video
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: "🔍 green, defects in the report"
+
+  - id: G10
+    name: Approve the live test plan
+    card: approve_spending
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "limit from the config; without the minimum events: stop with a calculation"
+    choices: [approve, reject]
+    money: true
+    on_choice:
+      reject:
+        skips: >-
+          The live test plan was not approved, so the live test is skipped: nothing goes live and
+          nothing is spent on ads.
+
+  - id: E2b
+    name: Quality and policy check before launch
+    route: {every_step: rule, big_calls: rule, hands_off: rule}
+    rule: "red item: stop"
+    choices: [green, red]
+    on_choice:
+      red:
+        stop:
+          what: The quality and policy check (R8) found a red item, so nothing goes live.
+          todo: >-
+            Fix the red items listed in 04_final/prelaunch_check.md (or tell Claude how), then ask
+            Claude to run the check again.
+
+  - id: G11
+    name: Approve the launch
+    card: approve_launch
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "only with a budget in the config and a green E2b"
+    choices: [activate, keep_paused]
+    money: true
+    on_choice:
+      activate:
+        measure_days: [3, 5, 7]
+        needs: {E2b: green}
+      keep_paused:
+        skips: >-
+          The ads stay paused, so the live test does not start: nothing goes live, nothing is
+          spent on ads, and there is nothing to measure.
+
+  - id: G12
+    name: Act on the results
+    card: act_on_results
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "thresholds from the test plan; library entry (R5)"
+    money: true

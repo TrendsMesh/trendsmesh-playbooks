@@ -1,0 +1,25 @@
+{
+  "name": "trendsmesh-playbooks",
+  "version": "0.9.1",
+  "description": "TrendsMesh playbooks: refresh a fading Meta ad with rising trends; trend research for a category; creative briefs for new ads; organic AI videos for your channels",
+  "author": {
+    "name": "TrendsMesh"
+  },
+  "license": "MIT",
+  "userConfig": {
+    "replicate_api_token": {
+      "type": "string",
+      "title": "Replicate API token",
+      "description": "Used for AI video and image generation. Optional; stored in your system credential store.",
+      "sensitive": true,
+      "required": false
+    },
+    "elevenlabs_api_key": {
+      "type": "string",
+      "title": "ElevenLabs API key",
+      "description": "Used for voice generation. Optional; stored in your system credential store.",
+      "sensitive": true,
+      "required": false
+    }
+  }
+}

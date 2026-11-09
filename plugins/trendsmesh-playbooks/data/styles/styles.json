@@ -1,0 +1,3294 @@
+[
+ {
+  "order": 1,
+  "styleId": "flat-explainer",
+  "name": "Flat Vector Explainer",
+  "category": "Clean explainer",
+  "description": "Bright, friendly vector illustration with no outlines: round chunky shapes filled with smooth gradients, crisp crescent shading and soft glows on a calm coloured backdrop, like a polished science channel animation.",
+  "suits": "Good for science, tech and how-it-works topics told in a warm, approachable tone; less suited to grave, historical or luxury subjects that need texture or gravitas.",
+  "look": [
+   "Backdrop is a wide two- or three-stop diagonal gradient in one cool hue family, with two or three huge, very faint radial glows that keep it from looking flat",
+   "Every object is built from simple geometric primitives (circles, capsules, rounded rectangles) with no stroke at all; edges come only from the fill against the backdrop",
+   "Each shape carries a linear gradient from a light tint at the lit side to a deep shade on the far side, with the light always coming from the upper left",
+   "Shading is done with one or two hard-edged crescents of a darker tone hugging the shadow side, plus a thin pale crescent rim on the lit edge; no soft airbrush",
+   "Small decorative sparkles: four-point stars made of pinched curves, scattered sparingly and twinkling, plus tiny dots of light",
+   "Depth comes from layering: big blurry-free background shapes in muted versions of the palette, mid-ground props, and a bright saturated foreground subject",
+   "Labels sit in white capsule pills with a soft dark drop shadow beneath and a faint glossy highlight strip along the top; an optional small pointer triangle aims at the subject",
+   "Headings are heavy rounded sans-serif in white, with a short dark offset shadow down and to the right to lift them off the backdrop"
+  ],
+  "palette": [
+   {
+    "role": "backdrop deep",
+    "hex": "#1a1f4e"
+   },
+   {
+    "role": "backdrop light",
+    "hex": "#4b3a8f"
+   },
+   {
+    "role": "primary teal",
+    "hex": "#37c4d6"
+   },
+   {
+    "role": "warm accent orange",
+    "hex": "#ff9445"
+   },
+   {
+    "role": "highlight yellow",
+    "hex": "#ffd447"
+   },
+   {
+    "role": "alert pink-red",
+    "hex": "#ff4f6d"
+   },
+   {
+    "role": "success green",
+    "hex": "#3ddc91"
+   },
+   {
+    "role": "label pill white",
+    "hex": "#fbfbff"
+   }
+  ],
+  "fonts": [
+   "Baloo 2",
+   "Nunito Sans"
+  ],
+  "finish": [
+   "Fine moving monochrome grain laid over everything in overlay mode, very light (around 8 to 10 percent), re-offset every frame so gradients never band",
+   "A second, static, large-scale soft mottle in overlay at about 10 to 12 percent so big gradient areas feel printed rather than digital",
+   "Soft radial glow sprites behind key objects (lamps, active elements, the key number), pulsing slowly by about 15 percent"
+  ],
+  "motion": [
+   "Everything eases in and out, and arrivals pop with a gentle overshoot: scale from zero past full size by about 10 percent, then settle",
+   "Idle objects never freeze: they bob a few pixels on a slow sine and their glows breathe",
+   "The camera does the storytelling: smooth push-ins and long pull-backs through scale, with background layers moving slower than foreground (parallax)",
+   "Scene changes are a large foreground shape sweeping across the whole frame as a wipe, or a dive into a glowing object that whites out and opens onto the next scene",
+   "Pace is lively but readable: a new element every one to two seconds, each landing on a beat"
+  ],
+  "explaining": [
+   "Arrows are thick rounded curves, often dotted with round dots, drawn on from tail to head, ending in a small rounded triangular head",
+   "Labels are white pills that pop in under or beside the thing they name, sometimes with a pointer",
+   "Key numbers are very large heavy rounded figures in white or yellow that count up quickly and then settle with a small bounce",
+   "Progress and comparison use fat rounded bars or ring gauges with a pale track and a bright gradient fill that grows",
+   "Right and wrong are shown with round badges (green check, red cross) that pop on, plus a brief coloured flash of the frame edge",
+   "Steps in a cycle are laid out as pills around a dotted loop with a travelling glowing dot showing the flow"
+  ],
+  "sound": [
+   "Soft marimba-like plucks for elements landing, in a calm minor-leaning key",
+   "Cute rounded boops that bend upward for small things popping in",
+   "Airy filtered-noise breaths for camera moves and wipes, with a warm low pad underneath",
+   "A warm low boom and bright chord on the key number"
+  ],
+  "avoid": [
+   "Outlines, ink strokes or sketchy edges on shapes",
+   "Photographic textures, realistic lighting or soft airbrushed shading in place of the hard crescents",
+   "Thin, light-weight or serif fonts",
+   "Muddy or desaturated colour; everything should feel clean and candy-bright against the deep backdrop"
+  ]
+ },
+ {
+  "order": 2,
+  "styleId": "watercolor",
+  "name": "Watercolour Bloom",
+  "category": "Painterly",
+  "description": "A hand-painted sketchbook page: see-through watercolour washes with dark dried rims, soft colour bleeds and blooms, grainy pigment and bare white paper for the highlights, over a light pencil drawing.",
+  "suits": "Good for gentle, human, nature, wellbeing and storytelling topics with a calm reflective tone; weaker for dense data, hard-edged technical diagrams or urgent high-energy messages.",
+  "look": [
+   "Surface is warm off-white cold-press paper with visible tooth: a fine bumpy height texture that also catches pigment, slightly warmer and darker toward the sheet edges",
+   "Every coloured area is a stack of many very transparent, irregular blobs: each blob is a polygon whose edges are jaggedly subdivided and jittered, so the edge is ragged, never a clean curve",
+   "Where a wash stops, pigment collects into a thin darker rim, while the middle stays lighter and uneven",
+   "Second colours are dropped into still-damp areas as soft fuzzy blooms that tint only inside the existing wash; some areas show a pale cauliflower-shaped back-run with a frilly edge",
+   "Highlights are not painted: they are left as bare paper, often a crescent or broken stroke with a crisp edge on one side",
+   "A faint grey pencil underdrawing shows around shapes: loose construction lines, slight overshoots, guide lines under lettering",
+   "Darker accents and contours are a few loose round-brush strokes on the shadow side only, tapering at both ends; a light splatter of small droplets near key subjects",
+   "Lettering is hand brushed, slightly uneven in weight and baseline, with the same darker pooled rim as the washes"
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#f7f1e3"
+   },
+   {
+    "role": "pencil grey",
+    "hex": "#8a8580"
+   },
+   {
+    "role": "ultramarine blue",
+    "hex": "#3b5ba9"
+   },
+   {
+    "role": "cerulean sky",
+    "hex": "#6fa8d6"
+   },
+   {
+    "role": "sap green",
+    "hex": "#5d8a3a"
+   },
+   {
+    "role": "yellow ochre glow",
+    "hex": "#e8b84a"
+   },
+   {
+    "role": "alizarin red emphasis",
+    "hex": "#c0283a"
+   },
+   {
+    "role": "dark neutral grey-blue",
+    "hex": "#4a5363"
+   }
+  ],
+  "fonts": [
+   "Caveat Brush",
+   "Patrick Hand"
+  ],
+  "finish": [
+   "Every wash is composited onto the paper with multiply, never plain over, so overlaps darken like real glazes",
+   "Edge pooling on every wash: subtract a blurred copy of the wash alpha from itself and add the difference back, strongly enough that the rim reads clearly darker than the body",
+   "Granulation: pigment is boosted in the low points of the paper tooth, a speckled darkening of roughly 10 to 20 percent inside washes",
+   "Pigment load mottle: a soft low-frequency noise varies wash opacity by about half, so no area is an even flat tint",
+   "Paper tooth lighting baked into the whole frame at low strength, with a very soft warm vignette"
+  ],
+  "motion": [
+   "The pencil outline appears first, then each wash floods outward from its centre to fill it, over about half a second to a second",
+   "As a wash settles its rim darkens and any bloom slowly creeps outward, as if the water is drying",
+   "Brush strokes draw on along their path with a tapered head; titles are brushed word by word",
+   "The whole explainer lives on one long sheet: scene changes are slow camera pans along the paper to the next painted area",
+   "Pace is unhurried and calm; holds are a little longer than usual so the washes can be read"
+  ],
+  "explaining": [
+   "Each arrow is one full-bodied brush stroke: a ribbon that is thick at the start, thins along the way, with a darker pooled edge and a brushed arrowhead",
+   "Labels and counters are brush-lettered; when a number changes it is repainted rather than ticking digitally, with a quick fade between versions",
+   "Emphasis is a loose red circle or underline swash brushed around the key item, or two quick red slashes for a wrong answer",
+   "Charts are painted: bars or area fills as washes, axes as pencil lines, data points as small brushed dabs",
+   "Steps are separate vignettes painted along the sheet, linked by brushed arrows"
+  ],
+  "sound": [
+   "Soft wet brush touch-down followed by a hair-drag hiss matched to the stroke length",
+   "Low slow swells of water for washes flooding in, and occasional single soft drops",
+   "For scene changes, a brush swirled in a water pot, then knocked twice against its edge",
+   "A quiet room tone with a gentle warm pad; a bell-like chord on the key moment"
+  ],
+  "avoid": [
+   "Opaque flat fills, clean vector edges or solid black outlines",
+   "Gradients that look digital or perfectly even tints",
+   "Pure white painted on top; whites must come from unpainted paper",
+   "Fast snappy motion or hard cuts"
+  ]
+ },
+ {
+  "order": 3,
+  "styleId": "shadow-theatre",
+  "name": "Shadow Theatre",
+  "category": "Paper and craft",
+  "description": "A live shadow play: flat black cut-out figures with lacy punched holes, pinned joints and thin sticks, pressed against a glowing cloth screen lit warm amber from behind, with coloured light showing through the holes.",
+  "suits": "Good for stories, fables, history, cause-and-effect and anything told as a little performance; weak for precise numbers-heavy dashboards or bright modern tech topics.",
+  "look": [
+   "The whole frame is a stretched cloth screen lit from behind by one lamp: brightest warm gold near the light source, sliding through orange to a deep reddish brown at the corners",
+   "All subjects are solid near-black silhouettes in strict profile, flat with no interior shading, as if cut from stiff hide or card",
+   "Silhouettes are decorated with punched cut-work: rows of small circles, teardrops, slits and lace-like patterns that let the screen light through",
+   "Some holes are backed with coloured gel, so they glow in jewel tones (teal, ruby, gold) instead of plain screen colour",
+   "Limbs and parts are separate pieces joined by visible round pin rivets, each a small punched ring around a dot",
+   "Thin dark control rods run from each figure down and out of the bottom edge, slightly blurred because they sit off the screen",
+   "Distance from the screen is shown by focus: pieces pressed flat are crisp, pieces held toward the lamp grow larger and very soft-edged",
+   "Text is cut out of hanging card plaques or banners on two strings, letters punched through so they glow; type is a classical serif"
+  ],
+  "palette": [
+   {
+    "role": "lamp core",
+    "hex": "#ffd27a"
+   },
+   {
+    "role": "screen amber",
+    "hex": "#e79a3e"
+   },
+   {
+    "role": "screen edge red-brown",
+    "hex": "#6e2a14"
+   },
+   {
+    "role": "silhouette ink",
+    "hex": "#140806"
+   },
+   {
+    "role": "gel teal",
+    "hex": "#2fa39a"
+   },
+   {
+    "role": "gel ruby",
+    "hex": "#c22a3a"
+   },
+   {
+    "role": "gel gold",
+    "hex": "#f2c14e"
+   }
+  ],
+  "fonts": [
+   "Cinzel",
+   "Spectral"
+  ],
+  "finish": [
+   "Cloth weave multiplied over the frame: a fine regular grid of horizontal and vertical threads at low strength (around 6 to 8 percent darkening), plus large soft folds and slubs and one faint vertical seam",
+   "Light diffusion: a heavily blurred copy of the frame added back in screen mode at about 12 to 15 percent, so light bleeds into silhouette edges and halos the punched holes",
+   "Coarse grain refreshed at about 12 frames per second, low opacity",
+   "Dark warm vignette around the edges, fairly strong (about a third), and a slow gentle flicker of overall brightness from the flame"
+  ],
+  "motion": [
+   "Figures slide or hop in from the sides, carried by their sticks, with hinged parts swinging loosely on their pins and settling with a small pendulum wobble",
+   "Hanging plaques drop in on their strings, bounce and sway before coming to rest",
+   "The lamp is alive: overall light breathes and flickers subtly all the time, and flares on key moments",
+   "Scene changes use the theatre itself: a figure rushes toward the lamp until its blurred shape covers everything, the light dims to dark and comes back up, or two lacy drapes meet in the middle and draw apart",
+   "Pace is a storyteller's: deliberate movements with small character gestures, not snappy UI motion"
+  ],
+  "explaining": [
+   "Arrows are cut-paper vines or strips that grow along a curve, sprouting little leaves, ending in a spade-shaped head",
+   "Labels are small cut-letter plaques hung on a string from what they name",
+   "Numbers appear on a hanging board with punched-out digits that glow; counters swap digits with a small swing",
+   "Wrong or right is signalled by sliding a coloured gel over the lamp (red for wrong, warm gold for right) so the whole screen tints",
+   "Progress is shown as a physical climb or fill: a figure stepping up rungs, or a cut-out disc whose lit fraction grows",
+   "Emphasis is a burst of punched rays or sparks around the key item and a flare of the lamp"
+  ],
+  "sound": [
+   "Struck bronze tones, gamelan-like, with a slight beating detune, for things landing",
+   "Wooden clacks, ticks and ratchets for rods, joints and counters",
+   "A soft whump and sputter of an oil lamp catching, a low steady flame hum and occasional crackle",
+   "A deep gong for the key moment"
+  ],
+  "avoid": [
+   "Shading, gradients or colour inside the silhouettes other than gel-lit holes",
+   "Figures shown in three-quarter view or with visible faces drawn in detail",
+   "Clean white or cool backgrounds; the screen must always read as warm backlit cloth",
+   "Modern sans-serif UI text floating over the scene"
+  ]
+ },
+ {
+  "order": 4,
+  "styleId": "whiteboard",
+  "name": "Marker Whiteboard",
+  "category": "Hand-drawn",
+  "description": "A live whiteboard lesson: streaky dry-erase marker lines in black, blue, red and green drawn on a glossy white board, with wobbly boxes and arrows, faint smudges of earlier lessons and a soft overhead-light sheen.",
+  "suits": "Good for processes, systems, business and teaching topics with a practical, classroom tone; less suited to emotional, cinematic or luxury subjects.",
+  "look": [
+   "Surface is a bright cool white board with very faint large mottling from old cleaner, and gets slightly dimmer near its lower edge",
+   "Every line is a chisel-tip marker stroke: a slightly lighter wet middle, darker edges where ink gathers, ink density drifting along the stroke, and occasional dry streaks where the tip skipped",
+   "Ink pools into small darker blots where the marker lands and lifts",
+   "Shapes are drawn by hand: boxes and circles slightly wobbly, corners overshooting, important boxes traced twice so two lines nearly overlap",
+   "Colour has meaning: black for structure and text, blue for headings and main items, red for problems, loops and emphasis, green for results and right answers",
+   "Faint grey ghosts of previously erased diagrams sit under the live drawing, surviving in streaky bands where the eraser missed",
+   "Simple doodles stand in for objects: stick figures, cylinders, boxes, little icons, all in single-weight marker",
+   "Lettering is quick hand printing, letters jittered a little in size, angle and baseline"
+  ],
+  "palette": [
+   {
+    "role": "board",
+    "hex": "#f8f9fb"
+   },
+   {
+    "role": "marker black",
+    "hex": "#1f2226"
+   },
+   {
+    "role": "marker blue",
+    "hex": "#1f4fb5"
+   },
+   {
+    "role": "marker red",
+    "hex": "#d1302f"
+   },
+   {
+    "role": "marker green",
+    "hex": "#1f8f4a"
+   },
+   {
+    "role": "ghost residue grey",
+    "hex": "#c9ccd2"
+   },
+   {
+    "role": "aluminium frame",
+    "hex": "#b8bcc2"
+   }
+  ],
+  "fonts": [
+   "Gochi Hand",
+   "Architects Daughter"
+  ],
+  "finish": [
+   "Gloss pass over everything, ink included: two or three soft elongated white reflections of ceiling lights at low strength (around 15 to 25 percent), drifting slightly with camera moves",
+   "Ghost residue layer under the live ink: old marks at roughly 3 to 6 percent, broken up by a streaky eraser mask",
+   "Soft vertical darkening toward the lower part of the board, light (about 10 percent)",
+   "Optional aluminium frame and marker tray at the frame edge when the camera is wide"
+  ],
+  "motion": [
+   "Everything is drawn on live in sequence: each stroke grows from start to end at hand speed, with a short pen-lift pause between items",
+   "A marker held in a hand follows the current stroke tip, casting a soft shadow on the board",
+   "Text writes letter by letter; numbers are scribbled out and rewritten rather than morphing",
+   "The camera glides across one big board to reach new areas, with a slight breathing drift",
+   "Scene clearing is done with a felt eraser scrubbing back and forth, leaving ghost streaks behind"
+  ],
+  "explaining": [
+   "Arrows are single marker strokes with a slight curve and a quick two-stroke open head, sometimes traced twice for emphasis",
+   "Labels are written next to items, sometimes boxed or underlined twice",
+   "Key numbers are large hand-scrawled figures, circled in red or green when they land",
+   "Charts are hand-drawn axes with tick marks, bars hatched or filled with quick strokes, and a wobbly line for trends",
+   "Mistakes are crossed out with two hard red slashes; correct items get a green check",
+   "Cycles are drawn as a red looped arrow around a few boxed steps"
+  ],
+  "sound": [
+   "Felt-tip squeak and drag on a glossy surface, length matched to each stroke, with cap clicks between",
+   "A rapid scratchy scribble when writing numbers and words",
+   "Rough soft scrubbing of a felt eraser in rhythm with its passes",
+   "A low quiet room tone; a soft classroom bell-like tone on the key moment"
+  ],
+  "avoid": [
+   "Perfectly smooth vector lines or uniform stroke darkness",
+   "Filled gradients, shadows or 3D shading on drawings",
+   "Too many colours; stick to the four marker colours",
+   "Elements that fade or slide in instead of being drawn"
+  ]
+ },
+ {
+  "order": 5,
+  "styleId": "cosmic-swirl",
+  "name": "Cosmic Swirl",
+  "category": "Cosmic",
+  "description": "A trippy night-sky poster: deep space filled with slowly churning liquid bands of loud complementary ink, star fields and glowing nebula, crossed by fine gold star-map linework, with fat swollen display lettering.",
+  "suits": "Good for big-picture, mind-expanding, music, culture and 'how it all connects' topics with a playful or awe-struck tone; poor for sober, legal, medical or precise step-by-step instructions.",
+  "look": [
+   "Base is a deep indigo-black night sky with a soft river of nebula glow running diagonally across it, cut by darker dust lanes",
+   "Over or inside the nebula run liquid concentric ring bands: stripes of flat saturated ink that warp and ripple like poured paint, each band edged by a thin dark key line",
+   "Colours come in clashing complementary pairs placed side by side (magenta against green, orange against blue, violet against yellow) so the edges seem to vibrate",
+   "Bands can be folded into a mirror-symmetric mandala around a centre point, like a kaleidoscope with 6 to 8 segments",
+   "Stars in three depths: tiny far dots, twinkling mid stars, and a few bright stars with a soft halo and four or six thin spikes",
+   "A star-map overlay in very fine gold and light cyan lines: dotted orbit ellipses with small open arrowheads, a graduated degree ring with tick marks, fine leader lines to small labels",
+   "Sunburst rays radiate from key objects, alternating long and short flame-like tongues",
+   "Big headings are bulbous, swollen display letters, gently warped column by column as if melting; small labels are elegant small-caps serif"
+  ],
+  "palette": [
+   {
+    "role": "night sky",
+    "hex": "#0b0a24"
+   },
+   {
+    "role": "nebula violet",
+    "hex": "#5b2a86"
+   },
+   {
+    "role": "hot magenta",
+    "hex": "#e0237d"
+   },
+   {
+    "role": "acid green",
+    "hex": "#3fcf5a"
+   },
+   {
+    "role": "tangerine",
+    "hex": "#ff7a1a"
+   },
+   {
+    "role": "electric blue",
+    "hex": "#2b5fe0"
+   },
+   {
+    "role": "chart gold",
+    "hex": "#e6c36a"
+   },
+   {
+    "role": "cream poster stock",
+    "hex": "#fbf1dc"
+   }
+  ],
+  "fonts": [
+   "Sniglet",
+   "Cormorant SC"
+  ],
+  "finish": [
+   "Misregistration: the dark outline layer sits slightly offset from the colour layer, about 1 to 2 pixels down and right, on all band and shape edges",
+   "Worn poster-stock pass: a warm cream fibre texture multiplied at low strength plus small cream speckles where ink has dropped out, cycling between three variants at about 8 frames per second",
+   "Soft additive glow on stars, nebula and the key object, with a gentle slow pulse",
+   "Fairly strong dark vignette (around a third to a half) so the edges sink into space"
+  ],
+  "motion": [
+   "The liquid bands churn constantly and slowly; their rings drift outward from the centre at a steady pace",
+   "Things arrive by blooming: colour ripples outward from a centre, petals or rays unfurl, stars fade up one by one",
+   "Headings melt or pour into place and then keep a slight wobble; chart lines engrave themselves on (rings sweep round, orbits dot on, labels land)",
+   "Scene changes are medium-native: a kaleidoscope spin into the next scene, a liquid melt pouring down, a ripple spreading from a point, or a short warp streak of stars",
+   "Pace builds: calm drift between beats, sudden intense colour on key moments"
+  ],
+  "explaining": [
+   "Arrows are dotted orbit arcs or striped ribbons of band colour that sweep from source to target, ending in a small open arrowhead",
+   "Labels are small-caps serif in gold, connected to their subject by a hairline leader, or set in cream chips outlined in dark ink",
+   "Key numbers are huge swollen display figures over a fine graduated scale, framed by a burst of rays when they land",
+   "Charts are star charts: data points are stars that appear one per step and join into a constellation, over a faint curved grid",
+   "Wrong is shown by colours clashing and jittering out of register and a red circle drawn round the target; right is the swirl folding into a calm symmetric mandala",
+   "Steps are stations on an orbit, each lighting up as a glowing marker travels round"
+  ],
+  "sound": [
+   "A slowly beating organ hum, swept by a phaser, over a low dark pad",
+   "Swirly phaser whooshes sweeping up and down for bands and transitions",
+   "Soft low radar-like pings for labels and stars landing, rising in pitch as a series builds",
+   "A big shimmering chord bloom with a low hit for the key moment; a sour detuned slide for wrong"
+  ],
+  "avoid": [
+   "Muted, pastel or tasteful colour; the ink pairs must be loud",
+   "Clean geometric sans-serif headings or crisp corporate UI elements",
+   "Photographic space imagery or realistic 3D rendering",
+   "Static frames; something must always be churning or twinkling"
+  ]
+ },
+ {
+  "order": 6,
+  "styleId": "neon-circuit",
+  "name": "Neon Circuit",
+  "category": "Clean explainer",
+  "description": "Slick tech motion graphics in a dark navy-to-violet void: glassy cards with hairline neon rims, line icons sitting in glowing tiles, and wired diagrams where bright sparks of light travel along the wires, with a soft bloom on everything bright.",
+  "suits": "Strong for software, data, networks, AI and any system made of connected parts; too cold for warm human stories, nature, history or comedy.",
+  "look": [
+   "Backdrop is a diagonal gradient from near-black navy to dark indigo, with four or five huge, very soft colour clouds (blue, violet, cyan, a touch of pink) that slowly wander and breathe in size.",
+   "The lower part of the frame is a floor grid seen in perspective: lines fan out from a vanishing point on the horizon and cross lines scroll steadily toward the viewer; the grid fades out near the horizon, which carries one thin bright haze line.",
+   "The upper part has a faint regular lattice of tiny dots that fades out toward the top, plus scattered drifting specks of light, a few with small halos, twinkling at different rates.",
+   "Content sits on dark see-through rounded cards: a big soft shadow below, two faint inner glows in accent colours at opposite corners, a hairline border that is bright cyan at one corner and fades toward the other, and a short white highlight along the top edge.",
+   "Icons are simple line drawings with round caps inside rounded-square tiles; the line itself is coloured with a cyan-to-violet gradient, and each tile floats in its own soft coloured halo.",
+   "Connections are smooth curves, thin and dim, with a short bright spark (white head, coloured tail) gliding along them; hubs are glowing points circled by thin rings.",
+   "Headlines are a bold geometric sans filled with one gradient running across the whole line, white into ice blue into violet; small capital eyebrow labels with wide letter spacing and a glowing dot in front.",
+   "Labels are capsule pills: dark fill, thin gradient outline, white medium-weight text, an optional coloured status dot on the left."
+  ],
+  "palette": [
+   {
+    "role": "void (background base)",
+    "hex": "#060a24"
+   },
+   {
+    "role": "indigo (background lift, card fill)",
+    "hex": "#1a1352"
+   },
+   {
+    "role": "cyan (primary glow, rims, sparks)",
+    "hex": "#34e2f7"
+   },
+   {
+    "role": "electric blue (secondary glow)",
+    "hex": "#4f82ff"
+   },
+   {
+    "role": "violet (gradient end, clouds)",
+    "hex": "#9a62ff"
+   },
+   {
+    "role": "coral (error, warning signal)",
+    "hex": "#ff5a7e"
+   },
+   {
+    "role": "mint (correct, success signal)",
+    "hex": "#42efb0"
+   },
+   {
+    "role": "ice white (text)",
+    "hex": "#eef1ff"
+   }
+  ],
+  "fonts": [
+   "Sora",
+   "Manrope"
+  ],
+  "finish": [
+   "Bloom on every frame, medium: copy the bright parts of the frame, blur them at a small and a wide radius, and add both back with additive blending so rims, icons, sparks and gradient type glow softly.",
+   "All halos, sparks, particles and flashes are drawn with additive blending, so overlaps brighten rather than cover.",
+   "A gentle dark vignette pulls the corners down, moderate strength.",
+   "No grain or noise of any kind: the surface stays clean and digital."
+  ],
+  "motion": [
+   "Everything is eased: tiles and cards fade up while growing from a little under full size with a small overshoot; the line icon inside then traces itself on stroke by stroke.",
+   "Connections draw from source to target, then begin carrying sparks in a steady loop; when a spark arrives, the target flashes and a ring expands from it and fades.",
+   "Headlines build up word after word, each lifting from slightly below as it fades in.",
+   "One continuous virtual camera: a steady slow push-in through the whole piece, smooth pans to the next region while the backdrop moves slower than the content; a big change of idea is a fast dive through a hub with radial streaks of light and a brief white flash.",
+   "Things that stay relevant shrink and fly to a corner (a title becomes a small header) instead of vanishing.",
+   "Brisk, polished pace: entrances overlap, each a fraction of a second, with something new about every second."
+  ],
+  "explaining": [
+   "Steps are a row of chips joined by wires; the active step brightens its rim and flashes its fill when a spark reaches it; a feedback loop is a curved return wire with a small arrowhead.",
+   "Right and wrong are colour signals: a mint spark and check badge for correct, a coral spark running backward along the wire for an error.",
+   "Key numbers are huge gradient numerals that count up quickly and slow as they settle, with a bloom flash on the final value; a small pill carries the unit.",
+   "Charts are line or area charts inside a card: a glowing gradient line, a filled area below that fades to transparent, a glowing point at the newest value, faint tick lines.",
+   "Emphasis is an expanding ring plus a brief extra glow on the element, never a shake.",
+   "The takeaway is a centred gradient headline with an underline that sweeps in from left to right."
+  ],
+  "sound": [
+   "Soft, dull, filtered air whooshes for moves and camera pushes, kept low and gentle.",
+   "Short glassy blips when tiles land, and tiny digital ticks for counters that space out as the count settles.",
+   "A smooth rising sine glide while a spark travels a wire; a deep sub hit with a high shimmer on the key number.",
+   "A quiet sustained synth pad underneath that resolves to a bright major chord on the takeaway."
+  ],
+  "avoid": [
+   "Light backgrounds, paper or grain textures, wobbly hand-drawn lines.",
+   "Pure primary red, green or yellow; glows stay in the cyan-blue-violet range, with coral and mint used only as signals.",
+   "Dropping the bloom pass or using hard shadows; without them it reads as a plain slide.",
+   "Clutter: one or two diagrams per frame with plenty of dark space around them."
+  ]
+ },
+ {
+  "order": 7,
+  "styleId": "paper-layers",
+  "name": "Layered Paper",
+  "category": "Paper and craft",
+  "description": "A shadow box of scissor-cut coloured card: every shape is its own sheet with a fibre texture, a slightly uneven cut edge and a soft shadow falling on the sheet behind, stacked in depth like the pages of an opened pop-up, under a warm lamp.",
+  "suits": "Warm and friendly for stories, processes, places, growth and simple comparisons for a general audience; not right for dense numbers, fine detail or a cold high-tech tone.",
+  "look": [
+   "The frame is built from stacked flat layers, back to front: a dark backboard, far shapes, middle shapes, a ground strip and a near foreground strip; each layer clearly floats above the one behind it.",
+   "Edges are cut, never drawn: straight edges wobble very slightly along their length, circles are slightly faceted polygons, curves are chains of short scissor snips; there are no outlines at all.",
+   "Each sheet is one flat matte colour overlaid with a tiling paper fibre texture (soft blotchy mottle, fine light and dark flecks, a few short hair-like fibres) at low contrast, placed at a different offset and angle on every sheet so it never repeats visibly.",
+   "Every sheet casts a two-part shadow onto the layer behind: a soft wide shadow offset down and to the right (wider for sheets that sit higher) and a thin dark contact line hugging the edge; the top-left cut edge catches a one-pixel light rim and the bottom-right edge a one-pixel dark rim.",
+   "Torn edges (hilltops, ground, banners) are ragged and reveal a thin band of white fibrous paper core, with tiny fibres poking out, between the coloured face and whatever lies behind.",
+   "Detail is added by gluing on smaller pieces or punching holes: windows punched out to show the layer behind, small punched stars, grass made of little upward snips cut into a green strip.",
+   "Headlines are a chunky heavy sans cut from coloured paper and mounted on a cream backing sheet trimmed loosely around the whole word with a margin; each letter tilts a degree or two.",
+   "Small labels are folded paper tags or little standing card tents with a visible crease, propped against what they name; a fine dotted fold line can mark where a card bends."
+  ],
+  "palette": [
+   {
+    "role": "backboard (deep teal card)",
+    "hex": "#1f4e5f"
+   },
+   {
+    "role": "cream card (backings, tags)",
+    "hex": "#f2e8d5"
+   },
+   {
+    "role": "mustard card",
+    "hex": "#e3b04b"
+   },
+   {
+    "role": "coral card (accent, wrong)",
+    "hex": "#e2704f"
+   },
+   {
+    "role": "sage card (ground, right)",
+    "hex": "#7fa36b"
+   },
+   {
+    "role": "dusty blue card",
+    "hex": "#7fa7c2"
+   },
+   {
+    "role": "paper core (torn edges, light rim)",
+    "hex": "#fffaf0"
+   },
+   {
+    "role": "shadow (plum-black)",
+    "hex": "#2a1c33"
+   }
+  ],
+  "fonts": [
+   "Bowlby One",
+   "Nunito"
+  ],
+  "finish": [
+   "Warm desk-lamp light from the top left on every frame: a soft-light radial pass that is creamy warm near the lamp and cools to a dim blue-purple in the far corners, moderate strength; optionally a second, fainter warm pool over the area being explained.",
+   "A plum-tinted vignette, medium strength.",
+   "Very light film grain, refreshed about twelve times a second so it shimmers like a photographed set."
+  ],
+  "motion": [
+   "Pieces enter three ways: rise from below the way a pop-up page stands when opened; drop in from above with a little overshoot, the shadow wide and soft while airborne and tightening as it lands; or spring out from a point.",
+   "The camera pans sideways along one long diorama; far layers move much less than near ones, giving strong parallax depth, and a slow push-in settles each station.",
+   "Small idle loops keep it alive: pieces flutter by swapping between two or three cut versions of their shape, hanging items sway on a thin wire.",
+   "Exits: pieces sink back down behind the ground strip or lift off upward; a real change of scene is a long pan to the next station of the diorama.",
+   "Moderate, tactile pace; groups and words fall on as a staggered ripple a few hundredths of a second apart."
+  ],
+  "explaining": [
+   "Arrows are thick paper strips with a cut triangular head that grow along a gentle curve, each with its own shadow.",
+   "Numbers are separate cut-out digit tiles, each a little rotated; when a value changes, tiles are flicked out and swapped rather than smoothly counted.",
+   "Bar charts are paper strips that climb into view from below the ground strip, with a thin paper strip for the axis and folded tags for values.",
+   "To stress the key item, a ring of card or a fan of cut rays pops up behind it, plus a slight push-in.",
+   "Right and wrong are a cut green tick or a cut red cross dropped onto the item; a speech bubble is a cut card that flips over to show its other side."
+  ],
+  "sound": [
+   "A light card tap (soft thump plus a small paper snap) for every piece that lands.",
+   "A big, low, smooth rub of cardstock sliding past cardstock for camera pans, with no crinkle.",
+   "A dry short slide ending in a tap for strips pushing out, quick flicks for digit tiles, a springy pop-up page sound for the emphasis burst.",
+   "Quiet room tone; optional soft plucked music low in the mix."
+  ],
+  "avoid": [
+   "Outlines, gradients inside a shape, glossy highlights or perfectly smooth vector curves.",
+   "Sheets without shadows or all layers at one depth; that flattens it into clip art.",
+   "Many tiny fiddly pieces; shapes should be big and simple, as if cut by hand with scissors."
+  ]
+ },
+ {
+  "order": 8,
+  "styleId": "clay",
+  "name": "Clay Stop-Motion",
+  "category": "Paper and craft",
+  "description": "Plasticine stop-motion on a small sculpted set: chunky hand-pressed shapes with soft waxy shading, fingerprints and tool smears, lumpy edges, animated in held poses with a gentle surface boil.",
+  "suits": "Playful, friendly topics: learning for kids, everyday habits, simple cause and effect, product stories with charm; poor for precise data, dense text or serious and technical subjects.",
+  "look": [
+   "Every object is a thick rounded lump: a simple silhouette with soft irregular bulges, corners always rounded, and it looks inflated, highest in the middle and rolling off toward the edge.",
+   "Shading comes from that implied height: a warm key light from the top left, broad soft falloff, a small dull sheen on the top (waxy, not glossy), and the shadow side slightly warmer and richer in colour, as if light glows through the clay.",
+   "The surface shows the maker's hands: a few partial fingerprints (fine curved ridges fading at the edges), shallow tool grooves with a slightly raised lip, and faint broad lumpiness.",
+   "The set is a back wall of smeared clay, slightly out of focus and lit by a warm pool of light, above a clay tabletop slab whose front edge curves down and darkens; a few stray crumbs of clay lie about.",
+   "Objects sitting on the table get a soft dark contact patch beneath them, plus a soft drop shadow down and to the right.",
+   "Letters and digits are separate rolled-clay glyphs in a rounded bold face, each its own lump, often each a different colour, slightly rotated, standing proud of the surface.",
+   "Colours are saturated toy primaries softened toward warm; any eyes are white balls with glossy black pupils."
+  ],
+  "palette": [
+   {
+    "role": "back wall clay",
+    "hex": "#e7cfa8"
+   },
+   {
+    "role": "tabletop clay",
+    "hex": "#c98f5a"
+   },
+   {
+    "role": "tomato red clay (wrong, accent)",
+    "hex": "#d6453a"
+   },
+   {
+    "role": "cobalt blue clay",
+    "hex": "#3f7cc4"
+   },
+   {
+    "role": "sunflower yellow clay (highlight, star)",
+    "hex": "#f2c14a"
+   },
+   {
+    "role": "leaf green clay (right)",
+    "hex": "#5ea65a"
+   },
+   {
+    "role": "cream clay (labels, slabs)",
+    "hex": "#f4ead6"
+   },
+   {
+    "role": "deep brown (shadows, vignette)",
+    "hex": "#3b2418"
+   }
+  ],
+  "fonts": [
+   "Baloo 2"
+  ],
+  "finish": [
+   "Warm colour grade on every frame: a soft-light pass from peach in the top left to cool blue-grey in the bottom right, moderate.",
+   "Exposure flicker that changes on every held pose, a small random lift or dip in brightness, as with real stop-motion frames.",
+   "A warm dark-brown vignette, medium strength, and softly blurred far edges of the set for shallow depth of field.",
+   "Fine grain, light, re-seeded on each held pose."
+  ],
+  "motion": [
+   "Everything moves on twos: each pose is held for two frames of a 24 fps rhythm, with no smooth in-between motion.",
+   "Boil: the fine surface noise and fingerprint ridges shift slightly on every new pose, so even still objects look freshly touched.",
+   "Entrances pop on in a few discrete poses: squashed flat and wide, stretched tall, a small overshoot, then settled.",
+   "Exits are physical: knocked off so they fall with gravity and tumble out the bottom of the frame, or shoved off to the side, speeding up as they go.",
+   "Moves along the table are slides in visible steps; a word appears letter by letter, one new letter per pose."
+  ],
+  "explaining": [
+   "Arrows are rolled snakes of clay with a pinched point, laid down along their path.",
+   "Numbers are pressed clay digits; when a value changes, the digits are replaced by freshly sculpted ones with a small pop, never a smooth count.",
+   "Charts are clay bars that push up through the tabletop: each starts squashed flat and stretches up to its height.",
+   "Wrong is a red clay cross pushed onto the item with a short shake; right is a green clay tick; the key moment gets a gold clay star or the item swelling and changing colour.",
+   "Labels are clay letters pressed into a flat slab of clay; keep words short and big."
+  ],
+  "sound": [
+   "A soft low wet plop for each piece popping on, one per pose in which new letters appear.",
+   "Squelches for squash and stretch, a dull slap when a coil is laid down.",
+   "Dull thuds offscreen for knocked-off pieces, a smeary slide for shoves.",
+   "Optional light plucky toy music, very low."
+  ],
+  "avoid": [
+   "Sharp corners, thin lines, perfect geometry, or smooth tweened motion at full frame rate.",
+   "Glossy plastic highlights or flat unshaded fills; it must read as matte waxy clay.",
+   "Long sentences or small text."
+  ]
+ },
+ {
+  "order": 9,
+  "styleId": "xray-scan",
+  "name": "X-Ray Lightbox",
+  "category": "Light and imaging",
+  "description": "X-ray films clipped to a glowing viewing box in a dark reading room: subjects show as translucent white density on blue-black film, marked up with grease pencil, masking tape and typed ID labels.",
+  "suits": "Ideal for look-inside explanations: anatomy, how a mechanism works, hidden structure, faults and diagnosis, before and after inspections; poor for colourful, playful or emotional topics.",
+  "look": [
+   "The viewing box is an evenly lit cool-white panel with a few soft brighter zones where the tubes sit behind the diffuser, faint banding and a gentle fall-off toward its edges; the room around it is almost black.",
+   "Film is a negative: where nothing blocks the rays it is deep blue-black; density adds up, so thicker or harder parts are brighter and overlapping parts brighter still; soft tissue-like parts are a faint grey haze around crisp white hard structures.",
+   "Subjects are built from additive translucent layers: hollow parts show as bright rims around darker centres, like tubes seen from the side; any metal comes out almost pure white with sharp edges.",
+   "Each film has a lighter grey-blue unexposed border around the exposed rectangle, with crisp edges; whole films hang very slightly rotated.",
+   "Small blocky lead-letter markers glow bright white inside the field near a corner; an ID patch (a pale rectangle with dark typewriter text) sits in another corner; tiny edge printing runs along the margin.",
+   "Films hang from chrome spring clips along their top edge (small metallic blocks with a dark pivot).",
+   "Annotations are grease pencil in waxy yellow, red and green, drawn as broken, slightly doubled strokes; headers are on strips of masking tape with zigzag torn ends."
+  ],
+  "palette": [
+   {
+    "role": "dark room",
+    "hex": "#070b12"
+   },
+   {
+    "role": "film base (blue-black)",
+    "hex": "#0e2236"
+   },
+   {
+    "role": "unexposed border (grey-blue)",
+    "hex": "#8fa6b8"
+   },
+   {
+    "role": "dense structure (bright density)",
+    "hex": "#dbe8f2"
+   },
+   {
+    "role": "lightbox glow",
+    "hex": "#eaf4ff"
+   },
+   {
+    "role": "grease pencil yellow",
+    "hex": "#ffe27a"
+   },
+   {
+    "role": "grease pencil red (wrong, emphasis)",
+    "hex": "#e0392e"
+   },
+   {
+    "role": "masking tape",
+    "hex": "#e6d9b0"
+   }
+  ],
+  "fonts": [
+   "IBM Plex Mono",
+   "Kalam"
+  ],
+  "finish": [
+   "Halation on every frame: a wide soft glow spreading from the brightest dense parts onto the film around them, low strength.",
+   "Film mottle and grain: broad uneven blotches plus fine per-pixel grain, stronger in the thin areas, re-seeded every frame.",
+   "Per-film wear that travels with the film: a few faint bright near-vertical scratches, scattered dark dust specks, a handful of bright pinholes.",
+   "Lightbox bleed: bright glass around the film edges glows outward over them (screen-blended blur, medium), plus a slight dark vignette."
+  ],
+  "motion": [
+   "Opening: the box's tubes flicker on one at a time, stuttering before they hold steady, and the room brightens with them.",
+   "A fresh film develops: it starts as milky grey fog, then the dark base and bright density arrive as a front sweeping from top to bottom with a ragged, mottled edge.",
+   "Scene change: the current film is tugged free of its clips and drops away; the next is slapped up from above and settles with a small bounce and flex.",
+   "Grease pencil writes at hand speed, revealed along the stroke; text appears left to right as if being written.",
+   "A slow, steady push-in on the box across the whole piece."
+  ],
+  "explaining": [
+   "Arrows, rings and notes are drawn in wax pencil straight onto the glass: rings are loose ovals that overshoot where they started; arrows are curved strokes finished with two quick head strokes.",
+   "Counters are typed in the ID patch in monospace, changing in place.",
+   "Updated values are handwritten: the old value is struck through with one line and the new one written beside it.",
+   "Headers and the takeaway are bold marker capitals on masking tape stuck across the top or bottom of the box.",
+   "Wrong gets a red pencil ring and slash; right gets a green tick; the key number gets two quick red rings."
+  ],
+  "sound": [
+   "Fluorescent tubes tinking and buzzing on, then a low ballast hum under everything.",
+   "A waxy grease-pencil drag in short grains, lasting exactly as long as each stroke draws.",
+   "Metallic spring-clip snaps and the low wobbly flex of a film sheet when films are pulled or slapped up; a tape tear and press.",
+   "A knuckle knock on the glass for the wrong moment and the key number; a dry mechanical clack for each ID counter change."
+  ],
+  "avoid": [
+   "Positive images (dark subject on light film), coloured fills inside the film, solid opaque shapes with no translucency.",
+   "Clean vector text on the film; every word is typed ID, grease pencil, or marker on tape.",
+   "A bright room or a warm palette; the only light comes from the box."
+  ]
+ },
+ {
+  "order": 10,
+  "styleId": "sticker-cute",
+  "name": "Cute Sticker",
+  "category": "Clean explainer",
+  "description": "Flat pastel kawaii illustration: chunky rounded shapes with soft plum outlines and a single cel shade, glossy big-eyed faces, sparkles and hearts over a polka-dot backdrop, with key pieces finished like die-cut stickers.",
+  "suits": "Light, friendly topics: kids, onboarding, wellness, consumer apps, simple how-tos; poor for serious, sad, or data-heavy technical subjects.",
+  "look": [
+   "Shapes are chunky and rounded: circles, capsules and rectangles with big corner radii; nothing has a sharp corner.",
+   "One outline colour for everything, a deep soft plum, medium-thick and even, with round joins; the overlapping parts of one object share a single outer outline so no inner seams show.",
+   "Fills are flat pastels with exactly one cel-shade tone: the whole shape is filled in the deeper shade, then the base colour is drawn shifted up and left inside it, leaving a crescent of shade at the bottom right; one small white highlight oval near the top left.",
+   "Faces, when used, have big glossy eyes (dark upper lid, iris shading from dark to light, large pupil, two white catchlight dots), pink blush ovals and a tiny mouth.",
+   "Backdrops are one flat pastel colour with a slowly drifting staggered pattern of small dots, stars or hearts in a slightly deeper tint, plus big soft white clouds with no outline.",
+   "Key items get the sticker treatment: a thick white border around the plum outline and a small soft shadow, as if die-cut and stuck on.",
+   "Lettering is a very rounded bold face with white fill, a thick pink or plum outline and a soft shadow below; letters may cycle through the pastels.",
+   "Decorations: four-point twinkles, little hearts, short motion lines, and comic emote marks."
+  ],
+  "palette": [
+   {
+    "role": "strawberry milk (background, fills)",
+    "hex": "#ffd6e3"
+   },
+   {
+    "role": "mint",
+    "hex": "#bff0dc"
+   },
+   {
+    "role": "butter yellow",
+    "hex": "#fff1a8"
+   },
+   {
+    "role": "lavender",
+    "hex": "#d9c9ff"
+   },
+   {
+    "role": "sky blue",
+    "hex": "#bfe3ff"
+   },
+   {
+    "role": "hot pink (accent, lettering outline)",
+    "hex": "#ff6f9f"
+   },
+   {
+    "role": "plum (all outlines, shadows)",
+    "hex": "#5a3a5e"
+   },
+   {
+    "role": "white (sticker rims, highlights, letter fill)",
+    "hex": "#ffffff"
+   }
+  ],
+  "fonts": [
+   "M PLUS Rounded 1c",
+   "Mochiy Pop One"
+  ],
+  "finish": [
+   "No grain, no texture: colours stay clean and flat on every frame.",
+   "Soft plum shadows at low opacity under lettering and stickers only, never under background shapes.",
+   "Twinkles blink on and off in empty areas of the frame, away from content."
+  ],
+  "motion": [
+   "Animated on twos, so motion has a light hand-drawn stepping.",
+   "Bouncy pop for every entrance: grows from nothing, overshoots past full size and settles with a damped wobble, alternating squash and stretch.",
+   "Letters pop on one at a time, each with a little hop off the baseline.",
+   "Idle life: things bob gently up and down and wiggle; every landing squashes.",
+   "Scene changes are iris wipes shaped like a star or a heart, growing from a point and framed by a fat candy-coloured border (plum outside, pink or butter inside, a thin white line)."
+  ],
+  "explaining": [
+   "Connectors are rows of round candy dots appearing one after another along a curve, finished with a chunky rounded triangle arrowhead.",
+   "Numbers are big outlined bubbly numerals that give a little bounce every time they change.",
+   "Charts are rounded bars popping up one after another; a small marker can hop from bar to bar.",
+   "Emotion carries emphasis: a wrong answer earns a big rounded X stamp, spiral eyes, a sweat bead and a ?!; a right answer earns sparkle eyes, floating hearts and confetti; the key moment gets a quick punch-in with a tiny shake.",
+   "Labels are rounded sticker pills or speech bubbles with the plum outline."
+  ],
+  "sound": [
+   "Soft boings and bubbly pops for each entrance, kept low-mid and never harsh.",
+   "Twinkly chimes for sparkles, a quick rising arpeggio for right, a soft falling slide for wrong.",
+   "A squeaky-toy squeeze or light thump for stamps; an optional light bouncy music bed, very low."
+  ],
+  "avoid": [
+   "Black or heavy dark outlines, realistic shading, gradients or textures.",
+   "Sharp angular shapes and loud saturated colours.",
+   "Dense text; keep words short and large."
+  ]
+ },
+ {
+  "order": 11,
+  "styleId": "field-guide",
+  "name": "Field Guide Plate",
+  "category": "Illustration",
+  "description": "An old natural-history book plate on aged cream paper inside a pressed border: specimens drawn in fine brown-black engraved line, washed with thin watercolour that strays slightly off the lines, each tagged with a figure number and an italic caption.",
+  "suits": "Good for calm, careful explanations of parts, kinds, stages and anatomy (biology, how a thing is built, classification); poor for fast, loud, hype or very digital topics.",
+  "look": [
+   "Every form is shaded with engraved lines: parallel strokes that follow the curve of the surface, swelling thicker in shadow and thinning to a hair at both ends.",
+   "Outlines are heavier on the side away from the light (light from upper left) and fine on the lit side.",
+   "The darkest shadows get a second set of lines crossing the first at a shallow angle; small round parts are shaded with fine stipple dots instead.",
+   "Colour is a separate thin wash under the ink: soft and uneven, a little off the lines, with a darker rim where the pigment dried at its edge and a mottled, granular density inside.",
+   "Subjects are isolated specimens on bare paper with plenty of space around them, each with a small italic figure number (Fig. 1, Fig. 2) close by, laid out like a scientific plate.",
+   "A thin double ruled frame sits inside a slightly darker pressed rectangle; tiny running heads in the top corners (volume, plate number) and a centred italic caption line at the bottom.",
+   "Paper is warm cream, browner toward the edges, with scattered rust-brown foxing spots gathered mostly near the margins.",
+   "Lettering is a classic old-style serif: widely letter-spaced roman capitals for headings, italic for names and captions."
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#efe4cc"
+   },
+   {
+    "role": "ink",
+    "hex": "#2a2119"
+   },
+   {
+    "role": "aged edge",
+    "hex": "#b08a55"
+   },
+   {
+    "role": "leaf wash",
+    "hex": "#8fa66b"
+   },
+   {
+    "role": "sky wash",
+    "hex": "#8eaab8"
+   },
+   {
+    "role": "ochre wash",
+    "hex": "#d2a85a"
+   },
+   {
+    "role": "rose wash",
+    "hex": "#c98276"
+   },
+   {
+    "role": "emphasis red",
+    "hex": "#b33b2e"
+   }
+  ],
+  "fonts": [
+   "IM Fell English",
+   "EB Garamond"
+  ],
+  "finish": [
+   "Tint layer multiplied under the ink, nudged a pixel or two off register and softened slightly; medium strength, the colour must look added by hand after printing.",
+   "Ink is never pure black: a warm brown-black with a faint soft halo, as if the lines sank a little into damp paper; subtle.",
+   "Paper grain, foxing spots and a darkening toward the sheet edges; gentle, aged but never dirty.",
+   "A debossed border: a thin dark line with a pale highlight just outside it; light.",
+   "Fine grain over the whole frame, re-seeded several times a second; very light."
+  ],
+  "motion": [
+   "Ink line comes first; shortly after, the colour spreads outward from the middle of each figure with a ragged wet edge.",
+   "New lines engrave themselves along their length, start to finish, as if cut by a tool; hatching fills in stroke by stroke.",
+   "Specimens may sway or flex very slightly (a stem, a feeler, a hinge); nothing bounces or squashes.",
+   "To move to a new scene, a fresh plate comes off the press: a soft vertical shadow band sweeps left to right and the new plate is revealed behind it.",
+   "Pace is unhurried; holds are long, and any camera move is a slow drift or gentle push-in."
+  ],
+  "explaining": [
+   "Labels are small italic captions linked to their subject by a fine engraved leader line ending in a dot.",
+   "Arrows are engraved: a tapering shaft, a narrow barbed head and a feathered tail, drawn on from tail to head.",
+   "Numbers sit inside an engraved cartouche (an ornamented oval or scroll with a ruled edge); values roll over in serif numerals.",
+   "Steps or stages are numbered figures in a row or around a circle, joined by engraved arrows, like a life-cycle plate.",
+   "Emphasis is the colourist's brush: a loose red watercolour ring around the key figure, or a red wash cross through a wrong one; a green ring for correct.",
+   "Charts become growth series: the same specimen drawn at several sizes side by side, each labelled with its stage or value."
+  ],
+  "sound": [
+   "Dry, gritty scratch of a metal tool cutting copper while lines draw on.",
+   "Heavy rolling drum and a damp paper peel for each new plate.",
+   "Soft wet brush swish when a wash or ring is painted.",
+   "Small brass clicks or a numbering-wheel tick for counters, over a quiet warm pad."
+  ],
+  "avoid": [
+   "Flat vector fills, solid black masses or uniform line weight.",
+   "Saturated or neon colour, smooth gradients, glows or drop shadows.",
+   "Modern sans-serif type or rounded UI boxes.",
+   "Fast bouncy motion or cartoon squash and stretch."
+  ]
+ },
+ {
+  "order": 12,
+  "styleId": "linocut",
+  "name": "Linocut Print",
+  "category": "Print",
+  "description": "A bold black and vermilion relief print on off-white paper, with a pencilled title and edition number below: the image is white carved out of solid black with pointed knife cuts, and the ink sits patchy and speckled.",
+  "suits": "Good for bold, folk, craft or activist tones, simple processes and one strong idea per beat; poor for fine detail, dense data or many small labels.",
+  "look": [
+   "Think in reverse: the block starts solid black and the image is what gets cut away. White marks are pointed cuts, fat in the middle and sharp at both ends, or teardrop cuts that start wide and taper to a point.",
+   "Tone comes from rows of parallel cuts: close cuts read light, sparse cuts read dark; the cuts follow the contour of whatever they shade (hills, bodies, rings).",
+   "Around carved shapes and just inside the block border sit short stray nicks and chips, as if the cutter's hand slipped; open black is never perfectly clean.",
+   "The block is a rectangle with a softly wavy edge and a thin cut line just inside it, printed with a wide paper margin all round.",
+   "The second colour is a vermilion red printed from its own block: usually one large shape behind the black (a disc, a band, a fill) plus a few accents.",
+   "Lettering looks hand cut: heavy block capitals, each letter slightly rotated and nudged up or down; often paper-coloured letters cut out of a red or black band.",
+   "In the margin under the block, pencil writing: a title at the left, an edition number such as 3/20 and a signature at the right."
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#efe6d2"
+   },
+   {
+    "role": "black ink",
+    "hex": "#1d1a19"
+   },
+   {
+    "role": "vermilion",
+    "hex": "#c6402b"
+   },
+   {
+    "role": "deep red",
+    "hex": "#8e2a1f"
+   },
+   {
+    "role": "graphite",
+    "hex": "#55545a"
+   },
+   {
+    "role": "paper fibre",
+    "hex": "#d9ccb0"
+   }
+  ],
+  "fonts": [
+   "Bowlby One",
+   "Nanum Pen Script"
+  ],
+  "finish": [
+   "Ragged ink edges: block shapes softened a hair, then cut off against a noise threshold so every edge is slightly rough; medium.",
+   "Speckle: small patches where paper shows through dense black and red, as if the ink skipped the high points of the sheet; clearly visible, but black still reads as solid.",
+   "Red printed a few pixels out of register with the black, so a sliver of red peeks out along one side of shapes; light to medium.",
+   "Paper: warm off-white with long thin pale and tan fibres, a faint pressed outline around the block and a soft warm vignette; light.",
+   "Pencil marks are grey and grainy and skip across the paper tooth; light."
+  ],
+  "motion": [
+   "The print updates in stop-motion steps, about eight a second, as if each frame were a new pull; nothing glides smoothly inside the block.",
+   "Opening: the sheet lifts off the inked block along a diagonal front, red appearing first and black after, with a thin soft shadow just ahead of the lifting edge.",
+   "Scene changes are new proofs: the next print is peeled in over the old one along the same diagonal sweep.",
+   "New shapes appear as if being carved: cuts draw on one stroke at a time and lines grow along their length.",
+   "After a print lands, a faint raking sheen of wet ink slides once across the black; then it holds. The camera at most eases in slowly."
+  ],
+  "explaining": [
+   "Arrows are white channels gouged through the black, tapering, with a triangular head; when something goes wrong, the path prints in red instead.",
+   "Numbers are big chunky cut numerals, re-cut on every step so they flicker slightly as they change.",
+   "Labels are paper-coloured letters cut from a red band, or black letters on a cleared patch; few words, set large.",
+   "Emphasis is done by hand in pencil: a loose ring around the key thing, plus a few scribbled words under the block.",
+   "Charts are carved bars or a filled area: red fill under a black outline, with cut hatching over it.",
+   "Separate items or steps are small carved tiles in a row, each a paper square holding a black-line picture."
+  ],
+  "sound": [
+   "Crunchy scrape of a V-shaped cutter through lino while cuts and arrows draw on.",
+   "Tacky crackle and a paper lift when a proof is peeled.",
+   "A heavy press coming down with a deep wooden knock for the big moment.",
+   "Pencil scratching for notes and signature; small dry knocks for numerals."
+  ],
+  "avoid": [
+   "Smooth anti-aliased vector shapes, gradients or soft shading.",
+   "More than two ink colours, any glow, or transparency.",
+   "Hairlines or even-width outlines; every mark is a tapering cut.",
+   "Fluid tweening inside the print."
+  ]
+ },
+ {
+  "order": 13,
+  "styleId": "voxel",
+  "name": "Voxel Blocks",
+  "category": "Dimensional",
+  "description": "A cheerful toy world built from coloured cubes on a warm peach backdrop, seen from above at a fixed three-quarter angle, with soft shadows and darkened creases where blocks meet, and each cube's top brighter than its two sides.",
+  "suits": "Good for playful, friendly explanations of systems, places, building up and step-by-step assembly; poor for serious, abstract, emotional or text-heavy topics.",
+  "look": [
+   "Everything is unit cubes on a grid in an orthographic three-quarter view: top face lightest, the face toward camera a mid tone, the far side darkest, with a slightly cool tint on the sides and warm on top.",
+   "Each visible face darkens softly toward edges and corners that touch other cubes, so inside corners and stair steps pick up gentle dark creases.",
+   "Light comes from high at the back left; faces that something blocks from that light are darker and lean slightly purple.",
+   "Scenes stand on a thick base slab with a grass or tile top and a stepped brown underside that gets darker the deeper it goes, floating above a big blurred shadow on the backdrop.",
+   "Within one material each cube's colour varies a little, so surfaces look hand-placed rather than flat.",
+   "Bright parts (lights, screens, indicators) are glowing cubes: flat, near-white-tinted colour with a soft halo around them.",
+   "Background is a smooth warm peach studio sweep, lighter toward the middle.",
+   "Text is either chunky pixel lettering built from extruded cubes, or flat floating tags: cream rectangles with a darker extruded side and bottom edge and a soft drop shadow."
+  ],
+  "palette": [
+   {
+    "role": "backdrop",
+    "hex": "#ffe3c6"
+   },
+   {
+    "role": "grass",
+    "hex": "#9ccc58"
+   },
+   {
+    "role": "soil",
+    "hex": "#c47e4a"
+   },
+   {
+    "role": "deep soil",
+    "hex": "#7f4f3e"
+   },
+   {
+    "role": "water",
+    "hex": "#63c4d8"
+   },
+   {
+    "role": "accent orange",
+    "hex": "#ff8a3a"
+   },
+   {
+    "role": "tag cream",
+    "hex": "#fff2df"
+   },
+   {
+    "role": "text brown",
+    "hex": "#6e3f2a"
+   }
+  ],
+  "fonts": [
+   "Tiny5",
+   "Baloo 2"
+  ],
+  "finish": [
+   "Soft crease darkening on every face that touches neighbours, every frame; medium, it is what sells the look.",
+   "Cast shadows inside the scene and a blurred contact shadow under the floating base; medium.",
+   "Additive glow halos around glowing cubes; light.",
+   "Warm edge vignette and a very fine static grain; very light."
+  ],
+  "motion": [
+   "Builds: cubes drop in from above and land with a small ease-out, course by course, starting at the bottom, each one slightly offset in time so it reads as a shower.",
+   "Movement happens in whole-cube steps (things on a belt hop one cube at a time); characters or parts may bob gently.",
+   "The camera turns a few degrees while something builds, then trucks sideways along one long scene to reach the next area instead of cutting.",
+   "Tags and labels pop in with a small overshoot and shrink away to leave.",
+   "Pace is cheerful and steady, a new beat every second or two."
+  ],
+  "explaining": [
+   "Arrows are a dotted trail of small cubes along a gentle arc, appearing one cube at a time; a red trail for an error travelling back.",
+   "Pictures, icons, ticks and crosses are tiny pixel art made of cubes standing upright.",
+   "Numbers sit on floating tags in pixel lettering and tick upward; the key number swells big and throws out a ring of little square blocks.",
+   "Charts are columns of stacked cubes, one per step, rising block by block with their value tag riding on top.",
+   "Emphasis: blocky corner brackets snap in around the thing and blink a couple of times."
+  ],
+  "sound": [
+   "Hollow plastic click as each block snaps into place; a light patter of tiny clicks while a build rains down.",
+   "A bigger thunk when a stack lands together.",
+   "Short bright toy chimes for correct, a dull boop for wrong."
+  ],
+  "avoid": [
+   "Perspective distortion, curved surfaces or any non-cube shape in the world.",
+   "Black outlines or flat cartoon shading without the three face tones.",
+   "Dark, cold or gritty palettes.",
+   "Text painted flat onto the world without a tag or extrusion."
+  ]
+ },
+ {
+  "order": 14,
+  "styleId": "halftone-comic",
+  "name": "Halftone Comic",
+  "category": "Print",
+  "description": "A vintage comic page blown up big and framed as a strip of panels on yellowed newsprint: flat yellow and primary colours, red and blue printed dot fields, heavy brush-inked black outlines, and comic captions, balloons and bursts, slightly off register.",
+  "suits": "Good for punchy, dramatic, fun or myth-busting topics with clear turns and surprises; poor for quiet, nuanced or data-dense subjects.",
+  "look": [
+   "Shapes are flat fills outlined in heavy black ink that swells and tapers like a brush, sometimes with a second, slightly offset outline as if inked twice.",
+   "Mid tones are dot fields: round dots of one colour on a staggered grid (every other row shifted half a step); dot size can grow toward one side to suggest shading.",
+   "Colour is limited to flat bright yellow, red, blue, black and paper white; red dots for warm skin-like tones, blue dots for sky, shade and backgrounds.",
+   "Shine and form are drawn as solid black shapes and sharp white streaks, never gradients.",
+   "Panels have thick black borders on a white page with gutters between them; the whole story is one long strip.",
+   "Comic devices: a yellow caption box in a panel corner, white oval speech balloons with a pointed tail, bubble-trail thought balloons, jagged explosion bursts, short motion and shock lines.",
+   "Lettering is all-caps comic hand lettering in black, tilted a little for impact, with key words bigger; letters sit on a white knockout outline that breaks the dots behind them."
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#f7f0de"
+   },
+   {
+    "role": "ink",
+    "hex": "#161311"
+   },
+   {
+    "role": "yellow",
+    "hex": "#fdd426"
+   },
+   {
+    "role": "red",
+    "hex": "#d92b22"
+   },
+   {
+    "role": "blue",
+    "hex": "#2457b8"
+   },
+   {
+    "role": "orange",
+    "hex": "#f07a26"
+   }
+  ],
+  "fonts": [
+   "Luckiest Guy",
+   "Comic Neue"
+  ],
+  "finish": [
+   "Two plates: all colour (fills and dots) on one layer, black line on another; the colour layer shifted a few pixels off register, then the black multiplied over it; clearly visible at edges.",
+   "Newsprint ageing: paper a touch yellower and darker toward the frame edges, with a faint broad blotchy tone and fine fibre noise; light.",
+   "Each dot wobbles a hair in size and position so the screen looks printed, not computed; subtle."
+  ],
+  "motion": [
+   "Things spring in with a fast overshoot (a quick swell, then settle), never a slow fade.",
+   "Dot fields arrive as a wave sweeping across the area, dots popping on in order.",
+   "Balloon and caption text slams in one word at a time.",
+   "Between beats the view glides along the strip to the next panel; mid-glide it widens slightly so neighbouring panels and white gutters show, then tightens again.",
+   "Big moments get a short shake and a slow push-in."
+  ],
+  "explaining": [
+   "Arrows are thick curved arrows filled yellow with a heavy black outline, drawn on from tail to head.",
+   "Numbers burst out of jagged explosion balloons in huge lettering; counters flip quickly.",
+   "Labels go in caption boxes or balloons pointing at the thing; sound-effect words (POW, ZIP) mark actions.",
+   "Emphasis: a red and yellow burst holding a one-word verdict plus a screen shake; a ray sunburst behind a winner.",
+   "Charts are simple bars outlined in black and filled with flat colour or dots, springing up one by one on a framed board."
+  ],
+  "sound": [
+   "Short punchy thwack when lettering lands.",
+   "A thud plus a crash of noise for explosion bursts.",
+   "Quick low zip for arrows and objects whipping on; a soft smooth slide when the view glides across the page.",
+   "Tiny dry clicks for counters."
+  ],
+  "avoid": [
+   "Gradients, soft shadows or blur.",
+   "Thin even vector strokes or modern UI type.",
+   "Muted, pastel or many-colour palettes.",
+   "Clean, perfectly registered digital colour without dot texture."
+  ]
+ },
+ {
+  "order": 15,
+  "styleId": "pixel-arcade",
+  "name": "Pixel Arcade",
+  "category": "Retro digital",
+  "description": "A 16-bit console game scene with blue menu windows and typed text over scenery in stacked layers: chunky pixels enlarged with hard edges, a small fixed palette, and dithered stripes where colours meet.",
+  "suits": "Good for playful, game-like or step-by-step explanations of progress, levels, trial and error; poor for photoreal, delicate or very formal topics.",
+  "look": [
+   "Draw everything on a small pixel buffer (about 256 by 144) and enlarge it five times with smoothing off; every edge is a hard stair step and nothing sits between pixels.",
+   "Use a fixed palette of a few dozen colours grouped in ramps (each material gets 3 to 5 shades from dark to light); no colour outside it.",
+   "Smooth blends are faked: skies are horizontal stripes of flat colour with a thin seam of ordered (Bayer) dither between neighbours; glows and haze dither too.",
+   "Depth comes from layers that scroll at different speeds: far hills or skyline in muted cool colours with a lit rim facing the light, nearer layers darker and richer.",
+   "Sprites are small, with a dark one-pixel outline and a lighter rim on the lit side; stars, windows and sparks are single pixels.",
+   "Menus and dialogs are windows with a dark outer edge, a white border, a grey inner line and a deep blue top-to-bottom gradient fill (dithered), corners slightly clipped.",
+   "Text is a crisp pixel font with a one-pixel dark drop shadow: gold for names and headers, white for body."
+  ],
+  "palette": [
+   {
+    "role": "night sky",
+    "hex": "#1b1240"
+   },
+   {
+    "role": "dusk violet",
+    "hex": "#5f2d7a"
+   },
+   {
+    "role": "rose",
+    "hex": "#e06070"
+   },
+   {
+    "role": "sunset orange",
+    "hex": "#ffab6a"
+   },
+   {
+    "role": "window blue",
+    "hex": "#3550c0"
+   },
+   {
+    "role": "gold",
+    "hex": "#ffd479"
+   },
+   {
+    "role": "text white",
+    "hex": "#f6f6ff"
+   },
+   {
+    "role": "outline",
+    "hex": "#0b0719"
+   }
+  ],
+  "fonts": [
+   "Pixelify Sans",
+   "Jersey 10"
+  ],
+  "finish": [
+   "Hard-pixel upscale with smoothing off, every frame; full strength, it is the medium.",
+   "Palette lock: every drawn colour comes from the fixed palette, and blends happen only through dither; full strength.",
+   "Positions snap to whole low-res pixels and logic advances on a coarse game tick (about ten steps a second), so motion is a little steppy; full.",
+   "Fades go through a handful of discrete brightness levels, never a smooth fade."
+  ],
+  "motion": [
+   "Openings: brightness steps up from black and scenery layers climb up from below one pixel at a time, far layers first.",
+   "Characters walk with a two-frame cycle and bob by one pixel; small items blink.",
+   "Windows snap open by growing in a few steps, then text types out letter by letter, with a bouncing next-arrow once it is done.",
+   "Scene changes use console transitions: the image breaks into big blocks and resolves again, a wavy sideways ripple, or a circle that closes to black and reopens on the next scene.",
+   "Hits get a one-frame bright flash and a short shake."
+  ],
+  "explaining": [
+   "The headline lives in a small menu window in a top corner, like a quest title.",
+   "Labels and numbers sit in windows; counters tick up like a score with leading zeros; stats are segmented bars that fill in steps.",
+   "Arrows are pixel chevrons or a line of marching dots; error paths are red dotted trails.",
+   "Choices or steps are a command menu with a small pointing-hand or triangle cursor that jumps between options.",
+   "Emphasis: big outlined pop-up words (HIT!, MISS!) that rise and fade, sparkles, a level-up style banner.",
+   "Charts are stepped bars or an experience bar filling left to right."
+  ],
+  "sound": [
+   "Square and pulse wave blips for typed text and cursor moves.",
+   "A noise burst with a pitch sweep for transitions.",
+   "A short rising arpeggio for success, a low buzz for a miss.",
+   "A simple looping chiptune bed under each scene."
+  ],
+  "avoid": [
+   "Smooth scaling, anti-aliased edges, sub-pixel motion or blur.",
+   "Colours outside the palette or smooth gradients.",
+   "High-resolution vector type laid over the pixel art.",
+   "Scanline or CRT filters; keep it clean console pixels."
+  ]
+ },
+ {
+  "order": 16,
+  "styleId": "paint-desktop",
+  "name": "Retro Paint Desktop",
+  "category": "Retro desktop",
+  "description": "A chunky-pixel 1990s computer screen: teal wallpaper, grey bevelled windows with navy title bars, and a bitmap paint program where someone doodles the explanation live with crude mouse strokes, bucket fills and typed text boxes.",
+  "suits": "Good for playful, nostalgic walk-throughs of software, computing ideas, step-by-step procedures and everyday tech; a poor fit for solemn subjects, luxury tones or charts that need fine precision.",
+  "look": [
+   "The whole screen is drawn at half resolution and then doubled, so every edge is a hard square pixel step and nothing is smoothed.",
+   "Desktop: a flat teal wallpaper with a few 32-pixel icons (white caption under each, caption turns navy-highlighted when picked) and a grey taskbar along the bottom with a launcher button at the left, task buttons in the middle and a sunken clock tray at the right.",
+   "Windows are light grey slabs with a two-pixel bevel (white and pale grey on the top and left edges, dark grey and black on the bottom and right), a solid navy title strip with a bold white bitmap caption, and three small square caption buttons at the right end.",
+   "The main window is a bitmap paint program: a menu row with one underlined letter per word, a two-column toolbox of square tool buttons (the active one pressed in and filled with a one-pixel checker), a sunken white canvas with a stippled scrollbar, a two-row strip of colour swatches and a status bar showing the pointer's x,y position.",
+   "Marks on the canvas look made by an unsteady hand with a mouse: 1 to 3 pixel aliased strokes that wobble a little and sometimes overshoot their corners, rectangles and ellipses from the shape tools with slightly unequal sides, and stroke ends that do not quite meet.",
+   "Bucket fills are perfectly flat colour that floods to the nearest closed edge, and they leak out through any gap left in an outline; airbrush marks are a loose cloud of single scattered pixels, denser in the middle.",
+   "Text is either the tiny bitmap system face in the window chrome, or larger hand-style lettering typed into the canvas with the text tool, always hard-edged and often sitting on an opaque colour box.",
+   "Dialog boxes are small grey windows with a pixel icon (red circle with white cross for errors, blue speech balloon with an i for information), one or two lines of message and a grey push button whose default state has a black outer ring and a dotted inner focus line.",
+   "The mouse pointer is always on screen and changes with the job: black-edged white arrow, thin crosshair for drawing tools, I-beam for typing, hourglass while busy."
+  ],
+  "palette": [
+   {
+    "role": "wallpaper",
+    "hex": "#0e7c7b"
+   },
+   {
+    "role": "window chrome",
+    "hex": "#c3c3c3"
+   },
+   {
+    "role": "bevel shadow",
+    "hex": "#7d7d7d"
+   },
+   {
+    "role": "title bar",
+    "hex": "#0a1a84"
+   },
+   {
+    "role": "canvas and highlight",
+    "hex": "#fcfcfc"
+   },
+   {
+    "role": "ink and outer edge",
+    "hex": "#0a0a0a"
+   },
+   {
+    "role": "emphasis brush",
+    "hex": "#e8141b"
+   },
+   {
+    "role": "fill accent",
+    "hex": "#f6e43a"
+   }
+  ],
+  "fonts": [
+   "Pixelify Sans",
+   "Gaegu"
+  ],
+  "finish": [
+   "Pixel doubling at full strength: render to a half-size buffer and scale up with nearest-neighbour on every frame; all positions and sizes snap to whole buffer pixels.",
+   "Hard text threshold at full strength: every glyph pixel is fully on or fully off, so even the large hand lettering has jagged stair-step curves.",
+   "Ordered two-by-two dither instead of any tonal blend: used sparingly, only for pressed buttons, the scrollbar track, an active task button and any colour band that needs a transition.",
+   "Pointer drawn last on every frame, above everything, so the screen always feels operated by a person."
+  ],
+  "motion": [
+   "Strokes replay at real mouse-drag speed with the pointer riding the tip; the line grows behind it in pixel steps, and shape tools stretch from one corner to the opposite corner.",
+   "Bucket fills appear whole in a single frame with no easing; airbrush speckle builds up over a fraction of a second while the button is held; the text caret blinks about twice a second.",
+   "Windows open with two or three thin grey outline rectangles racing from the source (an icon or task button) to the final frame, then the full window appears at once; closing runs it in reverse.",
+   "Scene changes are the screen's own: the canvas scrolls sideways with the scrollbar thumb sliding, a property-sheet tab is clicked by the pointer, or a window closes and another zooms open.",
+   "Progress bars fill in separate solid blocks; a frozen dialog dragged across the screen leaves a staircase of stale copies behind it until something repaints.",
+   "Pace is brisk and literal: things pop or snap rather than glide, one change every one to two seconds, with the pointer travelling between jobs in short purposeful moves."
+  ],
+  "explaining": [
+   "Labels are typed into a dashed text box one key at a time, with the I-beam caret blinking at the end; a retyped number is erased with a white box and typed again.",
+   "Arrows are line-tool strokes in black or red with a crude two-stroke V head, or chains of 2-pixel dots with a solid pixel triangle at the end when they live in the window chrome.",
+   "Emphasis: a thick red brush cross slashed over a wrong answer, a red ellipse-tool ring round the key item, and a green hand-drawn tick for the right one.",
+   "Quantities sit in the interface: counters in sunken fields or the status bar, adjustable amounts as horizontal trackbar sliders with tick marks, related items gathered inside etched group boxes with a caption breaking the top edge.",
+   "Charts are drawn by hand on the canvas: pencil axes, a stepped climbing line, bars filled with the bucket; copies of an example pile up as repeated pasted stamps, each slightly offset.",
+   "The takeaway lands as a small message box with an icon, one sentence and an OK button that the pointer clicks."
+  ],
+  "sound": [
+   "Plastic mouse-button clicks, a sharp press and a lighter release, bracketing every drag, with a soft rubbing of the mouse across the desk mat during each stroke.",
+   "Keyboard key taps for each typed character, thinned so fast typing never becomes a buzz; scroll-wheel clicks as the canvas pans.",
+   "A short rising 'bloop' for each bucket fill, a soft hiss for the airbrush, hard-disk head chatter while things copy, and a made-up two-note chime for dialogs with a dull low thunk for errors.",
+   "A very quiet computer fan and mains hum underneath everything."
+  ],
+  "avoid": [
+   "Any anti-aliasing, soft shadows, rounded corners, translucency or smooth gradients; these instantly make it look modern.",
+   "Real product names, logos, flag emblems or recognisable trademark app icons; keep every caption and icon generic.",
+   "Smooth eased motion or motion blur; this medium snaps and pops.",
+   "Neat, perfect vector drawing on the canvas; the charm is that it is clearly painted by hand with a mouse."
+  ]
+ },
+ {
+  "order": 17,
+  "styleId": "bauhaus",
+  "name": "Bauhaus Geometry",
+  "category": "Design movements",
+  "description": "A modernist workshop print from the 1920s: flat red, yellow, blue and black geometric shapes and bar-built lettering on a strict grid, printed on worn cream poster paper with slightly offset colour plates.",
+  "suits": "Strong for systems, structures, processes and design or engineering ideas told with clarity and confidence; weak for soft emotional stories, organic nature subjects or anything that needs photographic realism.",
+  "look": [
+   "Ground is a warm cream poster sheet that darkens toward tan at the edges, with faint paper fibre streaks and a scatter of small soft brown age spots.",
+   "Layout sits on a visible modular grid of thin black rules, laid out asymmetrically with generous empty cream, and often one long diagonal construction rule cutting behind the main figure.",
+   "Every figure is assembled from nothing but circles, squares, half-discs, triangles and straight bars in flat solid colour; shapes have no outlines and simply touch or overlap.",
+   "A very large disc usually sits behind the main subject like a sun or halo, and smaller primitives are stacked on top to make faces, machines or objects.",
+   "Display lettering is lower-case and constructed from the same parts: vertical bars for stems, full rings for bowls, partial arcs for shoulders, all of one stroke weight.",
+   "Running text, tags and numbers use a clean geometric grotesque in bold; reversed words are knocked out to bare paper inside solid colour blocks.",
+   "A short label is often turned 90 degrees and set along a vertical rule at the side of the sheet."
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#f0e6cc"
+   },
+   {
+    "role": "paper edge and age",
+    "hex": "#c4a170"
+   },
+   {
+    "role": "vermilion",
+    "hex": "#d8432b"
+   },
+   {
+    "role": "chrome yellow",
+    "hex": "#f4c02e"
+   },
+   {
+    "role": "ultramarine",
+    "hex": "#24479a"
+   },
+   {
+    "role": "ink black",
+    "hex": "#161514"
+   }
+  ],
+  "fonts": [
+   "Jost",
+   "Archivo Black"
+  ],
+  "finish": [
+   "Colour separation offset, medium: each of the four inks is drawn on its own layer, where a shape in one colour also punches a matching hole in the other three, then the layers are printed with small different nudges (one or two pixels each way) so thin overlap slivers darken and thin paper gaps show.",
+   "Ink mottle, medium-light: ink coverage drops in soft cloudy patches by up to about a fifth, with rare tiny pinholes where paper shows through solid areas.",
+   "Fold creases, light: one vertical and one horizontal crease cross the sheet, each a narrow pale-then-dark band with small paper scuffs along it.",
+   "Grain and edge darkening, light: fine moving grain at a few percent and a gentle warm brown vignette."
+  ],
+  "motion": [
+   "The grid rules draw out first, then shapes drop onto the sheet and settle with a small overshoot, like wooden blocks set down on a table.",
+   "Details stamp on one at a time in quick succession; the bar-built letters are placed individually, each dropping to the baseline.",
+   "The story lives on one long wide sheet; between beats the camera tracks sideways along it to the next panel and comes to a firm stop.",
+   "At the end the camera pulls out until the entire sheet reads as a single diagram.",
+   "During holds only small mechanical movements continue: a dial ratchets round in steps, arcs pulse outward, a token keeps circling a loop."
+  ],
+  "explaining": [
+   "Arrows are a thick black bar ending in a large solid triangle, drawn by the bar extending from its start.",
+   "Labels are solid black rectangles with bold cream text that drop onto whatever they name with a small bounce.",
+   "Numbers are big bold grotesque numerals stamped inside blocks, counting up with a mechanical tick.",
+   "The key moment gets a heavy red ring drawn round it; a wrong result is crossed by two red slabs, a right one by a black tick.",
+   "Steps and loops are shown as stations made of different primitives (circle, then square, then triangle) joined by bar arrows; amounts are columns of stacked primary blocks rising one by one."
+  ],
+  "sound": [
+   "Wooden block knocks with a little body for every shape set down.",
+   "Dry metal taps of type being set for letters, and a crisp numbering-machine clack for counters.",
+   "A large paper sheet sliding across a drafting table for each camera track, that halts against a wooden stop.",
+   "A small soft wooden marimba for right answers, the key number and the closing line."
+  ],
+  "avoid": [
+   "Gradients, drop shadows, rounded corners, outlined shapes or any colour outside the four inks and the paper.",
+   "Decorative serif or script type, ornament or hand-drawn wobble; everything is constructed.",
+   "Crowded or centred-symmetric layouts that lose the open asymmetric grid.",
+   "Clean digital flatness with no print finish; the offset plates and mottle are what make it read as printed."
+  ]
+ },
+ {
+  "order": 18,
+  "styleId": "data-chart",
+  "name": "Editorial Data Chart",
+  "category": "Data",
+  "description": "A quality-newspaper data graphic on pale peach paper: bold serif headline, hairline gridlines, one wine-red series picked out against muted greys, labels set right on the lines and handwritten margin notes.",
+  "suits": "Excellent for numbers, trends, comparisons and evidence-led stories in a calm, credible voice; wrong for playful children's topics, high-energy hype or subjects with no data to show.",
+  "look": [
+   "Flat pale peach paper fills the frame; each panel opens with a thick ink rule across the top that has a short heavier wine block at its left end.",
+   "Above the chart: a tiny wine small-caps section kicker, a bold serif headline, a lighter muted serif subhead under it and a small plain note line on units and dates.",
+   "Horizontal hairline gridlines only, no vertical lines; the zero line is darker and slightly heavier; value labels sit just above each gridline at the left edge, with the unit written on the top label only.",
+   "One highlighted series in wine red with a thicker stroke and a pale wine wash beneath it that fades downward; every other series is a thin warm grey line.",
+   "No legend: each series is named directly at its right end, and the highlight's end point is a hollow ring with its name and latest value set beside it.",
+   "Forecast or uncertain stretches sit under a faint grey shaded band with a small italic label, and the line turns dashed there.",
+   "Annotations are short handwritten notes in ink or muted grey, each joined to its point by a slightly wobbly curved leader ending in a small open arrowhead.",
+   "A hairline above a small-caps source line closes the bottom of the frame."
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#fdeee2"
+   },
+   {
+    "role": "ink",
+    "hex": "#302c2a"
+   },
+   {
+    "role": "muted text",
+    "hex": "#6b645f"
+   },
+   {
+    "role": "gridline",
+    "hex": "#dccdc0"
+   },
+   {
+    "role": "context series",
+    "hex": "#a9a198"
+   },
+   {
+    "role": "highlight",
+    "hex": "#8e1a44"
+   },
+   {
+    "role": "highlight wash",
+    "hex": "#ecc9cf"
+   }
+  ],
+  "fonts": [
+   "Source Serif 4",
+   "Kalam"
+  ],
+  "finish": [
+   "Paper tooth, very light: fine grain at two or three percent that shifts a few times a second so the page feels alive.",
+   "Slow push, light: the camera creeps in by one or two percent across a shot; never faster.",
+   "Live end point, light: during holds one or two thin wine rings expand and fade from the latest value.",
+   "Restraint is the rest of the finish: no textures, glows or shadows beyond these."
+  ],
+  "motion": [
+   "The top rule draws across, then the headline and subhead set line by line, each rising a few pixels as it fades in.",
+   "Gridlines rule across from left to right, bottom line first, in a quick stagger; tick labels fade in after their lines.",
+   "Grey context lines settle in softly, then the highlight line grows from left to right, a small dot leading its tip and the wash filling in behind.",
+   "Each handwritten note writes itself on, left to right, once the drawing line has passed its point, then its leader draws to the target.",
+   "Scene changes are the page scrolling up to the next panel, like an online long-read; the headline docks into a slim sticky header that lists the sections, with the current one in wine and underlined.",
+   "Pace is calm and measured: smooth ease-in-out moves, nothing bounces."
+  ],
+  "explaining": [
+   "Every number and series is labelled directly where it is, never through a legend.",
+   "Counts are shown as waffle grids of small squares, each square a fixed unit, coloured wine for the focus group and grey for the rest.",
+   "Key figures are large serif numerals that count up, with lining figures so digits do not jump.",
+   "Emphasis is a hand-drawn ring that overshoots its start like a marker circle, plus the handwritten note explaining why it matters.",
+   "Processes are a numbered step strip across the top of the panel and small diagrams drawn in the same hairline style, with nodes as small circles and links as thin lines whose darkness shows strength."
+  ],
+  "sound": [
+   "Mouse-wheel notches over a soft, low paper glide when the page scrolls.",
+   "A felt-tip pen stroke whose length matches each handwritten note and leader.",
+   "Small dry type clicks for counter digits, slowing as the number settles, and one rounder, deeper hit for the key figure.",
+   "A very quiet room tone, almost silent, so the hits read."
+  ],
+  "avoid": [
+   "3D charts, heavy gradients, drop shadows, chart borders or boxed legends.",
+   "More than one highlight colour, or saturated rainbow series.",
+   "Cartoon icons, emoji or playful bouncy motion.",
+   "Cluttered labels that overlap; nudge them apart so every label reads cleanly."
+  ]
+ },
+ {
+  "order": 19,
+  "styleId": "kinetic-type",
+  "name": "Kinetic Type",
+  "category": "Type and pattern",
+  "description": "A music-video made of words: huge condensed capitals in one acid-yellow ink on near-black, cropped by the frame edges and slamming in on the beat, with outline echoes, glitch slices and one word filled with a dot-screen picture.",
+  "suits": "Great for punchy, high-energy messages, launches, manifestos and short ideas with a few strong keywords; poor for detailed diagrams, gentle or sensitive topics and anything needing lots of small text.",
+  "look": [
+   "Near-black ground and a single acid-yellow ink; nothing else, every element is either ink or ground.",
+   "Words are huge condensed all-caps, scaled so their ink spans the full frame width or a set box, often cropped by the edges, and stacked so the lines touch with no gap between them.",
+   "Within a stack the treatments contrast: one word solid, one in outline only, one in a lighter weight beside a heavy one.",
+   "One word is stretched unevenly to fill its box and its interior holds a picture made of a 45-degree dot screen (dot size follows brightness), with a thin outline keeping the letters readable.",
+   "Tab blocks: a solid yellow rectangle with black letters knocked out of it, sometimes tilted a few degrees.",
+   "Filled words carry signatures: thin horizontal speed lines cut out of their lower third, and a band sliced out and shoved sideways with short thin rule ticks beside the cut.",
+   "Small captions and labels are bold monospace in inverted tags: yellow box, black text."
+  ],
+  "palette": [
+   {
+    "role": "ground",
+    "hex": "#0e0e0d"
+   },
+   {
+    "role": "ink",
+    "hex": "#e2fb36"
+   },
+   {
+    "role": "echo ink (ink at about a fifth strength)",
+    "hex": "#3a4214"
+   },
+   {
+    "role": "halftone shadow dots",
+    "hex": "#6b7a1e"
+   },
+   {
+    "role": "tag text on ink",
+    "hex": "#0e0e0d"
+   }
+  ],
+  "fonts": [
+   "Big Shoulders Display",
+   "JetBrains Mono"
+  ],
+  "finish": [
+   "Video grain, light: fine moving grain at about four percent over everything.",
+   "Impact shake, medium: on every slam the whole frame jolts a few pixels in a random direction and settles within about a tenth of a second.",
+   "Inversion flash, strong but rare: a single frame where ink and ground swap, only on the two or three biggest hits.",
+   "Strobe echoes, light: faint outline copies of a moving word fan out behind it and fade."
+  ],
+  "motion": [
+   "Everything is locked to a beat grid (about two beats a second): one word or one change lands per beat.",
+   "Words arrive hard: punched in with a two-frame squash then held, whipped in from the side trailing echoes, or wiped up from below for tab blocks.",
+   "The dot-screen picture inside its word develops dot by dot after the word lands.",
+   "Scene changes are a slice-glitch tear (the frame splits into horizontal bands that fly off alternately left and right to reveal the next scene) or a whip-pan where the scene smears off one side with echo copies and the next arrives from the other.",
+   "The opening word stack shrinks into a small corner header that stays for the rest of the piece."
+  ],
+  "explaining": [
+   "The words themselves do the explaining: the key noun of each beat is set huge and the supporting words smaller beside or above it.",
+   "Arrows are heavy straight rules with a solid chevron head, drawn out from their start.",
+   "Labels are small mono tags, yellow box with black text, that fall onto their targets.",
+   "Numbers are giant condensed numerals that count up fast and land with a slam and, for the key one, an inversion flash.",
+   "Charts are solid yellow bars rising one per beat; wrong is a big X of two heavy bars, a loop is a heavy circular arrow."
+  ],
+  "sound": [
+   "A low synth pulse on the beat grid underneath, falling silent at every hard cut.",
+   "A punchy kick with a bright snap for every word slam, with a detuned synth stab added on the key hits.",
+   "A crunchy digital tear for the slice-glitch cut and one fast filtered whoosh for the whip-pan.",
+   "Short filtered blips for counter ticks and rising pitched plucks for chart bars."
+  ],
+  "avoid": [
+   "A third colour, any gradient, soft glows or photographic images outside the dot screen.",
+   "Serif, script or rounded fonts, or lots of small lower-case body text.",
+   "Slow fades and gentle easing; motion should hit and stop.",
+   "Small words floating in empty space; type should fill and crop the frame."
+  ]
+ },
+ {
+  "order": 20,
+  "styleId": "ink-wash",
+  "name": "Ink Wash",
+  "category": "Painterly",
+  "description": "Quiet black-ink brush painting on pale rice paper: a few confident strokes, soft grey washes that bleed outward, lots of empty space and one small red seal.",
+  "suits": "Suits calm, reflective or contemplative topics such as strategy, nature, process and philosophy; poor for dense data, loud product launches or anything needing bright colour coding.",
+  "look": [
+   "Warm off-white paper with faint long fibres and slight cloudy staining; most of the frame is left empty on purpose, and the subject sits off-centre",
+   "Brush strokes swell and thin: a heavy wet press at the start, a tapering tail, with dry-brush gaps where the hair skips over the paper grain at the end",
+   "Washes are watery greys that spread past their stroke with a darker rim where the pool dried, layered two or three deep for mountains, mist and shadow",
+   "Objects are suggested, not outlined: a few strokes imply a hill, a branch, a roof; bands of pale mist cut the scene into near, middle and far",
+   "Ink density is the only depth cue: near things are dark and sharp, far things pale and soft",
+   "One accent only: a small square red stamp with a simple carved glyph, placed in a lower corner or beside a key word",
+   "Lettering is a slim, upright, high-contrast serif in dark ink, set small and widely spaced, sometimes stacked vertically at the edge",
+   "Distinct from Watercolor: no colour mixing and no bright pigments, only black ink in many dilutions"
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#f1ebdc"
+   },
+   {
+    "role": "paper stain",
+    "hex": "#e0d6bd"
+   },
+   {
+    "role": "ink black",
+    "hex": "#16150f"
+   },
+   {
+    "role": "mid wash",
+    "hex": "#6c6a62"
+   },
+   {
+    "role": "pale wash",
+    "hex": "#b9b6a8"
+   },
+   {
+    "role": "seal red",
+    "hex": "#b3261e"
+   }
+  ],
+  "fonts": [
+   "Cormorant Garamond",
+   "Noto Serif JP"
+  ],
+  "finish": [
+   "Paper fibre texture laid over everything, soft and low, so the ink seems to sit in the sheet",
+   "Wash edges get a slight uneven darkening along the outline and a faint grainy blotch inside, moderate strength",
+   "A very light warm vignette at the corners, as if the scroll has aged",
+   "Strokes are drawn with tiny wobble in width, never perfectly smooth"
+  ],
+  "motion": [
+   "Strokes are painted on in real time: the brush travels along the path and the line thickens then thins as it moves",
+   "Washes bloom in slowly, spreading outward from the stroke over a second or two, then settle",
+   "Beats change by fading mist across the frame; the old scene thins to pale grey as the next one emerges",
+   "Pace is slow and unhurried, with long still pauses after each stroke group",
+   "Nothing bounces or snaps; the red seal simply presses down with a quick soft squash and stays"
+  ],
+  "explaining": [
+   "Keys words are written in a few brush characters or a single sweep of the brush, next to their subject, never in boxes",
+   "Arrows are single curved brush sweeps with a ragged dry tail and a small pressed-in head",
+   "Numbers are large, written in dark ink as ordinary lettering, with a pale wash blot behind to anchor them",
+   "Emphasis is a circle drawn in one open loop, or the red seal placed beside the point",
+   "Steps are shown as separate small scenes along a scroll, separated by mist, not as a list"
+  ],
+  "sound": [
+   "Soft dry brush swish matching each stroke, pitch following its speed",
+   "Low muted wooden knock or distant bell tone when a scene arrives",
+   "Small damp thud for the seal press",
+   "Very quiet airy bed, nothing rhythmic"
+  ],
+  "avoid": [
+   "Bright or many colours; anything beyond ink greys and the single red seal",
+   "Hard vector outlines, drop shadows, gradients that look digital",
+   "Crowded frames with no empty paper"
+  ]
+ },
+ {
+  "order": 21,
+  "styleId": "stained-glass",
+  "name": "Stained Glass",
+  "category": "Painterly",
+  "description": "A cathedral window: jewel-coloured glass pieces held by thick dark lead lines, lit from behind so colours glow and light spills onto the floor.",
+  "suits": "Suits grand, ceremonial, historical or symbolic stories and big single ideas; poor for fine detail, small text, precise charts or casual, playful tones.",
+  "look": [
+   "The frame is split into many irregular glass pieces, each filled with one flat jewel colour, separated by thick near-black lead lines with rounded joints",
+   "Pieces carry a mottled hand-made variation: faint swirls, tiny bubbles, streaks and slightly lighter patches where the glass is thinner",
+   "Subjects are drawn in bold simplified shapes, outlined by lead, with fine dark paint hatching inside for faces, folds and feathers",
+   "Pointed arch or round-top frame with a stone border; the scene sits inside it, with a patterned border band of repeating small glass pieces",
+   "Light shines through from behind: colour centres are bright, edges near the lead are deeper, and rays fan outward",
+   "Text sits in a gothic blackletter for headings, in dark paint on a pale glass banner, with a plainer serif for small words",
+   "Distinct from Paper Layers and Bauhaus: shapes interlock with no gaps and no overlap, and everything glows"
+  ],
+  "palette": [
+   {
+    "role": "lead",
+    "hex": "#14110f"
+   },
+   {
+    "role": "ruby",
+    "hex": "#b3192b"
+   },
+   {
+    "role": "sapphire",
+    "hex": "#1f48a8"
+   },
+   {
+    "role": "emerald",
+    "hex": "#1f8a54"
+   },
+   {
+    "role": "amber",
+    "hex": "#e8a317"
+   },
+   {
+    "role": "violet",
+    "hex": "#6a2a9a"
+   },
+   {
+    "role": "pale glass",
+    "hex": "#f1e6c4"
+   },
+   {
+    "role": "stone border",
+    "hex": "#4a443d"
+   }
+  ],
+  "fonts": [
+   "UnifrakturMaguntia",
+   "Cormorant Garamond"
+  ],
+  "finish": [
+   "A bright back-light glow bleeding a little past each piece's lead edge, medium strength",
+   "Soft shafts of coloured light cast diagonally onto a dark stone floor or wall, drifting slowly",
+   "Fine pitted glass texture and tiny streaks over each pane, low strength",
+   "Dark corner falloff so the window feels set in a dim room"
+  ],
+  "motion": [
+   "Lead lines draw on first, growing along their path, then glass pieces fill with colour one at a time from dark to bright",
+   "Pieces may light up in a quick ripple from the centre outward, like sun reaching the window",
+   "Beats change by the window dimming to black then relighting as a new window, or by panes flipping colour",
+   "Pace is stately; slow light drift and gentle shimmer rather than quick moves",
+   "Nothing moves out of its lead cell; objects change by recolouring, not sliding"
+  ],
+  "explaining": [
+   "Labels are lettered on pale glass banners curling across the scene, in dark paint",
+   "Arrows are pointed lead strips or rays of coloured light travelling between panes",
+   "Numbers are set big inside a round glass medallion, framed by a ring of small beads",
+   "Emphasis is a single pane lit far brighter than its neighbours, with a halo of rays",
+   "Steps are separate panels of one tall window, read from bottom to top, each with its own medallion"
+  ],
+  "sound": [
+   "Clear glass chime or crystal ping as each pane lights",
+   "Low sustained choir-like pad or organ-like drone under the whole piece",
+   "Soft tinkle of glass when pieces shift"
+  ],
+  "avoid": [
+   "Thin lines, gradients across several panes, or soft shadows inside a pane",
+   "Pastel or neon colours; only deep jewel tones",
+   "Small body text on busy glass"
+  ]
+ },
+ {
+  "order": 22,
+  "styleId": "folded-paper",
+  "name": "Folded Paper",
+  "category": "Paper and craft",
+  "description": "Crisp low-poly shapes folded from a single sheet of coloured paper: sharp creases, flat facets lit differently, and parts that unfold into one another.",
+  "suits": "Suits transformations, structure, product shape, steps that build on each other and tidy modern topics; poor for organic, messy, emotional or very text-heavy subjects.",
+  "look": [
+   "Everything is made of flat triangles and quadrilaterals meeting at sharp creases, each facet filled with its own tone so the object reads as a folded solid",
+   "Each facet is a slightly lighter or darker version of one base colour, depending on how it faces a light from the upper left",
+   "Thin faint crease lines run along every fold; edges have a hairline highlight on the lit side",
+   "A calm, matte, slightly warm light-grey backdrop with a soft contact shadow under every model, pooling wider as the model lifts",
+   "Subjects are simple animals, boxes, arrows, birds, cranes or abstract gems built from few facets; never rounded",
+   "Occasional flat sheets with a diagonal fold-line and a visible paper grain on both faces, one side a different colour from the other",
+   "Text is clean geometric sans, placed on a flat paper tab or on the backdrop, never on folded facets",
+   "Distinct from Paper Layers: those are flat stacked cutouts, this is faceted folding with a single sheet turning into a form"
+  ],
+  "palette": [
+   {
+    "role": "backdrop",
+    "hex": "#e9e6e0"
+   },
+   {
+    "role": "shadow",
+    "hex": "#b8b3aa"
+   },
+   {
+    "role": "coral",
+    "hex": "#ee5d4b"
+   },
+   {
+    "role": "teal",
+    "hex": "#1f9aa3"
+   },
+   {
+    "role": "mustard",
+    "hex": "#f0b429"
+   },
+   {
+    "role": "ink navy",
+    "hex": "#1f2a44"
+   },
+   {
+    "role": "white paper",
+    "hex": "#fbfaf6"
+   }
+  ],
+  "fonts": [
+   "Space Grotesk",
+   "Space Mono"
+  ],
+  "finish": [
+   "Fine paper fibre grain on every facet, very light",
+   "Soft shadow under each model and a faint darker line inside every crease, medium",
+   "A gentle top-left light wash on the backdrop, nothing dramatic"
+  ],
+  "motion": [
+   "A flat square sheet appears, then folds step by step: corners swing over on their crease lines with a slight perspective squash",
+   "Models rotate a few degrees slowly to show facets catching light",
+   "Beats change by one object folding itself flat then folding into the next shape",
+   "Pace is deliberate and precise, with a small settle at the end of each fold",
+   "Things unfold to reveal text on the inner face"
+  ],
+  "explaining": [
+   "Labels sit on small folded tabs or flags, with a dotted fold line to the subject",
+   "Arrows are folded paper arrows or dashed fold lines with a small curved arrow showing the flip direction",
+   "Numbers are printed large on a flat white card that folds out from behind the model",
+   "Emphasis lifts a facet or whole model higher, with a larger shadow, while the rest stays flat",
+   "Steps follow an origami diagram habit: numbered squares showing each fold in sequence"
+  ],
+  "sound": [
+   "Short crisp paper fold snap or crease with each fold",
+   "Dry soft paper slide when a sheet moves",
+   "Light airy tick as a step lands",
+   "Quiet minimal tone bed, nothing heavy"
+  ],
+  "avoid": [
+   "Curves and smooth gradients; faceted flat tones only",
+   "Heavy outlines, glossy highlights or realistic wood or cloth textures",
+   "Unfolded clutter with no clear light direction"
+  ]
+ },
+ {
+  "order": 23,
+  "styleId": "chalkboard",
+  "name": "Chalkboard Lesson",
+  "category": "Hand-drawn",
+  "description": "White and pastel chalk on a dark green-black classroom board, with smudged ghosts of old writing, dusty lines and a lesson-like, teacherly pace.",
+  "suits": "Suits teaching, step-by-step logic, sums, history and anything that should feel like being taught; weak for glossy products, luxury or very modern tech themes.",
+  "look": [
+   "A dark slate board with a soft cloudy lighter patch where the wiper passed, faint ghost writing barely visible, and a wooden frame with a chalk ledge at the bottom",
+   "Chalk lines are slightly broken, uneven in width and dusty at the edge, with tiny gaps where the stick skipped over the board",
+   "Lettering is a casual teacher's hand in white, with one or two pastel colours for key parts; letters lean slightly and wander off the baseline",
+   "Drawings are quick, simple and a bit wobbly: boxes, stick figures, circles with shaded hatching, rough graphs with axes and tick marks",
+   "Underlines, boxes and circles are drawn twice, with a slight overshoot where the strokes meet",
+   "Fill is done by hatching and scribbled shading in diagonal strokes, never solid",
+   "A small eraser smudge or hand-wipe patch sometimes removes part of the content",
+   "Distinct from Whiteboard: the board is dark, strokes are dusty and soft, and rubbed-out areas leave ghosts"
+  ],
+  "palette": [
+   {
+    "role": "board",
+    "hex": "#1f2b27"
+   },
+   {
+    "role": "board light cloud",
+    "hex": "#33423c"
+   },
+   {
+    "role": "chalk white",
+    "hex": "#f1f0e6"
+   },
+   {
+    "role": "chalk yellow",
+    "hex": "#f3d96b"
+   },
+   {
+    "role": "chalk pink",
+    "hex": "#ee9db1"
+   },
+   {
+    "role": "chalk blue",
+    "hex": "#8cc3e6"
+   },
+   {
+    "role": "frame wood",
+    "hex": "#7a5434"
+   }
+  ],
+  "fonts": [
+   "Kalam",
+   "Patrick Hand"
+  ],
+  "finish": [
+   "Chalk grain: each stroke is multiplied by a rough speckle so it looks dusty and thin in places, strong",
+   "Soft white dust haze around heavy strokes, low strength",
+   "Wipe smears across the board that never fully clean it, medium",
+   "Slight uneven top lighting, brighter in the middle"
+  ],
+  "motion": [
+   "Everything is written live: strokes advance along their path at hand speed, with a tiny pause between letters and a longer pause between lines",
+   "Underlines and circles are drawn after the thing they mark, with a quick stroke",
+   "A hand-wipe sweeps across to clear a section, leaving a soft ghost, before the next lesson step starts",
+   "Pace is classroom steady, never hurried, with beats separated by a short pause",
+   "No bouncing; things only appear by being drawn or fade by being rubbed out"
+  ],
+  "explaining": [
+   "Labels are written next to the thing with a short chalk line, in a different colour from the object",
+   "Arrows are loose hand-drawn lines with a two-stroke head, sometimes curved around a step",
+   "Numbers are written big, with a sum written beneath and underlined twice for the answer",
+   "Emphasis is a circled word, double underline or a coloured chalk star in the margin",
+   "Steps are numbered down the left side like a worked lesson, each crossed off or ticked afterward"
+  ],
+  "sound": [
+   "Scratchy chalk strokes whose pitch follows speed",
+   "Tap of chalk placed on the ledge or a tapping dot",
+   "Soft felt eraser swish for wipes",
+   "Optional small knock for a finished answer"
+  ],
+  "avoid": [
+   "Clean vector lines or perfect typography",
+   "Bright saturated fills; chalk colours are pastel and dusty",
+   "A pure black or clean-looking board"
+  ]
+ },
+ {
+  "order": 24,
+  "styleId": "blueprint",
+  "name": "Blueprint",
+  "category": "Hand-drawn",
+  "description": "A technical drawing in pale lines on deep cyan-blue paper: grid, dimensions, callouts and a title block, drawn like an engineer's plan.",
+  "suits": "Suits systems, architecture, processes, specs and how-it-is-built explanations with a precise, engineered tone; poor for emotional stories or anything that needs colour and warmth.",
+  "look": [
+   "Deep blue sheet with a fine grid of thin pale lines, every fifth line a little stronger, and a thin border frame with tick marks and grid letters on the edges",
+   "All drawing is thin white-blue line work with no fills, except sparse diagonal hatching to show cut surfaces",
+   "Objects are shown as plan and side views, exploded parts and dashed hidden lines, with centre lines made of long-short dashes",
+   "Dimension lines run outside the object with small end arrows, extension ticks and a value written mid-line",
+   "A title block sits in the lower right: boxed cells with sheet name, scale, date and a revision list in tiny capital letters",
+   "Circled numbers tag parts and link to a list in the margin; small notes in slanted capitals point with leader lines",
+   "Text is monospaced uppercase with wide spacing; nothing is rounded or soft",
+   "Distinct from Xray Scan: this is a drafted line plan on paper, not a glowing translucent scan, and has no glow"
+  ],
+  "palette": [
+   {
+    "role": "paper deep",
+    "hex": "#0f3a78"
+   },
+   {
+    "role": "paper light",
+    "hex": "#1a58a6"
+   },
+   {
+    "role": "grid",
+    "hex": "#3f7cc4"
+   },
+   {
+    "role": "line white",
+    "hex": "#e8f1ff"
+   },
+   {
+    "role": "line dim",
+    "hex": "#9fc2ee"
+   },
+   {
+    "role": "accent yellow",
+    "hex": "#ffd95a"
+   }
+  ],
+  "fonts": [
+   "IBM Plex Mono",
+   "Space Mono"
+  ],
+  "finish": [
+   "Subtle paper tone: a slightly lighter centre and darker corners, low",
+   "Fine blueprint-paper mottling and faint fold creases, very low",
+   "A tiny line-weight wobble and a slight bleed on thick lines so they feel printed, low strength"
+  ],
+  "motion": [
+   "Lines are drafted on: each line extends from one end to the other at a steady speed, like a plotter",
+   "Grid and frame appear first, then the object outlines, then dimensions and notes",
+   "Dimension arrows slide out from the middle to the ends, and the value types in",
+   "Beats change by a new sheet sliding in or the current drawing zooming into a detail circle",
+   "Pace is measured and exact with no bounce; short pauses after each group of lines"
+  ],
+  "explaining": [
+   "Labels are small capital notes joined by a leader line with a dot at the target",
+   "Arrows are dimension arrows and flow arrows with simple, narrow closed heads",
+   "Numbers are shown in dimension lines and in a quantity table with ruled rows, set in mono",
+   "Emphasis is the only place to use the yellow: a bracket or a revision cloud of scalloped arcs around a part",
+   "Steps are numbered sheets or numbered circle tags that follow an assembly order"
+  ],
+  "sound": [
+   "Fast thin ticking as lines are drawn, like a plotter pen",
+   "Short digital tick or type blip for numbers and notes",
+   "Low soft hum bed, nothing melodic",
+   "A small rubber-stamp thump for approved or final marks"
+  ],
+  "avoid": [
+   "Filled colour areas, shadows or glows",
+   "Rounded casual handwriting",
+   "More than one accent colour"
+  ]
+ },
+ {
+  "order": 25,
+  "styleId": "notebook-doodle",
+  "name": "Notebook Doodle",
+  "category": "Hand-drawn",
+  "description": "Blue ballpoint pen scribbled on ruled school paper: wobbly pressure-varied lines, dense cross-hatched shading and fat bubble letters, with a red pen for corrections.",
+  "suits": "Good for friendly, casual explanations of ideas, processes and comparisons, told like a clever student's margin notes; poor for polished corporate, luxury or very serious subjects.",
+  "look": [
+   "Page is off-white lined paper with pale blue horizontal rules, a single faint red margin line down the left, and a few punched holes or a ragged spiral edge; the whole scene is one long page the view slides along",
+   "Everything is drawn with one blue ballpoint line: slightly shaky, thicker where the pen presses and thinner on quick flicks, with a small dark blob where each stroke begins",
+   "Shadows and darks are built from layers of thin parallel hatching, then a second set at a crossing angle; the denser the hatching, the darker the area, with no filled grey",
+   "Headings are fat bubble letters: hollow outlined letters with a hatched shadow offset down and right, sometimes with tiny stars or lines beside them",
+   "Boxes and labels are hand-ruled rectangles with wobbly corners and a hatched drop shadow; body text is neat but uneven joined-up handwriting in blue",
+   "Margins and gaps fill with compulsive little doodles (spirals, stars, zigzags, tiny faces) that get traced over several times until the line looks dark and furry",
+   "A red pen is used only for judgment: ticks, crosses, circles and underlines; a second faint pencil grey may be used for a rough first sketch under the ink"
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#f6f3e8"
+   },
+   {
+    "role": "rule line",
+    "hex": "#b9d3e8"
+   },
+   {
+    "role": "margin line",
+    "hex": "#e29a9a"
+   },
+   {
+    "role": "ballpoint blue",
+    "hex": "#1f3fa8"
+   },
+   {
+    "role": "deep ink blue",
+    "hex": "#0f1f66"
+   },
+   {
+    "role": "red pen",
+    "hex": "#d6332c"
+   },
+   {
+    "role": "pencil grey",
+    "hex": "#8a8a8a"
+   }
+  ],
+  "fonts": [
+   "Gloria Hallelujah",
+   "Fredoka"
+  ],
+  "finish": [
+   "Paper grain: fine warm speckle and slight fibre across the page, light (about 5 percent)",
+   "Faint uneven shading toward the page edges and a soft shadow in the spiral or fold area, subtle",
+   "Ink wobble: every line is displaced by a tiny low-frequency jitter so no stroke is perfectly straight",
+   "A slight embossed groove look on a few heavy strokes where the pen pressed through, very subtle"
+  ],
+  "motion": [
+   "Lines are drawn on stroke by stroke in the order a hand would make them, the pen tip always at the end of the visible line",
+   "Shading arrives in passes: first an outline, then one hatch direction, then the crossing direction, each pass taking a beat",
+   "The view scrolls along the page like a hand moving the notebook, easing to rest on each new piece of work",
+   "New topics start further down or on a turned page; old doodles stay behind as a record",
+   "Pace is brisk but scribbly, with tiny pauses where the pen would lift"
+  ],
+  "explaining": [
+   "Labels are written beside the thing with a short wobbly leader line, or inside a ruled box with a hatched shadow",
+   "Arrows are hand-drawn curved lines with a two-stroke open head, drawn on in the direction of flow",
+   "Numbers are written large as bubble numerals; a changed number is struck through in red and rewritten beside it",
+   "Wrong guesses get a red cross and a red correction; right answers get a tick and an underline",
+   "Emphasis is a loose double circle in red pen, or heavy underlining with a few radiating tick marks",
+   "Steps are numbered down the page like a worked exercise"
+  ],
+  "sound": [
+   "Scratchy pen on paper while any line draws, rising in pitch and length with the stroke",
+   "Dry soft thud for a box landing and a quick click for the pen tap",
+   "A short paper rustle on page scrolls and turns",
+   "A bright little tick chime on a correct answer, a flat low scrape on a red cross"
+  ],
+  "avoid": [
+   "Clean digital vector lines or perfectly straight rules and circles",
+   "Fills of flat colour, gradients or any colour beyond blue, red and a trace of grey",
+   "Fonts that look typeset instead of handwritten, outside the bubble headings"
+  ]
+ },
+ {
+  "order": 26,
+  "styleId": "noir",
+  "name": "Noir",
+  "category": "Light and imaging",
+  "description": "A black-and-white forties crime-picture look: hard slashes of light and deep shadow, heavy film grain, and captions and stamps styled like an old newsreel.",
+  "suits": "Good for mysteries, investigations, risk, money, security and any story told as a case being cracked; poor for cheerful, soft or colourful topics.",
+  "look": [
+   "Pure monochrome from near-black to warm bright white, with very deep shadows covering most of the frame and a few hard, bright shapes of light",
+   "Light arrives as diagonal bars (as through window blinds) cast across walls and subjects, with crisp edges and slightly tilted angles that sway very slowly",
+   "Subjects are mostly silhouettes or half-lit forms, edged by a thin bright rim where a light source sits behind them",
+   "Hanging haze or smoke drifts through the beams, visible only where light catches it",
+   "Scene changes use film language: a closing iris, a wipe, a clock sweep, or a spinning newspaper front page that lands with a headline",
+   "Labels look like old paper placards and typewriter slips: off-white card, black type, thin double border, sometimes a stamped case number",
+   "Big titles are tall condensed capitals in off-white, with a faint glow; supporting text is typewriter type"
+  ],
+  "palette": [
+   {
+    "role": "shadow black",
+    "hex": "#050505"
+   },
+   {
+    "role": "charcoal",
+    "hex": "#1c1c1e"
+   },
+   {
+    "role": "mid grey",
+    "hex": "#6b6b6b"
+   },
+   {
+    "role": "light grey",
+    "hex": "#bdbab2"
+   },
+   {
+    "role": "bright white",
+    "hex": "#f2efe6"
+   },
+   {
+    "role": "stamp red (rare, greyed)",
+    "hex": "#8c1c1c"
+   }
+  ],
+  "fonts": [
+   "Oswald",
+   "Special Elite"
+  ],
+  "finish": [
+   "Heavy film grain on every frame, re-rolled each frame, strong (about 15 percent)",
+   "Gate weave: the whole picture drifts a pixel or two and rotates a hair, plus brightness flicker like a projector, moderate",
+   "Dust specks, hairs and thin vertical scratches that appear for a frame or two, light but regular",
+   "Dark vignette pulling the corners nearly black, strong",
+   "Slight softness and glow on bright areas, as if shot on old stock"
+  ],
+  "motion": [
+   "Bars of light drift and sway slowly, and the haze curls upward",
+   "Elements fade up out of darkness, brightest parts first, rather than popping on",
+   "Titles and captions arrive word by word with a small flicker",
+   "Beats are joined by iris, wipe and clock-sweep transitions; headlines spin in for topic changes",
+   "Camera moves are slow pushes in with a faint handheld tremble"
+  ],
+  "explaining": [
+   "Labels are typed on placards that slide in and rest slightly crooked, like case-file or booking cards",
+   "Arrows are plain bright white newsreel arrows drawn on with a thin steady line",
+   "Numbers roll on a mechanical counter, digits ticking like a cash register or odometer",
+   "For emphasis an inked stamp thumps onto the frame at a slant, and the whole picture jolts slightly",
+   "Steps appear as a montage of short headline cards, each with a brief title and one line"
+  ],
+  "sound": [
+   "Low warm room tone with a faint projector whirr under everything",
+   "Typewriter keys while text is typed",
+   "Heavy thud for a stamp, with a short dry reverb",
+   "Soft mechanical ticks for a rolling counter; a muted brass sting for a reveal"
+  ],
+  "avoid": [
+   "Colour, or soft evenly lit scenes with no hard shadow",
+   "Clean digital sharpness with no grain or weave",
+   "Cartoon shapes or rounded friendly fonts",
+   "Confusing with Shadow Theatre: here it is photographic light and shade on forms, not flat cut-out silhouettes on a lit screen"
+  ]
+ },
+ {
+  "order": 27,
+  "styleId": "neon-sign",
+  "name": "Neon Sign",
+  "category": "Light and imaging",
+  "description": "Glowing bent-glass neon tubes on a dark wet-night brick wall, with coloured light spilling over the bricks and smearing in puddles below.",
+  "suits": "Good for nightlife, retail, tech, music and punchy lists of ideas; poor for daylight, quiet or text-heavy technical material.",
+  "look": [
+   "Dark brick wall in near-black red-brown with visible courses of bricks and mortar lines, lit only by the signs",
+   "Every drawn thing is a single continuous glass tube: bright white-hot core line, a tinted colour band around it, then a wide soft halo",
+   "Letters are bent in a thin single-line script or rounded sans, with unlit tube sections painted out in dull dark grey where the glass runs behind",
+   "Small metal clips, brackets and end caps hold each tube to the wall, with a short cable running off",
+   "Coloured light washes across nearby bricks and pools in a wet pavement strip at the bottom, with a blurred, rippling mirror image of the signs",
+   "Sign backing plates or frames are matt black metal with a thin lit outline tube",
+   "Pink, cyan, amber and a warning red are the tube colours; never more than three lit at once"
+  ],
+  "palette": [
+   {
+    "role": "brick night",
+    "hex": "#1a0f14"
+   },
+   {
+    "role": "mortar dark",
+    "hex": "#2c1c22"
+   },
+   {
+    "role": "hot pink",
+    "hex": "#ff3d9a"
+   },
+   {
+    "role": "cyan",
+    "hex": "#35e6ff"
+   },
+   {
+    "role": "amber",
+    "hex": "#ffb347"
+   },
+   {
+    "role": "alert red",
+    "hex": "#ff2a2a"
+   },
+   {
+    "role": "tube core white",
+    "hex": "#fff8f0"
+   }
+  ],
+  "fonts": [
+   "Poiret One",
+   "Gloria Hallelujah"
+  ],
+  "finish": [
+   "Additive glow: each tube is blurred twice at different widths and added over the wall, strong",
+   "Light wash on bricks: soft coloured gradient following each sign, medium",
+   "Wet reflection: a flipped, blurred, rippled copy below the horizon line, faded, with ripples jittering as drops land",
+   "Fine grain and a light vignette, subtle",
+   "Slow flicker: a tiny brightness hum on all tubes, with one or two letters flickering harder"
+  ],
+  "motion": [
+   "Signs light up tube by tube and letter by letter with a stuttering buzz: dark, a weak flash, dark, then full light",
+   "One letter keeps failing and flickering through the whole scene",
+   "The view whip-pans sideways along the wall to the next sign, with a quick blur, and settles with a slight overshoot",
+   "Drops fall into the puddle and send rings through the reflection",
+   "Pace is rhythmic, with each beat being a new sign"
+  ],
+  "explaining": [
+   "Each point gets its own sign on the wall; labels are neon words, short and lowercase or capitals",
+   "Arrows are chains of short tube segments that light one after another toward the target, like chase bulbs",
+   "Numbers are neon digits; when a value changes the old digits snap dark and new ones buzz on",
+   "Emphasis is a red tube that blinks, ringed by a lit circle or burst of rays",
+   "Comparisons are two signs in different colours side by side"
+  ],
+  "sound": [
+   "Low electrical hum bed, with a rise in loudness when more tubes are on",
+   "Sharp crackle and buzz as each tube ignites, with a short zap",
+   "Soft rain drips and splashes on the puddle",
+   "Relay clack for a sign switching off, bright chime for a resolve"
+  ],
+  "avoid": [
+   "Solid filled letters or flat daylight colours",
+   "Glow with no white core, or a halo so wide that the tube shape is lost",
+   "Confusing with Neon Circuit: here it is physical glass on brick in a wet street, not a digital grid and traces"
+  ]
+ },
+ {
+  "order": 28,
+  "styleId": "manga",
+  "name": "Manga Panel",
+  "category": "Illustration",
+  "description": "A black-and-white Japanese comic page: slanted panels, brush-ink lines, burst lines for impact, screentone dots and bold sound-effect lettering.",
+  "suits": "Good for dramatic cause and effect, challenges, power-ups and energetic how-it-works stories; poor for calm reference material and dense text.",
+  "look": [
+   "White page with thick black panel borders cut at slanted angles and separated by even white gutters; panels sometimes overlap or burst past their frame",
+   "Line art is brush ink: tapered at both ends, thick on shadow sides, hair-thin for fine detail, with confident contours",
+   "Tone comes from fine screentone: regular dot grids of different density laid in flat areas and gradients, plus solid black fills for deep shadow",
+   "Focus lines: dense black strokes radiating from or converging on a point, with white gaps, behind important moments or speed",
+   "Sound-effect words are huge, jagged, hand-cut letters (in Japanese-style kana or bold Latin) with a thick white outline knocked out around them, placed across panel edges",
+   "Speech balloons are hand-drawn white ovals with a small tail; narration sits in rectangular boxes with square corners",
+   "Small emotion marks (sweat drops, sparks, cross-shaped veins) accent reactions"
+  ],
+  "palette": [
+   {
+    "role": "paper white",
+    "hex": "#fbfbf8"
+   },
+   {
+    "role": "ink black",
+    "hex": "#0d0d0f"
+   },
+   {
+    "role": "tone grey",
+    "hex": "#8e8e92"
+   },
+   {
+    "role": "light tone",
+    "hex": "#d7d7da"
+   },
+   {
+    "role": "accent red (optional spot)",
+    "hex": "#d9322b"
+   }
+  ],
+  "fonts": [
+   "Patrick Hand",
+   "Archivo Black"
+  ],
+  "finish": [
+   "Screentone dot screens that stay fixed to the page while shapes move over them, medium",
+   "Slight paper grain and off-white page tint, subtle",
+   "Ink edge roughness: a tiny wobble on lines, light",
+   "Brief high-contrast flash, black or white, on impact beats"
+  ],
+  "motion": [
+   "Panels drop in one or two at a time with a quick zoom, and the whole page shakes a little as each lands",
+   "Focus lines are redrawn with different random angles every couple of frames so they seem to boil",
+   "Sound-effect letters tremble in place and pop in oversized then settle",
+   "Page turns slide or flip to a fresh page for a new topic",
+   "Pace is punchy, with a held still on the big beat"
+  ],
+  "explaining": [
+   "Steps are panels in reading order, right to left in spirit but kept readable with big numbers in the corners",
+   "Arrows are heavy outlined shapes with a white inner stroke, thick and bold",
+   "Numbers count up inside narration boxes, large and square",
+   "Cause and effect are shown by a sound-effect word crossing between two panels",
+   "The key moment is a full-width panel with focus lines and a big black-and-white contrast"
+  ],
+  "sound": [
+   "Whoosh and thump for a panel slamming in",
+   "Drum rolls and low rumbles for rumble lettering",
+   "Bell ding or chirp for a sound-effect word",
+   "Sharp paper snap for a page turn; short rising synth for a power-up"
+  ],
+  "avoid": [
+   "Colour fills or gradients that are smooth instead of dotted",
+   "Even, uniform line weight like a technical drawing",
+   "Rectangular panels all the same size in a plain grid",
+   "Confusing with Halftone Comic: here it is monochrome, brush-inked and read as a page of panels, not Western pop dots in colour"
+  ]
+ },
+ {
+  "order": 29,
+  "styleId": "sticky-notes",
+  "name": "Sticky Notes",
+  "category": "Illustration",
+  "description": "A cork board full of paper sticky notes, index cards, pins and red string, written on by hand in felt-tip with quick sketches: a brainstorm come to life.",
+  "suits": "Good for planning, brainstorms, workflows, comparisons and mapping how ideas connect; poor for realistic scenes or anything needing a single detailed drawing.",
+  "look": [
+   "Background is warm brown cork board with a speckled fine texture, a few old pinholes and a wooden frame visible at the edges of the view",
+   "Notes are small squares of pastel yellow, pink, mint, blue and orange, with a slightly darker glued strip across the top, curled lower corners and a soft shadow beneath",
+   "Notes are stuck at slightly different tilts, overlapping like a real wall, with a few larger index cards pinned or taped on",
+   "Writing is thick marker in black or dark blue, hand-lettered, with uneven baselines; titles in chunky marker capitals",
+   "Round push-pins in red, blue and yellow have a small highlight and a short cast shadow",
+   "Red string runs taut from pin to pin between linked notes, slightly sagging",
+   "Hand-drawn doodles beside notes: underlines, stars, tiny arrows, circles"
+  ],
+  "palette": [
+   {
+    "role": "cork",
+    "hex": "#b98a58"
+   },
+   {
+    "role": "cork dark",
+    "hex": "#8a6238"
+   },
+   {
+    "role": "note yellow",
+    "hex": "#ffe66b"
+   },
+   {
+    "role": "note pink",
+    "hex": "#ff9fc4"
+   },
+   {
+    "role": "note mint",
+    "hex": "#a6ebc2"
+   },
+   {
+    "role": "note blue",
+    "hex": "#9fd0ff"
+   },
+   {
+    "role": "marker ink",
+    "hex": "#1d2330"
+   },
+   {
+    "role": "string red",
+    "hex": "#d02f2f"
+   }
+  ],
+  "fonts": [
+   "Caveat",
+   "Permanent Marker"
+  ],
+  "finish": [
+   "Cork speckle and grain across the board, medium",
+   "Soft contact shadows under notes and pins, offset down and right, medium",
+   "A gentle spotlight falloff, darker toward the corners, subtle",
+   "Slight paper texture and fold highlights on notes, light"
+  ],
+  "motion": [
+   "Each note slaps onto the board from slightly above and larger, shrinking with a small bounce and a settle tilt",
+   "String unspools from one pin and pulls tight to the next one with a small bounce",
+   "The view glides across the board like a camera panning a wall, easing to rest on each cluster",
+   "Notes can be peeled off and replaced to show a change, the old one flicking away",
+   "Pace is quick and playful"
+  ],
+  "explaining": [
+   "Each idea is one note; headings are on bigger index cards with tape",
+   "Relationships are red string between pins; direction is shown by a marker arrow drawn beside the string",
+   "Numbers are written large on a note; a changed number is crossed out with marker and the new one written below",
+   "Emphasis is a red marker circle drawn around a phrase or a note, or a star badge",
+   "Groups are shown by clusters of the same note colour, labelled with a title card"
+  ],
+  "sound": [
+   "Soft paper slap with a faint stick for each note landing",
+   "Tiny pin pop for a push-pin",
+   "Thin stretching twang for string pulled tight",
+   "Squeak of marker on paper while writing or circling"
+  ],
+  "avoid": [
+   "Perfect grid layouts with no tilt or overlap",
+   "Notes without shadows, so they look painted on",
+   "Typed, clean fonts instead of handwriting",
+   "Confusing with Whiteboard: here the content lives on separate colored paper pieces on cork, not drawn straight onto a white wall"
+  ]
+ },
+ {
+  "order": 30,
+  "styleId": "riso",
+  "name": "Riso Print",
+  "category": "Print",
+  "description": "A stencil-duplicator print on cream paper: a few loud fluorescent inks laid down one layer at a time, slightly off from each other, with grainy fills and overlaps that mix into new colours.",
+  "suits": "Good for zines, community, creative and youth-minded topics with a playful, do-it-yourself tone; poor for anything that needs fine detail, strict precision or a corporate feel.",
+  "look": [
+   "Paper is warm cream with faint fibres and tiny specks; nothing is pure white or pure black",
+   "Only three or four ink colours exist; every shape is one flat ink or an overlap of two, and overlaps darken into a third colour as if the inks were transparent",
+   "Each ink layer is shifted a few pixels from the others, so outlines show a thin coloured gap or a doubled fringe on one side",
+   "Solid areas are uneven: speckled, patchy, with pinholes and a faint roller streak running down the sheet",
+   "Mid-tones are made of coarse dot screens or rough stipple in a single ink, never smooth gradients",
+   "Shapes are chunky, cut-paper simple: blobs, thick-outlined icons, wobbly circles, bold stripes",
+   "Headlines are huge and heavy, two inks overlapping inside the letters; small text is a plain typewriter-like face in dark blue ink",
+   "Black is replaced by a deep blue-violet; there is no true black anywhere"
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#f3ead7"
+   },
+   {
+    "role": "fluoro pink",
+    "hex": "#ff4f9a"
+   },
+   {
+    "role": "riso blue",
+    "hex": "#2f6fe0"
+   },
+   {
+    "role": "sun yellow",
+    "hex": "#ffd23a"
+   },
+   {
+    "role": "overlap violet",
+    "hex": "#5a3fa8"
+   },
+   {
+    "role": "overlap green",
+    "hex": "#1f9d6b"
+   },
+   {
+    "role": "dark ink",
+    "hex": "#26225a"
+   }
+  ],
+  "fonts": [
+   "Rubik Mono One",
+   "Space Mono"
+  ],
+  "finish": [
+   "Paper grain and speckle over the whole frame, moderate",
+   "Per-ink offset: each colour layer nudged a different direction, clearly visible but under the width of a letter stroke",
+   "Multiply blending between layers so overlaps are always darker than either ink",
+   "Ink noise inside solids: scattered pale holes and a light roller streak, mild to moderate",
+   "Optional slight reduction of saturation at the edges where the ink thins, light"
+  ],
+  "motion": [
+   "A new scene arrives as separate colour passes: one ink slides in from above, then the next, then the last, each landing a hair out of place",
+   "Leaving a scene reverses it: the layers slide off one at a time instead of fading",
+   "Held shots shimmer in a slow stop-motion boil, redrawing the grain and the layer offsets a few times per second",
+   "Objects move in small hops, like cut-outs nudged by hand, not smooth glides",
+   "Pace is brisk and bouncy, with quick settles"
+  ],
+  "explaining": [
+   "Labels are dark-ink text on small flat colour tags, sometimes underlined with a rough scribble",
+   "Arrows are thick, dotted or dashed in blue for flow, in pink for problems",
+   "Emphasis is a hand-drawn loose circle in a second ink around the item",
+   "Numbers are set huge in two overlapping inks so the figure itself shows the misregistration",
+   "Charts are chunky flat bars in one ink with a second ink for the highlighted bar; no gridlines, just one baseline"
+  ],
+  "sound": [
+   "A dry mechanical drum roll and thump as each ink layer lands",
+   "Short paper rustle and a soft stamp for tags appearing",
+   "Quick rubbery blips for counters"
+  ],
+  "avoid": [
+   "Smooth digital gradients, drop shadows or glows",
+   "Perfect alignment of the colour layers",
+   "More than four inks or any true black",
+   "Halftone dots in comic-book rows: here the grain is rough and irregular, not a tidy screen"
+  ]
+ },
+ {
+  "order": 31,
+  "styleId": "newsprint",
+  "name": "Newsprint",
+  "category": "Print",
+  "description": "An old broadsheet front page on yellowed pulp: a gothic masthead, tall bold headlines, packed justified columns and a coarse dot-screen photo, with thin uneven ink.",
+  "suits": "Good for history, politics, business, science and any story told as breaking news or a report; poor for soft, emotional or high-tech product topics.",
+  "look": [
+   "Paper is dull cream-yellow, darker near the folds and edges, with a faint ghost of the reverse side's print showing through",
+   "Ink is a warm near-black that is a little thin and uneven, letters slightly fuzzy on the edges",
+   "A nameplate in gothic lettering sits at the top between thin double rules, with a date line and small boxed notes beside it",
+   "Body text is in narrow columns, justified, set in a tight serif so small that it reads as grey texture; thin vertical rules divide the columns",
+   "Headlines are tall, condensed and black, stacked in decks of decreasing size, with a thin rule above and below",
+   "Pictures are coarse dot-screen reproductions, high contrast with no real greys, framed by a hairline and a small italic caption",
+   "Boxed sidebars, ruled tables and small line diagrams fill the gaps, all in the same single ink"
+  ],
+  "palette": [
+   {
+    "role": "pulp paper",
+    "hex": "#e6dcb8"
+   },
+   {
+    "role": "aged edge",
+    "hex": "#cbb98a"
+   },
+   {
+    "role": "newsprint ink",
+    "hex": "#23201b"
+   },
+   {
+    "role": "faded ink",
+    "hex": "#5b554a"
+   },
+   {
+    "role": "crayon red",
+    "hex": "#c4352b"
+   },
+   {
+    "role": "show-through",
+    "hex": "#b9ad8a"
+   }
+  ],
+  "fonts": [
+   "UnifrakturCook",
+   "Playfair Display",
+   "Oswald"
+  ],
+  "finish": [
+   "Yellowing and fold darkening: an uneven warm stain, strongest at the edges and along one vertical and one horizontal crease, moderate",
+   "Paper fibre and ink-fleck noise over everything, moderate",
+   "Show-through: a mirrored, faint copy of text from behind at very low strength",
+   "Slight ink spread that softens letter edges, light",
+   "A light vignette so the sheet feels held in a pool of light"
+  ],
+  "motion": [
+   "The page spins up out of darkness, growing as it turns, and lands flat across the whole frame with a thud",
+   "Scene changes happen as a page turn or a cut to another page of the same paper",
+   "Within a page the camera creeps slowly across columns toward the item being discussed",
+   "Items are never animated into place; only the camera, a page flip and a red ring moving to new emphasis are allowed",
+   "Pace is steady and measured, like reading"
+  ],
+  "explaining": [
+   "Each idea is a story: a headline states the claim, a short deck line explains it, one column of text backs it up",
+   "Arrows are plain ruled lines with small solid heads, as in a newspaper diagram, with numbered keys",
+   "To stress a point, someone has ringed or underlined it by hand in red wax crayon, on top of the printed ink",
+   "Numbers appear in a by-the-numbers box in a heavy condensed face, each over a tiny caption",
+   "Charts are simple one-ink bars or lines with ruled borders and tiny italic notes"
+  ],
+  "sound": [
+   "A rotary whoosh and a flat slap as the page lands",
+   "Paper turn and crisp rustle for page flips",
+   "A dry pencil scratch for the red ring"
+  ],
+  "avoid": [
+   "Colour other than the red pencil and paper tones",
+   "Clean white paper or crisp digital type",
+   "Smooth photographs: pictures must be dot-screened",
+   "Fonts that feel modern or rounded"
+  ]
+ },
+ {
+  "order": 32,
+  "styleId": "isometric",
+  "name": "Isometric Diorama",
+  "category": "Dimensional",
+  "description": "A tidy miniature world seen from a fixed diagonal angle: buildings, machines and little people on a floating tile, in soft pastel faces with one bright accent.",
+  "suits": "Good for systems, workflows, cities, logistics and software architecture where parts sit in a place; poor for abstract feelings or for topics with no physical layout.",
+  "look": [
+   "Everything sits on a thick floating slab in true diagonal projection: vertical edges stay upright, the other two edge directions run at the same tilt",
+   "Every box has three flat faces, a light top, a mid left side and a darker right side, with no gradients on the faces",
+   "Colours are soft pastels from a small set, with one saturated accent reserved for the thing that matters",
+   "Objects are simple modular blocks: low buildings with strip windows, cylinder tanks, racks, belts, stairs, small trees as stacked cones",
+   "Tiny people and vehicles give scale; they are faceless blobs with a head and a body",
+   "Long, soft, pale shadows fall in one direction across the tile",
+   "Thin white edge highlights catch the top corners of blocks; there are no black outlines",
+   "The slab is sliced to show a cross-section of earth or floor below, and empty space around it is a quiet tint"
+  ],
+  "palette": [
+   {
+    "role": "backdrop",
+    "hex": "#eaf1f6"
+   },
+   {
+    "role": "top face",
+    "hex": "#f7f3ea"
+   },
+   {
+    "role": "left face",
+    "hex": "#cdd9e6"
+   },
+   {
+    "role": "right face",
+    "hex": "#a9bbd0"
+   },
+   {
+    "role": "mint",
+    "hex": "#9fd8c2"
+   },
+   {
+    "role": "butter",
+    "hex": "#f5de9a"
+   },
+   {
+    "role": "accent coral",
+    "hex": "#f26b5b"
+   },
+   {
+    "role": "shadow",
+    "hex": "#c3cfdb"
+   }
+  ],
+  "fonts": [
+   "Nunito",
+   "DM Sans"
+  ],
+  "finish": [
+   "Soft long shadows cast on the slab at low to moderate strength",
+   "A faint ambient dimming of lower faces where blocks touch, light",
+   "Very gentle overall tonal polish, no grain",
+   "A gentle drop shadow under the whole slab onto the backdrop, moderate"
+  ],
+  "motion": [
+   "The slab rises into frame, then blocks pop up from the floor one by one with a little springy overshoot",
+   "Small things stay alive: lights blink, fans turn, tiny people stroll along set paths, boxes ride belts",
+   "Moves between beats are slow slides of the camera across the tile, never a change of angle",
+   "Pieces leave by sinking back into the slab",
+   "Pace is calm and tidy, with a short bounce on each arrival"
+  ],
+  "explaining": [
+   "Labels are white rounded tags pinned to objects by a short stem, set in clean rounded sans",
+   "Arrows are dashed paths lying on the ground plane that follow the projection angle and bend at right angles",
+   "Emphasis is the accent colour on one object plus a gentle pulse ring on the floor around it",
+   "Numbers sit on a small billboard or sign standing on the tile and count up",
+   "Charts are built as real towers of blocks on the slab, the highest one carrying the accent"
+  ],
+  "sound": [
+   "Soft wooden pops as blocks rise",
+   "Light mechanical hums and clicks for belts and fans",
+   "A bell-like chime for results"
+  ],
+  "avoid": [
+   "Perspective vanishing points or tilted angles that break the projection",
+   "Gradient shading or black outlines on faces",
+   "Chunky cubes made of tiny cubes (that is a different style, Voxel Blocks)",
+   "Dense, realistic textures"
+  ]
+ },
+ {
+  "order": 33,
+  "styleId": "low-poly",
+  "name": "Low Poly",
+  "category": "Dimensional",
+  "description": "A landscape made of flat triangles, each shaded a single colour, fading into haze toward a dawn sky, with angular trees, crystals and tags.",
+  "suits": "Good for journeys, growth, nature, exploration and big-picture stories with a hopeful tone; poor for dense detail, small text-heavy tables or serious data-heavy subjects.",
+  "look": [
+   "All surfaces are made of triangles; each triangle is one flat colour, so facets show clearly with no smoothing",
+   "Terrain is rolling hills and a ridge, with a triangulated river or lake that reflects the sky in lighter flat tones",
+   "Light comes from one low direction, so facets facing it are warm and light, away from it are cool and dark",
+   "Distance fades into pale haze: far hills lose contrast and take the sky colour, layer after layer",
+   "Trees are stacked cones or pyramids, rocks and crystals are jagged few-sided gems",
+   "Sky is a smooth soft gradient from peach at the horizon to violet-blue above, the only smooth thing in the frame",
+   "Text lives on cut-corner tags and ribbons with angled ends, not rounded boxes",
+   "Floating objects drift slightly above the ground with a dark triangle shadow below"
+  ],
+  "palette": [
+   {
+    "role": "sky top",
+    "hex": "#5b5fb0"
+   },
+   {
+    "role": "horizon peach",
+    "hex": "#ffc29b"
+   },
+   {
+    "role": "haze",
+    "hex": "#e9d5e6"
+   },
+   {
+    "role": "hill light",
+    "hex": "#79c3a0"
+   },
+   {
+    "role": "hill shade",
+    "hex": "#2f7a78"
+   },
+   {
+    "role": "rock",
+    "hex": "#7d6f93"
+   },
+   {
+    "role": "warm light",
+    "hex": "#ffe08a"
+   },
+   {
+    "role": "accent",
+    "hex": "#ff6f61"
+   }
+  ],
+  "fonts": [
+   "Space Grotesk",
+   "Exo 2"
+  ],
+  "finish": [
+   "Depth fog that blends distant facets into the sky colour, moderate to strong with distance",
+   "Soft vignette toward the corners, light",
+   "A faint warm glow at the sun side of the horizon, light",
+   "No grain or texture: the flatness of each facet must stay clean"
+  ],
+  "motion": [
+   "Facets flip or rise into place in a wave that starts close to the viewer and travels back towards the far hills",
+   "Trees and objects pop up with a small bounce once the ground has formed",
+   "The camera glides forward over the land, with slow parallax between near and far hills",
+   "Objects leave by folding down or sinking facet by facet",
+   "Pace is smooth, airy and unhurried"
+  ],
+  "explaining": [
+   "Labels are angular tags with cut corners, pinned to objects with a thin straight stem",
+   "Arrows are two-tone ribbons with a pointed tail and head that follow the ground in straight segments",
+   "Emphasis is a floating crystal or beacon of light above the item, plus brighter facets around it",
+   "Numbers are set large in a geometric sans on a floating panel and count up",
+   "Charts are tall faceted pillars on a plateau, where height is the value and the top facet glows in the accent"
+  ],
+  "sound": [
+   "Glassy crystalline pings as facets settle",
+   "A low airy wind bed under the whole piece",
+   "Soft chimes for numbers"
+  ],
+  "avoid": [
+   "Smooth shading, gradients on the ground or rounded forms",
+   "Black outlines or wireframe overlays",
+   "Square voxel cubes or tilted miniature tiles (those are other styles)",
+   "Busy textures that hide the facets"
+  ]
+ },
+ {
+  "order": 34,
+  "styleId": "terminal",
+  "name": "Green Screen Terminal",
+  "category": "Retro digital",
+  "description": "A glowing green-on-black monitor from the 1980s: monospace text typed out line by line, curved glass, scanlines and a bright halo around every letter.",
+  "suits": "Good for code, data, security, networks, logs and technical how-it-works stories with a geeky tone; poor for warm, human or colourful subjects.",
+  "look": [
+   "Everything is one phosphor colour, green, in two or three brightnesses on a nearly black screen; there is no other hue",
+   "All text is monospace in large blocky letters, in rows with a wide left margin and a blinking block cursor",
+   "Boxes and diagrams are drawn with text characters or thin line strokes: corners, bars, dashes and bracket marks",
+   "A status line at the bottom is shown in reversed colours, a green bar with dark letters, holding the current question or topic",
+   "Prompts begin with a symbol, system messages are in square brackets, output is indented in tidy columns",
+   "The screen is slightly bulged, so lines near the edges bend inward and corners are rounded",
+   "A dark plastic frame surrounds the glass and a faint reflection of a window sweeps across it"
+  ],
+  "palette": [
+   {
+    "role": "screen black",
+    "hex": "#050a06"
+   },
+   {
+    "role": "phosphor bright",
+    "hex": "#7dff9a"
+   },
+   {
+    "role": "phosphor mid",
+    "hex": "#2fd35f"
+   },
+   {
+    "role": "phosphor dim",
+    "hex": "#14742f"
+   },
+   {
+    "role": "bloom tint",
+    "hex": "#9dffb3"
+   },
+   {
+    "role": "bezel",
+    "hex": "#2b2a26"
+   },
+   {
+    "role": "glass glare",
+    "hex": "#c9d6cc"
+   }
+  ],
+  "fonts": [
+   "VT323",
+   "Share Tech Mono"
+  ],
+  "finish": [
+   "Glow: bright text blurred and added back over itself so letters have a soft halo, strong",
+   "Scanlines: fine dark horizontal lines across the frame, moderate",
+   "Barrel distortion with a faint red and blue fringe at the edges, light to moderate",
+   "Vignette and slow brightness flicker, light",
+   "A broad dim bar that slowly rolls down the screen, very light"
+  ],
+  "motion": [
+   "Power-on: a bright dot, then a line that stretches into a flashing field that settles into steady light",
+   "Text appears character by character at typing speed, with the cursor following",
+   "Scenes switch by a vertical roll of the picture or a quick screen clear; nothing slides in smoothly",
+   "Moving parts step in small jumps, never glide",
+   "Pace is deliberate, with brief pauses as if the machine were thinking"
+  ],
+  "explaining": [
+   "Each step is a command line followed by its printed response, so the story reads like a session log",
+   "Labels are bracketed tags such as OK or WARN, in capital letters",
+   "Arrows are made from dashes and chevrons or a thin glowing line with a block head",
+   "Emphasis flips a phrase to reversed colours (dark text on green) and may blink once",
+   "Numbers are large block digits that roll up and show a bar of block characters beside them as a meter"
+  ],
+  "sound": [
+   "Soft keyboard ticks synced to the typing",
+   "A low electrical hum and a thunk at power-on",
+   "Short square-wave beeps for confirmations and a harsher buzz for errors"
+  ],
+  "avoid": [
+   "Any colour other than greens and the plastic frame",
+   "Smooth proportional fonts or rounded app-style boxes",
+   "Pixel-art sprites (that is Pixel Arcade)",
+   "Clean, glow-free text"
+  ]
+ },
+ {
+  "order": 35,
+  "styleId": "woodblock",
+  "name": "Woodblock Print",
+  "category": "Design movements",
+  "description": "A Japanese colour woodblock print of the Edo period: flat blocks of indigo, ochre and vermilion pressed onto handmade paper, with a carved black outline, soft colour fades and a red seal in the corner.",
+  "suits": "Good for flows, journeys, cycles and natural-force metaphors with a calm, crafted, storytelling tone; poor for dense tables, tiny text or anything that must feel high-tech and glossy.",
+  "look": [
+   "Paper is warm cream washi with long visible fibres, faint chain-line stripes and slightly uneven edges, a little darker at the margins",
+   "Every shape is a flat block of colour with no gradients inside it, except one deliberate soft fade from deep to pale along a band, as if the printer wiped the block while inking",
+   "A fine carved outline in near-black wraps each shape, with slightly uneven thickness, tiny chips and gaps where the knife lifted",
+   "Colour blocks sit very slightly off their outlines, leaving thin paper-coloured slivers or small overlaps at some edges",
+   "Water, wind and movement are drawn as repeated carved curves: rolling wave lines, curling scrolls, fine parallel strokes for rain and rivers",
+   "Faint wood-grain streaks run through the large flat areas, like the pattern of the board showing through the ink",
+   "Text sits in a tall narrow cartouche box with a thin border, set top to bottom in small brush-like lettering; a square red seal marks the corner",
+   "Horizon is a low flat band with a pale sky fade above it; small repeating cloud bands in pale gold can divide one scene from the next"
+  ],
+  "palette": [
+   {
+    "role": "paper",
+    "hex": "#efe3c8"
+   },
+   {
+    "role": "keyblock outline",
+    "hex": "#1d1a1a"
+   },
+   {
+    "role": "deep indigo",
+    "hex": "#1c3557"
+   },
+   {
+    "role": "mid blue",
+    "hex": "#4a7a9e"
+   },
+   {
+    "role": "pale sky",
+    "hex": "#cfe0df"
+   },
+   {
+    "role": "ochre",
+    "hex": "#d9a441"
+   },
+   {
+    "role": "vermilion",
+    "hex": "#c8372d"
+   },
+   {
+    "role": "moss",
+    "hex": "#6b7f4e"
+   }
+  ],
+  "fonts": [
+   "Shippori Mincho",
+   "Yuji Syuku"
+  ],
+  "finish": [
+   "Paper fibre texture over everything at low strength, fibres a little lighter than the paper",
+   "Ink-pressed look: colour areas slightly mottled, with faint paler patches where the pad pressed unevenly (about 10 to 15 percent)",
+   "Wood-grain streaks inside large blocks, subtle and following one direction",
+   "Slight warm yellowing toward the edges, like an old sheet, kept gentle"
+  ],
+  "motion": [
+   "Printing order: the black outline appears first, then the colours follow one block at a time, lightest first and darkest last, each fading in quickly with a tiny settling shift",
+   "Elements arrive as whole printed sheets, never sliding smoothly; a shape appears in a single pressed beat",
+   "Waves and clouds do not travel; they re-print in a slightly shifted position on a slow beat, like a flipbook of separate prints",
+   "Scene change: the sheet lifts away from the top corner as if peeled off the block, revealing the next print",
+   "Pace is slow and deliberate, with a held still moment after each press"
+  ],
+  "explaining": [
+   "Steps and flow are shown as a river or road winding across the print, with small cartouches placed along it as stops",
+   "Labels go in cartouche boxes with a thin outline, set in vertical or very short horizontal lines; keep each to a few words",
+   "Numbers are large and sit in a pale paper panel, set in brush-like serif figures; the key one gets a vermilion seal beside it",
+   "Emphasis is a red seal stamp pressed beside an item, or a vermilion block replacing an indigo one",
+   "Charts are made of carved bars or stacked wave crests; the line of a trend is a wave rising and falling"
+  ],
+  "sound": [
+   "Dull wooden thump for each block being pressed",
+   "Soft paper rub as a sheet is laid down or peeled away",
+   "A single plucked string note for the seal stamp",
+   "Faint hollow bamboo knock for transitions"
+  ],
+  "avoid": [
+   "Gradients, glows or glossy highlights inside shapes",
+   "Perfectly smooth vector lines with no carve wobble",
+   "Many colours at once; keep to a few inks",
+   "Thick modern sans lettering"
+  ]
+ },
+ {
+  "order": 36,
+  "styleId": "art-deco",
+  "name": "Art Deco",
+  "category": "Design movements",
+  "description": "A 1920s luxury poster in glossy black and gold foil: strict symmetry, stepped skyscraper shapes, sunburst rays and fan arcs, with tall elegant capitals and cream accents.",
+  "suits": "Good for premium, ambitious, institutional or growth stories, rankings and launches; weak for casual, playful, handmade or very text-heavy topics.",
+  "look": [
+   "Background is deep black with a faint satin sheen, or very dark green or navy, always centred on a vertical axis",
+   "Composition is mirror-symmetric: whatever sits on the left appears on the right, with a main stepped tower or shape in the middle",
+   "Gold is the main ink, drawn as thin parallel lines, nested arcs, fans and rays; a few shapes are filled in gold with a lighter gold edge",
+   "A stepped geometric border frames the picture, built from nested rectangles with notched corners and small chevron rows",
+   "Sunburst: long thin rays fanning out from behind the main shape, alternating gold and darker bands",
+   "Shapes are built of straight lines, circles and quarter circles; scallop patterns, zigzag chevrons and tiered steps repeat as ornament",
+   "Lettering is tall, narrow, high-contrast capitals with wide tracking, set in gold; small text in cream",
+   "Cream, teal or deep red appear only as small accents, never as large fills"
+  ],
+  "palette": [
+   {
+    "role": "lacquer black",
+    "hex": "#0e0d0c"
+   },
+   {
+    "role": "gold",
+    "hex": "#c9a23f"
+   },
+   {
+    "role": "bright foil",
+    "hex": "#f1d680"
+   },
+   {
+    "role": "dark gold",
+    "hex": "#8a6a22"
+   },
+   {
+    "role": "cream",
+    "hex": "#efe6cf"
+   },
+   {
+    "role": "deep teal",
+    "hex": "#14504f"
+   },
+   {
+    "role": "oxblood",
+    "hex": "#6e1f26"
+   }
+  ],
+  "fonts": [
+   "Limelight",
+   "Poiret One"
+  ],
+  "finish": [
+   "Foil pass: gold areas get a slow diagonal shine band sweeping across them, narrow and bright, medium strength",
+   "Fine lacquer sheen on the black: very soft broad lighter patches, low strength (about 8 percent)",
+   "Slight vignette darkening toward the corners",
+   "Faint print grain over the whole poster, light"
+  ],
+  "motion": [
+   "The border draws itself first, line by line from the middle of each side, finishing symmetrically",
+   "Central tower builds upward in stepped tiers, one tier after another, with each tier arriving as a quick wipe from the centre outwards",
+   "Arcs and rays open like a fan, both halves at the same time, then settle",
+   "Title letters are stamped in one at a time with a short gold flash",
+   "Scene change: two gold-edged doors close from left and right and reopen on the next scene; pace is stately and even"
+  ],
+  "explaining": [
+   "Steps are shown as stacked tiers or floors of a tower, labelled on plaques of cream or gold-outlined panels",
+   "Arrows are stepped chevrons or long thin gold arrows with a notched head, never curved hand arrows",
+   "Numbers are big gold capitals, rolling like an old odometer, or placed in the middle of a sunburst gauge",
+   "Charts are stepped bars shaped like skyline blocks; a line trend is a gold line with small diamond marks",
+   "Emphasis is a ring of rays around an item or a quick gold glint over it"
+  ],
+  "sound": [
+   "Bright brass-like chime for each tier landing",
+   "Soft metallic shimmer for foil flashes",
+   "Heavy smooth door slide for scene changes",
+   "Low stately hum under big reveals"
+  ],
+  "avoid": [
+   "Asymmetry or hand-drawn wobble",
+   "Neon or glowing colours, or many bright hues",
+   "Rounded bubbly shapes and casual lettering",
+   "Flat gold with no sheen at all"
+  ]
+ },
+ {
+  "order": 37,
+  "styleId": "memphis",
+  "name": "Memphis Pop",
+  "category": "Design movements",
+  "description": "Early-1980s Italian design maximalism: loud pastels and primaries clashing, thick black outlines, hard drop shadows, wiggly lines, zigzags, dot grids and confetti everywhere.",
+  "suits": "Good for playful, youthful, creative, startup or energetic topics, lists and tips; poor for serious, financial, medical or quiet reflective subjects.",
+  "look": [
+   "Background is a flat pastel (mint, pink or pale yellow) with large bold shapes laid over it at odd angles",
+   "Every shape has a thick black outline and a hard offset shadow in a second colour, with no blur",
+   "Stock shapes: half circles, wedges, triangles, cylinders, arches, blobs, cubes with stripes",
+   "Patterns fill some shapes: black and white stripes, polka dots, small checker, squiggle lines, terrazzo flecks",
+   "Scattered ornament: wavy squiggles, zigzag strips, plus signs, dot grids, little confetti triangles and rings",
+   "Colours clash on purpose: hot pink against turquoise, yellow against purple, red against mint",
+   "Lettering is chunky and rounded, set in a tilted speech-bubble or on a stripy banner, each word a different colour, with an offset shadow",
+   "Layout is busy and off balance, nothing aligned neatly, but with one clear big title block"
+  ],
+  "palette": [
+   {
+    "role": "mint",
+    "hex": "#9fe3c8"
+   },
+   {
+    "role": "hot pink",
+    "hex": "#ff5fa2"
+   },
+   {
+    "role": "sunny yellow",
+    "hex": "#ffd23f"
+   },
+   {
+    "role": "sky turquoise",
+    "hex": "#2fc4d9"
+   },
+   {
+    "role": "violet",
+    "hex": "#7b4fd0"
+   },
+   {
+    "role": "tomato red",
+    "hex": "#f0452e"
+   },
+   {
+    "role": "outline black",
+    "hex": "#141414"
+   },
+   {
+    "role": "cream",
+    "hex": "#fff6e0"
+   }
+  ],
+  "fonts": [
+   "Lilita One",
+   "Rubik Mono One"
+  ],
+  "finish": [
+   "Slight print offset: colour fills shifted a hair from their outlines, small",
+   "Light paper grain, barely there (about 5 percent), so colours stay flat and loud",
+   "No glow, no blur anywhere; hard shadows only"
+  ],
+  "motion": [
+   "Cut-out timing on twos: shapes change every other frame, so motion looks stepped and cheerful",
+   "Shapes pop in one at a time, overshooting with a bounce and a quick squash and stretch",
+   "wiggly lines and zigzags trace themselves on along their path; confetti bursts out and falls",
+   "Scene change: a wide striped or polka-dot band swipes across the picture and the next scene sits behind it",
+   "Idle shapes jiggle, spin slowly or bob; pace is quick and bouncy"
+  ],
+  "explaining": [
+   "Steps are numbered stickers: coloured circles or stars with a thick outline and a hard shadow",
+   "Arrows are chunky shapes with a black outline and a hard shadow, in bright colours, pointing at big shapes",
+   "Numbers are huge chunky figures on a sticker that pops each time the value changes",
+   "Charts are chunky bars in clashing colours with patterned fills, each bar with its own offset shadow",
+   "Emphasis is a spinning starburst behind the item, or a tilted wobble of the label"
+  ],
+  "sound": [
+   "Bouncy boing for each pop-in",
+   "Squeaky blip for stickers slapping on",
+   "Quick xylophone-like run for swipes",
+   "Little confetti pop with rattle"
+  ],
+  "avoid": [
+   "Soft gradients, blur, glow or realistic shadows",
+   "Muted or matching colour schemes",
+   "Tidy grids with everything aligned",
+   "Thin delicate lines"
+  ]
+ },
+ {
+  "order": 38,
+  "styleId": "transit-map",
+  "name": "Transit Map",
+  "category": "Data",
+  "description": "A metro network diagram: fat coloured lines running only straight or at forty-five degrees with rounded bends, stations as ticks, interchanges as ringed circles, in clean sans lettering on a pale ground.",
+  "suits": "Good for pipelines, processes with branches and joins, roadmaps, systems and anything with stages and connections; poor for emotional, organic or single-point topics.",
+  "look": [
+   "Ground is a pale warm grey-white, very plain, with a light blue winding river band and a few soft green park patches as the only background shapes",
+   "Routes are thick lines of even width in strong colours, each route its own colour, with smooth rounded corners",
+   "Lines only run horizontal, vertical or at forty-five degrees; a bend is always one clean angle change with a round corner",
+   "Stations on a route are small ticks crossing the line in the same colour or short white-filled dots; end stations get a flat cap",
+   "Interchanges, where routes meet, are larger white circles with a thick black ring, sometimes a pill shape linking two close stops",
+   "Station names sit in clean sans type, horizontal, placed beside the stop and kept clear of lines",
+   "A boxed legend in one corner lists route colours with short names; a title block sits in the other corner with a small route key",
+   "Zones may appear as faint stripes of slightly darker ground behind the lines"
+  ],
+  "palette": [
+   {
+    "role": "map ground",
+    "hex": "#f4f2ec"
+   },
+   {
+    "role": "river blue",
+    "hex": "#bcd8ea"
+   },
+   {
+    "role": "park green",
+    "hex": "#cfe5c4"
+   },
+   {
+    "role": "line red",
+    "hex": "#d93a35"
+   },
+   {
+    "role": "line blue",
+    "hex": "#1f5fa8"
+   },
+   {
+    "role": "line green",
+    "hex": "#2d9a53"
+   },
+   {
+    "role": "line amber",
+    "hex": "#f1a21b"
+   },
+   {
+    "role": "line ink",
+    "hex": "#1a1a1a"
+   }
+  ],
+  "fonts": [
+   "Inter",
+   "Roboto Condensed"
+  ],
+  "finish": [
+   "Crisp, flat finish; edges sharp and clean, with no texture over the map",
+   "Very faint paper fold lines or a light print grain, almost invisible (about 3 percent)",
+   "Thin white outline around lines where they cross, so crossings read cleanly"
+  ],
+  "motion": [
+   "Each route draws out from its start terminus along its path, one route after another, with stations ticking on as the line passes them",
+   "Interchanges pop in with a small bounce when two routes have both arrived",
+   "When every route is drawn, small rounded trains glide along the lines at an even pace",
+   "The camera follows one route at a time, panning and zooming smoothly to the next stop",
+   "Scene change: the view slides along a line to the next interchange; pace is steady and clean"
+  ],
+  "explaining": [
+   "Each stage of a process is a station, in order along a route; a branch is a new route splitting at an interchange",
+   "Labels are station names beside the stops; a longer note goes in a small rounded flag attached by a short stem",
+   "Numbers appear on a departure-board strip: dark panel, amber dot-matrix digits that flip as values change",
+   "Emphasis is a bigger ringed station, a line turning bolder, or a train stopping there",
+   "Charts are best shown as a route whose stations carry the values, or as a board with a few rows of figures"
+  ],
+  "sound": [
+   "Soft platform chime for each new station",
+   "Gentle whoosh and rail hum as trains pass",
+   "Short mechanical flip-clatter for the departure board",
+   "Quiet announcement-style two-tone ding for interchanges"
+  ],
+  "avoid": [
+   "Curves or angles other than 45 and 90 degrees",
+   "Lines of different thicknesses or gradients on routes",
+   "Hand-drawn wobble or decorative fonts",
+   "Too many labels crowding the stations"
+  ]
+ },
+ {
+  "order": 39,
+  "styleId": "synthwave",
+  "name": "Synthwave",
+  "category": "Retro desktop",
+  "description": "An 80s outrun night poster: a glowing grid road running to a striped setting sun, wireframe mountains, chrome italic lettering and a glowing pink handwritten line, all blooming with light.",
+  "suits": "Good for tech, music, speed, nostalgia, product launches and bold hype; poor for gentle, earthy, formal or text-dense topics.",
+  "look": [
+   "Sky is a deep purple-to-indigo night fading to magenta and orange near the horizon, with a few small stars above",
+   "A large sun sits on the horizon, its lower half cut by horizontal bands that grow thicker toward the bottom, coloured yellow to hot pink",
+   "The ground is a black plane with a bright magenta or cyan grid in perspective: lines converging on the horizon, spacing wider near the viewer",
+   "Distant mountains are wireframe peaks in neon outline, filled with the dark sky colour",
+   "Titles are chunky italic capitals with a chrome look: light top half, dark horizon line through the middle, pink and blue bevel edges",
+   "A second line of text is a looping neon script in hot pink, drawn like a glass tube with a bright white core and a pink halo",
+   "Occasional extras: palm silhouettes, a low wide car shape, scanline strips, simple triangles and neon frames",
+   "Everything glows; dark areas stay really dark so the light shapes pop"
+  ],
+  "palette": [
+   {
+    "role": "night violet",
+    "hex": "#1a0b3b"
+   },
+   {
+    "role": "deep indigo",
+    "hex": "#2b1259"
+   },
+   {
+    "role": "hot magenta",
+    "hex": "#ff2bd6"
+   },
+   {
+    "role": "neon cyan",
+    "hex": "#27e8ff"
+   },
+   {
+    "role": "sunset orange",
+    "hex": "#ff8a3d"
+   },
+   {
+    "role": "sun yellow",
+    "hex": "#ffd84a"
+   },
+   {
+    "role": "chrome light",
+    "hex": "#e9f1ff"
+   },
+   {
+    "role": "void black",
+    "hex": "#07040f"
+   }
+  ],
+  "fonts": [
+   "Orbitron",
+   "Monoton"
+  ],
+  "finish": [
+   "Bloom: bright neon parts get a wide soft halo of their own colour, strong (about 40 percent)",
+   "Scanlines: fine dark horizontal lines across the frame, light (about 8 percent)",
+   "Slight chromatic fringe, red one side and blue the other, at the frame edges, subtle",
+   "Vignette darkening the corners, medium"
+  ],
+  "motion": [
+   "Stars blink on first, then the horizon line appears and the grid races toward the viewer in an endless loop",
+   "The striped sun rises from behind the horizon; the wireframe mountains grow up from the line",
+   "Chrome title slams in from large to final size with a white flash, then a glint sweeps across it",
+   "Neon script flickers on tube by tube, with a quick stutter before it holds steady",
+   "Scene change: a bright horizontal flash wipes the frame, or the view pans upward into the night sky; pace is driving and rhythmic"
+  ],
+  "explaining": [
+   "Steps are glowing neon signs or cards riding down the road, one per stop, each framed in a thin neon outline",
+   "Arrows are neon tubes with a bright core, straight with sharp heads",
+   "Numbers are large digits on a dashboard strip, glowing cyan or pink, rolling up like an odometer",
+   "Charts are glowing neon lines and bars floating in the sky above the horizon, with a faint grid behind",
+   "Emphasis is a pulse of the halo, a flash, or switching the tube from cyan to hot pink"
+  ],
+  "sound": [
+   "Warm detuned synth pad that swells with reveals",
+   "Punchy gated drum hit for each title slam",
+   "Rising arpeggio sweep for the sun and grid",
+   "Short electric buzz with a click for neon switching on"
+  ],
+  "avoid": [
+   "Daylight scenes or pale flat backgrounds",
+   "Matte, unlit colours with no glow",
+   "Handwritten or rounded friendly lettering",
+   "Muddy mid-brown or earth tones"
+  ]
+ }
+]

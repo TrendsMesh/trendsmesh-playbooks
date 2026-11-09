@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pb4-report/1",
+  "title": "PB4 trend-research report (report.json)",
+  "description": "The single data source of a PB4 page (TR10). Assembled by tools/pb4/build_report.py from the tool outputs (category_map.json, growth.json, digest.json, ad_library_summary_vNN.json, backtests) and the agent's picks_vNN.json (template: templates/picks_template.json). The page (index.html) is rendered from the same fields. Example: runs/04-trend-research/2026-11-04_beauty-dry-run/04_final/report_v05/report.json.",
+  "type": "object",
+  "required": ["schema", "category", "market", "as_of", "valid_until", "outputs", "sample", "act_now", "still_rising", "moves", "buckets"],
+  "definitions": {
+    "bucket": {"type": "string", "enum": ["act_now", "still_rising", "too_late", "past_peak"]},
+    "relative": {
+      "type": ["object", "null"],
+      "description": "Position in the sample (TR3 v3, TR10).",
+      "properties": {
+        "velocity_index": {"type": "number", "description": "new creators in the window / the typical active trend of the category (median)"},
+        "percentile": {"type": "number", "minimum": 0, "maximum": 1},
+        "band": {"type": "string", "enum": ["top 10%", "top 25%", "top half", "lower half"]}
+      }
+    },
+    "growth": {
+      "type": "object",
+      "description": "TR2, computed from evidence videos. Raw counts are creators in TrendsMesh evidence, a collected sample.",
+      "properties": {
+        "creators": {"type": "integer"}, "new_recent": {"type": "integer"}, "new_base": {"type": "integer"},
+        "ratio": {"type": "number"}, "last_seen_days": {"type": "integer"}, "age_days": {"type": "integer"},
+        "videos_known": {"type": "integer"}, "median_views": {"type": "integer"}, "views_total": {"type": "integer"},
+        "top_creator": {"type": ["string", "null"]}, "top_creator_share": {"type": "number"}
+      }
+    },
+    "paid": {
+      "type": ["object", "null"],
+      "description": "TR7 verdict from Meta Ad Library (titles only) or Foreplay.",
+      "properties": {
+        "level": {"type": "string", "enum": ["none", "found", "crowded", "not_checkable"]},
+        "verdict": {"type": "string"},
+        "query_note": {"type": "string"},
+        "advertisers": {"type": "array", "items": {"type": "string"}},
+        "estimated": {"type": ["integer", "null"]},
+        "example_id": {"type": ["string", "null"]},
+        "note": {"type": "string"}
+      }
+    },
+    "pick": {
+      "type": "object",
+      "required": ["id", "what", "how", "risk", "trend"],
+      "description": "TR6: a recommended trend with the agent's write-up and the merged trend data.",
+      "properties": {
+        "id": {"type": "string"},
+        "maturity": {"type": "string", "description": "early / early in paid / established / established hook"},
+        "what": {"type": "string", "description": "what it is, structure taken from the evidence videos"},
+        "how": {"type": "string", "description": "how to use it, for this category or the focus"},
+        "risk": {"type": "string"},
+        "trend": {
+          "type": "object",
+          "required": ["id", "name", "kind", "bucket", "growth"],
+          "properties": {
+            "id": {"type": "string"}, "name": {"type": "string"},
+            "kind": {"type": "string", "enum": ["topic_trend", "hook_trend", "sound_trend", "format_trend"]},
+            "group": {"type": "string"}, "sub_category": {"type": "string"},
+            "status": {"type": "string", "enum": ["confirmed", "unconfirmed", "contradicted"]},
+            "what_it_is": {"type": "string"}, "since": {"type": "string"},
+            "bucket": {"$ref": "#/definitions/bucket"},
+            "growth": {"$ref": "#/definitions/growth"},
+            "relative": {"$ref": "#/definitions/relative"},
+            "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+            "confidence_why": {"type": "string"},
+            "seasonal_over": {"type": ["string", "null"]},
+            "platforms": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "paid": {"$ref": "#/definitions/paid"}
+      }
+    }
+  },
+  "properties": {
+    "schema": {"const": "pb4-report/1"},
+    "category": {"type": "string", "description": "the category input as given (TR1)"},
+    "market": {"type": "string", "description": "market and language, e.g. 'US, English'"},
+    "as_of": {"type": "string", "format": "date"},
+    "valid_until": {"type": "string", "description": "as_of + 14 days while visible_until is empty (TR4)"},
+    "outputs": {"type": "array", "items": {"type": "string", "enum": ["report", "digest", "paid"]}, "description": "views on the page (TR10); report is always present"},
+    "sample": {
+      "type": "object",
+      "description": "The denominator shown on the page (TR10).",
+      "properties": {
+        "creators_active": {"type": "integer"}, "trends": {"type": "integer"}, "trends_active": {"type": "integer"},
+        "median_new": {"type": "number"}, "hooks_pool": {"type": "integer"},
+        "platforms": {"type": "array", "items": {"type": "string"}},
+        "window": {"type": "integer"}, "baseline": {"type": "integer"}, "ref": {"type": "string"}, "rule": {"type": "string"}
+      }
+    },
+    "act_now": {"type": "array", "items": {"$ref": "#/definitions/pick"}},
+    "still_rising": {"type": "array", "items": {"$ref": "#/definitions/pick"}},
+    "moves": {
+      "type": "array",
+      "description": "G2 review moves with their reason (TR3).",
+      "items": {"type": "object", "required": ["id", "from", "to", "why"],
+                "properties": {"id": {"type": "string"}, "from": {"$ref": "#/definitions/bucket"}, "to": {"$ref": "#/definitions/bucket"}, "why": {"type": "string"}}}
+    },
+    "lens": {
+      "type": ["object", "null"],
+      "description": "Optional focus section (TR5).",
+      "properties": {"label": {"type": "string"}, "note": {"type": "string"},
+                     "items": {"type": "array", "items": {"type": "object", "properties": {"id": {"type": "string"}, "line": {"type": "string"}}}}}
+    },
+    "watch_next": {"type": ["string", "null"]},
+    "buckets": {
+      "type": "object",
+      "description": "Every trend of the map by stage (tables of the report view).",
+      "properties": {
+        "act_now": {"type": "array"}, "still_rising": {"type": "array"}, "too_late": {"type": "array"}, "past_peak": {"type": "array"}
+      }
+    },
+    "paid": {
+      "type": "object",
+      "description": "Paid vs organic view (TR7).",
+      "properties": {"reading": {"type": "array", "items": {"type": "string"}},
+                     "checks": {"type": "object", "additionalProperties": {"$ref": "#/definitions/paid"}}}
+    },
+    "digest": {
+      "type": ["object", "null"],
+      "description": "Weekly digest view (TR8, TR9): growth.py diff output + the agent's reading.",
+      "properties": {
+        "prev": {"type": "object"}, "now": {"type": "object"},
+        "new": {"type": "array"}, "reidentified": {"type": "array"}, "up": {"type": "array"}, "down": {"type": "array"},
+        "ended": {"type": "array"}, "calls": {"type": "array"}, "hit_rate": {"type": "object"},
+        "reading": {"type": "object", "properties": {"summary": {"type": "array", "items": {"type": "string"}}, "todo": {"type": "array", "items": {"type": "string"}}}}
+      }
+    },
+    "category_map": {"type": "object", "description": "searches, splits and dropped trends (TR1)"},
+    "backtest": {"type": "array", "description": "TR9 backtest summaries shown in 'how sure are we'"}
+  }
+}

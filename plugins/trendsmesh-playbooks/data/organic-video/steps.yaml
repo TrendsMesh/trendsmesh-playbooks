@@ -1,0 +1,61 @@
+# Steps of playbook 03 "Organic AI video", in order: handoff/organic-video_v02 FLOWS.md sections
+# A to I. The keys are those of data/steps.yaml (refresh-ad), which explains each one, plus
+# `requires` (data/creative-brief/steps.yaml explains it; each check is added by the task that
+# builds it).
+#
+# outputs, one run kind each (the plan's decision 2, one video per production run):
+# - proposals: an idea run, from the channel profile to the proposals page (A0 to C3); C3 starts
+#   one production run per idea marked "produce";
+# - weekly_plan: a week run, the same research, then the week plan, its production and delivery
+#   (I2 to I5); I3 starts one production run per approved slot;
+# - script_to_film and organic_video: a production run, from the recipe (D1) to the publish (H1).
+#   A production run has exactly one of the two: a script to film, or the video made here.
+#
+# The plugin's changes to FLOWS.md:
+# - A0 is FLOWS.md A0 and A2 (the run folder is made with the stack check), and it asks FLOWS.md
+#   A1's one batch of intake questions with the level and the outputs (preflight P3-F2: organic
+#   video is not a late-intake playbook, and `reuse_profile` is decided before A1); A1 drafts the
+#   profile from those answers, and is skipped when a confirmed profile is reused (B1 then
+#   requires that profile, confirmed, as A1 would have);
+# - FLOWS.md I1 (the scheduled research) is B1 to B3 of a week run; I5 is the plugin's step for
+#   the schedule (trend research's F5);
+# - F1 and F2 are the two paid stages, whatever the production type (FLOWS.md F1 to F5);
+# - G2 is FLOWS.md G2 and G3 (the cover, the upload copy and the posting kit), and G4 the final
+#   edit page or the delivery page with every step;
+# - H1 is FLOWS.md H without a publishing tool: the user downloads and posts.
+
+outputs: [proposals, script_to_film, organic_video, weekly_plan]
+
+steps:
+  # A. Setup and channel profile (step 0)
+  - {id: A0, title: "Stack check, intake and run folder", outputs: [proposals, weekly_plan], spends: false, requires: [organic_intake_written, stack_recorded], ref: "skills/organic-video/references/flow.md#a0"}
+  - {id: A1, title: Channel profile, outputs: [proposals, weekly_plan], before: [reuse_profile], checkins: [profile], skip_when: {reuse_profile: reuse}, spends: false, requires: [profile_written], ref: "skills/organic-video/references/flow.md#a1"}
+  # B. Research (step 1)
+  - {id: B1, title: Trend search in the bubble, outputs: [proposals, weekly_plan], spends: false, requires: [profile_written], ref: "skills/organic-video/references/flow.md#b1"}
+  - {id: B2, title: Shortlist, outputs: [proposals, weekly_plan], spends: false, requires: [shortlist_written], ref: "skills/organic-video/references/flow.md#b2"}
+  - {id: B3, title: Cards and evidence, outputs: [proposals, weekly_plan], spends: false, requires: [evidence_saved], ref: "skills/organic-video/references/flow.md#b3"}
+  # C. Proposals (step 2): an idea run ends once the picked videos are started
+  - {id: C1, title: Proposals, outputs: [proposals], spends: false, requires: [proposals_checked], ref: "skills/organic-video/references/flow.md#c1"}
+  - {id: C2, title: Proposals page, outputs: [proposals], checkins: [proposals], spends: false, requires: [proposals_page_built], ref: "skills/organic-video/references/flow.md#c2"}
+  - {id: C3, title: Start the picked videos, outputs: [proposals], spends: false, requires: [videos_started], ref: "skills/organic-video/references/flow.md#c3"}
+  # I. Weekly pack: the week plan, its production and delivery, and the schedule
+  - {id: I2, title: Week plan and page, outputs: [weekly_plan], checkins: [week], spends: false, requires: [week_checked, week_page_built], ref: "skills/organic-video/references/flow.md#i2"}
+  - {id: I3, title: Produce the week, outputs: [weekly_plan], spends: false, requires: [slots_started], ref: "skills/organic-video/references/flow.md#i3"}
+  - {id: I4, title: Week delivery and posting plan, outputs: [weekly_plan], spends: false, requires: [week_delivered], ref: "skills/organic-video/references/flow.md#i4"}
+  - {id: I5, title: Weekly schedule, outputs: [weekly_plan], before: [schedule], skip_when: {schedule: by_hand}, spends: false, ref: "skills/organic-video/references/flow.md#i5"}
+  # D. Recipe and taste (step 3): a production run starts here
+  - {id: D1, title: "Recipe: production type and product", outputs: [script_to_film, organic_video], spends: false, requires: [credits_recorded, recipe_written], ref: "skills/organic-video/references/flow.md#d1"}
+  - {id: D2, title: Taste picks, outputs: [organic_video], checkins: [taste], spends: false, ref: "skills/organic-video/references/flow.md#d2"}
+  # E. Pack or script (steps 4 and 5)
+  - {id: E1, title: Model and speech route, outputs: [organic_video], spends: false, ref: "skills/organic-video/references/flow.md#e1"}
+  - {id: E2, title: Generation pack and cost, outputs: [organic_video], checkins: [pack], spends: false, requires: [pack_checked], ref: "skills/organic-video/references/flow.md#e2"}
+  - {id: E3, title: Script page, outputs: [script_to_film], checkins: [script], spends: false, requires: [script_checked, script_page_built], ref: "skills/organic-video/references/flow.md#e3"}
+  # F. Production (step 6): the two paid stages
+  - {id: F1, title: "First stage: images, character or storyboard", outputs: [organic_video], checkins: [images], spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [images_picked], ref: "skills/organic-video/references/flow.md#f1"}
+  - {id: F2, title: "Second stage: takes, animation or render", outputs: [organic_video], checkins: [video], spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [takes_checked], ref: "skills/organic-video/references/flow.md#f2"}
+  # G. Edit, kit, delivery (step 7)
+  - {id: G1, title: "Edit, mix, captions", outputs: [organic_video], spends: false, skip_when: {pack: reject}, requires: [final_checked, sections_covered], ref: "skills/organic-video/references/flow.md#g1"}
+  - {id: G2, title: "Cover, upload copy and posting kit", outputs: [organic_video], spends: false, skip_when: {pack: reject}, requires: [kit_checked], ref: "skills/organic-video/references/flow.md#g2"}
+  - {id: G4, title: Final page, outputs: [organic_video], checkins: [final_edit], spends: false, skip_when: {pack: reject}, requires: [final_page_built], ref: "skills/organic-video/references/flow.md#g4"}
+  # H. Publish (step 8)
+  - {id: H1, title: Publish (the user posts), outputs: [script_to_film, organic_video], spends: false, ref: "skills/organic-video/references/flow.md#h1"}

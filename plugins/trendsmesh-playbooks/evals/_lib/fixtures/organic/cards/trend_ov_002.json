@@ -1,0 +1,120 @@
+{
+ "id": "trend_ov_002",
+ "kind": "hook_trend",
+ "name": "guess the _",
+ "what_it_is": "Creators open with \"guess the _\" followed by the thing viewers must guess, such as a weight, a category, or an animal.",
+ "status": "unconfirmed",
+ "confidence": 1.0,
+ "since": "2026-08-06T00:58:43Z",
+ "active_for_days": 78,
+ "momentum": "holding",
+ "why_it_popped": [
+  "5 creators in 74 days, in 1 language",
+  "videos get 1.6x their creators' follower count in views"
+ ],
+ "reach": {
+  "videos": 5,
+  "creators": 5,
+  "views": 3337934,
+  "platforms": {
+   "tiktok": 5
+  }
+ },
+ "examples": [
+  {
+   "asset_id": "asset_0040",
+   "url": "https://example.com/v/40",
+   "platform": "tiktok",
+   "creator": "creator_0036",
+   "published": "2026-08-06T00:58:43Z",
+   "views": 1400000,
+   "likes": 78600,
+   "shares": 343,
+   "excerpt": "Guess The Weight ⚖️ #games #guessinggame #weight #fyp #creator_0036",
+   "is_sensitive": false,
+   "hook_text": "Guess The Weight",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "Weight",
+   "creator_id": "creator_0036"
+  },
+  {
+   "asset_id": "asset_0041",
+   "url": "https://example.com/v/41",
+   "platform": "tiktok",
+   "creator": "creator_0035",
+   "published": "2026-10-08T19:40:39Z",
+   "views": 1200000,
+   "likes": 107400,
+   "shares": 245,
+   "excerpt": "Guess The Animal‼️🐘 #animals #games #guessinggame #funny #sidelinebros",
+   "is_sensitive": false,
+   "hook_text": "Guess The Animal",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "Animal",
+   "creator_id": "creator_0035"
+  },
+  {
+   "asset_id": "asset_0042",
+   "url": "https://example.com/v/42",
+   "platform": "tiktok",
+   "creator": "creator_0037",
+   "published": "2026-09-09T20:54:35Z",
+   "views": 523000,
+   "likes": 26600,
+   "shares": 688,
+   "excerpt": "Guess the category! 🧳",
+   "is_sensitive": false,
+   "hook_text": "Guess the Category",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "Category",
+   "creator_id": "creator_0037"
+  },
+  {
+   "asset_id": "asset_0043",
+   "url": "https://example.com/v/43",
+   "platform": "tiktok",
+   "creator": "creator_0038",
+   "published": "2026-10-07T14:34:56Z",
+   "views": 214500,
+   "likes": 4832,
+   "shares": 76,
+   "excerpt": "Guess the Person or Eat Wasabi💀💀 #food #challenge ",
+   "is_sensitive": false,
+   "hook_text": "Guess the Person or Eat Wasabi",
+   "hook_source": "caption",
+   "appears_at_s": null,
+   "slot_fill": "Person or Eat Wasabi",
+   "creator_id": "creator_0038"
+  },
+  {
+   "asset_id": "asset_0044",
+   "url": "https://example.com/v/44",
+   "platform": "tiktok",
+   "creator": "creator_0039",
+   "published": "2026-10-19T19:03:33Z",
+   "views": 434,
+   "likes": 14,
+   "shares": 0,
+   "excerpt": "🇫🇷 Guess the city! 🗼❤️ The city of love, lights, and unforgettable vi...",
+   "is_sensitive": false,
+   "hook_text": "Guess the city!",
+   "hook_source": "caption",
+   "appears_at_s": null,
+   "slot_fill": "city",
+   "creator_id": "creator_0039"
+  }
+ ],
+ "what_we_now_know": "",
+ "sensitivity_level": "none",
+ "visible_until": null,
+ "rank": null,
+ "original_phrase": "guess the _",
+ "formula": "guess the _",
+ "languages": [
+  "en"
+ ],
+ "format": null
+}

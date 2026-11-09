@@ -1,0 +1,189 @@
+{
+ "$schema": "http://json-schema.org/draft-07/schema#",
+ "title": "PB3 weekly plan page data (tools/pb3/weekly_page.py)",
+ "type": "object",
+ "required": [
+  "title",
+  "run",
+  "channel",
+  "week",
+  "budget",
+  "platforms",
+  "slots",
+  "reserves"
+ ],
+ "properties": {
+  "lang": {
+   "enum": [
+    "en",
+    "pl"
+   ]
+  },
+  "title": {
+   "type": "string"
+  },
+  "run": {
+   "type": "string"
+  },
+  "channel": {
+   "type": "string"
+  },
+  "week": {
+   "description": "YYYY-MM-DD/YYYY-MM-DD",
+   "type": "string"
+  },
+  "budget": {
+   "type": "number"
+  },
+  "rhythm": {
+   "type": "string"
+  },
+  "platforms": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   }
+  },
+  "note": {
+   "type": "string"
+  },
+  "slots": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "format",
+     "why",
+     "trend",
+     "cost_video",
+     "cost_script",
+     "production",
+     "risk"
+    ],
+    "properties": {
+     "day": {
+      "type": "string"
+     },
+     "date": {
+      "type": "string"
+     },
+     "time": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "format": {
+      "type": "string"
+     },
+     "why": {
+      "type": "string"
+     },
+     "trend": {
+      "type": "string"
+     },
+     "evidence": {
+      "type": "string"
+     },
+     "output": {
+      "enum": [
+       "video",
+       "script"
+      ]
+     },
+     "cost_video": {
+      "type": "number"
+     },
+     "cost_script": {
+      "type": "number"
+     },
+     "production": {
+      "type": "string"
+     },
+     "risk": {
+      "enum": [
+       "low",
+       "medium",
+       "high"
+      ]
+     }
+    }
+   },
+   "description": "one per posting day; day in pon|wt|śr|czw|pt|sob|niedz"
+  },
+  "reserves": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "title",
+     "format",
+     "why",
+     "trend",
+     "cost_video",
+     "cost_script",
+     "production",
+     "risk"
+    ],
+    "properties": {
+     "day": {
+      "type": "string"
+     },
+     "date": {
+      "type": "string"
+     },
+     "time": {
+      "type": "string"
+     },
+     "id": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "format": {
+      "type": "string"
+     },
+     "why": {
+      "type": "string"
+     },
+     "trend": {
+      "type": "string"
+     },
+     "evidence": {
+      "type": "string"
+     },
+     "output": {
+      "enum": [
+       "video",
+       "script"
+      ]
+     },
+     "cost_video": {
+      "type": "number"
+     },
+     "cost_script": {
+      "type": "number"
+     },
+     "production": {
+      "type": "string"
+     },
+     "risk": {
+      "enum": [
+       "low",
+       "medium",
+       "high"
+      ]
+     }
+    }
+   }
+  }
+ },
+ "description": "Choices land in the artifact db collection week: one document per slot {idea, output, decision: ok|skip, note} and _week {approved, total}."
+}

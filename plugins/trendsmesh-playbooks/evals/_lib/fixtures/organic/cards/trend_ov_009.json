@@ -1,0 +1,120 @@
+{
+ "id": "trend_ov_009",
+ "kind": "hook_trend",
+ "name": "dad, why is _",
+ "what_it_is": "A child asking their father to explain why _ is the way it is. Creators open sports stories about one unusual, meaningful detail, in a sincere, curious, documentary-style register. The blank names a puzzling sports detail or situation, e.g. \"Dad, why is that seat red?\"",
+ "status": "unconfirmed",
+ "confidence": 1.0,
+ "since": "2026-10-05T10:38:41Z",
+ "active_for_days": 18,
+ "momentum": "holding",
+ "why_it_popped": [
+  "7 creators in 14 days, in 1 language",
+  "videos get 47.9x their creators' follower count in views"
+ ],
+ "reach": {
+  "videos": 7,
+  "creators": 7,
+  "views": 18239175,
+  "platforms": {
+   "tiktok": 7
+  }
+ },
+ "examples": [
+  {
+   "asset_id": "asset_0017",
+   "url": "https://example.com/v/17",
+   "platform": "tiktok",
+   "creator": "creator_0017",
+   "published": "2026-10-05T10:38:41Z",
+   "views": 12559832,
+   "likes": 831332,
+   "shares": 9112,
+   "excerpt": "This seat exists because Freddie Freeman made history.#MLB#dodgers#ml...",
+   "is_sensitive": false,
+   "hook_text": "Dad, why is this the only blue seat in the stadium?",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "this the only blue seat in the stadium",
+   "creator_id": "creator_0017"
+  },
+  {
+   "asset_id": "asset_0018",
+   "url": "https://example.com/v/18",
+   "platform": "tiktok",
+   "creator": "creator_0018",
+   "published": "2026-10-16T09:58:16Z",
+   "views": 2084654,
+   "likes": 207664,
+   "shares": 1860,
+   "excerpt": "What's the story behind the red seat at Fenway Park? #fenway #redsox ...",
+   "is_sensitive": false,
+   "hook_text": "Dad, why is that seat red?",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "that seat red",
+   "creator_id": "creator_0018"
+  },
+  {
+   "asset_id": "asset_0019",
+   "url": "https://example.com/v/19",
+   "platform": "tiktok",
+   "creator": "creator_0019",
+   "published": "2026-10-20T09:37:28Z",
+   "views": 1476086,
+   "likes": 86944,
+   "shares": 445,
+   "excerpt": "What's the story behind the red seat at Fenway Park? #fenway #redsox ...",
+   "is_sensitive": false,
+   "hook_text": "Dad, why is that seat the red marked one?",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "that seat the red marked one",
+   "creator_id": "creator_0019"
+  },
+  {
+   "asset_id": "asset_0020",
+   "url": "https://example.com/v/20",
+   "platform": "tiktok",
+   "creator": "creator_0020",
+   "published": "2026-10-09T10:14:57Z",
+   "views": 803000,
+   "likes": 50300,
+   "shares": 619,
+   "excerpt": "Do you know why?🥹😭🥶#TikTokCampaign #football #nfl ",
+   "is_sensitive": false,
+   "hook_text": "Dad,why is this the only team with a shoulder patch?",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "this the only team with a shoulder patch",
+   "creator_id": "creator_0020"
+  },
+  {
+   "asset_id": "asset_0021",
+   "url": "https://example.com/v/21",
+   "platform": "tiktok",
+   "creator": "creator_0021",
+   "published": "2026-10-19T10:36:11Z",
+   "views": 577503,
+   "likes": 26892,
+   "shares": 141,
+   "excerpt": "What's the story behind the red seat at Fenway Park? #fenway #redsox ...",
+   "is_sensitive": false,
+   "hook_text": "Dad, why is that seat the red one?",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "that seat the red one",
+   "creator_id": "creator_0021"
+  }
+ ],
+ "what_we_now_know": "",
+ "sensitivity_level": "none",
+ "visible_until": null,
+ "rank": null,
+ "original_phrase": "dad, why is _",
+ "formula": "dad, why is _",
+ "languages": [
+  "en"
+ ],
+ "format": null
+}

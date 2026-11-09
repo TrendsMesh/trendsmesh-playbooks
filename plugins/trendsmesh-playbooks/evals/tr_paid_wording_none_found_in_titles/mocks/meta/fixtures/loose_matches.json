@@ -1,0 +1,6 @@
+{"data": [
+ {"id": "ad_mock_001", "page_name": "HomeNest Storage", "ad_creative_link_titles": ["Fridge shelf organisers: see every jar at a glance"], "ad_creative_bodies": ["Stackable clear shelves for your fridge. Free shipping this week."], "ad_delivery_start_time": "2026-10-12"},
+ {"id": "ad_mock_002", "page_name": "FitDaily App", "ad_creative_link_titles": ["Get ready with a 10-minute morning workout"], "ad_creative_bodies": ["Your first week of home workouts is free."], "ad_delivery_start_time": "2026-10-20"},
+ {"id": "ad_mock_003", "page_name": "Moonlit Pages", "ad_creative_link_titles": ["The cat with the emerald eye: a mystery novel"], "ad_creative_bodies": ["Read the first three chapters free."], "ad_delivery_start_time": "2026-09-30"},
+ {"id": "ad_mock_004", "page_name": "LinguaPal", "ad_creative_link_titles": ["Learn to say it in Spanish in 5 minutes a day"], "ad_creative_bodies": ["Start your streak today."], "ad_delivery_start_time": "2026-10-02"}
+], "estimated_total": 1505}

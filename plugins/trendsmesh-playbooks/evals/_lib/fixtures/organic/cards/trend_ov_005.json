@@ -1,0 +1,85 @@
+{
+ "id": "trend_ov_005",
+ "kind": "hook_trend",
+ "name": "few people realize that _",
+ "what_it_is": "\"Almost nobody knows that _\": a dramatic reveal of an overlooked fact about a news event. Usually used in documentary-style storytelling to open a shocking true story. The blank holds the surprising fact, e.g. \"Adam Robinson's family had three chances to survive this Florida plane crash, yet they missed every single one.\"",
+ "status": "confirmed",
+ "confidence": 0.6666666666666666,
+ "since": "2026-10-12T09:48:52Z",
+ "active_for_days": 23,
+ "momentum": "holding",
+ "why_it_popped": [
+  "3 creators in 22 days, in 1 language"
+ ],
+ "reach": {
+  "videos": 3,
+  "creators": 3,
+  "views": 368835,
+  "platforms": {
+   "tiktok": 3
+  }
+ },
+ "examples": [
+  {
+   "asset_id": "asset_0014",
+   "url": "https://example.com/v/14",
+   "platform": "tiktok",
+   "creator": "creator_0014",
+   "published": "2026-10-12T09:48:52Z",
+   "views": 359600,
+   "likes": 5446,
+   "shares": 399,
+   "excerpt": "Few people realize that even if the man is found fully at fault for t...",
+   "is_sensitive": false,
+   "hook_text": "Few people realize that even if the man is found fully at fault for this fatal tiger attack, Yorkshire Wildlife Park will still suffer three irreversible losses.",
+   "hook_source": "speech",
+   "appears_at_s": null,
+   "slot_fill": "even if the man is found fully at fault for this fatal tiger attack, Yorkshire Wildlife Park will still suffer three irreversible losses",
+   "creator_id": "creator_0014"
+  },
+  {
+   "asset_id": "asset_0015",
+   "url": "https://example.com/v/15",
+   "platform": "tiktok",
+   "creator": "creator_0015",
+   "published": "2026-11-03T10:02:16Z",
+   "views": 6172,
+   "likes": 33,
+   "shares": 7,
+   "excerpt": "Few people realize that Adam Robinson’s family had three chances to s...",
+   "is_sensitive": false,
+   "hook_text": "Few people realize that Adam Robinson's family had three chances to survive this Florida plane crash, yet they missed every single one.",
+   "hook_source": "speech",
+   "appears_at_s": null,
+   "slot_fill": "Adam Robinson's family had three chances to survive this Florida plane crash, yet they missed every single one",
+   "creator_id": "creator_0015"
+  },
+  {
+   "asset_id": "asset_0016",
+   "url": "https://example.com/v/16",
+   "platform": "tiktok",
+   "creator": "creator_0016",
+   "published": "2026-11-01T11:50:48Z",
+   "views": 3063,
+   "likes": 37,
+   "shares": 0,
+   "excerpt": "Few people realized that less than 24 hours after fitness influencer ...",
+   "is_sensitive": false,
+   "hook_text": "Few people realized that less than 24 hours after fitness influencer Liam Fitzgerald tragically died in a serious motorcycle crash, four influencers posted public tributes.",
+   "hook_source": "speech",
+   "appears_at_s": null,
+   "slot_fill": "",
+   "creator_id": "creator_0016"
+  }
+ ],
+ "what_we_now_know": "Now known: 'few people realize that' is a common template, appearing in r/RetroAchievements progress post (Oct 15 2026), r/Watches post (Oct 10 2026, ~1.3k score), r/spinalmuscularatrophy gene-therapy diary (Oct 8 2026), and r/HonestHotTakes dating post (Sep 20 2026), and of 50 YouTube results uploaded in the last month, sorted by relevance, 12 use it for «few people realize that» shorter than 4 minutes (24%), 41 for «few people realize that» of any length (82%), 45 for «few people know that» of any length (90%), and 23 for «few people realize» of any length (46%).",
+ "sensitivity_level": "none",
+ "visible_until": null,
+ "rank": null,
+ "original_phrase": "few people realize that _",
+ "formula": "few people realize that _",
+ "languages": [
+  "en"
+ ],
+ "format": null
+}

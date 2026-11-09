@@ -1,0 +1,45 @@
+# Lessons from the Lucid Dreaming dry run (1 to 23)
+
+Copied verbatim from the reference playbook's `ANALYSIS.md` (reference playbook `creative-brief_v02`, section 5). Read the
+ones a step names before doing that step. What changed for the plugin:
+
+- Lesson 2 (persist MCP responses): the collector saves every TrendsMesh, Meta and page answer
+  of the run (`references/trend-collection.md` at the plugin root); nothing is transcribed.
+- Lesson 6 (`--out` before the subcommand) is about the reference trend API client: the plugin reads
+  TrendsMesh through its MCP, with no key.
+- Lesson 7: `visible_until` is still read from the cards; without it the brief is valid 14 days
+  from the run date (CB8).
+- Lesson 10: Reddit comes from the archive through `tm voice reddit-posts` and `tm voice
+  reddit-comments`; Goodreads is not used (`references/voice.md` says why).
+- Lessons 12, 13 and 15: the animatic engine and the page are the engine's (`tm brief animatic
+  --render`, `tm brief page`); the page is published as a private artifact when the session has
+  the artifacts tools, else it is a local file and the decisions are taken in chat.
+- Lessons 22 and 23 are about the handoff packages.
+
+1. **Thin account data:** the CA campaigns have a few dozen checkouts and almost no purchases, so no segment reaches the CB1 threshold (≥ 10 results). The AUTO rule for G1 cannot pick. Needed in the spec: a fallback (largest directional cluster, cross-checked with the same product in another market, marked as directional).
+2. **Persist MCP responses:** several Meta MCP responses came back inline and had to be transcribed into `account_context.md`. The SKILL must write every MCP response to a file in the run.
+3. **Trend search is loose:** 10 searches returned 135 unique trends, almost all noise for the category (news, sport, Halloween). No lucid-dreaming topic trend exists. What is usable: hook formats (structures) and 2 topic/format trends. The CB2 expansion rule fired. A relevance filter (manual today) is needed before scoring.
+4. **Language of evidence:** one strong-fit hook ("repeat after me", for the MILD mantra) has only Russian evidence. CB2 transferability caught it.
+5. **Saturation via Ad Library API:** titles only and loose matching; it can show that a competitor exists but cannot prove that a hook is unused. A hook can look unused in one market only because the titles do not match the search words.
+6. **Trend client usage:** `--out` must come before the subcommand (`trends_api.py --out file search ...`).
+7. **`visible_until` is empty** in the trend data, so CB8 cannot derive a valid-until date. Default used: 14 days from the run (re-check date in the review pack). To confirm with the user.
+8. **Tier B changed the direction:** the hook behind brand hypothesis H3 resonates only in a small niche crowd (1 of 733 r/LucidDreaming items mention it). H3 failed in the main category; H4 (research over myths) was the strongest. This is exactly the tier C vs tier A/B check of CB5 working.
+9. **Brand claim precision:** a claim copied from a landing page can say more than its source does. Briefs word each claim as the source itself does, and name the source (R3).
+10. **Reddit access:** Reddit's own endpoints return 403; a public archive worked but returns newest matching posts, not top posts. Counts are frequencies within keyword samples. Goodreads worked for 2 of 7 books (bot challenge on the rest, not bypassed).
+11. **Trend slot fidelity:** "_ taught me this" needs a person or role in the slot; "a study taught me" would break the formula. The hook analysis now records slot type per trend.
+12. **Animatic engine (CB11):** a reusable HTML canvas engine (`runs/02-creative-brief/2026-11-04_ld-en-dry-run/03_wip/animatic/engine_v02.js`) draws a pencil storyboard from a beat list (time, scene, on-screen text in the trend's style, VO as subtitles) and renders 9:16 and 4:5 through `tools/atlas_render/render.mjs` in 12–19 s per video, at no cost. v01 needed one fix round (text overlaps). Candidate for the SKILL: a scene-component library plus beat JSON generated from the brief's beat sheet.
+13. **The user-facing output is a page, not markdown files.** The recipient (growth lead, creator) needs one view: animatics playing, beats, quotes with links, evidence thumbnails, copy, QA, and approve / ask for changes per concept with a "Copy decisions" button for G3. Built as `04_final/brief_pack_v01.html` in the dry run. Candidate for the SKILL's standard deliverable (and for the Review Board in `FLOWS.md`). It needs an HTTP server (the browser pane opens local files as static snapshots without video).
+14. **Evidence at a glance (user decision, 2026-11-04):** each concept opens with a short summary of what it is, what it tests and which data back it (trend: status, creators, views, lift, last seen; customer theme with frequency; account number; saturation). Details come after. In v01 of the page the TrendsMesh numbers were buried mid-card. Templates updated.
+15. **Delivery format (user decision, 2026-11-04):** the local HTML page could not be shared (needs a local server; decisions stayed in one browser). Chosen: a private Artifact link as the default, a self-contained HTML file as the fallback. Written as CB12 in `PLAYBOOK.md`.
+16. **Round of corrections on the page (user, 2026-11-04):**
+    - "day _ of _", "_ taught me this", "come with me to _" are **hooks** (TrendsMesh `hook_trend`), not formats. Naming rule added to CB6.
+    - **Night 7 in C1 is scripted.** It is an ad; the "real outcome only" rule was wrong. A "Dramatization" super is recommended, not required.
+    - **Decisions must be clickable on the page** and reach the team: per-concept Approve / Ask for changes with a note, stored in the artifact's shared database. CB12 updated.
+    - **Foreplay is planned for PB2** to close the hook-level saturation gap (Ad Library titles only). CB4 updated; the account is still to be created by the user.
+17. **Brief recipients (user decision, 2026-11-04):** one brief, written once, with a view per recipient; at intake the user ticks one or more recipients (decision maker, strategist, creator, editor, media buyer). Missing standard brief fields added (key message, tone and mandatories, KPI, budget / deadline / approver, usage rights and fee). Written as CB13.
+18. **Process review and SKILL base (user, 2026-11-04):** the A–Z review against slides 9–11 found two gaps (customer phrases not used in the ads; the brand intake not defined) and a missing build package. User decisions: **never write "no category trend"; show the best-fitting trends** (hooks that fit the concepts, closest topics); saturation without Foreplay worded "competitor found / none found in Ad Library titles"; do everything missing. Done: rules CB1–CB5, CB8, CB10, CB12 updated; tools, shared modules, playbook manifest and contracts added to `PLAYBOOK.md`; `FLOWS.md`, `VARIANTS.md`, `HANDOFF.md`, `schema/brief.schema.json`; tools `trend_shortlist.py`, `voice_mine.py`, `build_animatic.py`, `build_brief_pack.py`; the dry-run page regenerated from `brief_pack_v01.json` (v05).
+19. **Rules CB1–CB13 approved by the user (2026-11-04).** Status in `PLAYBOOK.md` and `HANDOFF.md` updated.
+20. **Minimal intake (user decision, 2026-11-04):** inputs are reduced to what cannot be derived. The user picks the product (or gives a landing URL for a product without ads); the agent derives account, landing, market, language, category phrase, brand draft, voice sources and competitors, applies defaults (3 concepts, all recipients, HITL) and shows one confirmation card. `PLAYBOOK.md` Inputs and `FLOWS.md` A1 updated.
+21. **Formats and sounds (user, 2026-11-04):** TrendsMesh is adding formats as a trend type (like hooks and topics) and a commercial / organic marker on sounds. The SKILL must assume both: four trend lists (hooks, topics, formats, sounds), a concept may be led by any of them, only commercial sounds go into ads when the marker is required. CB2, CB6, CB9, config, templates, VARIANTS, HANDOFF and `trend_shortlist.py` updated; the tool is tested on a synthetic fixture because the current data has no format or sound trends.
+22. **SKILL handoff package v01 (2026-11-04):** `handoff/creative-brief_skill_handoff_v01.zip` (built by `handoff/build_creative_brief_handoff.py`): specification, schema, templates, tools, trend-source skill and the LD dry run (text and data only, no media). Tools tested from an unpacked copy: `trend_shortlist.py` and `build_animatic.py` run; `build_brief_pack.py` writes the page and lists the missing media (exit 1) because the package has no videos or thumbnails.
+23. **SKILL handoff package v02 (2026-11-05):** `handoff/creative-brief_skill_handoff_v02.zip`. Changes against v01: the PB4 seed contract (PLAYBOOK, HANDOFF, VARIANTS); the example run now carries the raw customer-voice sources (Reddit JSON, Goodreads review text), the full generated animatic set (`03_wip/animatic_gen/`: engine, scenes, wrappers) and the tool-test outputs, so the voice counts and the animatic can be reproduced from the package.

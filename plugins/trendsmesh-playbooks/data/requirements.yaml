@@ -1,0 +1,357 @@
+# Readiness checks. The doctor (tm/doctor.py) reads this file; the engine knows no check by name
+# except how to test each `kind`.
+#
+# kind:  env_tier (tier), secret (secret), disk_gb, mcp (mcp), plan (mcp, plan_of), browser (the
+#        user's Chrome or Edge that draws the animatics, tm/atlas.py)
+# fixer: agent (installs, after the user's yes) or user
+# fix:   plain words per system (windows, macos, linux, any). {tier} {size} {minutes} {need}
+#        {free} {missing} {asound} are filled in by the doctor. The card is the user's first
+#        screen: no commands or flags in any text.
+# when:  a list of alternatives; the check applies if ANY alternative holds, and an alternative
+#        holds when ALL its keys hold: outputs (any of), voice, caption_removal, os, tier
+#        (that tier is chosen). No `when` means the check always applies.
+# unchecked: what the card says when the fact was not passed in (mcp and plan checks).
+# fix_by_state: for mcp and plan checks, the fix text for one MCP state (in place of `fix`).
+# plan_of: for plan checks on an MCP, the MCP states that mean the plan is missing (one or a list).
+# warn:  true means the run can go on without it: the card shows it as a warning, with its
+#        `warn_note`, and it does not make the run not ready.
+# warn_note: the line the card shows for that warning (once, however many warnings share it);
+#        absent means the guess-mode notice (tm/evidence.py NOTICE_SHORT).
+# ok_states: for mcp checks, the MCP states that count as ok; absent means connected (ok,
+#        not_enabled, no_plan, free, inactive), so a plan check on the same MCP says the rest.
+# playbooks: the playbooks (data/playbooks.yaml ids) the check is for; absent means
+#        [01-refresh-ad]. A playbook other than refresh-ad needs every tier its env_tier
+#        checks name, those with a `when` only when it holds for the run's outputs; refresh-ad's
+#        tiers follow its outputs (tm/envtiers.py).
+checks:
+  - id: tier_base
+    name: Base tools
+    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research]
+    outputs: [creative_brief, edited_video, ai_video, live_test]
+    kind: env_tier
+    tier: base
+    fixer: agent
+    fix: {any: "I install the base tools (about {size}, about {minutes} min). Say yes and I start."}
+  - id: tier_breakdown
+    name: Video breakdown tools (transcription and scene detection)
+    playbooks: [01-refresh-ad, 03-organic-ai-video]
+    when: [{outputs: [organic_video]}]
+    outputs: [creative_brief, edited_video, ai_video]
+    kind: env_tier
+    tier: breakdown
+    fixer: agent
+    fix: {any: "I install the video breakdown tools (about {size}, about {minutes} min). Say yes and I start."}
+  - id: tier_video
+    name: Video editing tools (Remotion)
+    playbooks: [01-refresh-ad, 03-organic-ai-video]
+    when: [{outputs: [organic_video]}]
+    outputs: [edited_video]
+    kind: env_tier
+    tier: video
+    fixer: agent
+    fix: {any: "I install the video editing tools (about {size}, about {minutes} min). Say yes and I start."}
+  - id: tier_voice
+    name: Voice tools (new voiceover)
+    playbooks: [01-refresh-ad, 03-organic-ai-video]
+    when: [{outputs: [organic_video]}]
+    outputs: []
+    kind: env_tier
+    tier: voice
+    fixer: agent
+    fix: {any: "I install the voice tools (about {size}, about {minutes} min). Say yes and I start."}
+  - id: tier_ai
+    name: AI video tools
+    playbooks: [01-refresh-ad, 03-organic-ai-video]
+    when: [{outputs: [organic_video]}]
+    outputs: [ai_video]
+    kind: env_tier
+    tier: ai
+    fixer: agent
+    fix: {any: "I install the AI video tools (about {size}, about {minutes} min). Say yes and I start."}
+  - id: tier_animatic
+    name: Animatic tools (the animatic renderer)
+    playbooks: [02-creative-brief]
+    when: [{outputs: [animatics]}]
+    kind: env_tier
+    tier: animatic
+    fixer: agent
+    fix: {any: "I install the animatic tools (about {size}, about {minutes} min). Say yes and I start."}
+
+  - id: replicate_api_token
+    name: Replicate token set
+    outputs: [ai_video, edited_video]
+    when:
+      - {outputs: [ai_video]}
+      - {outputs: [edited_video], caption_removal: true}
+    kind: secret
+    secret: replicate_api_token
+    fixer: user
+    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"}
+  - id: elevenlabs_api_key
+    name: ElevenLabs key set
+    outputs: [edited_video]
+    when: [{voice: true}]
+    kind: secret
+    secret: elevenlabs_api_key
+    fixer: user
+    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the ElevenLabs key"}
+  - id: elevenlabs_cloning_plan
+    name: ElevenLabs plan includes voice cloning
+    outputs: [edited_video]
+    when: [{voice: true}]
+    kind: plan
+    fact: elevenlabs_plan
+    needs_key: elevenlabs_api_key     # skipped while the key is missing: the key row comes first
+    fixer: user
+    fix: {any: "Your ElevenLabs plan does not include voice cloning. Open elevenlabs.io, choose Subscription and pick a plan with voice cloning."}
+    unchecked: "Not checked yet: open elevenlabs.io, Profile, Subscription, and see whether your plan includes voice cloning. Then tell me which it is, and I check again."
+
+  - id: disk_free
+    name: Free disk space
+    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research]
+    outputs: []
+    kind: disk_gb
+    fixer: user
+    fix: {any: "Free up about {need} on the drive that holds the plugin data (it has {free} free), then say continue."}
+  - id: mcp_trendsmesh
+    name: TrendsMesh connected and signed in
+    outputs: []
+    kind: mcp
+    mcp: trendsmesh
+    fixer: user
+    fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find what's rising right now."}
+    fix_by_state:
+      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
+    warn: true
+    unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
+  - id: trendsmesh_agent_plan
+    name: TrendsMesh Agent plan
+    outputs: []
+    kind: plan
+    mcp: trendsmesh
+    plan_of: [no_plan, free, inactive]
+    fixer: user
+    fix: {any: "Trend data needs the TrendsMesh Agent plan: https://trendsmesh.com/plans"}
+    fix_by_state:
+      free: "You're on the free TrendsMesh plan: it has no trend data."
+      no_plan: "You're on the free TrendsMesh plan: it has no trend data."
+      inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
+    warn: true
+    unchecked: "Can't be checked until TrendsMesh is connected and signed in."
+  # Creative brief (02) runs as labelled guesses without TrendsMesh (decisions §4), so its two
+  # TrendsMesh rows warn with its own notice (tm/evidence.py NOTICES; one warn_note per row).
+  - id: mcp_trendsmesh_brief
+    name: TrendsMesh connected and signed in
+    playbooks: [02-creative-brief]
+    outputs: []
+    kind: mcp
+    mcp: trendsmesh
+    fixer: user
+    fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find what's rising right now."}
+    fix_by_state:
+      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
+    warn: true
+    warn_note: "Without live trend data, the hooks in these concepts are my best guess from your customers' own words, your ads and the Ad Library, not proof from what is rising now."
+    unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
+  - id: trendsmesh_agent_plan_brief
+    name: TrendsMesh Agent plan
+    playbooks: [02-creative-brief]
+    outputs: []
+    kind: plan
+    mcp: trendsmesh
+    plan_of: [no_plan, free, inactive]
+    fixer: user
+    fix: {any: "Trend data needs the TrendsMesh Agent plan: https://trendsmesh.com/plans"}
+    fix_by_state:
+      free: "You're on the free TrendsMesh plan: it has no trend data."
+      no_plan: "You're on the free TrendsMesh plan: it has no trend data."
+      inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
+    warn: true
+    warn_note: "Without live trend data, the hooks in these concepts are my best guess from your customers' own words, your ads and the Ad Library, not proof from what is rising now."
+    unchecked: "Can't be checked until TrendsMesh is connected and signed in."
+  # Meta Ads is required for refresh-ad and creative brief (its PLAYBOOK manifest): no warn.
+  - id: mcp_meta
+    name: Meta Ads connected and signed in
+    playbooks: [01-refresh-ad, 02-creative-brief]
+    outputs: []
+    kind: mcp
+    mcp: meta
+    fixer: user
+    fix: {any: "Open /mcp, choose the Meta Ads connector, and sign in to Meta."}
+    unchecked: "Not checked yet: I check it with one quick Meta Ads call, then look again."
+  - id: meta_mcp_enabled_for_account
+    name: Meta Ads enabled for your ad account
+    playbooks: [01-refresh-ad, 02-creative-brief]
+    outputs: []
+    kind: plan
+    mcp: meta
+    plan_of: not_enabled
+    fixer: user
+    fix: {any: "Meta turns its Ads connector on account by account, and yours is not on yet. In Meta Business settings, ask for access to the Ads connector (MCP) for this ad account, then say continue."}
+    unchecked: "Can't be checked until Meta Ads is connected and signed in."
+
+  # Trend research (04): every number comes from TrendsMesh, so it is not a warning there; the
+  # Meta Ad Library (the paid check) and the artifacts connector (the page's link) are.
+  - id: mcp_trendsmesh_research
+    name: TrendsMesh connected and signed in
+    playbooks: [04-trend-research]
+    outputs: []
+    kind: mcp
+    mcp: trendsmesh
+    fixer: user
+    fix: {any: "Open /mcp, choose trendsmesh, and sign in. Trend research reads every number from TrendsMesh, so it can't run without it."}
+    fix_by_state:
+      skipped: "You chose to go on without TrendsMesh, but trend research has nothing to report without it. Say so when you want to sign in."
+      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+    unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
+  - id: trendsmesh_agent_plan_research
+    name: TrendsMesh Agent plan
+    playbooks: [04-trend-research]
+    outputs: []
+    kind: plan
+    mcp: trendsmesh
+    plan_of: [no_plan, free, inactive]
+    fixer: user
+    fix: {any: "Trend data needs the TrendsMesh Agent plan: https://trendsmesh.com/plans"}
+    fix_by_state:
+      free: "You're on the free TrendsMesh plan: it has no trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+      no_plan: "You're on the free TrendsMesh plan: it has no trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+      inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
+    unchecked: "Can't be checked until TrendsMesh is connected and signed in."
+  - id: meta_ad_library_research
+    name: Meta Ad Library connected and signed in
+    playbooks: [04-trend-research]
+    outputs: []
+    kind: mcp
+    mcp: meta
+    ok_states: [ok]
+    fixer: user
+    fix: {any: "Open /mcp, choose the Meta Ads connector, and sign in to Meta."}
+    fix_by_state:
+      not_enabled: "Meta turns its Ads connector on account by account, and yours is not on yet. In Meta Business settings, ask for access to the Ads connector (MCP), then say continue."
+    warn: true
+    warn_note: "Without the Meta Ads connector the paid check says 'not checked'; the report is otherwise complete."
+    unchecked: "Not checked yet: I check it with one quick Meta Ads call, then look again."
+  # The claude.ai artifacts tools (publish_files) come with the Claude desktop app's Code tab,
+  # not from /mcp: without them the page is a local file, never a blocker.
+  - id: artifacts_pages
+    name: Shared page links (claude.ai artifacts)
+    playbooks: [04-trend-research]
+    outputs: []
+    kind: mcp
+    mcp: artifacts
+    fixer: user
+    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here the page is saved as a file you can open and share."}
+    warn: true
+    warn_note: "Without shared page links the report is otherwise complete."
+    unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
+  - id: artifacts_pages_brief
+    name: Shared page links (claude.ai artifacts)
+    playbooks: [02-creative-brief]
+    outputs: []
+    kind: mcp
+    mcp: artifacts
+    fixer: user
+    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here the page is saved as a file you can open and share."}
+    warn: true
+    warn_note: "Without the claude.ai artifacts connector you get the page as a local file, and decisions are taken here in chat."
+    unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
+
+  - id: browser_for_animatics
+    name: A browser for the animatics (Chrome or Edge)
+    playbooks: [02-creative-brief]
+    when: [{outputs: [animatics]}]
+    kind: browser
+    fixer: user
+    fix:
+      windows: "Install Microsoft Edge or Google Chrome (both free), then say continue. I draw the animatics in it, on your computer."
+      macos: "Install Google Chrome (free), then say continue. I draw the animatics in it, on your computer."
+      linux: "Install Google Chrome (free), then say continue. I draw the animatics in it, on your computer."
+
+  # Organic video (03): TrendsMesh is required, as in trend research (every idea rests on what is
+  # rising now), so its two rows do not warn. The keys, the artifacts connector and the browser are
+  # warnings: what they hide, `tm organic stack` records (tm/organic.py). An idea run (A0) asks for
+  # the base tier alone; a production run's D1 adds the media tiers through the `when` of the
+  # tier rows above. The animatic tier has no row: Task 19's pack check refuses an animation
+  # without it.
+  - id: mcp_trendsmesh_organic
+    name: TrendsMesh connected and signed in
+    playbooks: [03-organic-ai-video]
+    outputs: []
+    kind: mcp
+    mcp: trendsmesh
+    fixer: user
+    fix: {any: "Open /mcp, choose trendsmesh, and sign in. Organic video builds every idea on trends that are rising now, so it can't run without TrendsMesh."}
+    fix_by_state:
+      skipped: "You chose to go on without TrendsMesh, but organic video has nothing to build on without it. Say so when you want to sign in."
+      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+    unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
+  - id: trendsmesh_agent_plan_organic
+    name: TrendsMesh Agent plan
+    playbooks: [03-organic-ai-video]
+    outputs: []
+    kind: plan
+    mcp: trendsmesh
+    plan_of: [no_plan, free, inactive]
+    fixer: user
+    fix: {any: "Trend data needs the TrendsMesh Agent plan: https://trendsmesh.com/plans"}
+    fix_by_state:
+      free: "You're on the free TrendsMesh plan: it has no trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+      no_plan: "You're on the free TrendsMesh plan: it has no trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+      inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
+    unchecked: "Can't be checked until TrendsMesh is connected and signed in."
+  - id: artifacts_pages_organic
+    name: Shared page links (claude.ai artifacts)
+    playbooks: [03-organic-ai-video]
+    outputs: []
+    kind: mcp
+    mcp: artifacts
+    fixer: user
+    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here the page is saved as a file you can open and share."}
+    warn: true
+    warn_note: "Without the claude.ai artifacts connector you get each page as a local file, and choices are taken here in chat."
+    unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
+  - id: replicate_api_token_organic
+    name: Replicate token set
+    playbooks: [03-organic-ai-video]
+    outputs: []
+    kind: secret
+    secret: replicate_api_token
+    fixer: user
+    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"}
+    warn: true
+    warn_note: "Without a Replicate token, AI footage and talking characters are hidden; animations, quizzes and scripts to film stay available."
+  - id: elevenlabs_api_key_organic
+    name: ElevenLabs key set
+    playbooks: [03-organic-ai-video]
+    outputs: []
+    kind: secret
+    secret: elevenlabs_api_key
+    fixer: user
+    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the ElevenLabs key"}
+    warn: true
+    warn_note: "Without an ElevenLabs key, a narrator comes from the video model's prompt, or the lines stay in the script."
+  - id: browser_for_organic_animation
+    name: A browser for the animations (Chrome or Edge)
+    playbooks: [03-organic-ai-video]
+    outputs: []
+    kind: browser
+    fixer: user
+    fix:
+      windows: "Install Microsoft Edge or Google Chrome (both free), then say continue. I draw the animations in it, on your computer."
+      macos: "Install Google Chrome (free), then say continue. I draw the animations in it, on your computer."
+      linux: "Install Google Chrome (free), then say continue. I draw the animations in it, on your computer."
+    warn: true
+    warn_note: "Without Chrome or Edge, animations are hidden."
+
+  - id: linux_chrome_libs
+    name: Linux libraries for the video renderer
+    outputs: [edited_video]
+    when: [{os: linux, tier: video}]
+    kind: linux_libs
+    fixer: user
+    fix:
+      linux: "Run this one command in a terminal, then say continue (it needs your password; from Remotion's Linux dependencies page, not verified here): sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev {asound} libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2"
+      any: "Not needed on this system."

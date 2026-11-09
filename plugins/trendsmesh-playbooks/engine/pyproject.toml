@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tm"
+version = "0.9.1"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.package-data]
+tm = ["*.html", "*.css", "schemas/*.json", "animatic_js/*.js", "brief_pack/*.html", "organic_pages/*.css"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+markers = [
+  "tools: needs the heavy tool dependencies (pixi run -e dev-full test-tools)",
+  "video: renders with Remotion, needs Node and a browser download (pixi run -e dev-full test-video)",
+  "private_data: needs handoff/ or the fixtures made from it; skipped in the public copy (tests/private.py)",
+]

@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      # A marketplace install on Windows is a clone with Git for Windows' default autocrlf=true:
+      # check out the same way, so .gitattributes is what keeps the scripts LF.
+      - name: Check out as Git for Windows does
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf true
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          pixi-version: v0.84.1  # the pixi the lock was made with; install-pixi.sh and .ps1 pin it too
+          manifest-path: plugins/trendsmesh-playbooks/env/pixi.toml
+          environments: dev
+          frozen: true
+          cache: true
+      - name: Engine tests
+        run: pixi run --frozen --manifest-path plugins/trendsmesh-playbooks/env/pixi.toml -e dev test
+      - name: Bootstrap tests (sh)
+        if: runner.os != 'Windows'
+        run: |
+          sh plugins/trendsmesh-playbooks/bootstrap/test-bootstrap.sh
+          sh plugins/trendsmesh-playbooks/bootstrap/test-guard-secrets.sh
+      - name: Bootstrap tests (PowerShell)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./plugins/trendsmesh-playbooks/bootstrap/test-bootstrap.ps1
+      - name: Bootstrap tests (sh under Git Bash)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cd plugins/trendsmesh-playbooks
+          if grep -l $'\r' bootstrap/*.sh bootstrap/*.awk bin/tm; then
+            echo "These scripts were checked out with CRLF: .gitattributes must keep them LF." >&2
+            exit 1
+          fi
+          sh bootstrap/test-bootstrap.sh
+          sh bootstrap/test-guard-secrets.sh
+
+  tools:
+    name: heavy tool tiers (manual)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.11.3
+        with:
+          pixi-version: v0.84.1  # the pixi the lock was made with; install-pixi.sh and .ps1 pin it too
+          manifest-path: plugins/trendsmesh-playbooks/env/pixi.toml
+          environments: dev-full
+          frozen: true
+          cache: true
+      - name: Tool tests (breakdown, video, voice)
+        run: pixi run --frozen --manifest-path plugins/trendsmesh-playbooks/env/pixi.toml -e dev-full test-tools
+      # The real renders: Remotion (its headless browser download) and the animatic renderer (the
+      # runner's Google Chrome). They need -m video, which test-video passes.
+      - name: Video tests (Remotion and the animatic renderer)
+        run: pixi run --frozen --manifest-path plugins/trendsmesh-playbooks/env/pixi.toml -e dev-full test-video

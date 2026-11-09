@@ -1,0 +1,131 @@
+# Check-in catalogue for playbook 03 "Organic AI video". The keys (route, card, choices,
+# on_choice and its effects, money) are those of data/checkins.yaml (refresh-ad), which explains
+# each one, plus `yes_for`:
+#
+# yes_for: the budget kinds (data/playbooks.yaml `budgets`) a yes at this check-in approves. Only
+#   a money check-in has it; the engine refuses a kind the playbook does not spend from.
+#
+# Source: handoff/organic-video_v02 FLOWS.md section J ("All gates"). Each gate's A–Z rule opens
+# its `rule` here, verbatim. The rest is the plugin's:
+# - the ids are names, not codes, since FLOWS.md uses G for a step group (the plan's decision 4);
+# - the mapping to the levels (the plan's decision 3 and its "Levels" table): "gated" is Check
+#   every step and "A–Z" is Hands-off. What to make (proposals) and the pack's cost are asked at
+#   every level: what to make is taste, and the cost is confirmed once while testing (OV8). Just
+#   the big calls asks two cards per video: the plan (taste and pack, after E2) and the final page
+#   with every step (final_edit); images and video go by the rubric there, as in Hands-off;
+# - each rule's words after its FLOWS.md text: how the plugin applies it;
+# - reuse_profile, before A1: a confirmed profile is reused rather than drafted again (OV1);
+# - profile has no A–Z rule in FLOWS.md ("profile required once"): a channel's first profile is
+#   always the user's, at every level;
+# - script: FLOWS.md E3 ("delivered" in A–Z); week: FLOWS.md I2 ("approve the week");
+# - video's fails_qa and its stop: a take that fails QA goes to the user, never regenerated
+#   (PLAYBOOK.md OV9);
+# - pack's reject note, and its yes_for (the plan's decision 6);
+# - schedule: trend research's GS (FLOWS.md I1's "scheduled run"; decisions §9), with the weekly
+#   pack's sentence.
+# Publish (FLOWS.md J's last gate) is not a check-in: without a publishing tool the user posts
+# (the plan's decision 15).
+
+levels:
+  every_step: Check every step
+  big_calls: Just the big calls
+  hands_off: Hands-off
+
+cards:
+  plan:
+    name: Approve the plan for this video
+    ask: last
+
+checkins:
+  - id: reuse_profile
+    name: Reuse the saved channel profile
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "reuse when a confirmed profile exists, else new"
+    choices: [reuse, new]
+    on_choice:
+      reuse: {requires: [profile_confirmed]}   # the engine checks that profile (review M3)
+
+  - id: profile
+    name: Confirm the channel profile
+    route: {every_step: own, big_calls: own, hands_off: own}
+    rule: "— (profile required once): a channel's first profile is always the user's"
+    choices: [accept]
+
+  - id: proposals
+    name: Choose what to make
+    route: {every_step: own, big_calls: own, hands_off: own}
+    rule: "profile defaults; what to make is taste, so the user decides it at every level"
+    choices: [accept]
+
+  - id: week
+    name: Approve the week
+    route: {every_step: own, big_calls: own, hands_off: own}
+    rule: "approve the week: the user approves the week once"
+    choices: [approve]
+    on_choice:
+      approve: {requires: [week_in_budget]}   # the week's choices cost no more than its budget
+
+  - id: schedule
+    name: Set up the weekly pack
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: >-
+      by_hand unless the previous run's schedule.how is desktop_task (then schedule: keep its
+      task); a new standing schedule needs the user's yes
+    choices: [schedule, by_hand]
+    on_choice:
+      by_hand:
+        skips: "No schedule was set up: say 'plan my week of videos' each week."
+
+  - id: taste
+    name: Pick the style, voice and music
+    card: plan
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: >-
+      profile defaults or agent pick (logged): the profile's saved picks, else the agent's pick,
+      logged with the reason
+    choices: [accept]
+
+  - id: pack
+    name: Approve the generation pack and its cost
+    card: plan
+    route: {every_step: own, big_calls: card, hands_off: own}
+    rule: "budget guard; cost confirmed once while testing, so the user approves the pack at every level"
+    choices: [approve, reject]
+    money: true
+    yes_for: [ai_usd, voice_credits]
+    on_choice:
+      reject:
+        skips: "Nothing was generated or paid. The idea can still become a script to film."
+
+  - id: script
+    name: Accept the script to film
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "delivered"
+    choices: [accept]
+
+  - id: images
+    name: Pick the images
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: "rubric pick (images may be redone once): the rubric's pick, logged; one automatic redo per item"
+    choices: [accept, redo, drop]
+
+  - id: video
+    name: Pick the takes
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: >-
+      rubric pick; a failed take goes to the user (no automatic video redo): fails_qa when a take
+      does not pass QA
+    choices: [accept, redo, drop, fails_qa]
+    on_choice:
+      fails_qa:
+        stop:
+          what: "The take did not pass QA, and a video is never regenerated automatically."
+          todo: >-
+            Look at the QA findings and choose: keep it as is, speed it up in the edit, redo it
+            with a note (its cost is shown), or drop it.
+
+  - id: final_edit
+    name: Accept the final edit
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "delivered on the delivery page with every step"
+    choices: [accept, redo, drop]

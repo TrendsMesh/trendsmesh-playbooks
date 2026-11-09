@@ -1,0 +1,26 @@
+{
+ "out": "../../04_final/ad2_U_coldopen_L0_v03.mp4",
+ "note": "Test fixture, not the handoff's file: its U_R1_coldopen_v03.json with segment 2 ending at 19.76 s instead of 19.80 s. At 29.953 fps 19.80 s ends on frame 593, the first frame of the next shot (19.798 s), the same flash RC15 refuses in J1 v04; v03's QA missed it only because of the 30 fps phase. Reported to the playbook owner on issue #1. Its note, reworded for this fixture: Scene reorder (cold open): the practice line (21.08-25.53, 'Wystarczy dziesięć minut ćwiczeń przed snem, a efekt widać już pierwszej nocy.') now opens the ad; the question before it, 'Chcecie znać mój sposób?' (20.02-20.92), is left out, since nothing answers it any more; every other piece keeps its source order and timing. Picture cuts sit on caption switches or shot changes, audio cuts in pauses. v02: a 0.06 s audio_tail on the first piece (its last word, 'nocy', is still audible until 25.54 s while the picture stops at 25.53 s; the source opens on quiet until 0.14 s, so the tail lands on quiet). v03: frame 765 (25.540 s) starts a new shot, and resampling to 30 fps dragged it into the first piece, a single-frame flash recut_qa flagged; the picture now stops at 25.50 s, with a 0.10 s audio_tail (voice until 25.54 s, quiet until 25.64 s).",
+ "video": [
+  {
+   "src": "../../00_raw/ad_2.mp4",
+   "from": 21.08,
+   "to": 25.5,
+   "audio_tail": 0.1
+  },
+  {
+   "src": "../../00_raw/ad_2.mp4",
+   "from": 0.0,
+   "to": 19.76
+  },
+  {
+   "src": "../../00_raw/ad_2.mp4",
+   "from": 25.56,
+   "to": 29.68
+  }
+ ],
+ "audio": [],
+ "audio_mode": "sync",
+ "sync_xfade_ms": 40,
+ "audio_tail_fade_ms": 60
+}

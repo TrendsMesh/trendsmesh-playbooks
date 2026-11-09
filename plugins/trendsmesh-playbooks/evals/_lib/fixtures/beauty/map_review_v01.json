@@ -1,0 +1,22 @@
+{
+ "_note": "G1 agent relevance review of the beauty category map, 2026-11-04. Reasons are the agent's reading of name + what_it_is; restore any on request.",
+ "drop": {
+  "Dementia in family life and memory": "off-category: matched 'anti-aging' on ageing, not beauty",
+  "Kalogeras Sisters Fan Edits and Reactions": "off-category: celebrity fan edits, matched 'k-beauty' by name",
+  "OOTD Outfit Showcase Videos": "adjacent category (fashion), not beauty",
+  "Outfit-change selfie montages with lip-sync audio": "adjacent category (fashion)",
+  "Goth and alternative fashion aesthetic": "adjacent category (fashion)",
+  "Stylized signature design tutorials": "off-category: handwriting / signature design",
+  "Comedic face-warp filter selfie videos": "off-category: comedy filter, no beauty content",
+  "Showing Off Facial Piercings": "adjacent (body modification), not lashes and brows"
+ },
+ "retag": {
+  "Hair loss remedies and hair recovery": "hair care",
+  "Wash day hair transformation routines": "hair care",
+  "Dyson Hair Stylers: Demos and Tutorials": "hair care",
+  "Karseell collagen hair mask promo skits": "hair care",
+  "Lace-front wig showcases and vendor promos": "hairstyle",
+  "Satisfying blackhead and pimple extraction videos": "skincare routine",
+  "Medicube K-beauty skincare hauls and routines": "k-beauty"
+ }
+}

@@ -1,0 +1,140 @@
+# The creative brief acceptance (creative brief plan Task 18).
+# A person runs it with the agent as the operator: /trendsmesh-playbooks:acceptance briefs.
+# Spec: the playbook handoff creative-brief_v02.
+#
+# Each case: id, title, proves, needs (file | key | budget | meta | trendsmesh | artifacts |
+# human_verdict, asked one at a time), steps (what the agent does, in this case's run folder),
+# pass (what must hold), judge (what the person looks at; null when recorded results prove the
+# case, and then the agent records the result).
+#
+# The creative brief spends no money: no case needs a budget, and the report has no spend lines.
+# Every case is worked from the suite folder (acceptance/<date>_briefs/, commands/acceptance.md
+# step 2): it holds the case runs, their library/ and the collector's marker. B8 is the exception:
+# in real use trend research and briefs share one workspace, so B8 is worked from the `trends`
+# suite's folder, where T8 saved the seeds (`tm run new --seed` reads the library of the folder it
+# runs in), and its result is recorded back here.
+
+playbook: 02-creative-brief
+budget: {}
+
+cases:
+  - id: B1
+    title: "Intake on the person's own product: one pick list, one card"
+    proves: "A0 and A1 on a real Meta ad account: the product is found, not asked for, and the card holds only what the person can confirm"
+    needs: [meta, human_verdict]
+    steps:
+      - "Run the doctor's creative brief checks, then start this case's run (Check every step) and let A0 and A1 go as far as the intake card."
+      - "The agent evals cover only the first reply (a pick list of products), so this case is where the intake card and the category phrase in `config.yaml` are proved: read both back to the person."
+      - "Show one pick list and one card, asking nothing the Meta account could answer."
+      - "Run `tm config check` on the run."
+    pass: >-
+      One pick list and one card were shown; `tm config check` exits 0 on the run; the category
+      phrase in `config.yaml` is the person's own words for the product.
+    judge: >-
+      Was anything in the card wrong, and was anything asked that I could have found?
+
+  - id: B2
+    title: "The persona (G1) on the live account"
+    proves: "the audience hypothesis is written before any audience data, and the persona is picked from the live breakdowns"
+    needs: [meta]
+    steps:
+      - "Go on from B1's run folder (offer B1's answers as one question), through the audience hypothesis and the Meta breakdowns, to the persona check-in (G1)."
+      - "Run `tm audience pick` on the run."
+      - "Note in the record the Meta MCP's parameter names for breakdowns and targeting exactly as the session showed them (the engine's `audience.order_gap` keys on them), and which breakdowns came back thin."
+    pass: >-
+      The audience hypothesis file's time is before the breakdown answers; `tm audience pick`
+      exits 0; thin data is marked directional. The note holds the Meta parameter names.
+    judge: null
+
+  - id: B3
+    title: "Live voice mining on the person's category"
+    proves: "the customer voice is mined from the live archive, with every item traced to its query"
+    needs: [human_verdict]
+    steps:
+      - "Go on from B2's run folder to the voice step (Reddit archive; the person's own reviews if they have them)."
+      - "Run `tm voice check` on the run."
+      - "Show the top themes with their quotes."
+    pass: >-
+      The archive files in the run hold `_query_url` on their items; `tm voice check` exits 0.
+    judge: >-
+      Do the top themes sound like your customers?
+
+  - id: B4
+    title: "Real trends: the collector saves searches, cards and videos"
+    proves: "the collector reads the real TrendsMesh MCP into the brief run, and the shortlist is made from what it saved"
+    needs: [trendsmesh]
+    steps:
+      - "Go on from B3's run folder to the trend step. The claim window runs from `tm trends collect on` at A1, so check that the collector claimed this session's calls for this run."
+      - "Run `tm trends check-fields` on the run, then `tm trends shortlist`."
+      - "Note in the record: whether `list_trends` took `format_trend` and `sound_trend`; whether the cards carry `visible_until` and a sound licence (`check-fields` looks at neither); the exact Meta and artifacts tool names the session showed (the matcher's)."
+      - "Note in the record whether each `search_trends` answer reached the agent whole or as Claude Code's \"output too large\" notice, and whether the brief run's saved searches hold cards or that notice."
+    pass: >-
+      The collector saved searches, cards and videos into the brief run (claimed by this session
+      after `collect on` at A1); `tm trends check-fields` exits 0 on its fixed list; the shortlist
+      has hooks and topics. The note holds the items above.
+    judge: null
+
+  - id: B5
+    title: "Animatics with the person's own browser"
+    proves: "each concept's animatic is drawn by the browser the person has, in both shapes, without page errors"
+    needs: [human_verdict]
+    steps:
+      - "Go on from B4's run folder to the concepts and their animatics (CB11), drawn with the person's own browser. On Windows, use Edge only, if the person has it."
+      - "Give the person the path of each concept's animatics."
+    pass: >-
+      A 9:16 and a 4:5 MP4 exist for each concept, with no page errors.
+    judge: >-
+      Watching it, can you tell the structure and the timing of the ad?
+
+  - id: B6
+    title: "The page on claude.ai: private, with decisions saved by a second person"
+    proves: "the page is a private artifact with db rules, a second person's decision is read back, and a new version keeps the slug and the declaration"
+    needs: [artifacts, human_verdict]
+    steps:
+      - "Go on from B5's run folder to the page, published as a private artifact. Do not make it public."
+      - "Show the declaration with `read_declaration`, with its db rules."
+      - "Ask the person to share the page with a second person with Contributor access, who saves a decision on it. Read it with `tm brief decisions`."
+      - "Publish a later version of the page."
+    pass: >-
+      The artifact is private; `read_declaration` shows the db rules; a second person with
+      Contributor access saved a decision; `tm brief decisions` reads it; the later version keeps
+      the slug and the declaration.
+    judge: >-
+      Did the second person save a decision on the page, and does what the agent read back match
+      it?
+
+  - id: B7
+    title: "The creator view"
+    proves: "the view made for an outside creator holds nothing internal"
+    needs: [human_verdict]
+    steps:
+      - "Go on from B6's run folder (or B5's, when B6 was blocked) and open the creator view of the brief."
+      - "Give the person the creator view's path or link."
+    pass: >-
+      The creator view was shown to the person.
+    judge: >-
+      Is there anything in the creator view you would not send to an outside creator?
+
+  - id: B8
+    title: "From a trend pick"
+    proves: "a run started with a seed names the seed, and the concept is built on it"
+    needs: [meta, trendsmesh]
+    steps:
+      - "This case is worked from the `trends` suite's folder (`acceptance/<date>_trends/`, the one where T8 ran): `cd` into it. There, `tm seeds list --source pb4 --json`; when it lists no seed, `cd` back to this suite's folder and record the case blocked with that note."
+      - "From the `trends` suite's folder, start the run with `tm run new --playbook creative-brief --seed <seed_id> --json` for one of the seeds (its run is under that folder's `runs/`), turn collection on there, and let it go as far as the first concept."
+      - "Then `cd` back to this suite's folder and record the result there (`tm acceptance record B8 …`), with the run folder's path as evidence."
+    pass: >-
+      After the `trends` suite's T8, a run started with `--seed` names the seed in
+      `00_raw/seed.json` and the concept built on it.
+    judge: null
+
+  - id: B9
+    title: "Without TrendsMesh"
+    proves: "with no TrendsMesh, the brief says plainly that its hooks are guesses"
+    needs: [meta, human_verdict]
+    steps:
+      - "Start a run in a session where the TrendsMesh tools are not connected, and let it go as far as the hooks, on the page and in chat."
+    pass: >-
+      The hooks were shown as guesses, on the page and in chat.
+    judge: >-
+      Is it clear on the page and in chat that the hooks are guesses?

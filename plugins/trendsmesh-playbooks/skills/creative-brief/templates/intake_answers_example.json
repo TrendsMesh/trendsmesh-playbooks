@@ -1,0 +1,17 @@
+{
+  "level": "every_step",
+  "account": {"id": "act_000000", "market": "CA", "language": "English", "currency": "PLN"},
+  "product": {
+    "name": "Night School e-book",
+    "landing_url": "https://nightschool.example.com/",
+    "category_phrase": "lucid dreaming"
+  },
+  "brand": {"profile": "library/brands/night-school/brand_v01.json", "guide": null},
+  "voice": {"links": []},
+  "trends": {"terms": ["lucid dreaming", "dream journal", "reality check", "sleep"], "exclude_terms": ["halloween"]},
+  "brief": {"recipients": ["decision", "strategy", "creator", "editor", "media-buyer"], "currency": "USD", "fx_rate": 3.70},
+  "concepts": {"count": 3},
+  "outputs": ["review_pack", "briefs", "animatics", "page"],
+  "delivery": {"channel": "artifact"},
+  "intake": {"budget": null, "deadline": null, "approver": null, "rights": null, "fee": null}
+}

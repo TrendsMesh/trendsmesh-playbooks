@@ -1,0 +1,514 @@
+{
+ "language": "pl",
+ "language_probability": null,
+ "duration": 29.68,
+ "segments": [
+  {
+   "start": 0.0,
+   "end": 3.02,
+   "text": "Musicie usłyszeć, co mi się śniło tej ostatniej nocy.",
+   "words": [
+    {
+     "start": 0.0,
+     "end": 0.36,
+     "word": " Musicie",
+     "probability": null
+    },
+    {
+     "start": 0.36,
+     "end": 0.9,
+     "word": " usłyszeć,",
+     "probability": null
+    },
+    {
+     "start": 1.16,
+     "end": 1.3,
+     "word": " co",
+     "probability": null
+    },
+    {
+     "start": 1.3,
+     "end": 1.46,
+     "word": " mi",
+     "probability": null
+    },
+    {
+     "start": 1.46,
+     "end": 1.6,
+     "word": " się",
+     "probability": null
+    },
+    {
+     "start": 1.6,
+     "end": 2.2,
+     "word": " śniło",
+     "probability": null
+    },
+    {
+     "start": 2.2,
+     "end": 2.54,
+     "word": " tej",
+     "probability": null
+    },
+    {
+     "start": 2.54,
+     "end": 2.72,
+     "word": " ostatniej",
+     "probability": null
+    },
+    {
+     "start": 2.72,
+     "end": 3.02,
+     "word": " nocy.",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 3.3,
+   "end": 6.36,
+   "text": "Pierwszy raz we śnie wiedziałam, że śnię.",
+   "words": [
+    {
+     "start": 3.3,
+     "end": 3.66,
+     "word": " Pierwszy",
+     "probability": null
+    },
+    {
+     "start": 3.66,
+     "end": 4.0,
+     "word": " raz",
+     "probability": null
+    },
+    {
+     "start": 4.0,
+     "end": 4.48,
+     "word": " we",
+     "probability": null
+    },
+    {
+     "start": 4.48,
+     "end": 4.98,
+     "word": " śnie",
+     "probability": null
+    },
+    {
+     "start": 4.98,
+     "end": 5.42,
+     "word": " wiedziałam,",
+     "probability": null
+    },
+    {
+     "start": 5.42,
+     "end": 6.12,
+     "word": " że",
+     "probability": null
+    },
+    {
+     "start": 6.12,
+     "end": 6.36,
+     "word": " śnię.",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 6.52,
+   "end": 8.42,
+   "text": "I to wszystko przez jedną książkę.",
+   "words": [
+    {
+     "start": 6.52,
+     "end": 6.58,
+     "word": " I",
+     "probability": null
+    },
+    {
+     "start": 6.58,
+     "end": 6.94,
+     "word": " to",
+     "probability": null
+    },
+    {
+     "start": 6.94,
+     "end": 7.36,
+     "word": " wszystko",
+     "probability": null
+    },
+    {
+     "start": 7.36,
+     "end": 7.82,
+     "word": " przez",
+     "probability": null
+    },
+    {
+     "start": 7.82,
+     "end": 8.0,
+     "word": " jedną",
+     "probability": null
+    },
+    {
+     "start": 8.0,
+     "end": 8.42,
+     "word": " książkę.",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 9.8,
+   "end": 11.6,
+   "text": "Od dziecka lubiłam sny.",
+   "words": [
+    {
+     "start": 9.8,
+     "end": 10.4,
+     "word": " Od",
+     "probability": null
+    },
+    {
+     "start": 10.4,
+     "end": 11.0,
+     "word": " dziecka",
+     "probability": null
+    },
+    {
+     "start": 11.0,
+     "end": 11.18,
+     "word": " lubiłam",
+     "probability": null
+    },
+    {
+     "start": 11.18,
+     "end": 11.6,
+     "word": " sny.",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 11.74,
+   "end": 14.9,
+   "text": "Testowałam aplikacje, dzienniki snów i budziki, bez żadnego efektu.",
+   "words": [
+    {
+     "start": 11.74,
+     "end": 12.2,
+     "word": " Testowałam",
+     "probability": null
+    },
+    {
+     "start": 12.2,
+     "end": 12.42,
+     "word": " aplikacje,",
+     "probability": null
+    },
+    {
+     "start": 12.42,
+     "end": 12.94,
+     "word": " dzienniki",
+     "probability": null
+    },
+    {
+     "start": 12.94,
+     "end": 13.08,
+     "word": " snów",
+     "probability": null
+    },
+    {
+     "start": 13.08,
+     "end": 13.72,
+     "word": " i",
+     "probability": null
+    },
+    {
+     "start": 13.72,
+     "end": 13.9,
+     "word": " budziki,",
+     "probability": null
+    },
+    {
+     "start": 13.9,
+     "end": 14.18,
+     "word": " bez",
+     "probability": null
+    },
+    {
+     "start": 14.18,
+     "end": 14.4,
+     "word": " żadnego",
+     "probability": null
+    },
+    {
+     "start": 14.4,
+     "end": 14.9,
+     "word": " efektu.",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 15.28,
+   "end": 19.64,
+   "text": "A teraz w środku snu stanęłam na dachu i po prostu poleciałam.",
+   "words": [
+    {
+     "start": 15.28,
+     "end": 15.38,
+     "word": " A",
+     "probability": null
+    },
+    {
+     "start": 15.38,
+     "end": 15.66,
+     "word": " teraz",
+     "probability": null
+    },
+    {
+     "start": 15.66,
+     "end": 16.1,
+     "word": " w",
+     "probability": null
+    },
+    {
+     "start": 16.1,
+     "end": 16.5,
+     "word": " środku",
+     "probability": null
+    },
+    {
+     "start": 16.5,
+     "end": 16.84,
+     "word": " snu",
+     "probability": null
+    },
+    {
+     "start": 16.84,
+     "end": 17.52,
+     "word": " stanęłam",
+     "probability": null
+    },
+    {
+     "start": 17.62,
+     "end": 17.66,
+     "word": " na",
+     "probability": null
+    },
+    {
+     "start": 17.66,
+     "end": 17.96,
+     "word": " dachu",
+     "probability": null
+    },
+    {
+     "start": 17.96,
+     "end": 18.54,
+     "word": " i",
+     "probability": null
+    },
+    {
+     "start": 18.54,
+     "end": 18.84,
+     "word": " po",
+     "probability": null
+    },
+    {
+     "start": 18.84,
+     "end": 19.02,
+     "word": " prostu",
+     "probability": null
+    },
+    {
+     "start": 19.02,
+     "end": 19.64,
+     "word": " poleciałam.",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 20.02,
+   "end": 20.92,
+   "text": "Chcecie znać mój sposób?",
+   "words": [
+    {
+     "start": 20.02,
+     "end": 20.22,
+     "word": " Chcecie",
+     "probability": null
+    },
+    {
+     "start": 20.22,
+     "end": 20.34,
+     "word": " znać",
+     "probability": null
+    },
+    {
+     "start": 20.34,
+     "end": 20.44,
+     "word": " mój",
+     "probability": null
+    },
+    {
+     "start": 20.44,
+     "end": 20.92,
+     "word": " sposób?",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 21.18,
+   "end": 25.52,
+   "text": "Wystarczy dziesięć minut ćwiczeń przed snem, a efekt widać już pierwszej nocy.",
+   "words": [
+    {
+     "start": 21.18,
+     "end": 21.32,
+     "word": " Wystarczy",
+     "probability": null
+    },
+    {
+     "start": 21.32,
+     "end": 21.66,
+     "word": " dziesięć",
+     "probability": null
+    },
+    {
+     "start": 21.66,
+     "end": 21.96,
+     "word": " minut",
+     "probability": null
+    },
+    {
+     "start": 21.96,
+     "end": 22.18,
+     "word": " ćwiczeń",
+     "probability": null
+    },
+    {
+     "start": 22.18,
+     "end": 22.3,
+     "word": " przed",
+     "probability": null
+    },
+    {
+     "start": 22.3,
+     "end": 23.0,
+     "word": " snem,",
+     "probability": null
+    },
+    {
+     "start": 23.0,
+     "end": 23.42,
+     "word": " a",
+     "probability": null
+    },
+    {
+     "start": 23.42,
+     "end": 23.72,
+     "word": " efekt",
+     "probability": null
+    },
+    {
+     "start": 24.02,
+     "end": 24.2,
+     "word": " widać",
+     "probability": null
+    },
+    {
+     "start": 24.2,
+     "end": 24.64,
+     "word": " już",
+     "probability": null
+    },
+    {
+     "start": 24.64,
+     "end": 24.96,
+     "word": " pierwszej",
+     "probability": null
+    },
+    {
+     "start": 24.96,
+     "end": 25.52,
+     "word": " nocy.",
+     "probability": null
+    }
+   ]
+  },
+  {
+   "start": 25.64,
+   "end": 28.92,
+   "text": "Zajrzyjcie do e-booka Night School, link czeka na was pod filmem.",
+   "words": [
+    {
+     "start": 25.64,
+     "end": 26.06,
+     "word": " Zajrzyjcie",
+     "probability": null
+    },
+    {
+     "start": 26.06,
+     "end": 26.46,
+     "word": " do",
+     "probability": null
+    },
+    {
+     "start": 26.46,
+     "end": 26.76,
+     "word": " e-booka",
+     "probability": null
+    },
+    {
+     "start": 26.76,
+     "end": 26.92,
+     "word": " Night",
+     "probability": null
+    },
+    {
+     "start": 26.92,
+     "end": 27.18,
+     "word": " School,",
+     "probability": null
+    },
+    {
+     "start": 27.4,
+     "end": 27.74,
+     "word": " link",
+     "probability": null
+    },
+    {
+     "start": 27.74,
+     "end": 27.96,
+     "word": " czeka",
+     "probability": null
+    },
+    {
+     "start": 27.96,
+     "end": 28.22,
+     "word": " na",
+     "probability": null
+    },
+    {
+     "start": 28.22,
+     "end": 28.54,
+     "word": " was",
+     "probability": null
+    },
+    {
+     "start": 28.54,
+     "end": 28.68,
+     "word": " pod",
+     "probability": null
+    },
+    {
+     "start": 28.68,
+     "end": 28.92,
+     "word": " filmem.",
+     "probability": null
+    }
+   ]
+  }
+ ]
+}

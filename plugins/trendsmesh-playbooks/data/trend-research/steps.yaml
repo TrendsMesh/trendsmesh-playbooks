@@ -1,0 +1,41 @@
+# Steps of playbook 04 "Trend research", in order: handoff/trend-research_v01 FLOWS.md sections
+# A to F. The keys are those of data/steps.yaml (refresh-ad), which explains each one.
+#
+# outputs: the category report is always made (PLAYBOOK.md "Inputs"); the weekly digest adds the
+# digest and call check (F2) and the schedule (F5); the paid view is a view of the same page, so
+# no step is its own. A weekly digest is a new run (`tm run new --after`), walking the same steps.
+# F2 sits after C3: it needs this week's snapshot (C2) and comes before the picks it informs (D3).
+# F5 sits after the publish, so the schedule is offered for a page that exists.
+# Nothing spends: PB04 has no paid step and no budget (FLOWS.md legend).
+# E3 (hand the picks on as seeds for the creative brief, PLAYBOOK.md "Contracts with other
+# playbooks") is the plugin's step: decision 15 of the trend research plan.
+
+outputs: [category_report, weekly_digest, paid_view]
+
+steps:
+  # A. Intake and setup
+  - {id: A0, title: Intake and setup, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#a0"}
+  - {id: A1, title: Category input and seed phrases, outputs: [category_report, weekly_digest, paid_view], checkins: [G0], spends: false, ref: "skills/trend-research/references/flow.md#a1"}
+  - {id: A2, title: Previous run, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#a2"}
+  # B. Category map (TR1)
+  - {id: B1, title: Search and split, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#b1"}
+  - {id: B2, title: Build the map, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#b2"}
+  - {id: B3, title: Relevance review, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#b3"}
+  - {id: B4, title: Hooks path, outputs: [category_report, weekly_digest, paid_view], checkins: [G1], spends: false, ref: "skills/trend-research/references/flow.md#b4"}
+  # C. Growth and stages (TR2, TR3, TR4)
+  - {id: C1, title: Evidence videos, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#c1"}
+  - {id: C2, title: "Growth, stages and snapshot", outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#c2"}
+  - {id: C3, title: Backtest, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#c3"}
+  # F. Weekly digest (TR8, TR9): the diff and the call check, before the picks
+  - {id: F2, title: Digest and call check, outputs: [weekly_digest], spends: false, ref: "skills/trend-research/references/flow.md#f2"}
+  # D. Picks (TR5, TR6, TR7)
+  - {id: D1, title: Read the evidence, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#d1"}
+  - {id: D2, title: Paid vs organic (Ad Library), outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#d2"}
+  - {id: D3, title: Review of the picks, outputs: [category_report, weekly_digest, paid_view], checkins: [G2], spends: false, ref: "skills/trend-research/references/flow.md#d3"}
+  # E. Page (TR10)
+  - {id: E1, title: Build the page, outputs: [category_report, weekly_digest, paid_view], checkins: [G3], spends: false, ref: "skills/trend-research/references/flow.md#e1"}
+  - {id: E2, title: Publish, outputs: [category_report, weekly_digest, paid_view], skip_when: {G3: keep_local}, spends: false, ref: "skills/trend-research/references/flow.md#e2"}
+  # F. Weekly digest: the schedule, once the page is published or kept local
+  - {id: F5, title: Weekly schedule, outputs: [weekly_digest], before: [GS], skip_when: {GS: by_hand}, spends: false, ref: "skills/trend-research/references/flow.md#f5"}
+  # Contracts with other playbooks: the accepted picks become seeds for the creative brief
+  - {id: E3, title: Hand the picks on (seeds), outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#e3"}

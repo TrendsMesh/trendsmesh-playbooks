@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "playbook-02-creative-brief/schema/brief.schema.json",
+  "title": "PB2 brief pack (one data source for the page, the recipient views and the animatics)",
+  "description": "Written by the agent in step 6 (and completed in step 7). build_brief_pack.py renders the shared page; build_animatic.py renders the animatics from concepts[].beats[].animatic. Every number in text fields has its source in a `source` field or in the run (rule R3). Money shown to recipients is in meta.currency. Missing intake values are null and render as 'to set'.",
+  "type": "object",
+  "required": ["meta", "concepts"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["title", "market", "language", "prepared", "valid_until", "recipients", "product"],
+      "properties": {
+        "pack_id": {"type": "string", "description": "e.g. PB2-LD-CA-20261104"},
+        "title": {"type": "string"},
+        "market": {"type": "string"},
+        "language": {"type": "string"},
+        "prepared": {"type": "string", "format": "date"},
+        "valid_until": {"type": "string", "format": "date", "description": "earliest trend visible_until, else prepared + brief.valid_days_default (CB8)"},
+        "currency": {"type": "string", "default": "USD"},
+        "fx_note": {"type": "string", "description": "e.g. '1 USD = 3.70 PLN'"},
+        "recipients": {"type": "array", "items": {"enum": ["decision", "strategy", "creator", "editor", "media-buyer"]}, "minItems": 1},
+        "lede": {"type": "object", "description": "one intro sentence per view", "additionalProperties": {"type": "string"}},
+        "product": {
+          "type": "object",
+          "required": ["name", "landing_url"],
+          "properties": {
+            "name": {"type": "string"},
+            "landing_url": {"type": "string"},
+            "plain_description": {"type": "string", "description": "for creator and editor views, no internal data"},
+            "plan": {"type": "array", "items": {"type": "string"}},
+            "price_note": {"type": "string"}
+          }
+        },
+        "sources_note": {"type": "string"},
+        "animatic_note": {"type": "string"}
+      }
+    },
+    "findings": {
+      "type": "object",
+      "description": "'What the evidence changed' (decision, strategy, media-buyer views)",
+      "properties": {
+        "items": {"type": "array", "items": {"type": "object", "required": ["title", "text"], "properties": {"title": {"type": "string"}, "text": {"type": "string"}}}},
+        "caveat": {"type": "string"}
+      }
+    },
+    "audience": {
+      "type": "object",
+      "properties": {
+        "text": {"type": "string"},
+        "facts": {"type": "array", "items": {"type": "object", "properties": {"value": {"type": "string"}, "label": {"type": "string"}}}},
+        "source": {"type": "string"}
+      }
+    },
+    "tone": {
+      "type": "object",
+      "description": "tone of voice and mandatories for all concepts (strategy, creator, editor views)",
+      "properties": {
+        "tone": {"type": "string"},
+        "must": {"type": "array", "items": {"type": "string"}},
+        "never": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "concepts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/concept"}}
+  },
+  "$defs": {
+    "labelText": {"type": "object", "required": ["label", "text"], "properties": {"label": {"type": "string"}, "text": {"type": "string"}}},
+    "concept": {
+      "type": "object",
+      "required": ["id", "brief_id", "title", "one_liner", "key_message", "hypothesis", "glance", "hook", "beats"],
+      "properties": {
+        "id": {"type": "string", "description": "C1, C2, ..."},
+        "brief_id": {"type": "string"},
+        "title": {"type": "string"},
+        "one_liner": {"type": "string"},
+        "phone_note": {"type": "string", "description": "short hook on the sticky note under the phone"},
+        "for_whom": {"type": "string"},
+        "trend_line": {"type": "string", "description": "e.g. Rising hook \"day _ of _\": 35 creators, 153.5M views"},
+        "key_message": {"type": "string"},
+        "hypothesis": {"type": "string"},
+        "animatic": {"type": "object", "properties": {"9x16": {"type": "string"}, "4x5": {"type": "string"}, "default": {"enum": ["9x16", "4x5"]}}},
+        "glance": {"type": "array", "description": "Evidence at a glance: Rising hook (TrendsMesh, highlighted), Customers, Account, Competition", "items": {"type": "object", "required": ["label", "text", "source"], "properties": {"label": {"type": "string"}, "text": {"type": "string"}, "source": {"type": "string"}, "highlight": {"type": "boolean"}}}},
+        "decision_facts": {
+          "type": "object",
+          "properties": {
+            "goal": {"type": "string"}, "effort": {"type": "string"},
+            "budget": {"type": ["string", "null"]}, "deadline": {"type": ["string", "null"]}, "approver": {"type": ["string", "null"]},
+            "risk": {"type": "string"}
+          }
+        },
+        "hook": {"type": "object", "required": ["text", "style"], "properties": {"text": {"type": "string"}, "style": {"enum": ["center", "box", "top"]}, "description": {"type": "string"}}},
+        "length_s": {"type": "number"},
+        "beats": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t0", "t1", "see", "hear", "ost"],
+            "properties": {
+              "t0": {"type": "number"}, "t1": {"type": "number"},
+              "see": {"type": "string"}, "hear": {"type": "string"}, "ost": {"type": "string"},
+              "ost_strong": {"type": "boolean", "description": "the line is the hook or the end card"},
+              "why": {"type": "string"},
+              "animatic": {
+                "type": "object",
+                "required": ["scene"],
+                "properties": {
+                  "scene": {"type": "string", "description": "name from tools/pb2/animatic/scenes.js"},
+                  "label": {"type": "string"},
+                  "params": {"type": "object"},
+                  "zoom": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+                  "texts": {"type": "array", "items": {"type": "object", "properties": {"style": {"enum": ["center", "top", "box", "chip", "cta"]}, "str": {"type": "string"}, "size": {"type": "number"}, "y": {"type": "number"}, "at": {"type": "number"}, "color": {"type": "string"}}}}
+                }
+              }
+            }
+          }
+        },
+        "note": {"type": "object", "properties": {"title": {"type": "string"}, "text": {"type": "string"}}},
+        "why": {"type": "array", "items": {"type": "object", "properties": {"quote": {"type": "string"}, "url": {"type": "string"}, "source_label": {"type": "string"}}}},
+        "customer_phrases": {"type": "array", "description": "CB5: language-bank phrases used in this concept", "items": {"type": "object", "properties": {"phrase": {"type": "string"}, "url": {"type": "string"}, "used_in": {"type": "string"}}}},
+        "copy_from_hook": {"type": "object", "properties": {"text": {"type": "string"}, "evidence": {"type": "array", "items": {"type": "object", "properties": {"url": {"type": "string"}, "thumb": {"type": "string"}, "views": {"type": "string"}, "caption": {"type": "string"}}}}}},
+        "ad_copy": {"type": "object", "properties": {"primary": {"type": "string"}, "headline": {"type": "string"}, "button": {"type": "string"}}},
+        "hooks_to_test": {"type": "array", "items": {"type": "string"}},
+        "casting": {"type": "string"},
+        "creator": {
+          "type": "object",
+          "properties": {
+            "role": {"type": "string"}, "say_note": {"type": "string"},
+            "say": {"type": "array", "items": {"type": "object", "properties": {"moment": {"type": "string"}, "key": {"type": "string"}, "line": {"type": "string"}}}},
+            "shots": {"type": "array", "items": {"type": "object", "properties": {"shot": {"type": "string"}, "framing": {"type": "string"}, "takes": {"type": "string"}}}},
+            "extra_takes": {"type": "string"}, "look": {"type": "string"},
+            "send_back": {"type": "array", "items": {"type": "string"}},
+            "deadline": {"type": ["string", "null"]}, "usage": {"type": ["string", "null"]}
+          }
+        },
+        "editor": {"type": "array", "items": {"$ref": "#/$defs/labelText"}},
+        "media": {"type": "array", "items": {"$ref": "#/$defs/labelText"}},
+        "qa": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

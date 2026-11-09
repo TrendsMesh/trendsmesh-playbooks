@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: structural_reported_not_refreshed_in_hands_off
+context:
+  scaffold_script: fixture.sh

@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: structural_check_reads_every_upload
+context:
+  scaffold_script: fixture.sh

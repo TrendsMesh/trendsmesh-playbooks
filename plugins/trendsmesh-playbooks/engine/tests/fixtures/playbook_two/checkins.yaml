@@ -1,0 +1,10 @@
+# The check-ins of the test-only playbook 99-two (see steps.yaml).
+levels:
+  every_step: Check every step
+  big_calls: Just the big calls
+  hands_off: Hands-off
+checkins:
+  - id: Q1
+    name: The first question
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: yes when the first step's file is there

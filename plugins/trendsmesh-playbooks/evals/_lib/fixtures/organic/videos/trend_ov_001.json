@@ -1,0 +1,59 @@
+{
+ "videos": [
+  {
+   "asset_id": "asset_0011",
+   "url": "https://example.com/v/11",
+   "platform": "tiktok",
+   "creator": "creator_0011",
+   "published": "2026-10-08T15:23:34Z",
+   "views": 281900,
+   "likes": 13300,
+   "shares": 2245,
+   "excerpt": "Y apenas va cumpliendo lo 6 🫠#traviesos #bebestiktoks #fyp #parati #v...",
+   "is_sensitive": false,
+   "hook_text": "Lo que suena en la mente de mi bebé de 6 meses",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "",
+   "creator_id": "creator_0011"
+  },
+  {
+   "asset_id": "asset_0012",
+   "url": "https://example.com/v/12",
+   "platform": "tiktok",
+   "creator": "creator_0012",
+   "published": "2026-10-10T17:59:49Z",
+   "views": 181500,
+   "likes": 12000,
+   "shares": 754,
+   "excerpt": "💚📿💛📿 #sanjudastadeo💚 #limpia #ritual #ofrendas #octubre ",
+   "is_sensitive": false,
+   "hook_text": "Lo que suena en la cabeza de mi esposo cuando ve que ya saqué las cosas para hacer mis",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "mi esposo cuando ve que ya saqué las cosas para hacer mis",
+   "creator_id": "creator_0012"
+  },
+  {
+   "asset_id": "asset_0013",
+   "url": "https://example.com/v/13",
+   "platform": "tiktok",
+   "creator": "creator_0013",
+   "published": "2026-10-29T02:25:32Z",
+   "views": 52300,
+   "likes": 6137,
+   "shares": 258,
+   "excerpt": "TikTok video #",
+   "is_sensitive": false,
+   "hook_text": "lo que suena en mi cabeza cuando me dice \"loca\"",
+   "hook_source": "onscreen",
+   "appears_at_s": 0.0,
+   "slot_fill": "",
+   "creator_id": "creator_0013"
+  }
+ ],
+ "page": 1,
+ "limit": 20,
+ "total": 3,
+ "pages": 1
+}

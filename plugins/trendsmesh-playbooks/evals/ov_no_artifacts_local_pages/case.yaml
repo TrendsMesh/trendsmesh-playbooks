@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: ov_no_artifacts_local_pages
+context:
+  scaffold_script: fixture.sh

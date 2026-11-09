@@ -1,0 +1,37 @@
+# Steps of playbook 02 "Creative brief", in order: handoff/creative-brief_v02 FLOWS.md sections
+# A to F. The keys are those of data/steps.yaml (refresh-ad), which explains each one, plus
+# `requires`:
+#
+# requires: engine checks (tm/stepchecks.py `NAMES`) that must pass on the run's latest files
+#   before `tm done <step>`; a gap is a stop that says what to fix. This is how the CB rules are
+#   enforced by the engine rather than trusted to the skill (the plan's decision 2).
+#
+# outputs: the spec's four (PLAYBOOK.md "Config"). The review pack ends after G2 (C1, then the
+# hand-off); briefs, animatics and the page add D1 to E1. `tm config check` refuses a run without
+# `page`, or with `briefs` and no `animatics` (CB11, CB12: the plan's decision 4).
+# The plugin's merges: A0 is FLOWS.md A0 and A2 (the run folder is made with the stack check);
+# E1 is FLOWS.md E1 to E3 (the creator, editor and media-buyer views come from one brief.json,
+# CB10); E2 is FLOWS.md F (decisions and the hand-off to PB1).
+# Nothing spends: PB2 has no paid step and no budget (FLOWS.md legend).
+
+outputs: [review_pack, briefs, animatics, page]
+
+steps:
+  # A. Intake and setup
+  - {id: A0, title: Stack check and run folder, outputs: [review_pack, briefs, animatics, page], spends: false, ref: "skills/creative-brief/references/flow.md#a0"}
+  - {id: A1, title: Product and intake card, outputs: [review_pack, briefs, animatics, page], checkins: [G0], requires: [intake_written], spends: false, ref: "skills/creative-brief/references/flow.md#a1"}
+  # B. Research (CB1 to CB5)
+  - {id: B1, title: Account context and persona, outputs: [review_pack, briefs, animatics, page], checkins: [G1], requires: [audience_picked], spends: false, ref: "skills/creative-brief/references/flow.md#b1"}
+  - {id: B2, title: Customer voice, outputs: [review_pack, briefs, animatics, page], requires: [voice_checked], spends: false, ref: "skills/creative-brief/references/flow.md#b2"}
+  - {id: B3, title: Rising trends, outputs: [review_pack, briefs, animatics, page], requires: [trends_or_guess], spends: false, ref: "skills/creative-brief/references/flow.md#b3"}
+  - {id: B4, title: Fit scoring and saturation, outputs: [review_pack, briefs, animatics, page], requires: [scores_and_saturation], spends: false, ref: "skills/creative-brief/references/flow.md#b4"}
+  # C. Concepts (CB6, CB7)
+  - {id: C1, title: Concepts and the review pack, outputs: [review_pack, briefs], checkins: [G2], requires: [concepts_checked, page_built], spends: false, ref: "skills/creative-brief/references/flow.md#c1"}
+  # D. Briefs and animatics (CB10 to CB12)
+  - {id: D1, title: Briefs, outputs: [briefs], requires: [concepts_chosen, brief_checked], spends: false, ref: "skills/creative-brief/references/flow.md#d1"}
+  - {id: D2, title: Animatics, outputs: [animatics], requires: [animatics_rendered], spends: false, ref: "skills/creative-brief/references/flow.md#d2"}
+  - {id: D3, title: Page with briefs and animatics, outputs: [briefs], checkins: [G3], requires: [page_built], spends: false, ref: "skills/creative-brief/references/flow.md#d3"}
+  # E. Production views (CB13)
+  - {id: E1, title: Production views, outputs: [briefs], checkins: [G4], requires: [production_checked, page_built], spends: false, ref: "skills/creative-brief/references/flow.md#e1"}
+  # F. Decisions and the hand-off
+  - {id: E2, title: Hand-off, outputs: [review_pack, briefs, animatics, page], requires: [concepts_chosen, handed_off], spends: false, ref: "skills/creative-brief/references/flow.md#e2"}

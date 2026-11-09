@@ -1,0 +1,438 @@
+{
+ "lang": "pl",
+ "title": "ExampleEdu: propozycje filmów",
+ "date": "2026-11-06",
+ "store": {
+  "name": "ExampleEdu",
+  "note": "rodzice dzieci, które grają: limity, bezpieczeństwo w sieci, wybór gier; TikTok, YouTube, Instagram, Facebook; bez sprzedaży"
+ },
+ "channels": [
+  {
+   "id": "exampleedu",
+   "name": "ExampleEdu",
+   "niche": "rodzice graczy w wieku szkolnym"
+  }
+ ],
+ "already_made": [],
+ "proposals": [
+  {
+   "id": "m1",
+   "channel": "exampleedu",
+   "title": "Co gra w głowie rodzica, który pierwszy raz słyszy „Tung Tung Tung Sahur”",
+   "video_type": "Krótka animacja dla rodziców: czym są postacie brainrotu",
+   "approach": "Inspiracja",
+   "why": "Tung Tung Tung Sahur ma 30 mln wyświetleń w 24 filmach, a format „co gra w głowie _” zbiera 40× więcej niż zwykle u tych twórców. Rodzic, który słyszy to hasło przy kolacji, czuje się jak obcy we własnym domu; krótka animacja pokazuje, skąd ta postać i czemu dzieci ją powtarzają.",
+   "trends": [
+    {
+     "id": "trend_ov_001",
+     "role": "hook: co gra w głowie _, odwrócony na rodzica",
+     "pick": [
+      0,
+      2
+     ]
+    },
+    {
+     "id": "trend_ov_011",
+     "role": "temat: najgłośniejsza postać brainrotu tej jesieni",
+     "pick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "beats": [
+    "Tata przy kolacji słyszy z pokoju „Tung Tung Tung Sahur!” i nad jego głową wyrasta wielki znak zapytania",
+    "Animacja: w głowie taty kręci się karuzela dziwacznych postaci (rysowanych od zera, bez cudzych grafik)",
+    "Lektor: to memy z postaciami wygenerowanymi przez AI; śmieszy właśnie to, że nie mają sensu",
+    "Na koniec: zapytaj, kto wymyślił ulubioną postać dziecka, i daj się wciągnąć w odpowiedź"
+   ],
+   "length": "20 s",
+   "recipe": {
+    "production": "animacja Claude w jednym ze stylów Atlasu, renderowana do MP4 (bez modelu wideo)",
+    "voice": "lektor po polsku z ElevenLabs",
+    "music": "lekka muzyka z Mixkit, cicho pod głosem",
+    "text": "każda kwestia lektora jako napis"
+   },
+   "product": {
+    "level": "nie występuje",
+    "note": "brak produktu"
+   },
+   "risk": {
+    "level": "low",
+    "items": [
+     "rysujemy własne postacie, żadnych fanowskich grafik",
+     "z humorem, ale bez kpin z tego, co lubią dzieci"
+    ]
+   },
+   "cost": {
+    "low": 0.0,
+    "high": 0.0,
+    "note": "generacja bez kosztów; głos z puli znaków w planie ElevenLabs (około 300 znaków)"
+   },
+   "facts": "Skąd wzięły się postacie „włoskiego brainrotu” i kiedy zrobiło się o nich głośno; potwierdzić w jednym źródle przed scenariuszem.",
+   "taste": [
+    "Styl animacji: wybierz z Atlasu albo zostaw agentowi (da 2–3 propozycje).",
+    "Lektor: własny głos z ElevenLabs albo jeden z 2–3 polskich, które poda agent."
+   ],
+   "plugin": {
+    "production": "animation",
+    "output": "video",
+    "risk_hits": [],
+    "transfer": true,
+    "weak_link": "The hook is Italian brainrot made for kids; the channel turns it into a calm explainer for their parents.",
+    "series": null,
+    "seed": null
+   }
+  },
+  {
+   "id": "m2",
+   "channel": "exampleedu",
+   "title": "„Tato, dlaczego ty nigdy ze mną nie grasz?”",
+   "video_type": "Dwie postacie AI w dialogu: pytanie dziecka, szczera odpowiedź taty",
+   "approach": "Inspiracja",
+   "why": "Hook „tato, dlaczego _” rośnie i daje 48× zwykłego zasięgu twórców, choć na razie głównie w sporcie. U nas pyta dziecko, które chce zagrać z tatą: tata przyznaje, że nie zna gry, i prosi o lekcję. O wspólnym graniu rodzice rzadko słyszą coś dobrego, a tu dostają gotowy pomysł na wieczór.",
+   "trends": [
+    {
+     "id": "trend_ov_009",
+     "role": "hook: tato, dlaczego _ (pytanie dziecka wprost)",
+     "pick": [
+      0,
+      3
+     ]
+    }
+   ],
+   "beats": [
+    "Dziecko (ok. 9 lat, ogólny wygląd AI) stoi w drzwiach z dwoma padami: „Tato, dlaczego ty nigdy ze mną nie grasz?”",
+    "Tata odkłada laptopa: „Bo nie umiem. Wszyscy mnie od razu pokonują.”",
+    "Dziecko siada obok: „To cię nauczę. Pierwsza lekcja: nie wciskaj wszystkich przycisków naraz.”",
+    "Oboje na podłodze, tata przegrywa i się śmieje; napis: „Kto tu kogo uczy?”"
+   ],
+   "length": "15 s",
+   "recipe": {
+    "production": "dialog dwóch postaci AI po polsku w jednym ujęciu MiniMax H3; obie postacie z jednego zatwierdzonego obrazu referencyjnego",
+    "voice": "głosy generowane razem z wideo, po polsku",
+    "music": "bez muzyki albo bardzo cicho pod rozmową",
+    "text": "napisy słowo po słowie i pytanie na końcu"
+   },
+   "product": {
+    "level": "nie występuje",
+    "note": "brak produktu"
+   },
+   "risk": {
+    "level": "high",
+    "items": [
+     "polska mowa z H3 nie była jeszcze u nas sprawdzana",
+     "postać dziecka nie może przypominać żadnego prawdziwego dziecka",
+     "dwie postacie w jednym ujęciu mówią na zmianę, bez nakładania się"
+    ]
+   },
+   "cost": {
+    "low": 1.33,
+    "high": 1.46,
+    "note": "obraz referencyjny w wysokiej jakości $0.13, ujęcie H3 15 s $1.20; drugi obraz do wyboru +$0.13"
+   },
+   "facts": "Co mówią badania o wspólnym graniu rodzica z dzieckiem; znaleźć jedno rzetelne źródło przed akceptacją scenariusza.",
+   "taste": [
+    "Jak wyglądają tata i dziecko: opisz albo zostaw agentowi."
+   ],
+   "plugin": {
+    "production": "talking_character",
+    "output": "video",
+    "risk_hits": [
+     {
+      "item": "speech",
+      "mitigation": "One 15 s take with the script sized at 2.8 to 3 words per second; the first Polish line is checked on a short test before the pack."
+     },
+     {
+      "item": "several_characters",
+      "mitigation": "Both characters come from one approved reference image in H3's reference mode."
+     }
+    ],
+    "transfer": false,
+    "weak_link": "The evidence is English kids asking a parent; the channel keeps the question and has the dad answer it honestly, in Polish.",
+    "series": null,
+    "seed": null
+   }
+  },
+  {
+   "id": "m3",
+   "channel": "exampleedu",
+   "title": "Impostor z dziadkami: kto nie zna tajnego hasła?",
+   "video_type": "Rodzinna gra w „Impostora”: dziadkowie i wnuki przy stole",
+   "approach": "Odtworzenie",
+   "why": "„Impostor” zbiera 16,8 mln wyświetleń w 12 filmach i grają w niego także polscy twórcy. Wersja z dziadkami i wnukami pokazuje, że ta zabawa nie potrzebuje konsoli: wystarczy jeden telefon, a śmiech przychodzi sam, gdy babcia blefuje lepiej od wszystkich.",
+   "trends": [
+    {
+     "id": "trend_ov_004",
+     "role": "format: wszyscy w jednym kadrze, jedno tajne hasło i jedna osoba, która go nie zna",
+     "pick": [
+      0,
+      3
+     ]
+    }
+   ],
+   "beats": [
+    "Dziadkowie i dwoje wnuków przy stole, przodem do kamery; napis „Impostor: dziadkowie kontra wnuki”",
+    "Telefon krąży z ręki do ręki, każdy zerka na hasło („pierogi”); tylko babcia go nie dostaje",
+    "Krótkie skojarzenia, wnuki podejrzewają dziadka, babcia udaje pewną siebie; wybuch śmiechu",
+    "Napis na koniec: „Wystarczy jeden telefon. Kto u was blefuje najlepiej?”"
+   ],
+   "length": "15 s",
+   "recipe": {
+    "production": "jedno ujęcie H3 z dźwiękiem, start z zatwierdzonej pierwszej klatki",
+    "voice": "pojedyncze słowa i śmiech generowane razem z obrazem",
+    "music": "bez muzyki; ewentualnie popularny dźwięk w aplikacji",
+    "text": "tytuł i pytanie do widzów, po polsku"
+   },
+   "product": {
+    "level": "nie występuje",
+    "note": "brak produktu"
+   },
+   "risk": {
+    "level": "medium",
+    "items": [
+     "cztery twarze AI muszą zostać takie same do końca ujęcia",
+     "puenta ma być czytelna nawet bez słów"
+    ]
+   },
+   "cost": {
+    "low": 1.29,
+    "high": 1.29,
+    "note": "dwie wersje pierwszej klatki $0.09, ujęcie H3 15 s $1.20"
+   },
+   "taste": [],
+   "plugin": {
+    "production": "ai_footage",
+    "output": "video",
+    "risk_hits": [
+     {
+      "item": "same_character",
+      "mitigation": "One take from one approved first frame, so the faces never change between takes."
+     },
+     {
+      "item": "several_characters",
+      "mitigation": "Four players in a fixed row facing the camera, with little movement."
+     }
+    ],
+    "transfer": false,
+    "weak_link": null,
+    "series": null,
+    "seed": null
+   }
+  },
+  {
+   "id": "m4",
+   "channel": "exampleedu",
+   "title": "PSA: „Steal an Egg” w Robloxie, czyli o co chodzi z tymi jajkami",
+   "video_type": "Animowane ostrzeżenie dla rodziców: jedna gra z Robloxa w 20 sekund",
+   "approach": "Inspiracja",
+   "why": "„Steal an Egg” ma 50 mln wyświetleń w 79 filmach, a cała fala Robloxa 459 mln. Rodzic widzi tylko, że dziecko krzyczy o jajkach i prosi o Robuxy. Komunikat w formacie „PSA: _” mówi krótko, na czym polega gra i gdzie dzieci wydają pieniądze.",
+   "trends": [
+    {
+     "id": "trend_ov_007",
+     "role": "hook: psa: _ (krótkie ostrzeżenie)",
+     "pick": [
+      0,
+      1
+     ]
+    },
+    {
+     "id": "trend_ov_008",
+     "role": "temat: gra z Robloxa, o której mówią teraz dzieci",
+     "pick": [
+      0,
+      2
+     ]
+    },
+    {
+     "id": "trend_ov_006",
+     "role": "temat: Roblox jako całość",
+     "pick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "beats": [
+    "Napis: „PSA: jeśli dziecko prosi o Robuxy na jajko, posłuchaj”",
+    "Animacja: bazy, jajka i gonitwa; zabieranie jajek to zwykła zasada tej gry",
+    "Gdzie robi się drogo: płatne jajka i przyspieszenia kupowane za Robuxy",
+    "Co zrobić dziś: miesięczny limit wydatków i powiadomienia o zakupach w ustawieniach rodzica"
+   ],
+   "length": "20 s",
+   "recipe": {
+    "production": "animacja Claude w stylu z Atlasu, wszystko rysowane od nowa (bez materiałów z gry)",
+    "voice": "lektor po polsku z ElevenLabs",
+    "music": "żywa muzyka z Mixkit",
+    "text": "napisy z tekstem lektora"
+   },
+   "product": {
+    "level": "nie występuje",
+    "note": "brak produktu"
+   },
+   "risk": {
+    "level": "low",
+    "items": [
+     "żadnych logotypów ani grafik z gry",
+     "nazwy ustawień sprawdzone w aktualnej wersji Robloxa"
+    ]
+   },
+   "cost": {
+    "low": 0.0,
+    "high": 0.0,
+    "note": "generacja bez kosztów; głos z puli znaków ElevenLabs"
+   },
+   "facts": "Zasady Steal an Egg i co można w niej kupić; ustawienia wydatków dla rodziców w Robloxie. Sprawdzić w źródłach przed scenariuszem.",
+   "taste": [
+    "Styl: któryś z Atlasu, np. płaski wektor albo plastelina.",
+    "Lektor: jak w M1 albo nowy."
+   ],
+   "plugin": {
+    "production": "animation",
+    "output": "video",
+    "risk_hits": [],
+    "transfer": false,
+    "weak_link": "The PSA hook comes from pet owners; the channel uses it to warn parents about one popular game.",
+    "series": null,
+    "seed": null
+   }
+  },
+  {
+   "id": "m5",
+   "channel": "exampleedu",
+   "title": "Syn chciał konto w ChatGPT. Co sprawdziłem",
+   "video_type": "Prowadzący AI mówi do kamery: jeden fakt, którego rodzice nie znają",
+   "approach": "Inspiracja",
+   "why": "Filmy o uczniach, którzy robią zadania z ChatGPT, mają 4 mln wyświetleń w 6 filmach, a hook „mało kto wie, że _” rośnie. Większość rodziców nie wie, od ilu lat jest ChatGPT ani że do pełnoletności potrzeba ich zgody; do tego jedna rzecz do zrobienia jeszcze dziś wieczorem.",
+   "trends": [
+    {
+     "id": "trend_ov_005",
+     "role": "hook: mało kto wie, że _ (odsłonięcie faktu)",
+     "pick": [
+      0,
+      1
+     ]
+    },
+    {
+     "id": "trend_ov_003",
+     "role": "temat: dzieci odrabiające lekcje z ChatGPT",
+     "pick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "beats": [
+    "Prowadzący (tata, ok. 40 lat, domowe biurko, ujęcie jak nagrane telefonem): „Syn poprosił mnie wczoraj o własne konto w ChatGPT.”",
+    "„Sprawdziłem regulamin: od trzynastu lat, z moją zgodą.”",
+    "„Założyliśmy je razem i ustaliliśmy, o co może pytać sam. A ty już rozmawiałeś o tym?”",
+    "Ostatni kadr: uśmiech prowadzącego i napis „A wy już o tym rozmawialiście?”"
+   ],
+   "length": "12–15 s",
+   "recipe": {
+    "production": "prowadzący AI mówi po polsku w jednym ujęciu MiniMax H3, pierwsza klatka z jego obrazu",
+    "voice": "głos generowany razem z wideo, po polsku",
+    "music": "bez muzyki",
+    "text": "napisy słowo po słowie i pytanie na końcu"
+   },
+   "product": {
+    "level": "nie występuje",
+    "note": "brak produktu"
+   },
+   "risk": {
+    "level": "medium",
+    "items": [
+     "wymowa liczb po polsku („trzynaście”, „osiemnastki”) do sprawdzenia w ujęciu",
+     "wiek z regulaminu sprawdzony w dniu publikacji"
+    ]
+   },
+   "cost": {
+    "low": 1.33,
+    "high": 1.46,
+    "note": "obraz prowadzącego w wysokiej jakości $0.13, ujęcie H3 15 s $1.20"
+   },
+   "facts": "Wiek w regulaminie OpenAI (13 lat, do 18 za zgodą rodzica lub opiekuna); przed scenariuszem sprawdzić bieżącą wersję.",
+   "taste": [
+    "Prowadzący: wgraj swój obraz AI-prowadzącego albo agent zaproponuje wygląd."
+   ],
+   "plugin": {
+    "production": "talking_character",
+    "output": "video",
+    "risk_hits": [
+     {
+      "item": "speech",
+      "mitigation": "One take of about 12 s, the script sized at 2.8 to 3 words per second, and the transcript checked against it."
+     },
+     {
+      "item": "long_takes",
+      "mitigation": "The take stays under 15 s; a slow one is sped up in the edit, up to 1.25 times."
+     }
+    ],
+    "transfer": false,
+    "weak_link": "The evidence is English hosts stating one surprising fact; the channel keeps the format with a fact for Polish parents.",
+    "series": null,
+    "seed": null
+   }
+  },
+  {
+   "id": "m6",
+   "channel": "exampleedu",
+   "title": "Trzy emoji, jedna gra: zgadniesz szybciej niż dziecko?",
+   "video_type": "Quiz w formacie „Zgadnij _”",
+   "approach": "Odtworzenie",
+   "why": "Format „Zgadnij _” każe czekać na odpowiedź, więc widz zostaje do końca, a rodzina gra razem przed ekranem. Gry zapisane emoji (np. 🐷🐦 = Angry Birds) to szybki pojedynek: kto pierwszy, rodzic czy dziecko?",
+   "trends": [
+    {
+     "id": "trend_ov_002",
+     "role": "format: Zgadnij _ (pytanie, odliczanie, odpowiedź)",
+     "pick": [
+      0,
+      1
+     ]
+    }
+   ],
+   "beats": [
+    "Na start: „Trzy emoji, jedna gra. Kto pierwszy: ty czy dziecko?”",
+    "Cztery rundy, w każdej trzy emoji i odliczanie 3-2-1",
+    "Odpowiedź jako własny rysunek gry (bez logo i okładek)",
+    "Na końcu: „Wynik w komentarzu: rodzic czy dziecko?”"
+   ],
+   "length": "15–20 s",
+   "recipe": {
+    "production": "Remotion, szablon QuizGrid, bez modelu wideo",
+    "voice": "brak",
+    "music": "skoczna muzyka z Mixkit",
+    "text": "pytanie, emoji, odliczanie i odpowiedź"
+   },
+   "product": {
+    "level": "nie występuje",
+    "note": "brak produktu"
+   },
+   "risk": {
+    "level": "low",
+    "items": [
+     "żadnych logotypów ani okładek"
+    ]
+   },
+   "cost": {
+    "low": 0.0,
+    "high": 0.19,
+    "note": "same emoji nic nie kosztują; cztery rysowane karty odpowiedzi to +$0.19"
+   },
+   "taste": [
+    "Gry do zgadywania: podaj własne albo agent dobierze cztery popularne teraz."
+   ],
+   "plugin": {
+    "production": "stills_motion",
+    "output": "video",
+    "risk_hits": [],
+    "transfer": false,
+    "weak_link": null,
+    "series": null,
+    "seed": null
+   }
+  }
+ ],
+ "data_note": "Dane z TrendsMesh z 6 listopada 2026: 17 wyszukiwań, po polsku i po angielsku. Filmy-dowody są głównie anglojęzyczne, dlatego pomysły albo przenoszą trend na polski grunt (Inspiracja), albo biorą format, w którym mówi się niewiele (Odtworzenie). Budżet tego runu: $5.",
+ "run": "runs/03-organic-ai-video/2026-11-06_walkthrough-exampleedu"
+}

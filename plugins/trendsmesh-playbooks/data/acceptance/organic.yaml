@@ -1,0 +1,184 @@
+# The organic video acceptance (organic video plan Task 23).
+# A person runs it on their own channel, with real money, and the agent as the operator:
+# /trendsmesh-playbooks:acceptance organic.
+# Spec: the playbook handoff organic-video_v02 (VARIANTS section 6.5 for O10).
+#
+# Each case: id, title, proves, needs (file | key | budget | meta | trendsmesh | artifacts |
+# human_verdict, asked one at a time), kinds (the budget kinds a case spends, exactly when needs
+# has budget), steps (what the agent does, in this case's run folder), pass (what must hold),
+# judge (what the person looks at; every case here ends in the person's verdict).
+#
+# The suite budget is shown to the person and approved once, before the first case that needs it
+# (`tm acceptance approve`); each production run's money is approved at the playbook's spending
+# check-in with `tm budget approve`, never past what is left. A refused prediction costs nothing.
+# Every case is worked from the suite's folder (acceptance/<date>_organic/), which holds the case
+# runs. A case run is an idea run or a week run: the videos are made in the production runs
+# `tm organic start` makes beside them (O3 to O8 start theirs from O2's proposals page, O9 from its
+# week), and their spend counts in the suite budget and in the report under the case run they came
+# from. The "Carry" steps and their pass lines are what the engine's tests could not prove: each is a
+# `pass` line of the case that exercises it.
+
+playbook: 03-organic-ai-video
+budget: {ai_usd: 10, voice_credits: 5000}
+
+cases:
+  - id: O1
+    title: "Stack check and profile on the person's own channel"
+    proves: "the stack check names what is missing, and the channel profile is found, not asked for, then confirmed once"
+    needs: [trendsmesh, human_verdict]
+    steps:
+      - "Run the doctor's organic video checks, then start this case's run (Check every step) and let A0 (the stack and the intake) and A1 (the channel profile) go as far as the profile's confirmation."
+      - "Run `tm organic stack --run <run> --replicate <ok|missing> --elevenlabs <ok|missing|no_credits|unchecked> --artifacts <ok|missing> --browser <ok|missing>` with the doctor card's rows."
+      - "Show the profile once, built from what the person's channel and the trends show, and ask for one confirmation."
+    pass: >-
+      `tm organic stack` was recorded in the run; the profile was confirmed once.
+    judge: >-
+      Did it ask anything it could have found itself?
+
+  - id: O2
+    title: "The proposals page on real trends"
+    proves: "4 to 6 proposals are built from real trends, the person's choices on the page are read back, and the page is not rebuilt while they decide"
+    needs: [trendsmesh, artifacts, human_verdict]
+    steps:
+      - "Go on from O1's run folder (offer O1's answers as one question) to the proposals page, published as a private artifact."
+      - "Show the declaration with `read_declaration` and compare its CAPABILITIES with what the engine declares (organic_pages.CAPABILITIES): the artifact tools were down when the engine was written, so this is where they are read live. Note any difference."
+      - "Run `tm organic proposals check` on the proposals, then give the person the page and wait. Build no new page version while they decide."
+      - "Read their choices with `tm organic decisions`."
+      - "Optional, last step of this case, only when the person agrees: ask them to turn the artifacts connector off for this step, then back on afterwards. With it off, build the proposals page again and give the path of the local `04_final/proposals_vNN/index.html` in chat. Skip this step when they would rather not."
+    pass: >-
+      4 to 6 proposals pass `proposals check`; the person's choices on the page are read by
+      `tm organic decisions`; no page version was built while they decided. `read_declaration`
+      shows the page's CAPABILITIES and they match what the engine declares. If that step was run
+      (the optional last one): with the connector off, the proposals page is the local
+      `04_final/proposals_vNN/index.html` and its path was given in chat. If it was skipped, the
+      note says so; that is not a fail.
+    judge: >-
+      On your phone: is there any horizontal scroll, and do the evidence clips open?
+
+  - id: O3
+    title: "The script to film"
+    proves: "the script is a page the person can film from, with a .md download, and the kit passes its check"
+    needs: [artifacts, human_verdict]
+    steps:
+      - "Go on from O2's run folder with one chosen proposal (the person's pick on the page), through the script to film (`script_to_film`), published as a private artifact."
+      - "Show the declaration with `read_declaration` and compare its CAPABILITIES with what the engine declares for the script page (organic_pages.CAPABILITIES[\"script\"]). Note any difference."
+      - "Open the `.md` download from the page, then run `tm kit check --run <run> --file 04_final/kits/<id>_kit_vNN.json` on the run's posting kit and `tm kit md --run <run> --file 04_final/kits/<id>_kit_vNN.json` for its .md."
+    pass: >-
+      The script page and its `.md` download work; `kit check` exits 0. `read_declaration` shows
+      the script page's CAPABILITIES and they match what the engine declares.
+    judge: >-
+      Could you film it from this page alone?
+
+  - id: O4
+    title: "A talking AI host at Hands-off: one 15 s H3 take (about $1.46)"
+    proves: "a real talking-host take is made, picked, QA'd, mastered and delivered with every step listed"
+    needs: [key, budget, human_verdict]
+    kinds: [ai_usd]
+    steps:
+      - "On O2's proposals page, ask the person to choose a second proposal, one made as a talking AI host, as an AI video at Hands-off (O3 started their first pick as a script, and an idea is started only once). Read the page again (`tm organic decisions --run <O2's run> --page proposals`) and start it (`tm organic start --run <O2's run>`): its production run is made beside the case runs. If the page holds no talking-host proposal, record the case as blocked with that note."
+      - "In that production run, before any paid call, show the spending check-in with the estimate (one 15 s H3 take, about $1.46) within the suite's AI dollars left (`tm acceptance next`), and approve it with `tm budget approve`."
+      - "Make one 15 s take with the H3 model there, from the proposal's script, in the person's language. On a Polish take the QA reads the speech with Whisper: note whether Whisper wrote digits where the script has number words (or the reverse) and whether that failed a correct take; if it did, say what the person records so it passes."
+      - "Run the QA match, the final mastering and the upload copy, then the delivery page. Name the production run's folder in the case's note."
+    pass: >-
+      `az_log` holds the picks; the QA match is at least 0.90; the final is at -14 LUFS, within 1;
+      the upload copy is under 15 MB; the delivery page lists every step. On a Polish take,
+      Whisper writing digits or number words did not fail a correct take (if it did, the note says
+      what the person records).
+    judge: >-
+      Is the speech word for word, and is the pace right?
+
+  - id: O5
+    title: "A gated Atlas animation with an ElevenLabs narrator ($0 plus plan credits)"
+    proves: "the animation is made from a storyboard the person accepts, with a narrator whose word timing the engine can read"
+    needs: [key, budget, human_verdict]
+    kinds: [voice_credits]
+    steps:
+      - "On O2's proposals page, ask the person to choose one more proposal, an animation, as an AI video at Check every step; read the page again and start it, as in O4. Work in that production run. If the page holds no animation proposal, record the case as blocked with that note."
+      - "Before any call, show the spending check-in with the narrator's estimate in ElevenLabs credits within the suite's voice credits left, and approve it with `tm budget approve`."
+      - "Make the storyboard and wait for the person's accept on its page, then the animation and its accept on its page."
+      - "Carry: read the ElevenLabs with-timestamps answer the narrator call saved and note which timing it holds: `alignment`, or `normalized_alignment` as the fallback, the shapes the engine reads."
+    pass: >-
+      The storyboard, then the animation, were each accepted on their page; the captions and text
+      sit above y 1260. ElevenLabs's with-timestamps answer has the shape the engine reads
+      (`alignment`, or `normalized_alignment` as the fallback); if it holds neither, the note says
+      what it holds.
+    judge: >-
+      Does it look like the style you picked, set in your topic?
+
+  - id: O6
+    title: "AI footage with a product 1:1 from a packshot (about $1.5)"
+    proves: "the Seedance recipes take a real prediction and price as the recipe says, and the product matches its packshot"
+    needs: [key, budget, human_verdict]
+    kinds: [ai_usd]
+    steps:
+      - "On O2's proposals page, ask the person to choose one more proposal, AI footage with their product, as an AI video; read the page again and start it, as in O4. Work in that production run. If the page holds no such proposal, record the case as blocked with that note."
+      - "This case has no file need, so ask for the product's packshot (one file) here, when the case gets to it, then show the spending check-in with the estimate within the suite's AI dollars left and approve it with `tm budget approve`."
+      - "Make the footage with the product 1:1 from the packshot. Carry: the recipe uses seedance-1.5-pro (the budget tier) and seedance-2.5 (premium, only when the person asks for it): take one real prediction of each recipe the case's budget allows, and compare the price Replicate billed with the price the recipe states. If seedance-2.5 does not fit the budget, say so and record what was proved."
+    pass: >-
+      Each Seedance recipe tried (seedance-1.5-pro, seedance-2.5) took a real prediction, and its
+      cost matches the price the recipe states (the note holds both numbers), or the note says
+      seedance-2.5 did not fit the budget; the product shot matches the packshot.
+    judge: >-
+      Does the product match the packshot in every shot?
+
+  - id: O7
+    title: "A quiz or ranking that Recreates a found format (about $0.3)"
+    proves: "a format found in real videos is rebuilt from a style spec the person sees before the render"
+    needs: [key, budget, human_verdict]
+    kinds: [ai_usd]
+    steps:
+      - "On O2's proposals page, ask the person to choose one more proposal, a quiz or ranking that Recreates a format found in the trends, as an AI video; read the page again and start it, as in O4. Work in that production run. If the page holds no such proposal, record the case as blocked with that note."
+      - "Before any paid call, show the spending check-in with the estimate within the suite's AI dollars left and approve it with `tm budget approve`."
+      - "Recreate the format: write its style spec and show it to the person before the render."
+    pass: >-
+      The style spec names at least 2 evidence videos and was shown before the render.
+    judge: >-
+      Does it look like the videos it copies?
+
+  - id: O8
+    title: "A refused prediction costs $0"
+    proves: "a spec Replicate rejects at validation is recorded as a refusal and adds nothing to the spend"
+    needs: [key, budget, human_verdict]
+    kinds: [ai_usd]
+    steps:
+      - "On O2's proposals page, ask the person to choose one more proposal as an AI video, one with a person described in text (no host image), so its pack makes that person with Seedance 2.0, the top quality tier; read the page again and start it, as in O4. Work in that production run. If the page holds no such proposal, record the case as blocked with that note."
+      - "Note the run's spend. Approve the smallest check-in (`tm budget approve`) the case needs within the suite's AI dollars left."
+      - "Send a spec Replicate rejects at validation: Seedance 2.0 with a photoreal AI face as input (E005). The engine refuses the pack's own host image before any call, so use a second photoreal face file that is not the host image (ask the person for one), on a pack item the checked pack prices for Seedance 2.0."
+      - "If the engine's own guard stops the call first (the call is \"not run\", with no record), that passes the engine but is not the E005 proof: record the case as not proved for E005 (not a fail), with the guard's words in the note."
+      - "Read the record the call wrote and the run's spend again."
+    pass: >-
+      The record holds a `cost_note` for the refusal, and the run's spend is unchanged (or the note
+      says "not proved for E005" because the engine's guard stopped it first).
+    judge: >-
+      Check the Replicate dashboard: is the cost of that call $0?
+
+  - id: O9
+    title: "A weekly dry cycle with one slot produced as a script"
+    proves: "the week's plan blocks approval over budget, one approval starts the week, a dropped day ends and spends nothing, and the week is delivered with its posting plan"
+    needs: [trendsmesh, artifacts, human_verdict]
+    steps:
+      - "Start the weekly run for the person's channel and publish the plan page as a private artifact."
+      - "Show that approval is blocked while the plan is over the week's budget, then fix the plan: on the page, one day OK as a script to film, one more day OK as a script only to drop it, and every other day skip (the flexible day too). Take one approval."
+      - "Start the week (`tm organic start --run <run>`): two slot runs, each a script to film."
+      - "Carry: on the person's word, drop the second (`tm organic drop-slot --run <run> --day <day> --note \"<their words>\"`). Let them mark that day skip on the page, read the decisions again (`tm organic decisions --run <run> --page week`) and record their yes again (`tm decide week approve --run <run> --change`)."
+      - "Produce the first slot run as a script (`script_to_film`) in its own run, then deliver the week (`tm organic deliver-week --run <run>`): its delivery page and the posting plan."
+      - "Offer the schedule: record whether the person said yes or no."
+    pass: >-
+      The plan page blocked approval over budget; one approval was taken, and again after the
+      drop; the week's delivery page holds the script slot and the posting plan was written; the
+      schedule was offered (yes or no recorded). The day dropped with `tm organic drop-slot` spent
+      nothing; the week's total is unchanged.
+    judge: >-
+      Would you run this week as the plan shows it?
+
+  - id: O10
+    title: "A first real post per platform"
+    proves: "captions sit in each platform's safe zone and the cover survives the 3:4 crop (VARIANTS section 6.5)"
+    needs: [human_verdict]
+    steps:
+      - "Give the person the finished video and its posting kit, and ask them to post it once on each platform they use (TikTok, Instagram Reels, YouTube Shorts) from the kit, and to look at each platform's own preview before they publish."
+    pass: >-
+      The person posted to each platform they use and looked at its own preview.
+    judge: >-
+      In each platform's own preview, do the captions sit inside the safe zone, and does the cover
+      survive the 3:4 crop?

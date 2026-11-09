@@ -1,0 +1,30 @@
+{
+ "out": "../../04_final/ad2_U_J1_hardcut_v04.mp4",
+ "video": [
+  {
+   "src": "../../00_raw/ad_2.mp4",
+   "from": 0.0,
+   "to": 8.62
+  },
+  {
+   "src": "../../00_raw/ad_2.mp4",
+   "from": 9.62,
+   "to": 11.51,
+   "audio_tail": 0.15
+  },
+  {
+   "src": "../../00_raw/ad_2.mp4",
+   "from": 15.12,
+   "to": 19.8
+  },
+  {
+   "src": "../../00_raw/ad_2.mp4",
+   "from": 25.56,
+   "to": 29.68
+  }
+ ],
+ "audio": [],
+ "audio_mode": "sync",
+ "sync_xfade_ms": 40,
+ "audio_tail_fade_ms": 60
+}

@@ -1,0 +1,96 @@
+{
+  "schema": "pack/1",
+  "id": "P3",
+  "lang": "en",
+  "title": "Why dogs circle before they settle",
+  "channel": "why-dogs-do-that",
+  "production": "sections",
+  "sound_led": false,
+  "sections": [
+    {"id": "S1", "type": "ai_footage", "model": "minimax/h3", "from": 0, "to": 6.5},
+    {"id": "S2", "type": "animation", "model": null, "from": 6.5, "to": 15.5},
+    {"id": "S3", "type": "ai_footage", "model": "minimax/h3", "from": 15.5, "to": 22}
+  ],
+  "product": {"level": "not shown", "packshots": []},
+  "host": {"kind": "none", "image": null},
+  "script": {
+    "lines": [
+      {"n": 1, "text": "Your dog walks in a little circle before it settles, and the habit is older than any dog basket.",
+       "speaker": "narrator", "shot": "S1: the husky walks a slow loop round his cushion, nose low, then a second loop",
+       "at": [0, 6.5]},
+      {"n": 2, "text": "Wolves tramped circles in tall grass to press it flat, scare off bugs, and sniff the breeze.",
+       "speaker": "narrator", "shot": "S2: a wolf pack in a moonlit meadow treads the grass down in rings, ears up, noses into the breeze",
+       "at": [6.5, 11.5]},
+      {"n": 3, "text": "Researchers found dogs circled nearly three times as often on a bumpy rug.",
+       "speaker": "narrator", "shot": "S2: the study as a chart, a flat rug beside a bumpy rug, \"~3×\"", "at": [11.5, 15.5]},
+      {"n": 4, "text": "That spin before the nap? Bed-making, wolf style.",
+       "speaker": "narrator", "shot": "S3: the husky drops onto the cushion, tucks his nose under his tail, eyes shut", "at": [15.5, 19]}
+    ],
+    "words": 57,
+    "seconds": 22
+  },
+  "speech": {
+    "route": "elevenlabs_narrator",
+    "alternative_reason": null,
+    "voice": "Marcus K (calm documentary, American)",
+    "voice_reference": null
+  },
+  "taste": {
+    "style": "03 Shadow Theatre",
+    "voice": "Marcus K",
+    "music": "mixkit_135_sleepy-cat.mp3",
+    "by": "agent",
+    "why": "Silhouettes and firelight suit a story about wolves; a calm documentary voice, with a soft lo-fi track under it."
+  },
+  "models": [
+    {"component": "first frame (the husky on his cushion)", "model": "openai/gpt-image-2",
+     "why": "held the same dog steady across the dry run's frames; medium quality does for a first frame with no person in it",
+     "recipe": "references/model-prompting/gpt-image-2.md",
+     "ranking": {"source": "Arena image-edit", "date": "2026-11-06"}, "user_named": false, "criteria": null},
+    {"component": "footage S1 and S3 (one 13 s take)", "model": "minimax/h3",
+     "why": "the default tier; a single take from one first frame, two shots joined by a hard cut at 6.5 s",
+     "recipe": "references/model-prompting/minimax-h3.md",
+     "ranking": {"source": "Arena image-to-video", "date": "2026-11-06"}, "user_named": false, "criteria": null}
+  ],
+  "stages": [
+    {"stage": "images", "items": [{"name": "first frame", "model": "openai/gpt-image-2", "face": false, "images": 2}]},
+    {"stage": "video", "items": [{"name": "take", "model": "minimax/h3", "seconds": 13}]}
+  ],
+  "resolution": {
+    "choice": "768p",
+    "options": [
+      {"id": "768p", "cost": 1.04},
+      {"id": "1080p", "cost": 1.69, "model": "minimax/h3", "criteria": "target resolution=2K"},
+      {"id": "768p_pruna", "cost": 1.48}
+    ]
+  },
+  "cost": {
+    "lines": [
+      {"what": "first frame ×2", "item": "first frame", "model": "openai/gpt-image-2", "criteria": "model variant=medium",
+       "unit_price": 0.047, "unit": "output image", "units": 2, "cost": 0.09, "kind": "ai_usd",
+       "price_file": "02_research/models/prices_2026-11-04_v01.json", "checked": "2026-11-04"},
+      {"what": "footage 13 s (S1 + S3), 768P", "item": "take", "model": "minimax/h3", "criteria": "target resolution=768P",
+       "unit_price": 0.08, "unit": "second of output video", "units": 13, "cost": 1.04, "kind": "ai_usd",
+       "price_file": "02_research/models/prices_2026-11-06_v01.json", "checked": "2026-11-06"},
+      {"what": "voiceover, 311 characters", "item": null, "model": "elevenlabs", "criteria": null,
+       "unit_price": 1, "unit": "character", "units": 311, "cost": 311, "kind": "voice_credits",
+       "price_file": null, "checked": null}
+    ],
+    "totals": {"ai_usd": 1.13, "voice_credits": 311},
+    "currency_note": null
+  },
+  "facts": [
+    {"claim": "Wolves and other wild ancestors circled before resting to press down grass, watch for predators and read the wind.",
+     "source": "https://vcahospitals.com/know-your-pet/why-dogs-turn-around-before-lying-down"},
+    {"claim": "Of 62 dogs tested, 19% circled on a flat rug and 55% on an uneven one, close to three times as often.",
+     "source": "https://www.psychologytoday.com/us/blog/canine-corner/201601/why-do-dogs-turn-in-circles-lying-down"}
+  ],
+  "risk": {
+    "level": "medium",
+    "hits": [
+      {"item": "same_character", "mitigation": "both footage sections come from a single take, started from one first frame of the husky"}
+    ]
+  },
+  "style_spec": null,
+  "sound": {"track": "mixkit_135_sleepy-cat.mp3", "trending": null}
+}

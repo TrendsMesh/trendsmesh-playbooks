@@ -1,0 +1,2390 @@
+{
+ "root": "beauty",
+ "min_match": 40,
+ "min_relevant": 10,
+ "queries": [
+  {
+   "query": "acne",
+   "parent": "skincare",
+   "results": 50,
+   "relevant": 2,
+   "file": "search_acne.json"
+  },
+  {
+   "query": "anti-aging",
+   "parent": "skincare",
+   "results": 50,
+   "relevant": 1,
+   "file": "search_anti_aging.json"
+  },
+  {
+   "query": "beauty",
+   "parent": null,
+   "results": 50,
+   "relevant": 1,
+   "file": "search_beauty.json"
+  },
+  {
+   "query": "beauty haul",
+   "parent": "beauty",
+   "results": 50,
+   "relevant": 6,
+   "file": "search_beauty_haul.json"
+  },
+  {
+   "query": "body care",
+   "parent": "beauty",
+   "results": 50,
+   "relevant": 0,
+   "file": "search_body_care.json"
+  },
+  {
+   "query": "body lotion",
+   "parent": "body care",
+   "results": 50,
+   "relevant": 0,
+   "file": "search_body_lotion.json"
+  },
+  {
+   "query": "eyebrows",
+   "parent": "lashes and brows",
+   "results": 50,
+   "relevant": 2,
+   "file": "search_eyebrows.json"
+  },
+  {
+   "query": "eyelash extensions",
+   "parent": "lashes and brows",
+   "results": 50,
+   "relevant": 6,
+   "file": "search_eyelash_extensions.json"
+  },
+  {
+   "query": "fragrance",
+   "parent": "beauty",
+   "results": 50,
+   "relevant": 1,
+   "file": "search_fragrance.json"
+  },
+  {
+   "query": "hair care",
+   "parent": "hair",
+   "results": 50,
+   "relevant": 12,
+   "file": "search_hair_care.json"
+  },
+  {
+   "query": "hair removal",
+   "parent": "body care",
+   "results": 50,
+   "relevant": 10,
+   "file": "search_hair_removal.json"
+  },
+  {
+   "query": "hairstyle",
+   "parent": "hair",
+   "results": 50,
+   "relevant": 18,
+   "file": "search_hairstyle.json"
+  },
+  {
+   "query": "k-beauty",
+   "parent": "skincare",
+   "results": 50,
+   "relevant": 1,
+   "file": "search_k_beauty.json"
+  },
+  {
+   "query": "lashes and brows",
+   "parent": "beauty",
+   "results": 50,
+   "relevant": 4,
+   "file": "search_lashes_and_brows.json"
+  },
+  {
+   "query": "makeup",
+   "parent": "beauty",
+   "results": 50,
+   "relevant": 23,
+   "file": "search_makeup.json"
+  },
+  {
+   "query": "makeup tutorial",
+   "parent": "makeup",
+   "results": 50,
+   "relevant": 37,
+   "file": "search_makeup_tutorial.json"
+  },
+  {
+   "query": "manicure",
+   "parent": "nails",
+   "results": 50,
+   "relevant": 6,
+   "file": "search_manicure.json"
+  },
+  {
+   "query": "nail art",
+   "parent": "nails",
+   "results": 50,
+   "relevant": 7,
+   "file": "search_nail_art.json"
+  },
+  {
+   "query": "nails",
+   "parent": "beauty",
+   "results": 50,
+   "relevant": 6,
+   "file": "search_nails.json"
+  },
+  {
+   "query": "perfume",
+   "parent": "fragrance",
+   "results": 50,
+   "relevant": 4,
+   "file": "search_perfume.json"
+  },
+  {
+   "query": "press-on nails",
+   "parent": "nails",
+   "results": 50,
+   "relevant": 6,
+   "file": "search_press_on_nails.json"
+  },
+  {
+   "query": "self tanning",
+   "parent": "body care",
+   "results": 50,
+   "relevant": 0,
+   "file": "search_self_tanning.json"
+  },
+  {
+   "query": "sephora haul",
+   "parent": "beauty haul",
+   "results": 50,
+   "relevant": 1,
+   "file": "search_sephora_haul.json"
+  },
+  {
+   "query": "skincare",
+   "parent": "beauty",
+   "results": 50,
+   "relevant": 5,
+   "file": "search_skincare.json"
+  },
+  {
+   "query": "skincare routine",
+   "parent": "skincare",
+   "results": 50,
+   "relevant": 4,
+   "file": "search_skincare_routine.json"
+  },
+  {
+   "query": "sunscreen",
+   "parent": "skincare",
+   "results": 50,
+   "relevant": 0,
+   "file": "search_sunscreen.json"
+  }
+ ],
+ "kept": [
+  {
+   "id": "trend_beauty_001",
+   "kind": "topic_trend",
+   "name": "Ulta Beauty product hauls and store finds",
+   "sub_category": "beauty haul",
+   "match": 62.0,
+   "found_by": {
+    "acne": 0,
+    "beauty": 40.0,
+    "beauty haul": 62.0,
+    "fragrance": 24.0,
+    "k-beauty": 28.0,
+    "makeup": 40.0,
+    "makeup tutorial": 40.0,
+    "perfume": 41.0,
+    "self tanning": 1.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 6,
+    "creators": 6,
+    "views": 68182848,
+    "platforms": {
+     "tiktok": 6
+    }
+   },
+   "since": "2026-08-19T21:03:54Z",
+   "active_for_days": 72,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Beauty creators film themselves at Ulta Beauty — a mobile \"Campus Tour\" truck activation, browsing the Ulta website for the Kylie Cosmetics Winter Kissed holiday collection, and smelling new fragrances (Diesel Only Desire, Dolce & Gabbana Devotion) — plus a sponsored Redken dry shampoo demo. The videos are individual product spotlights and store visits rather than reactions to one shared moment.",
+   "seasonal": null,
+   "group": "beauty haul"
+  },
+  {
+   "id": "trend_beauty_002",
+   "kind": "topic_trend",
+   "name": "Beauty product hauls, unboxings and packing",
+   "sub_category": "beauty haul",
+   "match": 58.0,
+   "found_by": {
+    "acne": 0,
+    "beauty": 26.0,
+    "beauty haul": 58.0,
+    "body care": 2.0,
+    "body lotion": 9.0,
+    "fragrance": 31.0,
+    "hair care": 14.0,
+    "hair removal": 8.0,
+    "k-beauty": 28.0,
+    "makeup": 56.0,
+    "makeup tutorial": 51.0,
+    "perfume": 53.0,
+    "self tanning": 4.0,
+    "skincare": 54.0,
+    "skincare routine": 45.0,
+    "sunscreen": 12.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 7,
+    "creators": 6,
+    "views": 3767588,
+    "platforms": {
+     "tiktok": 7
+    }
+   },
+   "since": "2026-09-11T11:12:47Z",
+   "active_for_days": 53,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos center on cosmetics and skincare products themselves: a flat-lay of Ozon cosmetics, a burgundy-vs-pink train case comparison of Allure Best of Beauty winners, a factory clip of beauty products being made, a mother-daughter unboxing of soaps, shampoo and masks, packing a skincare/makeup bag for a trip to Korea, and an Amazon holiday beauty sale flat-lay. They share a subject (beauty products) rather than one triggering moment.",
+   "seasonal": null,
+   "group": "beauty haul"
+  },
+  {
+   "id": "trend_beauty_003",
+   "kind": "topic_trend",
+   "name": "Beauty product unboxing hauls",
+   "sub_category": "beauty haul",
+   "match": 56.0,
+   "found_by": {
+    "beauty": 19.0,
+    "beauty haul": 56.0,
+    "body lotion": 7.0,
+    "fragrance": 29.0,
+    "hair removal": 3.0,
+    "perfume": 43.0,
+    "skincare": 6.0,
+    "skincare routine": 1.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 5,
+    "creators": 5,
+    "views": 666600,
+    "platforms": {
+     "tiktok": 5
+    }
+   },
+   "since": "2026-08-06T11:26:56Z",
+   "active_for_days": 84,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show creators opening shopping bags and packages of cosmetics, skincare and fragrance, showing each item to the camera. Hauls come from Sephora, Zolotoe Yabloko, Magnit Cosmetic and brand mailings like Sensulu, with no single triggering event.",
+   "seasonal": null,
+   "group": "beauty haul"
+  },
+  {
+   "id": "trend_beauty_004",
+   "kind": "topic_trend",
+   "name": "Sephora Savings Event sale hauls and picks",
+   "sub_category": "beauty haul",
+   "match": 45.0,
+   "found_by": {
+    "beauty haul": 45.0,
+    "perfume": 18.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 5,
+    "creators": 5,
+    "views": 194206,
+    "platforms": {
+     "tiktok": 5
+    }
+   },
+   "since": "2026-10-22T03:00:25Z",
+   "active_for_days": 11,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Beauty creators post shopping recommendations, hauls, and a Rouge code giveaway for the Sephora Savings Event sale running around October 30 to November 2, 2026. Videos show product flat-lays, in-store picks, and full-face routines of items worth buying during the sale.",
+   "seasonal": null,
+   "group": "beauty haul"
+  },
+  {
+   "id": "trend_beauty_005",
+   "kind": "hook_trend",
+   "name": "this is ur sign to _",
+   "sub_category": "sephora haul",
+   "match": 46.0,
+   "found_by": {
+    "fragrance": 11.0,
+    "sephora haul": 46.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 3,
+    "creators": 3,
+    "views": 2246253,
+    "platforms": {
+     "tiktok": 3
+    }
+   },
+   "since": "2026-08-15T02:13:38Z",
+   "active_for_days": 78,
+   "momentum": "holding",
+   "sensitivity_level": "none",
+   "what_it_is": "\"This is your sign to _\": a casual nudge that now is the moment to finally do something. Creators open with it to encourage a fun, spontaneous experience. The blank holds the activity being urged, e.g. \"buy tickets for John Summit at LA Coliseum on presale.\"",
+   "seasonal": null,
+   "group": "beauty haul"
+  },
+  {
+   "id": "trend_beauty_006",
+   "kind": "topic_trend",
+   "name": "Haircare product routines and sponsored hair ads",
+   "sub_category": "hair care",
+   "match": 74.0,
+   "found_by": {
+    "body care": 9.0,
+    "fragrance": 19.0,
+    "hair care": 74.0,
+    "hair removal": 41.0,
+    "hairstyle": 58.0,
+    "perfume": 22.0,
+    "skincare": 31.0,
+    "skincare routine": 39.0,
+    "sunscreen": 2.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 9,
+    "creators": 9,
+    "views": 25073420,
+    "platforms": {
+     "tiktok": 9
+    }
+   },
+   "since": "2026-08-07T20:27:30Z",
+   "active_for_days": 78,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people demonstrating hair-care routines and reviewing or promoting shampoo, conditioner, oil and styling products — from a Brazilian \"bleach to blonde\" transformation and a straight-to-curly styling skit to sponsored wash-day routines for Pantene and OGX and a large product haul. Several are brand ads or marketplace recommendations (Wildberries, Nice One) rather than reactions to a single event.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_007",
+   "kind": "topic_trend",
+   "name": "Hair loss remedies and hair recovery",
+   "sub_category": "hair care",
+   "match": 71.0,
+   "found_by": {
+    "acne": 0,
+    "body lotion": 0,
+    "hair care": 57.0,
+    "hair removal": 71.0,
+    "hairstyle": 52.0,
+    "skincare": 6.0,
+    "skincare routine": 4.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 7,
+    "creators": 7,
+    "views": 3905225,
+    "platforms": {
+     "tiktok": 7
+    }
+   },
+   "since": "2026-07-22T21:44:41Z",
+   "active_for_days": 100,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos about hair fall and how to treat it: promotions and testimonials for biotin IV drips, onion shampoo, herbal soap, rosemary serum/tonic, and scalp-washing advice, plus one long-to-short \"hair transition\" haircut after heavy shedding. They share the subject of hair loss and recovery rather than one triggering event.",
+   "seasonal": null,
+   "sub_category_search": "hair removal",
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_008",
+   "kind": "topic_trend",
+   "name": "Dyson Hair Stylers: Demos and Tutorials",
+   "sub_category": "hair care",
+   "match": 59.0,
+   "found_by": {
+    "acne": 1.0,
+    "eyelash extensions": 12.0,
+    "fragrance": 14.0,
+    "hair care": 38.0,
+    "hair removal": 23.0,
+    "hairstyle": 50.0,
+    "makeup": 38.0,
+    "makeup tutorial": 59.0,
+    "manicure": 32.0,
+    "nail art": 18.0,
+    "nails": 4.0,
+    "press-on nails": 18.0,
+    "skincare": 8.0,
+    "skincare routine": 6.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 11,
+    "creators": 11,
+    "views": 33009912,
+    "platforms": {
+     "tiktok": 11
+    }
+   },
+   "since": "2026-01-23T10:07:05Z",
+   "active_for_days": 275,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators demonstrate and review Dyson hot-air styling tools (Airwrap, Airstrait, straighteners), showing wet-to-dry styling, curling, straightening and before/after results, with some comparing cheaper alternatives like Cecotec or complaining about the attachments. Videos range from sponsored mall-stand promos to at-home get-ready-with-me routines.",
+   "seasonal": null,
+   "sub_category_search": "makeup tutorial",
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_009",
+   "kind": "topic_trend",
+   "name": "Wash day hair transformation routines",
+   "sub_category": "hair care",
+   "match": 56.0,
+   "found_by": {
+    "body care": 0,
+    "hair care": 54.0,
+    "hair removal": 56.0,
+    "hairstyle": 51.0,
+    "skincare routine": 10.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 33,
+    "creators": 31,
+    "views": 104267864,
+    "platforms": {
+     "tiktok": 33
+    }
+   },
+   "since": "2026-08-04T21:54:37Z",
+   "active_for_days": 90,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show creators documenting multi-step \"wash day\" hair routines, usually filmed from behind in a bathroom, moving through stages labeled dirty, washed, detangled, dried and styled, often with a \"Rare. Super Rare. Epic. Mythic. Legendary\" sound effect. Others share long-hair care tips, product routines (OGX, Olaplex, horse-derived shampoo), and comedic takes on wash day.",
+   "seasonal": null,
+   "sub_category_search": "hair removal",
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_010",
+   "kind": "topic_trend",
+   "name": "Karseell collagen hair mask promo skits",
+   "sub_category": "hair care",
+   "match": 45.0,
+   "found_by": {
+    "acne": 0,
+    "eyebrows": 13.0,
+    "eyelash extensions": 22.0,
+    "hair care": 25.0,
+    "hair removal": 19.0,
+    "hairstyle": 34.0,
+    "k-beauty": 16.0,
+    "lashes and brows": 23.0,
+    "makeup": 37.0,
+    "makeup tutorial": 45.0,
+    "skincare": 23.0,
+    "skincare routine": 17.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 10,
+    "creators": 8,
+    "views": 67066098,
+    "platforms": {
+     "tiktok": 10
+    }
+   },
+   "since": "2026-09-07T09:30:20Z",
+   "active_for_days": 58,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Short-form promotional and comedic \"instant hair transformation\" videos for the Karseell collagen hair mask / Maca Power repair set, mostly POV-style skits in which a hand slaps a yellow cream onto a stranger's hair in places like a KFC or a barbershop, plus salon demo and ad clips. Captions and on-screen text are full of Karseell branding and hair-care hashtags.",
+   "seasonal": null,
+   "sub_category_search": "makeup tutorial",
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_011",
+   "kind": "topic_trend",
+   "name": "Hair braiding and long-hair styling",
+   "sub_category": "hairstyle",
+   "match": 76.0,
+   "found_by": {
+    "eyelash extensions": 16.0,
+    "hair care": 47.0,
+    "hair removal": 29.0,
+    "hairstyle": 76.0,
+    "lashes and brows": 17.0,
+    "makeup tutorial": 41.0,
+    "manicure": 15.0,
+    "nail art": 20.0,
+    "nails": 8.0,
+    "press-on nails": 17.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 17,
+    "creators": 15,
+    "views": 6036760,
+    "platforms": {
+     "tiktok": 17
+    }
+   },
+   "since": "2026-08-15T21:24:08Z",
+   "active_for_days": 78,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A collection of hair videos centered on braiding and styling: stylists showing off braided styles (stitch braids, box braids, cornrows, festival braids), a motorized braiding machine demo, a beginner practicing on a mannequin head, and women showing off very long hair being brushed and braided. A few clips are adjacent rather than on-topic, such as a service-bartering post and a purple-hair tutorial.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_012",
+   "kind": "topic_trend",
+   "name": "Curly hair care and styling routines",
+   "sub_category": "hairstyle",
+   "match": 74.0,
+   "found_by": {
+    "body care": 11.0,
+    "body lotion": 3.0,
+    "eyebrows": 13.0,
+    "eyelash extensions": 31.0,
+    "hair care": 70.0,
+    "hair removal": 38.0,
+    "hairstyle": 74.0,
+    "lashes and brows": 27.0,
+    "makeup": 39.0,
+    "makeup tutorial": 50.0,
+    "manicure": 20.0,
+    "nail art": 24.0,
+    "nails": 12.0,
+    "press-on nails": 21.0,
+    "self tanning": 6.0,
+    "skincare": 19.0,
+    "skincare routine": 28.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 27,
+    "creators": 25,
+    "views": 67956281,
+    "platforms": {
+     "tiktok": 27
+    }
+   },
+   "since": "2026-09-04T21:11:28Z",
+   "active_for_days": 57,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people with curly and wavy hair demonstrating care and styling routines: before-and-after transformations, wash-and-style stages (dirty, wet, brushed out, styled), defining curls with finger coiling or spiral rods, and shine/gloss treatments. Several are sponsored posts for curl products (Garnier Nutrisse Glossy Curls, L'Oréal Elvive Glycolic Gloss, Twisty curl cream), and captions frame frizz as misunderstood curls rather than damage.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_013",
+   "kind": "topic_trend",
+   "name": "Straightening hair with a flat iron",
+   "sub_category": "hairstyle",
+   "match": 69.0,
+   "found_by": {
+    "acne": 0,
+    "eyelash extensions": 13.0,
+    "hair care": 62.0,
+    "hair removal": 43.0,
+    "hairstyle": 69.0,
+    "lashes and brows": 16.0,
+    "manicure": 31.0,
+    "nail art": 38.0,
+    "nails": 26.0,
+    "press-on nails": 36.0,
+    "self tanning": 14.0,
+    "skincare": 7.0,
+    "skincare routine": 7.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 18,
+    "creators": 17,
+    "views": 32114176,
+    "platforms": {
+     "tiktok": 18
+    }
+   },
+   "since": "2026-08-28T23:56:05Z",
+   "active_for_days": 59,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators demonstrate heat-styling their hair straight with a flat iron: showing the tool, clamping sections of long dark hair, and revealing the smooth result, often transforming natural curls or extensions. Some videos frame it as a \"hair hack,\" a get-ready-with-me routine, or a product-sponsored routine.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_014",
+   "kind": "topic_trend",
+   "name": "Keratin hair straightening salon transformations",
+   "sub_category": "hairstyle",
+   "match": 68.0,
+   "found_by": {
+    "acne": 3.0,
+    "eyebrows": 16.0,
+    "eyelash extensions": 22.0,
+    "hair care": 65.0,
+    "hair removal": 51.0,
+    "hairstyle": 68.0,
+    "k-beauty": 19.0,
+    "lashes and brows": 23.0,
+    "manicure": 19.0,
+    "nail art": 14.0,
+    "nails": 7.0,
+    "press-on nails": 14.0,
+    "skincare": 14.0,
+    "skincare routine": 14.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 19,
+    "creators": 18,
+    "views": 8428800,
+    "platforms": {
+     "tiktok": 19
+    }
+   },
+   "since": "2026-08-02T11:37:01Z",
+   "active_for_days": 91,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Salon videos documenting keratin/smoothing treatments — before-and-after straightening of frizzy or curly hair, plus aftercare and length/product talk. They come from Russian, Ukrainian, and Spanish/Portuguese-speaking stylists and clients rather than reacting to a single event.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_015",
+   "kind": "topic_trend",
+   "name": "Salon and barbershop hair transformations",
+   "sub_category": "hairstyle",
+   "match": 68.0,
+   "found_by": {
+    "eyebrows": 11.0,
+    "hair care": 52.0,
+    "hair removal": 46.0,
+    "hairstyle": 68.0,
+    "makeup tutorial": 38.0,
+    "nail art": 13.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 229,
+    "creators": 205,
+    "views": 346860586,
+    "platforms": {
+     "tiktok": 229
+    }
+   },
+   "since": "2026-07-13T10:42:49Z",
+   "active_for_days": 114,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A cluster of short-form videos showing haircuts, dye jobs, styling and dramatic before/after hair makeovers in salons and barbershops, often with ASMR cutting sounds, styling tutorials and reveal edits. Featured stylists and shops include barbershop and salon accounts from Turkey, Vietnam, Georgia, Kyrgyzstan and Brazil.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_016",
+   "kind": "topic_trend",
+   "name": "Blonde hair transformation reveals",
+   "sub_category": "hairstyle",
+   "match": 68.0,
+   "found_by": {
+    "eyelash extensions": 19.0,
+    "hair care": 32.0,
+    "hair removal": 46.0,
+    "hairstyle": 68.0,
+    "lashes and brows": 17.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 7,
+    "creators": 4,
+    "views": 1353426,
+    "platforms": {
+     "tiktok": 7
+    }
+   },
+   "since": "2026-10-07T22:31:28Z",
+   "active_for_days": 27,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos showing people lightening or dyeing their hair blonde, with before-and-after reveals, including a reply explaining a brunette dye job, a blonde-to-dark and back reveal, and barber-applied blonde highlights on curly hair with Brazilian-effect framing.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_017",
+   "kind": "topic_trend",
+   "name": "Hair extension and wig transformations",
+   "sub_category": "hairstyle",
+   "match": 64.0,
+   "found_by": {
+    "eyebrows": 14.0,
+    "eyelash extensions": 51.0,
+    "hair care": 57.0,
+    "hair removal": 51.0,
+    "hairstyle": 64.0,
+    "lashes and brows": 20.0,
+    "makeup": 32.0,
+    "makeup tutorial": 38.0,
+    "nail art": 9.0,
+    "skincare": 8.0,
+    "skincare routine": 7.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 20,
+    "creators": 19,
+    "views": 15599700,
+    "platforms": {
+     "tiktok": 20
+    }
+   },
+   "since": "2026-09-04T10:30:37Z",
+   "active_for_days": 56,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Salon and at-home videos showing hair transformations: installing clip-in, tape-in and micro-capsule extensions, wig installs and long-hair reveals, including a 16-hour extension job for a client after chemotherapy and North West installing a blue wig. A few GRWM beauty vlogs are also included.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_018",
+   "kind": "topic_trend",
+   "name": "Half-up half-down hairstyle tutorials",
+   "sub_category": "hairstyle",
+   "match": 62.0,
+   "found_by": {
+    "eyelash extensions": 15.0,
+    "hair care": 40.0,
+    "hair removal": 40.0,
+    "hairstyle": 62.0,
+    "makeup tutorial": 53.0,
+    "manicure": 15.0,
+    "nail art": 17.0,
+    "nails": 11.0,
+    "press-on nails": 18.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 7,
+    "creators": 7,
+    "views": 13504361,
+    "platforms": {
+     "tiktok": 7
+    }
+   },
+   "since": "2026-08-16T18:09:54Z",
+   "active_for_days": 67,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people styling their long hair into half-up, half-down looks — sectioning the top, adding volume, and revealing the finished style — with several framed as fall or wedding-guest hair inspiration. They are standalone tutorials and transformations rather than reactions to a single event.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_019",
+   "kind": "topic_trend",
+   "name": "CapCut AI hair transformation template tutorials",
+   "sub_category": "hairstyle",
+   "match": 61.0,
+   "found_by": {
+    "eyelash extensions": 23.0,
+    "hair care": 40.0,
+    "hair removal": 43.0,
+    "hairstyle": 61.0,
+    "makeup": 34.0,
+    "makeup tutorial": 53.0,
+    "manicure": 13.0,
+    "nail art": 10.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 5,
+    "creators": 5,
+    "views": 254745,
+    "platforms": {
+     "tiktok": 5
+    }
+   },
+   "since": "2026-10-13T06:35:31Z",
+   "active_for_days": 10,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos promote and walk through CapCut's AI hair transformation template, which turns one photo into a salon-style makeover (short-to-long burgundy hair, dyeing and styling). Creators in English, French, Spanish and Burmese show step-by-step how to copy the video link, open the template, and apply the filter, often alongside CapCut Pro discount promos.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_020",
+   "kind": "topic_trend",
+   "name": "Cornrow braid hairstyle transformations",
+   "sub_category": "hairstyle",
+   "match": 60.0,
+   "found_by": {
+    "eyebrows": 19.0,
+    "eyelash extensions": 30.0,
+    "hair care": 34.0,
+    "hair removal": 35.0,
+    "hairstyle": 60.0,
+    "lashes and brows": 34.0,
+    "makeup": 34.0,
+    "manicure": 16.0,
+    "nail art": 19.0,
+    "nails": 13.0,
+    "press-on nails": 18.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 13,
+    "creators": 11,
+    "views": 20438751,
+    "platforms": {
+     "tiktok": 13
+    }
+   },
+   "since": "2026-07-29T01:38:16Z",
+   "active_for_days": 86,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people getting their hair braided into cornrows, mostly salon or home \"before and after\" transformations with stylists parting, plaiting and finishing rows of braids. A few clips add commentary, such as a debate over cultural appropriation of braids or a girl being mocked at school for her hair.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_021",
+   "kind": "topic_trend",
+   "name": "Knotless and boho braid hairstyle reveals",
+   "sub_category": "hairstyle",
+   "match": 60.0,
+   "found_by": {
+    "eyelash extensions": 31.0,
+    "hair care": 20.0,
+    "hair removal": 16.0,
+    "hairstyle": 60.0,
+    "lashes and brows": 14.0,
+    "nail art": 15.0,
+    "nails": 10.0,
+    "perfume": 16.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 10,
+    "creators": 9,
+    "views": 1671496,
+    "platforms": {
+     "tiktok": 10
+    }
+   },
+   "since": "2026-07-31T04:27:58Z",
+   "active_for_days": 90,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos showcase long knotless, boho, and gypsy braided hairstyles — often with curly ends, ginger or honey-blonde tones, and baby-hair edges — filmed as salon transformations, selfie reveals, or booking promos for braiders. Several clips double as advertising for braiding services and hair products.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_022",
+   "kind": "topic_trend",
+   "name": "Curly vs straight hair content",
+   "sub_category": "hairstyle",
+   "match": 58.0,
+   "found_by": {
+    "hair care": 35.0,
+    "hair removal": 18.0,
+    "hairstyle": 58.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 17,
+    "creators": 17,
+    "views": 5329900,
+    "platforms": {
+     "tiktok": 17
+    }
+   },
+   "since": "2026-09-02T14:56:16Z",
+   "active_for_days": 59,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos celebrating, comparing, or transforming curly and straight hair: selfie clips showing off big curly manes, \"straight vs curly\" comparisons, straightening treatments and their results, frizz-fixing and hair-mask routines, and a countdown of curly hairstyles in Trinidad.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_023",
+   "kind": "topic_trend",
+   "name": "At-home hair dyeing and color transformations",
+   "sub_category": "hairstyle",
+   "match": 49.0,
+   "found_by": {
+    "hair care": 34.0,
+    "hair removal": 30.0,
+    "hairstyle": 49.0,
+    "makeup tutorial": 34.0,
+    "manicure": 13.0,
+    "nail art": 18.0,
+    "nails": 6.0,
+    "press-on nails": 14.0,
+    "self tanning": 8.0,
+    "skincare routine": 2.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 16,
+    "creators": 16,
+    "views": 21026074,
+    "platforms": {
+     "tiktok": 16
+    }
+   },
+   "since": "2026-03-19T20:30:46Z",
+   "active_for_days": 222,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people mixing and applying hair dye themselves at home — box dye, cartridges, or custom shades — often as before-and-after transformations, unboxings, and tutorials. Some feature product demos (Zuvi coloring device, L'Oréal Excellence Nudes) and salon/stylist tips, but the shared subject is DIY hair coloring rather than a single triggering moment.",
+   "seasonal": null,
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_024",
+   "kind": "topic_trend",
+   "name": "Lace-front wig showcases and vendor promos",
+   "sub_category": "hairstyle",
+   "match": 47.0,
+   "found_by": {
+    "eyebrows": 11.0,
+    "eyelash extensions": 20.0,
+    "fragrance": 19.0,
+    "hair care": 3.0,
+    "hairstyle": 23.0,
+    "lashes and brows": 19.0,
+    "makeup": 44.0,
+    "makeup tutorial": 47.0,
+    "perfume": 39.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 13,
+    "creators": 13,
+    "views": 7195358,
+    "platforms": {
+     "tiktok": 13
+    }
+   },
+   "since": "2026-09-15T15:43:36Z",
+   "active_for_days": 43,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show women modeling, installing, styling and selling long lace-front wigs — salon reveals, hot-comb and curl styling demos, hairline presses, and shop promos from wig vendors and boutiques. Most are product showcases or sales pitches rather than reactions to a single event.",
+   "seasonal": null,
+   "sub_category_search": "makeup tutorial",
+   "group": "hair"
+  },
+  {
+   "id": "trend_beauty_025",
+   "kind": "topic_trend",
+   "name": "Eyebrow grooming and brow tutorials",
+   "sub_category": "eyebrows",
+   "match": 64.0,
+   "found_by": {
+    "acne": 0,
+    "body care": 3.0,
+    "eyebrows": 64.0,
+    "eyelash extensions": 47.0,
+    "hair care": 40.0,
+    "hair removal": 17.0,
+    "hairstyle": 31.0,
+    "lashes and brows": 57.0,
+    "makeup": 31.0,
+    "makeup tutorial": 53.0,
+    "manicure": 17.0,
+    "nail art": 15.0,
+    "nails": 7.0,
+    "press-on nails": 18.0,
+    "self tanning": 5.0,
+    "skincare": 15.0,
+    "skincare routine": 16.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 21,
+    "creators": 19,
+    "views": 41307200,
+    "platforms": {
+     "tiktok": 21
+    }
+   },
+   "since": "2026-08-12T19:48:04Z",
+   "active_for_days": 78,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show close-up eyebrow care and styling: professional brow design sessions (waxing, tinting, lamination, threading) on clients with closed eyes, plus at-home tutorials using pencils, gels, stencils and spoolie brushes. Clips span multiple languages and creators, with no single triggering event.",
+   "seasonal": null,
+   "group": "lashes and brows"
+  },
+  {
+   "id": "trend_beauty_026",
+   "kind": "topic_trend",
+   "name": "Eyelash extensions and false lash tutorials",
+   "sub_category": "eyelash extensions",
+   "match": 60.0,
+   "found_by": {
+    "eyebrows": 16.0,
+    "eyelash extensions": 60.0,
+    "hair removal": 3.0,
+    "lashes and brows": 44.0,
+    "makeup": 33.0,
+    "makeup tutorial": 55.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 49,
+    "creators": 45,
+    "views": 30955820,
+    "platforms": {
+     "tiktok": 49
+    }
+   },
+   "since": "2026-08-10T13:50:46Z",
+   "active_for_days": 84,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Beauty videos about lashes: close-up strip false-lash application tutorials, lash-extension appointments and before/after results, lash-artist struggles, and product demos like pre-glued or double-ended liner pens used as lash glue. They span macro eye close-ups, GRWM vlogs and salon POV clips rather than one event.",
+   "seasonal": null,
+   "group": "lashes and brows"
+  },
+  {
+   "id": "trend_beauty_027",
+   "kind": "topic_trend",
+   "name": "Eyelash lift and tint treatments",
+   "sub_category": "eyelash extensions",
+   "match": 46.0,
+   "found_by": {
+    "acne": 0,
+    "body care": 5.0,
+    "body lotion": 0,
+    "eyebrows": 27.0,
+    "eyelash extensions": 46.0,
+    "hair care": 10.0,
+    "hair removal": 12.0,
+    "lashes and brows": 45.0,
+    "press-on nails": 18.0,
+    "skincare": 6.0,
+    "skincare routine": 5.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 8,
+    "creators": 8,
+    "views": 5913650,
+    "platforms": {
+     "tiktok": 8
+    }
+   },
+   "since": "2026-07-19T16:03:49Z",
+   "active_for_days": 100,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show eyelash lift (lamination) and tint services: close-up before/after transformations, salon process footage of lash prep, lifting and tinting, and promotions for lash artists in LA, Łódź, the Bay Area and NYC. Several highlight the \"Korean lash lift\" technique specifically.",
+   "seasonal": null,
+   "group": "lashes and brows"
+  },
+  {
+   "id": "trend_beauty_028",
+   "kind": "topic_trend",
+   "name": "Venom makeup and couple transformation trend",
+   "sub_category": "makeup",
+   "match": 75.0,
+   "found_by": {
+    "beauty": 22.0,
+    "beauty haul": 21.0,
+    "eyebrows": 11.0,
+    "eyelash extensions": 34.0,
+    "fragrance": 14.0,
+    "hairstyle": 22.0,
+    "k-beauty": 17.0,
+    "lashes and brows": 38.0,
+    "makeup": 75.0,
+    "makeup tutorial": 63.0,
+    "perfume": 19.0,
+    "skincare": 11.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 21,
+    "creators": 17,
+    "views": 52142100,
+    "platforms": {
+     "tiktok": 21
+    }
+   },
+   "since": "2026-08-15T20:24:51Z",
+   "active_for_days": 79,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people painting their faces black to look like the Marvel character Venom, often as matching \"Venom couple\" looks, with some lip-syncing the \"We are Venom\" line. The clips are homemade face-paint and SFX makeup transformations rather than reactions to a single event.",
+   "seasonal": null,
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_029",
+   "kind": "topic_trend",
+   "name": "Día de los Muertos Catrina makeup and costumes",
+   "sub_category": "makeup",
+   "match": 63.0,
+   "found_by": {
+    "acne": 0,
+    "beauty": 24.0,
+    "beauty haul": 33.0,
+    "body care": 0,
+    "eyebrows": 9.0,
+    "fragrance": 15.0,
+    "lashes and brows": 19.0,
+    "makeup": 63.0,
+    "makeup tutorial": 56.0,
+    "nail art": 10.0,
+    "perfume": 17.0,
+    "self tanning": 2.0,
+    "skincare": 13.0,
+    "skincare routine": 1.0,
+    "sunscreen": 0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 12,
+    "creators": 12,
+    "views": 4922058,
+    "platforms": {
+     "tiktok": 12
+    }
+   },
+   "since": "2026-09-08T19:29:27Z",
+   "active_for_days": 56,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people creating La Catrina / calavera sugar-skull looks — white face paint with red and black bone, flower and swirl details — plus elaborate Day of the Dead costumes, wigs and hats, often framed as Halloween makeup transformations and costume showcases. A few also show the looks worn out in public, such as being turned away at a theme park for the face paint.",
+   "seasonal": "halloween",
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_030",
+   "kind": "topic_trend",
+   "name": "Cream contour and blush placement tutorials",
+   "sub_category": "makeup tutorial",
+   "match": 89.0,
+   "found_by": {
+    "acne": 3.0,
+    "eyebrows": 23.0,
+    "eyelash extensions": 27.0,
+    "fragrance": 20.0,
+    "hair care": 10.0,
+    "hair removal": 3.0,
+    "hairstyle": 19.0,
+    "lashes and brows": 29.0,
+    "makeup": 71.0,
+    "makeup tutorial": 89.0,
+    "nail art": 13.0,
+    "perfume": 21.0,
+    "self tanning": 12.0,
+    "skincare": 35.0,
+    "skincare routine": 29.0,
+    "sunscreen": 3.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 10,
+    "creators": 8,
+    "views": 6882800,
+    "platforms": {
+     "tiktok": 10
+    }
+   },
+   "since": "2026-08-24T19:04:44Z",
+   "active_for_days": 70,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Short beauty tutorials demonstrating where to place cream corrector, contour, bronzer, blush and highlighter on the face, often with a \"contour hack\" framing and product close-ups (TIRTIR, creator_0470, milk toner). A smaller set of videos instead shows faux-freckle makeup looks.",
+   "seasonal": null,
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_031",
+   "kind": "topic_trend",
+   "name": "creator_0470 and Catrice makeup product demos",
+   "sub_category": "makeup tutorial",
+   "match": 88.0,
+   "found_by": {
+    "eyelash extensions": 16.0,
+    "fragrance": 30.0,
+    "makeup": 74.0,
+    "makeup tutorial": 88.0,
+    "perfume": 35.0,
+    "skincare": 17.0,
+    "skincare routine": 14.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 32,
+    "creators": 8,
+    "views": 123054117,
+    "platforms": {
+     "tiktok": 32
+    }
+   },
+   "since": "2026-09-16T21:30:00Z",
+   "active_for_days": 48,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "ASMR-style close-up demos, swatches and tutorials for drugstore makeup products — mostly creator_0470 items (setting balm, grip primer, bubble blush, mascara, advent calendar) plus a Catrice solid perfume bar and highlighters. Videos show texture tests, application routines and unboxings rather than one shared event.",
+   "seasonal": null,
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_032",
+   "kind": "topic_trend",
+   "name": "Glam makeup transformations and beauty looks",
+   "sub_category": "makeup tutorial",
+   "match": 72.0,
+   "found_by": {
+    "beauty": 39.0,
+    "beauty haul": 46.0,
+    "eyebrows": 17.0,
+    "eyelash extensions": 32.0,
+    "fragrance": 16.0,
+    "hair care": 6.0,
+    "hair removal": 8.0,
+    "hairstyle": 32.0,
+    "k-beauty": 39.0,
+    "lashes and brows": 28.0,
+    "makeup": 69.0,
+    "makeup tutorial": 72.0,
+    "perfume": 19.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 246,
+    "creators": 225,
+    "views": 272723756,
+    "platforms": {
+     "tiktok": 246
+    }
+   },
+   "since": "2026-07-14T08:01:16Z",
+   "active_for_days": 111,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A cluster of short-form beauty videos in which creators show off full-glam makeup looks and transformations: step-by-step application, dramatic before/after reveals, highlighter and lash close-ups, and finished portrait-style looks. A few entries branch off into related beauty content, such as a makeup artist's client complaint skit, a cosplay dance grid, and a Russian lip-sync clip.",
+   "seasonal": null,
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_033",
+   "kind": "topic_trend",
+   "name": "Lip combo liner and gloss routine",
+   "sub_category": "makeup tutorial",
+   "match": 69.0,
+   "found_by": {
+    "body lotion": 0,
+    "eyebrows": 19.0,
+    "eyelash extensions": 39.0,
+    "fragrance": 17.0,
+    "hair care": 15.0,
+    "hair removal": 3.0,
+    "hairstyle": 30.0,
+    "lashes and brows": 29.0,
+    "makeup": 60.0,
+    "makeup tutorial": 69.0,
+    "manicure": 23.0,
+    "nail art": 21.0,
+    "nails": 11.0,
+    "perfume": 22.0,
+    "press-on nails": 24.0,
+    "skincare": 14.0,
+    "skincare routine": 12.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 16,
+    "creators": 10,
+    "views": 10725642,
+    "platforms": {
+     "tiktok": 16
+    }
+   },
+   "since": "2026-07-06T18:00:00Z",
+   "active_for_days": 119,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Close-up beauty videos where people demonstrate a \"lip combo\" — lining the lips with a pencil and topping with gloss or tint, often showing specific drugstore and brand products (creator_0470, Vivienne Sabo, Herra, Sephora Soft Suede, ABH Daydream). No single triggering moment; it's a recurring makeup routine shared across creators.",
+   "seasonal": null,
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_034",
+   "kind": "topic_trend",
+   "name": "Joker Halloween makeup and cosplay transformations",
+   "sub_category": "makeup tutorial",
+   "match": 63.0,
+   "found_by": {
+    "eyebrows": 9.0,
+    "eyelash extensions": 15.0,
+    "hair care": 3.0,
+    "hairstyle": 17.0,
+    "lashes and brows": 20.0,
+    "makeup": 60.0,
+    "makeup tutorial": 63.0,
+    "nail art": 10.0,
+    "skincare": 11.0,
+    "skincare routine": 2.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 16,
+    "creators": 15,
+    "views": 7265836,
+    "platforms": {
+     "tiktok": 16
+    }
+   },
+   "since": "2026-09-11T02:57:18Z",
+   "active_for_days": 54,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people doing Joker/clown-style Halloween makeup and cosplay transformations — white face paint, green hair, red grins — plus Joker-themed nail art, a pet's Joker costume, and Joker meme or lip-sync clips. A few videos only loosely touch the theme (a hydro-dipped cap, a Batman mukbang, a Spider-Man toy skit).",
+   "seasonal": "halloween",
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_035",
+   "kind": "topic_trend",
+   "name": "Deer Halloween makeup look",
+   "sub_category": "makeup tutorial",
+   "match": 62.0,
+   "found_by": {
+    "acne": 0,
+    "eyebrows": 7.0,
+    "eyelash extensions": 12.0,
+    "lashes and brows": 21.0,
+    "makeup": 60.0,
+    "makeup tutorial": 62.0,
+    "skincare": 11.0,
+    "skincare routine": 2.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 5,
+    "creators": 5,
+    "views": 1386256,
+    "platforms": {
+     "tiktok": 5
+    }
+   },
+   "since": "2026-10-16T07:56:31Z",
+   "active_for_days": 16,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators post Halloween makeup tutorials and transformations recreating a deer/fawn (Bambi-style) look — brown nose, white fawn spots, graphic liner — often framed as the look TikTok assigns you when you search \"my Halloween makeup.\" Videos span late October 2026 and include Polish, Russian and English creators.",
+   "seasonal": "halloween",
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_036",
+   "kind": "topic_trend",
+   "name": "Bridal makeup and wedding-day styling",
+   "sub_category": "makeup tutorial",
+   "match": 59.0,
+   "found_by": {
+    "beauty": 17.0,
+    "beauty haul": 29.0,
+    "hair care": 2.0,
+    "hair removal": 2.0,
+    "hairstyle": 24.0,
+    "makeup": 58.0,
+    "makeup tutorial": 59.0,
+    "nail art": 13.0,
+    "perfume": 14.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 17,
+    "creators": 16,
+    "views": 4478711,
+    "platforms": {
+     "tiktok": 17
+    }
+   },
+   "since": "2026-09-14T18:25:38Z",
+   "active_for_days": 49,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show brides and makeup artists documenting wedding-day beauty preparation — foundation-to-glam transformations, bridal hair styling, and salon getting-ready sequences — plus bridal fashion reveals in gowns and veils. Clips come from many artists and salons worldwide (Cape Town, Los Angeles, Accra, Moscow, Turkmenistan) rather than one event, with no single triggering moment.",
+   "seasonal": null,
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_037",
+   "kind": "topic_trend",
+   "name": "Halloween makeup and costume transformations",
+   "sub_category": "makeup tutorial",
+   "match": 56.0,
+   "found_by": {
+    "makeup": 55.0,
+    "makeup tutorial": 56.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 57,
+    "creators": 46,
+    "views": 33917382,
+    "platforms": {
+     "tiktok": 57
+    }
+   },
+   "since": "2026-10-02T02:30:51Z",
+   "active_for_days": 33,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators show off Halloween 2026 makeup and costume transformations — creepy clowns, neon skeletons, Hello Kitty and raven glam looks, character tutorials, and get-ready-with-me costume challenges — plus one ad for removing heavy Halloween makeup. Videos cluster around late October 2026, with a few posted earlier in the month.",
+   "seasonal": "halloween",
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_038",
+   "kind": "topic_trend",
+   "name": "Art the Clown Halloween Costume Skits",
+   "sub_category": "makeup tutorial",
+   "match": 52.0,
+   "found_by": {
+    "makeup": 41.0,
+    "makeup tutorial": 52.0,
+    "skincare": 6.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 6,
+    "creators": 5,
+    "views": 2650967,
+    "platforms": {
+     "tiktok": 6
+    }
+   },
+   "since": "2026-10-17T17:23:35Z",
+   "active_for_days": 13,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos posted around Halloween 2026 in which creators dress as Art the Clown from the Terrifier films — white face paint, black-and-white harlequin costume, tiny top hat — and perform comedy skits, dances, and POV bits. Examples include a porch trick-or-treat skit, a dashcam-style night drive, a living-room character monologue, and group dances.",
+   "seasonal": "halloween",
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_039",
+   "kind": "topic_trend",
+   "name": "Corpse Bride Halloween costume transformations",
+   "sub_category": "makeup tutorial",
+   "match": 44.0,
+   "found_by": {
+    "makeup": 41.0,
+    "makeup tutorial": 44.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 10,
+    "creators": 8,
+    "views": 15933268,
+    "platforms": {
+     "tiktok": 10
+    }
+   },
+   "since": "2026-08-21T10:32:31Z",
+   "active_for_days": 73,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos show people doing Halloween costume transformations and cosplay of Emily, the Corpse Bride from Tim Burton's film — blue-grey skin, veil, floral crown and corset — often set in front of a church or in a bedroom mirror, with several asking \"did I win this trend?\" A few related clips show the original stop-motion characters, a bride/ghost costume variant, and a lookalike-comparison video.",
+   "seasonal": "halloween",
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_040",
+   "kind": "topic_trend",
+   "name": "Ghostface Costume Halloween Skits and Crafts",
+   "sub_category": "makeup tutorial",
+   "match": 43.0,
+   "found_by": {
+    "makeup": 39.0,
+    "makeup tutorial": 43.0,
+    "skincare": 12.0,
+    "skincare routine": 5.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 34,
+    "creators": 31,
+    "views": 37907487,
+    "platforms": {
+     "tiktok": 34
+    }
+   },
+   "since": "2026-10-02T06:08:06Z",
+   "active_for_days": 33,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos use the Scream franchise's Ghostface mask and black hooded robe for Halloween-season content: costume skits and POV bits, a digital painting timelapse, Ghostface cupcakes, a custom Ghostface bowling ball restoration, and neon-lit mask close-ups. The clips are tied together by the character and the October Halloween period rather than one specific event.",
+   "seasonal": "halloween",
+   "group": "makeup"
+  },
+  {
+   "id": "trend_beauty_041",
+   "kind": "topic_trend",
+   "name": "Fall almond nail art designs",
+   "sub_category": "nail art",
+   "match": 78.0,
+   "found_by": {
+    "eyelash extensions": 21.0,
+    "hair care": 0,
+    "hair removal": 0,
+    "hairstyle": 21.0,
+    "makeup tutorial": 32.0,
+    "manicure": 48.0,
+    "nail art": 78.0,
+    "nails": 60.0,
+    "press-on nails": 53.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 7,
+    "creators": 7,
+    "views": 71110,
+    "platforms": {
+     "tiktok": 7
+    }
+   },
+   "since": "2026-10-23T16:47:27Z",
+   "active_for_days": 6,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Close-up beauty clips showing off manicured almond-shaped nails in fall color palettes — sheer pink and nude bases with dark brown or chocolate tips, polka dots, gold accents, glitter, and floral details. One video frames the manicure as done for a niece's high school dance.",
+   "seasonal": null,
+   "group": "nails"
+  },
+  {
+   "id": "trend_beauty_042",
+   "kind": "topic_trend",
+   "name": "Leopard-print cat-eye nail art tutorials",
+   "sub_category": "nail art",
+   "match": 77.0,
+   "found_by": {
+    "eyebrows": 13.0,
+    "eyelash extensions": 33.0,
+    "hair care": 8.0,
+    "hairstyle": 17.0,
+    "makeup": 36.0,
+    "makeup tutorial": 51.0,
+    "manicure": 67.0,
+    "nail art": 77.0,
+    "nails": 61.0,
+    "press-on nails": 69.0,
+    "skincare": 10.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 8,
+    "creators": 8,
+    "views": 1565039,
+    "platforms": {
+     "tiktok": 8
+    }
+   },
+   "since": "2026-09-10T16:01:49Z",
+   "active_for_days": 50,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Short-form nail videos showing leopard/cheetah-print manicures, often combined with cat-eye gel polish, in tutorial and finished-manicure showcase formats. Creators demonstrate stamping plates, hand-painted spots, and matte or chrome finishes on almond, coffin, and stiletto nails, with several clips framed as a viral fall 2026 nail trend.",
+   "seasonal": null,
+   "group": "nails"
+  },
+  {
+   "id": "trend_beauty_043",
+   "kind": "topic_trend",
+   "name": "Nail art transformations and manicure showcase",
+   "sub_category": "nail art",
+   "match": 76.0,
+   "found_by": {
+    "eyebrows": 9.0,
+    "eyelash extensions": 17.0,
+    "hair care": 14.0,
+    "hair removal": 11.0,
+    "hairstyle": 22.0,
+    "makeup tutorial": 39.0,
+    "manicure": 63.0,
+    "nail art": 76.0,
+    "nails": 61.0,
+    "press-on nails": 68.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 162,
+    "creators": 132,
+    "views": 184831801,
+    "platforms": {
+     "tiktok": 162
+    }
+   },
+   "since": "2026-08-11T14:40:24Z",
+   "active_for_days": 84,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos center on nail-salon content: before-and-after manicure makeovers, close-up showcases of gel, acrylic, cat-eye, chrome and gem-decorated nails, and nail-tech tutorials and product demos. Creators also share nail-industry commentary, DM humor, and related beauty vlog moments.",
+   "seasonal": null,
+   "group": "nails"
+  },
+  {
+   "id": "trend_beauty_044",
+   "kind": "topic_trend",
+   "name": "Halloween nail art designs",
+   "sub_category": "nail art",
+   "match": 71.0,
+   "found_by": {
+    "acne": 0,
+    "eyelash extensions": 10.0,
+    "hair care": 0,
+    "makeup": 42.0,
+    "makeup tutorial": 50.0,
+    "manicure": 46.0,
+    "nail art": 71.0,
+    "nails": 53.0,
+    "press-on nails": 49.0,
+    "skincare": 8.0,
+    "skincare routine": 1.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 20,
+    "creators": 19,
+    "views": 2277848,
+    "platforms": {
+     "tiktok": 20
+    }
+   },
+   "since": "2026-09-26T01:47:19Z",
+   "active_for_days": 37,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators and nail techs showcase Halloween-themed manicures — ghosts, jack-o'-lanterns, spiderwebs, bats, flames and 3D jewels — on almond, square and stiletto nails, some as salon showcases, press-ons or step-by-step tutorials. Videos are posted across October 2026 (with one from late September), all tied to spooky-season nail designs rather than a single event.",
+   "seasonal": "halloween",
+   "group": "nails"
+  },
+  {
+   "id": "trend_beauty_045",
+   "kind": "topic_trend",
+   "name": "Cat-eye magnetic nail art manicures",
+   "sub_category": "nail art",
+   "match": 69.0,
+   "found_by": {
+    "acne": 2.0,
+    "eyebrows": 19.0,
+    "eyelash extensions": 45.0,
+    "hair care": 9.0,
+    "hair removal": 2.0,
+    "hairstyle": 14.0,
+    "makeup": 38.0,
+    "makeup tutorial": 42.0,
+    "manicure": 67.0,
+    "nail art": 69.0,
+    "nails": 48.0,
+    "press-on nails": 56.0,
+    "self tanning": 2.0,
+    "skincare": 7.0,
+    "sunscreen": 8.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 16,
+    "creators": 15,
+    "views": 4823461,
+    "platforms": {
+     "tiktok": 16
+    }
+   },
+   "since": "2026-10-05T00:30:09Z",
+   "active_for_days": 28,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Close-up nail-art videos showing cat-eye (magnetic gel) manicures, where polish is manipulated with a magnet to create a shifting glowing shimmer band. Examples span nude-violet, chrome, olive-green, burgundy, pale pink, and golden champagne sets, often with salon demos or polish-collection reviews.",
+   "seasonal": null,
+   "group": "nails"
+  },
+  {
+   "id": "trend_beauty_046",
+   "kind": "topic_trend",
+   "name": "Long acrylic nail art and extensions",
+   "sub_category": "nail art",
+   "match": 62.0,
+   "found_by": {
+    "acne": 6.0,
+    "eyelash extensions": 40.0,
+    "manicure": 37.0,
+    "nail art": 62.0,
+    "nails": 36.0,
+    "press-on nails": 36.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 39,
+    "creators": 38,
+    "views": 54571935,
+    "platforms": {
+     "tiktok": 39
+    }
+   },
+   "since": "2026-09-07T00:15:45Z",
+   "active_for_days": 56,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos showcase long acrylic/gel nail extensions and elaborate nail art — sculpting tutorials and rebuilds by nail technicians, plus reveal and transition clips of extra-long decorated sets (stiletto, square, French tips, 3D flowers, charms). A few also promote nail courses or ASMR hand-movement content featuring the nails.",
+   "seasonal": null,
+   "group": "nails"
+  },
+  {
+   "id": "trend_beauty_047",
+   "kind": "topic_trend",
+   "name": "Electric nail drill (e-file) manicure videos",
+   "sub_category": "press-on nails",
+   "match": 66.0,
+   "found_by": {
+    "manicure": 47.0,
+    "nail art": 50.0,
+    "nails": 48.0,
+    "press-on nails": 66.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 6,
+    "creators": 6,
+    "views": 1604354,
+    "platforms": {
+     "tiktok": 6
+    }
+   },
+   "since": "2026-09-01T16:35:00Z",
+   "active_for_days": 51,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Close-up clips of nail technicians using electric rotary nail drills (e-files) with metal bits and sanding discs to file, buff and remove gel/acrylic from nails, plus one review of the O'Nail drill. Posted across September 2026, the videos share the same tool and filing activity rather than reacting to a single event.",
+   "seasonal": null,
+   "group": "nails"
+  },
+  {
+   "id": "trend_beauty_048",
+   "kind": "topic_trend",
+   "name": "Acne and acne-treatment skincare routines",
+   "sub_category": "acne",
+   "match": 78.0,
+   "found_by": {
+    "acne": 78.0,
+    "body care": 18.0,
+    "eyelash extensions": 15.0,
+    "hair care": 22.0,
+    "hair removal": 12.0,
+    "makeup": 33.0,
+    "self tanning": 22.0,
+    "skincare": 67.0,
+    "skincare routine": 70.0,
+    "sunscreen": 18.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 11,
+    "creators": 11,
+    "views": 11973892,
+    "platforms": {
+     "tiktok": 11
+    }
+   },
+   "since": "2026-08-10T19:28:03Z",
+   "active_for_days": 78,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos center on acne and the products and routines people use to treat it: tretinoin and prescription creams, pimple patches, pharmacy remedies, isotretinoin/Accutane, zinc oxide barrier creams, daily face washing, and extraction clips. Each is a separate creator's own skincare experience, with no single shared triggering moment.",
+   "seasonal": null,
+   "group": "skincare"
+  },
+  {
+   "id": "trend_beauty_049",
+   "kind": "topic_trend",
+   "name": "Pimple patches making acne look worse",
+   "sub_category": "acne",
+   "match": 54.0,
+   "found_by": {
+    "acne": 54.0,
+    "eyebrows": 15.0,
+    "eyelash extensions": 21.0,
+    "lashes and brows": 20.0,
+    "makeup": 30.0,
+    "self tanning": 11.0,
+    "skincare": 5.0,
+    "sunscreen": 7.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 5,
+    "creators": 5,
+    "views": 5034407,
+    "platforms": {
+     "tiktok": 5
+    }
+   },
+   "since": "2026-10-16T13:56:31Z",
+   "active_for_days": 7,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators post close-up selfie videos reacting to wearing pimple patches overnight and waking up to a pimple that looks more swollen, raised, or angry than before. They squeeze and inspect the blemish while questioning whether the patch actually helped.",
+   "seasonal": null,
+   "group": "skincare"
+  },
+  {
+   "id": "trend_beauty_050",
+   "kind": "topic_trend",
+   "name": "Medicube K-beauty skincare hauls and routines",
+   "sub_category": "k-beauty",
+   "match": 78.0,
+   "found_by": {
+    "acne": 9.0,
+    "beauty": 14.0,
+    "beauty haul": 35.0,
+    "body care": 33.0,
+    "body lotion": 16.0,
+    "eyelash extensions": 14.0,
+    "fragrance": 18.0,
+    "hair care": 25.0,
+    "hair removal": 10.0,
+    "k-beauty": 34.0,
+    "lashes and brows": 13.0,
+    "makeup": 44.0,
+    "makeup tutorial": 40.0,
+    "perfume": 23.0,
+    "self tanning": 8.0,
+    "skincare": 78.0,
+    "skincare routine": 77.0,
+    "sunscreen": 18.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 12,
+    "creators": 12,
+    "views": 4325946,
+    "platforms": {
+     "tiktok": 12
+    }
+   },
+   "since": "2026-10-10T16:44:03Z",
+   "active_for_days": 24,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators show and demo Medicube skincare products: an airport travel prep to South Korea with the brand, body wash and peel shots, collagen and eye creams in a night routine, a discounted hypochlorous acid set, and a pink-vs-red lip balm stick comparison. Most are sponsored or brand-tagged demos rather than reactions to one event.",
+   "seasonal": null,
+   "sub_category_search": "skincare",
+   "group": "skincare"
+  },
+  {
+   "id": "trend_beauty_051",
+   "kind": "topic_trend",
+   "name": "Skincare routines and product demos",
+   "sub_category": "skincare routine",
+   "match": 69.0,
+   "found_by": {
+    "acne": 0,
+    "body care": 18.0,
+    "hair care": 17.0,
+    "makeup": 40.0,
+    "makeup tutorial": 56.0,
+    "self tanning": 8.0,
+    "skincare": 68.0,
+    "skincare routine": 69.0,
+    "sunscreen": 5.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 33,
+    "creators": 32,
+    "views": 19213213,
+    "platforms": {
+     "tiktok": 33
+    }
+   },
+   "since": "2026-08-20T05:11:27Z",
+   "active_for_days": 71,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators across many languages film themselves applying and reviewing skincare products — tretinoin, cleansers, serums, masks, creams and SPF — in bathroom or bedroom POV routines, some comedic or exaggerated. A few videos are jokes or memes built on the same routine format rather than genuine product demos.",
+   "seasonal": null,
+   "group": "skincare"
+  },
+  {
+   "id": "trend_beauty_052",
+   "kind": "topic_trend",
+   "name": "Satisfying blackhead and pimple extraction videos",
+   "sub_category": "skincare routine",
+   "match": 49.0,
+   "found_by": {
+    "acne": 38.0,
+    "body care": 14.0,
+    "body lotion": 5.0,
+    "eyebrows": 27.0,
+    "eyelash extensions": 33.0,
+    "hair care": 24.0,
+    "hair removal": 35.0,
+    "hairstyle": 17.0,
+    "lashes and brows": 28.0,
+    "makeup": 44.0,
+    "makeup tutorial": 49.0,
+    "manicure": 24.0,
+    "nail art": 15.0,
+    "nails": 8.0,
+    "press-on nails": 15.0,
+    "self tanning": 6.0,
+    "skincare": 41.0,
+    "skincare routine": 32.0,
+    "sunscreen": 9.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 13,
+    "creators": 9,
+    "views": 9574400,
+    "platforms": {
+     "tiktok": 13
+    }
+   },
+   "since": "2026-08-24T13:59:59Z",
+   "active_for_days": 63,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Macro, clinical-style clips of gloved practitioners squeezing, scraping and tweezer-extracting blackheads, whiteheads and sebum plugs from faces, noses and necks. Many are branded as \"Trend Mahmoud Gamal\" or Thai acne-extraction services, and a few add commentary or reaction framing, but all center on the same pore-cleaning procedure.",
+   "seasonal": null,
+   "sub_category_search": "makeup tutorial",
+   "group": "skincare"
+  }
+ ],
+ "dropped": [
+  {
+   "id": "trend_beauty_053",
+   "kind": "topic_trend",
+   "name": "Get Ready With Me (GRWM) beauty routines",
+   "sub_category": "makeup tutorial",
+   "match": 61.0,
+   "found_by": {
+    "beauty": 35.0,
+    "beauty haul": 43.0,
+    "hair care": 9.0,
+    "hairstyle": 28.0,
+    "k-beauty": 27.0,
+    "makeup": 52.0,
+    "makeup tutorial": 61.0,
+    "self tanning": 8.0,
+    "skincare routine": 10.0
+   },
+   "status": "contradicted",
+   "reach": {
+    "videos": 266,
+    "creators": 238,
+    "views": 216515659,
+    "platforms": {
+     "tiktok": 266
+    }
+   },
+   "since": "2026-08-09T11:50:02Z",
+   "active_for_days": 86,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A cluster of \"get ready with me\" videos where creators film themselves doing makeup, skincare and hair routines, often while getting ready for school or a special occasion. Most are selfie-style beauty transformations, with a few school-morning and back-to-school versions.",
+   "seasonal": null,
+   "dropped_because": [
+    "status contradicted (TR4)"
+   ]
+  },
+  {
+   "id": "trend_beauty_054",
+   "kind": "topic_trend",
+   "name": "Selfie videos making funny faces at camera",
+   "sub_category": "makeup",
+   "match": 41.0,
+   "found_by": {
+    "beauty": 16.0,
+    "eyebrows": 32.0,
+    "eyelash extensions": 23.0,
+    "lashes and brows": 33.0,
+    "makeup": 41.0,
+    "makeup tutorial": 40.0,
+    "self tanning": 10.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 29,
+    "creators": 28,
+    "views": 9917066,
+    "platforms": {
+     "tiktok": 29
+    }
+   },
+   "since": "2026-08-25T17:39:00Z",
+   "active_for_days": 68,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A collection of close-up selfie-style clips where young people, mostly women, cycle through exaggerated comedic facial expressions — pouts, winks, squints, tongue-out and face-squishing — often lip-syncing or reacting to an audio clip. A few add a punchline cutaway (cartoon clips, football celebration footage), but the shared activity is performing playful faces directly to the camera.",
+   "seasonal": null,
+   "dropped_because": [
+    "sport: football"
+   ]
+  },
+  {
+   "id": "trend_beauty_055",
+   "kind": "topic_trend",
+   "name": "Bob haircuts and short hairstyle transformations",
+   "sub_category": "hairstyle",
+   "match": 50.0,
+   "found_by": {
+    "eyebrows": 17.0,
+    "eyelash extensions": 17.0,
+    "hair care": 31.0,
+    "hair removal": 37.0,
+    "hairstyle": 50.0,
+    "lashes and brows": 19.0,
+    "manicure": 13.0,
+    "nail art": 15.0,
+    "nails": 10.0,
+    "press-on nails": 17.0
+   },
+   "status": "contradicted",
+   "reach": {
+    "videos": 12,
+    "creators": 12,
+    "views": 6956083,
+    "platforms": {
+     "tiktok": 12
+    }
+   },
+   "since": "2026-09-10T17:10:45Z",
+   "active_for_days": 48,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A cluster of salon and selfie-style clips showing bob haircuts — chin-length bobs, blunt cuts, two-tone bobs and pixie/short cuts — including cutting and blow-dry styling, plus a couple of clips that only mention the bob style or use bob-themed audio. Most videos center on the bob look itself or a salon cut reveal rather than a single shared event.",
+   "seasonal": null,
+   "dropped_because": [
+    "status contradicted (TR4)"
+   ]
+  },
+  {
+   "id": "trend_beauty_056",
+   "kind": "topic_trend",
+   "name": "Perfume and fragrance content",
+   "sub_category": "perfume",
+   "match": 74.0,
+   "found_by": {
+    "fragrance": 63.0,
+    "perfume": 74.0,
+    "sunscreen": 4.0
+   },
+   "status": "contradicted",
+   "reach": {
+    "videos": 13,
+    "creators": 13,
+    "views": 4008658,
+    "platforms": {
+     "tiktok": 13
+    }
+   },
+   "since": "2026-08-28T07:41:37Z",
+   "active_for_days": 68,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos center on perfume and fragrance: boutique sales consultations, spraying routines, scent reviews, collections and perfume shopping livestreams. Only some are tied to a specific moment (e.g. an October 2026 TikTok LIVE fragrance-selling broadcast), while the rest are general fragrance-themed clips.",
+   "seasonal": null,
+   "dropped_because": [
+    "status contradicted (TR4)"
+   ]
+  },
+  {
+   "id": "trend_beauty_057",
+   "kind": "topic_trend",
+   "name": "Showing Off Facial Piercings",
+   "sub_category": "lashes and brows",
+   "match": 54.0,
+   "found_by": {
+    "acne": 6.0,
+    "eyebrows": 41.0,
+    "eyelash extensions": 39.0,
+    "k-beauty": 17.0,
+    "lashes and brows": 54.0,
+    "makeup": 32.0,
+    "skincare": 7.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 7,
+    "creators": 7,
+    "views": 13768739,
+    "platforms": {
+     "tiktok": 7
+    }
+   },
+   "since": "2026-09-11T13:18:55Z",
+   "active_for_days": 49,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos center on people with heavy facial piercings — bridge, brow, septum, nose, lip and cheek — showing them off in selfie-style clips, often while talking about getting more piercings or reacting to comments. One clip features North West discussing the piercings she wants while Kim Kardashian shakes her head.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: adjacent (body modification), not lashes and brows"
+   ]
+  },
+  {
+   "id": "trend_beauty_058",
+   "kind": "topic_trend",
+   "name": "Stylized signature design tutorials",
+   "sub_category": "makeup tutorial",
+   "match": 44.0,
+   "found_by": {
+    "acne": 4.0,
+    "makeup tutorial": 44.0,
+    "manicure": 28.0,
+    "nail art": 27.0,
+    "press-on nails": 9.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 21,
+    "creators": 10,
+    "views": 51709951,
+    "platforms": {
+     "tiktok": 21
+    }
+   },
+   "since": "2026-07-28T14:49:16Z",
+   "active_for_days": 93,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Close-up handwriting videos showing how to draw stylized cursive signatures and monograms, usually for a specific initial or pair of initials (V, DH, K, R, M, KC, etc.), drawn with pens, pencils, or fountain pens on paper. Some clips are fountain-pen calligraphy showcases of flowing \"style signatures\" rather than step-by-step tutorials.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: off-category: handwriting / signature design"
+   ]
+  },
+  {
+   "id": "trend_beauty_059",
+   "kind": "topic_trend",
+   "name": "Dementia in family life and memory",
+   "sub_category": "anti-aging",
+   "match": 41.0,
+   "found_by": {
+    "anti-aging": 41.0,
+    "body care": 0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 6,
+    "creators": 6,
+    "views": 67322118,
+    "platforms": {
+     "tiktok": 6
+    }
+   },
+   "since": "2026-02-24T02:16:52Z",
+   "active_for_days": 251,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos about dementia as experienced by families: a grandmother who forgets the family dog hates petting, memory exercises with a grandmother, a father crying about his mother's condition, a comedic POV of an elderly man who only remembers viral TikTok sounds, an animated story of a man whose only help during a heart attack is his grandfather with dementia, and a commentary clip citing a politician's repeated anecdote as a sign of dementia. Only the last references a specific dated rally, so the group is a shared subject rather than one event.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: off-category: matched 'anti-aging' on ageing, not beauty"
+   ]
+  },
+  {
+   "id": "trend_beauty_060",
+   "kind": "topic_trend",
+   "name": "Goth and alternative fashion aesthetic",
+   "sub_category": "makeup",
+   "match": 41.0,
+   "found_by": {
+    "beauty": 18.0,
+    "beauty haul": 38.0,
+    "makeup": 41.0,
+    "makeup tutorial": 41.0,
+    "perfume": 25.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 17,
+    "creators": 15,
+    "views": 5493064,
+    "platforms": {
+     "tiktok": 17
+    }
+   },
+   "since": "2026-09-05T10:57:47Z",
+   "active_for_days": 55,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos showcase gothic and alternative style: heavy dark makeup, black clothing, chokers and chains, moody low-light selfies, plus goth-themed products like an oversized heated hooded robe and a cat dressed in a gothic outfit. A few clips are alt-fashion montages or streetwear walks set to music.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: adjacent category (fashion)"
+   ]
+  },
+  {
+   "id": "trend_beauty_061",
+   "kind": "topic_trend",
+   "name": "OOTD Outfit Showcase Videos",
+   "sub_category": "makeup tutorial",
+   "match": 46.0,
+   "found_by": {
+    "beauty haul": 24.0,
+    "makeup": 37.0,
+    "makeup tutorial": 46.0,
+    "perfume": 17.0
+   },
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 362,
+    "creators": 334,
+    "views": 152880527,
+    "platforms": {
+     "tiktok": 362
+    }
+   },
+   "since": "2026-08-10T02:31:02Z",
+   "active_for_days": 86,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A batch of short-form fashion clips in which creators film themselves modeling a single look — pajama sets, leather jackets, trench coats, try-on hauls and streetwear — often with a selfie-style opening and a lip-sync or trending audio. There is no shared event; the videos are united only by the outfit-of-the-day format.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: adjacent category (fashion), not beauty"
+   ]
+  },
+  {
+   "id": "trend_beauty_062",
+   "kind": "topic_trend",
+   "name": "Comedic face-warp filter selfie videos",
+   "sub_category": "makeup",
+   "match": 47.0,
+   "found_by": {
+    "eyebrows": 21.0,
+    "eyelash extensions": 22.0,
+    "hair care": 5.0,
+    "hair removal": 3.0,
+    "hairstyle": 18.0,
+    "lashes and brows": 27.0,
+    "makeup": 47.0,
+    "makeup tutorial": 43.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 16,
+    "creators": 15,
+    "views": 99948047,
+    "platforms": {
+     "tiktok": 16
+    }
+   },
+   "since": "2026-05-04T10:09:49Z",
+   "active_for_days": 178,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Creators film themselves in selfie mode while AR/app filters distort their faces into goofy characters — giant noses, spiky hair, bulging eyes, cartoon heads — often in \"try not to laugh\" or prank formats. Clips span multiple languages and countries, with no single triggering event.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: off-category: comedy filter, no beauty content"
+   ]
+  },
+  {
+   "id": "trend_beauty_063",
+   "kind": "topic_trend",
+   "name": "Outfit-change selfie montages with lip-sync audio",
+   "sub_category": "makeup tutorial",
+   "match": 44.0,
+   "found_by": {
+    "hairstyle": 19.0,
+    "makeup": 35.0,
+    "makeup tutorial": 44.0,
+    "self tanning": 7.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 9,
+    "creators": 9,
+    "views": 5900475,
+    "platforms": {
+     "tiktok": 9
+    }
+   },
+   "since": "2026-07-26T04:10:20Z",
+   "active_for_days": 99,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "Videos are selfie-style montages in which one person cycles through multiple outfits, hairstyles, and locations via quick jump cuts, each set to a lip-synced song or spoken-word clip (German, Japanese, Hindi, English). The clips are unrelated in content and audio, sharing only the format of a rapid look-change showcase.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: adjacent category (fashion)"
+   ]
+  },
+  {
+   "id": "trend_beauty_064",
+   "kind": "topic_trend",
+   "name": "Kalogeras Sisters Fan Edits and Reactions",
+   "sub_category": "k-beauty",
+   "match": 44.0,
+   "found_by": {
+    "k-beauty": 44.0
+   },
+   "status": "confirmed",
+   "reach": {
+    "videos": 9,
+    "creators": 5,
+    "views": 9770723,
+    "platforms": {
+     "tiktok": 9
+    }
+   },
+   "since": "2026-08-07T00:02:12Z",
+   "active_for_days": 77,
+   "momentum": null,
+   "sensitivity_level": "none",
+   "what_it_is": "A mix of fan-made clips about the Kalogeras sisters (Eliana, Sunday, Demitra): recreating or comparing their curly-hair and makeup routines, reacting to them talking over the Sam and Colby Hell Week episode, a plush-toy shop outing, hiking and nightlife moments, matching sleepwear, and praise for Noah Risling being respectful to Sunday. No single triggering event ties them together; they are all fan content and reactions centered on the sisters.",
+   "seasonal": null,
+   "dropped_because": [
+    "agent review: off-category: celebrity fan edits, matched 'k-beauty' by name"
+   ]
+  }
+ ],
+ "below_threshold": 372
+}

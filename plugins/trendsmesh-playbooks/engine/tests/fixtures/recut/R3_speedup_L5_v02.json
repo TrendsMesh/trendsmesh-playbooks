@@ -1,0 +1,25 @@
+{
+ "out": "../../04_final/ad3_R3_speedup_inpaintE_L5_v02.mp4",
+ "video": [
+  {
+   "src": "../../../2026-11-02_ad3-dry-run/01_base/ad3_original.mp4",
+   "from": 0,
+   "to": 12.08
+  },
+  {
+   "src": "../../../2026-11-02_ad3-dry-run/01_base/ad3_original.mp4",
+   "from": 12.08,
+   "to": 24.149,
+   "speed": 1.5208
+  }
+ ],
+ "audio": [
+  {
+   "src": "../audio/inpaint/R1_inpaint_E_continue10long_v01.wav",
+   "from": 0,
+   "to": 20.036
+  }
+ ],
+ "audio_xfade_ms": 40,
+ "audio_tail_fade_ms": 300
+}

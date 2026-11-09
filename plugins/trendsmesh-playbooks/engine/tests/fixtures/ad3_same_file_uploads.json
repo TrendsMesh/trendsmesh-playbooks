@@ -1,0 +1,98 @@
+{
+ "9000000000011": [
+  {
+   "id": "9000000000011",
+   "date_start": "2026-10-01",
+   "date_stop": "2026-10-01",
+   "video_play_actions": "2985",
+   "video_p25_watched_actions": "937",
+   "video_p50_watched_actions": "554",
+   "video_p75_watched_actions": "272",
+   "video_p95_watched_actions": "170",
+   "video_p100_watched_actions": "156"
+  },
+  {
+   "id": "9000000000011",
+   "date_start": "2026-10-02",
+   "date_stop": "2026-10-02",
+   "video_play_actions": "2986",
+   "video_p25_watched_actions": "937",
+   "video_p50_watched_actions": "555",
+   "video_p75_watched_actions": "273",
+   "video_p95_watched_actions": "170",
+   "video_p100_watched_actions": "156"
+  }
+ ],
+ "9000000000012": [
+  {
+   "id": "9000000000012",
+   "date_start": "2026-10-01",
+   "date_stop": "2026-10-01",
+   "video_play_actions": "2609",
+   "video_p25_watched_actions": "870",
+   "video_p50_watched_actions": "507",
+   "video_p75_watched_actions": "270",
+   "video_p95_watched_actions": "165",
+   "video_p100_watched_actions": "142"
+  },
+  {
+   "id": "9000000000012",
+   "date_start": "2026-10-02",
+   "date_stop": "2026-10-02",
+   "video_play_actions": "2610",
+   "video_p25_watched_actions": "870",
+   "video_p50_watched_actions": "507",
+   "video_p75_watched_actions": "270",
+   "video_p95_watched_actions": "166",
+   "video_p100_watched_actions": "143"
+  }
+ ],
+ "9000000000013": [
+  {
+   "id": "9000000000013",
+   "date_start": "2026-10-01",
+   "date_stop": "2026-10-01",
+   "video_play_actions": "5935",
+   "video_p25_watched_actions": "2401",
+   "video_p50_watched_actions": "1609",
+   "video_p75_watched_actions": "993",
+   "video_p95_watched_actions": "689",
+   "video_p100_watched_actions": "623"
+  },
+  {
+   "id": "9000000000013",
+   "date_start": "2026-10-02",
+   "date_stop": "2026-10-02",
+   "video_play_actions": "5935",
+   "video_p25_watched_actions": "2401",
+   "video_p50_watched_actions": "1610",
+   "video_p75_watched_actions": "994",
+   "video_p95_watched_actions": "690",
+   "video_p100_watched_actions": "623"
+  }
+ ],
+ "90000000000001": [
+  {
+   "id": "90000000000001",
+   "date_start": "2026-10-01",
+   "date_stop": "2026-10-01",
+   "video_play_actions": "27676",
+   "video_p25_watched_actions": "8280",
+   "video_p50_watched_actions": "4756",
+   "video_p75_watched_actions": "2646",
+   "video_p95_watched_actions": "1657",
+   "video_p100_watched_actions": "1491"
+  },
+  {
+   "id": "90000000000001",
+   "date_start": "2026-10-02",
+   "date_stop": "2026-10-02",
+   "video_play_actions": "27677",
+   "video_p25_watched_actions": "8280",
+   "video_p50_watched_actions": "4757",
+   "video_p75_watched_actions": "2647",
+   "video_p95_watched_actions": "1658",
+   "video_p100_watched_actions": "1492"
+  }
+ ]
+}

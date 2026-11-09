@@ -1,0 +1,13 @@
+# A test-only second playbook (99-two), registered by the `playbook_two` fixture in conftest.py.
+# A5, A7, E1 and E3 (output live_test) reuse refresh-ad's step ids, and E3 spends from the `test`
+# budget, so the tests can show that refresh-ad's own checks (evidence at A5, the register at A7,
+# an R4 plan before E1, a booked spend at E3, a Hands-off budget) do not apply to another
+# playbook's run.
+outputs: [page, live_test]
+steps:
+  - {id: P1, title: First step, outputs: [page], checkins: [Q1], spends: false, ref: "two.md#p1"}
+  - {id: P2, title: Second step, outputs: [page], spends: false, ref: "two.md#p2"}
+  - {id: A5, title: Read the trends, outputs: [live_test], spends: false, ref: "two.md#a5"}
+  - {id: A7, title: List the changes, outputs: [live_test], spends: false, ref: "two.md#a7"}
+  - {id: E1, title: Design a test, outputs: [live_test], spends: false, ref: "two.md#e1"}
+  - {id: E3, title: Launch a test, outputs: [live_test], spends: true, budget: test, ref: "two.md#e3"}

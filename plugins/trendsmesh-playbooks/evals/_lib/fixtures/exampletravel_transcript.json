@@ -1,0 +1,405 @@
+{
+ "language": "pl",
+ "duration": 26.865,
+ "segments": [
+  {
+   "start": 0.0,
+   "end": 2.0,
+   "text": "Zamknij oczy na chwilę. Posłuchaj fal.",
+   "words": [
+    {
+     "start": 0.0,
+     "end": 0.28,
+     "word": " Zamknij",
+     "probability": 0.998
+    },
+    {
+     "start": 0.28,
+     "end": 0.42,
+     "word": " oczy",
+     "probability": 1.0
+    },
+    {
+     "start": 0.42,
+     "end": 0.62,
+     "word": " na",
+     "probability": 1.0
+    },
+    {
+     "start": 0.62,
+     "end": 0.9,
+     "word": " chwilę.",
+     "probability": 1.0
+    },
+    {
+     "start": 1.2,
+     "end": 1.66,
+     "word": " Posłuchaj",
+     "probability": 1.0
+    },
+    {
+     "start": 1.66,
+     "end": 2.0,
+     "word": " fal.",
+     "probability": 0.999
+    }
+   ]
+  },
+  {
+   "start": 2.6,
+   "end": 4.68,
+   "text": "Cicha zatoka, tylko dla twojej grupy.",
+   "words": [
+    {
+     "start": 2.6,
+     "end": 3.22,
+     "word": " Cicha",
+     "probability": 0.999
+    },
+    {
+     "start": 3.22,
+     "end": 3.32,
+     "word": " zatoka,",
+     "probability": 1.0
+    },
+    {
+     "start": 3.32,
+     "end": 3.56,
+     "word": " tylko",
+     "probability": 1.0
+    },
+    {
+     "start": 3.56,
+     "end": 3.84,
+     "word": " dla",
+     "probability": 1.0
+    },
+    {
+     "start": 3.84,
+     "end": 4.4,
+     "word": " twojej",
+     "probability": 0.821
+    },
+    {
+     "start": 4.4,
+     "end": 4.68,
+     "word": " grupy.",
+     "probability": 1.0
+    }
+   ]
+  },
+  {
+   "start": 5.3,
+   "end": 9.12,
+   "text": "Sam decydujesz, kiedy wypływasz, gdzie cumujesz i jak długo tam zostajesz.",
+   "words": [
+    {
+     "start": 5.3,
+     "end": 5.9,
+     "word": " Sam",
+     "probability": 1.0
+    },
+    {
+     "start": 5.9,
+     "end": 6.2,
+     "word": " decydujesz,",
+     "probability": 0.998
+    },
+    {
+     "start": 6.28,
+     "end": 6.4,
+     "word": " kiedy",
+     "probability": 1.0
+    },
+    {
+     "start": 6.4,
+     "end": 6.94,
+     "word": " wypływasz,",
+     "probability": 0.99
+    },
+    {
+     "start": 6.94,
+     "end": 7.38,
+     "word": " gdzie",
+     "probability": 0.548
+    },
+    {
+     "start": 7.38,
+     "end": 7.52,
+     "word": " cumujesz",
+     "probability": 1.0
+    },
+    {
+     "start": 7.52,
+     "end": 7.66,
+     "word": " i",
+     "probability": 1.0
+    },
+    {
+     "start": 7.66,
+     "end": 7.96,
+     "word": " jak",
+     "probability": 1.0
+    },
+    {
+     "start": 7.96,
+     "end": 8.16,
+     "word": " długo",
+     "probability": 1.0
+    },
+    {
+     "start": 8.16,
+     "end": 8.4,
+     "word": " tam",
+     "probability": 0.506
+    },
+    {
+     "start": 8.4,
+     "end": 9.12,
+     "word": " zostajesz.",
+     "probability": 1.0
+    }
+   ]
+  },
+  {
+   "start": 9.88,
+   "end": 13.76,
+   "text": "Rano pływasz kajakiem, a wieczorem jesz świeże ryby.",
+   "words": [
+    {
+     "start": 9.88,
+     "end": 10.34,
+     "word": " Rano",
+     "probability": 0.996
+    },
+    {
+     "start": 10.5,
+     "end": 10.92,
+     "word": " pływasz",
+     "probability": 0.998
+    },
+    {
+     "start": 10.92,
+     "end": 11.46,
+     "word": " kajakiem,",
+     "probability": 1.0
+    },
+    {
+     "start": 11.92,
+     "end": 12.26,
+     "word": " a",
+     "probability": 1.0
+    },
+    {
+     "start": 12.26,
+     "end": 12.56,
+     "word": " wieczorem",
+     "probability": 1.0
+    },
+    {
+     "start": 12.56,
+     "end": 13.24,
+     "word": " jesz",
+     "probability": 1.0
+    },
+    {
+     "start": 13.24,
+     "end": 13.42,
+     "word": " świeże",
+     "probability": 0.997
+    },
+    {
+     "start": 13.42,
+     "end": 13.76,
+     "word": " ryby.",
+     "probability": 0.992
+    }
+   ]
+  },
+  {
+   "start": 14.38,
+   "end": 17.1,
+   "text": "Bez kolejek, bez tłumów, bez sztywnego planu dnia.",
+   "words": [
+    {
+     "start": 14.38,
+     "end": 14.88,
+     "word": " Bez",
+     "probability": 1.0
+    },
+    {
+     "start": 14.88,
+     "end": 15.0,
+     "word": " kolejek,",
+     "probability": 1.0
+    },
+    {
+     "start": 15.0,
+     "end": 15.36,
+     "word": " bez",
+     "probability": 1.0
+    },
+    {
+     "start": 15.48,
+     "end": 15.6,
+     "word": " tłumów,",
+     "probability": 1.0
+    },
+    {
+     "start": 15.6,
+     "end": 16.26,
+     "word": " bez",
+     "probability": 1.0
+    },
+    {
+     "start": 16.38,
+     "end": 16.54,
+     "word": " sztywnego",
+     "probability": 1.0
+    },
+    {
+     "start": 16.54,
+     "end": 16.68,
+     "word": " planu",
+     "probability": 0.993
+    },
+    {
+     "start": 16.68,
+     "end": 17.1,
+     "word": " dnia.",
+     "probability": 1.0
+    }
+   ]
+  },
+  {
+   "start": 17.96,
+   "end": 20.32,
+   "text": "Jacht, skipper i trzy porty do wyboru.",
+   "words": [
+    {
+     "start": 17.96,
+     "end": 18.16,
+     "word": " Jacht,",
+     "probability": 0.937
+    },
+    {
+     "start": 18.16,
+     "end": 18.32,
+     "word": " skipper",
+     "probability": 0.955
+    },
+    {
+     "start": 18.46,
+     "end": 18.82,
+     "word": " i",
+     "probability": 0.591
+    },
+    {
+     "start": 18.82,
+     "end": 19.22,
+     "word": " trzy",
+     "probability": 1.0
+    },
+    {
+     "start": 19.22,
+     "end": 19.64,
+     "word": " porty",
+     "probability": 0.945
+    },
+    {
+     "start": 19.64,
+     "end": 19.98,
+     "word": " do",
+     "probability": 0.999
+    },
+    {
+     "start": 19.98,
+     "end": 20.32,
+     "word": " wyboru.",
+     "probability": 0.999
+    }
+   ]
+  },
+  {
+   "start": 21.1,
+   "end": 22.32,
+   "text": "Wszystko w jednej cenie.",
+   "words": [
+    {
+     "start": 21.1,
+     "end": 21.42,
+     "word": " Wszystko",
+     "probability": 1.0
+    },
+    {
+     "start": 21.42,
+     "end": 21.72,
+     "word": " w",
+     "probability": 1.0
+    },
+    {
+     "start": 21.72,
+     "end": 21.94,
+     "word": " jednej",
+     "probability": 1.0
+    },
+    {
+     "start": 21.94,
+     "end": 22.32,
+     "word": " cenie.",
+     "probability": 0.999
+    }
+   ]
+  },
+  {
+   "start": 23.04,
+   "end": 24.6,
+   "text": "Ostatnie wolne terminy na lipiec.",
+   "words": [
+    {
+     "start": 23.04,
+     "end": 23.6,
+     "word": " Ostatnie",
+     "probability": 0.999
+    },
+    {
+     "start": 23.6,
+     "end": 23.88,
+     "word": " wolne",
+     "probability": 0.995
+    },
+    {
+     "start": 23.88,
+     "end": 24.06,
+     "word": " terminy",
+     "probability": 1.0
+    },
+    {
+     "start": 24.06,
+     "end": 24.32,
+     "word": " na",
+     "probability": 0.999
+    },
+    {
+     "start": 24.32,
+     "end": 24.6,
+     "word": " lipiec.",
+     "probability": 1.0
+    }
+   ]
+  },
+  {
+   "start": 25.08,
+   "end": 25.7,
+   "text": "Zarezerwuj.",
+   "words": [
+    {
+     "start": 25.08,
+     "end": 25.7,
+     "word": " Zarezerwuj.",
+     "probability": 0.994
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,90 @@
+{
+  "schema": "pack/1",
+  "id": "M5",
+  "lang": "pl",
+  "title": "Mało kto wie, że Fortnite ma PEGI 12",
+  "channel": "exampleedu",
+  "production": "talking_character",
+  "sound_led": false,
+  "sections": [
+    {"id": "s1", "type": "talking_character", "model": "minimax/h3", "from": 0, "to": 13}
+  ],
+  "product": {"level": "not shown", "packshots": []},
+  "host": {"kind": "image", "image": "03_wip/host_v01_0.png"},
+  "script": {
+    "lines": [
+      {"n": 1, "text": "Mało kto wie, że Fortnite ma kategorię PEGI dwanaście.", "speaker": "host",
+       "shot": "kadr z ręki, mama przy stole w salonie uśmiecha się do obiektywu", "at": [0, 3]},
+      {"n": 2, "text": "Młodsi nie mają tam czatu głosowego od razu.", "speaker": "host",
+       "shot": "ten sam kadr, odrobinę ciaśniej, unosi palec jak przy ciekawostce", "at": [3, 6]},
+      {"n": 3, "text": "Gdy dziecko gra z kolegami, wejdźcie z nim do ustawień.", "speaker": "host",
+       "shot": "cięcie: zza ramienia, ręce dziecka trzymają pada przed telewizorem (bez twarzy, obraz rozmyty); jej głos z offu",
+       "at": [6, 9.5]},
+      {"n": 4, "text": "Niech samo pokaże, gdzie je zmienia.", "speaker": "host",
+       "shot": "cięcie: powrót do pierwszego kadru, mama kiwa głową i mruga do kamery", "at": [9.5, 11.5]}
+    ],
+    "words": 33,
+    "seconds": 13
+  },
+  "speech": {
+    "route": "h3_native",
+    "alternative_reason": null,
+    "voice": "swobodny polski głos mamy, nagrany z bliska jak telefonem",
+    "voice_reference": null
+  },
+  "taste": {
+    "style": null,
+    "voice": "ciepły polski głos mamy około czterdziestki, opisany w prompcie",
+    "music": null,
+    "by": "agent",
+    "why": "Tryb A–Z: w profilu kanału nie ma zapisanych wyborów, więc głos opisuje prompt H3; bez muzyki, by mowa była czysta."
+  },
+  "models": [
+    {"component": "obraz prowadzącej (pierwsza klatka)", "model": "openai/gpt-image-2",
+     "why": "fotorealistyczna pierwsza klatka jak z telefonu; jakość high, bo w kadrze jest twarz",
+     "recipe": "references/model-prompting/gpt-image-2.md",
+     "ranking": {"source": "Arena image-edit", "date": "2026-11-06"}, "user_named": false, "criteria": null},
+    {"component": "ujęcie z mową (13 s)", "model": "minimax/h3",
+     "why": "domyślny poziom; polska mowa z ruchem ust w jednym ujęciu, od pierwszej klatki z obrazu prowadzącej",
+     "recipe": "references/model-prompting/minimax-h3.md",
+     "ranking": {"source": "Arena image-to-video", "date": "2026-11-06"}, "user_named": false, "criteria": null}
+  ],
+  "stages": [
+    {"stage": "images", "items": [{"name": "host", "model": "openai/gpt-image-2", "face": true, "images": 2}]},
+    {"stage": "video", "items": [{"name": "take", "model": "minimax/h3", "seconds": 13}]}
+  ],
+  "resolution": {
+    "choice": "768p",
+    "options": [
+      {"id": "768p", "cost": 1.04},
+      {"id": "1080p", "cost": 1.69, "model": "minimax/h3", "criteria": "target resolution=2K"},
+      {"id": "768p_pruna", "cost": 1.3}
+    ]
+  },
+  "cost": {
+    "lines": [
+      {"what": "obraz prowadzącej ×2", "item": "host", "model": "openai/gpt-image-2", "criteria": "model variant=high",
+       "unit_price": 0.128, "unit": "output image", "units": 2, "cost": 0.26, "kind": "ai_usd",
+       "price_file": "02_research/models/prices_2026-11-04_v01.json", "checked": "2026-11-04"},
+      {"what": "ujęcie H3 13 s, 768P", "item": "take", "model": "minimax/h3", "criteria": "target resolution=768P",
+       "unit_price": 0.08, "unit": "second of output video", "units": 13, "cost": 1.04, "kind": "ai_usd",
+       "price_file": "02_research/models/prices_2026-11-06_v01.json", "checked": "2026-11-06"}
+    ],
+    "totals": {"ai_usd": 1.3, "voice_credits": 0},
+    "currency_note": null
+  },
+  "facts": [
+    {"claim": "Fortnite: oznaczenie PEGI 12; graczom poniżej 13 lat czat głosowy włącza dopiero zgoda rodzica.",
+     "source": "https://www.fortnite.com/parents"}
+  ],
+  "risk": {
+    "level": "medium",
+    "hits": [
+      {"item": "speech", "mitigation": "kwestie w cudzysłowie z czasami w prompcie; transkrypcja Whisper porównana ze scenariuszem przy kontroli ujęcia"},
+      {"item": "same_character", "mitigation": "ta sama kobieta i salon opisane w prompcie; pierwsza klatka z zatwierdzonego obrazu"},
+      {"item": "long_takes", "mitigation": "jedno ujęcie 13 s z cięciami w prompcie; cięcia sprawdzone przy kontroli ujęcia"}
+    ]
+  },
+  "style_spec": null,
+  "sound": {"track": null, "trending": null}
+}

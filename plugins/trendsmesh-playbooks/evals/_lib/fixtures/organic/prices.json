@@ -1,0 +1,90 @@
+[
+ {
+  "model": "openai/gpt-image-2",
+  "checked": "2026-11-04",
+  "tiers": [
+   {
+    "criteria": "model variant=auto",
+    "price": "$0.128",
+    "unit": "output image"
+   },
+   {
+    "criteria": "model variant=low",
+    "price": "$0.012",
+    "unit": "output image"
+   },
+   {
+    "criteria": "model variant=medium",
+    "price": "$0.047",
+    "unit": "output image"
+   },
+   {
+    "criteria": "model variant=high",
+    "price": "$0.128",
+    "unit": "output image"
+   }
+  ]
+ },
+ {
+  "model": "minimax/h3",
+  "checked": "2026-11-06",
+  "tiers": [
+   {
+    "criteria": "target resolution=768P",
+    "price": "$0.08",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "target resolution=2K",
+    "price": "$0.13",
+    "unit": "second of output video"
+   }
+  ]
+ },
+ {
+  "model": "prunaai/p-video-upscale",
+  "checked": "2026-11-06",
+  "tiers": [
+   {
+    "criteria": "model variant=up_to_30fps, target resolution=720p",
+    "price": "$0.01",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "model variant=up_to_60fps, target resolution=720p",
+    "price": "$0.02",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "model variant=up_to_30fps, target resolution=1080p",
+    "price": "$0.02",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "model variant=up_to_60fps, target resolution=1080p",
+    "price": "$0.04",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "model variant=up_to_30fps, target resolution=2k",
+    "price": "$0.04",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "model variant=up_to_60fps, target resolution=2k",
+    "price": "$0.08",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "model variant=up_to_30fps, target resolution=4k",
+    "price": "$0.08",
+    "unit": "second of output video"
+   },
+   {
+    "criteria": "model variant=up_to_60fps, target resolution=4k",
+    "price": "$0.16",
+    "unit": "second of output video"
+   }
+  ]
+ }
+]

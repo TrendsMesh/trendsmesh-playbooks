@@ -1,0 +1,59 @@
+{
+ "videos": [
+  {
+   "asset_id": "asset_0014",
+   "url": "https://example.com/v/14",
+   "platform": "tiktok",
+   "creator": "creator_0014",
+   "published": "2026-10-12T09:48:52Z",
+   "views": 359600,
+   "likes": 5446,
+   "shares": 399,
+   "excerpt": "Few people realize that even if the man is found fully at fault for t...",
+   "is_sensitive": false,
+   "hook_text": "Few people realize that even if the man is found fully at fault for this fatal tiger attack, Yorkshire Wildlife Park will still suffer three irreversible losses.",
+   "hook_source": "speech",
+   "appears_at_s": null,
+   "slot_fill": "even if the man is found fully at fault for this fatal tiger attack, Yorkshire Wildlife Park will still suffer three irreversible losses",
+   "creator_id": "creator_0014"
+  },
+  {
+   "asset_id": "asset_0015",
+   "url": "https://example.com/v/15",
+   "platform": "tiktok",
+   "creator": "creator_0015",
+   "published": "2026-11-03T10:02:16Z",
+   "views": 6172,
+   "likes": 33,
+   "shares": 7,
+   "excerpt": "Few people realize that Adam Robinson’s family had three chances to s...",
+   "is_sensitive": false,
+   "hook_text": "Few people realize that Adam Robinson's family had three chances to survive this Florida plane crash, yet they missed every single one.",
+   "hook_source": "speech",
+   "appears_at_s": null,
+   "slot_fill": "Adam Robinson's family had three chances to survive this Florida plane crash, yet they missed every single one",
+   "creator_id": "creator_0015"
+  },
+  {
+   "asset_id": "asset_0016",
+   "url": "https://example.com/v/16",
+   "platform": "tiktok",
+   "creator": "creator_0016",
+   "published": "2026-11-01T11:50:48Z",
+   "views": 3063,
+   "likes": 37,
+   "shares": 0,
+   "excerpt": "Few people realized that less than 24 hours after fitness influencer ...",
+   "is_sensitive": false,
+   "hook_text": "Few people realized that less than 24 hours after fitness influencer Liam Fitzgerald tragically died in a serious motorcycle crash, four influencers posted public tributes.",
+   "hook_source": "speech",
+   "appears_at_s": null,
+   "slot_fill": "",
+   "creator_id": "creator_0016"
+  }
+ ],
+ "page": 1,
+ "limit": 20,
+ "total": 3,
+ "pages": 1
+}

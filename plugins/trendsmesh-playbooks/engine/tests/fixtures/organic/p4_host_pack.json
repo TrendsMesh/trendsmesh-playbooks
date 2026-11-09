@@ -1,0 +1,104 @@
+{
+  "schema": "pack/1",
+  "id": "P4",
+  "lang": "en",
+  "title": "What my husky eats from morning to night",
+  "channel": "good-boy-hacks",
+  "production": "talking_character",
+  "sound_led": false,
+  "sections": [
+    {"id": "s1", "type": "talking_character", "model": "minimax/h3", "from": 0, "to": 14}
+  ],
+  "product": {"level": "featured", "packshots": ["library/brands/brushwell-pets/packshots/lick-mat_v01.png"]},
+  "host": {"kind": "image", "image": "03_wip/host_v01_0.png"},
+  "script": {
+    "lines": [
+      {"n": 1, "text": "This is what my husky eats all day.", "speaker": "host",
+       "shot": "medium shot, phone held at arm's length: she grins into the camera", "at": [0, 3]},
+      {"n": 2, "text": "First up, his lick mat with frozen pumpkin mash.", "speaker": "host",
+       "shot": "hard cut: overhead close-up of the lick mat spread with frozen pumpkin mash, the husky working at it; her voice carries on",
+       "at": [3, 6]},
+      {"n": 3, "text": "Noon brings a dental stick, nothing fancy.", "speaker": "host",
+       "shot": "hard cut: the husky gnawing a dental stick on the kitchen floor", "at": [6, 9]},
+      {"n": 4, "text": "Evening: kibble, as usual.", "speaker": "host",
+       "shot": "hard cut: she scoops kibble into a steel bowl", "at": [9, 11]},
+      {"n": 5, "text": "And the toast crust he stole from my plate.", "speaker": "host",
+       "shot": "hard cut back to her medium shot, she raises an eyebrow; behind her the husky trots off with a toast crust",
+       "at": [11, 12.5]}
+    ],
+    "words": 37,
+    "seconds": 14
+  },
+  "speech": {
+    "route": "h3_native",
+    "alternative_reason": null,
+    "voice": "her own warm American voice, close to the phone and clear",
+    "voice_reference": null
+  },
+  "taste": {
+    "style": null,
+    "voice": "a warm American woman of about thirty, described in the prompt",
+    "music": "mixkit_1072_owies-ukulele.mp3",
+    "by": "agent",
+    "why": "All five lines fit a single take, so the video model says them; a soft ukulele bed stays under the voice."
+  },
+  "models": [
+    {"component": "host image (first frame)", "model": "openai/gpt-image-2",
+     "why": "the leading released image-edit model; held the dog and the products steady across the dry run's frames",
+     "recipe": "references/model-prompting/gpt-image-2.md",
+     "ranking": {"source": "Arena image-edit", "date": "2026-11-06"}, "user_named": false, "criteria": null},
+    {"component": "talking take (14 s)", "model": "minimax/h3",
+     "why": "one approved AI host image says every line in a single take, with native speech",
+     "recipe": "references/model-prompting/minimax-h3.md",
+     "ranking": {"source": "Arena image-to-video", "date": "2026-11-06"}, "user_named": false, "criteria": null}
+  ],
+  "stages": [
+    {"stage": "images", "items": [{"name": "host", "model": "openai/gpt-image-2", "face": true, "images": 2}]},
+    {"stage": "video", "items": [{"name": "take", "model": "minimax/h3", "seconds": 14}]}
+  ],
+  "resolution": {
+    "choice": "768p",
+    "options": [
+      {"id": "768p", "cost": 1.12},
+      {"id": "1080p", "cost": 1.82, "model": "minimax/h3", "criteria": "target resolution=2K"},
+      {"id": "768p_pruna", "cost": 1.4}
+    ]
+  },
+  "cost": {
+    "lines": [
+      {"what": "host image ×2", "item": "host", "model": "openai/gpt-image-2", "criteria": "model variant=medium",
+       "unit_price": 0.047, "unit": "output image", "units": 2, "cost": 0.09, "kind": "ai_usd",
+       "price_file": "02_research/models/prices_2026-11-04_v01.json", "checked": "2026-11-04"},
+      {"what": "H3 take 14 s, 768P", "item": "take", "model": "minimax/h3", "criteria": "target resolution=768P",
+       "unit_price": 0.08, "unit": "second of output video", "units": 14, "cost": 1.12, "kind": "ai_usd",
+       "price_file": "02_research/models/prices_2026-11-06_v01.json", "checked": "2026-11-06"}
+    ],
+    "totals": {"ai_usd": 1.21, "voice_credits": 0},
+    "currency_note": null
+  },
+  "facts": [
+    {"claim": "Plain cooked pumpkin, with no sugar or spice added, is a safe lick-mat filling.",
+     "source": "https://www.akc.org/expert-advice/nutrition/can-dogs-eat-pumpkin/"},
+    {"claim": "Frozen treats suit dogs in moderation; check shop-bought ones for xylitol.",
+     "source": "https://www.akc.org/expert-advice/vets-corner/frozen-summer-treats-dogs/"}
+  ],
+  "risk": {
+    "level": "high",
+    "hits": [
+      {"item": "speech", "mitigation": "lines in quotes with their times in the prompt; the transcript is compared with the script at the take check"},
+      {"item": "hands_on_objects", "mitigation": "hands only scoop kibble; the prompt asks for no fine finger work"},
+      {"item": "product_shape", "mitigation": "the lick mat enters from its packshot as a reference image (reference mode)"},
+      {"item": "long_takes", "mitigation": "one 14 s take with hard cuts in the prompt; the cuts are checked at the take check"}
+    ]
+  },
+  "style_spec": {
+    "layout": "a talking-head day recap: she names each meal and B-roll shows it under her voice",
+    "font_class": "platform-native captions, white sans with a soft shadow",
+    "colours": ["white captions", "natural kitchen light"],
+    "number_style": "none",
+    "extras": ["an on-screen label naming each meal as it comes up"],
+    "evidence": ["https://www.tiktok.com/@creator_0101/video/7681503578850069790",
+                 "https://www.tiktok.com/@creator_0102/video/7703033505646742817"]
+  },
+  "sound": {"track": "mixkit_1072_owies-ukulele.mp3", "trending": null}
+}

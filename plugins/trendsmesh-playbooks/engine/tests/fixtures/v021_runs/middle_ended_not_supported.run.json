@@ -1,0 +1,64 @@
+{
+  "run_id": "2026-11-05_Ad-3",
+  "playbook": "01-refresh-ad",
+  "created": "2026-11-05",
+  "level": "every_step",
+  "outputs": [
+    "edited_video"
+  ],
+  "step": "A1a",
+  "decisions": [
+    {
+      "checkin": "G1",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T16:50:35+00:00"
+    },
+    {
+      "checkin": "G1a",
+      "choice": "do_not_refresh",
+      "by": "user",
+      "at": "2026-11-06T16:50:35+00:00"
+    }
+  ],
+  "spend": {},
+  "budgets": {
+    "ai_usd": 50.0,
+    "voice_credits": 50000.0,
+    "test": 500.0
+  },
+  "approvals": [],
+  "stops": [],
+  "measurements_due": [],
+  "measurements_done": [],
+  "status": "done",
+  "flows": [],
+  "diagnosis": {
+    "stage": "middle",
+    "refresh": true,
+    "evidence": {
+      "hook_rate": [
+        0.3,
+        0.3
+      ]
+    },
+    "also_seen": [],
+    "account_check": {},
+    "target_stage": null,
+    "note": ""
+  },
+  "material": null,
+  "test_plan": {
+    "feasible": true,
+    "variants": 1,
+    "calculation": "a feasible R4 plan"
+  },
+  "ended": "The diagnosis points at the middle, and refreshing that isn't supported yet. This run ends here and nothing was spent. The diagnosis report is saved in the run folder (04_final) for you to use.",
+  "evidence": "trendsmesh",
+  "evidence_log": [],
+  "register": {
+    "file": "04_final/change_register_v01.json",
+    "proof": 1,
+    "guess": 0
+  }
+}

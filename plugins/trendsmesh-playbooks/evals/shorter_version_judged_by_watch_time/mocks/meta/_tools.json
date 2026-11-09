@@ -1,0 +1,1 @@
+{"tools":[{"name":"ads_experiment_check_eligibility","description":"Whether the ad account can run a Meta experiment (an A/B test).","inputSchema":{"type":"object","required":["ad_account_id"],"properties":{"ad_account_id":{"type":"string"},"experiment_type":{"type":"string"}}}}]}

@@ -1,0 +1,98 @@
+[workspace]
+name = "trendsmesh-playbooks"
+channels = ["conda-forge"]
+platforms = ["win-64", "osx-arm64", "osx-64", "linux-64"]
+
+[dependencies]
+python = "3.11.*"
+ffmpeg = "8.*"
+pyyaml = "*"
+requests = "*"
+
+[pypi-dependencies]
+tm = { path = "../engine", editable = true }
+
+[feature.dev.dependencies]
+pytest = "*"
+
+[feature.breakdown.pypi-dependencies]
+faster-whisper = "==1.2.1"
+scenedetect = "==0.7.2"
+numpy = "*"
+librosa = "*"
+soundfile = "*"
+
+# Intel Mac: librosa's numba and llvmlite stopped shipping macOS x86_64 wheels after 0.62.1 / 0.45.1,
+# and an Intel Mac cannot build llvmlite from source, so pin the last releases with cp311 wheels.
+[feature.breakdown.target.osx-64.pypi-dependencies]
+numba = "==0.62.1"
+llvmlite = "==0.45.1"
+
+# OpenCV for the breakdown tier, in a feature of its own so dev-full can take another build.
+# Below 5: OpenCV 5 drops the Haar cascades the teardown's face check (speech_on_camera) uses.
+[feature.opencv.pypi-dependencies]
+opencv-python-headless = ">=4.12,<5"
+
+# Intel Mac: OpenCV 5's wheel needs macOS 14, so stay on 4.12.
+[feature.opencv.target.osx-64.pypi-dependencies]
+opencv-python-headless = "==4.12.*"
+
+# dev-full puts breakdown and voice in one env. On an Intel Mac the voice set (torch 2.2.2, demucs)
+# needs numpy <2 and OpenCV 4.12 needs numpy >=2, so there dev-full takes OpenCV 4.11.
+[feature.opencv-full.pypi-dependencies]
+opencv-python-headless = ">=4.12,<5"
+
+[feature.opencv-full.target.osx-64.pypi-dependencies]
+opencv-python-headless = "==4.11.*"
+
+# scenedetect requires the GUI build "opencv-python". Drop that requirement so the
+# headless build is the only cv2 provider.
+# pixi's lock check does not understand this override ("pixi lock --check" and "--locked" fail
+# although the lock was solved with it), so everything runs --frozen (or --as-is): install exactly
+# what pixi.lock says and never re-solve. Do not drop --frozen from bin/tm, envtiers or CI.
+[feature.breakdown.pypi-options.dependency-overrides]
+opencv-python = { version = "*", env-markers = "python_version < '0'" }
+
+[feature.video.dependencies]
+nodejs = "22.*"
+
+[feature.voice.pypi-dependencies]
+torch = "==2.8.0"
+torchaudio = "==2.8.0"
+speechbrain = "==1.1.2"
+demucs = "==4.1.0"
+soundfile = "*"
+numpy = "*"
+
+[feature.voice.target.linux-64.pypi-dependencies]
+torch = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
+torchaudio = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
+
+[feature.voice.target.win-64.pypi-dependencies]
+torch = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
+torchaudio = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
+
+# Intel Mac: torch 2.8 has no osx-64 wheels, so the pinned older voice set.
+[feature.voice.target.osx-64.pypi-dependencies]
+torch = "==2.2.2"
+torchaudio = "==2.2.2"
+speechbrain = "==1.1.1"
+numpy = "<2"
+
+[feature.ai.pypi-dependencies]
+replicate = "==1.0.7"
+
+[environments]
+base = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+breakdown = { features = ["breakdown", "opencv"], solve-group = "breakdown" }
+video = { features = ["video"], solve-group = "video" }
+voice = { features = ["voice"], solve-group = "voice" }
+ai = { features = ["ai"], solve-group = "ai" }
+# Every tool's dependencies at once, for the tool tests. Not a tier: users never install it.
+dev-full = { features = ["dev", "breakdown", "opencv-full", "voice", "ai", "video"], solve-group = "dev-full" }
+
+[tasks]
+test = "pytest ../engine/tests -q"
+test-tools = "pytest ../engine/tests/tools -q"
+test-video = "pytest ../engine/tests -q -m video"

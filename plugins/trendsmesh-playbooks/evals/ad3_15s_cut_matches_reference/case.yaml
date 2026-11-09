@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: ad3_15s_cut_matches_reference
+context:
+  scaffold_script: fixture.sh

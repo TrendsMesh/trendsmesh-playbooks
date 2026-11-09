@@ -1,0 +1,192 @@
+# The re-cut acceptance (re-cuts plan Task 14).
+# A person runs it with the agent as the operator: /trendsmesh-playbooks:acceptance recuts.
+# Spec: the playbook handoff v03, HANDOFF.md section 9 (9a methods, 9b cases RC1-RC17); RC18 is the
+# plan's (a shorter version is judged by cost per result). The numbers are the handoff's.
+#
+# Each case: id, title, proves (the RC cases), needs (file | key | budget | meta |
+# human_verdict, asked one at a time), kinds (the budget kinds a case spends, exactly when needs
+# has budget: `tm acceptance next` stops a case only when one of its own kinds is over), steps
+# (what the agent does, in this case's run folder), pass (what must hold), judge (what the person watches or listens for, with its seconds; null
+# when recorded numbers prove the case, and then the agent records the result).
+#
+# The suite budget is enforced by `tm acceptance`, which sums every case run's recorded spend;
+# each case run's budget is approved with `tm budget approve` for no more than what is left.
+# Nothing in this suite spends money on Meta ads: no case launches a test.
+
+budget: {ai_usd: 4, voice_credits: 3000}
+
+cases:
+  - id: H1
+    title: "Ad 3 on the live Meta account: not a middle case, and a structural weakness at p75/p50"
+    proves: "RC1, RC2"
+    needs: [meta]
+    steps:
+      - "Run the playbook in this case's run folder at Check every step, on Ad 3 in the person's ad account, with the creative brief as the only output (nothing paid)."
+      - "Go through intake (A0) and the fading winners (A1) to the funnel diagnosis (A1a): `tm diagnose`, then the structural check `tm structural` over every ad that uses Ad 3's video file (`ads_get_creatives` video id and thumbnail, `ads_get_ad_videos` length)."
+      - "The case ends at the diagnosis card: show it to the person, and stop there. Nothing after the diagnosis is needed."
+      - "Evidence: the run's run.json (its diagnosis) and 04_final/structural_vNN.json."
+    pass: >-
+      run.json's diagnosis does not put the target in the middle: the verdict comes from the
+      conditional steps (p25/play for the hook; p50/p25, p75/p50, p95/p75 for the middle), not from
+      p50/impressions. The structural check says structural at p75/p50 in every upload of at least
+      1,000 plays, with at least 2 uploads, and names the segment in seconds. The reference run, for
+      comparison (peak 09-13.08 against fading 14-18.08): p25/play 31.3 % -> 29.5 %, every middle
+      step changed by less than 1 pp; 4 uploads of 5,971 to 55,353 plays; p75/p50 = 12.1-18.1 s,
+      visual change -44 %, last new information at 14.2 s. Today's counts differ from these; the
+      two verdicts must not.
+    judge: null
+
+  - id: H2
+    title: "Ad 3, a 15 s cut with method E music: no audible joint"
+    proves: "RC5 (with RC17's lookup)"
+    needs: [meta, file, key, budget, human_verdict]
+    kinds: [voice_credits]
+    steps:
+      - "Ask for Ad 3's original video file (the file uploaded to Meta), and check the ElevenLabs key is set (the doctor's card)."
+      - "Run the playbook in this case's run folder at Check every step, outputs: edited video. At the diagnosis card the person takes the re-cut of the structural weakness (`tm flow R`)."
+      - "At the variants check-in (G3r) the person asks for a 15 s version (recut_shorter). Expected edit list: 0-11.146 s, then 20.735-24.149 s, one joint at about 11.13 s, 14.5 s of picture. The picture is checked first (`tm recut check` gives its length)."
+      - "Music: `tm recut music --target-s <the picture length>`. With no take to reuse, method E (recut.md section 6): upload the ad's own track once (about 366 credits) and make one take (about 220 credits), approved at the re-cut budget check-in (RB) within the suite's voice credits left. Never a beat-cut edit of the track."
+      - "The final edit list with the new take is level 5 (a new take; recut.md sections 2 and 5): a new version of the list, checked with `tm recut check` after RB's approval, until it says ok."
+      - "Render, `tm tool recut_qa` green, then the review copy with its timecode (CR7) for the person."
+      - "Keep the music take and its record: H3 reuses them."
+    pass: >-
+      QA green; the picture is 14.4-14.6 s with its one joint at the shot change (about 11.13 s);
+      the final music is one take of the ad's own track continued (one audio segment, no
+      beat-cut joint, the 300 ms fade only at the end); the voice credits spent are the upload and
+      the take, within the approved amount; and the person hears no joint.
+    judge: >-
+      Listen around 11.1 s, where the picture jumps from the first shot to the second: the music
+      runs on with no skip, no jump in level and no change of beat. Then listen to the end
+      (14.0-14.5 s): the music does not fade out before the last 0.3 s.
+
+  - id: H3
+    title: "Ad 3, a 20 s speed-up that reuses the existing music take: 0 credits"
+    proves: "RC17"
+    needs: [meta, file]
+    steps:
+      - "Ask for Ad 3's original video file, and for H2's music take: the take file and its record (03_wip/audio/music_take_vNN.mp3 and .mp3.json in H2's run folder; the reference run's method E take was 20.04 s). Copy both into this case's run folder 03_wip/audio/ and record them (`tm record`, source: H2's run)."
+      - "Run the playbook in this case's run folder at Check every step, outputs: edited video, and take the re-cut at the diagnosis card."
+      - "At the variants check-in the person asks for the speed-up of the calm segment (recut_speedup, about 1.5x on shot 2); fit the picture speed to the take's length (the reference R3: shot 2 at 1.52x, 20.0 s of picture)."
+      - "`tm recut music --target-s <the picture length>` must say reuse; use the take whole, one audio segment from 0. Render and QA."
+    pass: >-
+      `tm recut music` says reuse (a take within 0.05 s of the picture); the edit list is ok at
+      level 0 with the take as its one music segment (no joint); this case's run.json spends 0
+      voice credits and no generation call is in its manifest. If H2's take cannot fit this
+      picture, record a fail with what `tm recut music` said.
+    judge: null
+
+  - id: H4
+    title: "Ad 3, a proof insert: the CTA never covers the product title"
+    proves: "RC8"
+    needs: [meta, file, human_verdict]
+    steps:
+      - "Ask for Ad 3's original video file and a short clip of the product (the reference run used product_tablet_cover.mp4, about 4 s)."
+      - "Run the playbook in this case's run folder at Check every step, outputs: edited video, and take the re-cut at the diagnosis card."
+      - "At the variants check-in the person asks for the proof insert (recut_proof_insert, level 1 + 2): the product clip inserted in the weakest window (13.6-17.6 s) with HookSwap, and the burned CTA covered from the insert's end by a card rebuilt in the original style (outlineBar, its geometry per frame). Free: no budget."
+      - "Render, QA, then the review copy with its timecode for the person."
+    pass: >-
+      QA green; the insert sits in the weakest window (13.6-17.6 s); the rebuilt CTA card matches
+      the burned one; and the person sees that the CTA never covers the product title.
+    judge: >-
+      Watch 13.6-17.6 s (the product insert) and from 17.6 s to the end: the product's title is
+      never covered by the CTA card, and the rebuilt card looks like the burned one (the same
+      box, font, colours and place) where they meet at about 17.6 s.
+
+  - id: H5
+    title: "Ad 3, a new shot with Veo first + last frame: estimate approved first, return joint reported"
+    proves: "RC7 (its level 4 path)"
+    needs: [meta, file, key, budget, human_verdict]
+    kinds: [ai_usd]
+    steps:
+      - "Ask for Ad 3's original video file, and check the Replicate key is set (the doctor's card)."
+      - "Run the playbook in this case's run folder at Check every step, outputs: edited video, and take the re-cut at the diagnosis card."
+      - "At the variants check-in the person asks to cut 4 s out of the middle of shot 2. Expected: the cut inside the continuous shot is refused (no dissolve or FILM offered as final), and a Veo 3.1 Fast first + last frame regeneration is offered at level 4."
+      - "Before any paid call, the re-cut budget check-in (RB) shows the estimate: $0.80 per 8 s of Veo, plus a few cents of ProPainter to clean the cards off the two frames; approve no more than the suite's AI dollars left."
+      - "Veo with image = the original frame at the cut-in and last_frame = the original frame at the cut-out, both cleaned with ProPainter on short crops; the prompt describes the original motion and asks for calm water and stable scenery. Look at the frames, render, QA, review copy."
+      - "Report the jump at each joint as a multiple of the shot's typical frame change, measured on the frames around it (the reference R4 v02: 2.0x with both frames, 7.1x with a start frame only)."
+    pass: >-
+      The estimate was shown and approved before the first paid call (run.json's approval comes
+      before its spend; the manifest's Veo call after it); the spend stays within the approval;
+      QA green; the return joint's jump is reported as a multiple of the typical frame change;
+      and the person keeps the shot.
+    judge: >-
+      Watch the new shot's two joints, the cut-in and the return to the original (their seconds
+      are the render's .recut.json video_joints_s, shown on the review copy's timecode): the
+      return joint does not jump or morph enough to notice. The reference run kept R4 v02; R6 v02 had a
+      short grey-water artefact, also accepted.
+
+  - id: H6
+    title: "ad_2, J1 sentence cuts and the cold open: lips in sync, no caption flash"
+    proves: "RC10, RC11"
+    needs: [meta, file, human_verdict]
+    steps:
+      - "Ask for ad_2's original video file (the talking-head UGC ad)."
+      - "Run the playbook in this case's run folder at Check every step, outputs: edited video. At the diagnosis card take the re-cut (a middle target turns it on by itself)."
+      - "At the variants check-in the person asks for two variants: (1) J1, cut the slow sentences and the 1.38 s pause with hard cuts; (2) the cold open, \"Wystarczy dziesięć minut ćwiczeń przed snem, a efekt widać już pierwszej nocy\" moved to the start and \"Chcecie znać mój sposób?\" dropped. Both in sync mode, the picture cut at caption switches, the audio in the speech gaps."
+      - "`tm tool recut_qa` on each with `--caption-band 150,840,570,930` and `--expected` (the kept sentences). Then the review copies with their timecodes."
+    pass: >-
+      Both QA green: no flash, no word cut at a joint, no caption flash; the transcript holds
+      every kept sentence; the cold open's moved segment ends at least 2 frames before the shot
+      change at 25.540 s of the source. The reference renders, for comparison: J1 v05 19.3 s, joints
+      8.633, 10.533 and 15.2 s; cold open v03 28.333 s, joints 4.433 and 24.233 s. And the person
+      sees lips in sync and no caption flash.
+    judge: >-
+      Watch each joint (this run's seconds are in each render's .recut.json video_joints_s;
+      the reference J1: 8.6, 10.5 and 15.2 s; cold open: 4.4 and 24.2 s): the lips match the words
+      across the joint, and no caption shows for a blink (under 0.2 s) next to it.
+
+  - id: H7
+    title: "ExampleTravel shortened to about 18 s with a bridging line: every line heard in order"
+    proves: "RC13"
+    needs: [meta, file, key, budget, human_verdict]
+    kinds: [voice_credits, ai_usd]
+    steps:
+      - "Ask for ExampleTravel's original video file (the voiceover ad), and check the ElevenLabs key (with voice cloning on its plan) and the Replicate key are set (the doctor's card)."
+      - "Run the playbook in this case's run folder at Check every step, outputs: edited video, and take the re-cut at the diagnosis card."
+      - "At the variants check-in the person asks for about 18 s: picture and voice cut together at sentence gaps (sync mode), and a new bridging line in the original voice where the shortened script breaks (recut_new_vo_line: flow V, a clone of the ad's own voice, never a library lookalike; the voice rights confirmed)."
+      - "The voice budget (VB) and the re-cut budget (RB) are asked together, within the suite's voice credits and AI dollars left: the line in ElevenLabs credits, ProPainter cents for the captions under it, which are rebuilt with WordCaptions."
+      - "`tm tool recut_qa` with `--expected` (the kept lines and the new one). On a voiceover mix the music flags (tempo drift, a tail drop where the speech ends) are notes, not reds (HANDOFF 9c). Then the review copy."
+    pass: >-
+      The transcript check hears every kept line and the new line, in order (a missing brand or
+      rare word is a note; it flags only past 10 % missing); no flash and no caption flash; about
+      18 s long (the reference R15: 18.633 s); and the person hears every line, in order, in the
+      same voice.
+    judge: >-
+      Listen to the whole cut (about 18 s; the reference R15 joints at 9.4, 11.6 and 14.5 s): every
+      line is heard and in order, the bridging line is in the same voice and joins the lines on
+      both sides, and the captions show the words being said.
+
+  - id: H8
+    title: "Hands-off on Ad 3 with no AI budget: it stops at level 2, and the test plan judges the shorter version by cost per result"
+    proves: "RC16, RC18"
+    needs: [meta, file]
+    steps:
+      - "Ask for Ad 3's original video file."
+      - "Run the playbook in this case's run folder at Hands-off. Intake answers: outputs edited video only (so nothing can go live), no AI budget and no voice credits (budget.ai_usd and budget.voice_credits left out), diagnosis.structural_recut true, recut.max_level left unset (level 2). `tm config check` must pass."
+      - "Let the run go to its end by rule. A level 3 to 5 variant it picks waits for its budget; nothing paid is called."
+      - "Then write the shorter version's test plan without launching anything: `tm r4 --run R --stage middle --shorter --control <the ad's latest window, a file in 03_wip> --variants 1 --per-day <a planning figure the person names; nothing is approved or spent> --json`."
+    pass: >-
+      run.json recut.checked holds at least one level 3 to 5 edit list, every one of them
+      waiting, and the free ones (level 0 to 2) are ok; if the Hands-off rule picked no level 3
+      to 5 variant, the case fails with that note (it proves nothing about the stop at level 2); run.json spend is empty or zero for every kind and no paid tool is in the
+      manifest; and 04_final/test_plan_calc_vNN.json has decision_metric cost_per_result with
+      avg_watch_time beside it, never ThruPlay or completions as the decision.
+    judge: null
+
+  - id: H9
+    title: "H2 repeated on a Windows machine"
+    proves: "RC5 on Windows"
+    needs: [meta, file, key, budget, human_verdict]
+    kinds: [voice_credits]
+    steps:
+      - "Ask this first, before any of the case's needs: \"Do you have a Windows machine with Claude Code and this plugin installed to run this on?\" If they can't provide one, record the case blocked with that note."
+      - "If this session runs on Windows: run H2's steps in this case's run folder (with H2's needs: the Meta connection, Ad 3's file, the ElevenLabs key)."
+      - "If not: the person runs the playbook on the Windows machine with H2's request (Ad 3, the 15 s version, method E music), and approves its budget there within the suite's voice credits left. They tell you the Windows version, what the run spent (the run's run.json spend) and what they heard; put all three in the record's note, and the review copy's path there as evidence if they copy it here."
+    pass: >-
+      The same as H2's, on Windows: the tools install and run (no path, encoding or install
+      error), QA green, 14.4-14.6 s, one music take with no beat-cut joint, the spend within the
+      suite's budget left; and the person hears no joint.
+    judge: >-
+      As in H2, on the Windows run's review copy: listen around 11.1 s, where the picture jumps
+      to the second shot: the music runs on with no skip, no jump in level and no change of beat;
+      and at the end (14.0-14.5 s) it does not fade out before the last 0.3 s.

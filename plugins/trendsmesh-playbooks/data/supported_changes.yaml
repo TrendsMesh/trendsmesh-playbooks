@@ -1,0 +1,90 @@
+# The edits the engine can make (design section 8, "Supported changes"). The agent plans only these.
+#
+# materials  the source material the edit works on (VARIANTS.md section 1): text_cards, vo_captions,
+#            talking_head. A talking_head has the re-cut entries only (stage middle), so a talking
+#            head whose diagnosis points elsewhere ends after the diagnosis; static has no supported
+#            edit at all
+# stage      the fading funnel stage (R2) the edit answers; the `middle` entries are the re-cuts of
+#            path C-R (flow R), copied verbatim from handoff v03 HANDOFF.md section 9d, and their ids
+#            are the `change_id` an edit list names (`tm recut check`)
+# always     edits offered whatever the stage
+
+changes:
+  - id: opening_text_card
+    stage: hook
+    materials: [text_cards, vo_captions]
+    layer: text
+    method: remotion_hookswap
+    summary: "A new opening text card (Remotion HookSwap, proven on Ad 3)."
+  - id: first_voiceover_line
+    stage: hook
+    materials: [vo_captions]
+    layer: audio
+    method: flow_v
+    summary: "A new first voiceover line in the same voice, with recreated captions (flow V, ProPainter or Telea, WordCaptions; proven on ExampleTravel)."
+  - id: ending_card
+    stage: promise_cta
+    materials: [text_cards, vo_captions]
+    layer: text
+    method: remotion_end_card
+    summary: "A new ending card, the same card technique as the opening, placed at the end."
+  - id: ai_video_new_look
+    stage: fatigue
+    materials: [text_cards, vo_captions]
+    layer: image
+    method: ai_video
+    summary: "A new look with the same story, as an AI video (proven once on Ad 3)."
+
+  # Re-cuts (path C-R, flow R): HANDOFF.md 9d, verbatim
+  - id: recut_shorter
+    stage: middle
+    materials: [text_cards, vo_captions, talking_head]
+    layer: structure
+    method: recut_edit_list
+    summary: "A shorter cut (15 s, 12 s): segments at shot changes, card gaps or sentence gaps; cards rebuilt when they move (proven on Ad 3 R1/R5, ad_2 J1-J3)."
+  - id: recut_speedup
+    stage: middle
+    materials: [text_cards]
+    layer: structure
+    method: recut_edit_list
+    summary: "A calm, near-static segment sped up ~1.5x; music by continuation (Ad 3 R3)."
+  - id: recut_reorder
+    stage: middle
+    materials: [vo_captions, talking_head]
+    layer: structure
+    method: recut_edit_list
+    summary: "Scene reorder / cold open; needs separable scenes, never a cut inside a continuous shot (ad_2 cold open)."
+  - id: recut_proof_insert
+    stage: middle
+    materials: [text_cards, vo_captions, talking_head]
+    layer: image
+    method: remotion_hookswap_insert
+    summary: "Own product asset inserted in the weakest window, CTA card rebuilt in the original style after it (Ad 3 R2)."
+  - id: recut_new_shot
+    stage: middle
+    materials: [text_cards, vo_captions]
+    layer: image
+    method: veo_first_last_frame
+    summary: "A new or shortened shot generated with Veo from the original's first and last frame (Ad 3 R4/R6); paid, L4."
+  - id: recut_new_vo_line
+    stage: middle
+    materials: [vo_captions]
+    layer: audio
+    method: flow_v
+    summary: "A bridging VO line where the shortened script breaks, same voice, captions rebuilt (ExampleTravel)."
+  - id: bumper_6s
+    stage: middle
+    materials: [text_cards]
+    layer: structure
+    method: recut_edit_list
+    summary: "A 6 s version from one continuous shot, hook card pre-typed, CTA typed into the same card (Ad 3 R7)."
+
+always:
+  - id: format_4x5
+    layer: format
+    method: crop_or_reframe
+    summary: "A 4:5 version beside the 9:16 one, when R6 requires it; the builder picks the method."
+  - id: copy_and_thumbnail
+    layer: copy
+    method: text_and_video_frame
+    summary: "Primary text, headline and thumbnail decisions (R7): text, and a frame from the video as the thumbnail."

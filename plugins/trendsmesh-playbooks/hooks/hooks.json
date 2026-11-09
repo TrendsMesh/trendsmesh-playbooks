@@ -1,0 +1,42 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 120,
+            "onFailure": "continue",
+            "command": "Write-Verbose `# <#` 2>/dev/null; sh \"${CLAUDE_PLUGIN_ROOT}/bootstrap/session-start.sh\"; exit $?; #>; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/bootstrap/session-start.ps1\"; exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Grep|Glob|Bash|PowerShell|Edit|MultiEdit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 10,
+            "onFailure": "continue",
+            "command": "Write-Verbose `# <#` 2>/dev/null; sh \"${CLAUDE_PLUGIN_ROOT}/bootstrap/guard-secrets.sh\"; exit $?; #>; & ([scriptblock]::Create([IO.File]::ReadAllText(\"${CLAUDE_PLUGIN_ROOT}/bootstrap/guard-secrets.ps1\"))); exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__(plugin_trendsmesh-playbooks_)?trendsmesh__.*|mcp__.*__ads_library_search|mcp__.*__ads_get_(ad_accounts|ad_entities|creatives)|mcp__.*__(db_list|db_query|publish_files|read_declaration|declare_capabilities)",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 30,
+            "onFailure": "continue",
+            "command": "Write-Verbose `# <#` 2>/dev/null; sh \"${CLAUDE_PLUGIN_ROOT}/bootstrap/collect-mcp.sh\"; exit $?; #>; & ([scriptblock]::Create([IO.File]::ReadAllText(\"${CLAUDE_PLUGIN_ROOT}/bootstrap/collect-mcp.ps1\"))); exit $LASTEXITCODE"
+          }
+        ]
+      }
+    ]
+  }
+}

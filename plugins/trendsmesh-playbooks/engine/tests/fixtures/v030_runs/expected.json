@@ -1,0 +1,39 @@
+{
+  "saved_by": "tm 0.3.0 (9119b14)",
+  "cases": [
+    {
+      "name": "middle_every_step_at_cr3_g3r",
+      "step": "CR3",
+      "action": "ask",
+      "checkin": [
+        "G3r"
+      ]
+    },
+    {
+      "name": "middle_hands_off_at_cr5a",
+      "step": "CR5a",
+      "action": "work",
+      "checkin": null
+    },
+    {
+      "name": "hook_structural_at_c2",
+      "step": "C2",
+      "action": "work",
+      "checkin": null
+    },
+    {
+      "name": "all_outputs_measuring_at_e4",
+      "step": "E4",
+      "action": "work",
+      "checkin": [
+        "G12"
+      ]
+    },
+    {
+      "name": "guess_run_at_a6",
+      "step": "A6",
+      "action": "work",
+      "checkin": null
+    }
+  ]
+}

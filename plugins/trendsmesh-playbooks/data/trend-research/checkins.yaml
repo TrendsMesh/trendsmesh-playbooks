@@ -1,0 +1,86 @@
+# Check-in catalogue for playbook 04 "Trend research". The keys (route, card, choices, on_choice
+# and its effects) are those of data/checkins.yaml (refresh-ad), which explains each one.
+#
+# Source: handoff/trend-research_v01 FLOWS.md section G. Its AUTO rules ("logged", "agent review
+# applied", "published") are in each `rule` here (G3's opens with the keep_local clause; GS has
+# no FLOWS.md rule). The rest is the plugin's:
+# - the ids G0 (FLOWS.md calls the intake gate "A1") and GS (F5's "set up once with the user");
+# - G0's "in a weekly run, the previous run's" (a weekly digest is a new run that copies the
+#   last run's config: the plan's decision 9);
+# - G1's changed_a_lot and its stop: VARIANTS.md V26 ("show the new map at G1 again"), with "a
+#   lot" set by `digest.map_change_share` (the plan's decision 8), read by `tm research map-change`;
+# - G2's "top N by score": TR6's counts in `picks.*`;
+# - G3's keep_local when the session has no `publish_files` (decisions §5: no artifacts means a
+#   local file, never a blocker; preflight F12), and FLOWS.md E2's "first run: new private
+#   artifact; later runs: same slug";
+# - GS: FLOWS.md F5, decisions §9 and the plan's decision 12 (a new standing schedule needs the
+#   user's yes; by hand, the user starts the weekly run with one sentence; only a desktop task
+#   is kept by rule, since `tm research schedule` records by_hand too);
+# - the mapping to the levels: the plan's decision 7. Check every step asks G0 to G3 each on its
+#   own; Just the big calls merges them into two cards, the map after the hooks path (B4) and
+#   the picks and the page after the page is built (E1), and asks GS on its own; Hands-off
+#   decides all five by rule.
+# PB04 has no money check-in: nothing in it spends.
+
+levels:
+  every_step: Check every step
+  big_calls: Just the big calls
+  hands_off: Hands-off
+
+cards:
+  approve_map:
+    name: Approve the category map
+    ask: last
+  approve_report:
+    name: Approve the picks and the page
+    ask: last
+
+checkins:
+  - id: G0
+    name: Confirm the seed phrases and market
+    card: approve_map
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "logged: the seed phrases and market from the intake; in a weekly run, the previous run's"
+    choices: [accept]
+
+  - id: G1
+    name: Accept the category map
+    card: approve_map
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "agent review applied; changed_a_lot when `tm research map-change` says so (V26)"
+    choices: [accept, changed_a_lot]
+    on_choice:
+      changed_a_lot:
+        stop:
+          what: The category map changed a lot since the last run.
+          todo: Look at the new map and say whether to go on with it.
+
+  - id: G2
+    name: Accept the picks
+    card: approve_report
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "agent review applied; top N by score (`picks.act_now`, `picks.still_rising`)"
+    choices: [accept]
+
+  - id: G3
+    name: Approve the page before it is published
+    card: approve_report
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: >-
+      keep_local when `publish_files` is not in the session; otherwise publish: a first page
+      starts private; a weekly page goes to the same link
+    choices: [publish, keep_local]
+    on_choice:
+      keep_local:
+        skips: The page stays a local file; nothing was published.
+
+  - id: GS
+    name: Set up the weekly report
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: >-
+      by_hand unless the previous run's schedule.how is desktop_task (then schedule: keep its
+      task); a new standing schedule needs the user's yes
+    choices: [schedule, by_hand]
+    on_choice:
+      by_hand:
+        skips: "No schedule was set up: say 'update my trend report' each week."

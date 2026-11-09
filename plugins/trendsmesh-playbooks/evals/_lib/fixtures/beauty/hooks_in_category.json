@@ -1,0 +1,738 @@
+{
+ "terms": [
+  "makeup",
+  "make-up",
+  "beauty",
+  "skincare",
+  "skin",
+  "hair",
+  "hairstyle",
+  "braid",
+  "wig",
+  "curl",
+  "nail",
+  "manicure",
+  "lash",
+  "brow",
+  "lip",
+  "lipstick",
+  "gloss",
+  "blush",
+  "contour",
+  "foundation",
+  "concealer",
+  "mascara",
+  "eyeliner",
+  "perfume",
+  "fragrance",
+  "serum",
+  "moisturizer",
+  "sunscreen",
+  "acne",
+  "glow",
+  "salon",
+  "haircut",
+  "sephora",
+  "ulta",
+  "grwm",
+  "get ready with me",
+  "glam"
+ ],
+ "min_share": 0.2,
+ "min_hits": 3,
+ "kept": [
+  {
+   "id": "trend_beauty_065",
+   "kind": "hook_trend",
+   "name": "girl to girl, _",
+   "sub_category": "hooks",
+   "group": "hooks",
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 5,
+    "creators": 5,
+    "views": 5034407,
+    "platforms": {
+     "tiktok": 5
+    }
+   },
+   "since": "2026-10-16T13:56:31Z",
+   "active_for_days": 7,
+   "momentum": "holding",
+   "what_it_is": "Woman to woman, _: a candid, sisterly opener for confessing a personal problem, usually a disappointing skincare result, in a frank, exasperated register. The blank holds a first-person complaint or story, e.g. \"I wore an acne patch all night just to wake up with a huge whitehead.\"",
+   "category_videos": 4,
+   "videos_checked": 5,
+   "category_share": 0.8
+  },
+  {
+   "id": "trend_beauty_066",
+   "kind": "hook_trend",
+   "name": "day _ of _",
+   "sub_category": "hooks",
+   "group": "hooks",
+   "status": "confirmed",
+   "reach": {
+    "videos": 40,
+    "creators": 35,
+    "views": 153496652,
+    "platforms": {
+     "tiktok": 40
+    }
+   },
+   "since": "2026-07-26T20:40:49Z",
+   "active_for_days": 88,
+   "momentum": "holding",
+   "what_it_is": "Day _ of _ means \"It's day _ of my ongoing attempt at _.\" Creators use it for serial, diary-style logs of a numbered daily attempt at a personal goal; tone is usually casual. The blanks take a day count and the activity, as in \"Day 6 of learning everything I know about meme coins.\"",
+   "category_videos": 3,
+   "videos_checked": 65,
+   "category_share": 0.05
+  },
+  {
+   "id": "trend_beauty_067",
+   "kind": "hook_trend",
+   "name": "your sign to _",
+   "sub_category": "hooks",
+   "group": "hooks",
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 18,
+    "creators": 17,
+    "views": 41448378,
+    "platforms": {
+     "tiktok": 18
+    }
+   },
+   "since": "2026-08-21T04:56:43Z",
+   "active_for_days": 63,
+   "momentum": "holding",
+   "what_it_is": "This is your sign to _: a casual nudge giving permission or encouragement to do something. Creators use it to nudge viewers toward an action or share one they're taking, in a casual second-person register. The blank is the action or experience, e.g. 'your sign to go on a pumpkin patch date.'",
+   "category_videos": 3,
+   "videos_checked": 34,
+   "category_share": 0.09
+  },
+  {
+   "id": "trend_beauty_068",
+   "kind": "hook_trend",
+   "name": "get ready with _ to _",
+   "sub_category": "hooks",
+   "group": "hooks",
+   "status": "confirmed",
+   "reach": {
+    "videos": 7,
+    "creators": 7,
+    "views": 2516629,
+    "platforms": {
+     "tiktok": 7
+    }
+   },
+   "since": "2026-10-06T15:35:39Z",
+   "active_for_days": 28,
+   "momentum": "holding",
+   "what_it_is": "Get ready with _ for _: dress and prep alongside whoever fills the blank, ahead of the stated occasion. Creators usually open casual, friendly get-ready or outfit-transformation videos, inviting viewers along. The blank names the companion(s) and the occasion or destination, e.g. \"Get ready with us for our first day here in Dubai.\"",
+   "category_videos": 3,
+   "videos_checked": 7,
+   "category_share": 0.43
+  },
+  {
+   "id": "trend_beauty_069",
+   "kind": "hook_trend",
+   "name": "rare aesthetic: _",
+   "sub_category": "hooks",
+   "group": "hooks",
+   "status": "unconfirmed",
+   "reach": {
+    "videos": 4,
+    "creators": 4,
+    "views": 17525987,
+    "platforms": {
+     "tiktok": 4
+    }
+   },
+   "since": "2026-10-07T01:34:05Z",
+   "active_for_days": 16,
+   "momentum": "holding",
+   "what_it_is": "\"An unusual, niche personal trait or vibe: _\" — creators open by labelling a quirk, habit or situation as a \"rare aesthetic\", usually in a playful, casual register. The blank names that quirk or situation, e.g. \"thinking these were 'mini trashcans' in the restrooms\".",
+   "category_videos": 2,
+   "videos_checked": 5,
+   "category_share": 0.4
+  }
+ ],
+ "not_in_category": [
+  {
+   "id": "trend_beauty_070",
+   "name": "my honest reaction _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_071",
+   "name": "how it genuinely feels _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_072",
+   "name": "pranking my dad _",
+   "category_videos": 0,
+   "videos_checked": 19
+  },
+  {
+   "id": "trend_beauty_073",
+   "name": "throwback to _",
+   "category_videos": 0,
+   "videos_checked": 19
+  },
+  {
+   "id": "trend_beauty_074",
+   "name": "remembering _",
+   "category_videos": 1,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_075",
+   "name": "never forget _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_076",
+   "name": "little is said _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_077",
+   "name": "imagine being so _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_078",
+   "name": "from woman to woman, _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_079",
+   "name": "hot take: _",
+   "category_videos": 0,
+   "videos_checked": 12
+  },
+  {
+   "id": "trend_beauty_080",
+   "name": "how it feels being _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_081",
+   "name": "rich in life because _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_082",
+   "name": "turning _ into _",
+   "category_videos": 2,
+   "videos_checked": 13
+  },
+  {
+   "id": "trend_beauty_083",
+   "name": "just because _ doesn't mean _",
+   "category_videos": 1,
+   "videos_checked": 6
+  },
+  {
+   "id": "trend_beauty_084",
+   "name": "not all men but _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_085",
+   "name": "_ hits different",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_086",
+   "name": "guess the _",
+   "category_videos": 0,
+   "videos_checked": 18
+  },
+  {
+   "id": "trend_beauty_087",
+   "name": "ladies and gentlemen, welcome to _",
+   "category_videos": 0,
+   "videos_checked": 85
+  },
+  {
+   "id": "trend_beauty_088",
+   "name": "that very friend _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_089",
+   "name": "how it feels to _",
+   "category_videos": 0,
+   "videos_checked": 45
+  },
+  {
+   "id": "trend_beauty_090",
+   "name": "oh to _",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_091",
+   "name": "my reaction if _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_092",
+   "name": "reaction of _",
+   "category_videos": 0,
+   "videos_checked": 7
+  },
+  {
+   "id": "trend_beauty_093",
+   "name": "_ really said _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_094",
+   "name": "what sounds in the head of _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_095",
+   "name": "come _ with me",
+   "category_videos": 1,
+   "videos_checked": 7
+  },
+  {
+   "id": "trend_beauty_096",
+   "name": "how it feels when _",
+   "category_videos": 0,
+   "videos_checked": 6
+  },
+  {
+   "id": "trend_beauty_097",
+   "name": "do not show this to _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_098",
+   "name": "mood because _",
+   "category_videos": 0,
+   "videos_checked": 19
+  },
+  {
+   "id": "trend_beauty_099",
+   "name": "let's make the viral _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_100",
+   "name": "don't show this _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_005",
+   "name": "this is ur sign to _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_101",
+   "name": "typa shi _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_102",
+   "name": "signs _",
+   "category_videos": 0,
+   "videos_checked": 6
+  },
+  {
+   "id": "trend_beauty_103",
+   "name": "psa: _",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_104",
+   "name": "reply to the comment of _",
+   "category_videos": 1,
+   "videos_checked": 12
+  },
+  {
+   "id": "trend_beauty_105",
+   "name": "replacing _ with _",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_106",
+   "name": "duel of _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_107",
+   "name": "repeat after me _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_108",
+   "name": "here's everything i _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_109",
+   "name": "how dudes _ after _",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_110",
+   "name": "how mfs be _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_111",
+   "name": "_ in _ seconds",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_112",
+   "name": "new _ unlocked",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_113",
+   "name": "i turned _ into _",
+   "category_videos": 0,
+   "videos_checked": 7
+  },
+  {
+   "id": "trend_beauty_114",
+   "name": "this one _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_115",
+   "name": "late night finds but it's _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_116",
+   "name": "how many taps until _ gets mad",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_117",
+   "name": "me refreshing my video every _ hoping it goes from _ views to _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_118",
+   "name": "another day, another _",
+   "category_videos": 1,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_119",
+   "name": "_ then this happened",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_120",
+   "name": "_ news",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_121",
+   "name": "habibi, come to _",
+   "category_videos": 1,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_122",
+   "name": "only in _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_123",
+   "name": "no, doggy, we can't go home, _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_124",
+   "name": "you won't believe _",
+   "category_videos": 0,
+   "videos_checked": 8
+  },
+  {
+   "id": "trend_beauty_125",
+   "name": "what _ just did _ should be considered a crime",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_126",
+   "name": "_ be like",
+   "category_videos": 1,
+   "videos_checked": 27
+  },
+  {
+   "id": "trend_beauty_127",
+   "name": "what in the _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_128",
+   "name": "do you live in this _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_129",
+   "name": "_ fan reacts to _",
+   "category_videos": 0,
+   "videos_checked": 6
+  },
+  {
+   "id": "trend_beauty_130",
+   "name": "come with me/us to _",
+   "category_videos": 1,
+   "videos_checked": 40
+  },
+  {
+   "id": "trend_beauty_131",
+   "name": "minecraft, _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_132",
+   "name": "how different _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_133",
+   "name": "_ days of _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_134",
+   "name": "_ days until _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_135",
+   "name": "what if i told you _",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_136",
+   "name": "_ taught me this",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_137",
+   "name": "different _, same _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_138",
+   "name": "telling my _",
+   "category_videos": 0,
+   "videos_checked": 13
+  },
+  {
+   "id": "trend_beauty_139",
+   "name": "day _",
+   "category_videos": 0,
+   "videos_checked": 12
+  },
+  {
+   "id": "trend_beauty_140",
+   "name": "most people don't know this _",
+   "category_videos": 0,
+   "videos_checked": 6
+  },
+  {
+   "id": "trend_beauty_141",
+   "name": "it seems to me, or _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_142",
+   "name": "dear god _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_143",
+   "name": "average _",
+   "category_videos": 0,
+   "videos_checked": 7
+  },
+  {
+   "id": "trend_beauty_144",
+   "name": "whatever you do, don't _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_145",
+   "name": "_ the wrong way",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_146",
+   "name": "that very friend who _",
+   "category_videos": 0,
+   "videos_checked": 6
+  },
+  {
+   "id": "trend_beauty_147",
+   "name": "name a better _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_148",
+   "name": "pov: how fast _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_149",
+   "name": "theory _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_150",
+   "name": "who said _",
+   "category_videos": 0,
+   "videos_checked": 7
+  },
+  {
+   "id": "trend_beauty_151",
+   "name": "ranking the _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_152",
+   "name": "i learned this _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_153",
+   "name": "dad, why is _",
+   "category_videos": 0,
+   "videos_checked": 8
+  },
+  {
+   "id": "trend_beauty_154",
+   "name": "how fast i _",
+   "category_videos": 0,
+   "videos_checked": 6
+  },
+  {
+   "id": "trend_beauty_155",
+   "name": "pov that one friend _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_156",
+   "name": "how _ be _",
+   "category_videos": 0,
+   "videos_checked": 9
+  },
+  {
+   "id": "trend_beauty_157",
+   "name": "how i sound _",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_158",
+   "name": "they'll pay you _",
+   "category_videos": 0,
+   "videos_checked": 4
+  },
+  {
+   "id": "trend_beauty_159",
+   "name": "build your perfect _",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_160",
+   "name": "in case your _ never taught you",
+   "category_videos": 1,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_161",
+   "name": "what ends _",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_162",
+   "name": "which _ are you",
+   "category_videos": 0,
+   "videos_checked": 5
+  },
+  {
+   "id": "trend_beauty_163",
+   "name": "no _, no problem",
+   "category_videos": 0,
+   "videos_checked": 3
+  },
+  {
+   "id": "trend_beauty_164",
+   "name": "trying the viral _",
+   "category_videos": 0,
+   "videos_checked": 4
+  }
+ ]
+}

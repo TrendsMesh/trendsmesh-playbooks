@@ -1,0 +1,152 @@
+{
+  "run_id": "2026-11-05_Ad-3",
+  "playbook": "01-refresh-ad",
+  "created": "2026-11-05",
+  "level": "every_step",
+  "outputs": [
+    "creative_brief",
+    "edited_video",
+    "ai_video",
+    "live_test"
+  ],
+  "step": "E4",
+  "decisions": [
+    {
+      "checkin": "G1",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G1a",
+      "choice": "refresh",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G1b",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G2",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G3",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G4",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G5",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G6",
+      "choice": "approve",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G7",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G8",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G9",
+      "choice": "ok",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G10",
+      "choice": "approve",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "E2b",
+      "choice": "green",
+      "by": "rule",
+      "rule": "red item: stop",
+      "note": "fixture",
+      "at": "2026-11-06T22:42:00+00:00"
+    },
+    {
+      "checkin": "G11",
+      "choice": "activate",
+      "by": "user",
+      "at": "2026-11-06T22:42:00+00:00"
+    }
+  ],
+  "spend": {
+    "test": 1.0
+  },
+  "budgets": {
+    "ai_usd": 50.0,
+    "voice_credits": 50000.0,
+    "test": 500.0
+  },
+  "approvals": [],
+  "stops": [],
+  "measurements_due": [
+    "2026-10-04",
+    "2026-10-06",
+    "2026-10-08"
+  ],
+  "measurements_done": [
+    "2026-10-04"
+  ],
+  "status": "active",
+  "flows": [],
+  "diagnosis": {
+    "stage": "hook",
+    "refresh": true,
+    "evidence": {
+      "hook_rate": [
+        0.3,
+        0.2
+      ]
+    },
+    "also_seen": [],
+    "account_check": {},
+    "target_stage": "hook",
+    "note": "",
+    "ladder": {},
+    "structural": null
+  },
+  "material": "text_cards",
+  "test_plan": {
+    "feasible": true,
+    "variants": 1,
+    "calculation": "a feasible R4 plan"
+  },
+  "ended": null,
+  "evidence": "trendsmesh",
+  "evidence_log": [],
+  "register": {
+    "file": "04_final/change_register_v01.json",
+    "proof": 1,
+    "guess": 0
+  },
+  "recut": null
+}

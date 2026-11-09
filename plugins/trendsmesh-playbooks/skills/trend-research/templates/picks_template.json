@@ -1,0 +1,51 @@
+{
+  "_how_to_use": "The agent's part of a trend research run (G2, TR3-TR7, TR8 text): the handoff's templates/picks_template.json plus the score table (TR5, required). Copy to <run>/03_wip/picks_v01.json (a new version for every change: picks_v02.json, ...), fill it after reading the latest growth, the evidence (tm research evidence) and the Ad Library summary, check it with tm research picks check --run R --file 03_wip/picks_vNN.json, then build the page with tm research report --run R --picks 03_wip/picks_vNN.json. Numbers are NOT written here: the page takes them from growth. Every sentence must rest on the data (R3); a hypothesis is worded as one. Keys starting with '_' are ignored; delete the ones marked _when when they do not apply.",
+  "category": "<the category as the page names it, e.g. beauty>",
+  "market": "<market, language, e.g. US, English>",
+  "market_lang": "<en | pl | ...>",
+  "as_of": "<YYYY-MM-DD, the day the trend data was read (the run date)>",
+  "outputs": ["report", "digest", "paid"],
+  "_outputs": "the run's chosen outputs in the page's words: report always; digest with the weekly digest; paid with the paid view",
+  "moves": [
+    {"id": "<trend id>", "from": "act_now", "to": "<still_rising | too_late | past_peak>",
+     "why": "<one or two sentences: event-bound (with the dates and where they come from), crowded in paid (with advertisers), general and mature hook, ...>"}
+  ],
+  "act_now": [
+    {"id": "<trend id, in the order to show>",
+     "maturity": "<early | early in paid | established | established hook>",
+     "what": "<what it is: the structure from the evidence videos (opening, shots, text, slot fills), what the newest posts change>",
+     "how": "<how to use it: who, which format, the first two seconds, when>",
+     "risk": "<status, concentration, language of the evidence when obvious, sensitivity when flagged, paid crowding, seasonality>"}
+  ],
+  "act_now_other": [
+    {"id": "<trend id>", "note": "<why it is 'act now' by the numbers but not recommended yet>"}
+  ],
+  "still_rising": [
+    {"id": "<trend id>", "what": "<...>", "how": "<...>", "risk": "<...>"}
+  ],
+  "_scores": "one row per act now and still rising pick, each criterion a whole number 1-5 (TR5); the page weights them by scoring.weights",
+  "scores": {
+    "<trend id>": {"growth": 3, "earliness": 3, "spread": 3, "confidence": 3, "fit": 3, "transfer": 3, "feasibility": 3}
+  },
+  "lens": {
+    "_when": "only when a focus (lens) was given at intake (TR5); otherwise delete this key",
+    "label": "If you are <a nail brand>",
+    "note": "<one sentence on who this is for>",
+    "items": [
+      {"id": "<trend id>", "line": "<lead with / pair with / skip / over, and why, in one sentence>"}
+    ]
+  },
+  "watch_next": "<what is starting but not yet a trend in the data; worded as a hypothesis>",
+  "_paid_reading": "only when the paid view is chosen; otherwise delete paid_reading",
+  "paid_reading": [
+    "<the openings: rising in organic, none found in Ad Library titles>",
+    "<rising but crowded in paid>",
+    "<slowing in organic while paid is crowded>",
+    "<what cannot be checked: hooks are Not checkable without Foreplay>"
+  ],
+  "digest_reading": {
+    "_when": "only when the weekly digest is chosen and this run has a digest (tm research digest ran at F2); otherwise delete this key",
+    "summary": ["<4-5 sentences: calls that held, what ended, what moved up, what is new, what is starting>"],
+    "todo": ["<3-4 concrete actions for this week>"]
+  }
+}

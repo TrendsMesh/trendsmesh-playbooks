@@ -1,0 +1,28 @@
+{
+ "out": "../../04_final/ad3_R1_15s_L0_v01.mp4",
+ "video": [
+  {
+   "src": "../../../2026-11-02_ad3-dry-run/01_base/ad3_original.mp4",
+   "from": 0,
+   "to": 11.146
+  },
+  {
+   "src": "../../../2026-11-02_ad3-dry-run/01_base/ad3_original.mp4",
+   "from": 20.735,
+   "to": 24.149
+  }
+ ],
+ "audio": [
+  {
+   "src": "../audio/ad3_music_full.wav",
+   "from": 0,
+   "to": 11.146
+  },
+  {
+   "src": "../audio/ad3_music_full.wav",
+   "from": 20.735,
+   "to": 24.149
+  }
+ ],
+ "audio_xfade_ms": 40
+}

@@ -1,0 +1,81 @@
+{
+ "video": "ad3_original.mp4",
+ "is_video": true,
+ "width": 720,
+ "height": 1280,
+ "fps": 29.948,
+ "duration_s": 24.149,
+ "frame_count": 723,
+ "has_audio": true,
+ "scenes": [
+  {
+   "start_s": 0.0,
+   "end_s": 12.121,
+   "start_frame": 0,
+   "end_frame": 362
+  },
+  {
+   "start_s": 12.121,
+   "end_s": 24.142,
+   "start_frame": 363,
+   "end_frame": 722
+  }
+ ],
+ "overlays": [
+  {
+   "start_frame": 6,
+   "end_frame": 191,
+   "bbox": [
+    128,
+    215,
+    592,
+    282
+   ],
+   "touches_edge": false,
+   "semi_transparent": false,
+   "start_s": 0.2,
+   "end_s": 6.411
+  },
+  {
+   "start_frame": 222,
+   "end_frame": 403,
+   "bbox": [
+    128,
+    215,
+    592,
+    282
+   ],
+   "touches_edge": false,
+   "semi_transparent": false,
+   "start_s": 7.413,
+   "end_s": 13.49
+  },
+  {
+   "start_frame": 425,
+   "end_frame": 722,
+   "bbox": [
+    128,
+    215,
+    592,
+    282
+   ],
+   "touches_edge": false,
+   "semi_transparent": false,
+   "start_s": 14.191,
+   "end_s": 24.142
+  }
+ ],
+ "has_speech": false,
+ "speech_on_camera": false,
+ "speech_on_camera_evidence": {
+  "method": "opencv haar frontal face",
+  "sampled": 0,
+  "with_face": 0,
+  "share": 0.0
+ },
+ "notes": [
+  "Hand-written test fixture from handoff/refresh-ad_v03/examples/ad3-middle-recut (middle_diagnosis.md, recut_levels_test.md, R4_base_L4_v02.json, prep_frames.py).",
+  "No speech found (lesson 3): the structure comes from captions and shots."
+ ],
+ "possible_whole_shot_overlays": []
+}

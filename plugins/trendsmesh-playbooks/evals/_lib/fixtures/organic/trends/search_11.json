@@ -1,0 +1,1083 @@
+[
+ {
+  "id": "trend_ov_001",
+  "kind": "hook_trend",
+  "name": "what sounds in the head of _",
+  "what_it_is": "What plays in _'s head (shorter: what plays in _). Creators open a playful, comic bit imagining someone's inner soundtrack or reaction to a situation. The blank names a person, often with the triggering situation; e.g. \"what plays in my 6-month-old baby's head.\"",
+  "status": "confirmed",
+  "confidence": 1.0,
+  "since": "2026-10-08T15:23:34Z",
+  "active_for_days": 24,
+  "momentum": "holding",
+  "why_it_popped": [
+   "3 creators in 20 days, in 1 language",
+   "videos get 40.3x their creators' follower count in views"
+  ],
+  "reach": {
+   "videos": 3,
+   "creators": 3,
+   "views": 515700,
+   "platforms": {
+    "tiktok": 3
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0011",
+    "url": "https://example.com/v/11",
+    "platform": "tiktok",
+    "creator": "creator_0011",
+    "published": "2026-10-08T15:23:34Z",
+    "views": 281900,
+    "likes": 13300,
+    "shares": 2245,
+    "excerpt": "Y apenas va cumpliendo lo 6 🫠#traviesos #bebestiktoks #fyp #parati #v...",
+    "is_sensitive": false,
+    "hook_text": "Lo que suena en la mente de mi bebé de 6 meses",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "",
+    "creator_id": "creator_0011"
+   },
+   {
+    "asset_id": "asset_0012",
+    "url": "https://example.com/v/12",
+    "platform": "tiktok",
+    "creator": "creator_0012",
+    "published": "2026-10-10T17:59:49Z",
+    "views": 181500,
+    "likes": 12000,
+    "shares": 754,
+    "excerpt": "💚📿💛📿 #sanjudastadeo💚 #limpia #ritual #ofrendas #octubre ",
+    "is_sensitive": false,
+    "hook_text": "Lo que suena en la cabeza de mi esposo cuando ve que ya saqué las cosas para hacer mis",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "mi esposo cuando ve que ya saqué las cosas para hacer mis",
+    "creator_id": "creator_0012"
+   },
+   {
+    "asset_id": "asset_0013",
+    "url": "https://example.com/v/13",
+    "platform": "tiktok",
+    "creator": "creator_0013",
+    "published": "2026-10-29T02:25:32Z",
+    "views": 52300,
+    "likes": 6137,
+    "shares": 258,
+    "excerpt": "TikTok video #",
+    "is_sensitive": false,
+    "hook_text": "lo que suena en mi cabeza cuando me dice \"loca\"",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "",
+    "creator_id": "creator_0013"
+   }
+  ],
+  "what_we_now_know": "Reddit user M4rd0ke0 posted a submission titled \"lo que suena en mi cabeza 😎\" to the Spanish-language subreddit r/Carola, and of 50 YouTube results for «lo que suena en la cabeza de» of any length, uploaded in the last month, sorted by relevance, 1 use this hook (2%).",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 1,
+  "original_phrase": "lo que suena en la cabeza de _",
+  "formula": "lo que suena en la cabeza de _",
+  "languages": [
+   "es"
+  ],
+  "format": null,
+  "match": {
+   "score": 36,
+   "confidence": "ok"
+  }
+ },
+ {
+  "id": "trend_ov_011",
+  "kind": "topic_trend",
+  "name": "Tung Tung Tung Sahur Brainrot Memes",
+  "what_it_is": "Videos built around the Italian brainrot character Tung Tung Tung Sahur, a wooden log figure with a carved face. Clips include AI-generated skits (with Ronaldo, Trump, Shamo), a light-up skateboard toy demo, live-wallpaper tutorials, and CapCut \"Summer Bummer\" duo-dance templates pairing Sahur with Pickle Sahur.",
+  "status": "confirmed",
+  "confidence": null,
+  "since": "2026-07-27T15:00:38Z",
+  "active_for_days": 93,
+  "momentum": null,
+  "why_it_popped": [
+   "24 video(s) from 22 creator(s)",
+   " views across its videos",
+   "posted over 44 day(s)"
+  ],
+  "reach": {
+   "videos": 24,
+   "creators": 22,
+   "views": 30551384,
+   "platforms": {
+    "tiktok": 24
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0027",
+    "url": "https://example.com/v/27",
+    "platform": "tiktok",
+    "creator": "creator_0025",
+    "published": "2026-09-10T11:30:12Z",
+    "views": 10312894,
+    "likes": 1249475,
+    "shares": 826785,
+    "excerpt": "Add some water,switch it in and watch it light up,play music and spry...",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0028",
+    "url": "https://example.com/v/28",
+    "platform": "tiktok",
+    "creator": "creator_0026",
+    "published": "2026-07-27T15:00:38Z",
+    "views": 6641961,
+    "likes": 143154,
+    "shares": 52516,
+    "excerpt": "#tungtungtungsahur #italianbrainrot #tiktokusa #",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0029",
+    "url": "https://example.com/v/29",
+    "platform": "tiktok",
+    "creator": "creator_0027",
+    "published": "2026-08-31T12:30:54Z",
+    "views": 2300000,
+    "likes": 298800,
+    "shares": 352900,
+    "excerpt": "#тунгтунгсахур",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0030",
+    "url": "https://example.com/v/30",
+    "platform": "tiktok",
+    "creator": "creator_0028",
+    "published": "2026-09-10T05:30:12Z",
+    "views": 1900000,
+    "likes": 88500,
+    "shares": 25900,
+    "excerpt": "Ronaldo Gets Football Boots from Tung Tung #italianbrainrot #tungtung...",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0031",
+    "url": "https://example.com/v/31",
+    "platform": "tiktok",
+    "creator": "creator_0029",
+    "published": "2026-09-10T06:10:30Z",
+    "views": 1500000,
+    "likes": 91300,
+    "shares": 12000,
+    "excerpt": "#capcut #capcutpioneer Pickle Sahur takes one half of the Summer Bumm...",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   }
+  ],
+  "what_we_now_know": "EU retailers are running physical Tung Tung Tung Sahur merchandise — Danish supermarket plush toys at 45 kr., Estonian 1,354-piece brick-building kits, and Italian back-to-school backpacks — always positioned as one item in an 'Italian brainrot' character line-up rather than as a character in his own right.",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 2,
+  "original_phrase": null,
+  "formula": null,
+  "languages": [],
+  "format": null,
+  "match": {
+   "score": 42,
+   "confidence": "ok"
+  }
+ },
+ {
+  "id": "trend_ov_030",
+  "kind": "hook_trend",
+  "name": "pov: it's _ and _",
+  "what_it_is": "Imagine it's _ and _: creators use it to drop the viewer into a remembered moment, usually a nostalgic year plus a relatable situation, in a casual register. The blanks hold a time and what is happening then — e.g. \"Imagine it's 2016 and you're playing this game on your mom's phone.\"",
+  "status": "confirmed",
+  "confidence": 1.0,
+  "since": "2026-10-06T19:34:42Z",
+  "active_for_days": 29,
+  "momentum": "holding",
+  "why_it_popped": [
+   "4 creators in 29 days, in 1 language"
+  ],
+  "reach": {
+   "videos": 4,
+   "creators": 4,
+   "views": 10405064,
+   "platforms": {
+    "tiktok": 4
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0139",
+    "url": "https://example.com/v/139",
+    "platform": "tiktok",
+    "creator": "creator_0130",
+    "published": "2026-10-22T02:31:22Z",
+    "views": 4420587,
+    "likes": 296123,
+    "shares": 33348,
+    "excerpt": "#RollingSky ",
+    "is_sensitive": false,
+    "hook_text": "pov: It's 2016 and you're playing this game on your mom's phone",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "2016 / you're playing this game on your mom's phone",
+    "creator_id": "creator_0130"
+   },
+   {
+    "asset_id": "asset_0140",
+    "url": "https://example.com/v/140",
+    "platform": "tiktok",
+    "creator": "creator_0131",
+    "published": "2026-10-06T19:34:42Z",
+    "views": 4260183,
+    "likes": 1094572,
+    "shares": 141320,
+    "excerpt": "Blue ones had no aura #xyzabc #foryoupage❤️❤️ #fypppppppppppppp #tren...",
+    "is_sensitive": false,
+    "hook_text": "POV: it's 2020 and my mum bought the blue masks instead of the black ones",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "2020 / my mum bought the blue masks instead of the black ones",
+    "creator_id": "creator_0131"
+   },
+   {
+    "asset_id": "asset_0141",
+    "url": "https://example.com/v/141",
+    "platform": "tiktok",
+    "creator": "creator_0132",
+    "published": "2026-10-20T02:40:48Z",
+    "views": 1719444,
+    "likes": 437321,
+    "shares": 68418,
+    "excerpt": "Bro know no personal space  #cat #peter #catsoftiktok #fyp ",
+    "is_sensitive": false,
+    "hook_text": "POV: it's 3am and You feel a 4 heavy Paws and a diesel engine",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "3am / You feel a 4 heavy Paws and a diesel engine",
+    "creator_id": "creator_0132"
+   },
+   {
+    "asset_id": "asset_0142",
+    "url": "https://example.com/v/142",
+    "platform": "tiktok",
+    "creator": "creator_0133",
+    "published": "2026-11-04T20:32:24Z",
+    "views": 4850,
+    "likes": 694,
+    "shares": 33,
+    "excerpt": "Impromptu pub session back in '86. #thepogues #dirtyoldtown #livemusi...",
+    "is_sensitive": false,
+    "hook_text": "POV: it's 1986 and The Pogues are playing in your local pub",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "1986 / The Pogues are playing in your local pub",
+    "creator_id": "creator_0133"
+   }
+  ],
+  "what_we_now_know": "Of 50 YouTube results for «pov it's and» shorter than 4 minutes, uploaded at any time, sorted by relevance, 6 use this hook (12%); of 50 YouTube results for «pov it's and» of any length, uploaded at any time, sorted by relevance, 7 use this hook (14%); of 50 YouTube results for «pov it's and» between 4 and 20 minutes long, uploaded at any time, sorted by view count, 0 use this hook (0%); and of 50 YouTube results for «pov it's and» of any length, uploaded in the last month, sorted by date, 7 use this hook (14%).",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 3,
+  "original_phrase": "pov: it's _ and _",
+  "formula": "pov: it's _ and _",
+  "languages": [
+   "en"
+  ],
+  "format": null,
+  "match": {
+   "score": 20,
+   "confidence": "weak"
+  }
+ },
+ {
+  "id": "trend_ov_002",
+  "kind": "hook_trend",
+  "name": "guess the _",
+  "what_it_is": "Creators open with \"guess the _\" followed by the thing viewers must guess, such as a weight, a category, or an animal.",
+  "status": "unconfirmed",
+  "confidence": 1.0,
+  "since": "2026-08-06T00:58:43Z",
+  "active_for_days": 78,
+  "momentum": "holding",
+  "why_it_popped": [
+   "5 creators in 74 days, in 1 language",
+   "videos get 1.6x their creators' follower count in views"
+  ],
+  "reach": {
+   "videos": 5,
+   "creators": 5,
+   "views": 3337934,
+   "platforms": {
+    "tiktok": 5
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0040",
+    "url": "https://example.com/v/40",
+    "platform": "tiktok",
+    "creator": "creator_0036",
+    "published": "2026-08-06T00:58:43Z",
+    "views": 1400000,
+    "likes": 78600,
+    "shares": 343,
+    "excerpt": "Guess The Weight ⚖️ #games #guessinggame #weight #fyp #creator_0036",
+    "is_sensitive": false,
+    "hook_text": "Guess The Weight",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "Weight",
+    "creator_id": "creator_0036"
+   },
+   {
+    "asset_id": "asset_0041",
+    "url": "https://example.com/v/41",
+    "platform": "tiktok",
+    "creator": "creator_0035",
+    "published": "2026-10-08T19:40:39Z",
+    "views": 1200000,
+    "likes": 107400,
+    "shares": 245,
+    "excerpt": "Guess The Animal‼️🐘 #animals #games #guessinggame #funny #sidelinebros",
+    "is_sensitive": false,
+    "hook_text": "Guess The Animal",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "Animal",
+    "creator_id": "creator_0035"
+   },
+   {
+    "asset_id": "asset_0042",
+    "url": "https://example.com/v/42",
+    "platform": "tiktok",
+    "creator": "creator_0037",
+    "published": "2026-09-09T20:54:35Z",
+    "views": 523000,
+    "likes": 26600,
+    "shares": 688,
+    "excerpt": "Guess the category! 🧳",
+    "is_sensitive": false,
+    "hook_text": "Guess the Category",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "Category",
+    "creator_id": "creator_0037"
+   },
+   {
+    "asset_id": "asset_0043",
+    "url": "https://example.com/v/43",
+    "platform": "tiktok",
+    "creator": "creator_0038",
+    "published": "2026-10-07T14:34:56Z",
+    "views": 214500,
+    "likes": 4832,
+    "shares": 76,
+    "excerpt": "Guess the Person or Eat Wasabi💀💀 #food #challenge ",
+    "is_sensitive": false,
+    "hook_text": "Guess the Person or Eat Wasabi",
+    "hook_source": "caption",
+    "appears_at_s": null,
+    "slot_fill": "Person or Eat Wasabi",
+    "creator_id": "creator_0038"
+   },
+   {
+    "asset_id": "asset_0044",
+    "url": "https://example.com/v/44",
+    "platform": "tiktok",
+    "creator": "creator_0039",
+    "published": "2026-10-19T19:03:33Z",
+    "views": 434,
+    "likes": 14,
+    "shares": 0,
+    "excerpt": "🇫🇷 Guess the city! 🗼❤️ The city of love, lights, and unforgettable vi...",
+    "is_sensitive": false,
+    "hook_text": "Guess the city!",
+    "hook_source": "caption",
+    "appears_at_s": null,
+    "slot_fill": "city",
+    "creator_id": "creator_0039"
+   }
+  ],
+  "what_we_now_know": "",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 4,
+  "original_phrase": "guess the _",
+  "formula": "guess the _",
+  "languages": [
+   "en"
+  ],
+  "format": null,
+  "match": {
+   "score": 19,
+   "confidence": "weak"
+  }
+ },
+ {
+  "id": "trend_ov_094",
+  "kind": "hook_trend",
+  "name": "if you thought _ think again",
+  "what_it_is": "If you believed _, you're wrong — think again. Creators usually open news, explainer or surprising-reveal videos, in a serious or informative register, to correct a common assumption. The blank is the mistaken belief being overturned, as in \"If you thought you were having a bad day, think again.\"",
+  "status": "confirmed",
+  "confidence": 1.0,
+  "since": "2026-10-02T11:32:32Z",
+  "active_for_days": 33,
+  "momentum": "holding",
+  "why_it_popped": [
+   "3 creators in 33 days, in 1 language"
+  ],
+  "reach": {
+   "videos": 3,
+   "creators": 3,
+   "views": 712109,
+   "platforms": {
+    "tiktok": 3
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0447",
+    "url": "https://example.com/v/447",
+    "platform": "tiktok",
+    "creator": "creator_0407",
+    "published": "2026-10-02T11:32:32Z",
+    "views": 589273,
+    "likes": 66644,
+    "shares": 12170,
+    "excerpt": "#creator_0407 ",
+    "is_sensitive": false,
+    "hook_text": "If you thought you're having a bad day think again",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "you're having a bad day",
+    "creator_id": "creator_0407"
+   },
+   {
+    "asset_id": "asset_0448",
+    "url": "https://example.com/v/448",
+    "platform": "tiktok",
+    "creator": "creator_0188",
+    "published": "2026-10-16T18:33:15Z",
+    "views": 104796,
+    "likes": 3660,
+    "shares": 517,
+    "excerpt": "Millions could be forced to pay BBC licence fee for watching YouTube,...",
+    "is_sensitive": false,
+    "hook_text": "If you thought ditching live TV meant you were completely safe from the BBC licence fee, think again.",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "ditching live TV meant you were completely safe from the BBC licence fee",
+    "creator_id": "creator_0188"
+   },
+   {
+    "asset_id": "asset_0449",
+    "url": "https://example.com/v/449",
+    "platform": "tiktok",
+    "creator": "creator_0408",
+    "published": "2026-11-04T14:35:28Z",
+    "views": 18040,
+    "likes": 561,
+    "shares": 21,
+    "excerpt": "Texas turning Blue just sent a MASSIVE message to Washington. #Midter...",
+    "is_sensitive": false,
+    "hook_text": "If you thought you knew how the 2026 midterm elections were going to go, think again.",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "you knew how the 2026 midterm elections were going to go",
+    "creator_id": "creator_0408"
+   }
+  ],
+  "what_we_now_know": "The 'If you thought ..., think again' trend now includes an r/pcmasterrace post claiming GPU supply will not recover until after 2027-2028 and linking a wccftech article about Elon Musk bringing ~1.2M Nvidia GPUs online, plus YouTube hook rates of 12 of 50 (24%) for «if you thought you knew think again», 12 of 50 (24%) for «if you thought think again», 45 of 50 (90%) for the shorter-than-4-minutes «if you thought think again» results, and 36 of 50 (72%) for «you thought think again».",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 5,
+  "original_phrase": "if you thought _ think again",
+  "formula": "if you thought _ think again",
+  "languages": [
+   "en"
+  ],
+  "format": null,
+  "match": {
+   "score": 18,
+   "confidence": "weak"
+  }
+ },
+ {
+  "id": "trend_ov_095",
+  "kind": "hook_trend",
+  "name": "this is everything _",
+  "what_it_is": "\"Here's the full rundown of _.\" Creators use this spoken opener for a first-person recap of what they experienced, obtained, learned, or consumed, usually in a conversational, upbeat tone. The blank states the experience, haul, lesson, or meal being recapped, e.g. \"This is everything I had today in the Korean army.\"",
+  "status": "confirmed",
+  "confidence": 0.6666666666666666,
+  "since": "2026-09-04T02:37:16Z",
+  "active_for_days": 62,
+  "momentum": "holding",
+  "why_it_popped": [
+   "9 creators in 59 days, in 1 language",
+   "videos get 0.7x their creators' follower count in views"
+  ],
+  "reach": {
+   "videos": 9,
+   "creators": 9,
+   "views": 31810644,
+   "platforms": {
+    "tiktok": 9
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0450",
+    "url": "https://example.com/v/450",
+    "platform": "tiktok",
+    "creator": "creator_0409",
+    "published": "2026-09-04T02:37:16Z",
+    "views": 30590819,
+    "likes": 323198,
+    "shares": 2640,
+    "excerpt": "A good day of eats ALWAYS includes  💫🫶🏽   #whatieatinaday ...",
+    "is_sensitive": false,
+    "hook_text": "Here's everything I eat in a day as a busy healthcare worker that tries her best to prioritize protein.",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "",
+    "creator_id": "creator_0409"
+   },
+   {
+    "asset_id": "asset_0451",
+    "url": "https://example.com/v/451",
+    "platform": "tiktok",
+    "creator": "creator_0410",
+    "published": "2026-11-01T03:04:29Z",
+    "views": 420319,
+    "likes": 32796,
+    "shares": 7553,
+    "excerpt": "EVERYTHING I ate at 2026 London Famous Leicester Square Christmas Mar...",
+    "is_sensitive": false,
+    "hook_text": "Here's everything I ate at the Leicester Square Christmas Market 2026.",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "",
+    "creator_id": "creator_0410"
+   },
+   {
+    "asset_id": "asset_0452",
+    "url": "https://example.com/v/452",
+    "platform": "tiktok",
+    "creator": "creator_0411",
+    "published": "2026-09-04T18:02:01Z",
+    "views": 353600,
+    "likes": 15700,
+    "shares": 338,
+    "excerpt": "Real ones know this a reupload #koreanfood #military #militaryfood ",
+    "is_sensitive": false,
+    "hook_text": "This is everything I had today in the Korean army",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "I had today in the Korean army",
+    "creator_id": "creator_0411"
+   },
+   {
+    "asset_id": "asset_0453",
+    "url": "https://example.com/v/453",
+    "platform": "tiktok",
+    "creator": "creator_0412",
+    "published": "2026-10-12T03:58:49Z",
+    "views": 249900,
+    "likes": 18200,
+    "shares": 224,
+    "excerpt": "my mans 26th birthday gifts 🥰🥹🥹🥹🎉❤️ #fyp #viral #southafricatiktok🇿🇦 ...",
+    "is_sensitive": false,
+    "hook_text": "This is everything I got my man for his birthday!",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "I got my man for his birthday",
+    "creator_id": "creator_0412"
+   },
+   {
+    "asset_id": "asset_0454",
+    "url": "https://example.com/v/454",
+    "platform": "tiktok",
+    "creator": "creator_0413",
+    "published": "2026-10-30T22:19:18Z",
+    "views": 113783,
+    "likes": 10381,
+    "shares": 1115,
+    "excerpt": "It’s officially my favorite time of year in nyc at The Bryant Park Ho...",
+    "is_sensitive": false,
+    "hook_text": "This is everything I ate at the Bryant Park Holiday Market, which is now open for the season. And including all prices.",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "I ate at the Bryant Park Holiday Market, which is now open for the season. And including all prices",
+    "creator_id": "creator_0413"
+   }
+  ],
+  "what_we_now_know": "Of 49 YouTube results for «this is everything» of any length, uploaded in the last month, sorted by relevance, 3 use this hook (6%) — with 1 result(s) already in our own corpus excluded from both counts — while of 50 YouTube results each for «this is everything I», «this is everything I wanted» and «this is everything you need», 2 (4%), 0 (0%) and 1 (2%) respectively use this hook.",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 6,
+  "original_phrase": "this is everything _",
+  "formula": "this is everything _",
+  "languages": [
+   "en"
+  ],
+  "format": null,
+  "match": {
+   "score": 20,
+   "confidence": "weak"
+  }
+ },
+ {
+  "id": "trend_ov_096",
+  "kind": "topic_trend",
+  "name": "Skull Cap Transformation Meme",
+  "what_it_is": "Creators act out the joke that people instantly switch into a cocky, tough persona 0.001 seconds after pulling on a black skull cap, all set to the same rap audio (\"slaughter like I'm Jason\"). Videos are solo transformation skits that cut from an ordinary, goofy-looking person to a hardened pose once the cap goes on.",
+  "status": "unconfirmed",
+  "confidence": null,
+  "since": "2026-10-15T22:33:54Z",
+  "active_for_days": 9,
+  "momentum": null,
+  "why_it_popped": [
+   "8 video(s) from 8 creator(s)",
+   " views across its videos",
+   "posted over 3 day(s)"
+  ],
+  "reach": {
+   "videos": 8,
+   "creators": 8,
+   "views": 17726892,
+   "platforms": {
+    "tiktok": 8
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0455",
+    "url": "https://example.com/v/455",
+    "platform": "tiktok",
+    "creator": "creator_0414",
+    "published": "2026-10-18T06:54:09Z",
+    "views": 8608869,
+    "likes": 1691239,
+    "shares": 124596,
+    "excerpt": "#fyp #skullcap #trend ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0456",
+    "url": "https://example.com/v/456",
+    "platform": "tiktok",
+    "creator": "creator_0415",
+    "published": "2026-10-18T23:48:05Z",
+    "views": 3068410,
+    "likes": 513877,
+    "shares": 46971,
+    "excerpt": "hadda hop on this 🤣 #fyp #skullcap #ohhh #bryson #foryou ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0457",
+    "url": "https://example.com/v/457",
+    "platform": "tiktok",
+    "creator": "creator_0416",
+    "published": "2026-10-17T22:21:49Z",
+    "views": 1781900,
+    "likes": 306484,
+    "shares": 11128,
+    "excerpt": "#aydenwest ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0458",
+    "url": "https://example.com/v/458",
+    "platform": "tiktok",
+    "creator": "creator_0417",
+    "published": "2026-10-15T22:33:54Z",
+    "views": 1271129,
+    "likes": 172390,
+    "shares": 7562,
+    "excerpt": "reupload bc ik i could’ve done better #skullcap #trending ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0459",
+    "url": "https://example.com/v/459",
+    "platform": "tiktok",
+    "creator": "creator_0418",
+    "published": "2026-10-16T23:13:43Z",
+    "views": 1046954,
+    "likes": 178500,
+    "shares": 10796,
+    "excerpt": "I’m sorry I’m milking tf outta this #skullcap #trend ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   }
+  ],
+  "what_we_now_know": "",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 7,
+  "original_phrase": null,
+  "formula": null,
+  "languages": [],
+  "format": null,
+  "match": {
+   "score": 17,
+   "confidence": "weak"
+  }
+ },
+ {
+  "id": "trend_ov_097",
+  "kind": "hook_trend",
+  "name": "it seems to me, or _",
+  "what_it_is": "\"Is it just me, or _?\" floats a suspicion or observation and invites agreement. Creators usually use it to float something they've noticed and want confirmed, in a light, conversational register. The blank is that suspicion: \"Is it just me, or does this little dog have a little depression?\"",
+  "status": "confirmed",
+  "confidence": 0.6666666666666666,
+  "since": "2026-10-05T17:22:38Z",
+  "active_for_days": 17,
+  "momentum": "holding",
+  "why_it_popped": [
+   "3 creators in 8 days, in 1 language",
+   "videos get 11.0x their creators' follower count in views"
+  ],
+  "reach": {
+   "videos": 3,
+   "creators": 3,
+   "views": 1583500,
+   "platforms": {
+    "tiktok": 3
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0460",
+    "url": "https://example.com/v/460",
+    "platform": "tiktok",
+    "creator": "creator_0419",
+    "published": "2026-10-14T12:48:18Z",
+    "views": 868600,
+    "likes": 67800,
+    "shares": 9598,
+    "excerpt": "#хюрремсултан ",
+    "is_sensitive": false,
+    "hook_text": "Мне кажется, или моя мать что-то скрывает?",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "моя мать что-то скрывает",
+    "creator_id": "creator_0419"
+   },
+   {
+    "asset_id": "asset_0461",
+    "url": "https://example.com/v/461",
+    "platform": "tiktok",
+    "creator": "creator_0420",
+    "published": "2026-10-05T17:22:38Z",
+    "views": 645400,
+    "likes": 194100,
+    "shares": 6419,
+    "excerpt": "тгк/пинт - jettieluv, в тгк и артикул и промокод на скидку 🫶 #pinterest ",
+    "is_sensitive": false,
+    "hook_text": "мне кажется, или этот костюм - моя лучшая покупка на озоне",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "этот костюм - моя лучшая покупка на озоне",
+    "creator_id": "creator_0420"
+   },
+   {
+    "asset_id": "asset_0462",
+    "url": "https://example.com/v/462",
+    "platform": "tiktok",
+    "creator": "creator_0421",
+    "published": "2026-10-06T17:53:53Z",
+    "views": 69500,
+    "likes": 7765,
+    "shares": 1884,
+    "excerpt": "Мне кажется или у этого песика депрессия( | Еще больше мемов в ТГ : ",
+    "is_sensitive": false,
+    "hook_text": "Мне кажется, или у этой собачки немножко депрессия?",
+    "hook_source": "speech",
+    "appears_at_s": null,
+    "slot_fill": "у этой собачки немножко депрессия",
+    "creator_id": "creator_0421"
+   }
+  ],
+  "what_we_now_know": "Of 50 YouTube results sorted by relevance, 7 (14%) for «мне кажется или», 1 (2%) for «мне кажется или я», 6 (12%) for «мне кажется или это», and 2 (4%) for «мне кажется, или» use this hook.",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 8,
+  "original_phrase": "мне кажется, или _",
+  "formula": "мне кажется, или _",
+  "languages": [
+   "ru"
+  ],
+  "format": null,
+  "match": {
+   "score": 18,
+   "confidence": "weak"
+  }
+ },
+ {
+  "id": "trend_ov_098",
+  "kind": "hook_trend",
+  "name": "no, doggy, we can't go home, _",
+  "what_it_is": "\"No, doggy, we can't go home, _.\" Creators use it to affectionately, half-jokingly complain to a pet about an obligation that keeps them at work or study. The blank gives the reason they must stay — a task, duty or commitment. Example: \"we still have eight hours of buns to shape.\"",
+  "status": "unconfirmed",
+  "confidence": 1.0,
+  "since": "2026-10-10T16:44:03Z",
+  "active_for_days": 16,
+  "momentum": "holding",
+  "why_it_popped": [
+   "3 creators in 11 days, in 1 language"
+  ],
+  "reach": {
+   "videos": 3,
+   "creators": 3,
+   "views": 109200,
+   "platforms": {
+    "tiktok": 3
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0463",
+    "url": "https://example.com/v/463",
+    "platform": "tiktok",
+    "creator": "creator_0422",
+    "published": "2026-10-10T16:44:03Z",
+    "views": 62700,
+    "likes": 11000,
+    "shares": 1755,
+    "excerpt": "вот такая вот фигня собачка  #вкусноиточка #рек #рекомендации #общепи...",
+    "is_sensitive": false,
+    "hook_text": "нет,собачка мы не можем уйти домой,нам ещё 8часов булки лепить",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "нам ещё 8часов булки лепить",
+    "creator_id": "creator_0422"
+   },
+   {
+    "asset_id": "asset_0464",
+    "url": "https://example.com/v/464",
+    "platform": "tiktok",
+    "creator": "creator_0423",
+    "published": "2026-10-19T15:26:32Z",
+    "views": 27400,
+    "likes": 6548,
+    "shares": 818,
+    "excerpt": "вот такая вот … собачка #консерватория #собачка #учеба #дирижер #хор ",
+    "is_sensitive": false,
+    "hook_text": "нет, собачка, мы не можем уйтидомой мы сами выбрали учиться в консерватории, собачка",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "мы сами выбрали учиться в консерватории, собачка",
+    "creator_id": "creator_0423"
+   },
+   {
+    "asset_id": "asset_0465",
+    "url": "https://example.com/v/465",
+    "platform": "tiktok",
+    "creator": "creator_0424",
+    "published": "2026-10-22T01:00:32Z",
+    "views": 19100,
+    "likes": 2205,
+    "shares": 142,
+    "excerpt": "Да, даа #china #chinastudent #zhuhai #bitzh #internationalstudent ",
+    "is_sensitive": false,
+    "hook_text": "Нет,собачка, мы не можем уйти домой.Мы студенты в Китае, за любой пропуск нам надают по шапке и будет deportation.",
+    "hook_source": "onscreen",
+    "appears_at_s": 0.0,
+    "slot_fill": "Мы студенты в Китае, за любой пропуск нам надают по шапке и будет deportation",
+    "creator_id": "creator_0424"
+   }
+  ],
+  "what_we_now_know": "",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 9,
+  "original_phrase": "нет, собачка, мы не можем уйти домой, _",
+  "formula": "нет, собачка, мы не можем уйти домой, _",
+  "languages": [
+   "ru"
+  ],
+  "format": null,
+  "match": {
+   "score": 15,
+   "confidence": "weak"
+  }
+ },
+ {
+  "id": "trend_ov_099",
+  "kind": "topic_trend",
+  "name": "Russian \"Macaroni with Ketchup\" Audio Trend",
+  "what_it_is": "A viral Russian-language comedy sound clip in which a mother tells her daughter to cook lunch and the daughter replies about \"macaroni with ketchup.\" Creators across many countries lip-sync, dance, or act out the dialogue in kitchens, hallways, malls, playgrounds and bedrooms.",
+  "status": "confirmed",
+  "confidence": null,
+  "since": "2026-08-18T14:40:12Z",
+  "active_for_days": 66,
+  "momentum": null,
+  "why_it_popped": [
+   "11 video(s) from 10 creator(s)",
+   " views across its videos",
+   "posted over 42 day(s)"
+  ],
+  "reach": {
+   "videos": 11,
+   "creators": 10,
+   "views": 12065200,
+   "platforms": {
+    "tiktok": 11
+   }
+  },
+  "examples": [
+   {
+    "asset_id": "asset_0466",
+    "url": "https://example.com/v/466",
+    "platform": "tiktok",
+    "creator": "creator_0425",
+    "published": "2026-09-18T09:19:47Z",
+    "views": 8300000,
+    "likes": 608400,
+    "shares": 191200,
+    "excerpt": "@[ᴍᴜʀ - ᴢᴇᴇ]®  #murzz #b00tleg #hellokitty ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0467",
+    "url": "https://example.com/v/467",
+    "platform": "tiktok",
+    "creator": "creator_0426",
+    "published": "2026-08-18T14:40:12Z",
+    "views": 1500000,
+    "likes": 130100,
+    "shares": 13100,
+    "excerpt": "#бурмалда#рек #fyp #прикол #пранк  🙇‍♀️🫏 ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0468",
+    "url": "https://example.com/v/468",
+    "platform": "tiktok",
+    "creator": "creator_0427",
+    "published": "2026-09-30T01:10:50Z",
+    "views": 543700,
+    "likes": 39500,
+    "shares": 7089,
+    "excerpt": "TikTok video #",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0469",
+    "url": "https://example.com/v/469",
+    "platform": "tiktok",
+    "creator": "creator_0428",
+    "published": "2026-09-20T16:49:37Z",
+    "views": 309400,
+    "likes": 41800,
+    "shares": 18500,
+    "excerpt": "#хит #fyp #движ #попугаи #papagaio ",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   },
+   {
+    "asset_id": "asset_0470",
+    "url": "https://example.com/v/470",
+    "platform": "tiktok",
+    "creator": "creator_0429",
+    "published": "2026-09-20T07:55:50Z",
+    "views": 283500,
+    "likes": 18800,
+    "shares": 305,
+    "excerpt": "TikTok video #",
+    "is_sensitive": false,
+    "hook_text": null,
+    "hook_source": null,
+    "appears_at_s": null,
+    "slot_fill": null,
+    "creator_id": null
+   }
+  ],
+  "what_we_now_know": "Of 50 YouTube results for «бурмалда» of any length, uploaded in the last month, sorted by relevance, 0 are about this subject (0%), and of 50 YouTube results for «макароны макароны пастри пастри» of any length, uploaded in the last month, sorted by relevance, 0 are about this subject (0%).",
+  "sensitivity_level": "none",
+  "visible_until": null,
+  "rank": 10,
+  "original_phrase": null,
+  "formula": null,
+  "languages": [],
+  "format": null,
+  "match": {
+   "score": 16,
+   "confidence": "weak"
+  }
+ }
+]

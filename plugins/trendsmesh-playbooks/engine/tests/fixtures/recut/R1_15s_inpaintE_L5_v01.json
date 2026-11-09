@@ -1,0 +1,30 @@
+{
+ "variant": "R1_15s",
+ "change_id": "recut_shorter",
+ "level": 0,
+ "cause": "ad longer than its content",
+ "music_source": "elevenlabs_continuation",
+ "note": "Test fixture: the handoff's R1_15s_inpaintE_L5_v01.json (HANDOFF 9b RC5 'Ad 3 R1 E') with the header fields this build adds. Level 0: the method E take already exists, so it is an input file, not paid work (controller ruling, 2026-11-06).",
+ "out": "../../04_final/ad3_R1_15s_inpaintE_L5_v01.mp4",
+ "video": [
+  {
+   "src": "../../../2026-11-02_ad3-dry-run/01_base/ad3_original.mp4",
+   "from": 0,
+   "to": 11.146
+  },
+  {
+   "src": "../../../2026-11-02_ad3-dry-run/01_base/ad3_original.mp4",
+   "from": 20.735,
+   "to": 24.149
+  }
+ ],
+ "audio": [
+  {
+   "src": "../audio/inpaint/R1_inpaint_E_continue10long_v01.wav",
+   "from": 0,
+   "to": 20.0
+  }
+ ],
+ "audio_xfade_ms": 40,
+ "audio_tail_fade_ms": 300
+}

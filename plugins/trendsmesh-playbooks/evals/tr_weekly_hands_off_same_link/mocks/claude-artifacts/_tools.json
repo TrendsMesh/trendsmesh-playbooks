@@ -1,0 +1,5 @@
+{"tools":[
+ {"name":"publish_files","description":"Publish an artifact from files on disk. Omit slug to create a new artifact (private to you); to republish, give slug and base_version (the live version) and the files; mode replace removes the artifact's files that are not named. Returns the slug, the new version and the claude.ai URL.","inputSchema":{"type":"object","required":["files"],"properties":{"files":{"type":"array","items":{"type":"object","properties":{"as":{"type":"string"},"path":{"type":"string"}}}},"slug":{"type":"string"},"base_version":{"type":"string"},"title":{"type":"string"},"icon":{"type":"string"},"mode":{"type":"string"},"shared_live":{"type":"string"},"label":{"type":"string"}}}},
+ {"name":"get_artifact","description":"An artifact's current state without its content: slug, version id, title, read mode and claude.ai URL.","inputSchema":{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"}}}},
+ {"name":"list_files","description":"The files an artifact holds, each with its served path.","inputSchema":{"type":"object","required":["slug"],"properties":{"slug":{"type":"string"}}}}
+]}

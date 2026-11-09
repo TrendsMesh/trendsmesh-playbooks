@@ -1,0 +1,216 @@
+{
+ "schema": "pack/1",
+ "id": "M5",
+ "lang": "pl",
+ "title": "Syn chciał konto w ChatGPT. Co sprawdziłem",
+ "channel": "exampleedu",
+ "production": "talking_character",
+ "sound_led": false,
+ "sections": [
+  {
+   "id": "s1",
+   "type": "talking_character",
+   "model": "minimax/h3",
+   "from": 0,
+   "to": 15
+  }
+ ],
+ "product": {
+  "level": "not shown",
+  "packshots": []
+ },
+ "host": {
+  "kind": "image",
+  "image": "03_wip/host_v01_0.png"
+ },
+ "script": {
+  "lines": [
+   {
+    "n": 1,
+    "text": "Syn poprosił mnie wczoraj o własne konto w ChatGPT.",
+    "speaker": "host",
+    "shot": "kadr z telefonu, tata przy biurku w domowym gabinecie patrzy prosto w obiektyw",
+    "at": [
+     0,
+     3
+    ]
+   },
+   {
+    "n": 2,
+    "text": "Sprawdziłem regulamin: od trzynastu lat, z moją zgodą.",
+    "speaker": "host",
+    "shot": "ten sam kadr, trochę bliżej, unosi brew przy „trzynaście”",
+    "at": [
+     3,
+     7
+    ]
+   },
+   {
+    "n": 3,
+    "text": "Założyliśmy je razem i ustaliliśmy, o co może pytać sam.",
+    "speaker": "host",
+    "shot": "cięcie: stół z talerzami z góry, dłonie dorosłego i dziecka podają sobie miskę (bez twarzy); jego głos z offu",
+    "at": [
+     7,
+     11
+    ]
+   },
+   {
+    "n": 4,
+    "text": "A ty już rozmawiałeś o tym?",
+    "speaker": "host",
+    "shot": "cięcie: znów biurko z początku, ciepły uśmiech, wskazuje palcem na widza",
+    "at": [
+     11,
+     13.5
+    ]
+   }
+  ],
+  "words": 33,
+  "seconds": 15
+ },
+ "speech": {
+  "route": "h3_native",
+  "alternative_reason": null,
+  "voice": "naturalny polski głos taty, blisko i wyraźnie jak z mikrofonu telefonu",
+  "voice_reference": null
+ },
+ "taste": {
+  "style": null,
+  "voice": "spokojny polski głos taty po czterdziestce, opisany w prompcie",
+  "music": null,
+  "by": "agent",
+  "why": "Tryb A–Z: profil kanału nie ma zapisanych wyborów; głos jest opisany w prompcie H3, bez muzyki, żeby mowa była czysta."
+ },
+ "models": [
+  {
+   "component": "obraz prowadzącego (pierwsza klatka)",
+   "model": "openai/gpt-image-2",
+   "why": "fotorealistyczna pierwsza klatka jak z telefonu; jakość high, bo w kadrze jest twarz",
+   "recipe": "references/model-prompting/gpt-image-2.md",
+   "ranking": {
+    "source": "Arena image-edit",
+    "date": "2026-11-06"
+   },
+   "user_named": false,
+   "criteria": null
+  },
+  {
+   "component": "ujęcie z mową (15 s)",
+   "model": "minimax/h3",
+   "why": "domyślny poziom; natywna polska mowa z ruchem ust w jednym ujęciu, pierwsza klatka z obrazu prowadzącej",
+   "recipe": "references/model-prompting/minimax-h3.md",
+   "ranking": {
+    "source": "Arena image-to-video",
+    "date": "2026-11-06"
+   },
+   "user_named": false,
+   "criteria": null
+  }
+ ],
+ "stages": [
+  {
+   "stage": "images",
+   "items": [
+    {
+     "name": "host",
+     "model": "openai/gpt-image-2",
+     "face": true,
+     "images": 2
+    }
+   ]
+  },
+  {
+   "stage": "video",
+   "items": [
+    {
+     "name": "take",
+     "model": "minimax/h3",
+     "seconds": 15
+    }
+   ]
+  }
+ ],
+ "resolution": {
+  "choice": "768p",
+  "options": [
+   {
+    "id": "768p",
+    "cost": 1.2
+   },
+   {
+    "id": "1080p",
+    "cost": 1.95,
+    "model": "minimax/h3",
+    "criteria": "target resolution=2K"
+   },
+   {
+    "id": "768p_pruna",
+    "cost": 1.5
+   }
+  ]
+ },
+ "cost": {
+  "lines": [
+   {
+    "what": "obraz prowadzącego ×2",
+    "item": "host",
+    "model": "openai/gpt-image-2",
+    "criteria": "model variant=high",
+    "unit_price": 0.128,
+    "unit": "output image",
+    "units": 2,
+    "cost": 0.26,
+    "kind": "ai_usd",
+    "price_file": "02_research/models/prices_2026-11-04_v01.json",
+    "checked": "2026-11-04"
+   },
+   {
+    "what": "ujęcie H3 15 s, 768P",
+    "item": "take",
+    "model": "minimax/h3",
+    "criteria": "target resolution=768P",
+    "unit_price": 0.08,
+    "unit": "second of output video",
+    "units": 15,
+    "cost": 1.2,
+    "kind": "ai_usd",
+    "price_file": "02_research/models/prices_2026-11-06_v01.json",
+    "checked": "2026-11-06"
+   }
+  ],
+  "totals": {
+   "ai_usd": 1.46,
+   "voice_credits": 0
+  },
+  "currency_note": null
+ },
+ "facts": [
+  {
+   "claim": "Regulamin OpenAI: korzystać można od 13 lat; osoby poniżej 18 lat tylko za zgodą rodzica albo opiekuna prawnego.",
+   "source": "https://openai.com/policies/terms-of-use/"
+  }
+ ],
+ "risk": {
+  "level": "medium",
+  "hits": [
+   {
+    "item": "speech",
+    "mitigation": "kwestie w cudzysłowie z czasami w prompcie; transkrypcja Whisper porównana ze scenariuszem przy kontroli ujęcia"
+   },
+   {
+    "item": "same_character",
+    "mitigation": "ten sam mężczyzna i ten sam gabinet opisane w prompcie; pierwsza klatka z zatwierdzonego obrazu"
+   },
+   {
+    "item": "long_takes",
+    "mitigation": "jedno ujęcie 15 s z cięciami w prompcie; cięcia sprawdzone przy kontroli ujęcia"
+   }
+  ]
+ },
+ "style_spec": null,
+ "sound": {
+  "track": null,
+  "trending": null
+ }
+}

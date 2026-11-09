@@ -1,0 +1,147 @@
+{
+ "_note": "G2 + TR6 write-ups under rule v3 (2026-11-04). Supersedes picks_v03: adds digest_reading (agent text for the weekly digest view).",
+ "category": "beauty",
+ "market": "US, English",
+ "market_lang": "en",
+ "as_of": "2026-11-04",
+ "moves": [
+  {
+   "id": "trend_beauty_004",
+   "from": "act_now",
+   "to": "too_late",
+   "why": "Event-bound and crowded in paid: an advertiser title says the Sephora Savings Event ends on 9 Nov (the trend description gave only 30 Oct - 2 Nov), so five days are left, and nine advertisers already ride it (PHLUR, Mane, Dr.FORHAIR, Rare Beauty, Ebb, Sephora itself...)."
+  },
+  {
+   "id": "trend_beauty_017",
+   "from": "act_now",
+   "to": "too_late",
+   "why": "Crowded in paid (Ad Library estimates about 8,580 active US ads for the search 'hair extensions'; matching is loose); most of the evidence is not in English and the top clip is a celebrity moment, not a repeatable format."
+  },
+  {
+   "id": "trend_beauty_066",
+   "from": "act_now",
+   "to": "still_rising",
+   "why": "A general diary hook, 253 days old; only 3 of its 65 evidence videos are about beauty. It spreads fast across all categories, but it is neither early nor specific to beauty."
+  }
+ ],
+ "act_now": [
+  {
+   "id": "trend_beauty_045",
+   "maturity": "early in paid",
+   "what": "Macro close-ups of magnetic cat-eye gel: a magnet is swept over wet polish and a shimmer band slides across the nail. Captions are short sensory lines ('The kind of shine that changes with every move') or numbered idea series ('Easy cat eye nail design idea 2210'). Newest sets follow the season: icy baby-blue chrome, forest-brown 'Bambi nails'. A leopard-print variant is rising next to it.",
+   "how": "Nail brands, press-on sellers and salons: a 7–10 s macro clip with the magnet sweep inside the first two seconds as the visual hook; post as a numbered series; swap to winter and holiday colourways now.",
+   "risk": "Status unconfirmed; about half of the views sit with one account, so reach depends on a few large creators."
+  },
+  {
+   "id": "trend_beauty_067",
+   "maturity": "established hook",
+   "what": "On-screen opener 'This is your sign to [action]' over the result shot, casual second person. Beauty slots in the evidence: 'This Is Your Sign to Try a Fresh New Nail Look' (12M views), 'Your sign to get a perm'. The newest slots drift to winter and holiday plans.",
+   "how": "Pair it with a product trend: 'This is your sign to try cat-eye nails' over the magnet-sweep shot, or 'your sign to book a lash lift' over the before/after.",
+   "risk": "A general hook, not beauty-specific, 99 days old; status unconfirmed. Hook structures cannot be checked in Ad Library titles."
+  },
+  {
+   "id": "trend_beauty_050",
+   "maturity": "early",
+   "what": "Creators demo Medicube products in night routines, a 'travel to Korea with the brand' trip, product comparisons ('if only I saw this sooner'), and, in the newest posts, K-beauty advent calendar unboxings (KIOKII, YesStyle).",
+   "how": "Skincare brands: run the advent-calendar unboxing and the 'travel prep with the brand' formats through November and December; a reaction line ('I can't believe they came out with this') over the first product reveal.",
+   "risk": "The topic is one brand and just over half of its views come from one creator. The advent-calendar angle rests on two recent videos: a hypothesis."
+  },
+  {
+   "id": "trend_beauty_026",
+   "maturity": "established",
+   "what": "Macro lash application tutorials, before/after results, lash-tech vlogs and 'salon lashes at home in a minute' demos with pre-glued clusters.",
+   "how": "Lash brands and techs: an under-a-minute at-home cluster application, macro before/after in the first two seconds.",
+   "risk": "The fastest-growing topic that is not yet crowded, but most of the evidence is Russian-language: the US fit is a hypothesis. Paid at-home lashes is busy (Lash Buddy, Dreamybond, VeyesBeauty, Falscara at Target)."
+  }
+ ],
+ "act_now_other": [],
+ "still_rising": [
+  {
+   "id": "trend_beauty_022",
+   "what": "Curly and straight hair side by side: 'curly X straight' comparisons, big-curl selfies, straightening treatments and their results ('No more slick backs!').",
+   "how": "Hair-care and styling-tool brands: a split-screen 'curly vs straight' with the same person, the product named on the switch.",
+   "risk": "Few new creators per week; the broadest creator base of the still-rising group (no account above a fifth of the views)."
+  },
+  {
+   "id": "trend_beauty_033",
+   "what": "Lip combo close-ups: liner first, then gloss or tint, product names on screen, often 'This lip combo>>>>'.",
+   "how": "Makeup brands: name the pair (liner shade + gloss shade) as a 'combo' and seed it with creators, not only the brand account.",
+   "risk": "Moved out of 'act now' by the concentration gate: 85% of the evidence views come from creator_0470's own account. Already in paid titles (Nude Envie, AMUSE)."
+  },
+  {
+   "id": "trend_beauty_012",
+   "what": "Curly-hair routines with product close-ups and timed routines ('22 seconds to do my curly hair routine').",
+   "how": "Hair-care brands: a timed routine with the product on screen at each step.",
+   "risk": "Was 'act now' a week ago and slowed (see 'Since 29 Oct'); part of the evidence is Russian-language."
+  },
+  {
+   "id": "trend_beauty_066",
+   "what": "'Day _ of _' diary hook: a numbered daily attempt at a goal.",
+   "how": "A 7- or 14-day series ('Day 3 of growing my nails out') for products with a visible result over time.",
+   "risk": "Moved from 'act now' by review: general and mature."
+  },
+  {
+   "id": "trend_beauty_001",
+   "what": "Creators filming at Ulta Beauty: holiday launches (Kylie Cosmetics Winter Kissed), new fragrances, the Ulta Campus Tour truck, partner content (#UltaBeautyPartner).",
+   "how": "Brands stocked at Ulta: in-store 'smell this / swatch this' finds for holiday launches.",
+   "risk": "Huge views but driven by partner posts: most of them come from one account."
+  }
+ ],
+ "lens": {
+  "label": "If you are a nail brand",
+  "note": "Example of the intake 'focus' option: the same data read for one recipient. Ranked for a nail brand selling to US consumers.",
+  "items": [
+   {
+    "id": "trend_beauty_045",
+    "line": "Lead with this. Magnet-sweep macro in the first two seconds, numbered series, winter colourways."
+   },
+   {
+    "id": "trend_beauty_042",
+    "line": "Next to it: leopard-print cat-eye ('the viral leopard cat eye'), new since 29 Oct; a builder-gel shop already links its product in one of the leopard videos."
+   },
+   {
+    "id": "trend_beauty_067",
+    "line": "Use as the text opener: its biggest beauty example is a nail look (12M views)."
+   },
+   {
+    "id": "trend_beauty_046",
+    "line": "Long acrylic nail art: a large trend (38 creators) still adding new ones; join with a distinct design rather than a generic set."
+   },
+   {
+    "id": "trend_beauty_041",
+    "line": "Skip as a lead: fall almond nails moves among small accounts (one creator holds almost all views)."
+   },
+   {
+    "id": "trend_beauty_044",
+    "line": "Over: Halloween nail art; plan holiday designs instead."
+   }
+  ]
+ },
+ "watch_next": "Holiday beauty is starting: Target already runs holiday press-on nail ads, advent-calendar unboxings appear in the K-beauty trend, Ulta creators show holiday collections, and the 'your sign to' hook is filling with winter plans. No holiday beauty trend is in the data yet; this is a hypothesis to check in the next digest.",
+ "outputs": [
+  "report",
+  "digest",
+  "paid"
+ ],
+ "paid_reading": [
+  "Cat-eye nails (and its leopard variant), lash lift, keratin salon transformations and wash-day routines are rising in organic with no relevant advertiser in Ad Library titles: the openings.",
+  "Lip combo, lash clusters, braiding hair, lace-front wigs and hair loss are rising but already crowded in paid: join with a distinct creative, not a me-too.",
+  "Skincare routines are slowing in organic while paid is crowded (38k estimated ads): a saturated space.",
+  "Hooks (day _ of _, your sign to _, get ready with _ to _) cannot be checked in titles; Foreplay would show how many paid ads already open this way."
+ ],
+ "digest_reading": {
+  "summary": [
+   "10 of the 12 ‘act now’ calls from 29 Oct kept adding creators. The two that stalled, curly hair care and skincare routines, moved down this week.",
+   "Halloween is over: the Halloween and Día de Muertos trends, including last week’s strongest ‘act now’ call, moved to past their peak.",
+   "Medicube / K-beauty moved up to ‘act now’; braiding and keratin salon transformations climbed back to ‘still rising’.",
+   "New on the radar: leopard-print cat-eye nails (next to the cat-eye pick), wash-day hair routines (no advertiser in Ad Library titles) and the Sephora Savings Event hauls (crowded in paid, ends 9 Nov).",
+   "Holiday is starting: haul and unboxing trends, Ulta holiday collections and K-beauty advent calendars are the first signals."
+  ],
+  "todo": [
+   "Move Halloween content to winter and holiday looks; post cat-eye nails in icy and holiday colourways now.",
+   "Test the leopard-print variant next to classic cat-eye.",
+   "For skincare brands: K-beauty advent-calendar unboxings through December.",
+   "Skip new skincare-routine content for now (slowing in organic, crowded in paid); acne routines are slowing too."
+  ]
+ }
+}

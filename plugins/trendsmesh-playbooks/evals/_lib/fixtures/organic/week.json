@@ -1,0 +1,211 @@
+{
+ "lang": "pl",
+ "title": "ExampleEdu: plan tygodnia 9–15 listopada 2026",
+ "run": "runs/03-organic-ai-video/2026-11-06_walkthrough-exampleedu",
+ "channel": "ExampleEdu",
+ "week": "2026-11-09/2026-11-15",
+ "budget": 5.0,
+ "rhythm": "wszystko od razu, gdy tydzień zostanie zatwierdzony (domyślnie)",
+ "platforms": [
+  "tiktok",
+  "instagram",
+  "youtube",
+  "facebook"
+ ],
+ "note": "Próbny tydzień: nic nie jest zaplanowane ani generowane. Trendy M1 i M5 zostały już wykorzystane, więc ich tu nie ma; brainrot wraca tylko jako kolejny odcinek serii.",
+ "slots": [
+  {
+   "day": "pon",
+   "date": "9.11",
+   "time": "18:00",
+   "id": "w1",
+   "title": "PSA: „Steal an Egg” w Robloxie, czyli o co chodzi z tymi jajkami",
+   "format": "Animowane PSA (Atlas)",
+   "why": "50 mln wyświetleń w 79 filmach; dzieci proszą o Robuxy na jajka, a rodzice nie wiedzą, o co chodzi.",
+   "trend": "psa: _ + Steal an Egg",
+   "evidence": "https://example.com/v/50",
+   "output": "video",
+   "cost_video": 0.0,
+   "cost_script": 0.0,
+   "production": "animacja Claude, lektor ElevenLabs po polsku",
+   "risk": "low",
+   "plugin": {
+    "trends": [
+     {
+      "id": "trend_ov_007"
+     },
+     {
+      "id": "trend_ov_008"
+     }
+    ],
+    "production": "animation",
+    "approach": "Inspiracja",
+    "product_level": "nie występuje",
+    "series": null,
+    "flexible": false
+   }
+  },
+  {
+   "day": "śr",
+   "date": "11.11",
+   "time": "18:00",
+   "id": "w2",
+   "title": "„Tato, dlaczego ty nigdy ze mną nie grasz?”",
+   "format": "Dwie postacie AI w rozmowie (H3)",
+   "why": "„Dad, why is _” ma 48× zwykłego zasięgu; tutaj to dziecko uczy tatę grać.",
+   "trend": "dad, why is _",
+   "evidence": "https://example.com/v/17",
+   "output": "video",
+   "cost_video": 1.46,
+   "cost_script": 0.0,
+   "production": "dialog taty i dziecka po polsku, jedno ujęcie H3",
+   "risk": "high",
+   "plugin": {
+    "trends": [
+     {
+      "id": "trend_ov_009"
+     }
+    ],
+    "production": "talking_character",
+    "approach": "Inspiracja",
+    "product_level": "nie występuje",
+    "series": null,
+    "flexible": false
+   }
+  },
+  {
+   "day": "pt",
+   "date": "13.11",
+   "time": "19:00",
+   "id": "w3",
+   "title": "Impostor z dziadkami: kto nie zna tajnego hasła?",
+   "format": "Wideo AI: dziadkowie i wnuki (H3)",
+   "why": "„Impostor” to 16,8 mln wyświetleń; w piątek rodziny częściej siadają razem do stołu.",
+   "trend": "Impostor word-guessing party game",
+   "evidence": "https://example.com/v/645",
+   "output": "video",
+   "cost_video": 1.29,
+   "cost_script": 0.0,
+   "production": "cztery osoby przy stole, jedno ujęcie H3 z dźwiękiem",
+   "risk": "medium",
+   "plugin": {
+    "trends": [
+     {
+      "id": "trend_ov_004"
+     }
+    ],
+    "production": "ai_footage",
+    "approach": "Inspiracja",
+    "product_level": "nie występuje",
+    "series": null,
+    "flexible": false
+   }
+  },
+  {
+   "day": "sob",
+   "date": "14.11",
+   "time": "11:00",
+   "id": "w4",
+   "title": "Trzy emoji, jedna gra: zgadniesz szybciej niż dziecko?",
+   "format": "Quiz (Remotion)",
+   "why": "Widz czeka na odpowiedź do końca; w sobotę rano rodzice i dzieci oglądają razem.",
+   "trend": "guess the _",
+   "evidence": "https://example.com/v/41",
+   "output": "video",
+   "cost_video": 0.19,
+   "cost_script": 0.0,
+   "production": "emoji, odliczanie 3-2-1 i rysowana odpowiedź; muzyka z Mixkit",
+   "risk": "low",
+   "plugin": {
+    "trends": [
+     {
+      "id": "trend_ov_002"
+     }
+    ],
+    "production": "stills_motion",
+    "approach": "Inspiracja",
+    "product_level": "nie występuje",
+    "series": null,
+    "flexible": false
+   }
+  },
+  {
+   "day": "niedz",
+   "date": "15.11",
+   "time": "11:00",
+   "id": "w5",
+   "title": "Brainrot, odcinek 2: skąd się biorą kolejne postacie?",
+   "format": "Animacja (Atlas), drugi odcinek serii",
+   "why": "Odcinek 1 (Tung Tung Tung Sahur) już jest; drugi w tym samym stylu i z tym samym lektorem ściąga stałych widzów.",
+   "trend": "Tung Tung Tung Sahur / italian brainrot",
+   "evidence": "https://example.com/v/28",
+   "output": "video",
+   "cost_video": 0.0,
+   "cost_script": 0.0,
+   "production": "styl i lektor jak w odcinku 1 (M1)",
+   "risk": "low",
+   "plugin": {
+    "trends": [
+     {
+      "id": "trend_ov_011"
+     }
+    ],
+    "production": "animation",
+    "approach": "Inspiracja",
+    "product_level": "nie występuje",
+    "series": "brainrot",
+    "flexible": true
+   }
+  }
+ ],
+ "reserves": [
+  {
+   "id": "r1",
+   "title": "Adopt Me: wymiana zwierzaka, której dziecko potem żałuje",
+   "format": "Animowane PSA (Atlas)",
+   "why": "4,3 mln wyświetleń filmów o wymianach w Adopt Me, także tych nieuczciwych.",
+   "trend": "Adopt Me Roblox: pets, eggs, trades",
+   "evidence": "https://example.com/v/46",
+   "cost_video": 0.0,
+   "cost_script": 0.0,
+   "production": "animacja Claude z lektorem",
+   "risk": "low",
+   "plugin": {
+    "trends": [
+     {
+      "id": "trend_ov_012"
+     }
+    ],
+    "production": "animation",
+    "approach": "Inspiracja",
+    "product_level": "nie występuje",
+    "series": null,
+    "flexible": false
+   }
+  },
+  {
+   "id": "r2",
+   "title": "Switch 2 na święta: o co zapytać w sklepie",
+   "format": "Prowadzący AI (H3)",
+   "why": "Dużo nowości o Switch 2 i zamówieniach przedpremierowych; grudniowe prezenty są blisko.",
+   "trend": "Nintendo Switch 2 game and preorder news",
+   "evidence": "",
+   "cost_video": 1.33,
+   "cost_script": 0.0,
+   "production": "prowadzący z M5, mówi po polsku",
+   "risk": "medium",
+   "plugin": {
+    "trends": [
+     {
+      "id": "trend_ov_025"
+     }
+    ],
+    "production": "talking_character",
+    "approach": "Inspiracja",
+    "product_level": "nie występuje",
+    "series": null,
+    "flexible": false
+   }
+  }
+ ]
+}

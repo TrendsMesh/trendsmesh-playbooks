@@ -1,0 +1,16 @@
+# The playbooks the step engine runs. A run's playbook is its run folder id
+# (runs/<id>/<YYYY-MM-DD>_<name>/), which run.json stores as `playbook`.
+#
+# id     the run folder id; never renamed, since saved runs store it
+# name   the name users see
+# skill  the plugin skill that runs it; `tm run new --playbook` accepts the id or this
+# data   its folder under data/, holding steps.yaml and checkins.yaml ("." is data/ itself)
+# guess  optional, true or false (the default): it may run without live trend data, its trend
+#        evidence then the agent's guess (decisions §4)
+# budgets  optional, a list of budget kinds (flow.BUDGET_KINDS) the playbook spends from, which
+#        its money check-ins' `yes_for` may name; none by default (refresh-ad keeps its own rules)
+playbooks:
+  - {id: 01-refresh-ad, name: Refresh an ad, skill: refresh-ad, data: ., guess: true}
+  - {id: 02-creative-brief, name: Creative brief, skill: creative-brief, data: creative-brief, guess: true}
+  - {id: 03-organic-ai-video, name: Organic AI video, skill: organic-video, data: organic-video, budgets: [ai_usd, voice_credits]}
+  - {id: 04-trend-research, name: Trend research, skill: trend-research, data: trend-research}

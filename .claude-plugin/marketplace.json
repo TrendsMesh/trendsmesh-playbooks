@@ -1,0 +1,13 @@
+{
+  "name": "trendsmesh-playbooks",
+  "owner": {
+    "name": "TrendsMesh"
+  },
+  "plugins": [
+    {
+      "name": "trendsmesh-playbooks",
+      "source": "./plugins/trendsmesh-playbooks",
+      "description": "TrendsMesh playbooks: refresh a fading Meta ad with rising trends; trend research for a category; creative briefs for new ads; organic AI videos for your channels"
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+# Steps of playbook 01 "Refresh an ad", in order: FLOWS.md sections A to E.
+#
+# outputs   the outputs that need the step; a step applies when this meets the run's outputs
+# before    check-ins asked before the step's work starts (ids from checkins.yaml)
+# checkins  check-ins asked after the step's work
+# spends    the step's own work costs money (a paid generation, ElevenLabs, ad spend);
+#           the check-ins that approve spending are asked before the first such step
+# flow      a variant flow from VARIANTS.md; the step applies only when the run uses it
+#           (V: a new voiceover line; R: a re-cut, path C-R, `tm flow R` after the diagnosis)
+# targets   the diagnosis target stages the step serves; once the stored diagnosis has a
+#           target_stage, the step applies only when it is in the list (no diagnosis or no target
+#           yet: it applies). Steps without targets serve every target
+# measures  the step is done once per measurement date (the live test's day 3, 5 and 7)
+# budget    the budget kind the step spends from (ai_usd, voice_credits, test); Hands-off waits
+#           at the step until that budget is approved. VC is left out: only its pro mode spends
+#           (ProPainter, from ai_usd) and `tm budget spend` refuses it without an approval.
+#           Flow R's CR5a and CR5b never wait: `tm recut check` makes an L3-L5 variant wait for
+#           its budget instead, so the free variants still render.
+# skip_when {check-in: choice}: the step, and the check-ins after it, are skipped on that decision
+#           (a check-in asked `before` the step that skips it stays in the run, so it can be changed)
+# ref       the step's section in the refresh-ad skill
+
+outputs: [creative_brief, edited_video, ai_video, live_test]
+
+steps:
+  # A. Common core
+  - {id: A0, title: Intake and setup, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#a0"}
+  - {id: A0b, title: Results library, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#a0b"}
+  - {id: A1, title: Fading winners, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [G1], spends: false, ref: "skills/refresh-ad/references/flow.md#a1"}
+  - {id: A1a, title: Funnel diagnosis, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [G1a], spends: false, ref: "skills/refresh-ad/references/flow.md#a1a"}
+  - {id: A2, title: Winner source file, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#a2"}
+  - {id: A3, title: Winner breakdown, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#a3"}
+  - {id: A3b, title: Target audience, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [G1b], spends: false, ref: "skills/refresh-ad/references/flow.md#a3b"}
+  - {id: A4, title: Category benchmark, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#a4"}
+  - {id: A5, title: Trends (TrendsMesh), outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [G2], spends: false, ref: "skills/refresh-ad/references/flow.md#a5"}
+  - {id: A6, title: Saturation, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#a6"}
+  - {id: A7, title: Concept and change register, outputs: [creative_brief, edited_video, ai_video, live_test], checkins: [G3], spends: false, ref: "skills/refresh-ad/references/flow.md#a7"}
+
+  # B. Output: Creative brief
+  - {id: B1, title: Creative brief from the change register, outputs: [creative_brief], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#b1"}
+  - {id: B2, title: Brief acceptance, outputs: [creative_brief], checkins: [G4], spends: false, ref: "skills/refresh-ad/references/flow.md#b2"}
+  - {id: B3, title: Handover to executors, outputs: [creative_brief], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#b3"}
+
+  # C. Output: Edited real video
+  - {id: C1, title: Method selection, outputs: [edited_video], checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#c1"}
+
+  # Flow R, path C-R (handoff v03 FLOWS.md): a re-cut of a fading middle or a structural weakness.
+  # A recut_new_vo_line variant turns flow V on at G3r, so V0-VC sit between CR4 and CR5a. CR5 is
+  # split by the budget each part spends from: CR5a (ProPainter, Veo) from ai_usd, CR5b
+  # (ElevenLabs Music, new lines) from voice_credits. Hands-off does not wait at either: each
+  # variant's budget is checked by `tm recut check`. CR8 is not a step: the live
+  # test (E1) takes the re-cut's options of R4.
+  - {id: CR1, title: Segment map, outputs: [edited_video], flow: R, checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#cr1"}
+  - {id: CR2, title: Causes, outputs: [edited_video], flow: R, checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#cr2"}
+  - {id: CR3, title: Variants and level, outputs: [edited_video], flow: R, checkins: [G3r], spends: false, ref: "skills/refresh-ad/references/flow.md#cr3"}
+  - {id: CR4, title: Edit lists, outputs: [edited_video], flow: R, checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#cr4"}
+
+  # Flow V (VARIANTS.md section 4 and 4a): a new voiceover line in the same voice, before the render.
+  # V2 (voice rights) is replaced by the confirmation at intake; V6 (talking head) is not in v1.
+  - {id: V0, title: Audio breakdown, outputs: [edited_video], flow: V, checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#v0"}
+  - {id: V1, title: Find the original voice (isolation and match), outputs: [edited_video], flow: V, before: [VB], checkins: [V1c], spends: true, budget: voice_credits, skip_when: {VB: reject}, ref: "skills/refresh-ad/references/flow.md#v1"}
+  - {id: V3, title: Clone the voice and check the clone, outputs: [edited_video], flow: V, checkins: [GV], spends: true, budget: voice_credits, skip_when: {VB: reject, V1c: original_voice_found}, ref: "skills/refresh-ad/references/flow.md#v3"}
+  - {id: V4, title: Generate the new line, outputs: [edited_video], flow: V, checkins: [], spends: true, budget: voice_credits, skip_when: {VB: reject}, ref: "skills/refresh-ad/references/flow.md#v4"}
+  - {id: V5, title: Paste in the new line and QA, outputs: [edited_video], flow: V, checkins: [], spends: false, skip_when: {VB: reject}, ref: "skills/refresh-ad/references/flow.md#v5"}
+  - {id: VC, title: Remove and recreate the captions, outputs: [edited_video], flow: V, checkins: [], spends: true, skip_when: {VB: reject}, ref: "skills/refresh-ad/references/flow.md#vc"}
+
+  - {id: CR5a, title: "Repairs and new shots", outputs: [edited_video], flow: R, before: [RB], checkins: [], spends: true, budget: ai_usd, skip_when: {RB: reject}, ref: "skills/refresh-ad/references/flow.md#cr5a"}
+  - {id: CR5b, title: Music and new lines (ElevenLabs), outputs: [edited_video], flow: R, checkins: [], spends: true, budget: voice_credits, skip_when: {RB: reject}, ref: "skills/refresh-ad/references/flow.md#cr5b"}
+  - {id: CR6, title: Render and QA, outputs: [edited_video], flow: R, checkins: [], spends: false, ref: "skills/refresh-ad/references/flow.md#cr6"}
+  - {id: CR7, title: Acceptance, outputs: [edited_video], flow: R, checkins: [G5r], spends: false, ref: "skills/refresh-ad/references/flow.md#cr7"}
+
+  # The card variant (opening, ending or new look) renders here; a middle run has nothing for it.
+  - {id: C2, title: Props and control frames, outputs: [edited_video], targets: [hook, promise_cta, fatigue], checkins: [], spends: false, skip_when: {VB: reject}, ref: "skills/refresh-ad/references/flow.md#c2"}
+  - {id: C3, title: Full render and QA, outputs: [edited_video], targets: [hook, promise_cta, fatigue], checkins: [], spends: false, skip_when: {VB: reject}, ref: "skills/refresh-ad/references/flow.md#c3"}
+  - {id: C4, title: Render acceptance, outputs: [edited_video], targets: [hook, promise_cta, fatigue], checkins: [G5], spends: false, skip_when: {VB: reject}, ref: "skills/refresh-ad/references/flow.md#c4"}
+
+  # D. Output: AI video
+  - {id: D1, title: Visual decision and shot plan, outputs: [ai_video], checkins: [G6], spends: false, ref: "skills/refresh-ad/references/flow.md#d1"}
+  - {id: D2, title: First frame, outputs: [ai_video], checkins: [G7], spends: true, budget: ai_usd, skip_when: {G6: reject}, ref: "skills/refresh-ad/references/flow.md#d2"}
+  - {id: D3, title: Clips, outputs: [ai_video], checkins: [G8], spends: true, budget: ai_usd, skip_when: {G6: reject}, ref: "skills/refresh-ad/references/flow.md#d3"}
+  - {id: D4, title: Assembly, outputs: [ai_video], checkins: [], spends: false, skip_when: {G6: reject}, ref: "skills/refresh-ad/references/flow.md#d4"}
+  - {id: D5, title: AI video acceptance, outputs: [ai_video], checkins: [G9], spends: false, skip_when: {G6: reject}, ref: "skills/refresh-ad/references/flow.md#d5"}
+
+  # E. Output: Live test
+  - {id: E1, title: Test design, outputs: [live_test], checkins: [G10], spends: false, ref: "skills/refresh-ad/references/flow.md#e1"}
+  - {id: E2, title: Media upload and paused ads, outputs: [live_test], checkins: [], spends: false, skip_when: {G10: reject}, ref: "skills/refresh-ad/references/flow.md#e2"}
+  - {id: E2b, title: Quality and policy check (R8), outputs: [live_test], checkins: [E2b], spends: false, skip_when: {G10: reject}, ref: "skills/refresh-ad/references/flow.md#e2b"}
+  - {id: E3, title: Activation, outputs: [live_test], before: [G11], checkins: [], spends: true, budget: test, skip_when: {G10: reject, G11: keep_paused}, ref: "skills/refresh-ad/references/flow.md#e3"}
+  - {id: E4, title: "Measurement on day 3, 5 and 7", outputs: [live_test], checkins: [G12], spends: false, measures: true, skip_when: {G10: reject, G11: keep_paused}, ref: "skills/refresh-ad/references/flow.md#e4"}
