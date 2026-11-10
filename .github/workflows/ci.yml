@@ -52,6 +52,35 @@ jobs:
           fi
           sh bootstrap/test-bootstrap.sh
           sh bootstrap/test-guard-secrets.sh
+      # The real pixi download a user's first session makes (the tests above use stubs), into a
+      # data folder with a space in its name, as Claude Code's may have.
+      - name: Real pixi install (sh)
+        if: runner.os != 'Windows'
+        run: |
+          d="$RUNNER_TEMP/plugin data"
+          CLAUDE_PLUGIN_DATA="$d" sh plugins/trendsmesh-playbooks/bootstrap/install-pixi.sh
+          "$d/pixi/bin/pixi" --version | grep -q '0.84.1'
+          test ! -e "$d/install-pixi.log"
+      - name: Real pixi install (PowerShell)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $d = Join-Path $env:RUNNER_TEMP 'plugin data'
+          $env:CLAUDE_PLUGIN_DATA = $d
+          & ./plugins/trendsmesh-playbooks/bootstrap/install-pixi.ps1
+          $v = & (Join-Path $d 'pixi\bin\pixi.exe') --version
+          if ($v -notmatch '0\.84\.1') { throw "unexpected pixi: $v" }
+          if (Test-Path (Join-Path $d 'install-pixi.log')) { throw 'the log must go once pixi installs' }
+      - name: Real pixi install (Git Bash, as bin/tm runs it)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          d="$RUNNER_TEMP/plugin data gb"
+          ps1=$(cygpath -w plugins/trendsmesh-playbooks/bootstrap/install-pixi.ps1)
+          CLAUDE_PLUGIN_DATA="$(cygpath -w "$d")" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Report
+          "$d/pixi/bin/pixi.exe" --version | grep -q '0.84.1'
+          test ! -e "$d/install-pixi.log"
 
   tools:
     name: heavy tool tiers (manual)

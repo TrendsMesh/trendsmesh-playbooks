@@ -89,6 +89,11 @@ folder; your system Python, PATH and settings are left alone. Bigger tools, such
 2.5 GB), are installed only after you say yes, with their size shown first. Outside its data folder it writes one
 small file, `~/.trendsmesh/paths.json` (three folder paths, no keys), and pixi keeps its usual shared download cache.
 
+These installs need the internet. Behind a firewall or proxy, or in an app that limits which sites Claude may
+reach, allow `pixi.sh`, `pixi.prefix.dev`, `github.com` and `release-assets.githubusercontent.com` (pixi itself),
+and `conda.anaconda.org`, `pypi.org` and `files.pythonhosted.org` (the tools). If an install fails, Claude tells you
+the reason and where its log is; running `/trendsmesh-playbooks:doctor` tries it again.
+
 ## Report a problem
 
 Open an issue in this repository. Describe what you asked for and what happened. **Do not paste ad account ids,

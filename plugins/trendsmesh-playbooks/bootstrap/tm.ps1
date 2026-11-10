@@ -19,8 +19,17 @@ $env:PIXI_HOME = Join-Path $data 'pixi'
 $env:PIXI_NO_PATH_UPDATE = '1'
 $pixi = Join-Path $env:PIXI_HOME 'bin\pixi.exe'
 if (-not (Test-Path $pixi)) {
-    [Console]::Error.WriteLine('tm: the plugin''s tools are not set up: pixi is missing from the plugin''s data folder (its download at session start failed: no internet connection, a proxy or firewall, or a cut-off download). Never install pixi yourself or change PATH: run /trendsmesh-playbooks:doctor, and ask the user to check the connection and start a new Claude Code session, which installs it again.')
-    exit 1
+    # Its install at session start failed: try once more, so a new session is not needed.
+    $why = $null
+    $env:CLAUDE_PLUGIN_DATA = $data
+    try { & (Join-Path $PSScriptRoot 'install-pixi.ps1') *>$null } catch { $why = $_.Exception.Message }
+    if (-not (Test-Path $pixi)) {
+        if (-not $why) { $why = 'unknown' }
+        $why = ($why -replace '[\x00-\x1f\x7f]', ' ')
+        if ($why.Length -gt 600) { $why = $why.Substring(0, 600) }
+        [Console]::Error.WriteLine("tm: the plugin's tools are not set up: pixi did not install into the plugin's data folder, and trying again just now failed too. The reason: $why. Tell the user that reason in plain words: when a site could not be reached, their network, a proxy or firewall, or the app they run Claude in blocks it, and the sites the reason lists must be allowed. Never install pixi yourself or change PATH.")
+        exit 1
+    }
 }
 $cfg = Join-Path $env:PIXI_HOME 'config.toml'
 if (-not (Test-Path $cfg)) {

@@ -2,6 +2,14 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## 0.9.2
+
+- **A failed tools install says why.** When the plugin cannot install its tools at the start of a session, Claude
+  now gets the installer's own reason (for example "Could not resolve host: pixi.sh") and the path of a log, instead
+  of a guess. Running `tm`, or `/trendsmesh-playbooks:doctor`, tries the install again, so a new session is no
+  longer needed once the connection is back.
+- **Windows:** the pixi installer runs as its own process, and what it says lands in the log.
+
 ## 0.9.1
 
 - **Acceptance reports stay private.** `/trendsmesh-playbooks:acceptance` saves its report in the suite's folder;

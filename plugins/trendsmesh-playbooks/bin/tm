@@ -10,8 +10,19 @@ if [ -z "$ROOT" ] || [ -z "$DATA" ]; then
 fi
 export PIXI_HOME="$DATA/pixi" PIXI_NO_PATH_UPDATE=1 TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$DATA"
 if [ ! -x "$PIXI_HOME/bin/pixi" ] && [ ! -x "$PIXI_HOME/bin/pixi.exe" ]; then
-  echo "tm: the plugin's tools are not set up: pixi is missing from the plugin's data folder (its download at session start failed: no internet connection, a proxy or firewall, or a cut-off download). Never install pixi yourself or change PATH: run /trendsmesh-playbooks:doctor, and ask the user to check the connection and start a new Claude Code session, which installs it again." >&2
-  exit 1
+  # Its install at session start failed: try once more, so a new session is not needed.
+  case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*)
+      ps1="$ROOT/bootstrap/install-pixi.ps1"
+      command -v cygpath >/dev/null 2>&1 && ps1=$(cygpath -w "$ps1")
+      install_pixi() { CLAUDE_PLUGIN_DATA="$DATA" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Report; } ;;
+    *) install_pixi() { CLAUDE_PLUGIN_DATA="$DATA" sh "$ROOT/bootstrap/install-pixi.sh"; } ;;
+  esac
+  if ! why=$(install_pixi 2>&1 >/dev/null); then
+    why=$(printf '%s' "$why" | tr '\n' ' ' | tr -d '\000-\037\177')
+    echo "tm: the plugin's tools are not set up: pixi did not install into the plugin's data folder, and trying again just now failed too. The reason: ${why:-unknown}. Tell the user that reason in plain words: when a site could not be reached, their network, a proxy or firewall, or the app they run Claude in blocks it, and the sites the reason lists must be allowed. Never install pixi yourself or change PATH." >&2
+    exit 1
+  fi
 fi
 if [ ! -f "$PIXI_HOME/config.toml" ]; then
   mkdir -p "$PIXI_HOME"

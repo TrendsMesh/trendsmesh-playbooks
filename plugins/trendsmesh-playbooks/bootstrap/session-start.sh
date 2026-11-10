@@ -18,23 +18,25 @@ mkdir -p "$DATA"
 # 0. one line of context for every session (stdout is context for Claude)
 echo "TrendsMesh playbooks: never search for, read or show the Replicate or ElevenLabs keys, not even masked; tm doctor says whether each is set."
 
-# 1. pixi (stdout is context for Claude, so installer output goes to stderr). A failure is said
-#    in one line at the end, after the paths are written, so that `tm` can say what is wrong too.
-pixi_ok=1
-CLAUDE_PLUGIN_DATA="$DATA" sh "$HERE/install-pixi.sh" >&2 || pixi_ok=
 PIXI="$DATA/pixi/bin/pixi"
 
-# 2. paths.json, one key per line so bin/tm can read it without a JSON parser
+# 1. paths.json (first, so that tm finds the plugin even when this hook is cut off during the
+#    pixi download below), one key per line so bin/tm can read it without a JSON parser
 json() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 mkdir -p "$HOME/.trendsmesh"
 printf '{\n  "plugin_root": "%s",\n  "plugin_data": "%s",\n  "pixi": "%s"\n}\n' \
   "$(json "$ROOT")" "$(json "$DATA")" "$(json "$PIXI")" > "$HOME/.trendsmesh/paths.json"
 
-# 3. make the folders visible to Bash tool calls
+# 2. make the folders visible to Bash tool calls
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   q() { printf '%s' "$1" | sed "s/'/'\\\\''/g"; }
   printf "export TM_PLUGIN_ROOT='%s'\nexport TM_PLUGIN_DATA='%s'\n" "$(q "$ROOT")" "$(q "$DATA")" >> "$CLAUDE_ENV_FILE"
 fi
+
+# 3. pixi. What the installer prints goes to its log, never to stdout (stdout is context for
+#    Claude); on a failure its one-line reason is kept and said at the end. tm tries again later.
+pixi_ok=1
+why=$(CLAUDE_PLUGIN_DATA="$DATA" sh "$HERE/install-pixi.sh" 2>&1 >/dev/null) || pixi_ok=
 
 # 4. secrets.env, mode 0600 from the start
 (
@@ -55,7 +57,8 @@ fi
 chmod 600 "$DATA/secrets.env"
 
 if [ -z "$pixi_ok" ]; then
-  echo "TrendsMesh playbooks: its tools could not be set up, because pixi did not install into the plugin's data folder (no internet connection, a proxy or firewall, or a cut-off download), so tm cannot run. Never install pixi yourself or change PATH or global packages: run /trendsmesh-playbooks:doctor, and ask the user to check the connection and start a new session."
+  why=$(printf '%s' "$why" | tr '\n' ' ' | tr -d '\000-\037\177')
+  echo "TrendsMesh playbooks: its tools could not be set up, because pixi did not install into the plugin's data folder, so tm cannot run yet. The reason: ${why:-unknown}. Never install pixi yourself or change PATH or global packages. Running tm tries the install again; /trendsmesh-playbooks:doctor does that and tells the user the reason above in plain words."
   exit 0
 fi
 
