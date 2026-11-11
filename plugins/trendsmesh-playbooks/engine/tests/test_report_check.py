@@ -13,7 +13,10 @@ from tm.report import findings, workspace_values
     ("/Users/ann/ws", "home_path"), ("/home/ann/ws", "home_path"),
     (r"C:\Users\ann\ws", "home_path"), (r"c:\Users\ann\ws", "home_path"),
     ("spent $1,234.50", "amount"), ("1 234 zł", "amount"), ("12 PLN", "amount"), ("EUR 40", "amount"),
-    ("£9", "amount")])
+    ("£9", "amount"), ("12 pln", "amount"), ("12 usd", "amount"), ("usd 12", "amount"),
+    ("C:\\\\Users\\\\ann\\\\ws", "home_path"), ("C:/Users/ann/ws", "home_path"),
+    ("/USERS/ann/ws", "home_path"), ("/HOME/ann/ws", "home_path"), ("/Home/ann", "home_path"),
+    ("id 1234567890123456789", "account_id")])
 def test_finds_each_pattern(text, kind):
     assert [f[1] for f in findings(text, set())] == [kind]
 
@@ -31,7 +34,8 @@ def test_plain_numbers_are_not_amounts():
 
 
 def test_digit_runs_need_word_boundaries():
-    assert findings("12345678901234567890 v1234567890123", set()) == []
+    assert findings("v1234567890123 1234567890123x", set()) == []
+    assert [f[1] for f in findings("12345678901234567890", set())] == ["account_id"]
 
 
 def test_key_prefix_is_not_a_second_account_id():
@@ -62,6 +66,11 @@ def test_workspace_values_from_saved_json(tmp_path):
     (tmp_path / "runs" / "a.json").write_text(
         json.dumps({"data": [{"account_name": "Shop X", "id": "1", "handle": "ab", "brand": 5}]}), encoding="utf-8")
     assert workspace_values(tmp_path) == {"Shop X"}
+
+
+def test_workspace_values_numbers_count_booleans_do_not(tmp_path):
+    (tmp_path / "n.json").write_text('{"account_id": 1234567890, "page_id": true, "brand": false}', encoding="utf-8")
+    assert workspace_values(tmp_path) == {"1234567890"}
 
 
 def test_workspace_values_skip_pixi_and_big_files(tmp_path):

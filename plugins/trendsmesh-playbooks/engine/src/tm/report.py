@@ -31,10 +31,10 @@ _EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+")
 _KEY = re.compile(r"(?<![A-Za-z0-9])(?:r8_[A-Za-z0-9]{20,}|sk_[a-f0-9]{40,}|EAA[A-Za-z0-9]{20,}"
                   r"|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_\w{20,})")
 _ACT = re.compile(r"(?<![A-Za-z0-9])act_\d{5,}")
-_DIGITS = re.compile(r"(?<!\w)\d{13,17}(?!\w)")
-_PATH = re.compile(r"(?<![\w.-])(?:/(?:Users|home)/|(?i:c):\\Users\\)([^/\\\s\"']+)")
+_DIGITS = re.compile(r"(?<!\w)\d{13,}(?!\w)")
+_PATH = re.compile(r"(?<![\w.-])(?:/(?i:Users|home)/|(?i:c):(?:\\{1,2}|/)(?i:Users)(?:\\{1,2}|/))([^/\\\s\"']+)")
 _NUM = r"\d(?:[\d ,.]*\d)?"
-_CUR = r"(?:[$€£]|zł|(?<![A-Za-z])(?:USD|EUR|GBP|PLN)(?![A-Za-z]))"
+_CUR = r"(?:[$€£]|zł|(?<![A-Za-z])(?i:USD|EUR|GBP|PLN)(?![A-Za-z]))"
 _AMOUNT = re.compile(rf"(?:{_CUR} ?(?P<a>{_NUM})|(?P<b>{_NUM}) ?{_CUR})")
 
 # When two matches overlap, the more specific kind wins.
@@ -87,8 +87,9 @@ def findings(text: str, known: set[str]) -> list[Finding]:
 def _collect(node: object, into: set[str]) -> None:
     if isinstance(node, dict):
         for key, value in node.items():
-            if key in _KEYS and isinstance(value, str) and len(value) >= _MIN_VALUE:
-                into.add(value)
+            if key in _KEYS and isinstance(value, (str, int, float)) and not isinstance(value, bool):
+                if len(str(value)) >= _MIN_VALUE:
+                    into.add(str(value))
             _collect(value, into)
     elif isinstance(node, list):
         for item in node:
