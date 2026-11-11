@@ -75,6 +75,7 @@ def _load_commands() -> None:
     import tm.r2b  # noqa: F401
     import tm.r4  # noqa: F401
     import tm.recut_plan  # noqa: F401
+    import tm.report  # noqa: F401
     import tm.research  # noqa: F401
     import tm.flowcmd  # noqa: F401
     import tm.r1  # noqa: F401
