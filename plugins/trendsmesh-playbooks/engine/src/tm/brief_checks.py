@@ -741,6 +741,34 @@ def _brief_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
     return out + _valid_until(run, brief, cfg) + _currency(brief, cfg) + landing_quotes(run, brief)
 
 
+PRODUCT_SCENES = ("product_phone", "morning_then_product")   # they draw params.product (scenes.js)
+
+
+def warnings(brief: dict) -> list[Problem]:
+    """What `tm brief check` says without failing (follow-up to issue 12): a product scene with no `product`
+    param draws a plain placeholder (with `fixture: "book"`, the dry run's book) instead of the brief's product."""
+    concepts = brief.get("concepts") if isinstance(brief, dict) else None
+    meta = brief.get("meta") if isinstance(brief, dict) else None
+    product = ((meta or {}).get("product") or {}) if isinstance(meta, dict) else {}
+    name = product.get("name") if isinstance(product, dict) and _filled(product.get("name")) else None
+    out = []
+    for i, c in enumerate(concepts if isinstance(concepts, list) else []):
+        for k, beat in enumerate((c.get("beats") if isinstance(c, dict) else None) or []):
+            anim = beat.get("animatic") if isinstance(beat, dict) else None
+            if not isinstance(anim, dict) or anim.get("scene") not in PRODUCT_SCENES:
+                continue
+            params = anim.get("params") if isinstance(anim.get("params"), dict) else {}
+            if _filled(params.get("product")):
+                continue
+            drawn = "the dry run's book" if params.get("fixture") == "book" else "a plain placeholder"
+            out.append(Problem(f"concepts[{i}].beats[{k}].animatic.params.product",
+                               f"{c.get('id', f'Concept {i + 1}')}'s beat {k + 1} ({anim['scene']}) has no product "
+                               f"name, so its animatic shows {drawn} instead of the product.",
+                               "Give it params.product: the product's name" + (f" ({name})" if name else "")
+                               + ", as meta.product.name says it; and params.screen, what is on its screen."))
+    return out
+
+
 # --- stage production ----------------------------------------------------------------------------
 
 def _creator_words(cfg: dict, brief: dict, advertisers: list[str]) -> list[tuple[str, re.Pattern]]:

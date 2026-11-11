@@ -52,7 +52,8 @@ The product scenes draw the brief's own product: give them `product` (the name, 
 from the run folder (like `01_base/product.png`: PNG, JPG, WebP or GIF, up to 2 MiB), drawn into the
 storyboard itself; a path outside the run or a web address stops the animatic step. Without these
 params the screen is a plain placeholder. (`fixture: "book"` draws the dry run's book: a test
-fixture, never a product shot.)
+fixture, never a product shot.) `tm brief check` warns about a product scene with no `product`: the
+brief still holds, but fix it in a new version before the animatics are made.
 
 The library comes from the dry run (a product used at night). Pick the scene closest to
 what the beat shows; a beat no scene fits is drawn with the nearest one and its `label` says what

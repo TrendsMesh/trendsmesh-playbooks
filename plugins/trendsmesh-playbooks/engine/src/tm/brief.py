@@ -177,8 +177,13 @@ def _check_brief(args: argparse.Namespace, run: RunFolder) -> int:
     message = (f"{rel} holds at stage {args.stage}: {n} concept{'' if n == 1 else 's'} pass CB1-CB13"
                f"{'' if args.stage == 'concepts' else ' (the earlier stages included)'}. Near-duplicates checked "
                f"against {len(ads)} running ad texts in {reads} Meta read{'' if reads == 1 else 's'}.")
+    warned = brief_checks.warnings(data)            # it holds all the same: worth a fix, not a stop
+    if warned:
+        message += "\nWarnings (it holds; better fixed in a new version):\n" + "\n".join(
+            f"- {w.field}: {w.what} {w.todo}" for w in warned)
     cli.emit(args, {"status": "done", "file": rel, "stage": args.stage, "concepts": n, "ad_texts": len(ads),
-                    "ad_reads": reads, "message": message}, message)
+                    "ad_reads": reads, "message": message,
+                    "warnings": [{"field": w.field, "what": w.what, "todo": w.todo} for w in warned]}, message)
     return 0
 
 

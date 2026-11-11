@@ -29,6 +29,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
   now removes them itself at no cost and without asking for money: it paints them out where the ad's breakdown
   found them, word by word, steady from frame to frame so the patch doesn't flicker. When the paid way (ProPainter)
   would look better and no AI budget is approved yet, Claude shows you both and asks first.
+- **The brief check flags a product shot with no product.** A storyboard scene that shows the product on a phone
+  but doesn't name it draws a plain placeholder. The brief check now says so as a warning, without stopping the
+  brief, so Claude names the product before the animatics are made.
 - **Refresh an ad reads Meta's answers as they come.** Picking the ad to refresh now reads the Meta Ads MCP's own
   answer shape, so it no longer reports "no ad is fading" after reading nothing. When a Meta file holds no ad rows,
   no spend or no results it can read, it stops with a clear error instead of an empty ranking, and it says how many
