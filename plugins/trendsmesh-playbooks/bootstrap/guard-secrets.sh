@@ -1,92 +1,285 @@
 #!/bin/sh
 # PreToolUse hook (macOS, Linux, and Windows with Git Bash; guard-secrets.ps1 is the same check
-# for Windows without Git Bash). Denies a tool call that would read or search for the API keys
-# (Replicate, ElevenLabs). It checks what a call asks for, not what it returns. It fails open:
-# anything it cannot read is allowed, and it prints nothing when it allows a call.
+# for Windows without Git Bash, rule for rule). Denies a tool call that would reach the API keys
+# (Replicate, ElevenLabs): the files and folders they are kept in, the variables that hold them,
+# or a dump of the whole environment. It checks what a call reads, not loose words in its text:
+# a search phrase with "secret", a redirect, a pipe to head, a heredoc and the plugin's own tm
+# commands all pass. It fails open: anything it cannot read is allowed, and it prints nothing
+# when it allows a call. A denial names its rule and the part of the call that matched. It is a
+# check of what a call asks for, so a deliberately disguised command (a path built from pieces)
+# can still get past it; it catches the ordinary ways of reaching a key.
 #
-# Fields checked (tool_input): Read file_path; Grep path, pattern, glob; Glob path, pattern;
-# Bash and PowerShell command (never description); Edit, MultiEdit, Write, NotebookEdit
-# file_path / notebook_path, and their content for the token shape only.
+# Fields checked (tool_input): Read file_path; Grep path and glob (and its pattern for the key
+# rules below); Glob path, pattern; Bash and PowerShell command (never description); Edit,
+# MultiEdit, Write, NotebookEdit file_path / notebook_path; every field for the token shape.
+# Commands are checked as written, without quotes and backslashes too (secr""ets.env), and a
+# line break in a command counts as a ; (one command per line).
 #
-# Denied when a checked field holds:
-#   - the plugin data folder: $CLAUDE_PLUGIN_DATA expanded, the names CLAUDE_PLUGIN_DATA or
-#     TM_PLUGIN_DATA, or a path under .claude/plugins/data/ for this plugin (or a glob there);
-#   - secrets.env (in paths and commands);
-#   - the exact names REPLICATE_API_TOKEN or ELEVENLABS_API_KEY (also inside
-#     CLAUDE_PLUGIN_OPTION_...), except in Grep and in file contents outside a TrendsMesh
-#     workspace, so the plugin's own code can be searched and edited;
-#   - a Replicate token, r8_ followed by 30 or more letters and digits (any field);
-#   - in a TrendsMesh workspace only (the session's folder holds runs/01-refresh-ad/): a read or
-#     search naming replicate, elevenlabs, token, secret or api key. A Bash or PowerShell command
-#     is a read only when a reader (cat, grep, less, od, type, Get-Content...) stands in command
-#     position, never because an argument such as an ad's line holds the word.
+# Rules, in the order they are tried:
+#   token          a Replicate token, r8_ and 30 or more letters and digits (never repeated);
+#   data-cwd       the session's folder is inside the plugin data folder (only a cd passes);
+#   secrets-file   secrets.env, the file the keys are kept in (also as secrets.e*,
+#                  secrets*.env, or the Windows short name SECRET~1.ENV);
+#   key-variable   REPLICATE_API_TOKEN or ELEVENLABS_API_KEY (also inside CLAUDE_PLUGIN_OPTION_...,
+#                  and case-blind after $, env: or %), except in a Grep outside a workspace, so the
+#                  plugin's own code can be searched;
+#   env-dump       a dump of the whole environment: env, printenv, set, export -p, declare -x,
+#                  compgen -v, ${!X*}, ps e, /proc/*/environ, os.environ or process.env in an
+#                  interpreter, cmd's set PREFIX, Get-ChildItem Env:, GetEnvironmentVariables;
+#   data-folder    the plugin data folder ($CLAUDE_PLUGIN_DATA expanded, CLAUDE_PLUGIN_DATA,
+#                  TM_PLUGIN_DATA, plugins/data itself, plugins/data/<trendsmesh..., a glob or a
+#                  short name such as TRENDS~1>,
+#                  data/trendsmesh-playbooks...) anywhere but its envs/ and pixi/ folders, which
+#                  hold the installed tools (ffmpeg, pixi);
+#   data-climb     a way out of envs/ or pixi/ or into the data folder: .. or {..,} in the same
+#                  path, cd/pushd/Set-Location to it, dirname, Split-Path, .parent, realpath...;
+#                  when the path is put in a variable or a link (D=..., ln -s), any .. or cd;
+#   data-parent    a recursive read (grep -r, rg, find, tar, cp -r, -Recurse, the Grep tool) of a
+#                  folder above the data folder: /, home, ~/.claude, ~/.claude/plugins;
+#   plugins-glob   a wildcard folder inside .claude/ or a wildcard in .claude/plugins/, which can
+#                  reach the data folder;
+#   key-store      .secrets/ or api_keys.env, from any folder (a workspace's own key store);
+# and in a TrendsMesh workspace (the session's folder holds runs/0N-... or .secrets/, or is
+# inside runs/):
+#   key-store      also a .env file, a dot-name glob (.s*, .*) or api_keys*;
+#   key-search     a recursive search, for replicate, elevenlabs, token, secret, api, key, r8_,
+#                  sk_ or anything ('' or .*), of a folder that holds .secrets/ or a .env file (the
+#                  Grep path, or the session's folder or its parent for a command that names no
+#                  narrower path such as runs/). A Grep whose folder holds .secrets/ counts from
+#                  any session folder.
 
 HERE=$(cd "$(dirname "$0")" && pwd)
-fields=$(cat | awk -f "$HERE/json-fields.awk" 2>/dev/null) || exit 0
+# A \n in a JSON string (a line break in a command) becomes " ; " before the fields are read.
+fields=$(cat | awk '{ gsub(/\\\\/, "\003"); gsub(/\\n/, " ; "); print }' | awk -f "$HERE/json-fields.awk" 2>/dev/null) || exit 0
 [ -n "$fields" ] || exit 0
 
 get() {  # the values of the fields whose path matches the regex $1, one per line
-  printf '%s\n' "$fields" | awk -F '\t' -v re="$1" '$1 ~ re { sub(/^[^\t]*\t/, ""); print }'
+  printf '%s\n' "$fields" | RE=$1 awk -F '\t' '$1 ~ ENVIRON["RE"] { sub(/^[^\t]*\t/, ""); print }'
 }
 slashes() { tr '\\' '/'; }
+lower() { tr '[:upper:]' '[:lower:]'; }
+# The first match of the ERE $2 in $1 (line by line), case-blind (mi) or exact (mc).
+mi() { printf '%s\n' "$1" | grep -oiE -- "$2" 2>/dev/null | head -n 1; }
+mc() { printf '%s\n' "$1" | grep -oE -- "$2" 2>/dev/null | head -n 1; }
 
 tool=$(get '^tool_name$')
 cwd=$(get '^cwd$' | slashes)
+gpaths=
 case "$tool" in
   Read) targets=$(get '^tool_input\.file_path$') ;;
-  Grep) targets=$(get '^tool_input\.(path|pattern|glob)$') ;;
+  Grep) targets=$(get '^tool_input\.(path|pattern|glob)$'); gpaths=$(get '^tool_input\.(path|glob)$') ;;
   Glob) targets=$(get '^tool_input\.(path|pattern)$') ;;
   Bash|PowerShell) targets=$(get '^tool_input\.command$') ;;
   Edit|MultiEdit|Write|NotebookEdit) targets=$(get '^tool_input\.(file_path|notebook_path)$') ;;
   *) exit 0 ;;
 esac
+[ "$tool" = Grep ] || gpaths=$targets
 all=$(get '^tool_input\.')
-paths=$(printf '%s' "$targets" | slashes)
+q="'"
+# Three readings of the paths: as written (P), without quotes and backticks (Q: "$X"/a), and
+# without backslashes too (N: secr\ets.env). P and Q have / for \.
+P=$(printf '%s' "$gpaths" | slashes)
+Q=$(printf '%s' "$P" | tr -d "\"$q\`")
+N=$(printf '%s' "$gpaths" | tr -d "\\\\\"$q\`")
+TN=$(printf '%s' "$targets" | tr -d "\\\\\"$q\`")
+TP=$(printf '%s' "$targets" | slashes)
+data=$(printf '%s' "${CLAUDE_PLUGIN_DATA:-}" | slashes)
+dl=$(printf '%s' "$data" | lower); cl=$(printf '%s' "$cwd" | lower)
+above=  # is the session's folder above the data folder?
+[ -n "$dl" ] && [ -n "$cl" ] && case "$dl" in "$cl"/*) above=1 ;; esac
 
 workspace=
-case "$cwd" in
-  */runs/01-refresh-ad|*/runs/01-refresh-ad/*) workspace=1 ;;
-esac
-[ -n "$cwd" ] && [ -d "$cwd/runs/01-refresh-ad" ] && workspace=1
+case "$cl" in */runs/0[0-9]-*|*/runs) workspace=1 ;; esac
+if [ -n "$cwd" ]; then
+  [ -d "$cwd/.secrets" ] && workspace=1
+  for d in "$cwd"/runs/0[0-9]-*; do [ -d "$d" ] && workspace=1; done
+fi
 
-deny=
-has() { printf '%s' "$1" | grep -qE -- "$2"; }
-hasF() { printf '%s' "$1" | grep -qF -- "$2"; }
+rule= what= how= hit=
+deny() { rule=$1; what=$2; how=$3; }
 
-# The plugin data folder.
-data=$(printf '%s' "${CLAUDE_PLUGIN_DATA:-}" | slashes)
-if [ -n "$data" ] && hasF "$paths" "$data"; then deny=1; fi
-if has "$paths" 'CLAUDE_PLUGIN_DATA|TM_PLUGIN_DATA'; then deny=1; fi
-if has "$paths" '\.claude/plugins/data/([^/ "]*trendsmesh|[^/ "]*[*?[])'; then deny=1; fi
-# secrets.env, in paths and commands (a Grep pattern is not a path).
-case "$tool" in
-  Grep) gpaths=$(get '^tool_input\.(path|glob)$' | slashes) ;;
-  *) gpaths=$paths ;;
-esac
-if hasF "$gpaths" 'secrets.env'; then deny=1; fi
-# The key names, exactly.
-names='REPLICATE_API_TOKEN|ELEVENLABS_API_KEY'
-case "$tool" in
-  Grep) [ -n "$workspace" ] && has "$targets" "$names" && deny=1 ;;
-  *) has "$targets" "$names" && deny=1 ;;
-esac
-# A Replicate token, in any field.
-if has "$all" 'r8_[A-Za-z0-9]{30,}'; then deny=1; fi
-# In a TrendsMesh workspace: reads and searches that name a key.
-if [ -n "$workspace" ] && [ -z "$deny" ]; then
-  words='[Rr][Ee][Pp][Ll][Ii][Cc][Aa][Tt][Ee]|[Ee][Ll][Ee][Vv][Ee][Nn][Ll][Aa][Bb][Ss]|[Tt][Oo][Kk][Ee][Nn]|[Ss][Ee][Cc][Rr][Ee][Tt]|[Aa][Pp][Ii][ _-]?[Kk][Ee][Yy]'
-  case "$tool" in
-    Read|Grep|Glob) has "$targets" "$words" && deny=1 ;;
-    Bash|PowerShell)
-      # A reader counts only in command position: at the start of a line, after ; | & ( $( or a
-      # backtick, after sh -c "..." and its kin, or after sudo, xargs, exec, command, env, nohup
-      # or time. So "od", "more", "less" or "type" inside an argument (an ad's line) is no reader.
-      at='(^|[;&|(`]|-[A-Za-z]*c[[:space:]]+["'"'"']|(^|[^A-Za-z0-9_-])(sudo|xargs|exec|command|env|nohup|time)[[:space:]])[[:space:]]*'
-      verbs="${at}(grep|egrep|fgrep|rg|ag|ack|awk|sed|cat|head|tail|less|more|strings|xxd|od|findstr|Select-String|Get-Content|gc|type)([^A-Za-z0-9_-]|\$)"
-      has "$targets" "$verbs" && has "$targets" "$words" && deny=1 ;;
+# Command position: the start, after ; & | ( { or a backtick, after sh -c or cmd /c, or after a
+# word that runs the next one (sudo, xargs, exec, command, nohup, time, env, then, do, else, if,
+# while, until, nice, stdbuf, !, timeout N). "od" or "set" inside an argument is no command.
+AT="(^|[;&|({\`]|(^| )-[A-Za-z]*c +[\"$q]?|(^| )/[cCkK] +|(^|[^A-Za-z0-9_-])(sudo|xargs|exec|command|nohup|time|env|then|do|else|elif|if|while|until|nice|stdbuf|!|timeout +[^ ]+) ) *"
+END=" *([;|&)}>\"$q]|\$)"
+
+# token
+if [ -n "$(mc "$all" 'r8_[A-Za-z0-9]{30,}')" ]; then
+  deny token "this call holds a Replicate key (a token that starts with r8_)" \
+    "Never write, pass or print a key: tm reads the keys itself."
+fi
+# data-cwd
+if [ -z "$rule" ] && [ -n "$dl" ] && [ -n "$cl" ]; then
+  case "$cl/" in
+    "$dl"/*)
+      case "$tool" in
+        Bash|PowerShell)
+          if [ -z "$(mi "$targets" '^ *cd( +[^;&|]*)? *$')" ] || [ -n "$(mi "$Q" '(^|[/ ])\.\.([/ ]|$)')" ]; then
+            deny data-cwd "this session's folder is inside the plugin's data folder, where secrets.env (the keys) is kept" \
+              "First cd back to the project folder; a plain cd is allowed."
+          fi ;;
+        Grep|Glob)
+          deny data-cwd "this session's folder is inside the plugin's data folder, where secrets.env (the keys) is kept" \
+            "First cd back to the project folder; a plain cd is allowed." ;;
+      esac ;;
   esac
 fi
-[ -n "$deny" ] || exit 0
+# secrets-file
+if [ -z "$rule" ]; then
+  hit=$(mi "$P
+$N" 'secrets\.(env|e[*?[]|[*?[])|secrets(\*|\[|\?[^ ;|&)])|ecrets\.env|secret~[0-9]')
+  [ -n "$hit" ] && deny secrets-file "this call names secrets.env, the file that holds the keys" \
+    "Don't open, search or copy it: tm reads it itself."
+fi
+# key-variable
+if [ -z "$rule" ] && { [ "$tool" != Grep ] || [ -n "$workspace" ]; }; then
+  hit=$(mc "$TN" 'REPLICATE_API_TOKEN|ELEVENLABS_API_KEY')
+  [ -n "$hit" ] || hit=$(mi "$TN" '(env:|%|\$\{?)[A-Za-z_]*(replicate_api_token|elevenlabs_api_key)')
+  [ -n "$hit" ] && deny key-variable "this call names a key variable (Replicate or ElevenLabs)" \
+    "Don't print or test it: tm reads the keys itself."
+fi
+# env-dump
+if [ -z "$rule" ]; then
+  case "$tool" in Bash|PowerShell)
+    re="${AT}([^ ;|&(]*/)?(env|printenv)( +-[A-Za-z0-9-]*)*${END}|${AT}set${END}|${AT}(export|declare|typeset)( +-[pxg]+)*${END}"
+    re="$re|${AT}compgen +-[ve]|${AT}ps +[a-z]*e[a-z]*( |\$)|/[ck] +set +[a-z0-9_]+${END}"
+    re="$re|\\\$\\{![A-Za-z_][A-Za-z0-9_]*[*@]\\}|/proc/[^/ ]*/environ|GetEnvironmentVariables"
+    re="$re|(python[0-9.]*|node|perl|ruby|deno|bun|php) [^|&]*(os\\.environ(\$|[^.[a-z_]|\\.(items|copy|keys|values))|process\\.env(\$|[^.[a-z_])|%env)"
+    re="$re|(^|[^\$A-Za-z0-9_:])env:/?( *([|)]|\$)|\\*|[A-Za-z0-9_]*[*?[])"
+    hit=$(mi "$TP
+$TN" "$re")
+    [ -n "$hit" ] && deny env-dump "this command prints the whole environment, which can hold the keys" \
+      "Print only the variable you need, by name (for example echo \"\$TM_PLUGIN_ROOT\")." ;;
+  esac
+fi
+# data-folder, data-climb and data-parent. Each mention of the data folder is looked at in turn:
+# one followed by /envs or /pixi is the installed tools (and becomes @), any other is the folder
+# itself. Each word that is a folder above the data folder is noted too.
+if [ -z "$rule" ]; then
+  refs=$(printf '%s\n' "$Q" | LIT=$dl CWDL=$cl awk '
+    BEGIN {
+      lit = ENVIRON["LIT"]; cwdl = ENVIRON["CWDL"]; soh = sprintf("%c", 1)
+      re = "(\\$\\{?(env:)?|%)?(claude|tm)_plugin_data[}%]?|plugins/data/[^/ ;|&)]*(trendsmesh|[*?[~])[^/ ;|&)]*"
+      re = re "|plugins/data/?([ ;|&)]|$)|(^|[^a-z0-9_.-])data/trendsmesh-playbooks[^/ ;|&)]*|" soh
+    }
+    {
+      n = split(tolower($0), tk, /[ ;|&()]+/)
+      for (k = 1; k <= n; k++) {
+        t = tk[k]; if (t != "/") sub(/\/+$/, "", t)
+        if (t == "") continue
+        if (t == "/" || t ~ /^(~|\$home|\$\{home\}|%userprofile%|\$env:userprofile)$/ || t ~ /(^|\/)\.claude(\/plugins)?$/ \
+            || (lit != "" && t ~ /^(\/|[a-z]:\/)/ && index(lit, t "/") == 1) \
+            || (lit != "" && cwdl != "" && (t == "." || t == "*" || t == "./*") && index(lit, cwdl "/") == 1))
+          print "parent\t" t
+      }
+      s = $0; l = tolower(s)
+      if (lit != "") {  # the expanded folder, as a literal: marked with \001 in both copies
+        while ((i = index(l, lit)) > 0) {
+          l = substr(l, 1, i - 1) soh substr(l, i + length(lit))
+          s = substr(s, 1, i - 1) soh substr(s, i + length(lit))
+        }
+      }
+      while (match(l, re)) {
+        any = 1
+        ref = substr(s, RSTART, RLENGTH); rest = substr(l, RSTART + RLENGTH)
+        if (rest ~ /^\/(envs|pixi)([\/ ;|&)]|$)/) {
+          cut = RSTART + RLENGTH + 5
+          l = substr(l, 1, RSTART - 1) "@" substr(l, cut)
+          s = substr(s, 1, RSTART - 1) "@" substr(s, cut)
+          continue
+        }
+        if (index(ref, soh)) ref = "the data folder'"'"'s path"
+        sub(/^[^$%a-zA-Z0-9.]/, "", ref)
+        print "deny\t" ref; exit
+      }
+      print "s\t" l
+    }
+    END { if (any) print "any" }')
+  field() { printf '%s\n' "$refs" | awk -F '\t' -v k="$1" '$1 == k { sub(/^[^\t]*\t/, ""); print }'; }
+  bad=$(field deny | head -n 1)
+  if [ -n "$bad" ]; then
+    hit=$bad
+    deny data-folder "this call names the plugin's data folder, where secrets.env (the keys) is kept, outside its envs/ and pixi/ folders" \
+      "To run a tool the plugin installed, name it by its full path under envs/ or pixi/ (for example \"\$TM_PLUGIN_DATA/envs/.../bin/ffmpeg\"), or use tm tool ffmpeg."
+  elif printf '%s\n' "$refs" | grep -qx any; then
+    S=$(field s)
+    re='@[^ ;|&)]*[/{,]\.\.([/ ;|&),}]|$)|(cd|pushd|chdir|set-location|push-location|sl) +@|dirname|split-path|\.parent|-parent|pardir|realpath|readlink|\$\{[a-z_][a-z0-9_]*%'
+    if [ -n "$(mi "$S" '[a-z_][a-z0-9_:]* *= *@|(^|[^a-z0-9_-])(ln|mklink|new-item)( |$)|symboliclink|junction')" ]; then
+      re="$re|(^|[/ {,])\\.\\.([/ ;|&),}]|\$)|(^|[^a-z0-9_-])(cd|pushd|chdir|set-location|push-location|sl)( |\$)"
+    fi
+    hit=$(mi "$S" "$re")
+    [ -n "$hit" ] && deny data-climb "this call names the plugin's data folder and climbs out of its envs/ or pixi/ folder, or moves into it" \
+      "Run the tool by its full path, without cd, .. or a parent-folder lookup."
+  fi
+  if [ -z "$rule" ]; then
+    hit=$(field parent | head -n 1)
+    [ -z "$hit" ] && [ "$tool" = Grep ] && [ -n "$above" ] && [ -z "$(get '^tool_input\.path$')" ] && hit="the session's folder"
+    if [ -n "$hit" ]; then
+      case "$tool" in
+        Grep) ;;
+        Bash|PowerShell)
+          rec="${AT}(rg|ag|ack|find|tar|zip|rsync|7z)( |\$)|(grep|egrep|fgrep)( [^|;&]*)? -[a-z]*r|(grep|egrep|fgrep) [^|;&]*--recursive"
+          rec="$rec|(^|[^a-z0-9_-])cp( [^|;&]*)? -[a-z]*[ra]|-recurse|robocopy|xcopy|compress-archive|findstr [^|;&]*/s"
+          [ -n "$(mi "$TP" "$rec")" ] || hit= ;;
+        *) hit= ;;
+      esac
+      [ -n "$hit" ] && deny data-parent "this call reads all of a folder that holds the plugin's data folder (/, home, ~/.claude or ~/.claude/plugins), where secrets.env (the keys) is kept" \
+        "Search or copy a narrower folder, one outside ~/.claude/plugins/data."
+    fi
+  fi
+fi
+# plugins-glob
+if [ -z "$rule" ]; then
+  hit=$(mi "$Q" '\.claude/([^/ ]*[*?[][^/ ]*/|plugins/[^/ ]*[*?[])')
+  [ -n "$hit" ] && deny plugins-glob "this call uses a wildcard inside .claude, which can reach the plugin's data folder where the keys are kept" \
+    "Name the folder exactly, without * or ?."
+fi
+# key-store and key-search
+store_at() {  # does folder $1 hold .secrets/ or a .env file?
+  [ -e "$1/.secrets" ] || [ -e "$1/.env" ] && return 0
+  for f in "$1"/*.env; do [ -e "$f" ] && return 0; break; done
+  return 1
+}
+if [ -z "$rule" ] && [ "$tool" != Glob ]; then
+  hit=$(mi "$Q" '(^|[/ =(])\.secrets(/|[ ;|&)]|$)|api_keys\.env')
+  [ -n "$hit" ] || [ -z "$workspace" ] ||
+    hit=$(mi "$Q" '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|(^|[/ =(])\.[^/ .]*[*?]|api_keys')
+  [ -n "$hit" ] && deny key-store "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" \
+    "Don't open, search or copy it: tm reads the keys itself."
+fi
+if [ -z "$rule" ] && { [ -n "$workspace" ] || [ "$tool" = Grep ]; }; then
+  hit=
+  words="replicate|elevenlabs|token|secret|api|key|r8_|sk_|(^| )(''|\"\")( |\$)"
+  case "$tool" in
+    Grep)
+      root=$(get '^tool_input\.path$' | slashes)
+      case "$root" in "") root=$cwd ;; /*|[A-Za-z]:/*) ;; *) root="$cwd/$root" ;; esac
+      if [ -e "$root/.secrets" ] || { [ -n "$workspace" ] && store_at "$root"; }; then
+        pat=$(get '^tool_input\.pattern$')
+        hit=$(mi "$pat" "$words")
+        [ -n "$hit" ] || [ -z "$(mi "$pat" '^[.^$*+?()|= -]*$')" ] || hit=$pat
+      fi ;;
+    Bash|PowerShell)
+      if [ -n "$workspace" ] && [ -n "$cwd" ] && { store_at "$cwd" || store_at "$cwd/.."; }; then
+        rec="${AT}(rg|ag|ack|find)( |\$)|${AT}(grep|egrep|fgrep)( [^|;&]*)? -[a-z]*r|${AT}(grep|egrep|fgrep) [^|;&]*--recursive"
+        rec="$rec|findstr [^|;&]*/s|(get-childitem|gci|dir|ls) [^|;&]*-r[^|;&]*\\| *(select-string|sls)"
+        narrow='(rg|ag|ack|find|grep|egrep|fgrep|findstr|select-string|sls|get-childitem|gci|dir|ls)( [^|;&>]*)? [a-z0-9_][^ |;&)>]*/'
+        rootish='(^| )(\.|\./|\.\.|\.\./|\*|\.\*|\./\*|\*/)( |[;|&)]|$)'
+        if [ -n "$(mi "$TP" "$rec")" ] && { [ -z "$(mi "$Q" "$narrow")" ] || [ -n "$(mi "$Q" "$rootish")" ]; }; then
+          hit=$(mi "$TP" "$words")
+        fi
+      fi ;;
+  esac
+  [ -n "$hit" ] && deny key-search "this search covers a folder that holds the workspace's key store (.secrets/ or a .env file) and looks for a key word" \
+    "Search a narrower path such as runs/ (the Grep tool's path, or a path in the command), or one file."
+fi
+[ -n "$rule" ] || exit 0
 
-printf '%s\n' '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Blocked by the TrendsMesh playbooks plugin: this call would read or search for a Replicate or ElevenLabs key, or look inside the plugin'"'"'s data folder where they are kept. Keys are never shown, not even masked. To check a key, run tm doctor (it says whether each key is set); the user sees and changes it in /plugin, trendsmesh-playbooks, configure. If this call has nothing to do with keys, rephrase it so it does not name a key file, a key variable or that folder."}}'
+esc() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+hit=$(printf '%s' "$hit" | sed "s/^[ ;&|({\`\"$q=]*//; s/[ ;&|)}>\"$q]*\$//")
+said=
+[ -n "$hit" ] && [ "$rule" != token ] && said=" It matched: $hit."
+reason="Blocked by the TrendsMesh playbooks plugin's key guard (rule: $rule): $what.$said $how Keys are never shown, not even masked: tm doctor says whether each key is set, and the user changes them in /plugin, trendsmesh-playbooks, configure."
+printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s"}}\n' "$(esc "$reason")"
 exit 0

@@ -108,6 +108,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   date and step) or start a new one. Saying "carry on" or naming the run still continues it straight away.
 - **A run name already taken suggests a free one.** `tm run new` with a name used that day now names the existing
   run, its step and how to continue it, and offers a free name (for example `Ad-3-2`) for a new run.
+- **The key guard blocks only calls that reach a key.** Words such as "secret" or "key features" in a search
+  phrase, output redirects, pipes to `head`, heredocs for `tm record`, the plugin's own `tm tool …` commands and
+  reading the guard's own files are no longer blocked, and the ffmpeg and pixi the plugin installs can be run by
+  their full path. Reading `secrets.env`, the rest of the plugin's data folder, the key variables or a workspace's
+  `.secrets/` is still blocked, and so are now a dump of the whole environment (`env`, `printenv`,
+  `Get-ChildItem Env:`) and a recursive search or copy of a folder above the data folder (`~/.claude`). A block
+  names its rule and the part of the call that matched, and says how to go on.
 
 ## 0.10.0
 
