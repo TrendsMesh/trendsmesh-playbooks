@@ -11,6 +11,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   but their Remotion part was missing, interrupted or out of date, the check said ready and the render stopped at
   the end of the run. The check now asks what the render asks, so the install is offered at the start, with its
   size and time.
+- **Refresh an ad starts without knowing your ElevenLabs plan.** Not knowing whether your plan includes voice
+  cloning no longer stops the readiness check: it's a note that the plan is checked later, at the voice step,
+  and only if the ad needs a clone of its voice because the original voice isn't in your ElevenLabs history.
+  Claude then reads the plan from your key, and asks you only if ElevenLabs doesn't say.
 
 ## 0.10.0
 

@@ -99,11 +99,36 @@ def test_voice_adds_elevenlabs_checks(world):
     (world / "secrets.env").write_text("ELEVENLABS_API_KEY=k\n")
     r = doctor.check({"edited_video"}, True, ALL_OK)
     it = item(r, "elevenlabs_cloning_plan")
-    assert not it.ok and it.fixer == "user"  # unknown
+    assert not it.ok and it.fixer == "user" and it.unchecked and it.warn  # unknown: a warning (#5)
     r = doctor.check({"edited_video"}, True, ALL_OK, facts={"elevenlabs_plan": "cloning"})
     assert item(r, "elevenlabs_cloning_plan").ok
     r = doctor.check({"edited_video"}, True, ALL_OK, facts={"elevenlabs_plan": "no_cloning"})
-    assert not item(r, "elevenlabs_cloning_plan").ok
+    assert not item(r, "elevenlabs_cloning_plan").ok and not item(r, "elevenlabs_cloning_plan").warn
+    assert not r.ready
+
+
+def test_unknown_cloning_plan_does_not_block_the_start(world, capsys):
+    """#5: whether the plan includes cloning matters only if the new line needs a clone (V3, after V1c did not
+    find the original voice), so an unknown plan is a warning that says when it is checked, not a to-do that
+    sends the user to elevenlabs.io before the run starts."""
+    (world / "secrets.env").write_text("ELEVENLABS_API_KEY=k\nREPLICATE_API_TOKEN=t\n")
+    r = doctor.check({"creative_brief", "edited_video", "ai_video", "live_test"}, True, ALL_OK, caption_removal=True,
+                     facts={"elevenlabs_plan": "unknown"})
+    assert r.ready
+    card = doctor.card(r)
+    assert card.startswith("**Ready to go.** You can start now. One thing is checked later, only if the run needs it.")
+    assert "Not ready" not in card and "You need to do" not in card and "results better" not in card
+    go_on = card.split("**You can go on without these:**")[1]
+    assert "voice cloning" in go_on and "voice step" in go_on and "ElevenLabs history" in go_on
+    assert "elevenlabs.io" not in card and "(not checked yet)" not in card
+    code = cli.main(["doctor", "--outputs", "creative_brief,edited_video,ai_video,live_test", "--voice",
+                     "--caption-removal", "--mcp", "trendsmesh=ok,meta=ok", "--fact", "elevenlabs_plan=unknown",
+                     "--json"])
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0 and out["ready"] and "elevenlabs_cloning_plan" in out["warnings"]
+    code = cli.main(["doctor", "--outputs", "edited_video", "--voice", "--mcp", "trendsmesh=ok,meta=ok", "--fact",
+                     "elevenlabs_plan=no_cloning", "--json"])
+    assert code == 2 and not json.loads(capsys.readouterr().out)["ready"]   # known to be missing: still a stop
 
 
 def test_disk_sum_of_tiers_plus_two_gb(monkeypatch):
@@ -178,8 +203,9 @@ def test_card_shows_no_command_flags_and_says_who_acts(monkeypatch):
     assert "--" not in card and "<result>" not in card
     mine = card.split("**I still need to check these (nothing for you to do):**")[1].split("**You need")[0]
     assert "TrendsMesh" in mine and "Meta Ads" in mine
-    yours = card.split("**You need to do these yourself:**")[1]
-    assert "elevenlabs.io" in yours and "TrendsMesh call" not in yours
+    assert "TrendsMesh call" not in card.split("**I still need to check these")[0]
+    go_on = card.split("**You can go on without these:**")[1].split("**I")[0]
+    assert "voice cloning" in go_on   # the unknown plan is checked at the voice step, if a clone is needed (#5)
 
 
 @pytest.mark.parametrize("release,package", [
@@ -581,3 +607,17 @@ def test_catalogue_names_an_unknown_playbook_or_mcp_state(tmp_path, extra, says)
 
 def test_bundled_catalogue_passes_its_own_checks():
     assert doctor._read_catalogue(doctor.paths.bundled_data() / "requirements.yaml") == doctor._catalogue()
+
+
+def test_the_cloning_plan_is_checked_at_v3_not_at_the_start():
+    """#5: the playbook's words match the engine: the doctor step does not send the user to look the plan up, and
+    V3 reads it (free) before any clone material is made, stopping only when the plan has no cloning."""
+    plugin = doctor.paths.bundled_data().parent
+    text = lambda rel: (plugin / rel).read_text(encoding="utf-8").replace("\r", "")  # noqa: E731
+    command, skill = text("commands/doctor.md"), " ".join(text("skills/refresh-ad/SKILL.md").split())
+    assert "Don't ask, and don't send them to look it" in command
+    assert "**An unknown voice-cloning plan is a warning too.**" in skill and "flow.md#v3" in skill
+    flow = text("skills/refresh-ad/references/flow.md")
+    v3 = " ".join(flow[flow.index('<a id="v3"></a>'):flow.index('<a id="v4"></a>')].split())
+    assert v3.index("tm tool elevenlabs credits --run R --json") < v3.index("tm tool elevenlabs clone-ivc")
+    assert "`instant_cloning` true: go on. False: stop and wait" in v3

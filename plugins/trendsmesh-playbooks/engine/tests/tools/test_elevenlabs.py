@@ -488,16 +488,30 @@ def test_credits_reads_the_subscription_and_is_free(api, run, capsys):
         p, {"tier": "creator", "character_count": 1200, "character_limit": 100000,
             "next_character_count_reset_unix": 1796000000, "status": "active"})
     assert elevenlabs.credits() == {"tier": "creator", "character_count": 1200, "character_limit": 100000,
-                                    "next_character_count_reset_unix": 1796000000}
+                                    "next_character_count_reset_unix": 1796000000, "instant_cloning": None}
     capsys.readouterr()
     assert elevenlabs.main(["credits", "--run", str(run.path), "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out == {"status": "done", "tool": "elevenlabs credits", "tier": "creator", "character_count": 1200,
-                   "character_limit": 100000, "next_character_count_reset_unix": 1796000000, "left": 98800}
+                   "character_limit": 100000, "next_character_count_reset_unix": 1796000000,
+                   "instant_cloning": None, "left": 98800}
     assert elevenlabs.main(["credits", "--run", str(run.path)]) == 0
     assert capsys.readouterr().out.strip() == "ElevenLabs plan creator: 1200 of 100000 credits used, 98800 left."
     assert not any(c.method == "POST" for c in api.calls)
     assert KEY not in json.dumps(out)
+
+
+@pytest.mark.parametrize("given,read", [(True, True), (False, False), ("yes", None), (None, None)])
+def test_credits_reads_whether_the_plan_includes_instant_cloning(api, run, capsys, given, read):
+    """#5: refresh-ad's V3 reads the plan from the key instead of asking the user; only a real true or false
+    counts, anything else is unknown (None) and the user is asked."""
+    body = {"tier": "starter", "character_count": 0, "character_limit": 30000}
+    if given is not None:
+        body["can_use_instant_voice_cloning"] = given
+    api.routes[("GET", "/v1/user/subscription")] = lambda p: Api._json(p, body)
+    assert elevenlabs.credits()["instant_cloning"] is read
+    assert elevenlabs.main(["credits", "--run", str(run.path), "--json"]) == 0
+    capsys.readouterr()
 
 
 def test_credits_stops_when_the_key_is_refused_and_errors_on_a_strange_answer(api, run, capsys):

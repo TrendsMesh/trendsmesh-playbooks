@@ -55,6 +55,9 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    signed in, or the user says no). Say the card's warning once in plain words: without TrendsMesh,
    the new hook is your best guess from their own winners and the Ad Library, not proof from what
    is rising now. The sign-in question and the offer were already made (step 1): don't repeat them.
+   **An unknown voice-cloning plan is a warning too.** Pass `elevenlabs_plan=unknown` unless the user
+   already said, and don't send them to look it up: a clone is needed only if V1c doesn't find the original
+   voice, and V3 checks the plan then (`references/flow.md#v3`). A plan known to have no cloning still stops.
 4. When the video tier is needed (edited or AI video), say once: Remotion is free for
    individuals and companies of up to 3 people; a company of 4 or more needs its own Remotion
    licence to render on its machines.

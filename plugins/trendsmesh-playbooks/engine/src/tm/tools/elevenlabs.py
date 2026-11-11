@@ -57,8 +57,10 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
 - On the music endpoints a 401, 402 or 403 stops with one message (MUSIC_STOP): the plan or key
   cannot use Music. Nothing is spent.
 - credits reads `GET /v1/user/subscription` and prints {tier, character_count, character_limit,
-  next_character_count_reset_unix}; it is free and writes nothing. Organic video's D1 reads it
-  before the speech route is chosen (a key that works but has no credits left is "connected but
+  next_character_count_reset_unix, instant_cloning}; it is free and writes nothing. `instant_cloning`
+  is the plan's `can_use_instant_voice_cloning` (None when ElevenLabs does not say): refresh-ad's V3
+  reads it before preparing a clone, when the readiness check left the plan unknown. Organic video's
+  D1 reads it before the speech route is chosen (a key that works but has no credits left is "connected but
   unusable"); a key the account refuses (401, 403) stops like any other call.
 - 401, 402, 403 and quota answers stop (exit 2): the user must fix the key, credits or plan.
 - Paid calls (isolate, clone-ivc, tts, music-upload, music-compose) need `--cost` (the approved estimate in credits): the
@@ -424,7 +426,8 @@ def history_search(text: str) -> dict:
 
 def credits() -> dict:
     """The account's plan and character use -> {tier, character_count, character_limit,
-    next_character_count_reset_unix}. Free: it is one read of the subscription."""
+    next_character_count_reset_unix, instant_cloning}. Free: it is one read of the subscription.
+    `instant_cloning` is True or False only when ElevenLabs says so as a boolean, else None."""
     try:
         resp = _call("GET", "/v1/user/subscription")
     except requests.RequestException as exc:
@@ -434,7 +437,9 @@ def credits() -> dict:
         body = resp.json()
         return {"tier": body.get("tier"), "character_count": int(body["character_count"]),
                 "character_limit": int(body["character_limit"]),
-                "next_character_count_reset_unix": body.get("next_character_count_reset_unix")}
+                "next_character_count_reset_unix": body.get("next_character_count_reset_unix"),
+                "instant_cloning": cloning if isinstance(cloning := body.get("can_use_instant_voice_cloning"), bool)
+                else None}
     except (ValueError, KeyError, TypeError, AttributeError):
         raise c.ToolError("ElevenLabs answered the credits read in a form this plugin does not know, so the "
                           "credits are not checked. Nothing was spent.") from None

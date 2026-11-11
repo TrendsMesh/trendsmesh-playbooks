@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: doctor_unknown_cloning_plan_goes_on
+context:
+  scaffold_script: fixture.sh

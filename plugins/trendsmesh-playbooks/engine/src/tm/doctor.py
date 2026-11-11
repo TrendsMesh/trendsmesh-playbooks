@@ -15,6 +15,10 @@ picks them: trend research has no guess mode, so there TrendsMesh and its Agent 
 Meta Ads blocks refresh-ad and creative brief. A playbook other than refresh-ad needs the tiers of
 its env_tier rows whose `when` holds (creative brief's animatic tier only with animatics), and a
 `browser` row asks `tm.atlas` for the user's own Chrome or Edge.
+
+A reported fact marked `unknown_warns` (the ElevenLabs cloning plan) is a warning while unknown,
+not a stop: it matters only if the run needs a clone, and the voice step (refresh-ad's V3) checks
+it then. A value known to fall short still blocks.
 """
 
 from __future__ import annotations
@@ -247,18 +251,21 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
             ok, unchecked = value == "cloning", value not in ("cloning", "no_cloning")
         by_state = (e.get("fix_by_state") or {}).get(mcp.get(e.get("mcp", ""))) if "mcp" in e else None
         fix = "" if ok else (e["unchecked"] if unchecked else by_state or _fix_text(e, **vars))
-        warn = bool(e.get("warn"))
+        warn = bool(e.get("warn")) or (unchecked and kind == "plan" and bool(e.get("unknown_warns")))
         items.append(Item(id_, name, ok, "agent" if unchecked and "mcp" in e else fixer, fix, size if not ok else 0,
                           unchecked, warn, (e.get("warn_note") or evidence.NOTICE_SHORT) if warn else ""))
     return Readiness(items, all(i.ok or i.warn for i in items))
 
 
 def card(r: Readiness) -> str:
-    # A warning Claude has not checked yet stays on Claude's list: it is checked, not skipped.
-    warned = [i for i in r.items if not i.ok and i.warn and not i.unchecked]
+    # A warning Claude has not checked yet stays on Claude's list: it is checked, not skipped. One
+    # the user would check (the cloning plan) is checked later, when it matters: a warning.
+    warned = [i for i in r.items if not i.ok and i.warn and not (i.unchecked and i.fixer == "agent")]
     bad = [i for i in r.items if not i.ok and i not in warned]
     if r.ready and not any(i.warn and not i.ok for i in r.items):
         head = "**Ready to go.** Everything this run needs is in place."
+    elif r.ready and all(i.unchecked for i in warned):  # only checks made later, if the run needs them
+        head = "**Ready to go.** You can start now. One thing is checked later, only if the run needs it."
     elif r.ready:
         things = "One thing" if len(warned) < 2 else "A few things"
         head = f"**Ready to go.** You can start now. {things} would make the results better."
