@@ -11,6 +11,8 @@ import argparse
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -237,16 +239,23 @@ def _answer(status: int, raw: bytes, headers) -> dict:
     return _unavailable(str(status))
 
 
+def _not_clean(body: str, title: str) -> "dict | None":
+    """`not_clean` with the findings if the body or the title holds private data, else None."""
+    known = workspace_values(paths.workspace())
+    found = findings(body, known) + findings(title, known)
+    if not found:
+        return None
+    return {"outcome": "not_clean", "findings": [{"line": n, "kind": k, "value": v} for n, k, v in found]}
+
+
 def send(body_file: Path, kind: str, title: str, contact: "str | None", url: str,
          timeout: float = 15.0) -> dict:
     """File a report with TrendsMesh. Never raises for a network or server problem: that is
     `unavailable`, so the skill can fall back."""
     body = Path(body_file).read_text(encoding="utf-8-sig")
-    known = workspace_values(paths.workspace())
-    found = findings(body, known) + findings(title, known)
-    if found:
-        return {"outcome": "not_clean",
-                "findings": [{"line": n, "kind": k, "value": v} for n, k, v in found]}
+    unclean = _not_clean(body, title)
+    if unclean:
+        return unclean
     payload = {"kind": kind, "title": title, "body": body,
                "source": {"name": "trendsmesh-playbooks", "version": __version__}, "os": _os_name()}
     if contact:
@@ -283,4 +292,70 @@ def _send_run(args: argparse.Namespace) -> int:
 
 
 subcommand("send", _send_setup, _send_run)
+# --- github: a public issue under the user's own name ----------------------------------------
+
+REPO = "TrendsMesh/trendsmesh-playbooks"
+_LABELS = {"bug": "bug", "change": "enhancement"}
+
+
+def _last_line(text: str) -> str:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return lines[-1][:200] if lines else ""
+
+
+def github(body_file: Path, kind: str, title: str) -> dict:
+    """File the report as a public issue with the user's own `gh`. `no_gh` when gh is missing or
+    signed out, so the skill can fall back to the inbox. Never raises for a gh problem."""
+    body = Path(body_file).read_text(encoding="utf-8-sig")
+    unclean = _not_clean(body, title)
+    if unclean:
+        return unclean
+    gh = shutil.which("gh")
+    if not gh:
+        return {"outcome": "no_gh"}
+    env = dict(os.environ, GH_PROMPT_DISABLED="1")
+    try:
+        if subprocess.run([gh, "auth", "status"], capture_output=True, env=env, timeout=15).returncode != 0:
+            return {"outcome": "no_gh"}
+    except (OSError, subprocess.TimeoutExpired):
+        return {"outcome": "no_gh"}
+    base = [gh, "issue", "create", "-R", REPO, "--title", title, "--body-file", str(body_file)]
+    command = base + ["--label", _LABELS[kind]]
+    for attempt in (1, 2):
+        try:
+            done = subprocess.run(command, capture_output=True, text=True, errors="replace", env=env,
+                                  timeout=30)
+        except subprocess.TimeoutExpired:
+            return {"outcome": "failed", "reason": "gh issue create timed out"}
+        except OSError as exc:
+            return {"outcome": "failed", "reason": f"{type(exc).__name__}: {exc}"[:200]}
+        if done.returncode == 0:
+            for line in reversed(done.stdout.splitlines()):
+                if line.strip().startswith("https://"):
+                    return {"outcome": "filed", "url": line.strip()}
+            return {"outcome": "failed", "reason": "gh printed no issue URL"}
+        if attempt == 1 and "label" in (done.stderr + done.stdout).lower():
+            command = base
+            continue
+        return {"outcome": "failed", "reason": _last_line(done.stderr) or f"gh exited {done.returncode}"}
+    return {"outcome": "failed", "reason": "unreachable"}  # pragma: no cover
+
+
+def _github_setup(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("file")
+    parser.add_argument("--kind", required=True, choices=["bug", "change"])
+    parser.add_argument("--title", required=True)
+
+
+def _github_run(args: argparse.Namespace) -> int:
+    try:
+        result = github(Path(args.file), args.kind, args.title)
+    except (OSError, ValueError) as exc:
+        print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(result))
+    return 0 if result["outcome"] == "filed" else 1
+
+
+subcommand("github", _github_setup, _github_run)
 cli.register("report", _setup, _run)
