@@ -409,7 +409,7 @@ checks:
     kind: mcp
     mcp: artifacts
     fixer: user
-    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here each step is shown in chat and saved as a file."}
+    fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so each step is shown here in chat and saved as a file."}
     warn: true
     warn_note: "Without shared page links, each step is shown here in chat and decided here."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
