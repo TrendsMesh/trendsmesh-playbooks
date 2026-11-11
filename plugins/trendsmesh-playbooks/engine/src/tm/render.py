@@ -28,6 +28,11 @@ resolve (OrganicCaptions' segment, music and voice files the same way). Outputs 
 free version in `03_wip` (never overwritten), with a manifest row whose params are the props and
 whose source is the props file. Rendering is free: no budget.
 The ending card is a HookSwap card whose from/to lie in the last seconds; there is no extra composition.
+Fonts follow the market language (`video_fonts`, issue 3): every composition takes a `language` prop (BCP 47) and
+loads the Google Fonts subsets its script needs, or a Noto Sans fallback for the whole composition when its own font
+lacks them. When the props give no `language`, the run's market language is filled in (Remotion reads a filled-in
+copy of the props; the file stays as written), and the render stops before Remotion starts when a letter on screen
+is outside the chosen font's subsets.
 Every subprocess gets an argv list, never a shell string. Exit codes: 0 done, 2 stop, 1 error.
 """
 
@@ -43,7 +48,7 @@ import sys
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Literal
 
-from tm import cli, envtiers, paths
+from tm import cli, envtiers, paths, video_fonts
 from tm.runfolder import RunFolder
 from tm.tools import _common as c
 
@@ -69,6 +74,11 @@ def lock_hash() -> str:
     for name in ("package.json", "package-lock.json"):
         h.update((pj / name).read_bytes())
     return h.hexdigest()
+
+
+def fonts_dir() -> Path:
+    """The installed @remotion/google-fonts modules, whose character ranges the font check reads."""
+    return work_dir() / video_fonts.PACKAGE
 
 
 def setup_done() -> bool:
@@ -174,6 +184,9 @@ def _check_props(run: RunFolder, comp: str, props: Path) -> dict:
         raise c.ToolError(f"The props file {props} cannot be read as JSON: {exc}") from None
     if not isinstance(data, dict):
         raise c.ToolError(f"The props file {props} must hold one JSON object.")
+    if "language" in data and not video_fonts.language_tag(data["language"]):
+        raise c.ToolError(f"The props' language must be a language tag such as pl, uk or zh-Hant (or left out: "
+                          f"the run's market language is used), not {data['language']!r}.")
     if comp == "HookSwap":
         for card in data.get("cards") or []:
             style = card.get("style") if isinstance(card, dict) else None
@@ -216,6 +229,7 @@ def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra:
     if out.exists():
         raise c.ToolError(f"{out.name} already exists, and files are never overwritten.")
     _need_setup()
+    data, props_arg = _with_language(run, comp, data, props)
     out.parent.mkdir(parents=True, exist_ok=True)
     _sync_src()
     c.say(f"Rendering {comp} ({kind}) ...")
@@ -224,13 +238,15 @@ def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra:
     part = out.with_name(f".{out.stem}.part{out.suffix}")
     part.unlink(missing_ok=True)
     try:
-        _sh([_node_tool("npx"), "remotion", kind, "src/index.ts", comp, str(part.resolve()), f"--props={props}",
+        _sh([_node_tool("npx"), "remotion", kind, "src/index.ts", comp, str(part.resolve()), f"--props={props_arg}",
              f"--public-dir={run.path.resolve()}", "--log=warn", *extra], work_dir(), f"remotion {kind}")
         if not part.is_file():
             raise c.ToolError(f"Remotion finished but {out.name} was not written.")
         os.replace(part, out)
     finally:
         part.unlink(missing_ok=True)
+        if props_arg != props:
+            props_arg.unlink(missing_ok=True)
     if _organic(run):   # what an organic render is made under (PR D review M1): its F2 and the pages read it
         from tm import organic_qa   # it imports this module
 
@@ -239,6 +255,24 @@ def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra:
              params={"composition": comp, **params, "props": data}, model=f"remotion {kind}",
              request={"props_file": str(props), "composition": comp, **params})
     return out
+
+
+def _with_language(run: RunFolder, comp: str, data: dict, props: Path) -> tuple[dict, Path]:
+    """(the props with their `language`, the props file Remotion reads). The language is the props' own, else
+    the run's market language (`video_fonts.market_language`); the fonts are checked to cover the on-screen text
+    for it (a Stop otherwise). When the language is filled in, Remotion reads a copy of the props in the data
+    folder, removed after the render; the props file stays as written."""
+    if "language" in data:
+        language, source = video_fonts.language_tag(data["language"]), "the props"
+    else:
+        language, source = video_fonts.market_language(run)
+    video_fonts.check(comp, data, language, fonts_dir(), source)
+    if not language or data.get("language") == language:
+        return data, props
+    data = {**data, "language": language}
+    filled = work_dir() / f".props-{os.getpid()}-{props.stem}.json"
+    filled.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return data, filled
 
 
 def still(run: RunFolder, comp: Comp, props: Path, frame: int, out: Path) -> Path:

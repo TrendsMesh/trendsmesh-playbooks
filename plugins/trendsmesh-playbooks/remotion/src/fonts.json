@@ -1,0 +1,55 @@
+{
+  "_about": "Which Google Fonts subsets a composition loads for the market language, and the family it falls back to when its own font lacks them. Read by fonts.ts (the compositions) and engine/src/tm/video_fonts.py (the check before a render). A language (BCP 47, matched by its longest known prefix: zh-hant-tw, zh-hant, zh) maps to a script; unknown languages use latin. A script lists the subsets to load; a family that has all of them is used as it is, otherwise the whole composition uses the script's fallback. `families` lists the subsets and styles @remotion/google-fonts has for each family used (tested against the installed package).",
+  "compositions": {
+    "HookSwap": "BebasNeue",
+    "WordCaptions": {"nunito": "Nunito", "baloo": "Baloo2", "fredoka": "Fredoka", "montserrat": "Montserrat", "montserrat600": "Montserrat"},
+    "OrganicCaptions": "Montserrat",
+    "RankingList": "Montserrat",
+    "RankingSplit": "Poppins",
+    "QuizGrid": "Montserrat"
+  },
+  "families": {
+    "BebasNeue": {"subsets": ["latin", "latin-ext"], "italic": false},
+    "Nunito": {"subsets": ["cyrillic", "cyrillic-ext", "latin", "latin-ext", "vietnamese"], "italic": true},
+    "Baloo2": {"subsets": ["devanagari", "latin", "latin-ext", "vietnamese"], "italic": false},
+    "Fredoka": {"subsets": ["hebrew", "latin", "latin-ext"], "italic": false},
+    "Montserrat": {"subsets": ["cyrillic", "cyrillic-ext", "latin", "latin-ext", "vietnamese"], "italic": true},
+    "Poppins": {"subsets": ["devanagari", "latin", "latin-ext"], "italic": true},
+    "NotoSans": {"subsets": ["cyrillic", "cyrillic-ext", "devanagari", "greek", "greek-ext", "latin", "latin-ext", "vietnamese"], "italic": true},
+    "NotoSansArabic": {"subsets": ["arabic", "latin", "latin-ext", "math", "symbols"], "italic": false},
+    "NotoSansHebrew": {"subsets": ["cyrillic-ext", "greek-ext", "hebrew", "latin", "latin-ext"], "italic": false},
+    "NotoSansThai": {"subsets": ["latin", "latin-ext", "thai"], "italic": false},
+    "NotoSansJP": {"subsets": ["cyrillic", "japanese", "latin", "latin-ext", "vietnamese"], "italic": false},
+    "NotoSansKR": {"subsets": ["cyrillic", "korean", "latin", "latin-ext", "vietnamese"], "italic": false},
+    "NotoSansSC": {"subsets": ["chinese-simplified", "cyrillic", "latin", "latin-ext", "vietnamese"], "italic": false},
+    "NotoSansTC": {"subsets": ["chinese-traditional", "cyrillic", "latin", "latin-ext", "vietnamese"], "italic": false}
+  },
+  "scripts": {
+    "latin": {"subsets": ["latin", "latin-ext"], "fallback": "NotoSans"},
+    "vietnamese": {"subsets": ["latin", "latin-ext", "vietnamese"], "fallback": "NotoSans"},
+    "cyrillic": {"subsets": ["latin", "latin-ext", "cyrillic", "cyrillic-ext"], "fallback": "NotoSans"},
+    "greek": {"subsets": ["latin", "latin-ext", "greek"], "fallback": "NotoSans"},
+    "devanagari": {"subsets": ["latin", "latin-ext", "devanagari"], "fallback": "NotoSans"},
+    "arabic": {"subsets": ["latin", "latin-ext", "arabic"], "fallback": "NotoSansArabic"},
+    "hebrew": {"subsets": ["latin", "latin-ext", "hebrew"], "fallback": "NotoSansHebrew"},
+    "thai": {"subsets": ["latin", "latin-ext", "thai"], "fallback": "NotoSansThai"},
+    "japanese": {"subsets": ["latin", "latin-ext", "japanese"], "fallback": "NotoSansJP"},
+    "korean": {"subsets": ["latin", "latin-ext", "korean"], "fallback": "NotoSansKR"},
+    "chinese-simplified": {"subsets": ["latin", "latin-ext", "chinese-simplified"], "fallback": "NotoSansSC"},
+    "chinese-traditional": {"subsets": ["latin", "latin-ext", "chinese-traditional"], "fallback": "NotoSansTC"}
+  },
+  "languages": {
+    "vi": "vietnamese",
+    "ru": "cyrillic", "uk": "cyrillic", "be": "cyrillic", "bg": "cyrillic", "sr": "cyrillic", "sr-latn": "latin",
+    "mk": "cyrillic", "kk": "cyrillic", "ky": "cyrillic", "mn": "cyrillic", "tg": "cyrillic", "tt": "cyrillic",
+    "el": "greek",
+    "hi": "devanagari", "mr": "devanagari", "ne": "devanagari",
+    "ar": "arabic", "fa": "arabic", "ur": "arabic", "ps": "arabic",
+    "he": "hebrew", "yi": "hebrew",
+    "th": "thai",
+    "ja": "japanese",
+    "ko": "korean",
+    "zh": "chinese-simplified", "zh-hans": "chinese-simplified",
+    "zh-hant": "chinese-traditional", "zh-tw": "chinese-traditional", "zh-hk": "chinese-traditional", "zh-mo": "chinese-traditional"
+  }
+}

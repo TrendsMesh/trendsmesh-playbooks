@@ -1,8 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Audio, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { loadFont } from "@remotion/google-fonts/Montserrat";
-
-const { fontFamily } = loadFont("normal", { weights: ["700", "800"], subsets: ["latin"] });
+import { compFont, loadFor } from "./fonts";
 
 // PB3 organic edit: source segments cut back to back (always muted: the trending sound is attached
 // in the app), plus native-style text inside the default safe zone.
@@ -35,6 +33,8 @@ export type OrganicCaptionsProps = {
   music?: Music;
   // extra audio tracks (e.g. an ElevenLabs voiceover), placed at `from` seconds
   audioTracks?: { src: string; from: number; volume: number }[];
+  // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
+  language?: string;
 };
 
 export const organicCaptionsDefaults: OrganicCaptionsProps = {
@@ -48,7 +48,7 @@ export const organicCaptionsDefaults: OrganicCaptionsProps = {
 
 export const totalSeconds = (segments: Segment[]) => segments.reduce((s, x) => s + (x.end - x.start), 0);
 
-const CaptionView: React.FC<{ c: Caption; k: number }> = ({ c, k }) => {
+const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string }> = ({ c, k, fontFamily }) => {
   const frame = useCurrentFrame();
   const { width, height } = useVideoConfig();
   const pop = interpolate(frame, [0, 5], [0.9, 1], { extrapolateRight: "clamp", easing: Easing.out(Easing.back(2)) });
@@ -90,8 +90,9 @@ const CaptionView: React.FC<{ c: Caption; k: number }> = ({ c, k }) => {
   );
 };
 
-export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, captions, showSafeZone, keepAudio, music, audioTracks }) => {
+export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, captions, showSafeZone, keepAudio, music, audioTracks, language }) => {
   const { fps, width, height, durationInFrames } = useVideoConfig();
+  const fontFamily = loadFor(compFont("OrganicCaptions"), language, ["700", "800"]);
   const k = width / 1080;
   let cursor = 0;
   return (
@@ -123,7 +124,7 @@ export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, capt
       ) : null}
       {captions.map((c, i) => (
         <Sequence key={`c${i}`} from={Math.round(c.from * fps)} durationInFrames={Math.max(1, Math.round((c.to - c.from) * fps))} layout="none">
-          <CaptionView c={c} k={k} />
+          <CaptionView c={c} k={k} fontFamily={fontFamily} />
         </Sequence>
       ))}
       {showSafeZone ? (

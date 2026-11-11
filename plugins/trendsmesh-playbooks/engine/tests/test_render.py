@@ -100,6 +100,74 @@ def test_ending_card_renders_in_last_second(real, tmp_path):
     assert "end.png" in (run.path / "manifest.md").read_text(encoding="utf-8")
 
 
+CW, CH = 540, 960   # caption stills: half of 1080x1920, so a glyph is large enough to compare
+
+
+def _caption_still(run: RunFolder, name: str, text: str, language: str, comp: str = "OrganicCaptions") -> bytes:
+    """One frame of a single hook caption on black, as gray pixels."""
+    props = run.path / "03_wip" / f"{name}.props.json"
+    props.write_text(json.dumps({"width": CW, "height": CH, "fps": 24, "segments": [], "language": language,
+                                 "captions": [{"from": 0, "to": 1, "text": text, "place": "middle", "fontSize": 200}]},
+                                ensure_ascii=False), encoding="utf-8")
+    return gray(render.still(run, comp, props, 0, run.path / "03_wip" / f"{name}.png"))
+
+
+def _glyph_box(px: bytes) -> tuple[int, int, int, int]:
+    """(left, top, right, bottom) of the dark text inside the white hook box."""
+    white = [(i % CW, i // CW) for i, v in enumerate(px) if v > 200]
+    x0, x1 = min(x for x, _ in white) + 8, max(x for x, _ in white) - 8
+    y0, y1 = min(y for _, y in white) + 4, max(y for _, y in white) - 4
+    ink = [(x, y) for y in range(y0, y1) for x in range(x0, x1) if px[y * CW + x] < 100]
+    return min(x for x, _ in ink), min(y for _, y in ink), max(x for x, _ in ink), max(y for _, y in ink)
+
+
+def _glyph_diff(a: bytes, b: bytes, box: tuple[int, int, int, int]) -> float:
+    """The share of pixels inside `box` that differ clearly between two renders."""
+    x0, y0, x1, y1 = box
+    pairs = [(a[y * CW + x], b[y * CW + x]) for y in range(y0, y1 + 1) for x in range(x0, x1 + 1)]
+    return sum(abs(x - y) > 60 for x, y in pairs) / len(pairs)
+
+
+@pytest.mark.video
+def test_polish_letters_come_from_the_caption_font(real, tmp_path):
+    """Issue 3: a letter with a diacritic is drawn in the composition's own font, not a fallback: below its dot,
+    'ż' is the very 'z' of Montserrat."""
+    run = RunFolder.create(tmp_path / "Zażółć", "napisy", date(2026, 11, 5))
+    z = _caption_still(run, "z", "z", "pl")
+    zdot = _caption_still(run, "zdot", "ż", "pl")
+    assert _glyph_diff(z, zdot, _glyph_box(z)) < 0.02
+    _caption_still(run, "pangram", "Zażółć gęślą jaźń", "pl")
+
+
+@pytest.mark.video
+def test_cyrillic_letters_come_from_the_caption_font(real, tmp_path):
+    """Issue 3: with a Cyrillic market language the Cyrillic subset is loaded: Montserrat's Cyrillic 'о' is its
+    Latin 'o'."""
+    run = RunFolder.create(tmp_path / "Привіт", "napisy", date(2026, 11, 5))
+    latin = _caption_still(run, "o_latin", "o", "uk")
+    cyr = _caption_still(run, "o_cyr", "о", "uk")
+    assert _glyph_diff(latin, cyr, _glyph_box(latin)) < 0.02
+    _caption_still(run, "pryvit", "Привіт, ґанок! Їжак", "uk")
+
+
+@pytest.mark.video
+def test_cyrillic_in_a_polish_run_stops_before_the_render(real, tmp_path):
+    run = RunFolder.create(tmp_path / "run", "napisy", date(2026, 11, 5))
+    with pytest.raises(common.ToolStop):
+        _caption_still(run, "mixed", "Привіт", "pl")
+    assert not list((run.path / "03_wip").glob("*.png"))
+
+
+@pytest.mark.video
+def test_font_table_matches_the_installed_package(real):
+    from tm import video_fonts
+
+    for family, spec in video_fonts.table()["families"].items():
+        info = video_fonts.font_info(render.fonts_dir(), family)
+        assert sorted(info.subsets) == sorted(spec["subsets"]), family
+        assert info.italic == spec["italic"], family
+
+
 # Light tests: no Node, no browser ---------------------------------------------------------
 
 @pytest.fixture

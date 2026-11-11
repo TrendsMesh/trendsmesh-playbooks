@@ -1,8 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { loadFont } from "@remotion/google-fonts/BebasNeue";
-
-const { fontFamily } = loadFont("normal", { weights: ["400"], subsets: ["latin", "latin-ext"] });
+import { compFont, loadFor } from "./fonts";
 
 // A text card shown from `from` to `to` (seconds). `lines` are typed one after another;
 // each line replaces the previous one at its `at` time. `top` is the card's top edge in px.
@@ -44,6 +42,8 @@ export type HookSwapProps = {
   cards: Card[];
   inserts: Insert[];
   typeCharsPerSec?: number;
+  // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
+  language?: string;
 };
 
 export const hookSwapDefaults: HookSwapProps = {
@@ -57,7 +57,7 @@ export const hookSwapDefaults: HookSwapProps = {
 
 const ORANGE = "#E8892B";
 
-const TextCard: React.FC<{ card: Card; cps: number }> = ({ card, cps }) => {
+const TextCard: React.FC<{ card: Card; cps: number; fontFamily: string }> = ({ card, cps, fontFamily }) => {
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const t = frame / fps + card.from;
@@ -133,8 +133,9 @@ const InsertClip: React.FC<{ insert: Insert }> = ({ insert }) => {
   );
 };
 
-export const HookSwap: React.FC<HookSwapProps> = ({ base, cards, inserts, typeCharsPerSec }) => {
+export const HookSwap: React.FC<HookSwapProps> = ({ base, cards, inserts, typeCharsPerSec, language }) => {
   const { fps } = useVideoConfig();
+  const fontFamily = loadFor(compFont("HookSwap"), language, ["400"]);
   const cps = typeCharsPerSec ?? 40;
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
@@ -146,7 +147,7 @@ export const HookSwap: React.FC<HookSwapProps> = ({ base, cards, inserts, typeCh
       ))}
       {cards.map((c, i) => (
         <Sequence key={`c${i}`} from={Math.round(c.from * fps)} durationInFrames={Math.round((c.to - c.from) * fps)} layout="none">
-          <TextCard card={c} cps={cps} />
+          <TextCard card={c} cps={cps} fontFamily={fontFamily} />
         </Sequence>
       ))}
     </AbsoluteFill>

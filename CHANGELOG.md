@@ -4,6 +4,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Video captions keep their font in every language.** Letters with diacritics (ą, ł, ő, ş, …) and Cyrillic letters
+  no longer come out in a thinner fallback font in Organic AI video's captions, rankings and quizzes. Every video
+  now loads the letters of the market language, and when its font has no letters for that script (Greek, Arabic,
+  Hebrew, Thai, Japanese, Chinese, Korean, or Cyrillic in Refresh an ad's cards and the Poppins ranking) the whole
+  video switches to a matching Noto Sans font. Before a render, `tm render` checks that the font has every letter
+  on screen, and if one is missing it stops and names the letter, instead of rendering it in another font.
 - **Organic AI video shows up again.** A colon in its description kept Claude Code from loading the playbook, so
   Claude didn't know it was there. It loads now, and a test checks every playbook and command file the way Claude
   Code reads them, so one can't go missing like that again.

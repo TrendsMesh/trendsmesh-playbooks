@@ -1,11 +1,8 @@
 import React from "react";
 import { AbsoluteFill, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { loadFont } from "@remotion/google-fonts/Poppins";
 import { SAFE_1080 } from "./OrganicCaptions";
 import { RankItem, rankingSeconds } from "./RankingList";
-
-const { fontFamily } = loadFont("normal", { weights: ["700", "800"], subsets: ["latin"] });
-const italic = loadFont("italic", { weights: ["800"], subsets: ["latin"] });
+import { compFont, loadFor } from "./fonts";
 
 // PB3 ranking, "split" look copied from three "Ranking _" videos of the TrendsMesh evidence (2026-11-05):
 // - top panel: the same clip, zoomed and blurred, carrying the title and the list;
@@ -32,6 +29,8 @@ export type RankingSplitProps = {
   splitY?: number; // where the clip panel starts, px at 1080x1920
   rowH?: number;
   showSafeZone?: boolean;
+  // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
+  language?: string;
 };
 
 export const rankingSplitDefaults: RankingSplitProps = { width: 1080, height: 1920, fps: 24, title: [[{ text: "Ranking", color: "yellow" }]], items: [] };
@@ -39,7 +38,9 @@ export const rankingSplitSeconds = (items: SplitItem[]) => rankingSeconds(items)
 
 const outline = (k: number, w: number) => ({ WebkitTextStroke: `${w * k}px #000`, paintOrder: "stroke fill" as const });
 
-export const RankingSplit: React.FC<RankingSplitProps> = ({ title, titleSize = 62, teaser, items, slots = 5, splitY = 880, rowH = 88, showSafeZone }) => {
+export const RankingSplit: React.FC<RankingSplitProps> = ({ title, titleSize = 62, teaser, items, slots = 5, splitY = 880, rowH = 88, showSafeZone, language }) => {
+  const fontFamily = loadFor(compFont("RankingSplit"), language, ["700", "800"]);
+  const italicFamily = loadFor(compFont("RankingSplit"), language, ["800"], "italic");
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const k = width / 1080;
@@ -100,7 +101,7 @@ export const RankingSplit: React.FC<RankingSplitProps> = ({ title, titleSize = 6
         const it = idx >= 0 ? items[idx] : undefined;
         return (
           <div key={rank} style={{ position: "absolute", top: listTop + row * rowH * k, left: listLeft, height: rowH * k, display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-            <span style={{ fontFamily: italic.fontFamily, fontStyle: "italic", fontWeight: 800, fontSize: 60 * k, width: 92 * k, color: MEDAL[rank] ?? "#fff", ...outline(k, 8) }}>{rank}.</span>
+            <span style={{ fontFamily: italicFamily, fontStyle: "italic", fontWeight: 800, fontSize: 60 * k, width: 92 * k, color: MEDAL[rank] ?? "#fff", ...outline(k, 8) }}>{rank}.</span>
             {revealed && it ? (
               <span style={{ display: "inline-block", transform: `scale(${pop})`, transformOrigin: "left center", fontFamily, fontWeight: 800, fontSize: 44 * k, color: "#fff", ...outline(k, 7) }}>
                 {it.label}

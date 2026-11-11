@@ -1,9 +1,9 @@
 import React from "react";
 import { AbsoluteFill, Audio, Easing, Img, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { loadFont } from "@remotion/google-fonts/Montserrat";
 import { SAFE_1080 } from "./OrganicCaptions";
+import { compFont, loadFor } from "./fonts";
 
-const { fontFamily } = loadFont("normal", { weights: ["700", "800", "900"], subsets: ["latin"] });
+const quizFont = (language?: string) => loadFor(compFont("QuizGrid"), language, ["700", "800", "900"]);
 
 // PB3 P6 "Guess the _" quiz (format copied from the evidence: bold white title with a dark outline at the top,
 // labelled pictures, countdown, reveal). Everything stays inside the default safe zone (SAFE_1080).
@@ -22,6 +22,8 @@ export type QuizGridProps = {
   durationSec: number;
   music?: { src: string; volume: number };
   background: string;
+  // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
+  language?: string;
 };
 
 export const quizGridDefaults: QuizGridProps = {
@@ -42,6 +44,7 @@ export const quizGridDefaults: QuizGridProps = {
 const outline = (k: number, w = 7) => ({ WebkitTextStroke: `${w * k}px #111`, paintOrder: "stroke fill" as const });
 
 export const QuizGrid: React.FC<QuizGridProps> = (p) => {
+  const fontFamily = quizFont(p.language);
   const frame = useCurrentFrame();
   const { fps, width, height, durationInFrames } = useVideoConfig();
   const k = width / 1080;
@@ -232,7 +235,7 @@ export const QuizGrid: React.FC<QuizGridProps> = (p) => {
           const s = Math.round((p.countdownSec + i) * fps);
           return (
             <Sequence key={n} from={s} durationInFrames={fps} layout="none">
-              <Countdown n={n} k={k} cx={width / 2} cy={gridTop + card + gap / 2 + labelH / 2} />
+              <Countdown fontFamily={fontFamily} n={n} k={k} cx={width / 2} cy={gridTop + card + gap / 2 + labelH / 2} />
             </Sequence>
           );
         })}
@@ -252,7 +255,7 @@ export const QuizGrid: React.FC<QuizGridProps> = (p) => {
   );
 };
 
-const Countdown: React.FC<{ n: number; k: number; cx: number; cy: number }> = ({ n, k, cx, cy }) => {
+const Countdown: React.FC<{ fontFamily: string; n: number; k: number; cx: number; cy: number }> = ({ fontFamily, n, k, cx, cy }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const s = spring({ frame, fps, config: { damping: 9, stiffness: 200 } });
@@ -300,6 +303,7 @@ const Countdown: React.FC<{ n: number; k: number; cx: number; cy: number }> = ({
 };
 
 const RevealText: React.FC<{ p: QuizGridProps; k: number; left: number; width: number; top: number; bottom: number }> = ({ p, k, left, width, top, bottom }) => {
+  const fontFamily = quizFont(p.language);
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const a = spring({ frame, fps, config: { damping: 12, stiffness: 140 } });

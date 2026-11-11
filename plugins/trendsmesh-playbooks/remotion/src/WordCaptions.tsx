@@ -1,19 +1,18 @@
 import React from "react";
 import { AbsoluteFill, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { loadFont as loadNunito } from "@remotion/google-fonts/Nunito";
-import { loadFont as loadBaloo } from "@remotion/google-fonts/Baloo2";
-import { loadFont as loadFredoka } from "@remotion/google-fonts/Fredoka";
-import { loadFont as loadMontserrat } from "@remotion/google-fonts/Montserrat";
+import { compFont, loadFor } from "./fonts";
 
-// Fonts tried when matching a burned-in caption style; `font` in props picks one.
-const FONTS: Record<string, string> = {
-  nunito: loadNunito("normal", { weights: ["900"], subsets: ["latin", "latin-ext"] }).fontFamily,
-  baloo: loadBaloo("normal", { weights: ["800"], subsets: ["latin", "latin-ext"] }).fontFamily,
-  fredoka: loadFredoka("normal", { weights: ["700"], subsets: ["latin", "latin-ext"] }).fontFamily,
-  montserrat: loadMontserrat("normal", { weights: ["900"], subsets: ["latin", "latin-ext"] }).fontFamily,
+// Fonts tried when matching a burned-in caption style; `font` in props picks one (its family is in fonts.json),
+// loaded in the subsets of the market language (`language`).
+const FONTS = {
+  nunito: ["900"],
+  baloo: ["800"],
+  fredoka: ["700"],
+  montserrat: ["900"],
   // ad_2 (UGC) captions: Montserrat SemiBold, lowercase
-  montserrat600: loadMontserrat("normal", { weights: ["600"], subsets: ["latin", "latin-ext"] }).fontFamily,
+  montserrat600: ["600"],
 };
+const fontOf = (key: keyof typeof FONTS, language?: string) => loadFor(compFont("WordCaptions", key), language, FONTS[key]);
 
 // One word on screen at a time (karaoke-style captions), shown from `from` to `to` seconds.
 export type Word = { text: string; from: number; to: number };
@@ -45,6 +44,8 @@ export type WordCaptionsProps = {
   style: CaptionStyle;
   // extra rows drawn for style matching (stills only)
   probe?: { text: string; dy: number; font?: keyof typeof FONTS; fontSize?: number; strokeWidth?: number }[];
+  // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
+  language?: string;
 };
 
 export const wordCaptionsDefaults: WordCaptionsProps = {
@@ -56,8 +57,8 @@ export const wordCaptionsDefaults: WordCaptionsProps = {
   style: { font: "nunito", fontSize: 64, fontWeight: 900, color: "#FFFFFF", stroke: "#15151A", strokeWidth: 7, centerX: 540, baselineY: 1499 },
 };
 
-const CaptionWord: React.FC<{ text: string; style: CaptionStyle; dy?: number; font?: keyof typeof FONTS }> = ({ text, style, dy = 0, font }) => {
-  const family = FONTS[font ?? style.font];
+const CaptionWord: React.FC<{ text: string; style: CaptionStyle; dy?: number; font?: keyof typeof FONTS; language?: string }> = ({ text, style, dy = 0, font, language }) => {
+  const family = fontOf(font ?? style.font, language);
   // Line box of 1.2 em; cap baseline sits about 0.2 em above the box bottom for these fonts,
   // fine-tuned per font with `baselineY`.
   const box = style.fontSize * 1.2;
@@ -86,7 +87,7 @@ const CaptionWord: React.FC<{ text: string; style: CaptionStyle; dy?: number; fo
   );
 };
 
-export const WordCaptions: React.FC<WordCaptionsProps> = ({ base, baseMuted, words, style, probe }) => {
+export const WordCaptions: React.FC<WordCaptionsProps> = ({ base, baseMuted, words, style, probe, language }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
@@ -94,9 +95,9 @@ export const WordCaptions: React.FC<WordCaptionsProps> = ({ base, baseMuted, wor
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
       <OffthreadVideo src={staticFile(base)} muted={baseMuted ?? true} />
-      {current ? <CaptionWord text={current.text} style={style} /> : null}
+      {current ? <CaptionWord text={current.text} style={style} language={language} /> : null}
       {(probe ?? []).map((p, i) => (
-        <CaptionWord key={i} text={p.text} style={{ ...style, fontSize: p.fontSize ?? style.fontSize, strokeWidth: p.strokeWidth ?? style.strokeWidth }} dy={p.dy} font={p.font} />
+        <CaptionWord key={i} text={p.text} style={{ ...style, fontSize: p.fontSize ?? style.fontSize, strokeWidth: p.strokeWidth ?? style.strokeWidth }} dy={p.dy} font={p.font} language={language} />
       ))}
     </AbsoluteFill>
   );

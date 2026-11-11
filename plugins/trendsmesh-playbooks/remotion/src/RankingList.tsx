@@ -1,9 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { loadFont } from "@remotion/google-fonts/Montserrat";
 import { SAFE_1080 } from "./OrganicCaptions";
-
-const { fontFamily } = loadFont("normal", { weights: ["700", "800", "900"], subsets: ["latin"] });
+import { compFont, loadFor } from "./fonts";
 
 // PB3 ranking format (countdown 5 -> 1), copied from TrendsMesh evidence ("ranking the _",
 // Family Guy clip rankings, Voice Kids top 5): title block on top with coloured key words,
@@ -22,6 +20,8 @@ export type RankingListProps = {
   slots?: number;
   accent?: string;
   showSafeZone?: boolean;
+  // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
+  language?: string;
 };
 
 export const rankingListDefaults: RankingListProps = {
@@ -38,7 +38,8 @@ export const rankingSeconds = (items: RankItem[]) => items.reduce((s, x) => s + 
 
 const stroke = (k: number, w = 7) => ({ WebkitTextStroke: `${w * k}px #111`, paintOrder: "stroke fill" as const });
 
-export const RankingList: React.FC<RankingListProps> = ({ title, teaser, items, slots = 5, accent = "#FF8A1F", showSafeZone }) => {
+export const RankingList: React.FC<RankingListProps> = ({ title, teaser, items, slots = 5, accent = "#FF8A1F", showSafeZone, language }) => {
+  const fontFamily = loadFor(compFont("RankingList"), language, ["700", "800", "900"]);
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
   const k = width / 1080;
