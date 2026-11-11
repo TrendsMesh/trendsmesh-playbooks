@@ -1,0 +1,32 @@
+name: Pull request base
+
+# Pull requests target dev (RELEASING.md). Into main, only dev itself or a hotfix/ branch of this repository.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  base:
+    name: base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Into main only from dev or hotfix/
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REPO" != "$REPO" ]; then
+            echo "Open the pull request into dev: main takes pull requests only from this repository's dev or hotfix/ branches" >&2
+            exit 1
+          fi
+          case "$HEAD_REF" in
+            dev | hotfix/*) ;;
+            *)
+              echo "Open the pull request into dev, not main: main takes pull requests only from dev or a hotfix/ branch (RELEASING.md)" >&2
+              exit 1
+              ;;
+          esac
