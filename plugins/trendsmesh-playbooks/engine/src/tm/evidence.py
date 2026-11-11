@@ -7,7 +7,7 @@ rising now. The engine records that choice in run state (`tm evidence`), and whi
 
 - `tm next` gives the playbook's notice (`NOTICES`) on its check-ins in `Notice.at` when they are
   shown to the user (Refresh an ad: the direction G2 and the launch G11; Creative brief: the
-  concepts G2), and in the final report of a run that made its changes (so Hands-off hears it
+  concepts G2; Create an ad: the concept), and in the final report of a run that made its changes (so Hands-off hears it
   at the end, and at the launch, which every level asks). Creative brief's final report carries it only when G2 was not asked
   (`Notice.repeat_at_end`), so every level hears it once; the doctor's readiness card shows its
   short form;
@@ -21,7 +21,7 @@ import argparse
 from dataclasses import dataclass
 
 from tm import cli, state
-from tm.playbooks import CREATIVE_BRIEF, REFRESH_AD
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, REFRESH_AD
 from tm.runfolder import RunFolder
 
 EVIDENCE = ("trendsmesh", "guess")
@@ -51,12 +51,18 @@ class Notice:
 
 _BRIEF_SHORT = ("Without live trend data, the hooks in these concepts are my best guess from your "
                 "customers' own words, your ads and the Ad Library, not proof from what is rising now.")
+_AD_SHORT = ("Without live trend data, the model ads and trends in these concepts are my best guess: ads from the "
+             "Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats I "
+             "know, not proof from what is rising now.")
 NOTICES = {
     REFRESH_AD: Notice(NOTICE_AT, NOTICE, NOTICE_SHORT),
     CREATIVE_BRIEF: Notice(frozenset({"G2"}),  # choosing the concepts
                            _BRIEF_SHORT + " With TrendsMesh (the Agent plan) each concept rides a "
                            "hook or topic that is rising right now.", _BRIEF_SHORT,
                            repeat_at_end=False),
+    CREATE_AD: Notice(frozenset({"concept"}),  # picking the concept
+                      _AD_SHORT + " With TrendsMesh (the Agent plan) each concept rests on ads and trends that are "
+                      "rising right now.", _AD_SHORT, repeat_at_end=False),
 }
 
 

@@ -26,7 +26,7 @@
 checks:
   - id: tier_base
     name: Base tools
-    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research]
+    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research, 05-create-ad]
     outputs: [creative_brief, edited_video, ai_video, live_test]
     kind: env_tier
     tier: base
@@ -34,8 +34,8 @@ checks:
     fix: {any: "I install the base tools (about {size}, about {minutes} min). Say yes and I start."}
   - id: tier_breakdown
     name: Video breakdown tools (transcription and scene detection)
-    playbooks: [01-refresh-ad, 03-organic-ai-video]
-    when: [{outputs: [organic_video]}]
+    playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
+    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
     outputs: [creative_brief, edited_video, ai_video]
     kind: env_tier
     tier: breakdown
@@ -43,8 +43,8 @@ checks:
     fix: {any: "I install the video breakdown tools (about {size}, about {minutes} min). Say yes and I start."}
   - id: tier_video
     name: Video editing tools (Remotion)
-    playbooks: [01-refresh-ad, 03-organic-ai-video]
-    when: [{outputs: [organic_video]}]
+    playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
+    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
     outputs: [edited_video]
     kind: env_tier
     tier: video
@@ -52,8 +52,8 @@ checks:
     fix: {any: "I install the video editing tools (about {size}, about {minutes} min). Say yes and I start."}
   - id: tier_voice
     name: Voice tools (new voiceover)
-    playbooks: [01-refresh-ad, 03-organic-ai-video]
-    when: [{outputs: [organic_video]}]
+    playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
+    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
     outputs: []
     kind: env_tier
     tier: voice
@@ -61,8 +61,8 @@ checks:
     fix: {any: "I install the voice tools (about {size}, about {minutes} min). Say yes and I start."}
   - id: tier_ai
     name: AI video tools
-    playbooks: [01-refresh-ad, 03-organic-ai-video]
-    when: [{outputs: [organic_video]}]
+    playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
+    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
     outputs: [ai_video]
     kind: env_tier
     tier: ai
@@ -115,7 +115,7 @@ checks:
 
   - id: disk_free
     name: Free disk space
-    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research]
+    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research, 05-create-ad]
     outputs: []
     kind: disk_gb
     fixer: user
@@ -353,6 +353,86 @@ checks:
       linux: "Install Google Chrome (free), then say continue. I draw the animations in it, on your computer."
     warn: true
     warn_note: "Without Chrome or Edge, animations are hidden."
+
+  # Create an ad (05): it runs without TrendsMesh as labelled guesses (the owner's decision 4), so its two
+  # TrendsMesh rows warn with its own notice (tm/evidence.py NOTICES). Meta Ads is a warning too: without it the
+  # Ad Library fallback and the PAUSED upload are left out, and the ad and its copy are delivered as files. The
+  # Replicate token and the ElevenLabs key are warnings (the spec's "No ElevenLabs" edge case: native voice only).
+  - id: mcp_trendsmesh_create
+    name: TrendsMesh connected and signed in
+    playbooks: [05-create-ad]
+    outputs: []
+    kind: mcp
+    mcp: trendsmesh
+    fixer: user
+    fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find the ads and trends rising right now."}
+    fix_by_state:
+      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
+    warn: true
+    warn_note: "Without live trend data, the model ads and trends in these concepts are my best guess: ads from the Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats I know, not proof from what is rising now."
+    unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
+  - id: trendsmesh_agent_plan_create
+    name: TrendsMesh Agent plan
+    playbooks: [05-create-ad]
+    outputs: []
+    kind: plan
+    mcp: trendsmesh
+    plan_of: [no_plan, free, inactive]
+    fixer: user
+    fix: {any: "Trend data needs the TrendsMesh Agent plan: https://trendsmesh.com/plans"}
+    fix_by_state:
+      free: "You're on the free TrendsMesh plan: it has no trend data."
+      no_plan: "You're on the free TrendsMesh plan: it has no trend data."
+      inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
+    warn: true
+    warn_note: "Without live trend data, the model ads and trends in these concepts are my best guess: ads from the Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats I know, not proof from what is rising now."
+    unchecked: "Can't be checked until TrendsMesh is connected and signed in."
+  - id: mcp_meta_create
+    name: Meta Ads connected and signed in
+    playbooks: [05-create-ad]
+    outputs: []
+    kind: mcp
+    mcp: meta
+    ok_states: [ok]
+    fixer: user
+    fix: {any: "Open /mcp, choose the Meta Ads connector, and sign in to Meta."}
+    fix_by_state:
+      not_enabled: "Meta turns its Ads connector on account by account, and yours is not on yet. In Meta Business settings, ask for access to the Ads connector (MCP) for this ad account, then say continue."
+    warn: true
+    warn_note: "Without the Meta Ads connector I can't search the Ad Library or create the paused ad in your account: you get the ad, the thumbnail and the copy as files to upload in Ads Manager."
+    unchecked: "Not checked yet: I check it with one quick Meta Ads call, then look again."
+  - id: artifacts_pages_create
+    name: Shared page links (claude.ai artifacts)
+    playbooks: [05-create-ad]
+    outputs: []
+    kind: mcp
+    mcp: artifacts
+    fixer: user
+    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here each step is shown in chat and saved as a file."}
+    warn: true
+    warn_note: "Without shared page links, each step is shown here in chat and decided here."
+    unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
+  - id: replicate_api_token_create
+    name: Replicate token set
+    playbooks: [05-create-ad]
+    outputs: []
+    kind: secret
+    secret: replicate_api_token
+    fixer: user
+    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"}
+    warn: true
+    warn_note: "Without a Replicate token I can't generate stills or video: the ad is built from your own footage, product shots and slides."
+  - id: elevenlabs_api_key_create
+    name: ElevenLabs key set
+    playbooks: [05-create-ad]
+    outputs: []
+    kind: secret
+    secret: elevenlabs_api_key
+    fixer: user
+    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the ElevenLabs key"}
+    warn: true
+    warn_note: "Without an ElevenLabs key the voice is the video model's own, the music is yours, and speech is checked with a fallback transcription, which can miss a repeated word."
 
   - id: linux_chrome_libs
     name: Linux libraries for the video renderer

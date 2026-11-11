@@ -64,6 +64,17 @@ NAMES: dict[str, str] = {
     "week_in_budget": "tm.organic_week:budget_gap",
     "slots_started": "tm.organic_week:started_gap",
     "week_delivered": "tm.organic_week_delivery:delivered_gap",
+    # Create an ad (05)
+    "ad_intake_written": "tm.create_config:intake_gap",
+    "ad_concepts_checked": "tm.create_plan:concepts_gap",
+    "ad_claims_checked": "tm.create_plan:claims_gap",
+    "ad_board_checked": "tm.create_plan:board_gap",
+    "ad_plan_checked": "tm.create_plan:plan_gap",
+    "ad_storyboard_checked": "tm.create_plan:storyboard_gap",
+    "ad_copy_checked": "tm.create_copy:copy_gap",
+    "ad_delivered": "tm.create_copy:delivered_gap",
+    "ad_upload_proposed": "tm.create_upload:proposal_gap",
+    "ad_upload_recorded": "tm.create_upload:record_gap",
 }
 
 

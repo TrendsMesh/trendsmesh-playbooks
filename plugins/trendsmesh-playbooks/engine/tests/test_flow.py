@@ -1309,7 +1309,7 @@ def test_refresh_ad_guards_skip_other_playbooks(tmp_path, playbook_two):
         complete(run, step)
     assert flow.next(run).action == "done"
     for refused, says in ((lambda: flow.set_evidence(run, "guess", "no plan"),
-                           "Guess mode is part of Refresh an ad and Creative brief, not of Playbook two."),
+                           "Guess mode is part of Refresh an ad, Creative brief and Create an ad, not of Playbook two."),
                           (lambda: flow.use_flow(run, "R"),
                            "Variant flows are part of Refresh an ad, not of Playbook two.")):
         with pytest.raises(ValueError) as no:

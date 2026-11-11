@@ -93,11 +93,11 @@ def playbook_two(tmp_path, monkeypatch):
 @pytest.fixture
 def bundled_skills(tmp_path, monkeypatch):
     """A skills root where every playbook's skill is bundled (refresh-ad, trend-research,
-    creative-brief, organic-video and the test-only two), so `tm run new` and `tm doctor` offer
+    creative-brief, organic-video, create-ad and the test-only two), so `tm run new` and `tm doctor` offer
     them. The real root holds only the skills released so far."""
     from tm import playbooks
     root = tmp_path / "bundled_skills"
-    for skill in ("refresh-ad", "trend-research", "creative-brief", "organic-video", "two"):
+    for skill in ("refresh-ad", "trend-research", "creative-brief", "organic-video", "create-ad", "two"):
         (root / skill).mkdir(parents=True)
         (root / skill / "SKILL.md").write_text("---\nname: test\n---\n", encoding="utf-8")
     monkeypatch.setattr(playbooks, "skills_root", lambda: root)

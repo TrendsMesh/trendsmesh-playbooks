@@ -12,7 +12,7 @@ import yaml
 from tm import checkins, evidence, flow, paths, playbooks, state, stepchecks, stops
 from tm.cli import main
 from tm.flow import complete, decide, set_level
-from tm.playbooks import CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
 from tm.runfolder import RunFolder
 
 ALL = ["review_pack", "briefs", "animatics", "page"]
@@ -91,7 +91,7 @@ def test_creative_brief_is_registered():
     assert (pb.id, pb.name, pb.skill, pb.guess) == (CREATIVE_BRIEF, "Creative brief", "creative-brief", True)
     assert pb.data_dir == paths.bundled_data() / "creative-brief"
     assert {p.id: p.guess for p in playbooks.all_playbooks()} == {
-        REFRESH_AD: True, CREATIVE_BRIEF: True, ORGANIC_VIDEO: False, TREND_RESEARCH: False}
+        REFRESH_AD: True, CREATIVE_BRIEF: True, ORGANIC_VIDEO: False, TREND_RESEARCH: False, CREATE_AD: True}
 
 
 def test_creative_brief_steps_match_the_plan():
@@ -103,11 +103,12 @@ def test_creative_brief_steps_match_the_plan():
         assert (st.title, list(st.outputs), list(st.checkins), list(st.requires)) == TABLE[st.id], st.id
         assert not st.spends and st.budget is None and not st.before and not st.skip_when, st.id
         assert st.ref == f"skills/creative-brief/references/flow.md#{st.id.lower()}"
-    named = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO) for st in flow.steps(pb) for name in st.requires}
-    chosen = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO)
+    named = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO, CREATE_AD) for st in flow.steps(pb) for name in st.requires}
+    chosen = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO, CREATE_AD)
               for c in checkins.load(playbook=pb).checkins.values()
               for effect in c.on_choice.values() for name in effect.get("requires") or ()}
-    assert chosen == {"profile_confirmed", "week_in_budget"}   # organic video's reuse_profile reuse, week approve
+    assert chosen == {"profile_confirmed", "week_in_budget",   # organic video's reuse_profile reuse, week approve
+                      "ad_upload_proposed"}                    # create an ad's upload create
     assert set(stepchecks.NAMES) == named | chosen   # every check is required; none registered unused
     assert not any(st.requires for pb in (REFRESH_AD, TREND_RESEARCH) for st in flow.steps(pb))
 

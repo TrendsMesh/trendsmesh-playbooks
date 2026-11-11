@@ -17,6 +17,8 @@ support report they can send us.
    - Trend research: follow "Trend research" at the end instead.
    - Organic video ("organic video", "AI video for my channel", "TikTok or Reels ideas", "plan my
      week of videos"): follow "Organic video" at the end instead.
+   - Create an ad ("a new ad", "make me a Meta ad", "a video ad from zero"): follow "Create an ad"
+     at the end instead.
 
 1. Check both MCP connections:
    - TrendsMesh: if the user has clearly said no to it (not a "not now"), run `tm signin skip
@@ -196,3 +198,23 @@ check, and what it passes decides what is installed:
    hides for an AI video (a script to film may use any type) and the speech routes it takes away;
    say them in one line, so the user knows what stays available.
 6. Tell the user where the support report was saved, as in step 5 above.
+
+**Create an ad.** The output is `video_ad`: the ad, its Meta copy and, when the user takes the offer,
+its PAUSED upload.
+
+1. Check the connections: TrendsMesh as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`),
+   Meta Ads as in step 1 above (`ok`, `missing` or `not_enabled`), and artifacts (`ok` when `Artifact`, or the
+   older `publish_files`, is among this session's tools, else `missing`; no call).
+2. Run:
+
+   ```
+   tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<result>,meta=<result>,artifacts=<result> --report --json
+   ```
+
+   Exit codes and the first `tm` call are as in step 3 above.
+3. Show the `card` as in step 4 above. Nothing but the tools and the disk blocks: TrendsMesh is a warning (the
+   run goes on as labelled guesses, and the concepts say so), and so are Meta Ads (no Ad Library search and no
+   upload: the ad and its copy are delivered as files), the Replicate token (no generated stills or video), the
+   ElevenLabs key (the video model's own voice, a fallback transcription) and shared page links (each step in
+   chat). Say each one's line once, in plain words, as what it takes away. Never print a key or any part of it.
+4. Tell the user where the support report was saved, as in step 5 above.

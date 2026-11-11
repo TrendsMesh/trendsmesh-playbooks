@@ -442,7 +442,7 @@ def test_trend_research_still_refuses_evidence(tmp_path, capsys, monkeypatch):
     with pytest.raises(ValueError) as no:
         evidence.record(tr, "guess", "no Agent plan")
     # only playbooks whose skill ships are named: the plugin ships refresh-ad and creative-brief
-    assert str(no.value) == "Guess mode is part of Refresh an ad and Creative brief, not of Trend research."
+    assert str(no.value) == "Guess mode is part of Refresh an ad, Creative brief and Create an ad, not of Trend research."
     with monkeypatch.context() as m:
         root = tmp_path / "skills"
         for skill in ("refresh-ad", "trend-research"):

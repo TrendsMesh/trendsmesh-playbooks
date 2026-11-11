@@ -44,7 +44,7 @@ from typing import Literal
 import yaml
 
 from tm import changes, checkins, evidence, i18n, library, playbooks, state, stepchecks, stops
-from tm.playbooks import CREATIVE_BRIEF, REFRESH_AD
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, REFRESH_AD
 from tm.runfolder import RunFolder
 
 Action = Literal["work", "ask", "auto", "stop", "done"]
@@ -92,8 +92,9 @@ _EVIDENCE_STEPS = ("A5", "A6", "A7")  # a run resumed without evidence (an older
 # Per guess playbook (data/playbooks.yaml `guess: true`): the evidence is recorded before `tm done`
 # of the first step (a switch to TrendsMesh after it needs the trends saved), and can change
 # until the second is done. Creative brief: B3 finds the trends (its `trends_or_guess` check),
-# C1 makes the concepts that rest on them.
-_EVIDENCE_WINDOW = {REFRESH_AD: (TREND_STEP, REGISTER_STEP), CREATIVE_BRIEF: ("B3", "C1")}
+# C1 makes the concepts that rest on them. Create an ad: S1 finds the model ads and trends and makes the
+# concepts (its `ad_concepts_checked` check), S3 the claims that rest on them.
+_EVIDENCE_WINDOW = {REFRESH_AD: (TREND_STEP, REGISTER_STEP), CREATIVE_BRIEF: ("B3", "C1"), CREATE_AD: ("S1", "S3")}
 # Playbooks whose level and outputs are chosen on a later step's card, not in A0's intake batch:
 # the steps before it are done without them (creative brief: the user gives only the product, and
 # A1's card, checked by `intake_written`, holds the level and the outputs). The message per step.

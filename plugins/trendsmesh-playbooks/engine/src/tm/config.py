@@ -6,8 +6,8 @@ rule: a key that is not in the schema fails validation, and so does a fixed valu
 generation provider, the benchmark source, the test method) that is changed.
 
 This is refresh-ad's config. `write_from_intake`, `validate` and `tm config` hand a trend research
-run to `research_config`, a creative brief run to `brief_config` and an organic video run to
-`organic_config`, each with its own schema.
+run to `research_config`, a creative brief run to `brief_config`, an organic video run to
+`organic_config` and a Create an ad run to `create_config`, each with its own schema.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from pathlib import Path
 import yaml
 
 from tm import budget, cli, flow, i18n, playbooks, state
-from tm.playbooks import CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
 from tm.runfolder import RunFolder
 
 FILE = "config.yaml"
@@ -165,6 +165,9 @@ def _for_playbook(run: RunFolder):
     if pb == ORGANIC_VIDEO:
         from tm import organic_config  # it imports this module
         return organic_config
+    if pb == CREATE_AD:
+        from tm import create_config  # it imports this module
+        return create_config
     raise ValueError(f"{playbooks.get(pb).name} has no {FILE}.")
 
 

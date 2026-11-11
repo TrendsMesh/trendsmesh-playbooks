@@ -28,7 +28,7 @@ def _themes(run, version, text):
 
 
 def test_every_name_points_to_a_tm_module_and_function():
-    assert len(stepchecks.NAMES) == 37   # 12 for creative brief, 25 for organic video
+    assert len(stepchecks.NAMES) == 47   # 12 for creative brief, 25 for organic video, 10 for create an ad
     for name, target in stepchecks.NAMES.items():
         module, _, function = target.partition(":")
         assert module.startswith("tm.") and function.isidentifier(), name

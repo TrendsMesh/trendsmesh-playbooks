@@ -23,7 +23,9 @@ recorded and stops the run). With no report (the child crashed) the estimate sta
 A playbook may hold a paid tool to its own rules first: `PRECHECK[playbook][tool]` names a function
 `(run, args) -> str | None` that runs after the tier and key checks and before `budget.spend`; a message
 back is a stop (exit 2), and nothing runs or is spent. Organic video's is `organic_specs.guard` (model
-specs, never an automatic video redo, an unfinished paid take resumed). Refresh-ad has none.
+specs, never an automatic video redo, an unfinished paid take resumed); Create an ad's is `create_plan.guard`
+(the plan's or the storyboard's line, the video after the storyboard's yes, never an automatic video redo).
+Refresh-ad has none.
 
 Everything the engine itself says is one JSON object on stdout when `--json` is in the arguments.
 
@@ -46,7 +48,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tm import budget, cli, envtiers, flow, paths, secrets, state
-from tm.playbooks import ORGANIC_VIDEO
+from tm.playbooks import CREATE_AD, ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 from tm.stops import Stop
 
@@ -104,7 +106,8 @@ TOOLS: dict[str, Tool] = {
 }
 
 # playbook -> tool -> "module:function" (run, args) -> str | None, imported when a paid call needs it
-PRECHECK: dict[str, dict[str, str]] = {ORGANIC_VIDEO: {"replicate_run": "tm.organic_specs:guard"}}
+PRECHECK: dict[str, dict[str, str]] = {ORGANIC_VIDEO: {"replicate_run": "tm.organic_specs:guard"},
+                                       CREATE_AD: {"replicate_run": "tm.create_plan:guard"}}
 
 ENV_VARS = {"replicate_api_token": "REPLICATE_API_TOKEN", "elevenlabs_api_key": "ELEVENLABS_API_KEY"}
 _KEY_NAMES = {"replicate_api_token": "Replicate token", "elevenlabs_api_key": "ElevenLabs key"}

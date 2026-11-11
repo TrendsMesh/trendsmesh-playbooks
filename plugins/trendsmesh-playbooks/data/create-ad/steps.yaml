@@ -1,0 +1,44 @@
+# Steps of playbook 05 "Create an ad", in order: the spec's flow S0 to S10 with the gates G1 to G5 (issue #17,
+# spec v0.1). The keys are those of data/steps.yaml (refresh-ad), which explains each one, plus `requires`
+# (data/creative-brief/steps.yaml explains it).
+#
+# One output, video_ad: one run makes one video ad (and its optional short and long cuts), its Meta copy, and,
+# when the user takes the offer, its PAUSED upload. The upload is offered (`upload_offer`), not an output.
+#
+# The plugin's changes to the spec's flow (skills/create-ad/PLAN.md):
+# - the spec has no S2; S3 (sources and claims) has no gate;
+# - S4 and S5 are one page in the spec; here two steps, so the script-board is checked before the plan prices
+#   it (at Just the big calls one card asks both);
+# - the gates G1 to G4 are steps of their own, named by the gate; G1, G2 and G4 spend (the paid stages), G3
+#   prices the paid video and asks for it;
+# - S10 is two steps: S10a the checks and the proposal (the go-ahead, `upload`, after it), S10b the PAUSED
+#   objects, read back. Nothing in this playbook activates an ad (issue #46).
+# Money: `spends` steps wait until the planned amount (`ad_plan_checked`, then `ad_storyboard_checked`) is
+# approved (flow.planned_gap), at every level; Hands-off's approval is the budget given at intake.
+
+outputs: [video_ad]
+
+steps:
+  # S0 Intake (CA1)
+  - {id: S0, title: Intake and asset inventory, outputs: [video_ad], checkins: [intake], spends: false, requires: [ad_intake_written], ref: "skills/create-ad/references/flow.md#s0"}
+  # S1 Concepts (CA2): what the run rests on, TrendsMesh or the agent's guess, is recorded here
+  - {id: S1, title: Concepts, outputs: [video_ad], checkins: [concept], spends: false, requires: [ad_concepts_checked], ref: "skills/create-ad/references/flow.md#s1"}
+  # S3 to S5: claims, script-board, production plan (CA3 to CA7)
+  - {id: S3, title: Sources and claims, outputs: [video_ad], spends: false, requires: [ad_claims_checked], ref: "skills/create-ad/references/flow.md#s3"}
+  - {id: S4, title: Script-board, outputs: [video_ad], checkins: [board], spends: false, requires: [ad_board_checked], ref: "skills/create-ad/references/flow.md#s4"}
+  - {id: S5, title: Production plan and its cost, outputs: [video_ad], checkins: [plan], spends: false, requires: [ad_plan_checked], ref: "skills/create-ad/references/flow.md#s5"}
+  # G1 to G4: the staged gates (CA8, CA9)
+  - {id: G1, title: First visual output, outputs: [video_ad], checkins: [visual], spends: true, budget: ai_usd, skip_when: {plan: reject}, ref: "skills/create-ad/references/flow.md#g1"}
+  - {id: G2, title: Audio, outputs: [video_ad], checkins: [audio], spends: true, skip_when: {plan: reject}, ref: "skills/create-ad/references/flow.md#g2"}
+  - {id: G3, title: Filled storyboard and the paid video, outputs: [video_ad], checkins: [storyboard], spends: false, skip_when: {plan: reject}, requires: [ad_storyboard_checked], ref: "skills/create-ad/references/flow.md#g3"}
+  - {id: G4, title: Takes, outputs: [video_ad], checkins: [takes], spends: true, budget: ai_usd, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#g4"}
+  # S6, S7, G5: the edit, its QA and the review (CA10 to CA12)
+  - {id: S6, title: Edit, outputs: [video_ad], spends: false, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#s6"}
+  - {id: S7, title: Edit QA, outputs: [video_ad], spends: false, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#s7"}
+  - {id: G5, title: Review, outputs: [video_ad], checkins: [review], spends: false, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#g5"}
+  # S8, S9: the Meta copy and the delivery (CA13)
+  - {id: S8, title: Meta copy, outputs: [video_ad], checkins: [copy], spends: false, skip_when: {plan: reject, storyboard: reject}, requires: [ad_copy_checked], ref: "skills/create-ad/references/flow.md#s8"}
+  - {id: S9, title: Deliver, outputs: [video_ad], spends: false, skip_when: {plan: reject, storyboard: reject}, requires: [ad_delivered], ref: "skills/create-ad/references/flow.md#s9"}
+  # S10: the Meta upload, offered, proposed in full and created PAUSED (CA14)
+  - {id: S10a, title: Upload checks and proposal, outputs: [video_ad], before: [upload_offer], checkins: [upload], spends: false, skip_when: {plan: reject, storyboard: reject, upload_offer: skip}, requires: [ad_upload_proposed], ref: "skills/create-ad/references/flow.md#s10a"}
+  - {id: S10b, title: Create the PAUSED ad and read it back, outputs: [video_ad], spends: false, skip_when: {plan: reject, storyboard: reject, upload_offer: skip, upload: skip}, requires: [ad_upload_recorded], ref: "skills/create-ad/references/flow.md#s10b"}

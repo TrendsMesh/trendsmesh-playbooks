@@ -15,7 +15,7 @@ import pytest
 import tm.tools as tools
 from tm import organic_pack, organic_specs, state
 from tm.cli import main
-from tm.playbooks import ORGANIC_VIDEO, REFRESH_AD
+from tm.playbooks import CREATE_AD, ORGANIC_VIDEO, REFRESH_AD
 from tm.runfolder import RunFolder
 from tm.tools import _common
 
@@ -515,7 +515,7 @@ def test_redo_needs_a_finished_take_and_the_users_words(ov, capsys):
 
 
 def test_refresh_ad_has_no_precheck(tmp_path, engine, capsys, monkeypatch):
-    assert set(tools.PRECHECK) == {ORGANIC_VIDEO} and set(tools.PRECHECK[ORGANIC_VIDEO]) == {"replicate_run"}
+    assert set(tools.PRECHECK) == {ORGANIC_VIDEO, CREATE_AD} and set(tools.PRECHECK[ORGANIC_VIDEO]) == {"replicate_run"}
 
     def never(*a, **k):
         raise AssertionError("the organic guard ran for refresh-ad")

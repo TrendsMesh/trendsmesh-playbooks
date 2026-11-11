@@ -21,6 +21,7 @@ REFRESH_AD = "01-refresh-ad"
 CREATIVE_BRIEF = "02-creative-brief"
 ORGANIC_VIDEO = "03-organic-ai-video"
 TREND_RESEARCH = "04-trend-research"
+CREATE_AD = "05-create-ad"
 _FIELDS = ("id", "name", "skill", "data")
 
 

@@ -1,0 +1,134 @@
+# Check-in catalogue for playbook 05 "Create an ad". The keys (route, card, choices, on_choice and its effects,
+# money) are those of data/checkins.yaml (refresh-ad), which explains each one, plus `yes_for`
+# (data/organic-video/checkins.yaml explains it).
+#
+# Source: the spec's gates (issue #17: S0 answers, S1 pick / mix, S4 approve, S5 confirm per type, G1 to G5,
+# S8 accept / edit / drop, S10 upload). The rest is the plugin's (skills/create-ad/PLAN.md):
+# - the ids are names, not codes: the spec's G1 to G5 are also step ids here;
+# - the levels (the owner's decision 3): Check every step asks every check-in; Just the big calls asks the
+#   intake, the concept, "Approve the script-board and plan" (board and plan on one card), the first visual
+#   output, the filled storyboard, the review, the copy and the upload, while audio and takes go by rule;
+#   Hands-off asks the intake and the upload, and decides the rest by rule;
+# - money (the owner's decision 2): the plan's yes approves its pre-video amount (stills, audio, transcription),
+#   the storyboard's yes the video. Each is asked again after a re-plan (flow.planned_at). Hands-off's yes is the
+#   budget given at intake: a planned amount above it waits for the user, whatever the level;
+# - a video is never regenerated automatically (CA7): a take that fails QA goes to the user (`fails_qa`);
+# - the upload is offered (`upload_offer`) and its go-ahead (`upload`) is asked at every level: the ad account
+#   is the user's, and the AI disclosure and the ad budget are theirs to state (CA14). There is no launch
+#   check-in: nothing in this playbook activates an ad (issue #46).
+
+levels:
+  every_step: Check every step
+  big_calls: Just the big calls
+  hands_off: Hands-off
+
+cards:
+  board_and_plan:
+    name: Approve the script-board and plan
+    ask: last
+
+checkins:
+  - id: intake
+    name: Confirm the intake card
+    route: {every_step: own, big_calls: own, hands_off: own}
+    rule: "— (CA1): the persona, what the ad sells, the length and placements are the user's at every level"
+    choices: [accept]
+
+  - id: concept
+    name: Pick the concept
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: >-
+      the concept with the strongest model ad and trend fit for the persona, logged with why; a mix note is never
+      made up
+    choices: [accept]
+
+  - id: board
+    name: Approve the script-board
+    card: board_and_plan
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "the checked script-board as is (`tm ad check board`)"
+    choices: [accept]
+
+  - id: plan
+    name: Confirm the production plan and its cost
+    card: board_and_plan
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: >-
+      the suggested model per asset type, inside the generation budget given at intake (a planned amount above it
+      waits for the user)
+    choices: [approve, reject]
+    money: true
+    yes_for: [ai_usd, voice_credits]
+    on_choice:
+      reject:
+        skips: "Nothing was generated or paid. The script-board and the plan stay in the run for another try."
+
+  - id: visual
+    name: Pick the first visual output
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "the first of the options that passes the CA9 checks (a different, non-identifiable person; no signage), logged"
+    choices: [accept, redo, drop]
+
+  - id: audio
+    name: Pick the music and sounds
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: "the suggested music and transition sound (the config's audio defaults first), logged"
+    choices: [accept, redo, drop]
+
+  - id: storyboard
+    name: Approve the filled storyboard and the paid video
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "the video's exact prompt and price, inside the generation budget given at intake (above it: it waits)"
+    choices: [approve, reject]
+    money: true
+    yes_for: [ai_usd, voice_credits]
+    on_choice:
+      reject:
+        skips: "No video was generated or paid. The filled storyboard stays in the run."
+
+  - id: takes
+    name: Accept the takes
+    route: {every_step: own, big_calls: rule, hands_off: rule}
+    rule: >-
+      a take that passes QA (Scribe transcript verbatim, no repeat, pace, no internal cut inside a line) is
+      accepted; fails_qa when it does not
+    choices: [accept, redo, drop, fails_qa]
+    on_choice:
+      fails_qa:
+        stop:
+          what: "The take did not pass QA, and a video is never regenerated automatically."
+          todo: >-
+            Look at the take and its QA notes and choose: a precise cut of the original take, a voice clone of the
+            line, a new take (its cost is shown first), or accept it as is.
+
+  - id: review
+    name: Accept the edit
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "the latest version, once its edit QA is green (CA11), logged with what was checked"
+    choices: [accept, fix]
+
+  - id: copy
+    name: Accept the Meta copy
+    route: {every_step: own, big_calls: own, hands_off: rule}
+    rule: "the checked copy as written (`tm ad copy check`), every text kept"
+    choices: [accept]
+
+  - id: upload_offer
+    name: Offer the Meta upload
+    route: {every_step: own, big_calls: own, hands_off: own}
+    rule: "— (CA14): the upload into the user's ad account is offered, never assumed"
+    choices: [propose, skip]
+    on_choice:
+      skip:
+        skips: "Nothing was created in Meta. The ad, the thumbnail and the copy are in the run and the downloads folder."
+
+  - id: upload
+    name: Go ahead with the PAUSED upload
+    route: {every_step: own, big_calls: own, hands_off: own}
+    rule: "— (CA14): the full proposal, the AI disclosure and the ad budget are the user's"
+    choices: [create, skip]
+    money: true
+    on_choice:
+      create: {requires: [ad_upload_proposed]}
+      skip:
+        skips: "Nothing was created in Meta. The proposal stays in the run."

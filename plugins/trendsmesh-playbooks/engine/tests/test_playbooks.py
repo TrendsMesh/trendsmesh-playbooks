@@ -12,7 +12,8 @@ def test_get_accepts_id_or_skill():
     assert (by_id.id, by_id.name, by_id.skill) == ("01-refresh-ad", "Refresh an ad", "refresh-ad")
     assert by_id.data_dir == paths.bundled_data()
     assert [p.id for p in playbooks.all_playbooks()] == ["01-refresh-ad", "02-creative-brief",
-                                                         "03-organic-ai-video", "04-trend-research"]
+                                                         "03-organic-ai-video", "04-trend-research",
+                                                         "05-create-ad"]
 
 
 def test_get_reads_a_patched_registry(playbook_two):
@@ -21,7 +22,7 @@ def test_get_reads_a_patched_registry(playbook_two):
     assert (two.data_dir / "steps.yaml").is_file()
     assert [p.id for p in playbooks.all_playbooks()] == ["01-refresh-ad", "02-creative-brief",
                                                          "03-organic-ai-video", "04-trend-research",
-                                                         "99-two"]
+                                                         "05-create-ad", "99-two"]
 
 
 def test_unknown_playbook_lists_known():

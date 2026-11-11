@@ -14,3 +14,4 @@ playbooks:
   - {id: 02-creative-brief, name: Creative brief, skill: creative-brief, data: creative-brief, guess: true}
   - {id: 03-organic-ai-video, name: Organic AI video, skill: organic-video, data: organic-video, budgets: [ai_usd, voice_credits]}
   - {id: 04-trend-research, name: Trend research, skill: trend-research, data: trend-research}
+  - {id: 05-create-ad, name: Create an ad, skill: create-ad, data: create-ad, guess: true, budgets: [ai_usd, voice_credits]}
