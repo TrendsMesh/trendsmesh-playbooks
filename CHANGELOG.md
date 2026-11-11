@@ -44,6 +44,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   no longer ends with no hooks after a fetch of several minutes, and category words match whole words only
   ("curl" no longer counts a video that says "curlyhead"). Claude tells you up front when fetching the
   evidence videos will take minutes.
+- **Creative brief: the creator view keeps account data out of its header.** The phone cards at the top of the
+  page show each concept's title and phone note in the creator view; who each concept is for and its trend line
+  stay in the other views. `tm brief check --stage production` now reads the creator view as the page builds it,
+  header included, so nothing it shows escapes the CB13 check.
 
 ## 0.10.0
 

@@ -2,6 +2,7 @@
 the decisions taken on it.
 
     render(brief)                  the page's HTML and its views, from brief.json alone (CB10)
+    view_text(brief, view)         the texts one view of that page shows (CB13's scan of the creator view)
     build(run, brief_path=None, *, single_file=False)   04_final/brief_pack_vNN/ or brief_pack_vNN.html
     read_decisions(saved)          the decisions in a saved ArtifactData list (or db_list) answer or a copied text
     verdicts(docs, concept_ids)    approved | changes | split | none per concept (plan Decision 8)
@@ -39,6 +40,7 @@ import json
 import re
 import shutil
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from urllib.parse import urlsplit
 
@@ -71,6 +73,9 @@ AWAITING = ("People are deciding on the page now. A new version would change it 
 ALL_VIEWS = ['decision', 'strategy', 'creator', 'editor', 'media-buyer']
 VIEW_LABEL = {'decision': 'Decision maker', 'strategy': 'Strategist', 'creator': 'Creator', 'editor': 'Editor',
               'media-buyer': 'Media buyer'}
+# The views whose phone cards show who a concept is for and its trend line (CB13): every view but the
+# creator's, whose cards show the concept's title and phone note alone (issue #15).
+HEADER_FACTS_VIEWS = [x for x in ALL_VIEWS if x != 'creator']
 TODO = '<span class="todo">to set</span>'
 _ID = re.compile(r"[A-Za-z0-9_-]+")
 _FILL = re.compile(r"\{\{(TITLE|TITLE_JS|RECIPIENTS|CONCEPT_IDS)\}\}|<!--BODY-->")
@@ -242,8 +247,11 @@ def body_html(p):
     for c in p['concepts'][:3]:
         a = c.get('animatic', {})
         phone = a.get("9x16") or a.get(a.get("default", "9x16"), "")   # a run drawn in 4x5 alone has no 9x16
+        facts = v(*HEADER_FACTS_VIEWS)
+        # the creator's card: the title under the phone note (when the note is not the title), no account data
+        title = f'<div class="who"{v("creator")}>{E(c["title"])}</div>' if c.get("phone_note", c["title"]) != c["title"] else ''
         out.append(f'<a class="phone" href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}"><div class="frame"><video src="{E(phone)}" autoplay muted loop playsinline aria-label="{E(c["id"])} animatic"></video></div>'
-                   f'<div class="note">{E(c.get("phone_note", c["title"]))}</div><div class="who">{E(c.get("for_whom"))}</div><div class="trendline">{E(c.get("trend_line"))}</div></a>')
+                   f'<div class="note">{E(c.get("phone_note", c["title"]))}</div>{title}<div class="who"{facts}>{E(c.get("for_whom"))}</div><div class="trendline"{facts}>{E(c.get("trend_line"))}</div></a>')
     out.append('</div></div></div>')
     btns = ''.join(f'<button type="button" data-view="{x}">{VIEW_LABEL[x]}</button>' for x in views)
     if len(views) > 1:
@@ -326,6 +334,55 @@ def render(brief: dict) -> tuple[str, list[str]]:
              "{{CONCEPT_IDS}}": _script([c['id'] for c in brief['concepts']]), "<!--BODY-->": body}
     tpl = worded(TEMPLATE.read_text(encoding="utf-8"))
     return _FILL.sub(lambda mt: fills[mt.group(0)], tpl), views
+
+
+class _ViewText(HTMLParser):
+    """The text a view of the page shows, as its script shows it: an element whose `data-v` does not
+    name the view is hidden, with all inside it, and so is a `hidden` one; scripts and styles are not
+    text. The labels a viewer may see or hear (alt, aria-label, placeholder, title) count."""
+
+    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
+    LABELS = ("alt", "aria-label", "placeholder", "title")
+
+    def __init__(self, view: str):
+        super().__init__(convert_charrefs=True)
+        self.view, self.open, self.texts = view, [], []
+
+    def _hidden(self) -> bool:
+        return any(hide for _, hide in self.open)
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        hide = (tag in ("script", "style") or "hidden" in a
+                or (a.get("data-v") is not None and self.view not in (a["data-v"] or "").split()))
+        if not (hide or self._hidden()):
+            self.texts += [a[k] for k in self.LABELS if a.get(k)]
+        if tag not in self.VOID:
+            self.open.append((tag, hide))
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+        if tag not in self.VOID:
+            self.open.pop()
+
+    def handle_endtag(self, tag):
+        for i in range(len(self.open) - 1, -1, -1):
+            if self.open[i][0] == tag:
+                del self.open[i:]
+                return
+
+    def handle_data(self, data):
+        if data.strip() and not self._hidden():
+            self.texts.append(data)
+
+
+def view_text(brief: dict, view: str) -> list[str]:
+    """Every text the page built from `brief` shows in `view`, in page order (CB13's scan of the
+    creator view reads it, so a field new on the page cannot slip past). Stop as `render` does."""
+    parser = _ViewText(view)
+    parser.feed(render(brief)[0])
+    parser.close()
+    return parser.texts
 
 
 # --- building it in the run --------------------------------------------------------------------

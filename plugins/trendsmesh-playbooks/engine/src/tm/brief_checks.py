@@ -726,13 +726,65 @@ def _production_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
     places += [("The brief's", "", "meta.product", {k: product.get(k) for k in ("plain_description", "plan",
                                                                                  "price_note")}),
                ("The brief's", "", "tone", brief.get("tone"))]
+    found: set[tuple[str, str]] = set()          # (field, word) said
     for whose, prefix, root, value in places:
         for where, text in research_checks.strings(value, root):
             low = _norm(text)
-            out += [Problem(prefix + where, f"{whose} creator view says \"{word}\" in {where} (CB13: the creator sees "
-                                            "no ad numbers, research sources, competitors or the account's currency).",
-                            "Say it the way a creator needs it, without that word.")
-                    for word, pattern in words if pattern.search(low)]
+            for word, pattern in words:
+                if pattern.search(low):
+                    found.add((prefix + where, word))
+                    out.append(_creator_word(whose, prefix, where, word))
+    if "creator" in meta["recipients"]:
+        out += _creator_view_words(brief, words, found)
+    return out
+
+
+def _creator_word(whose: str, prefix: str, where: str, word: str) -> Problem:
+    return Problem(prefix + where, f"{whose} creator view says \"{word}\" in {where} (CB13: the creator sees no ad "
+                                   "numbers, research sources, competitors or the account's currency).",
+                   "Say it the way a creator needs it, without that word.")
+
+
+_CONCEPT_FIELD = re.compile(r"^concepts\[(\d+)\]\.(.+)$")
+
+
+def _whole(low: str) -> re.Pattern:
+    """`low` where it stands on its own: not the middle of a longer word."""
+    start = r"(?<!\w)" if re.match(r"\w", low[0]) else ""
+    end = r"(?!\w)" if re.match(r"\w", low[-1]) else ""
+    return re.compile(start + re.escape(low) + end)
+
+
+def _creator_view_words(brief: dict, words: list[tuple[str, re.Pattern]], found: set[tuple[str, str]]) -> list[Problem]:
+    """CB13 on the creator view as the page builds it (`brief_page.view_text`), the header included:
+    each of the brief's texts the view shows that says a word of `words` (a field and word in `found`
+    already said aside), then any such word in the rest of the view (the page's own text, a cut text).
+    The usage line may name the fee (as in the field scan). A brief the page cannot be built from is
+    left to the page's own check."""
+    from tm import brief_page              # brief_page imports this module
+    try:
+        rest = "\n".join(_norm(t) for t in brief_page.view_text(brief, "creator"))
+    except Stop:
+        return []
+    out = []
+    texts = sorted(((where, _norm(text)) for where, text in research_checks.strings(brief)),
+                   key=lambda wt: -len(wt[1]))
+    for where, low in texts:
+        whole = _whole(low) if low else None
+        if whole is None or not whole.search(rest):     # longest first: a text inside a longer one is not shown
+            continue
+        rest = whole.sub(" ", rest)
+        if where.endswith(".creator.usage"):
+            continue
+        m = _CONCEPT_FIELD.match(where)
+        whose, prefix, field = ((f"{brief['concepts'][int(m.group(1))].get('id')}'s", f"concepts[{m.group(1)}].",
+                                 m.group(2)) if m else ("The brief's", "", where))
+        out += [_creator_word(whose, prefix, field, word) for word, pattern in words
+                if (where, word) not in found and pattern.search(low)]
+    out += [Problem("creator view", f"The page's creator view says \"{word}\" (CB13: the creator sees no ad numbers, "
+                                    "research sources, competitors or the account's currency).",
+                    "Find it in the creator view (tm brief page) and say it without that word.")
+            for word, pattern in words if pattern.search(rest)]
     return out
 
 

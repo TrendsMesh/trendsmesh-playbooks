@@ -2,7 +2,7 @@
 
 The LD dry run's `04_final/brief_pack_v01.json`, with the plugin blocks of
 `fixtures/creative_brief/ld_plugin_blocks.json` merged in (the page never reads them), must rebuild
-the reference `04_final/brief_pack_v05/index.html` byte for byte. The animatics are placeholder files under
+the reference `04_final/brief_pack_v05/index.html` byte for byte, but for the header per view (#15). The animatics are placeholder files under
 the names the brief gives them; the evidence thumbnails are left out unless a test adds them.
 """
 
@@ -97,6 +97,13 @@ def _published(run: RunFolder) -> None:
 
 # --- the page --------------------------------------------------------------------------------------
 
+def _per_view_header(reference: str) -> str:
+    """The reference page with the header of issue #15: who a concept is for and its trend line on every view but
+    the creator's (the reference shows them on all; the brief has no phone note, so no title line is added)."""
+    facts = f' data-v="{" ".join(brief_page.HEADER_FACTS_VIEWS)}"'
+    return re.sub(r'<div class="(who|trendline)">', lambda m: f'<div class="{m.group(1)}"{facts}>', reference)
+
+
 @pytest.mark.private_data
 def test_page_rebuilds_ld_v05_exactly(run, capsys):
     template = (HANDOFF / "tools" / "pb2" / "brief_pack" / "template.html").read_text(encoding="utf-8")
@@ -106,8 +113,9 @@ def test_page_rebuilds_ld_v05_exactly(run, capsys):
     assert code == 0, out
     assert out["folder"] == "04_final/brief_pack_v01"
     built = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
-    reference = private.alias(V05.read_text(encoding="utf-8").replace("\r", ""))   # the reference page, under the alias
-    assert built == brief_page.worded(reference)                                     # with the plugin's wording
+    # the reference page, under the alias, with the header per view (#15) and the plugin's wording
+    reference = _per_view_header(private.alias(V05.read_text(encoding="utf-8").replace("\r", "")))
+    assert built == brief_page.worded(reference)
     assert out["views"] == ["decision", "strategy", "creator", "editor", "media-buyer"]
     # the six animatics copied where the page links them; the nine thumbnails are not in the run
     assert out["media_copied"] == 6 and sorted(out["media_missing"]) == sorted(_thumbs(_ld_brief()))
