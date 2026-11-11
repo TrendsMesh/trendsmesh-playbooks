@@ -12,10 +12,12 @@ import json
 import os
 import re
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Callable, Tuple
 
-from tm import cli, paths
+from tm import __version__, cli, paths
 
 Finding = Tuple[int, str, str]   # (line, kind, value)
 
@@ -178,4 +180,107 @@ def _check_run(args: argparse.Namespace) -> int:
 
 
 subcommand("check", _check_setup, _check_run)
+# --- send: the TrendsMesh inbox --------------------------------------------------------------
+
+DEFAULT_URL = "https://trendsmesh.com/v1/issue-reports"
+
+
+def _os_name() -> str:
+    platform = sys.platform
+    if platform == "darwin":
+        return "macos"
+    if platform.startswith("linux"):
+        return "linux"
+    if platform in ("win32", "cygwin"):
+        return "windows"
+    return "other"
+
+
+def _json(raw: bytes) -> object:
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except ValueError:
+        return None
+
+
+def _field(payload: object) -> "str | None":
+    try:
+        field = payload["error"]["data"]["field"]  # type: ignore[index]
+    except (KeyError, TypeError):
+        return None
+    return field if isinstance(field, str) else None
+
+
+def _retry_after(headers) -> "int | None":
+    value = (headers.get("retry-after") or "").strip() if headers is not None else ""
+    return int(value) if value.isdigit() else None
+
+
+def _unavailable(reason: str) -> dict:
+    return {"outcome": "unavailable", "reason": reason[:200]}
+
+
+def _answer(status: int, raw: bytes, headers) -> dict:
+    payload = _json(raw)
+    if status == 201:
+        try:
+            report_id = payload["data"]["reportId"]  # type: ignore[index]
+        except (KeyError, TypeError):
+            return _unavailable("201 without a report id")
+        return {"outcome": "received", "reportId": report_id}
+    if status == 400:
+        return {"outcome": "invalid", "field": _field(payload)}
+    if status == 413:
+        return {"outcome": "too_large"}
+    if status == 429:
+        return {"outcome": "rate_limited", "retryAfter": _retry_after(headers)}
+    return _unavailable(str(status))
+
+
+def send(body_file: Path, kind: str, title: str, contact: "str | None", url: str,
+         timeout: float = 15.0) -> dict:
+    """File a report with TrendsMesh. Never raises for a network or server problem: that is
+    `unavailable`, so the skill can fall back."""
+    body = Path(body_file).read_text(encoding="utf-8-sig")
+    known = workspace_values(paths.workspace())
+    found = findings(body, known) + findings(title, known)
+    if found:
+        return {"outcome": "not_clean",
+                "findings": [{"line": n, "kind": k, "value": v} for n, k, v in found]}
+    payload = {"kind": kind, "title": title, "body": body,
+               "source": {"name": "trendsmesh-playbooks", "version": __version__}, "os": _os_name()}
+    if contact:
+        payload["contact"] = contact
+    request = urllib.request.Request(
+        url, data=json.dumps(payload).encode("utf-8"), method="POST",
+        headers={"Content-Type": "application/json", "User-Agent": f"trendsmesh-playbooks/{__version__}"})
+    try:
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return _answer(response.status, response.read(), response.headers)
+        except urllib.error.HTTPError as exc:
+            return _answer(exc.code, exc.read(), exc.headers)
+    except Exception as exc:  # network error, timeout, bad URL: the inbox is simply unavailable
+        return _unavailable(f"{type(exc).__name__}: {exc}")
+
+
+def _send_setup(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("file")
+    parser.add_argument("--kind", required=True, choices=["bug", "change"])
+    parser.add_argument("--title", required=True)
+    parser.add_argument("--contact", default=None)
+
+
+def _send_run(args: argparse.Namespace) -> int:
+    try:
+        result = send(Path(args.file), args.kind, args.title, args.contact or None,
+                      os.environ.get("TM_REPORT_URL") or DEFAULT_URL)
+    except (OSError, ValueError) as exc:
+        print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps(result))
+    return 0 if result["outcome"] == "received" else 1
+
+
+subcommand("send", _send_setup, _send_run)
 cli.register("report", _setup, _run)
