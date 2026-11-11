@@ -38,10 +38,12 @@ def versions(root: Path) -> dict[str, str | None]:
             return None
 
     def plugin_json(text):
-        return json.loads(text).get("version")
+        data = json.loads(text)
+        return data.get("version") if isinstance(data, dict) else None
 
     def pyproject(text):
-        return tomllib.loads(text).get("project", {}).get("version")
+        project = tomllib.loads(text).get("project")
+        return project.get("version") if isinstance(project, dict) else None
 
     def init(text):
         m = re.search(r'^__version__ = "([^"]+)"', text, re.M)
@@ -70,7 +72,12 @@ def versions(root: Path) -> dict[str, str | None]:
 def notes(changelog: str, version: str, prerelease: bool) -> str:
     """The changelog section being released, without its heading: `## Unreleased` for a release
     candidate, `## X.Y.Z` for a release, which must no longer have an Unreleased section."""
-    headings = [(i, line) for i, line in enumerate(changelog.splitlines()) if line.startswith("## ")]
+    headings, fenced = [], False
+    for i, line in enumerate(changelog.splitlines()):
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        elif line.startswith("## ") and not fenced:
+            headings.append((i, line))
     titles = [line[3:].strip() for _, line in headings]
     want = "Unreleased" if prerelease else version
     if not prerelease and "Unreleased" in titles:

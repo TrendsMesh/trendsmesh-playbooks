@@ -49,7 +49,8 @@ Run these in the shell you tag from: the tag goes on exactly the commit that was
 1. Bring the checkout up to date: `git fetch origin`
 2. Fix the commit to release: `sha=$(git rev-parse origin/dev)` (for a hotfix, `origin/hotfix/X.Y.Z`).
 3. Scan it: `python3 private/tools/scan.py tree . "$sha"`. It must print `Scan clean`. Any finding stops the release.
-4. Check what the `Release` workflow will check, on that commit, and read the notes it will publish:
+4. Check what the `Release` workflow will check, on that commit, and read the notes it will publish. Use the tag you
+   will push (`vX.Y.Z-rc.N`, `vX.Y.Z` or the hotfix's `vX.Y.Z+1`):
    ```
    git switch --detach "$sha"
    notes=$(mktemp) && python3 .github/scripts/release.py prepare vX.Y.Z-rc.N . "$notes" && cat "$notes"
@@ -72,11 +73,18 @@ Run these in the shell you tag from: the tag goes on exactly the commit that was
    git tag vX.Y.Z-rc.N "$sha"
    git push origin vX.Y.Z-rc.N
    ```
-4. **Watch the release run**: `gh run watch -R TrendsMesh/trendsmesh-playbooks "$(gh run list -R TrendsMesh/trendsmesh-playbooks --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')"`.
-   It must end in success, and `gh release view vX.Y.Z-rc.N -R TrendsMesh/trendsmesh-playbooks` shows the
-   pre-release. If it failed, read why in its log, fix the cause, and run it again only after the owner's yes:
-   `gh workflow run release.yml -R TrendsMesh/trendsmesh-playbooks -f tag=vX.Y.Z-rc.N`. A fix that needs a new
-   commit needs a new tag (the next `rc.N`): never move a pushed tag.
+4. **Watch the release run** of that tag (the tag is its "branch"):
+   ```
+   run=$(gh run list -R TrendsMesh/trendsmesh-playbooks --workflow release.yml --event push --branch vX.Y.Z-rc.N --limit 1 --json databaseId --jq '.[0].databaseId')
+   gh run watch -R TrendsMesh/trendsmesh-playbooks --exit-status "$run"
+   gh release view vX.Y.Z-rc.N -R TrendsMesh/trendsmesh-playbooks --json author,isPrerelease
+   ```
+   If `run` is empty, the run has not started yet: wait a few seconds and list again. The run must end in success,
+   and the release must show `isPrerelease: true` and the author `github-actions[bot]`. If it failed, read why in
+   its log (`gh run view "$run" --log-failed`). A failure on GitHub's side (an outage, a timeout) is re-run, only after the owner's
+   yes: `gh run rerun "$run"`. A fix that needs a new commit needs a new tag (the next `rc.N`): never move a pushed
+   tag. Once `main` has `release.yml`, a tag without a release can also be released by hand:
+   `gh workflow run release.yml -R TrendsMesh/trendsmesh-playbooks -f tag=vX.Y.Z-rc.N`.
 5. Ask the tester to check it, with the steps below.
 
 ### The tester's check of a release candidate
@@ -125,7 +133,8 @@ A finding goes into an issue and a fix into `dev`; the next candidate is `X.Y.Z-
    git tag vX.Y.Z "$sha"
    git push origin vX.Y.Z
    ```
-5. **Watch the release run**, as for a release candidate (step 4 there), with `vX.Y.Z`.
+5. **Watch the release run**, as for a release candidate (step 4 there), with `vX.Y.Z`; the release shows
+   `isPrerelease: false`.
 6. Add a new `## Unreleased` heading to `CHANGELOG.md` with the next pull request into `dev`.
 
 Users get the release on their next `/plugin marketplace update`, or when Claude Code starts if they switched

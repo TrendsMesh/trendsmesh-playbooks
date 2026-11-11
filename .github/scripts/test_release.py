@@ -131,6 +131,22 @@ def test_prepare_unreadable_json_is_wrong(tmp_path):
         prepare("v0.10.0-rc.1", root)
 
 
+def test_prepare_plugin_json_not_an_object(tmp_path):
+    root = make_root(tmp_path)
+    (root / "plugins/trendsmesh-playbooks/.claude-plugin/plugin.json").write_text("[]", encoding="utf-8")
+    with pytest.raises(ReleaseError, match=r"plugin.json \(None\)"):
+        prepare("v0.10.0-rc.1", root)
+
+
+def test_heading_inside_a_code_block_is_not_a_heading():
+    text = "## Unreleased\n\n- a\n```\n## not a heading\n```\n- b\n\n## 0.9.2\n\n- x\n"
+    assert notes(text, "0.10.0-rc.1", True) == "- a\n```\n## not a heading\n```\n- b\n"
+
+
+def test_crlf_changelog():
+    assert notes(CHANGELOG_RC.replace("\n", "\r\n"), "0.10.0-rc.1", True).startswith("- **Report an issue.**")
+
+
 def test_prepare_tag_for_another_version(tmp_path):
     with pytest.raises(ReleaseError, match="not 0.10.0-rc.2"):
         prepare("v0.10.0-rc.2", make_root(tmp_path))
