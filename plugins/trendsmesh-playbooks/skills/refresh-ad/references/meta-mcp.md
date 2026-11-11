@@ -34,7 +34,7 @@ the video is never fetched through it (A2).
 | A3b | `ads_get_ad_entities` at ad set level (targeting); breakdowns age × gender and `publisher_platform` × `platform_position` | region has no conversions |
 | A4, A6 | `ads_library_search` | the market (and supporting markets); filter for relevance |
 | E1 | `ads_experiment_check_eligibility` | before the plan is final |
-| E2 | `ads_creative_upload_media`, `ads_create_*` (PAUSED), `ads_get_ad_preview` | ids saved in `05_results/` |
+| E2 | `ads_creative_upload_media`, `ads_create_*` (PAUSED), `ads_get_ad_preview` | every file in one upload (in the Claude desktop app an upload window the user finishes: SKILL.md section 7); every creative with `self_ai_disclosure` from the plan (it can't be set later); 9:16 and 4:5 through placement asset customization; ids saved in `05_results/` |
 | E3 | `ads_experiment_abtest_create_test`, `ads_activate_entity` | only after a green R8 and the launch check-in |
 | E4 | `ads_get_ad_entities` and the test's results | on day 3, 5 and 7 |
 

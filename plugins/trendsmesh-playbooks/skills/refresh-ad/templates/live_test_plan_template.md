@@ -16,8 +16,26 @@ the launch ("Approve the launch").
 ## 2. Structure (a Meta A/B test, not a manual comparison)
 - Campaign (existing or new), objective and event, pixel.
 - Ad set: targeting copied from the original's ad set (name it), placements, optimisation.
-- Ads, **all created PAUSED**: the control (the original ad, its creative id) and each variant
-  (file, copy, headline, thumbnail).
+- Ads, **all created PAUSED**: the control (the original ad, its creative id; a new creative of
+  the original's files when it gets a 4:5 version below) and each variant (file, copy, headline,
+  thumbnail).
+- **Files and placements per ad** (R6, from `tm formats`). The ads differ only in the change
+  under test, so the control and the variants carry the same formats on the same placements
+  (placement asset customization when an ad has two files):
+
+  | Ad | Reels and Stories (9:16) | Feed (4:5) |
+  |---|---|---|
+  | Control | the original's video | the 4:5 version of the original (`tm tool reframe`, QA), or "9:16 only" |
+  | Variant 1 | the edited video, 9:16 | the edited video, 4:5 |
+
+  When R6 asks for 4:5 and the original has none, the 4:5 version of the original is made with
+  `tm tool reframe` and QA (free). Only if it fails its QA: "test in 9:16 only; 4:5 after the
+  test", and why. The upload (E2) builds exactly this table; any change is asked first.
+- **AI disclosure** (Meta's `self_ai_disclosure`, set only when a creative is created): what the
+  run made or edited with generative AI, per ad (`tm ai-media`: voice lines, music, inpainted
+  frames, AI shots or video), what is known about the original, and the user's answer: both,
+  neither or only the variant (the last one makes the "AI info" label a second difference).
+  Never decided for the user.
 - `ads_experiment_check_eligibility` result.
 
 ## 3. Thresholds, written now
@@ -41,7 +59,8 @@ the launch ("Approve the launch").
   guardrail.
 
 ## 5. Steps on the account (Meta Ads MCP)
-1. Upload the media (or the user uploads it by hand to the media library; never a public host).
+1. Upload the media in one round: every file the table above names, and the thumbnail (or the user
+   uploads it by hand to the media library; never a public host).
 2. Create the ad set and the ads, PAUSED; previews.
 3. The quality and policy check (R8, `04_final/prelaunch_check_vNN.md`).
 4. Only after the launch check-in: the A/B test, then activation (spend starts here).

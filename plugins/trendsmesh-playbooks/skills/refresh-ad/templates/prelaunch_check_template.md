@@ -13,13 +13,14 @@ For each variant:
 
 | # | Item | Green / red | Evidence |
 |---|---|---|---|
-| 1 | AI content labelling, where Meta requires it (AI video, AI-generated people or scenes) | | |
+| 1 | AI disclosure: any media created or edited with a generative AI tool (a cloned or synthetic voice, generated music, inpainted frames, an AI shot or video, generated people or scenes). Check, never ask: the `self_ai_disclosure` on the creative matches the plan's decision (asked before the upload) and what the run made with AI (`tm ai-media` on the final files). Red if it differs, or the creative has none while the run used generative AI | | |
 | 2 | Claims: health, financial, "before and after", references to institutions | | |
 | 3 | Music licence for advertising (trending organic sounds are not licensed) | | |
 | 4 | Voice licence (the intake confirmation; a cloned or new voice's rights) | | |
 | 5 | Text on the image: legible in the feed preview, inside the safe zones, no spelling errors | | |
 | 6 | Known visual defects, with their time (none left that the user did not accept) | | |
 | 7 | Quality against the original (the before and after pair on the review page) | | |
+| 8 | Formats and placements: each ad built (control and variants) has the files the plan names per placement (9:16 in Reels and Stories, 4:5 in feed, through placement asset customization), the same for the control and the variants; red on any difference from the approved plan | | |
 
 **Result:** green (every item green) or red (the red items, and what fixes each).
 

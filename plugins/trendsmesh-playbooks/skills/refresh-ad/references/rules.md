@@ -17,8 +17,10 @@ only when both windows carry the ladder, and falls back to ThruPlay / p25 otherw
 What the engine computes for you, so you never compute it by hand: the R1 ranking (`tm r1`), the
 R2 diagnosis with its retention ladder (`tm diagnose`), the R2b structural check (`tm
 structural`), the R4 plan and its minimum events (`tm r4`, with `--recut-step` or `--shorter` for
-a re-cut), the R6 formats (`tm formats`), the R9 audio QA (`tm tool vo_qa`) and whether a re-cut's
-edit list is legal (`tm recut check`). R3, R5, R7 and R8 are yours to keep, and
+a re-cut), the R6 formats (`tm formats`), the R9 audio QA (`tm tool vo_qa`), whether a re-cut's
+edit list is legal (`tm recut check`) and, for R8's AI disclosure, what the run made or edited with
+generative AI (`tm ai-media`: the facts; the disclosure itself is the user's answer, asked before the
+upload, `flow.md#e1`). R3, R5, R7 and R8 are yours to keep, and
 the engine holds the run until they are met where it can (the library entry, the R8 check-in).
 While the run is stopped, the engine refuses spending, budget approvals and the launch.
 

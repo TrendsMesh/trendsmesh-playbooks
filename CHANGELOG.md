@@ -88,6 +88,16 @@ What changed in each version of the TrendsMesh playbooks plugin.
   or plays the decision metric needs, with a 4-day minimum run, instead of 30 results per ad, so these tests are
   much shorter and cheaper. Cost per result stays the guardrail; a variant that wins with few results is reported
   as "won, cost per result not confirmed yet", to scale step by step. The plan says what its budget is based on.
+- **Refresh an ad asks about AI labelling before the upload.** Meta's AI label can only be set when an ad's
+  creative is made, so Claude now asks it with the test plan: it shows what the run made or edited with AI (a
+  cloned voice line, music, cleaned-up frames, AI shots) and asks whether to label both ads, neither or only the
+  new one. The ads are created once with your answer, and the pre-launch check confirms it instead of asking.
+- **The original gets a 4:5 version too.** When the feed needs 4:5 and your original ad exists only in 9:16,
+  Claude crops the original to 4:5 as well (free), so both ads in the test run the same formats on the same
+  placements and differ only in the change being tested. The test plan lists the files per ad and placement,
+  the ads are built exactly as approved (Claude asks before any change), and the pre-launch check confirms it.
+- **One upload round in the desktop app.** When Meta's upload opens a file window in the chat, Claude first sends
+  you every file it needs, videos and thumbnail, says which to pick, and you upload them all at once.
 
 ## 0.10.0
 

@@ -55,6 +55,7 @@ def refuse_problems(args: argparse.Namespace, rel: str, problems: list) -> int:
 def _load_commands() -> None:
     """Import the modules that register subcommands (later tasks add theirs here)."""
     import tm.acceptance  # noqa: F401
+    import tm.ai_media  # noqa: F401
     import tm.audience  # noqa: F401
     import tm.brand  # noqa: F401
     import tm.brief  # noqa: F401

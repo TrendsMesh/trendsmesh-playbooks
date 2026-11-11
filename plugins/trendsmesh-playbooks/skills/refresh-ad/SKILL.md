@@ -233,11 +233,25 @@ check's fetch (R2b) and the "Pick the ad" card: `references/flow.md#a1` and `#a1
   original file). Put it in <brand folder> and tell me: the run continues from the same place."
   Only if the user can't get it: the low-quality preview, marked as such in the manifest and in
   every output.
-- **E2, upload.** Try `ads_creative_upload_media` with the local file. If the file can't be
-  sent, record the stop (`--reason upload_by_hand`) and tell the user: "I can't send the videos
-  to Meta from here. Upload these files to your Ads Manager media library: <file names>. Tell me
-  when they're there: I find them by name and continue from the same place." Never upload to a
-  public host instead.
+- **E2, upload.** First prepare every file the approved plan uses: each video in each format
+  (9:16, 4:5) and the thumbnail when the plan changes or shares it (R7). Then
+  `ads_creative_upload_media` with the local files, all of them in one call when the tool takes
+  several. It ends one of three ways:
+  - It works: save the ids.
+  - **An upload window** (the Claude desktop app): the tool opens a window in the chat where the
+    user picks the files from their disk. That is not a failure and not a stop: it is an upload
+    the user finishes. Before the call, send the user the files with the file-sending tool
+    (SendUserFile), then one short instruction: "Here are the <n> files for the test: <names>.
+    In the upload window, choose all of them at once and send: the ids come back to me by
+    themselves." Videos and thumbnail go in one round. Then find the files by name in the answer.
+  - The file can't be sent at all: record the stop (`--reason upload_by_hand`) and tell the
+    user: "I can't send the videos to Meta from here. Upload these files to your Ads Manager
+    media library: <file names>. Tell me when they're there: I find them by name and continue
+    from the same place."
+
+  Save the ids in `05_results/meta_objects_v01.json`. Never upload to a public host instead.
+  Every creative is then created with the AI disclosure (`self_ai_disclosure`) the approved plan
+  names: it can't be set later (`references/flow.md#e1`, `#e2`).
 
 ## 8. Hard rules R1–R9
 

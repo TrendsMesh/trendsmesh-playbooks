@@ -63,7 +63,7 @@ spending card, a user who approves one budget and not another gets one decision 
 | G7 | Choose the first frame | the chosen file | |
 | G8 | Accept the clip or regenerate it | `accept` (or regenerate first, then accept) | attempts so far |
 | G9 | Approve the AI video | `approve` | known defects |
-| G10 | Approve the live test plan | `approve` or `reject` | per day × days; then `tm budget approve test` |
+| G10 | Approve the live test plan | `approve` or `reject` | per day × days; then `tm budget approve test`. The plan's files and placements per ad, and the AI disclosure question (both, neither or only the variant, with the facts from `tm ai-media`; this one has no recommendation: Meta leaves it to the advertiser; `flow.md#e1`) |
 | E2b | Quality and policy check | `green` or `red` (always by rule) | the checklist file |
 | G11 | Approve the launch | `activate` (only after a green E2b) or `keep_paused` | the amount; never by rule, at any level |
 | G12 | Act on the results | `scale`, `kill` or `keep` | the numbers against the thresholds |

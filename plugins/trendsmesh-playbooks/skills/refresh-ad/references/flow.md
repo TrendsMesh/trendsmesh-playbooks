@@ -748,6 +748,39 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   more days (`--max-days`), fewer variants (then `tm r4` again; a feasible plan clears the stop),
   or skip the live test (`tm decide G10 reject`). In Hands-off a higher amount is also approved
   while the stop is open: `tm budget approve --run R test <per day × days>` first, then `tm r4`.
+- **Formats per ad (R6).** The plan names the files and placements per ad: for the control and
+  each variant, the file in Reels and Stories (9:16) and the file in feed (4:5), so that the ads
+  differ only in the change under test and feed gets the format R6 asks for. When `tm formats`
+  asks for 4:5 and the original has no 4:5 version (its creative has one video and no placement
+  asset customization: A3's `ads_get_creatives`), make a 4:5 version of the original too, as for
+  the variant: `tm tool reframe --run R <the original's video> --teardown <its teardown from A3>`,
+  then the same QA (its frames against the teardown's frame sheets: no text, face, product or
+  logo cut, the safe zones kept; the result's `method`, crop or pad). It is free and local, so
+  it needs no check-in of its own: make it at E1 at the latest. Both ads then carry 9:16 and 4:5
+  on the same placements (placement asset customization), and the control is a new creative
+  made of the original's files (its video, its 4:5 version, its copy, headline, call to action
+  and thumbnail), PAUSED like the rest. Only when the original's 4:5 version fails its QA and no
+  free fix helps, the plan says "test in 9:16 only; 4:5 after the test" and why, and the card
+  says so.
+- **AI disclosure (Meta's `self_ai_disclosure`).** Meta sets it only when a creative is created
+  and leaves it to the advertiser: never decide or infer it for the user. Before the card, run
+  `tm ai-media --run R --file <each file the plan's ads use> --json`. For each file it lists the
+  media this run created or edited with generative AI (a cloned or synthetic voice line,
+  generated music, inpainted frames, an AI shot, the AI video), from the run's own records, and
+  the files it can't trace, the original's always among them. A file not made yet (at Just the
+  big calls the spending card can come before the renders): list what the approved changes and
+  generation plans will make. The plan and the G10 card show those facts and ask one question,
+  "Do these ads contain media created or edited with generative AI?", with three choices:
+  **both** (`OPT_IN` on the control and every variant), **neither** (`OPT_OUT` on all) or **only
+  the variant** (`OPT_IN` on the variants only; say that the "AI info" label is then a second
+  difference between control and variant, next to the change under test). It covers the
+  original too: the user knows whether it already holds AI media, the run's records can't tell
+  (unless the user said so earlier in this run). This question carries no recommendation. Write
+  the answer in the plan and in G10's note (`--note "... AI disclosure: <answer>"`).
+- **Hands-off:** G10 goes by rule, the AI disclosure never does. Unless the user already
+  answered it in this run, record a stop after G10, before E2 creates anything: `tm stop --run R
+  --reason ai_disclosure --what "<the facts>" --todo "<the one question>"`. On the answer, write
+  the plan as a new version with it (record it), then `tm resume --run R`.
 - **Offered at the end.** When the run made a video without the live test, the final report ends
   with one question (`tm next` says so with `done`): "Do you want to test this against the
   original?" On a yes, ask for the daily budget and the days, then `tm live-test add --run R
@@ -763,17 +796,42 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 <a id="e2"></a>
 ## E2 Media upload and paused ads
 
-- Upload with `ads_creative_upload_media` (local file); on failure, the stop in SKILL.md
-  section 7. Then the ad set and the ads, **PAUSED**, as in the plan; previews with
-  `ads_get_ad_preview`. Save every answer and the object ids in `05_results/meta_objects_v01.json`.
+- **Build exactly the approved plan:** its files per ad and placement, copy, headline,
+  thumbnail and AI disclosure. Before creating anything, run `tm ai-media` again on the final
+  files. If anything has to differ from the approved plan (a file, a format, a placement, the
+  thumbnail, or AI media the plan didn't list), stop and ask, with the change and the reason,
+  before creating the objects: `tm stop --run R --reason plan_changed --what "<the change and
+  why>" --todo "<approve it or say what to do>"`, at every level. On the user's yes, write the
+  plan as a new version with the change (record it), then `tm resume --run R`. Never build
+  something else and report it afterwards.
+- **Upload in one round** (SKILL.md section 7): prepare every file first, each video in each
+  format and the thumbnail when the plan changes or shares it (R7), then `ads_creative_upload_media`
+  with the local files, all of them in one call when the tool takes several. In the Claude
+  desktop app the tool opens an upload window in the chat: that is an upload the user finishes,
+  not a failure. Send them the files first with the file-sending tool (SendUserFile), name them,
+  say to pick all of them in the window at once; the ids come back in the chat. When no upload
+  tool works at all, the stop in SKILL.md section 7.
+- Then the ad set and the ads, **PAUSED**, as in the plan: an ad with 9:16 and 4:5 gets both
+  through placement asset customization, the control the same way as the variants. Pass
+  `self_ai_disclosure` on every creative (`OPT_IN` or `OPT_OUT`, from the plan's answer): it
+  can't be set later (no update tool sets it), so a creative created without it is created
+  again. Previews with `ads_get_ad_preview`. Save every answer and the object ids in
+  `05_results/meta_objects_v01.json`.
 
 <a id="e2b"></a>
 ## E2b Quality and policy check (R8)
 
 - Every variant through the checklist in `04_final/prelaunch_check_vNN.md`
-  (`templates/prelaunch_check_template.md`): AI labelling, claims, music and voice licence, text
-  in the feed preview, known defects, quality against the original. Each item green or red, with
-  its evidence.
+  (`templates/prelaunch_check_template.md`): the AI disclosure, claims, music and voice licence,
+  text in the feed preview, known defects, quality against the original, and the formats and
+  placements of the ads built against the approved plan's. Each item green or red, with its
+  evidence.
+- The AI disclosure is checked here; E2b never asks it (the question was asked before E2, `#e1`).
+  Read `self_ai_disclosure` on each creative (`05_results/meta_objects_v01.json`, or
+  `ads_get_creatives`) against the plan's answer and `tm ai-media` on the final files. Red when a
+  creative differs from the answer, or was created without it while the run used generative AI;
+  the fix is a new creative and ad with the plan's answer, PAUSED (the old ones deleted or left
+  paused, as the user prefers).
 - Record it at every level by rule: `tm decide E2b green|red --by rule --note
   "04_final/prelaunch_check_vNN.md: ..."`. Red stops the run at every level: say which items and
   what fixes them; after the fix, check again and record `--change`.
