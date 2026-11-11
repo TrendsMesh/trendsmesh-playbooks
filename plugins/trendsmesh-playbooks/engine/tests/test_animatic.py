@@ -86,6 +86,8 @@ def test_animatic_files_rebuild_ld_v03(run):
     built = _files(out)
     expected = {f.name: private.alias(f.read_bytes().replace(b"\r", b"")) for f in GEN.iterdir() if f.is_file()}
     assert len(expected) == 11                   # the nine v03 files, engine.js and scenes.js
+    # the library is the plugin's: the handoff's, with the generic product screen of issue #12
+    expected |= {name: (animatic.JS_DIR / name).read_bytes() for name in animatic.LIBRARY}
     assert built == expected
     assert [(i["concept"], i["format"]) for i in items] == ALL
     assert items[0]["html"] == f"{OUT}/C1_9x16_v03.html" and "mp4" not in items[0]

@@ -8,9 +8,12 @@
     not_rendered(run, ...)        the concepts' formats with no MP4 in the renders folder
     rendered_gap(run)             the step check `animatics_rendered`
 
-The handoff's animatic engine and scene library are copied unchanged (LF) into `animatic_js/`; the
-folder is not named `animatic/`, which would sit beside this module. A brief's beats name their
-scene (`beats[].animatic.scene`).
+The handoff's animatic engine and scene library are copied (LF) into `animatic_js/`; the folder is
+not named `animatic/`, which would sit beside this module. One change to them (issue #12): the
+product scenes draw a generic product screen (`K.productScreen`: the product's name, what is on
+its screen, a picture of it), the dry run's book only as a fixture (`params.fixture: "book"`). A
+brief's beats name their scene (`beats[].animatic.scene`); a beat's `params.image`, a picture in
+the run, is inlined into the storyboard as a data URI (`with_images`).
 
 `build` writes, per concept, `03_wip/animatic/<C>_anim_<ver>.js` (`window.ANIM`) and a page
 `<C>_<fmt>_<ver>.html` per format, beside copies of `engine.js` and `scenes.js`, so the folder
@@ -24,12 +27,13 @@ whole folder, before anything is written; paths in the answer are run-relative.
 
 from __future__ import annotations
 
+import base64
 import copy
 import json
 import os
 import re
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from tm import atlas, config, manifest, state
 from tm.runfolder import RunFolder
@@ -54,6 +58,11 @@ _SCENE = re.compile(r"^  ([A-Za-z_$][\w$]*)\s*[(:]", re.MULTILINE)
 _ID = re.compile(r"[A-Za-z0-9_-]+")                       # brief_page's concept ids: they name files here
 _VERSION = re.compile(r"^v(\d+)$")
 _VERSIONED = re.compile(r"_v(\d+)\.(?:js|html|mp4)$")   # a storyboard file or render of a version
+# a product picture a beat draws (`params.image`, issue #12): a file of the run, inlined into the
+# storyboard as a data URI, so the page draws it from anywhere and its canvas can still be read
+IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+               ".gif": "image/gif"}
+IMAGE_MAX = 2 * 1024 * 1024
 _HTML = ('<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>{0} animatic {1}</title></head><body>\n'
          '<script>window.FMT="{1}";</script>\n<script src="scenes.js"></script>\n'
          '<script src="{2}"></script>\n<script src="engine.js"></script>\n</body></html>\n')
@@ -182,6 +191,44 @@ def _anims(rel: str, brief: dict, concepts: list[str] | None) -> list[tuple[dict
                    f"was written. {AGAIN}") from None
 
 
+def _image(run: RunFolder, ref: object) -> Path | None:
+    """The run's file a beat's `params.image` names (its path from the run folder), or None when it
+    is not an image file of the run within IMAGE_MAX."""
+    if not isinstance(ref, str) or not ref or "://" in ref or ref.startswith("data:"):
+        return None
+    text = ref.replace("\\", "/")
+    if PurePosixPath(text).is_absolute() or PureWindowsPath(ref).drive or ".." in text.split("/"):
+        return None
+    path = run.path / text
+    try:
+        path.resolve().relative_to(run.path.resolve())
+    except ValueError:
+        return None
+    if path.suffix.lower() not in IMAGE_TYPES or not path.is_file() or path.stat().st_size > IMAGE_MAX:
+        return None
+    return path
+
+
+def with_images(run: RunFolder, rel: str, anim: dict) -> dict:
+    """`anim` with each beat's `params.image` (a path in the run) as a data URI; Stop for one that
+    is not an image file of the run, before anything is written."""
+    out = copy.deepcopy(anim)
+    for i, beat in enumerate(out["beats"], 1):
+        params = beat.get("params")
+        if not isinstance(params, dict) or "image" not in params:
+            continue
+        path = _image(run, params["image"])
+        if path is None:
+            raise Stop(f"{rel}: {anim['id']} beat {i} names the image {params['image']!r}. A beat's image is a picture "
+                       f"of the product kept in the run ({', '.join(t.lstrip('.') for t in IMAGE_TYPES)}, up to "
+                       f"{IMAGE_MAX // (1024 * 1024)} MiB), named by its path from the run folder, like "
+                       "01_base/product.png; or leave it out. Fix it (a new version), then make the animatics again. "
+                       f"Nothing was written. {AGAIN}")
+        data = base64.b64encode(path.read_bytes()).decode("ascii")
+        params["image"] = f"data:{IMAGE_TYPES[path.suffix.lower()]};base64,{data}"
+    return out
+
+
 def write_new(path: Path, text: str) -> None:
     with open(path, "x", encoding="utf-8", newline="\n") as fh:     # never over an earlier file
         fh.write(text)
@@ -258,7 +305,7 @@ def build(run: RunFolder, brief_path: Path, *, concepts: list[str] | None = None
 
     _, rel, brief = brief_page.load_brief(run, brief_path)
     drawn = formats_of(run) if formats is None else _checked_formats(formats, "--formats")
-    anims = _anims(rel, brief, concepts)
+    anims = [(concept, with_images(run, rel, anim)) for concept, anim in _anims(rel, brief, concepts)]
     folder = run.path / WIP
     version = _version(folder, version)
     if render:

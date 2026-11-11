@@ -47,10 +47,13 @@ window.SCENES = {
     K.duvet(100, 600, 700, 30);
     K.notebook(420, 430, 230, 140, 1, 4);
   },
-  // the book and its night-by-night schedule on a phone; params.highlight (0-6) or params.cycle
+  // the product on a phone: params.product (its name), params.screen (what is on the screen: a short text, or a list
+  // of lines), params.image (a picture of it from the run), params.highlight (a line, 0-6) or params.cycle;
+  // params.fixture 'book' is the dry run's book (a test fixture)
   product_phone(K, p, t, h, prm) {
-    const hi = prm.cycle ? Math.min(6, Math.floor(p * 9)) : (prm.highlight ?? -1);
-    K.phone(330, 160, 420, 820, { screen: (x, y, w, hh) => K.bookScreen(x, y, w, hh, hi) });
+    const last = Array.isArray(prm.screen) ? Math.max(0, Math.min(6, prm.screen.length - 1)) : 6;
+    const hi = prm.cycle ? Math.min(last, Math.floor(p * (last + 3))) : (prm.highlight ?? -1);
+    K.phone(330, 160, 420, 820, { screen: (x, y, w, hh) => K.productScreen(x, y, w, hh, prm, hi) });
   },
   // top-down: a hand writing a sticky note; params.note
   desk_sticky_write(K, p, t, h, prm) {
@@ -100,9 +103,9 @@ window.SCENES = {
     K.nightstand(830, 640); K.phone(860, 600, 150, 36, {});
     const k = h.seg(p, 0.55, 1); h.ctx.fillStyle = `rgba(0,0,0,${0.85 * k})`; h.ctx.fillRect(-200, -200, 1480, 1480);
   },
-  // morning notebook, then the book on a phone; params.highlight
+  // morning notebook, then the product on a phone; params as product_phone's (product, screen, image, highlight)
   morning_then_product(K, p, t, h, prm) {
     if (p < 0.42) { K.room({ window: 'sun' }); K.notebook(200, 360, 680, 400, 0.4, 5); }
-    else K.phone(330, 160, 420, 820, { screen: (x, y, w, hh) => K.bookScreen(x, y, w, hh, prm.highlight ?? -1) });
+    else K.phone(330, 160, 420, 820, { screen: (x, y, w, hh) => K.productScreen(x, y, w, hh, prm, prm.highlight ?? -1) });
   },
 };

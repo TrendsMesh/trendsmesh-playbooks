@@ -14,6 +14,7 @@
   document.body.appendChild(cv);
   const c = cv.getContext('2d');
   const STAGE_Y = (H - 1080) / 2;
+  const IMAGES = {};   // the beats' params.image (data URIs the build inlined), decoded before the first frame
 
   // ---------- seeded randomness for the hand-drawn "boil" ----------
   let seedState = 1;
@@ -203,6 +204,41 @@
         c.fillStyle = 'rgba(43,42,40,0.35)'; c.fillRect(x + w * 0.45, yy - 2, w * 0.4, 4);
       }
     },
+    // a product on a phone screen, whatever the product: opts.product (its name), opts.screen (what is on the screen:
+    // a short text, or a list of lines, `hi` marking one), opts.image (a picture of it). opts.fixture 'book' draws
+    // the dry run's book (bookScreen): a test fixture, never a product shot.
+    productScreen(x, y, w, h, opts = {}, hi = -1) {
+      if (opts.fixture === 'book') return K.bookScreen(x, y, w, h, hi);
+      c.fillStyle = '#f4f1ea'; c.fillRect(x, y, w, h);
+      const pad = w * 0.09, iw = w - 2 * pad, ih = h * 0.34, iy = y + h * 0.06, faint = 'rgba(43,42,40,0.3)';
+      const img = typeof opts.image === 'string' ? IMAGES[opts.image] : null;
+      if (img && img.naturalWidth) {
+        const k = Math.min(iw / img.naturalWidth, ih / img.naturalHeight), dw = img.naturalWidth * k, dh = img.naturalHeight * k;
+        c.drawImage(img, x + pad + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh);
+      } else {   // a picture placeholder: a frame with a hill
+        fillRR(x + pad, iy, iw, ih, 12, '#ddd6c8');
+        pen(3, faint); poly([[x + pad + iw * 0.15, iy + ih * 0.8], [x + pad + iw * 0.45, iy + ih * 0.35], [x + pad + iw * 0.85, iy + ih * 0.8]], false, 1.5);
+      }
+      let yy = iy + ih + h * 0.07;
+      c.textAlign = 'left'; c.textBaseline = 'middle';
+      c.font = `bold ${w * 0.085}px "Segoe UI",Arial`; c.fillStyle = '#2b2a28';
+      if (opts.product) wrap(String(opts.product), iw).slice(0, 2).forEach((l) => { c.fillText(l, x + pad, yy); yy += w * 0.1; });
+      else { c.fillStyle = faint; c.fillRect(x + pad, yy - 5, iw * 0.6, 10); yy += w * 0.1; }
+      yy += h * 0.015;
+      c.font = `${w * 0.055}px "Segoe UI",Arial`;
+      const fit = (l) => { const ls = wrap(l, iw); return ls.length > 1 ? `${ls[0]}…` : (ls[0] || ''); };
+      if (Array.isArray(opts.screen)) {
+        opts.screen.slice(0, 7).forEach((l, i) => {
+          if (i === hi) fillRR(x + pad * 0.6, yy - h * 0.021, w - pad * 1.2, h * 0.042, 6, '#f4d35e');
+          c.fillStyle = '#2b2a28'; c.fillText(fit(String(l)), x + pad, yy); yy += h * 0.052;
+        });
+      } else if (opts.screen) {
+        c.fillStyle = '#2b2a28';
+        wrap(String(opts.screen), iw).slice(0, 6).forEach((l) => { c.fillText(l, x + pad, yy); yy += h * 0.05; });
+      } else {
+        for (let i = 0; i < 4; i++) { c.fillStyle = faint; c.fillRect(x + pad, yy - 2, iw * (0.9 - i * 0.14), 4); yy += h * 0.05; }
+      }
+    },
     sticky(x, y, s, txt, reveal = 1, rot = -0.04) {
       c.save(); c.translate(x + s / 2, y + s / 2); c.rotate(rot);
       c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(-s / 2 + 8, -s / 2 + 10, s, s);
@@ -322,7 +358,10 @@
     tag(t, D, A.id);
   }
 
-  window.addEventListener('load', () => {
+  window.addEventListener('load', async () => {
+    // a product picture is decoded before seek exists, so the renderer (which waits for it) never draws a frame without it
+    const pictures = window.ANIM.beats.map((b) => (b.params || {}).image).filter((s) => typeof s === 'string' && s.startsWith('data:image/'));
+    await Promise.all([...new Set(pictures)].map((s) => { const i = new Image(); i.src = s; IMAGES[s] = i; return i.decode().catch(() => {}); }));
     window.DURATION = window.ANIM.duration;
     window.seek = (t) => render(t);
     render(0);

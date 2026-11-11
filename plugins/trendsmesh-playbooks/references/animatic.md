@@ -36,7 +36,7 @@ Each beat of a concept in brief.json is one scene of the animatic. The beat says
 | `lie_whisper` | lying in bed, eyes closed, whispering a sentence |
 | `phone_alarm` | a phone alarm lights the face; sits up, then lies back; `time` |
 | `morning_talk` | morning daylight, sitting up with a notebook, talking to camera |
-| `product_phone` | the product and its plan on a phone; `highlight` (0–6) or `cycle` |
+| `product_phone` | the product on a phone: `product` (its name), `screen` (what is on the screen: a short text, or a list of up to 7 lines), `image` (a picture of it in the run, optional), `highlight` (a line, 0–6) or `cycle` |
 | `desk_sticky_write` | top-down: a hand writing a sticky note; `note` |
 | `sticky_to_phone` | the finished note moves onto a phone; `note` |
 | `phone_dark_wake` | a phone with the note in the dark; the screen wakes; `note`, `time` |
@@ -45,7 +45,14 @@ Each beat of a concept in brief.json is one scene of the animatic. The beat says
 | `selfie_talk` | a front-camera selfie at night; `clock`, `eyes_closed` |
 | `backcam_notebook` | the back camera: a notebook on the duvet, writing by phone light |
 | `back_to_sleep` | the phone face down, back to sleep, fade to black |
-| `morning_then_product` | the morning notebook, then the product on a phone; `highlight` |
+| `morning_then_product` | the morning notebook, then the product on a phone; the params of `product_phone` |
+
+The product scenes draw the brief's own product: give them `product` (the name, as
+`meta.product.name` says it) and `screen` (what the viewer reads on it). `image` is the file's path
+from the run folder (like `01_base/product.png`: PNG, JPG, WebP or GIF, up to 2 MiB), drawn into the
+storyboard itself; a path outside the run or a web address stops the animatic step. Without these
+params the screen is a plain placeholder. (`fixture: "book"` draws the dry run's book: a test
+fixture, never a product shot.)
 
 The library comes from the dry run (a product used at night). Pick the scene closest to
 what the beat shows; a beat no scene fits is drawn with the nearest one and its `label` says what

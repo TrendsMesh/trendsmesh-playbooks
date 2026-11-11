@@ -53,6 +53,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   `thumb.jpg` for every TrendsMesh clip, and writes that path into the new brief version, so `tm brief page`
   builds without any thumbnail edited by hand. A thumbnail it cannot get is taken out of its clip, and the page
   shows the clip link without it.
+- **Creative brief: the animatic's product shots show your product.** The `product_phone` and
+  `morning_then_product` scenes draw a product screen from the beat's params: the product's name, what is on its
+  screen, and optionally a picture of it kept in the run. They no longer draw the dry run's book, whatever the
+  product.
 
 ## 0.10.0
 
