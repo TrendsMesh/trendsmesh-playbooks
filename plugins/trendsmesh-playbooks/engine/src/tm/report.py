@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Callable, Tuple
@@ -25,8 +26,16 @@ Finding = Tuple[int, str, str]   # (line, kind, value)
 
 _KEYS = ("account_id", "account_name", "ad_account_id", "ad_account_name", "page_id", "page_name", "brand",
          "business_name", "handle", "campaign_name", "adset_name", "ad_name")
-_SKIP_DIRS = {".pixi", "node_modules", ".git"}
-_MAX_JSON = 5 * 1024 * 1024
+_SKIP_DIRS = {".pixi", "node_modules", ".git", ".venv", "__pycache__"}
+_SUFFIXES = {".json", ".jsonl", ".yaml", ".yml"}
+_MAX_FILE = 5 * 1024 * 1024        # a bigger file is skipped
+_MAX_FILES = 2000                  # the walk stops after reading this many files
+_MAX_TOTAL = 50 * 1024 * 1024      # or before reading more than this in all
+# Where the plugin saves in a workspace: the run folders (runfolder: <workspace>/runs/) and the library
+# (brand.DIR library/brands, brand.CHANNEL_DIR library/channels, library.FILE library/results.jsonl). A workspace
+# that is the home folder is read only there.
+_PLUGIN_DIRS = ("runs", "library")
+_META_FILE = re.compile(r"(?:^|_)meta(?:_|\.|$)", re.IGNORECASE)   # meta_weekly_ads_p01.json, <ad>_meta_daily.json
 _MIN_VALUE = 3
 _ALLOWED_MAIL = {"contact@trendsmesh.com"}
 _ALLOWED_DOMAINS = {"example.com", "example.org", "example.net"}
@@ -100,6 +109,89 @@ def _collect(node: object, into: set[str]) -> None:
             _collect(item, into)
 
 
+def _value(node: object) -> "str | None":
+    """A saved scalar as text, when it is long enough to be a name or an id."""
+    if isinstance(node, (str, int, float)) and not isinstance(node, bool) and len(str(node).strip()) >= _MIN_VALUE:
+        return str(node).strip()
+    return None
+
+
+def _at(node: object, *keys: str) -> object:
+    for key in keys:
+        node = node.get(key) if isinstance(node, dict) else None
+    return node
+
+
+def _add(into: set[str], *nodes: object) -> None:
+    """Each of `nodes` that is a value (or a list of values)."""
+    for node in nodes:
+        for item in node if isinstance(node, list) else [node]:
+            value = _value(item)
+            if value:
+                into.add(value)
+
+
+def _names(node: object, into: set[str]) -> None:
+    """Every `name` and `id` in a Meta answer: the ad account's, each campaign's, ad set's, ad's and creative's."""
+    if isinstance(node, dict):
+        _add(into, *(node.get(k) for k in ("name", "id") if not isinstance(node.get(k), list)))
+        for value in node.values():
+            _names(value, into)
+    elif isinstance(node, list):
+        for item in node:
+            _names(item, into)
+
+
+def _host(url: object) -> "str | None":
+    if not isinstance(url, str):
+        return None
+    host = (urllib.parse.urlsplit(url.strip()).hostname or "").lower()
+    return host[4:] if host.startswith("www.") else host or None
+
+
+def _collect_saved(path: Path, doc: object, into: set[str]) -> None:
+    """The names and ids in one saved file `doc`, read as what the plugin saves at `path`."""
+    _collect(doc, into)                                  # the watched keys, in any file
+    name = path.name.lower()
+    tool = _at(doc, "_tool")
+    if _META_FILE.search(path.stem) or "meta" in (part.lower() for part in path.parent.parts) or (
+            isinstance(tool, str) and tool.startswith("ads_")):
+        _names(doc, into)                                # Meta's answers, saved verbatim or in the envelope
+    if not isinstance(doc, dict):
+        return
+    schema = doc.get("schema")
+    if schema == "brand/1" or doc.get("kind") == "brand":          # library/brands/<slug>/brand_vNN.json
+        products = _at(doc, "catalog", "products")
+        _add(into, doc.get("brand"), *(p.get("name") for p in products if isinstance(p, dict))
+             if isinstance(products, list) else [])
+    if schema == "channel/1" or doc.get("kind") == "channel":      # library/channels/<slug>/channel_vNN.json
+        _add(into, doc.get("channel"), doc.get("store"), _at(doc, "voice", "narrator_elevenlabs_id"))
+    if name.endswith(("config.yaml", "config.yml")):                 # a run's config.yaml (tm config write)
+        _add(into, _at(doc, "account", "id"), _at(doc, "account", "name"), _at(doc, "product", "name"),
+             _host(_at(doc, "product", "landing_url")), doc.get("channels"), _at(doc, "intake", "approver"))
+    if name == "run.json":
+        _add(into, _at(doc, "organic", "channel"))
+    if name.endswith(".jsonl") or path.parent.name == "library":    # library/results.jsonl rows
+        _add(into, doc.get("account"), doc.get("product"))
+
+
+def _read_saved(path: Path) -> list:
+    """The documents in one saved file: a JSON file's value, each line of a JSONL file, a YAML file's documents."""
+    text = path.read_text(encoding="utf-8-sig")
+    if path.suffix == ".json":
+        return [json.loads(text)]
+    if path.suffix == ".jsonl":
+        docs = []
+        for line in text.splitlines():
+            try:
+                docs.append(json.loads(line))
+            except ValueError:
+                continue
+        return docs
+    import yaml                                          # the engine's own dependency (tm config)
+    return list(yaml.safe_load_all(text))
+
+
 def _secret_values() -> set[str]:
     try:
         text = (paths.data_dir() / "secrets.env").read_text(encoding="utf-8")
@@ -118,20 +210,40 @@ def _secret_values() -> set[str]:
 
 
 def workspace_values(root: Path) -> set[str]:
-    """Names and ids from the user's saved JSON under `root` (any depth), plus the plugin's secrets."""
+    """Names and ids from what the user's workspace `root` saved (any depth): the watched keys in any JSON, JSONL or
+    YAML file, a run's config.yaml (the ad account, the product and its site, the channels, the approver), Meta's
+    answers (every name), brand and channel profiles (the brand, its products, the channel, its store, its narrator)
+    and the results library; plus the plugin's secrets. A file over _MAX_FILE is skipped; the walk stops after
+    _MAX_FILES files or before reading more than _MAX_TOTAL bytes. In the home folder only the plugin's own folders
+    (_PLUGIN_DIRS) are read."""
+    import yaml
+
     values: set[str] = set()
-    for folder, dirs, files in os.walk(root):
-        dirs[:] = [d for d in dirs if d not in _SKIP_DIRS]
-        for name in files:
-            if not name.endswith(".json"):
-                continue
-            path = Path(folder) / name
-            try:
-                if path.stat().st_size > _MAX_JSON:
+    root = Path(root)
+    try:
+        at_home = root.resolve() == Path.home().resolve()
+    except (OSError, RuntimeError):
+        at_home = False
+    tops = [root / d for d in _PLUGIN_DIRS] if at_home else [root]
+    count = total = 0
+    for top in tops:
+        for folder, dirs, files in os.walk(top):
+            dirs[:] = sorted(d for d in dirs if d not in _SKIP_DIRS)
+            for name in sorted(files):
+                path = Path(folder) / name
+                if path.suffix.lower() not in _SUFFIXES:
                     continue
-                _collect(json.loads(path.read_text(encoding="utf-8-sig")), values)
-            except (OSError, ValueError):
-                continue
+                try:
+                    size = path.stat().st_size
+                    if size > _MAX_FILE:
+                        continue
+                    if count >= _MAX_FILES or total + size > _MAX_TOTAL:
+                        return values | _secret_values()
+                    count, total = count + 1, total + size
+                    for doc in _read_saved(path):
+                        _collect_saved(path, doc, values)
+                except (OSError, ValueError, RecursionError, yaml.YAMLError):
+                    continue
     return values | _secret_values()
 
 
