@@ -24,7 +24,7 @@ inbox reached from the sandbox).
 ### What each case proves, and what it does not
 
 - **ri_bug_account_data_replaced** (first turn; gh signed in). A refresh-ad run's log holds `act_12345678`,
-  the brand "Pinecrest Candles" (also in the run's saved `01_base/account_v01.json`, which `tm report check`
+  the brand "Pinecrest Candles" (also in the run's saved files, which `tm report check`
   reads), a spend of `$1,234.00` and a home folder `/Users/testuser`. Asked to report it, the agent loaded the
   skill, drafted the bug in English, ran `tm report check` (clean), checked `gh`, and showed the exact title
   and body with placeholders (`<account id>`, `<ad account>`, `<amount>`, `~/…`), named the destination
@@ -127,6 +127,22 @@ suggestion after a failed run. The engine tests cover the answers themselves (`t
 - **One run of the six** (`evals/run.sh --case 'ri_*'`): all **1.00** with the plugin, $1.12. Baselines: 0.45
   (bug case: showed the id, brand, spend and page name, ran no check) and 0.57 (acceptance case: named no
   private way and no acceptance command). Nothing failed, so there was no second run.
+
+### Final review fixes (2026-11-11)
+
+- **`ri_bug_account_data_replaced` rebuilt from the files the plugin saves:** the run's `run.json`,
+  `manifest.md` and `config.yaml` (the ad account and the product), and R1's Meta answers saved verbatim,
+  `01_base/meta_weekly_ads_p01.json` (the ad's name) and `01_base/meta_weekly_account.json` (the account's
+  name, "Juniper Lane Studio", which the user never names). `account_v01.json`, a shape the plugin never
+  writes, is gone. The page-name grader is now `no_account_name_shown` (same pattern).
+- `tm report check` reads those shapes (config.yaml, Meta answers, profiles, the library), so a draft naming
+  the account, the ad, the product or the shop's site is found; the engine tests prove each source.
+- **One run** (`evals/run.sh --case ri_bug_account_data_replaced`, both arms): **1.00** with the plugin, 0.55
+  baseline, $0.41. As before, the agent's own rewrite had already replaced the account's name, so its one
+  check was clean: the case proves the name stays out, the engine tests that the check finds it.
+- Run from a worktree of the branch: in a TrendsMesh checkout the private eval cases are links into
+  `private/`, and `claude plugin eval` refuses a case folder that is a link, so the main checkout cannot run
+  any case.
 
 ## Organic video, PB03 (organic video plan Task 22, 2026-11-08)
 
