@@ -14,8 +14,9 @@ flow is `flow.md`; the rules `rules.md`. **What the plugin does with them:**
   --single-file`, decisions by "Copy my decisions" or in chat).
 - **Not supported yet**, said plainly: seeds from PB5 and PB8 (no such playbooks yet); the
   Shopify connector and Notion or Drive connectors (an export or a file the user has works);
-  Goodreads reviews (`references/voice.md` says why); local forums for non-English markets
-  (Wykop, Ceneo; any reviews the user exports go in through `tm voice import`); organic use only
+  Goodreads reviews (`references/voice.md` says why); local forums and review sites for
+  non-English markets are found by web search at B2, and a site that refuses programs is skipped
+  (any reviews the user exports go in through `tm voice import`); organic use only
   (the media-buyer view off, an organic KPI); Foreplay (section 6, test 5).
 - Where it says "HITL" or "AUTO", read the levels (`checkin-cards.md`); `voice_mine.py`,
   `trend_shortlist.py` and `build_brief_pack.py` are `tm voice …`, `tm trends shortlist` and `tm

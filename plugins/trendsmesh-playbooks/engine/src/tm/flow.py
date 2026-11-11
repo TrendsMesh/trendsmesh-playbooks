@@ -96,8 +96,8 @@ _EVIDENCE_WINDOW = {REFRESH_AD: (TREND_STEP, REGISTER_STEP), CREATIVE_BRIEF: ("B
 _LATE_INTAKE = {CREATIVE_BRIEF: ("A1", {
     "A0": ("Check readiness (the doctor), then finish with `tm done A0`. Ask nothing yet: the intake asks the user "
            "only which product, at A1, and the level and the outputs are chosen on A1's intake card."),
-    "A1": ("Ask the user only which product to brief (one pick list from the ad account, or a landing link for a "
-           "product without ads), then show the intake card, with the level of involvement and the outputs on it. "
+    "A1": ("Ask the user only which product to brief (one pick list from the ad account; a landing link only when "
+           "neither the ads, the ad sets' Pixel nor the Ad Library gives one), then show the intake card, with the level of involvement and the outputs on it. "
            "`tm config write` records them with the rest of the card; then finish with `tm done A1`."),
 })}
 _EVIDENCE_FIRST = ("First record what this run's changes rest on: `tm evidence trendsmesh --run R "

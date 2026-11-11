@@ -155,9 +155,10 @@ def _literal(name: str):
 @pytest.mark.private_data
 def test_constants_are_the_originals_verbatim():
     for name in ("TIMEOUT", "RETRIES", "BACKOFF", "MAX_RATE_WAIT", "ARCTIC", "BOT_AUTHORS", "REMOVED",
-                 "DEFAULT_WINDOW_DAYS", "WARMUP_WAIT", "MIN_CHUNK_DAYS", "MAX_CALLS", "POST_FIELDS",
-                 "COMMENT_FIELDS"):
+                 "WARMUP_WAIT", "MIN_CHUNK_DAYS", "MAX_CALLS", "POST_FIELDS", "COMMENT_FIELDS"):
         assert getattr(voice, name) == _literal(name), name
+    # The one change (issue #16): 12 months, not the original's 730 days; customer pains change slowly.
+    assert _literal("DEFAULT_WINDOW_DAYS") == 730 and voice.DEFAULT_WINDOW_DAYS == 365
     assert voice.ARCHIVE_START == date(2005, 6, 1)
     assert "ARCHIVE_START = dt.date(2005, 6, 1)" in ORIGINAL.read_text(encoding="utf-8")
     assert voice.USER_AGENT == (f"trendsmesh-playbooks/{voice.__version__} "
@@ -227,6 +228,72 @@ def test_too_many_calls_stop_partial_and_no_data_is_unavailable(sleeps):
         voice.fetch_reddit("comments", "LucidDreaming", "x", after="2026-10-26", before="2026-11-05", get=never)
 
 
+def test_a_time_cap_keeps_what_came_back(sleeps, monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(voice, "_clock", lambda: now[0])
+    get, calls = _sequence(*[True] * 50)
+
+    def slow(url, params):          # every call takes 40 s (the recorded sleeps take none)
+        now[0] += 40
+        return get(url, params)
+    got = voice.fetch_reddit("posts", "LucidDreaming", "x", after="2025-11-05", before="2026-11-05", get=slow,
+                             max_seconds=90)
+    stats = got["_stats"]
+    assert stats["partial"] == "stopped at the 90 s time cap"
+    assert stats["archive_calls"] == 3 and stats["items"] == 3          # at 0, 40 and 80 s; none at 120 s
+    # Without a cap the same archive is walked further (the original's behaviour: the golden replays).
+    now[0] = 0
+    calls.clear()
+    assert voice.fetch_reddit("posts", "LucidDreaming", "x", after="2025-11-05", before="2026-11-05",
+                              get=slow)["_stats"]["archive_calls"] == voice.MAX_CALLS
+
+
+def _sequence(*answers: bool):
+    """An archive answering in turn: True gives a post, False times out; past the end it times out."""
+    hi = int(voice._to_ts(date(2026, 11, 5)))
+    calls: list = []
+
+    def get(url, params):
+        n = len(calls)
+        calls.append(params["before"])
+        if n < len(answers) and answers[n]:
+            return Answer(url, {"data": [_post(n, min(params["before"], hi) - DAY)]})
+        raise voice.ArchiveTimeout("Timeout. Maybe slow down a bit")
+    return get, calls
+
+
+def test_timeouts_in_a_row_stop_early_and_a_success_resets_them(sleeps):
+    window = {"after": "2026-01-01", "before": "2026-11-05", "max_timeouts_in_a_row": 4}
+    get, calls = _sequence(True)
+    got = voice.fetch_reddit("posts", "LucidDreaming", "x", get=get, **window)
+    assert got["_stats"]["partial"] == "stopped after 4 archive timeouts in a row"
+    assert len(calls) == 5 and got["_stats"]["items"] == 1
+    get, calls = _sequence(False, True)          # the warm-up retry answers: the count starts again
+    got = voice.fetch_reddit("posts", "LucidDreaming", "x", get=get, **window)
+    assert len(calls) == 6 and got["_stats"]["archive_timeouts"] == 5
+    get, calls = _sequence()
+    with pytest.raises(voice.SourceUnavailable, match="no data: stopped after 4 archive timeouts in a row"):
+        voice.fetch_reddit("posts", "LucidDreaming", "x", get=get, **window)
+    assert len(calls) == 4
+
+
+def test_the_command_caps_time_and_timeouts_by_default(run, sleeps, monkeypatch, capsys):
+    seen = {}
+
+    def fake(kind, subreddit, query, **kw):
+        seen.update(kw)
+        raise voice.SourceUnavailable("test")
+    monkeypatch.setattr(voice, "fetch_reddit", fake)
+    argv = ["voice", "reddit-posts", "--run", str(run.path), "--subreddit", "LucidDreaming", "--query", "x", "--json"]
+    assert main(argv) == 2
+    assert (seen["max_seconds"], seen["max_timeouts_in_a_row"]) == (voice.TIME_CAP_S, voice.TIMEOUTS_IN_A_ROW)
+    assert 60 <= voice.TIME_CAP_S <= 90 and voice.TIMEOUTS_IN_A_ROW >= 3
+    assert main(argv + ["--max-seconds", "60"]) == 2 and seen["max_seconds"] == 60
+    capsys.readouterr()
+    assert main(argv + ["--max-seconds", "5"]) == 1                     # too short to get anything
+    assert json.loads(capsys.readouterr().out)["status"] == "error"
+
+
 def test_automoderator_dropped_removed_counted(sleeps):
     hi = int(voice._to_ts(date(2026, 11, 5)))
     posts = [
@@ -291,9 +358,9 @@ def test_chunk_grows_back_but_never_shrinks_after_a_success(sleeps):
     assert got["_stats"]["archive_calls"] == 7 and got["_stats"]["partial"].startswith("archive kept timing out")
 
 
-def test_default_window_is_730_days_and_bad_arguments_are_errors(run, sleeps, capsys):
+def test_default_window_is_12_months_and_bad_arguments_are_errors(run, sleeps, capsys):
     got = voice.fetch_reddit("posts", "LucidDreaming", "x", get=archive([]))
-    assert got["_params"]["after"] == (date.today() - timedelta(days=730)).isoformat()
+    assert got["_params"]["after"] == (date.today() - timedelta(days=365)).isoformat()
     assert got["_params"]["before"] == "now" and got["_stats"]["window"][1] == "now"
     assert got["_params"]["title"] == "x" and got["_params"]["sort"] == "desc"
     assert voice.fetch_reddit("posts", "LucidDreaming", "x", field="query", get=archive([]))["_params"]["query"] == "x"
@@ -395,6 +462,34 @@ def test_import_text_csv_jsonl_and_tier_c_refused(run, tmp_path, capsys):
     rows = library.read_jsonl(run.path / voice.ITEMS)[0]
     assert [r["id"] for r in rows] == ["survey:1", "survey:3"]
     assert "tm voice import" in (run.path / "manifest.md").read_text(encoding="utf-8")
+
+
+def test_import_keeps_each_texts_link_and_date(run, tmp_path, capsys):
+    """Reviews and discussions found on the web (B2 steps 1 and 2) carry their page and day."""
+    lines = tmp_path / "rival.jsonl"
+    lines.write_text('{"text": "Too hot by June", "url": "https://shop.example.com/r/1", "date": "2026-07-02"}\n'
+                     '{"text": "No date here"}\n', encoding="utf-8")
+    items = voice.import_file(lines, "jsonl", "rival", "B")
+    assert items[0]["url"] == "https://shop.example.com/r/1"
+    assert items[0]["created_utc"] == voice._to_ts(date(2026, 7, 2))
+    assert (items[1]["url"], items[1]["created_utc"]) == ("", None)
+    table = tmp_path / "forum.csv"
+    table.write_text("text;url;date\nNothing works;https://forum.example.com/t/9;2026-03-01\n", encoding="utf-8")
+    item = voice.import_file(table, "csv", "forum", "B", url="https://forum.example.com/")[0]
+    assert item["url"] == "https://forum.example.com/t/9"                 # the row's own link first
+    page = tmp_path / "voice_rival.txt"
+    page.write_text("One review.\n\nAnother.\n", encoding="utf-8")
+    got = voice.import_file(page, "text", "rivalpage", "B", url="https://shop.example.com/reviews")
+    assert {it["url"] for it in got} == {"https://shop.example.com/reviews"}
+    lines.write_text('{"text": "x", "date": "last June"}\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="record 1.*YYYY-MM-DD"):
+        voice.import_file(lines, "jsonl", "rival", "B")
+    with pytest.raises(ValueError, match="--url"):
+        voice.import_file(page, "text", "rivalpage", "B", url="shop.example.com")
+    assert main(["voice", "import", "--run", str(run.path), "--file", str(page), "--format", "text",
+                 "--source", "rivalpage", "--tier", "B", "--url", "https://shop.example.com/reviews", "--json"]) == 0
+    rows = library.read_jsonl(run.path / voice.ITEMS)[0]
+    assert {r["url"] for r in rows} == {"https://shop.example.com/reviews"}
 
 
 def _import(run: RunFolder, capsys, path: Path, fmt: str, source: str = "amazon", *extra: str) -> tuple[int, dict]:

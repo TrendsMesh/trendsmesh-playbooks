@@ -82,8 +82,10 @@ above, with nothing asked yet. At A1, `tm trends collect on --run R` right befor
 MCP call (`ads_get_ad_accounts`), then:
 
 - **One question: which product.** The products found in the account (campaign names, the ads'
-  landing links grouped by domain) as one pick list; a landing link is asked only for a product
-  without ads. Everything else you derive.
+  landing links grouped by domain) as one pick list. When the ads give no link, the landing page
+  comes from the ad sets' Pixel, then the Ad Library; a landing link is asked only when none can
+  be found. The page is saved as its own text with `tm page fetch` (WebFetch gives a summary, a
+  last resort no quote may come from). Everything else you derive.
 - **One card**, one message, with every field of the spec's confirmation card: product, account,
   landing page, market, language, category phrase, the brand draft (what it stands for, tone in
   three words, claims, off-limits), recipients (all five), number of concepts (3), how involved
@@ -91,9 +93,10 @@ MCP call (`ads_get_ad_accounts`), then:
   four, or the review pack alone: chosen here only), and the optional budget, deadline, approver,
   creator rights and fee as **"to set"** until someone gives them. It also has CB5's
   **customer-voice line**: links to where customers leave reviews, or any export (reviews,
-  support tickets, surveys) are welcome, and when there are none, what you will use instead (the
-  category's voice from the Reddit archive, the landing page as the brand's own view) and that
-  the run goes on. Its only question is **"Anything off-limits?"**; the user replies OK or
+  support tickets, surveys, the comments under the brand's own ads) are welcome, and when there
+  are none, what you will use instead (the category's voice: reviews of comparable products,
+  discussions on the web and the Reddit archive; the landing page as the brand's own view) and
+  that the run goes on. Its only question is **"Anything off-limits?"**; the user replies OK or
   corrects. Never invent a value.
 - Then the brand profile (`tm brand check`, `tm brand save`), the answers file, `tm config
   write`, `tm config check`, `tm done A1`. **Never send a `mode` key** in the answers: the level

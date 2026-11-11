@@ -57,6 +57,18 @@ What changed in each version of the TrendsMesh playbooks plugin.
   `morning_then_product` scenes draw a product screen from the beat's params: the product's name, what is on its
   screen, and optionally a picture of it kept in the run. They no longer draw the dry run's book, whatever the
   product.
+- **The creative brief keeps the landing page's own words.** The product page is saved as its literal text
+  (`tm page fetch`; a page built by JavaScript is read in your own Chrome or Edge), not as a WebFetch summary, and
+  `tm brief check` refuses a quote given as the landing page's that is not on the saved page, or that would come
+  from a summary.
+- **The creative brief finds the landing page when Meta gives no ad link.** It reads the ad sets' Pixel for the
+  pages it fires on and picks the site that matches the market and language, then looks in the Ad Library; you are
+  asked "Which page is this product sold on?" only when none of that finds it, and the run notes where the link
+  came from.
+- **Customer voice comes from reviews and the web first, and Reddit no longer holds up the brief.** The creative
+  brief reads reviews of comparable products and discussions in the market's language before the Reddit archive,
+  caps each archive query at 90 seconds (over the last 12 months), stops once there is enough, and tells you up
+  front that the step takes a few minutes, with progress as it goes. Imported reviews keep their link and date.
 
 ## 0.10.0
 

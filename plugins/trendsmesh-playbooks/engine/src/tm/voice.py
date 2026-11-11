@@ -1,9 +1,11 @@
 """Category voice (CB5), shared by the playbooks: the Reddit archive, and reviews the user has.
 
     tm voice reddit-posts --run R --subreddit S --query Q [--field title|selftext|query] [--limit N]
-                          [--after D|all] [--before D] [--skip-removed] [--json]
-    tm voice reddit-comments --run R --subreddit S --query Q [--limit N] [--after D|all] [--before D] [--json]
-    tm voice import --run R --file F --format csv|jsonl|text --source LABEL --tier A|B [--text-column C] [--json]
+                          [--after D|all] [--before D] [--skip-removed] [--max-seconds S] [--json]
+    tm voice reddit-comments --run R --subreddit S --query Q [--limit N] [--after D|all] [--before D]
+                             [--max-seconds S] [--json]
+    tm voice import --run R --file F --format csv|jsonl|text --source LABEL --tier A|B [--text-column C]
+                    [--url U] [--json]
     tm voice check --run R --file 02_research/voice/voice_themes_vNN.json [--json]   (tm.voice_themes)
 
 The Reddit part is the handoff's `tools/pb2/voice_mine.py`, ported: the Arctic Shift archive
@@ -20,7 +22,13 @@ Reddit's own API). Its limits, from the original's notes:
   fewer items than exist. So the window is walked from the newest end: after each call it goes on
   just below the oldest item returned; on a timeout it does one warm-up retry, then halves the chunk.
   It stops at --limit items, when the window is covered, or after 25 calls, and keeps what it got
-  with `_stats.partial` saying why. Default window: the last 730 days (--after all: from 2005).
+  with `_stats.partial` saying why. Default window: the last 365 days (the original's 730, cut to 12
+  months by issue #16: customer pains change slowly, and the archive answers newest first; --after
+  all: from 2005).
+* The archive is slow, and a run waits on it (issue #16), so the command also caps each query: it
+  stops at `TIME_CAP_S` seconds (`--max-seconds`) or after `TIMEOUTS_IN_A_ROW` timeouts in a row,
+  and keeps what came back, `partial` saying so. `fetch_reddit` alone has no cap unless asked (the
+  reference tool's walk, which the golden replays check).
 
 The raw answer is saved as `02_research/voice/reddit_<sub>_<kind>_<query>_vNN.json` with a manifest
 row, and its items are appended to `02_research/voice/items.jsonl` (a log: de-duplicated by id,
@@ -28,7 +36,9 @@ never rewritten). The archive not answering is a Stop with reason `source_unavai
 voice is then a missing input, and the skill asks for reviews or another source.
 
 Goodreads is not ported (the plan's Decision 7): `tm voice import` takes review text, CSV or JSONL
-the user has, or that the agent saved from a page the user named. Tier A is the user's own
+the user has, or that the agent saved from a page (`tm page fetch --kind voice`: a review page of a
+comparable product, a forum thread). A CSV or JSONL record may carry its own `url` and `date`
+(YYYY-MM-DD), kept on its item; `--url` is the page a whole file comes from. Tier A is the user's own
 customers, tier B the category; tier C (the brand's own words) is never customer evidence.
 """
 
@@ -62,7 +72,7 @@ MAX_RATE_WAIT = 90
 ARCTIC = "https://arctic-shift.photon-reddit.com/api/"
 BOT_AUTHORS = {"automoderator"}
 REMOVED = {"[removed]", "[deleted]", "[ Removed by Reddit ]", "[removed by reddit]"}
-DEFAULT_WINDOW_DAYS = 730
+DEFAULT_WINDOW_DAYS = 365      # the original's 730, cut to 12 months (issue #16)
 WARMUP_WAIT = 8
 MIN_CHUNK_DAYS = 2
 MAX_CALLS = 25
@@ -80,8 +90,12 @@ TIERS = {"A": "own customers", "B": "category"}
 KINDS = ("posts", "comments")
 FIELDS = ("title", "selftext", "query")
 FORMATS = ("csv", "jsonl", "text")
+TIME_CAP_S = 90           # the command's cap on one archive query, in seconds (issue #16)
+MIN_TIME_CAP_S = 30
+TIMEOUTS_IN_A_ROW = 4     # ... and on timeouts in a row: the archive is overloaded, move on
 
 _sleep = time.sleep   # every wait goes through here (the tests record them)
+_clock = time.monotonic   # and every reading of the time
 
 
 class ArchiveTimeout(Exception):
@@ -251,10 +265,13 @@ def items_from_archive(payload: dict, kind: str, query: str, *, skip_removed: bo
 
 def fetch_reddit(kind: Literal["posts", "comments"], subreddit: str, query: str, *, field: str = "title",
                  limit: int = 100, after: str | None = None, before: str | None = None,
-                 skip_removed: bool = False, all_fields: bool = False, get=http_get) -> dict:
+                 skip_removed: bool = False, all_fields: bool = False, get=http_get,
+                 max_seconds: float | None = None, max_timeouts_in_a_row: int | None = None) -> dict:
     """voice_mine.py's reddit_fetch (newest first): the archive's answer with `_query_url`,
     `_source`, `_fetched_at`, `_params`, `_stats` (with `partial`), `_tool`, `data` (bots kept) and
-    `_chunks`. A bad argument is a ValueError; the archive not answering is SourceUnavailable."""
+    `_chunks`. A bad argument is a ValueError; the archive not answering is SourceUnavailable.
+    `max_seconds` and `max_timeouts_in_a_row` stop the walk early, keeping what came back (None: the
+    original's walk)."""
     if kind not in KINDS:
         raise ValueError(f"The kind is posts or comments, not {kind!r}.")
     if kind == "posts" and field not in FIELDS:
@@ -292,26 +309,40 @@ def fetch_reddit(kind: Literal["posts", "comments"], subreddit: str, query: str,
     collected: dict[str, dict] = {}   # usable records (bots excluded), counted toward the limit
     bot_recs: dict[str, dict] = {}    # AutoModerator records, kept in the raw file only
     chunks: list[dict] = []
-    calls = timeouts = 0
+    calls = timeouts = in_a_row = 0
     incomplete = None
+    started = _clock()
+
+    def capped() -> str | None:
+        if max_seconds is not None and _clock() - started >= max_seconds:
+            return f"stopped at the {max_seconds:g} s time cap"
+        if max_timeouts_in_a_row is not None and in_a_row >= max_timeouts_in_a_row:
+            return f"stopped after {in_a_row} archive timeouts in a row"
+        return None
+
     while lo < hi and len(collected) < limit:
         c_lo, c_hi = max(lo, hi - chunk), hi
         params["after"], params["before"] = c_lo, c_hi
         params["limit"] = limit - len(collected)
         r = None
         for warm in range(2):
-            if calls >= MAX_CALLS:
+            if calls >= MAX_CALLS or capped():
                 break
             calls += 1
             try:
                 r = get(ARCTIC + path, params)
+                in_a_row = 0
                 break
             except ArchiveTimeout as e:
                 timeouts += 1
+                in_a_row += 1
                 _log(f"[warn] archive query timed out (HTTP 422 '{e}'), window {_fmt_ts(c_lo)}..{_fmt_ts(c_hi)}")
-                if warm == 0:
+                if warm == 0 and not capped():
                     _log(f"[info] warm-up retry in {WARMUP_WAIT}s")
                     _sleep(WARMUP_WAIT)
+        if r is None and capped():
+            incomplete = capped()
+            break
         if r is None:
             if calls >= MAX_CALLS:
                 incomplete = f"stopped after {MAX_CALLS} archive calls"
@@ -348,6 +379,9 @@ def fetch_reddit(kind: Literal["posts", "comments"], subreddit: str, query: str,
         hi = int(min(stamps)) if stamps else c_lo
         chunk = max(chunk, min(chunk * 2, hi - lo))  # grow back after a success
         if lo < hi and len(collected) < limit:
+            if capped():
+                incomplete = capped()
+                break
             _sleep(1)  # polite gap between calls
 
     if not chunks:
@@ -385,8 +419,9 @@ def _lines(numbers: list[int]) -> str:
     return ("line " if len(numbers) == 1 else "lines ") + ", ".join(map(str, numbers))
 
 
-def _texts(path: Path, fmt: str, text_column: str) -> list[tuple[int, str]]:
-    """(n, text) of each record of the file, n counting from 1 in file order; empty texts left out.
+def _texts(path: Path, fmt: str, text_column: str) -> list[tuple[int, str, dict]]:
+    """(n, text, record) of each record of the file, n counting from 1 in file order, record the
+    CSV row or JSONL object ({} for the text format); empty texts left out.
     A missing file, one that is not UTF-8, and one with no text at all are Stops naming it."""
     if not path.is_file():
         raise Stop(f"{path} is not there: check the path of the file the user gave (or saved), then import it "
@@ -411,17 +446,17 @@ def _delimiter(text: str) -> str:
     return best if header.count(best) else ","
 
 
-def _read_texts(path: Path, fmt: str, text_column: str) -> list[tuple[int, str]]:
+def _read_texts(path: Path, fmt: str, text_column: str) -> list[tuple[int, str, dict]]:
     if fmt == "jsonl":
         rows, damaged = library.read_jsonl(path)
         if damaged:
             raise Stop(f"{path.name} has damaged lines (not JSON objects): {_lines(damaged)}. Fix or delete them, "
                        f"then import it again; nothing was imported; {AGAIN}.")
-        values = [(n, row.get(text_column)) for n, row in enumerate(rows, 1)]
+        values = [(n, row.get(text_column), row) for n, row in enumerate(rows, 1)]
     else:
         text = path.read_text(encoding="utf-8-sig").replace("\r\n", "\n")
         if fmt == "text":
-            return [(n, block.strip()) for n, block in
+            return [(n, block.strip(), {}) for n, block in
                     enumerate((b for b in re.split(r"\n\s*\n", text) if b.strip()), 1)]
         if not text.strip():
             return []
@@ -429,22 +464,43 @@ def _read_texts(path: Path, fmt: str, text_column: str) -> list[tuple[int, str]]
         if text_column not in (reader.fieldnames or []):
             raise ValueError(f"{path.name} has no column {text_column!r} (its columns: "
                              f"{', '.join(reader.fieldnames or []) or 'none'}). Name it with --text-column.")
-        values = [(n, row.get(text_column)) for n, row in enumerate(reader, 1)]
+        values = [(n, row.get(text_column), row) for n, row in enumerate(reader, 1)]
     out = []
-    for n, value in values:
+    for n, value, row in values:
         if value is None or value == "":
             continue
         if not isinstance(value, str):
             raise ValueError(f"{path.name}: record {n}'s {text_column!r} is not text.")
         if value.strip():
-            out.append((n, value.strip()))
+            out.append((n, value.strip(), row))
     return out
 
 
+def _link(value: object, what: str) -> str:
+    """An http(s) link, or "" for none."""
+    if value is None or value == "":
+        return ""
+    if not isinstance(value, str) or not re.match(r"https?://[^\s/]+", value.strip()):
+        raise ValueError(f"{what} must be an http(s) link, not {value!r}.")
+    return value.strip()
+
+
+def _day(value: object, what: str) -> int | None:
+    """A YYYY-MM-DD date as the item's created_utc (midnight UTC), None for none."""
+    if value is None or value == "":
+        return None
+    try:
+        return _to_ts(dt.date.fromisoformat(str(value).strip()[:10]))
+    except ValueError:
+        raise ValueError(f"{what} is {value!r}; write the day it was posted as YYYY-MM-DD, or leave it out.") from None
+
+
 def import_file(path: Path, fmt: Literal["csv", "jsonl", "text"], source: str, tier: Literal["A", "B"], *,
-                text_column: str = "text") -> list[dict]:
-    """Items from review text the user has: `text` is split on blank lines, `csv` and `jsonl` give
-    one item per record (`text_column`). Ids are `<source>:<n>`, n the record's place in the file."""
+                text_column: str = "text", url: str | None = None) -> list[dict]:
+    """Items from review text the user has, or saved from a page: `text` is split on blank lines,
+    `csv` and `jsonl` give one item per record (`text_column`). Ids are `<source>:<n>`, n the
+    record's place in the file. A record's own `url` and `date` (YYYY-MM-DD) are kept on its item;
+    `url` is the page the whole file comes from, for the records without one."""
     if str(tier).upper() == "C":
         raise ValueError(f"Tier C is the brand's own words: {TIER_C}. Import customers' texts as tier A "
                          "(own customers) or B (category).")
@@ -456,9 +512,12 @@ def import_file(path: Path, fmt: Literal["csv", "jsonl", "text"], source: str, t
     if not source:
         raise ValueError("Give --source, a short label for where the texts come from (e.g. amazon, survey).")
     path = Path(path)
-    return [{"id": f"{source}:{n}", "source": source, "community": source, "url": "", "title": "", "text": text,
-             "score": None, "created_utc": None, "query": path.name, "tier": tier}
-            for n, text in _texts(path, fmt, text_column)]
+    page = _link(url, "--url")
+    return [{"id": f"{source}:{n}", "source": source, "community": source,
+             "url": _link(row.get("url"), f"{path.name}: record {n}'s url") or page, "title": "", "text": text,
+             "score": None, "created_utc": _day(row.get("date"), f"{path.name}: record {n}'s date"),
+             "query": path.name, "tier": tier}
+            for n, text, row in _texts(path, fmt, text_column)]
 
 
 # --- the items log --------------------------------------------------------------------------------
@@ -529,6 +588,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
                            help="where to match: title (default), selftext (body), query (title and body)")
         r.add_argument("--limit", type=int, default=100, help="1-100 (archive maximum), default 100")
         r.add_argument("--after", help=f"YYYY-MM-DD; default today - {DEFAULT_WINDOW_DAYS} days; all = from 2005")
+        r.add_argument("--max-seconds", type=int, default=TIME_CAP_S,
+                       help=f"stop after this many seconds and keep what came back (default {TIME_CAP_S})")
         r.add_argument("--before", help="YYYY-MM-DD upper bound")
         if kind == "posts":
             r.add_argument("--skip-removed", action="store_true",
@@ -541,6 +602,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     i.add_argument("--source", required=True, help="a short label, e.g. amazon or survey: ids are <source>:<n>")
     i.add_argument("--tier", required=True, help="A (own customers) or B (category)")
     i.add_argument("--text-column", default="text", help="the column (csv) or key (jsonl) with the text")
+    i.add_argument("--url", help="the page the texts come from (a page saved with tm page fetch); a record's "
+                                 "own url column or key comes first")
     i.add_argument("--json", action="store_true")
     from tm import voice_themes   # it imports this module
     voice_themes.add_parser(sub)
@@ -550,9 +613,11 @@ def _reddit(args: argparse.Namespace, run: RunFolder) -> int:
     kind = args.action.removeprefix("reddit-")
     _logged(run)   # a damaged items log stops before any archive call
     skip_removed = getattr(args, "skip_removed", False)
+    if args.max_seconds < MIN_TIME_CAP_S:
+        raise ValueError(f"--max-seconds must be at least {MIN_TIME_CAP_S}: one archive call can take that long.")
     payload = fetch_reddit(kind, args.subreddit, args.query, field=getattr(args, "field", "title"),
                            limit=args.limit, after=args.after, before=args.before, skip_removed=skip_removed,
-                           get=http_get)
+                           get=http_get, max_seconds=args.max_seconds, max_timeouts_in_a_row=TIMEOUTS_IN_A_ROW)
     rel = _save(run, kind, args.subreddit, args.query, payload)
     items = items_from_archive(payload, kind, args.query, skip_removed=skip_removed)
     added, dup = append_items(run, items)
@@ -569,7 +634,8 @@ def _reddit(args: argparse.Namespace, run: RunFolder) -> int:
 
 def _import(args: argparse.Namespace, run: RunFolder) -> int:
     name = Path(args.file).name
-    items = import_file(run.given(args.file), args.format, args.source, args.tier, text_column=args.text_column)
+    items = import_file(run.given(args.file), args.format, args.source, args.tier, text_column=args.text_column,
+                        url=args.url)
     _refuse_relabel(run, items)
     added, dup = append_items(run, items)
     manifest.record(run, ITEMS, STAGE.split("/", 1)[0], f"tm voice import ({args.source.strip()}, tier {args.tier})",

@@ -125,7 +125,7 @@ Each trend is scored 1–5 on: brand fit, persona fit, credible bridge to the pr
 
 ### CB5. Customer voice is the source of the angle
 **Intake (part of the confirmation card; the agent searches the sources itself):**
-- the landing URL comes from the product's ads (asked only for a product without ads, see Inputs);
+- the landing URL comes from the product's ads, else the ad sets' Pixel or the Ad Library (asked only when no landing URL can be found, see Inputs);
 - optional: links to where customers leave reviews (store, Amazon, Trustpilot, Google, App Store), any export (reviews, support tickets, surveys, DMs), social profiles, competitor names or URLs;
 - if the client has none, the agent says what it will use instead (tiers B and C) and continues; missing reviews never block the run.
 

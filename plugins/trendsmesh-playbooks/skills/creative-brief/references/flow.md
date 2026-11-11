@@ -31,8 +31,9 @@ brief.json), and **E2** is its section F (decisions and the hand-off to PB1).
   command again. A wait you start yourself (a TrendsMesh limit, an answer you need from the user
   outside a check-in) is recorded: `tm stop --run R --reason <id> --what "<what>" --todo
   "<todo>"`, then `tm resume --run R` once it is cleared.
-- **Long commands:** `tm voice reddit-posts` and `tm voice reddit-comments` can take minutes: give
-  them the Bash tool's longest timeout (10 minutes). `tm brief animatic --render` takes up to 15
+- **Long commands:** `tm voice reddit-posts` and `tm voice reddit-comments` stop at about 90
+  seconds a query, but one slow archive answer can stretch that: give them the Bash tool's longest
+  timeout (10 minutes). `tm brief animatic --render` takes up to 15
   minutes per animatic, and one call renders every concept in every format: run it in the
   background and wait, or one concept at a time (`--concepts`) with the longest timeout.
 
@@ -75,14 +76,41 @@ The user gives one thing: the product. Everything else you derive and show on on
    picks the account).
 2. **The product pick list.** Read the account's campaigns and ads: campaign names from
    `ads_get_ad_entities` (campaign level), and each ad's `link_url` from `ads_get_creatives`.
-   Group the products by landing domain and show them as **one pick list** ("Which product do we
-   brief?"). Ask for a landing URL only for a product that has no ads. This is the only question
-   before the card. With a seed, the pick list still comes first; the seed's category and market
-   are proposed on the card.
-3. **The landing page.** Fetch it (WebFetch) and save what it says to
-   `00_raw/landing_<short name>.txt` with the Write tool (a new file in `00_raw` is fine; never
-   change one), then `tm record --run R --file 00_raw/landing_<name>.txt --stage 00_raw --source
-   "WebFetch <url>"`.
+   Group the products by landing domain (by campaign name where the ads give no link) and show
+   them as **one pick list** ("Which product do we brief?"). This is the only question before the
+   card. With a seed, the pick list still comes first; the seed's category and market are
+   proposed on the card.
+   **When the chosen product's ads give no link** (Meta can return an empty `link_url` for every
+   ad: in the creative list, the creative read by id and `ads_get_ad_preview` alike), find its
+   landing page in this order, and stop at the first that gives it:
+   1. **The ad sets' Pixel.** The Pixel (dataset) the product's ad sets name (`promoted_object`, at
+      ad set level), read with `ads_get_dataset_stats` aggregated by URL (or host; read the tool's
+      own schema): it lists the pages where the Pixel fires. Take the product's page on the site
+      that matches the ad sets' market and language (`geo_locations`, the ad copy's language): a
+      Pixel on two sites, one per language, gives the one for this market. The collector does not
+      keep this read: `--found-in pixel` at step 3 records where the link came from.
+   2. **The Ad Library:** the brand's running ads there, with their link.
+   3. **Ask the user** one question, "Which page is this product sold on?", when there is no
+      Pixel, it lists several sites and none clearly matches the market, and the Ad Library gives
+      no link.
+
+   Ask for a landing URL only when no landing URL can be found this way (a product with no ads
+   is the same case). Say where it came from with `--found-in` at step 3: `ad`, `pixel`,
+   `library` or `user`.
+3. **The landing page, as its own text.** `tm page fetch --run R --url <url> --name <short name>
+   --found-in ad --json` downloads the page, keeps its literal text (scripts and navigation
+   dropped; the title, headings, paragraphs and prices kept), renders it in the user's Chrome or
+   Edge when the page is built by JavaScript, and saves it as `00_raw/landing_<name>.txt`,
+   recorded with the URL and the day. Every quote and claim taken from the landing page comes from
+   this file, word for word (R3): `tm brief check` refuses a quote given as the landing page's that
+   is not in it. A stop (the site refuses programs, the page has no text, no browser) says what to
+   do. **WebFetch is the last resort only:** it returns a model's summary of the page, not the
+   page. Save its answer as `00_raw/landing_<name>.summary.txt` with the Write tool, record it with
+   `tm record --run R --file 00_raw/landing_<name>.summary.txt --stage 00_raw --source "WebFetch
+   summary of <url>"`, and say so on the card: the market, language and category can come from
+   it, but no quote or claim wording may (the brief check refuses a quote from it). Better than a
+   summary: the page's text the user copies for you, written as `00_raw/landing_<name>.txt` and
+   recorded with the source "the user's copy of <url>".
 4. **Derive the rest**: market (the country in the product's ad set targeting, `geo_locations`,
    from `ads_get_ad_entities` at ad set level; else the landing page's language and currency),
    language (ad copy and landing page), the account's currency, the category phrase (a short noun
@@ -102,8 +130,10 @@ The user gives one thing: the product. Everything else you derive and show on on
    **the customer-voice line** (CB5's intake is part of the card): optionally, links to where
    customers leave reviews (store, Amazon, Trustpilot, Google, App Store), any export (reviews,
    support tickets, surveys, DMs), social profiles, competitor names or URLs; and, when the
-   client has none, what you will use instead ("the category's voice from the Reddit archive, and
-   your landing page as the brand's own view") and that the run goes on without them. The only
+   client has none, what you will use instead ("the category's voice: reviews of comparable
+   products, discussions on the web and the Reddit archive; and your landing page as the brand's
+   own view") and that the run goes on without them. The comments under the brand's own ads count
+   too: the user can copy them from Meta Business Suite's inbox and paste them. The only
    question on it is **"Anything off-limits?"**; the user answers that and says OK or corrects
    anything. Never invent an optional value: it stays "to set". The outputs are chosen here
    only: once A1 is done they cannot change (the review pack alone, or everything).
@@ -166,25 +196,54 @@ first, when the Meta connection has it (HANDOFF §4), and read each tool's own s
 
 CB5. The whole method is `references/voice.md`: read it before this step.
 
-- **Tier A, the user's own customers:** an export or reviews the user has, or that you saved from
-  a page they named: `tm voice import --run R --file <file> --format csv|jsonl|text --source
-  <label> --tier A --json`. Reviews go in one per row (CSV with `,` or `;`, or JSONL); the text
-  format is for texts separated by blank lines. A second file needs another `--source` label.
-- **Tier B, the category:** the Reddit archive. `tm voice reddit-posts --run R --subreddit <sub>
-  --query "<keyword>" --json` and `tm voice reddit-comments` the same way, for **several keyword
-  samples** (the category phrase, the pains and desires the landing page names, the persona's
-  words). Each takes minutes: the longest Bash timeout. A failure partway through drops what that
-  call had fetched (as in the reference tool): say so and run it once more. The archive not answering
-  is a stop: say it did not answer, and ask for reviews or an export, or name another source. Say
-  too that the landing page is only the brand's own view (its hypothesis about its customers), so
-  it does not stand in for the customers' words, and that the run continues from the same place
-  once there is a source.
-  Reviews of comparable products the user points to go in through `tm voice import --tier B`.
+**Before you start, tell the user** that this step takes several minutes (about 5 to 8), and show
+progress as you go, one line per source ("Reviews of 4 comparable products: 62 items. Now
+discussions on the web."). Collect in this order, and **stop when there is enough**: about 60 to
+100 items, and the next source adds no new theme. Every item keeps its source, link, date and tier.
+
+0. **Tier A, the user's own customers:** an export or reviews the user has, or that you saved from
+   a page they named, and the comments under the brand's own ads (the user can copy them from Meta
+   Business Suite's inbox and paste them): `tm voice import --run R --file <file> --format
+   csv|jsonl|text --source <label> --tier A --json`. Reviews go in one per row (CSV with `,` or
+   `;`, or JSONL); the text format is for texts separated by blank lines. A second file needs
+   another `--source` label.
+1. **Tier B: reviews of comparable and competing products, in the market's language.** The
+   competitors come from the landing page, the Ad Library and what the user named; one or two web
+   searches ("<category phrase> reviews", in the market's language) find more. For 3 to 5
+   products, find public review pages: marketplaces and price-comparison sites, Trustpilot, app
+   stores for an app, bookstores and book-review sites for a book. Save each page's own text with
+   `tm page fetch --run R --url <url> --name <short name> --kind voice --json` (never a WebFetch
+   summary), copy its reviews word for word into `02_research/voice/reviews_<label>_v01.jsonl`,
+   one per row with its `url` and `date` (YYYY-MM-DD), record that file (`tm record`), then `tm
+   voice import --run R --file 02_research/voice/reviews_<label>_v01.jsonl --format jsonl --source
+   <label> --tier B --json`. A site that refuses programs (the fetch stops) is skipped: never work
+   around it. Read the 1 to 3 star reviews for the pains and objections, and the 4 and 5 star
+   reviews for the words people use for the outcome they want.
+2. **Tier B: discussions on the web, in the market's language.** Web searches with problem phrases
+   in the market's language ("I can't…", "has anyone tried…", "nothing works"): forums, Q&A sites,
+   comment sections and, for a market outside English, its own local-language communities. Only
+   items from the last 12 months, each with its date. Save and import them as in step 1 (`--kind
+   voice`; the JSONL `discussions_<label>_v01.jsonl`, with `url` and `date`).
+3. **Tier B: the Reddit archive, capped.** Still a regular source for an English-language market:
+   run it after steps 1 and 2, and skip it when they already gave enough. For a market where
+   Reddit has little in the market's language, steps 1 and 2 carry the step. At most 3 or 4
+   queries (the category phrase, the pains and desires the landing page names, the persona's
+   words), posts before comments: `tm voice reddit-posts --run R --subreddit <sub> --query
+   "<keyword>" --json`, then `tm voice reddit-comments` the same way. Each query stops at 90
+   seconds (`--max-seconds`) or after 4 archive timeouts in a row and keeps what came back
+   (`partial`: say so when you cite that sample, and move on rather than run it again); the
+   window is the last 12 months. A failure partway through drops what that call had fetched (as
+   in the reference tool): say so. The archive not answering at all is a stop: when steps 0 to 2
+   gave items, say the archive did not answer and go on without it; when nothing did, ask for
+   reviews or an export, or another source. Say too that the landing page is only the brand's own
+   view (its hypothesis about its customers), so it does not stand in for the customers' words,
+   and that the run continues from the same place once there is a source.
 - **Tier C, the brand's words** (the landing page, the ads): the brand's hypothesis about its
   customers, set against A and B; never counted as customer evidence.
 - **Code the themes yourself:** read the items in `02_research/voice/items.jsonl` and write
   `02_research/voice/voice_themes_v01.json` (its shape: `references/voice.md`): the samples with
-  their queries, themes with every item id and verbatim quotes, a language bank of 20–40
+  their queries (a web search's phrase, or "every review on <page>"), themes with every item id
+  and verbatim quotes (each quote's item carries its source, link, date and tier), a language bank of 20–40
   verbatim phrases with their item ids, the brand claims with their verdicts. Then `tm voice check
   --run R --file 02_research/voice/voice_themes_v01.json --json`; exit 2 lists what to fix (a quote
   not in its item, a bank too small, a sample without its query): fix it as a new version and

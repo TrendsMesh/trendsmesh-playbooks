@@ -5,6 +5,8 @@ Hands-off pick of concepts at G2.
     pick(brief, totals, count, min_axes)   the top concepts by score that stay distinct (CB6)
     rule_pick(run, brief)           that pick on the run's latest scores and config, and why it is short
     concepts_gap / brief_gap / production_gap   the step checks `concepts_checked` ...
+    landing_quotes(run, brief)      R3 for the landing page: a quote given as its is on the saved page
+                                    text (`tm page fetch`), never from a WebFetch summary (stage brief)
     media_rows(concept)             its media-buyer rows by label, as the production check reads them
 
 The stages are cumulative: `brief` runs the concepts checks too, and `production` runs both, so the
@@ -36,8 +38,10 @@ import re
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
-from tm import animatic, brief_research, brand, json_schema, research_checks, state, stepchecks, trends, voice
+from tm import animatic, brief_research, brand, json_schema, page_text, research_checks, state, stepchecks
+from tm import trends, voice
 from tm import voice_themes
 from tm.brief_config import SEED_KINDS
 from tm.config import Problem
@@ -657,6 +661,53 @@ def _intake(i: int, c: dict, cfg: dict) -> list[Problem]:
     return out
 
 
+def _page(url: object) -> tuple[str, str] | None:
+    """(host without www., path without its trailing /) of an http(s) link: the same page however
+    it is written (scheme, case, query and fragment aside); None for anything else."""
+    if not _filled(url):
+        return None
+    parts = urlsplit(url.strip())
+    host = (parts.hostname or "").lower().removeprefix("www.")
+    if parts.scheme.lower() not in ("http", "https") or not host:
+        return None
+    return host, parts.path.rstrip("/")
+
+
+def landing_quotes(run: RunFolder, brief: dict) -> list[Problem]:
+    """R3 for the landing page (issue #14): a concept's `why` quote given as the landing page's (its
+    link is the product's landing page or another page saved as `00_raw/landing_*`, or its link or
+    label names such a file) must be in that page's saved text, verbatim as the voice check matches
+    a quote. A WebFetch summary is not the page's words: nothing may be quoted from it. A run with no
+    landing page saved leaves this to A1, which requires one."""
+    literal, summaries = page_text.landing_texts(run)
+    if not literal and not summaries:
+        return []
+    pages = {p for p in [_page(brief["meta"]["product"].get("landing_url"))] + [_page(u) for _, _, u in literal] if p}
+    files = [rel for rel, _, _ in literal]
+    out = []
+    for i, c in enumerate(brief["concepts"]):
+        for j, why in enumerate(c.get("why") or []):
+            if not isinstance(why, dict) or not _filled(why.get("quote")):
+                continue
+            named = " ".join(str(why.get(k) or "") for k in ("url", "source_label"))
+            if _page(why.get("url")) not in pages and f"{page_text.RAW}/landing_" not in named:
+                continue
+            quote, field = why["quote"], f"concepts[{i}].why[{j}]"
+            if not literal:
+                out.append(Problem(field, f"{c['id']} quotes the landing page ({quote!r}), but the page is saved only "
+                                          f"as a WebFetch summary ({_list(summaries)}): a summary is not the page's "
+                                          "words, so no quote may come from it (R3).",
+                                   "Save the page's own text with tm page fetch and copy the quote from it, or "
+                                   "drop the quote."))
+            elif not any(_says(t, quote) for _, t, _ in literal):
+                where = voice_themes._where_it_parts(quote, [t for _, t, _ in literal]).replace("the item",
+                                                                                                "the page text")
+                out.append(Problem(field, f"{c['id']}'s quote {quote!r}, given as the landing page's, is not in its "
+                                          f"saved text ({_list(files)}): {where} (R3).",
+                                   "Copy the quote word for word from the saved page text, or drop it."))
+    return out
+
+
 def _brief_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
     out = []
     scenes = animatic.scene_names()
@@ -687,7 +738,7 @@ def _brief_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
                                                                           f"{scene!r}, which scenes.js does not draw.",
                                    f"Use one of {', '.join(sorted(scenes))}."))
         out += _intake(i, c, cfg)
-    return out + _valid_until(run, brief, cfg) + _currency(brief, cfg)
+    return out + _valid_until(run, brief, cfg) + _currency(brief, cfg) + landing_quotes(run, brief)
 
 
 # --- stage production ----------------------------------------------------------------------------

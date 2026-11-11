@@ -4,6 +4,8 @@
     tm page published --run RUN --page PAGE (--url U | --slug S) --version V [--json]
     tm page link --run RUN --page PAGE [--json]           where the page was last published
     tm page await --run RUN --page PAGE --version V [--clear] [--json]   people decide on the page now
+    tm page fetch --run RUN --url URL --name SHORT [--kind landing|voice] [--found-in F] [--json]
+                                                          a web page's literal text in 00_raw (tm.page_text)
 
 A page lives in `04_final/<page>_vNN/` (`index.html` and `assets/`), never overwritten: each build
 is a new folder; media file names go through `asset_name` (Windows-safe). Where it was published
@@ -46,7 +48,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-from tm import cli, manifest, mcp_saves, state, trends
+from tm import cli, manifest, mcp_saves, page_text, state, trends
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -558,6 +560,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
         sp.add_argument("--run", required=True, help="the run folder")
         sp.add_argument("--page", required=True, help="the page name, e.g. report")
         sp.add_argument("--json", action="store_true")
+    page_text.add_parser(sub)
 
 
 def _files(args: argparse.Namespace, run: RunFolder) -> int:
@@ -615,7 +618,8 @@ def _await(args: argparse.Namespace, run: RunFolder) -> int:
 def _run(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
-        return {"files": _files, "published": _published, "link": _link, "await": _await}[args.action](args, run)
+        return {"files": _files, "published": _published, "link": _link, "await": _await,
+                "fetch": page_text.run_fetch}[args.action](args, run)
     except Stop as exc:   # a Stop is a ValueError: caught first, it exits 2
         cli.emit(args, {"status": "stop", "message": str(exc)}, str(exc))
         return 2

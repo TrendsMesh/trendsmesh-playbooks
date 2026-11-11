@@ -8,14 +8,35 @@ code the themes and choose the phrases.
 
 | Tier | What | Where it comes from | Counts as evidence? |
 |---|---|---|---|
-| A. Own customers | what the product's buyers say | reviews, support tickets, surveys, DMs, comments: an export the user has, or a page they named | yes, the strongest |
-| B. Category | what people in the category say, not about this product | the Reddit archive; reviews of comparable products or competitors the user points to | yes, when tier A is thin or missing |
+| A. Own customers | what the product's buyers say | reviews, support tickets, surveys, DMs, the comments under the brand's own ads: an export the user has, text they paste, or a page they named | yes, the strongest |
+| B. Category | what people in the category say, not about this product | reviews of comparable and competing products, discussions on the web (forums, Q&A sites, local-language communities), the Reddit archive | yes, when tier A is thin or missing |
 | C. Brand | how the brand talks to its customers | the landing page, the brand guide, the running ads | **never**: it is the brand's hypothesis, set against A and B |
 
 Missing reviews never block a run: say what you use instead (tier B, with the landing page as
 the brand's hypothesis) and go on.
 
-## Tier B: the Reddit archive
+## Tier B: reviews and discussions on the web, first
+
+Reddit alone is a weak default: one kind of voice (younger, more engaged than many buyers), slow,
+and outside TrendsMesh's control. So tier B starts with what people who bought in the category
+wrote, in the market's language, with the tools you already have:
+
+- **Reviews of comparable and competing products** (the competitors from the landing page, the Ad
+  Library and the user; one or two web searches find more): public review pages of 3 to 5
+  products, on marketplaces, price-comparison sites, Trustpilot, app stores, bookstores and
+  book-review sites. The 1 to 3 star reviews give the pains and objections, the 4 and 5 star ones
+  the words for the outcome people want.
+- **Discussions on the web:** web searches with problem phrases in the market's language ("I
+  can't…", "has anyone tried…", "nothing works"): forums, Q&A sites, comment sections, and a
+  non-English market's own local-language communities. Items from the last 12 months only.
+- **Save each page's own text,** never a WebFetch summary (a model's retelling, not the page):
+  `tm page fetch --run R --url <url> --name <short name> --kind voice --json` writes
+  `00_raw/voice_<name>.txt`. Copy its reviews or posts word for word into a JSONL file, one per
+  row with its `url` and `date`, and import it (below). A site that refuses programs is skipped:
+  never work around it.
+- **Stop when there is enough:** about 60 to 100 items, and the next source adds no new theme.
+
+## Tier B: the Reddit archive, capped
 
 `tm voice reddit-posts --run R --subreddit <sub> --query "<keyword>" --json` and `tm voice
 reddit-comments --run R --subreddit <sub> --query "<keyword>" --json`. The archive is Arctic
@@ -29,11 +50,17 @@ API (Reddit's own endpoints refuse scripts). Say so in one line when you use it.
   sheets' and 'bedding too hot'").
 - **It times out under load.** The engine retries, halves its window, and keeps what it got with
   `partial` saying why (the oldest part of the window was not covered): say so when you cite that
-  sample. A call takes minutes: give it the Bash tool's longest timeout (10 minutes). A failure
-  partway through drops the chunks that call had already fetched: say so and run it once more.
-- **It not answering at all is a stop**: say the archive did not answer, then ask for reviews or
-  an export, name another source the user can point you to, or offer to try the archive again
-  later. The landing page is the brand's own view (tier C, its hypothesis about its customers): say
+  sample. Each query stops at 90 seconds (`--max-seconds`) or after 4 timeouts in a row, keeping
+  what came back: move on rather than run it again. Give it the Bash tool's longest timeout (10
+  minutes) all the same: one slow answer can stretch the cap. A failure partway through drops the
+  chunks that call had already fetched: say so.
+- **After the web, and only as much as it adds:** at most 3 or 4 queries, posts before comments,
+  over the last 12 months (the default window). For an English-language market it stays a regular
+  source; for a market where Reddit has little in its language, the reviews and discussions carry
+  tier B.
+- **It not answering at all is a stop**: say the archive did not answer. When other sources
+  already gave items, go on without it; when none did, ask for reviews or an export, name another
+  source the user can point you to, or offer to try the archive again later. The landing page is the brand's own view (tier C, its hypothesis about its customers): say
   it does not stand in for the customers' words. Never quote from memory.
 - Each answer is saved as `02_research/voice/reddit_<sub>_<kind>_<query>_vNN.json` (with the URL
   it asked, `_query_url`), and its items go into `02_research/voice/items.jsonl` (ids `t3_…` for
@@ -41,21 +68,23 @@ API (Reddit's own endpoints refuse scripts). Say so in one line when you use it.
 
 **Goodreads is not used.** The dry run read book reviews from Goodreads, but its terms
 forbid scrapers, it put a bot challenge on 5 of the 7 books, and it gave about 7 % of the dry
-run's items. Reviews the user has (or that you saved from a page they named) go in through
-`tm voice import` instead.
+run's items. Reviews the user has, or that you saved from a review page, go in through `tm voice import`
+instead.
 
-## Imports: tier A, and tier B the user points to
+## Imports: tier A, and tier B from the web
 
 `tm voice import --run R --file <file> --format csv|jsonl|text --source <label> --tier A|B
-[--text-column <column>] --json`. Ids are `<label>:<n>`.
+[--text-column <column>] [--url <page>] --json`. Ids are `<label>:<n>`.
 
 - **Reviews go in one per row:** a CSV (with `,` or `;`, as Excel writes it in Poland), or JSONL;
   `--text-column` names the column or key that holds the text (default `text`).
 - The `text` format is for texts separated by blank lines (each block one item).
 - **A second file needs another `--source` label** ("amazon", "amazon2"): the same label twice
   is refused.
-- A page the user named: fetch it, save what it says as a file in the run with the Write tool,
-  record it, then import that file.
+- **Each text keeps its link and day:** a CSV column or JSONL key `url`, and `date` (YYYY-MM-DD,
+  the day it was posted), are kept on its item; `--url` names the page a whole file comes from.
+- A page (one the user named, or a review page you found): save its text with `tm page fetch
+  --kind voice`, copy its texts word for word into a JSONL file (record it), then import that file.
 
 ## The themes file
 
