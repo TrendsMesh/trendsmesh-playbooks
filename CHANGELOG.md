@@ -2,6 +2,12 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## Unreleased
+
+- **Organic AI video shows up again.** A colon in its description kept Claude Code from loading the playbook, so
+  Claude didn't know it was there. It loads now, and a test checks every playbook and command file the way Claude
+  Code reads them, so one can't go missing like that again.
+
 ## 0.10.0
 
 - **Developed in the open.** Issues, changes and releases now happen in this repository; release candidates come

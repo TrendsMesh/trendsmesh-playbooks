@@ -10,6 +10,7 @@ import re
 import pytest
 
 from test_brief_flow import _leaf, _tm_commands
+from test_frontmatter import front_matter
 from tm import cli, flow, organic_config, organic_pack, paths, playbooks, state
 from tm.organic_pages import CAPABILITIES
 from tm.playbooks import ORGANIC_VIDEO
@@ -65,9 +66,10 @@ def _section(text: str, anchor: str) -> str:
 # --- the skill ships, so organic video is offered ----------------------------------------------
 
 def test_skill_front_matter():
-    head = _text(SKILL / "SKILL.md").split("---")[1]
-    assert re.search(r"^name: organic-video$", head, re.M)
-    assert f"description: {DESCRIPTION}\n" in head
+    """Read as YAML, as Claude Code reads it (#9: the description's ': ' needs the quotes)."""
+    head = front_matter(_text(SKILL / "SKILL.md"))
+    assert head["name"] == "organic-video"
+    assert head["description"] == DESCRIPTION
 
 
 def test_run_new_offers_organic_video_now_its_skill_ships(tmp_path, monkeypatch, capsys):

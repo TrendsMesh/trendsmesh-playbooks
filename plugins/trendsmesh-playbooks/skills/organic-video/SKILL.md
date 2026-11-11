@@ -1,6 +1,6 @@
 ---
 name: organic-video
-description: Use when the user wants organic short videos for TikTok, Instagram Reels, YouTube Shorts or Facebook Reels built on rising trends: video ideas for a channel, a script to film, a ready AI video, or a weekly pack; also 'plan my week of videos'.
+description: "Use when the user wants organic short videos for TikTok, Instagram Reels, YouTube Shorts or Facebook Reels built on rising trends: video ideas for a channel, a script to film, a ready AI video, or a weekly pack; also 'plan my week of videos'."
 ---
 
 # Organic AI video (TrendsMesh playbook 03)
