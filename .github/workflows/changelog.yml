@@ -9,17 +9,32 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   changelog:
     name: changelog
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
     runs-on: ubuntu-latest
     steps:
+      # The pull request's labels now, not the event's: `gh pr create --label` opens the pull request before it
+      # adds the label, and a re-run replays its event's labels.
+      - name: Labelled no-changelog?
+        id: label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if gh pr view "$PR" --json labels --jq '.labels[].name' | grep -qx no-changelog; then
+            echo "Labelled no-changelog: nothing to check."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        if: steps.label.outputs.skip != 'true'
         with:
           fetch-depth: 0
       - name: A plugin change has a changelog line
+        if: steps.label.outputs.skip != 'true'
         env:
           BASE: ${{ github.base_ref }}
         run: |
