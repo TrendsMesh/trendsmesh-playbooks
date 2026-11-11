@@ -77,7 +77,7 @@ Example (Ad 3, 2026-11-05): R2 "middle not fading" (steps moved < 1 pp), but 12.
 The test plan (`04_final/live_test_plan.md`) contains, before activation:
 - the **decision metric**, i.e. the metric of the stage we changed (e.g. the share of people who watch the beginning when changing the hook), and cost per result as a **guardrail**;
 - **numeric thresholds**: scale, switch off, no verdict;
-- the **minimum number of events** per variant before any decision; budget and time follow from this number, not the other way round;
+- the **minimum number of events** per variant before any decision; budget and time follow from this number, not the other way round. For a rate metric (hook rate, ThruPlay rate, CTR) that means the trials the metric needs at the control's cost per impression or play, run for at least `test.min_days` days; cost per result is the guardrail, not a sizing condition: it is checked once a variant has `test.guardrail_min_results` results, and a variant that wins on its metric with fewer is "won on <metric>; cost per result not confirmed yet" (scale step by step). The plan says what its budget is based on;
 - **no decisions before the end of the window** (no peeking and no early switch-off), except for the cost guardrail;
 - a **Meta A/B test** (`ads_experiment_abtest_*`), not a manual comparison of ads in one ad set;
 - the original as the control.

@@ -81,6 +81,10 @@ _YES_FOR = {"voice_credits": ("VB", RECUT_BUDGET), "ai_usd": ("G6", RECUT_BUDGET
 RECUT_FLOW = "R"
 RECUT_AFTER = "C1"  # flow R's steps follow the method selection
 PLAN_STOP = "test_plan_infeasible"  # R4 cannot reach the minimum events at this budget
+ESTIMATE_STOP = "test_estimate_infeasible"  # R4's estimate on the chosen ad (after G1a) cannot either
+CAPTION_STEP = "VC"  # caption removal: its ProPainter cents may be approved there, before G6 (issue #21)
+VIDEO_ACCEPTANCE = ("C4", "CR7", "D5")  # a video made in the run: the live test can be added for it
+ESTIMATE_STEP = "A2"  # the step after "Accept the diagnosis" (G1a): R4 is estimated on the chosen ad here
 DESIGN_STEP, LAUNCH_STEP, LAUNCH = "E1", "E3", "G11"
 # Guess mode: what the changes rest on is recorded at A5, the register checked at A7.
 TREND_STEP, REGISTER_STEP = "A5", "A7"
@@ -106,6 +110,21 @@ _EVIDENCE_FIRST = ("First record what this run's changes rest on: `tm evidence t
                    "said no). A guess run goes on, with the changes labelled as guesses.")
 _PLAN_TODO = ("Tell Claude which way to go: raise the daily budget, allow more days, test fewer "
               "variants (Claude plans again with `tm r4`), or skip the live test.")
+_ESTIMATE_TODO = ("Tell Claude which way to go: a higher daily budget or more days (Claude records them with "
+                  "`tm live-test budget --run R --per-day <amount> --days <days>` and estimates again with "
+                  "`tm r4 --estimate`), or skip the live test (`tm live-test drop --run R`). The other "
+                  "outputs are not affected.")
+_ESTIMATE_FIRST = ("The live test is in this run: first estimate it on the chosen ad (R4, issue #22): its latest "
+                   "window from the ranking as a file, then `tm r4 --estimate --run R --stage <target_stage> "
+                   "--control <that file> --variants <n> --json`, and tell the user the budget and days it "
+                   "needs.")
+_LIVE_TEST_OFFER = (
+    "The live test is not part of this run. End the final report with one question: \"Do you want to test "
+    "this against the original?\" (a Meta A/B test of the new video against the original ad, decided after "
+    "7 to 14 days; nothing is spent or published before the user approves the test plan and the launch). On a "
+    "yes, ask for the daily budget and the days (no amount is assumed) and run `tm live-test add --run R "
+    "--per-day <amount> --days <days>` (in Hands-off with `--note \"<their words>\"`): the run reopens at the "
+    "test design (E1).")
 
 
 class Held(ValueError):
@@ -437,6 +456,53 @@ def _plan_gap(pic: _Run) -> str | None:
             f"or launched for it. {plan.get('calculation') or ''}").strip()
 
 
+def _estimate_gap(pic: _Run) -> str | None:
+    """R4's estimate on the chosen ad (issue #22): the live test is still going ahead, no plan is written yet
+    (E1), and the estimate cannot reach the minimum events at the budget the user gave. The words of the stop,
+    or None. The rough estimate at the intake (the account's numbers, the ad not chosen) never stops the run."""
+    s = pic.s
+    est = s.test_estimate
+    if (not _pb01(s) or not est or est.get("basis") != "ad" or est.get("feasible") or s.test_plan
+            or not any(st.id == LAUNCH_STEP for st in pic.app)):
+        return None
+    return ("The live test cannot collect enough results at the budget you gave, worked out on the chosen ad's "
+            f"numbers. {est.get('calculation') or ''}").strip()
+
+
+def estimate_recorded(run: RunFolder) -> None:
+    """After `tm r4 --estimate`, `tm live-test budget` or `tm live-test drop`: hold the run on an estimate that
+    cannot reach the minimum events, or clear that hold once it can (or the live test is out)."""
+    s = state.load(run)
+    gap = _estimate_gap(_picture(s)) if s.outputs else None
+    if gap:
+        _hold(s, ESTIMATE_STOP, gap, _ESTIMATE_TODO)
+    else:
+        for x in _open_stops(s):
+            if x["reason_id"] == ESTIMATE_STOP:
+                x["resumed_at"] = _now()
+        if s.status == "stopped" and not _open_stops(s):
+            s.status = "active"
+    state.save(run, s)
+
+
+def live_test_gap(s: state.RunState, pic: _Run | None = None) -> str | None:
+    """Why the live test cannot be added to this run now (issue #22), or None when it can: a Refresh an ad run
+    without it, not ended early, with a video made (or still to be made) to test against the original."""
+    if not _pb01(s):
+        return _other_playbook(s, "The live test is")
+    if s.level is None or not s.outputs:
+        return "Finish the intake first: pick the live test there, with its daily budget and days."
+    if "live_test" in s.outputs:
+        return "The live test is already part of this run."
+    if _ended_early(s):
+        return "This run ended before its changes were made, so there is no new video to test."
+    pic = pic or _picture(s)
+    if not any(st.id in VIDEO_ACCEPTANCE for st in pic.app):
+        return ("No video is made in this run (no edited or AI video, or it was skipped), so there is nothing "
+                "to test against the original.")
+    return None
+
+
 def _need_plan(s: state.RunState, what: str) -> None:
     """A live test is designed, approved and launched only on a feasible R4 plan."""
     plan = s.test_plan
@@ -465,13 +531,16 @@ def plan_recorded(run: RunFolder) -> None:
     state.save(run, s)
 
 
-def approval_gap(s: state.RunState, kind: str, note: str | None) -> str | None:
+def approval_gap(s: state.RunState, kind: str, note: str | None, for_step: str | None = None) -> str | None:
     """Why a budget of `kind` cannot be approved now (final review I5), or None.
 
     The user's yes is: their answer (not `reject`) at a spending check-in for the kind (G6 or
     the re-cut's RB for ai_usd, VB or RB for voice_credits, G10 for the test); or a stop that
     asked them for this budget (Hands-off's missing budget, an exceeded budget, an R4 plan); or,
     when no check-in in the run asks for the kind (VC's ProPainter), their own words in `note`.
+    Caption removal at VC (issue #21) may also be approved before G6 is reached: `for_step` "VC",
+    while the run is at VC, with the user's words in `note`; it adds VC's amount to the kind's
+    running total and approves nothing for the AI video (G6 asks for that, later, with the total).
     A no at every such check-in of the run refuses it. Hands-off's intake budgets are approved by
     the intake itself. Another playbook's run has no budgets."""
     if not _pb01(s) and playbooks.get(s.playbook).budgets:
@@ -482,6 +551,8 @@ def approval_gap(s: state.RunState, kind: str, note: str | None) -> str | None:
     if s.level is None or not s.outputs:
         return "Finish the intake first: the level and the outputs are not set yet."
     pic = _picture(s)
+    if for_step is not None:
+        return _caption_gap(s, pic, kind, note, for_step)
     cids = [c for c in _YES_FOR[kind] if c in pic.owner] or [SPENDING_CHECKIN[kind]]
     last = {c: pic.latest.get(c) for c in cids}
     if any(d and d.get("by") == "user" and d.get("choice") != "reject" for d in last.values()):
@@ -508,8 +579,31 @@ def approval_gap(s: state.RunState, kind: str, note: str | None) -> str | None:
     if s.level == "hands_off":
         return ("At Hands-off the budgets come from the intake. A new amount is approved only "
                 "when the run stops for that budget, after the user says how much.")
+    at_vc = kind == "ai_usd" and pic.p < len(pic.app) and pic.app[pic.p].id == CAPTION_STEP
+    if at_vc:
+        return (f"\"{name}\" ({cid}) comes later, after the edited video. For the caption removal here, "
+                "show the estimate, ask the user, and record their yes for this amount alone: `tm budget "
+                "approve --run R ai_usd <total> --for VC --note \"<their words>\"` (`<total>`: the ai_usd "
+                f"already approved plus this amount). {cid} later approves the AI video's amount on top.")
     return (f"Ask \"{name}\" ({cid}) first and record the user's yes with `tm decide {cid} "
             "approve`; then approve the amount they agreed to.")
+
+
+def _caption_gap(s: state.RunState, pic: _Run, kind: str, note: str | None, for_step: str) -> str | None:
+    """`approval_gap` for caption removal's own yes at VC (issue #21), or None."""
+    if for_step != CAPTION_STEP or kind != "ai_usd":
+        return (f"Only the caption removal at {CAPTION_STEP} (ProPainter, ai_usd) is approved on its own "
+                f"with --for; {kind} at {for_step} is approved at its spending check-in.")
+    if s.level == "hands_off":
+        return ("At Hands-off the caption removal uses the AI budget given at intake. Without one, take the "
+                "free way and list its defect in the final report.")
+    if pic.p >= len(pic.app) or pic.app[pic.p].id != CAPTION_STEP:
+        return (f"The caption removal is approved with --for {CAPTION_STEP} only while the run is at "
+                f"{CAPTION_STEP}; the run is at {_pointer(pic)}.")
+    if not (note and note.strip()):
+        return ("Approving the caption removal needs the user's own yes: show them the estimate (and the free "
+                "way with its known defect), ask, then pass their words with `--note \"<their words>\"`.")
+    return None
 
 
 def _utc(text: str) -> datetime:
@@ -608,7 +702,7 @@ def _stop_kind(x: dict) -> str | None:
     for kind in BUDGET_KINDS:
         if reason in (f"budget_{kind}", f"over_budget_{kind}"):
             return kind
-    return "test" if reason == PLAN_STOP else None
+    return "test" if reason in (PLAN_STOP, ESTIMATE_STOP) else None
 
 
 def refuse_if_held(s: state.RunState, refused: str, *, kind: str | None = None,
@@ -724,7 +818,8 @@ def _done(run: _Run) -> NextStep:
             owner = _first(st for st in every if c.id in st.checkins + st.before)
             return _step_view(owner, "done", effect["end"])
     last = run.app[-1] if run.app else every[-1]
-    return _step_view(last, "done", " ".join(["Every step of this run is done.", *_skip_notes(run)]))
+    offer = [_LIVE_TEST_OFFER] if _pb01(run.s) and live_test_gap(run.s, run) is None else []
+    return _step_view(last, "done", " ".join(["Every step of this run is done.", *_skip_notes(run), *offer]))
 
 
 def _skip_notes(run: _Run) -> list[str]:
@@ -844,6 +939,10 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
         _hold(s, PLAN_STOP, gap, _PLAN_TODO, checkin=SPENDING_CHECKIN["test"])
         st = _first((x for x in pic.app if x.id == DESIGN_STEP), _current_step(s))
         return finish(_step_view(st, "stop", _stop_message(gap, _PLAN_TODO)))
+    gap = _estimate_gap(pic)
+    if gap:
+        _hold(s, ESTIMATE_STOP, gap, _ESTIMATE_TODO)
+        return finish(_step_view(_current_step(s), "stop", _stop_message(gap, _ESTIMATE_TODO)))
     due = pic.due()
     if due:
         item = due[0]
@@ -887,6 +986,9 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
                    f"file with `tm record`, then run `tm done {st.id}`.")
     if _pb01(s) and s.evidence is None and st.id in _EVIDENCE_STEPS:
         message = _EVIDENCE_FIRST + " " + message
+    if (_pb01(s) and st.id == ESTIMATE_STEP and "live_test" in s.outputs and not s.test_plan
+            and (s.test_estimate or {}).get("basis") != "ad"):
+        message = _ESTIMATE_FIRST + " " + message
     if view:
         message += f" After it comes the check-in \"{view.name}\" ({', '.join(view.ids)})."
     message += _ending_hints(pic, pic.p)

@@ -29,16 +29,30 @@ background (SKILL.md section 1: long commands).
    "account": {"id": "1234567890", "market": "PL", "language": "Polish"},
    "product": {"name": "...", "landing_url": "https://..."},
    "brand": {"assets_dir": "C:/Users/.../Moje reklamy", "rules": "...", "compliance": "..."},
-   "outputs": ["creative_brief", "edited_video", "ai_video", "live_test"],
-   "budget": {"ai_usd": 15, "voice_credits": 20000, "test_per_day": 150, "test_days": 7},
+   "outputs": ["creative_brief", "edited_video", "ai_video"],
+   "budget": {"ai_usd": 15, "voice_credits": 20000},
    "intake": {"voice_rights_confirmed": true}}
   ```
+
+- **The live test only when the user picks it by name** (never a default, at any level: it is the
+  one output that spends ad money and publishes ads). Then add `"live_test"` to `outputs` and the
+  daily budget and days they give, `"budget": {..., "test_per_day": <theirs>, "test_days": <theirs>}`:
+  no amount is suggested or assumed, and `tm config check` asks for both when they are missing.
+  Once the config is written, **estimate it from the account's numbers**: the account's totals
+  over the history window (`ads_get_ad_entities`, level account, `time_increment=7`, the last
+  `winner.history_days` days, the same fields as A1; save the answer verbatim as
+  `01_base/account_history_v01.json` and record it), then `tm r4 --estimate --run R --account
+  01_base/account_history_v01.json --json`. The ad isn't chosen yet, so this is rough: one line
+  per kind of change (opening, middle, promise and call to action, fatigue), each with what it
+  needs and whether the budget given reaches it. Tell the user in plain words, and that it is
+  worked out again on the chosen ad's numbers right after the diagnosis.
 
 - Write it to `03_wip/intake_answers_v01.json`, then `tm config write --run R --answers <file>`
   and `tm config check --run R --json`. Exit 2 lists problems, each with what and what to do:
   ask the user, write `_v02`, write again (allowed until A0 is done). The config changes
   thresholds only; never put a rule change in it.
-- Hands-off: the budgets given here are approved by the intake itself. An output whose budget is
+- Hands-off: the budgets given here are approved by the intake itself (the live test's too, when
+  picked; its launch is still asked, `#e3`). An output whose budget is
   missing waits at its first paid step, and every later step waits with it. One budget per kind
   serves the whole run: `ai_usd` covers ProPainter, Veo and the AI video together,
   `voice_credits` the voiceover lines and the music takes together; size them for all of it.
@@ -148,6 +162,16 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
   each one change, **each with its level** in plain words ("level 0, a pure edit, free"; "level 4,
   a new AI shot, paid": `recut.md` sections 2 and 3), and that the exact variants are chosen after
   the breakdown, at the variants check-in.
+- **The live test's estimate on the chosen ad**, right after G1a `refresh` when the live test is in
+  the run (`tm next` reminds you at A2): the ad's latest window from the ranking as
+  `03_wip/test_control_v01.json` (record it; source: the ranking file), then `tm r4 --estimate
+  --run R --stage <target_stage> --control 03_wip/test_control_v01.json --variants <n> --json`
+  (`<n>`: the variants you expect, 1 when unsure; a re-cut adds `--recut-step` or `--shorter` as
+  at E1). Tell the user what it needs. Exit 2: the budget given cannot reach the minimum events,
+  and the run stops here, at the start, not at E1 after the work. Give the calculation and the
+  same choices as the R4 stop: a higher daily budget or more days (`tm live-test budget --run R
+  --per-day <amount> --days <days>`, in Hands-off with `--note "<their words>"`, then `tm r4
+  --estimate` again), or skip the live test (`tm live-test drop --run R`); the other outputs go on.
 
 <a id="a2"></a>
 ## A2 Winner source file
@@ -501,10 +525,15 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - `variants.md` section 4a. A clean source first. Otherwise decide the mode:
   `tm tool inpaint_mode --run R <mask> <composite> --crop X0 Y0 X1 Y1 --json` (a mode set in the
   config wins). Pro is ProPainter through `tm tool replicate_run` (paid: estimate, approval,
-  `--cost`). Without the AI video in the run no check-in asks for that money: show the estimate,
-  ask, and record the user's yes with `tm budget approve --run R ai_usd <total> --note "<their
-  words>"` (`<total>`: the `ai_usd` already approved plus this amount) (Hands-off: the intake budget). Budget (OpenCV Telea) has no tool in this version: use
-  pro after approval, or stop and ask for a clean source.
+  `--cost`). No check-in asks for that money at VC, so ask it here, the same way whether or not
+  the AI video is in the run: show the estimate with a sample frame next to the free way and its
+  known defect (`variants.md` 4a: a patch on texture such as sand or water), and record the user's
+  yes for this amount alone: `tm budget approve --run R ai_usd <total> --for VC --note "<their
+  words>"` (`<total>`: the `ai_usd` already approved plus this amount). It approves nothing for
+  the AI video: its plan and budget (G6) come later and approve the running total, this spend
+  included. Hands-off: the intake's AI budget; without one, take the free way and list its defect
+  in the final report. Budget (OpenCV Telea) has no tool in this version: use pro after approval,
+  or stop and ask for a clean source.
 - New captions in the original's style: WordCaptions props (word times from the transcript,
   style matched with comparison stills), `tm render still|video --comp WordCaptions`. QA as in
   section 4a.
@@ -650,8 +679,9 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - Ask the user to confirm Replicate's current prices before the first run (lesson 7).
 - "Approve the AI video plan and budget" (G6), in the spending card at Just the big calls:
   `approve`, then `tm budget approve --run R ai_usd <total>` (the kind's running total: the
-  `ai_usd` already approved, e.g. by the re-cut budget, plus this plan's amount; SKILL.md section
-  5); or `reject`, which skips the AI video (nothing is spent on it).
+  `ai_usd` already approved, e.g. by the re-cut budget or the caption removal at VC, plus this
+  plan's amount; show what is already spent on the card; SKILL.md section 5); or `reject`, which
+  skips the AI video (nothing is spent on it).
 
 <a id="d2"></a>
 ## D2 First frame
@@ -696,6 +726,11 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   ranking file), then `tm r4 --run R --stage <target_stage> --control <that file> --variants <n>
   [--per-day <budget>] [--max-days <days>] --json`: the decision metric, the cost
   guardrail, the thresholds, the minimum events per variant and the days and budget they need.
+  The decision metric sets the budget: for a rate (hook rate, ThruPlay rate, CTR, a re-cut step)
+  the trials it needs at the control's cost per impression or play, and at least `test.min_days`
+  days; cost per result is only the guardrail, checked once a variant has
+  `test.guardrail_min_results` results. The plan says what the budget is based on (`basis`).
+  The days allowed are the user's (`budget.test_days`, at most `test.max_days`).
   At Just the big calls run it before the spending card, which shows it. `tm done E1`, G10's
   `approve` and the launch are refused without a feasible plan.
 - **A re-cut variant** is tested as `--stage middle` with one of two options (FLOWS.md CR8). A
@@ -713,6 +748,11 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   more days (`--max-days`), fewer variants (then `tm r4` again; a feasible plan clears the stop),
   or skip the live test (`tm decide G10 reject`). In Hands-off a higher amount is also approved
   while the stop is open: `tm budget approve --run R test <per day × days>` first, then `tm r4`.
+- **Offered at the end.** When the run made a video without the live test, the final report ends
+  with one question (`tm next` says so with `done`): "Do you want to test this against the
+  original?" On a yes, ask for the daily budget and the days, then `tm live-test add --run R
+  --per-day <amount> --days <days>` (Hands-off: with `--note "<their words>"`; the landing page
+  with `--landing-url` if the config lacks it): the run reopens here, at E1.
 - `ads_experiment_check_eligibility`. Write `04_final/live_test_plan_vNN.md`
   (`templates/live_test_plan_template.md`): a Meta A/B test with the original as control, the
   numbers from `tm r4`, no decisions before the end of the window (except the cost guardrail), and
@@ -741,8 +781,10 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 <a id="e3"></a>
 ## E3 Activation
 
-- "Approve the launch" (G11) comes first: the final videos, the R8 result, the amount per day ×
-  days. The only choices are `activate` (refused before a green E2b) and `keep_paused`.
+- "Approve the launch" (G11) comes first, **at every level**: Hands-off runs up to the paused ads
+  and a green R8 check, then asks this one question (it is never decided by rule). The final
+  videos, the R8 result, the amount per day × days. The only choices are `activate` (refused
+  before a green E2b) and `keep_paused`.
   `activate` sets the measurement days 3, 5 and 7; `keep_paused` leaves everything paused and
   skips E3 and E4: nothing goes live and the run closes.
 - On `activate`, **book the spend first**: `tm budget spend --run R test <per day × days> --what
@@ -760,7 +802,11 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   `05_results/measurement_<date>_v01.json`; compare with the plan's thresholds; only the cost
   guardrail may act before the last date. Then `tm done E4 --measured <date> --run R`.
 - After the last date, "Act on the results" (G12): `scale`, `kill` or `keep` (no verdict), from
-  the plan's thresholds. Never raise spend above the approved budget without asking.
+  the plan's thresholds. Never raise spend above the approved budget without asking. A variant
+  that wins on its rate metric with fewer results than the plan's `cost_not_confirmed`
+  (`test.guardrail_min_results`) is said as the plan's verdict, e.g. "won on hook rate; cost per
+  result not confirmed yet": recommend scaling step by step while watching cost per result, not
+  a full scale.
 - R5 closes the run: one row per variant, `tm library add --run R --row <file>`, the row with
   account, product, market, diagnosis, trend {id, type, status_on_test_day}, change {layer,
   method}, decision_metric, result_vs_control, events, decision and a distinct `variant`. In a

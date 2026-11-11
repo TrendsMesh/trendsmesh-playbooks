@@ -195,10 +195,12 @@ def test_next_json_carries_the_notice(run, capsys):
     assert json.loads(capsys.readouterr().out)["notice"] == evidence.NOTICE
 
 
-def test_hands_off_guess_run_notices_only_in_the_final_report(run):
+def test_hands_off_guess_run_notices_only_at_the_launch_and_in_the_final_report(run):
+    # Hands-off decides the direction (G2) by rule, so it carries no notice; the launch (G11) is
+    # asked at every level (issue #22), and its card carries the notice as at the other levels
     seen, done = _walk_guess(run, "hands_off")
     assert done.notice == evidence.NOTICE
-    assert [action for action, _, _ in seen] == ["done"]
+    assert [(action, ids) for action, ids, _ in seen] == [("ask", ("G11",)), ("done", ())]
 
 
 @pytest.mark.parametrize("level", ["every_step", "big_calls", "hands_off"])

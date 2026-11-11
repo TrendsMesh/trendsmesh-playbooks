@@ -227,8 +227,10 @@ checkins:
   - id: G11
     name: Approve the launch
     card: approve_launch
-    route: {every_step: own, big_calls: card, hands_off: rule}
-    rule: "only with a budget in the config and a green E2b"
+    # never by rule (issue #22): launching spends the test budget and publishes ads under the user's
+    # page, and it cannot be undone, so Hands-off runs up to the paused ads and a green E2b and asks
+    route: {every_step: own, big_calls: card, hands_off: own}
+    rule: "none: the launch is always the user's, at every level"
     choices: [activate, keep_paused]
     money: true
     on_choice:

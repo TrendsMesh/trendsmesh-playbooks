@@ -55,7 +55,9 @@ def test_cards_merge_the_design_groups():
     for card, ids in members.items():
         for cid in ids:
             route = cat.checkins[cid].route
-            assert route == {"every_step": "own", "big_calls": "card", "hands_off": "rule"}, cid
+            # the launch is never decided by rule: Hands-off asks it too (issue #22)
+            hands_off = "own" if cid == "G11" else "rule"
+            assert route == {"every_step": "own", "big_calls": "card", "hands_off": hands_off}, cid
     assert set(cat.cards) == set(members)
     assert cat.cards["approve_spending"].ask == "before_first_spend"
 

@@ -67,17 +67,26 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
 `tm run new --name <product or short label> --json` gives the run folder (the ad is not
 chosen yet; the name never needs to change). Then ask everything at once,
 each with a default: ad account, market and language, product and landing page, brand assets
-folder (where the original video should be), outputs (default all four), brand and compliance
-rules, budgets (AI in USD, ElevenLabs credits, test per day × days; required in Hands-off for the
-outputs that spend; in Hands-off with the edited video, also how far a re-cut may go and whether a
-segment weak by design may be re-cut, `flow.md#a0`), and **"How involved do you want to be?"**:
+folder (where the original video should be), outputs (default: the creative brief, the edited
+video and the AI video), brand and compliance rules, budgets (AI in USD, ElevenLabs credits;
+required in Hands-off for the outputs that spend; in Hands-off with the edited video, also how far
+a re-cut may go and whether a segment weak by design may be re-cut, `flow.md#a0`), and **"How
+involved do you want to be?"**:
 
 - **Check every step**: every check-in, one by one.
 - **Just the big calls**: only the big decisions (picking the ad, approving the changes, the
   spending, the launch, the results), plus the checks that need a person: listening to a voice or
   a re-cut.
-- **Hands-off**: none; budgets are set now, I run to the end and report. I still stop when I
-  can't go on without you, at a red quality check, or before going over a budget.
+- **Hands-off**: none but the launch of a live test (going live is always your call); budgets
+  are set now, I run to the end and report. I still stop when I can't go on without you, at a
+  red quality check, or before going over a budget.
+
+**The live test is listed on its own, never a default.** It is the one output that spends ad
+money and publishes ads. Say what it gives (a Meta A/B test of the new video against the original
+ad, decided after 7 to 14 days) and that it needs its own budget; "go with the defaults" never
+turns it on. Only when the user picks it by name, ask for the daily budget and the days (no
+amount is suggested or assumed), and estimate it right away (`flow.md#a0`: R4 from the account's
+numbers). Its launch is asked at every level, Hands-off too.
 
 Voice rights, one confirmation: "You have the rights to the voice in this ad." Then write the
 answers to `<run>/03_wip/intake_answers_v01.json` and run `tm config write --run R --answers F`,
@@ -99,12 +108,12 @@ step's work, read its section in `references/flow.md` (the `ref`): never from me
 | `ask` | Show the check-in as a question card (`references/checkin-cards.md`), wait for the answer, then `tm decide <id> <choice> --run R [--note ...]`. |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do and that the run continues from the same place. **Then wait.** Do nothing else in the run until they say it is done. |
-| `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. |
+| `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). |
 
 - **`notice`:** whenever `tm next` gives a `notice` (a run without TrendsMesh data: the
   direction of changes and the launch when they are shown to the user, and the final report;
-  Hands-off hears it only in the final report), tell the user in plain words, in their
-  language, with the card or report. It is a statement, not a question: never stop or ask for it.
+  Hands-off hears it at the launch, which is always asked, and in the final report), tell the
+  user in plain words, in their language, with the card or report. It is a statement, not a question: never stop or ask for it.
 - **What the changes rest on (guess mode).** At A5 the run records it: `tm evidence trendsmesh
   --run R --why "<reason>"` when TrendsMesh answers with trend data, `tm evidence guess --run R
   --why "<reason>"` when it does not. A guess run goes to the end like any other; its changes
@@ -117,9 +126,10 @@ step's work, read its section in `references/flow.md` (the `ref`): never from me
 - **After a stop**, once the user has acted: a stop you recorded or a budget stop clears with
   `tm resume --run R`; an engine stop (a voice check, a red R8 item, a measurement not due, a
   test plan below R4's minimum events) clears with the decision, the new plan or the date that
-  removes its cause. Then `tm next`. While a stop is open the engine refuses every spend, budget
-  approval, paid tool and launch decision with exit 2: that is the stop holding, not an error to
-  work around.
+  removes its cause; a test estimate below R4's minimum events, right after the diagnosis,
+  clears with a new budget and estimate or with skipping the test (`tm live-test`). Then `tm
+  next`. While a stop is open the engine refuses every spend, budget approval, paid tool and
+  launch decision with exit 2: that is the stop holding, not an error to work around.
 - **Hands-off with a missing budget** holds that output's paid step and every step after it
   (the steps are linear; except a re-cut's CR5a and CR5b: section 5). Say so plainly and offer
   to set the budget (`tm budget approve`).
@@ -178,7 +188,9 @@ reorder or cut inside one continuous shot at level 0 (offer the regenerated shot
   lower the total, and the engine refuses a total below what is spent). Read both first with `tm
   status --run R --json`: `budgets` is the approved total per kind, `spend` what is spent. When no check-in in the run asks for
   the kind (ProPainter caption removal without the AI video), ask with the estimate and pass the
-  user's words: `--note "<their words>"`. In Hands-off the budget approved at intake decides; a
+  user's words: `--note "<their words>"`; with the AI video in the run, the caption removal is
+  approved on its own at VC, `--for VC --note "<their words>"`, and the AI video's plan (G6) later
+  approves its amount on top (`flow.md#vc`). In Hands-off the budget approved at intake decides; a
   new amount is approved only when the run stops for that budget. Then run the tool through the
   engine, which books the cost first: `tm tool <name> ... --run R --cost <amount>`. Meta spend is
   booked first too: at activation, `tm budget spend --run R test <total> --what "live test"`, and

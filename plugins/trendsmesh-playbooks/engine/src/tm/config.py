@@ -35,7 +35,9 @@ DEFAULTS: dict = {
     "account": {"id": None, "market": None, "language": None},
     "product": {"name": None, "landing_url": None},
     "brand": {"assets_dir": None, "rules": None, "compliance": None},
-    "outputs": ["creative_brief", "edited_video", "ai_video", "live_test"],
+    # the live test spends ad money and publishes ads: never a default, only when the user picks it
+    # by name, with its daily budget and days (issue #22)
+    "outputs": ["creative_brief", "edited_video", "ai_video"],
     "winner": {"event": None, "history_days": 90, "window_days": 7, "min_results": 30,
                "drop_recent_days": 2, "target_cpa": None, "fade_cost_increase": 0.30,
                "fade_p_value": 0.10, "detrend_by_account": True, "rank_by": "value_to_recover"},
@@ -49,7 +51,10 @@ DEFAULTS: dict = {
     "budget": {"ai_usd": None, "voice_credits": None, "test_per_day": None, "test_days": None},
     "test": {"decision_metric": None, "min_events_per_variant": None, "scale_threshold": None,
              "kill_threshold": None, "cost_guardrail": None, "method": "meta_ab_test",
-             "min_effect": 0.20, "alpha": 0.10, "power": 0.80, "max_days": 14},
+             "min_effect": 0.20, "alpha": 0.10, "power": 0.80, "max_days": 14,
+             # R4 (issue #23): the shortest run, and the results a variant needs before its cost
+             # per result is checked against the guardrail
+             "min_days": 4, "guardrail_min_results": 10},
     "library": {"path": "library/results.jsonl"},
     "vo": {"stretch_max": 1.12, "qa_tolerance": 0.10},
     "intake": {"voice_rights_confirmed": False},
@@ -90,6 +95,8 @@ NUMBERS = {
     "test.alpha": (False, 0, 1, False, False),
     "test.power": (False, 0, 1, False, False),
     "test.max_days": (True, 1, None, True, True),
+    "test.min_days": (True, 1, None, True, True),
+    "test.guardrail_min_results": (True, 1, None, True, True),
     "test.min_events_per_variant": (True, 1, None, True, True),
     "vo.stretch_max": (False, 1, None, True, True),
     "vo.qa_tolerance": (False, 0, 1, False, False),
@@ -385,6 +392,13 @@ def validate(run: RunFolder) -> list[Problem]:
                 if not _positive(_get(cfg, f"budget.{key}")):
                     out.append(Problem(f"budget.{key}", "Hands-off needs a live test budget before it "
                                        "launches a test.", f"Tell Claude {ask}."))
+    elif "live_test" in outputs:
+        # issue #22: a live test the user picked comes with their own daily budget and days, at every
+        # level; no amount is assumed (R4 estimates it right away)
+        for key, ask in (("test_per_day", "how much to spend per day"), ("test_days", "for how many days")):
+            if not _positive(_get(cfg, f"budget.{key}")):
+                out.append(Problem(f"budget.{key}", "The live test spends ad money, so it needs your daily "
+                                   "budget and days; no amount is assumed.", f"Tell Claude {ask}."))
     return out
 
 

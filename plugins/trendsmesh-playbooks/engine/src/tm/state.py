@@ -29,6 +29,7 @@ class RunState:
     diagnosis: dict | None = None   # R2, written by `tm diagnose`
     material: str | None = None     # text_cards | vo_captions | talking_head | static, `tm material`
     test_plan: dict | None = None   # R4, written by `tm r4`
+    test_estimate: dict | None = None  # R4 worked out early, `tm r4 --estimate`: at intake, after G1a
     ended: str | None = None        # the plain message of a run that ended early (not supported)
     evidence: str | None = None     # trendsmesh | guess: what the changes rest on, `tm evidence`
     evidence_log: list[dict] = field(default_factory=list)  # each change of `evidence`, with why

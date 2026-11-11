@@ -200,8 +200,12 @@ def test_hands_off_ai_video_and_recut_name_the_ai_budget_once(run):
 
 
 def test_budgets_are_not_required_outside_hands_off(run):
-    _write(run, level="big_calls", outputs=["ai_video", "live_test"])
+    _write(run, level="big_calls", outputs=["ai_video", "edited_video"], flows=["V"],
+           intake={"voice_rights_confirmed": True})
     assert config.validate(run) == []
+    # the live test is the exception (issue #22): picked, it comes with the user's daily budget and days
+    _write(run, level="big_calls", outputs=["ai_video", "live_test"], intake={"voice_rights_confirmed": True})
+    assert _fields(run) == {"budget.test_per_day", "budget.test_days"}
 
 
 def test_budget_values_are_checked(run):

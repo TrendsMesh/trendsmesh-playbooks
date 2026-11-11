@@ -9,7 +9,8 @@ total (`spend`):
 
 `approve` records what the user accepted, and only after their yes (`flow.approval_gap`): the
 spending check-in's answer, a stop that asked them for the budget, or their own words when no
-check-in asks for it. Hands-off's intake budgets are approved by the intake (`approve_from_intake`).
+check-in asks for it, or for the caption removal at VC before G6 (`for_step`, issue #21). Hands-off's
+intake budgets are approved by the intake (`approve_from_intake`).
 `spend` records money as it is spent and refuses what would go over. Both refuse while the run is
 stopped for another reason (`flow.Held`, exit 2): nothing is spent or approved then.
 """
@@ -87,19 +88,21 @@ def configured(cfg: dict, kind: str) -> float | None:
     return round(float(value), 6) if ok else None
 
 
-def approve(run: RunFolder, kind: Kind, amount: float, note: str | None = None) -> None:
+def approve(run: RunFolder, kind: Kind, amount: float, note: str | None = None,
+            for_step: str | None = None) -> None:
     """Set the approved total for `kind` after the user's yes. It can be raised or lowered, never
-    below what is spent. Raises flow.Held while the run is stopped for anything but this budget."""
+    below what is spent. Raises flow.Held while the run is stopped for anything but this budget.
+    `for_step` "VC": the caption removal's own yes, recorded with the step it is for."""
     _kind(kind)
     value = _amount(amount)
     s = state.load(run)
     flow.refuse_if_held(s, "nothing was approved", kind=kind)
-    gap = flow.approval_gap(s, kind, note)
+    gap = flow.approval_gap(s, kind, note, for_step)
     if gap:
         raise ValueError(gap)
     if kind == "ai_usd":
         _week_cap(run, s, value)
-    _set(run, s, kind, value, note)
+    _set(run, s, kind, value, note, for_step)
 
 
 def _week_left(run: RunFolder, s: state.RunState) -> tuple[float, float, float] | None:
@@ -147,13 +150,15 @@ def _higher_todo(run: RunFolder, kind: str, base: str) -> str:
             f"({_week_raise(s)}).")
 
 
-def approve_from_intake(run: RunFolder, kind: Kind, amount: float) -> None:
-    """Hands-off: the budgets the user gave at intake are their yes."""
+def approve_from_intake(run: RunFolder, kind: Kind, amount: float, note: str | None = None) -> None:
+    """Hands-off: the budgets the user gave at intake are their yes; so are the words they gave
+    with a budget after it (`note`: adding the live test, or a new test budget, `tm live-test`)."""
     _kind(kind)
-    _set(run, state.load(run), kind, _amount(amount), "the budget given at intake (Hands-off)")
+    _set(run, state.load(run), kind, _amount(amount), note or "the budget given at intake (Hands-off)")
 
 
-def _set(run: RunFolder, s: state.RunState, kind: str, value: float, note: str | None) -> None:
+def _set(run: RunFolder, s: state.RunState, kind: str, value: float, note: str | None,
+         for_step: str | None = None) -> None:
     spent = s.spend.get(kind, 0.0)
     if value < spent:
         raise ValueError(f"{_fmt(kind, spent)} is already spent, so the budget cannot go below it.")
@@ -161,6 +166,8 @@ def _set(run: RunFolder, s: state.RunState, kind: str, value: float, note: str |
     entry = {"kind": kind, "amount": value, "at": flow._now()}
     if note and note.strip():
         entry["note"] = note.strip()
+    if for_step:
+        entry["for"] = for_step
     s.approvals.append(entry)
     state.save(run, s)
 
@@ -224,6 +231,9 @@ def _setup(p: argparse.ArgumentParser) -> None:
     a.add_argument("kind")
     a.add_argument("amount", type=float)
     a.add_argument("--note", help="the user's own words, when no check-in in the run asks for this budget")
+    a.add_argument("--for", dest="for_step", choices=[flow.CAPTION_STEP],
+                   help="the caption removal's own yes at VC (ProPainter, ai_usd), before the AI video's "
+                        "plan and budget (G6) is asked; with --note")
     s = sub.add_parser("spend", help="record money spent; refuses what would go over")
     s.add_argument("kind")
     s.add_argument("amount", type=float)
@@ -242,7 +252,7 @@ def _run(args: argparse.Namespace) -> int:
             return 0
         run = RunFolder.open(Path(args.run))
         if args.action == "approve":
-            approve(run, args.kind, args.amount, note=args.note)
+            approve(run, args.kind, args.amount, note=args.note, for_step=args.for_step)
             text = f"Approved {_fmt(args.kind, args.amount)} for {args.kind}."
             if flow.open_stop(run, [f"over_budget_{args.kind}"]):
                 text += " The run is stopped for this budget: once the user agrees, run `tm resume`."

@@ -69,6 +69,25 @@ What changed in each version of the TrendsMesh playbooks plugin.
   brief reads reviews of comparable products and discussions in the market's language before the Reddit archive,
   caps each archive query at 90 seconds (over the last 12 months), stops once there is enough, and tells you up
   front that the step takes a few minutes, with progress as it goes. Imported reviews keep their link and date.
+- **Refresh an ad: the live test is never a default.** Accepting the intake's defaults gives the creative brief,
+  the edited video and the AI video, nothing that spends ad money. The live test is offered on its own and is in
+  the run only when you pick it, with your own daily budget and days. Runs and configs that already have the live
+  test keep it.
+- **Refresh an ad: going live is always your call.** At every level, Hands-off too, the run stops at the paused
+  ads and the green pre-launch check and asks: launch or keep paused.
+- **Refresh an ad: the test budget is checked at the start.** A rough estimate from the account's numbers at the
+  intake, then again on the chosen ad's numbers right after the diagnosis. If your budget can't reach the minimum
+  events, the run says so there, with the choices (a higher daily budget, more days, or no test), not at the test
+  design after all the work.
+- **Refresh an ad: add the live test at the end.** When a run made a video without a test, the final report asks
+  whether to test it against the original; a yes, with your budget, reopens the run at the test design.
+- **Refresh an ad: caption removal can be approved when the AI video is in the run.** The few cents for
+  ProPainter are approved on their own at the caption step, without approving the AI video's plan early; the AI
+  video's budget later counts them in its total.
+- **Refresh an ad: hook, middle and CTR tests are sized by what they measure.** The budget covers the impressions
+  or plays the decision metric needs, with a 4-day minimum run, instead of 30 results per ad, so these tests are
+  much shorter and cheaper. Cost per result stays the guardrail; a variant that wins with few results is reported
+  as "won, cost per result not confirmed yet", to scale step by step. The plan says what its budget is based on.
 
 ## 0.10.0
 

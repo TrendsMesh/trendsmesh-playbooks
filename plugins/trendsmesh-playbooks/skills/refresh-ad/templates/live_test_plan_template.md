@@ -10,7 +10,8 @@ the launch ("Approve the launch").
 ## 1. What the test answers
 - The fading stage (from the diagnosis) and the change tested in each variant.
 - **Decision metric:** the metric of the changed stage (e.g. 25% plays / impressions for a new
-  opening). **Guardrail:** cost per result.
+  opening). **Guardrail:** cost per result, checked once a variant has the plan's minimum results
+  for it (`cost_guardrail.min_results`).
 
 ## 2. Structure (a Meta A/B test, not a manual comparison)
 - Campaign (existing or new), objective and event, pixel.
@@ -25,12 +26,17 @@ the launch ("Approve the launch").
 | Scale | the decision metric better by at least the minimum effect, p below alpha, cost per result not above the control's |
 | Switch off | worse with p below alpha, or cost per result at or above the guardrail |
 | No verdict | anything else at the end of the window |
-| Guardrail | cost per result above N × the control's (the only rule allowed to act early) |
+| Guardrail | cost per result above N × the control's, once a variant has the minimum results for it (the only rule allowed to act early) |
+| Won, cost not confirmed | a rate metric won but the variant has fewer results than that minimum: "won on <metric>; cost per result not confirmed yet", scale step by step |
 
 ## 4. Size, budget and time
 - **Minimum events per variant** before any decision, and why (R4).
-- From it: the budget per day, the number of days, the total. A plan that cannot reach the
-  minimum goes back to the user with the calculation (events, budget, time).
+- **What the budget is based on**, in one sentence from the plan's `basis`: for a rate metric the
+  trials it needs and the minimum run time (e.g. "the budget covers the hook rate's 1,170
+  impressions per variant and 4 days; cost per result is watched as a guardrail"), for cost per
+  result the results each ad needs.
+- From it: the budget per day, the number of days, the total the test spends. A plan that cannot
+  reach the minimum goes back to the user with the calculation (events, budget, time).
 - No decisions before the end of the window: no peeking, no early switch-off except the
   guardrail.
 

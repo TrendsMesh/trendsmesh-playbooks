@@ -25,19 +25,63 @@ def cfg(per_day):
     return c
 
 
-def test_plan_infeasible_returns_calculation():
-    # R4's example: 150/day, 3 ads (2 variants and the control), CPR 45
+def _hook_need(variants=2):
+    """What a hook test's trials cost at the control's cost per impression (1350 / 100,000)."""
+    z = NormalDist().inv_cdf(0.95) + NormalDist().inv_cdf(0.8)
+    trials = math.ceil(z * z * (0.3 * 0.7 + 0.36 * 0.64) / 0.06 ** 2)
+    return trials, (variants + 1) * trials * 1350 / 100_000
+
+
+def test_rate_metric_budget_comes_from_its_trials():
+    # issue #23 (option C): a hook test is sized by its impressions, not by 30 results per ad
+    trials, need = _hook_need()
     p = plan("hook", control(), 2, cfg(150))
-    assert p.budget_total == pytest.approx(4050)
-    assert p.days == 27 and p.feasible is False
-    assert "4050" in p.calculation and "27 days" in p.calculation
+    assert p.trials_per_variant == trials
+    assert p.budget_total == pytest.approx(need, abs=0.01)
+    assert p.days == 4 and p.feasible is True          # one day of delivery, the 4-day minimum
+    assert p.spend_total == pytest.approx(600)          # what the test spends: 150 a day for 4 days
+    assert p.min_results_per_variant == 0               # no results quota for a rate metric
+    assert f"{trials} impressions per variant and 4 days" in p.basis
+    assert "cost per result is watched as a guardrail" in p.basis
+    assert p.basis in p.calculation
+
+
+def test_rate_metric_plan_infeasible_returns_calculation():
+    _, need = _hook_need()
+    p = plan("hook", control(), 2, cfg(1))
+    assert p.days == math.ceil(need) and p.feasible is False
+    assert f"{p.days} days" in p.calculation and "more than the 14 days allowed" in p.calculation
     assert str(p.min_events_per_variant) in p.calculation
+
+
+def test_min_days_is_the_floor_and_comes_from_the_config():
+    c = cfg(150)
+    c["test"]["min_days"] = 6
+    assert plan("hook", control(), 2, c).days == 6
+    c["test"]["min_days"] = 20
+    with pytest.raises(ValueError, match="min_days"):
+        plan("hook", control(), 2, c)                   # longer than the test may run
+
+
+def test_the_users_days_cap_the_plan():
+    c = cfg(1)
+    c["budget"]["test_days"] = 40
+    assert plan("hook", control(), 2, c).feasible is False   # test.max_days (14) still caps it
+    c = cfg(150)
+    c["budget"]["test_days"] = 3
+    p = plan("hook", control(), 2, c)
+    assert p.days == 4 and p.feasible is False               # the 4-day minimum is more than the 3 given
+    assert "more than the 3 days allowed" in p.calculation
 
 
 def test_plan_feasible_when_the_days_fit():
     p = plan("hook", control(), 2, cfg(400))
-    assert p.days == 11 and p.feasible is True
-    assert p.min_results_per_variant == 30
+    assert p.days == 4 and p.feasible is True
+
+
+def test_signed_off_note_is_gone():
+    import tm.r4
+    assert "sign-off" not in (tm.r4.__doc__ or "") and "PROPOSAL" not in (tm.r4.__doc__ or "")
 
 
 def test_decision_metric_follows_the_stage():
@@ -74,6 +118,19 @@ def test_thresholds_written_before_the_start():
     assert t["scale"]["cpr_at_most"] == pytest.approx(45.0)
     assert t["kill"]["cpr_at_least"] == pytest.approx(58.5)
     assert t["cost_guardrail"]["cpr_at_least"] == pytest.approx(58.5)
+    assert t["cost_guardrail"]["min_results"] == 10
+    assert t["cost_not_confirmed"] == {
+        "results_below": 10, "verdict": "won on hook rate; cost per result not confirmed yet",
+        "action": "scale step by step and watch cost per result"}
+
+
+def test_guardrail_min_results_comes_from_the_config():
+    c = cfg(400)
+    c["test"]["guardrail_min_results"] = 25
+    t = plan("hook", control(), 2, c).thresholds
+    assert t["cost_guardrail"]["min_results"] == 25 and t["cost_not_confirmed"]["results_below"] == 25
+    assert "won on cost per result" not in str(plan("fatigue", control(), 1, cfg(400)).thresholds)
+    assert "cost_not_confirmed" not in plan("fatigue", control(), 1, cfg(400)).thresholds
 
 
 def test_control_without_results_cannot_be_costed():
@@ -101,10 +158,19 @@ def test_fatigue_events_are_results_and_make_the_plan_infeasible():
     assert "those events are results" in p.calculation
 
 
-def test_rate_metric_keeps_the_winner_minimum_as_guardrail():
-    p = plan("hook", control(), 1, cfg(400))
-    assert p.min_results_per_variant == 30
-    assert "cost guardrail" in p.calculation
+def test_rate_metric_no_longer_needs_the_winner_minimum():
+    # winner.min_results keeps its R1 meaning: it does not size a rate metric's test
+    c = cfg(400)
+    c["winner"]["min_results"] = 300
+    assert plan("hook", control(), 1, c).budget_total == plan("hook", control(), 1, cfg(400)).budget_total
+    assert "guardrail" in plan("hook", control(), 1, cfg(400)).calculation
+
+
+def test_override_of_min_events_sets_the_trials():
+    c = cfg(400)
+    c["test"]["min_events_per_variant"] = 600
+    p = plan("hook", control(), 1, c)
+    assert p.trials_per_variant == 2000                 # 600 events at the control's 30% hook rate
 
 
 def ladder_control(**kw):
@@ -133,7 +199,10 @@ def test_same_length_recut_is_judged_by_its_step():
         (NormalDist().inv_cdf(0.95) + NormalDist().inv_cdf(0.8)) ** 2
         * (0.25 + 0.6 * 0.4) / (0.1) ** 2)
     assert p.min_events_per_variant == math.ceil(p.trials_per_variant * 0.5)
-    assert p.min_results_per_variant == 30
+    assert p.min_results_per_variant == 0
+    # the trials are p50 plays, at the control's cost per p50 play (1350 / 20,000)
+    assert p.budget_total == pytest.approx(3 * p.trials_per_variant * 1350 / 20_000, abs=0.01)
+    assert "p50 play" in p.basis
     assert p.thresholds["scale"]["metric"] == "step:p75/p50"
     assert p.thresholds["cost_guardrail"]["cpr_at_least"] == pytest.approx(58.5)
     assert "p50" in p.calculation
@@ -161,25 +230,37 @@ def test_recut_options_need_the_middle_stage_and_a_known_step():
         plan("fatigue", ladder_control(), 1, cfg(500), shorter=True)
 
 
-def test_middle_without_options_is_unchanged():
+def test_middle_is_sized_from_p25_plays():
     p = plan("middle", control(), 2, cfg(500))
+    need = 3 * 303 * 1350 / 30_000           # 303 p25 plays per ad at the control's cost per p25 play
     assert p.__dict__ == {
         "decision_metric": "thruplay_rate", "min_events_per_variant": 152,
-        "min_results_per_variant": 30, "budget_total": 4050.0, "days": 9, "per_day": 500.0,
+        "min_results_per_variant": 0, "budget_total": round(need, 2), "days": 4, "per_day": 500.0,
         "thresholds": {
             "scale": {"metric": "thruplay_rate", "min_relative_improvement": 0.2, "p_below": 0.1,
                       "cpr_at_most": 45.0},
             "kill": {"metric": "thruplay_rate", "worse_with_p_below": 0.1, "cpr_at_least": 58.5},
-            "cost_guardrail": {"cpr_at_least": 58.5,
-                               "note": "the only reason to switch off before the window ends"},
+            "cost_guardrail": {"cpr_at_least": 58.5, "min_results": 10,
+                               "note": "checked once a variant has at least 10 results; the only "
+                                       "reason to switch off before the window ends"},
+            "cost_not_confirmed": {"results_below": 10,
+                                   "verdict": "won on thruplay rate; cost per result not confirmed yet",
+                                   "action": "scale step by step and watch cost per result"},
             "no_verdict": "anything else"},
         "feasible": True,
-        "calculation": ("The test needs 152 thruplay rate events per variant (303 trials) to see a "
-                        "20% change at 10% significance and 80% power; for this rate metric each "
-                        "ad also needs 30 results as the cost guardrail's sample. With 2 variants "
-                        "and the control at a cost per result of 45, that is a budget of 4050, "
-                        "which at 500 per day takes 9 days, within the 14 allowed."),
-        "variants": 2, "trials_per_variant": 303, "control_cpr": 45.0, "secondary_metrics": []}
+        "calculation": (
+            "The test needs 152 thruplay rate events per variant (303 trials, counted as p25 plays) "
+            "to see a 20% change at 10% significance and 80% power. At the control's cost per p25 "
+            "play of 0.045, 2 variants and the control need 40.91 for those trials, which at 500 per "
+            "day takes 1 day; the test runs at least the 4-day minimum, so 4 days, within the 14 "
+            "allowed, and spends 2000 (500 per day for 4 days). The budget covers the thruplay "
+            "rate's 303 p25 plays per variant and 4 days; cost per result is watched as a "
+            "guardrail (switch off at 58.5, 1.3 times the control's 45), checked once a variant "
+            "has 10 results."),
+        "variants": 2, "trials_per_variant": 303, "control_cpr": 45.0, "secondary_metrics": [],
+        "spend_total": 2000.0, "min_days": 4,
+        "basis": ("the thruplay rate's 303 p25 plays per variant and 4 days; cost per result is "
+                  "watched as a guardrail")}
 
 
 def test_shorter_is_sized_from_results_like_fatigue():

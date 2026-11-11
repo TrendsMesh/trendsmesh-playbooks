@@ -12,6 +12,9 @@ Scenarios (every one of them: a run `2026-11-05_ad`, Hands-off unless said, answ
                  (./.plans.json, which ./tm.sh hands to `tm offer`)
   at_a5_hook     the creative brief only, Check every step; ranking, diagnosis (hook) and every step
                  before A5 done, run at A5 (the trends), with nothing recorded about TrendsMesh yet
+  at_e3_hands_off_launch  brief + live test (picked, 150 a day for 7 days), Hands-off; R4's plan from the
+                 ranking, the paused ads recorded (made-up ids) and a green R8 check; run at E3, where
+                 "Approve the launch" (G11) waits for the user (issue #22: never by rule)
 
 Re-cut scenarios (handoff v03 HANDOFF.md 9b and 9b-2: decisions on the engine's recorded data, no
 media; the original files are placeholders, the teardown, transcript and segment map JSON are in the run):
@@ -245,6 +248,21 @@ def drive(ws: Path, run: Path, stop_at: str | None, scn: str | None = None, ai_s
         else:
             return n
     raise SystemExit(f"never reached {stop_at}")
+
+
+def test_plan(ws: Path, run: Path) -> None:
+    """E1's work as the agent leaves it: the chosen ad's latest window as the control, R4's plan."""
+    ranking = json.loads((run / "01_base" / "winner_ranking_v01.json").read_text(encoding="utf-8"))
+    cand = next(c for c in ranking["candidates"] if c["ad_id"] == m.AD_A)
+    f = place(ws, run, "03_wip/test_control_v01.json", cand["latest"], "01_base/winner_ranking_v01.json")
+    tm(ws, "r4", "--run", str(run), "--stage", "hook", "--control", str(f), "--variants", "1")
+
+
+def paused_ads(ws: Path, run: Path) -> None:
+    """E2's work: the paused ad set and ads, made-up object ids (nothing here talks to Meta)."""
+    place(ws, run, "05_results/meta_objects_v01.json",
+          {"status": "PAUSED", "ad_set": "adset_mock_1", "ads": {"control": "ad_mock_control", "variant": "ad_mock_v1"}},
+          "Meta Ads MCP ads_create_* answers (eval fixture)")
 
 
 # --- re-cut runs (path C-R) ----------------------------------------------------------------------
@@ -1602,6 +1620,18 @@ def main(scn: str, ws: Path) -> int:
         # run starts at Check every step and the user switches level later, as the case's prompt says.
         run = new_run(ws, ["creative_brief", "ai_video"], level="every_step")
         n = drive(ws, run, "D2", scn="hook")
+    elif scn == "at_e3_hands_off_launch":
+        run = new_run(ws, ["creative_brief", "live_test"],
+                      budget={"test_per_day": 150, "test_days": 7})
+        n = drive(ws, run, "E2b", scn="hook", hooks={"E1": test_plan, "E2": paused_ads})
+        place(ws, run, "04_final/prelaunch_check_v01.md",
+              "# Pre-launch check (R8)\n\nEvery item green: AI labelling n/a, claims checked, music licence "
+              "(the original's), text in the feed preview, no known defects.\n", "the R8 checklist (eval fixture)")
+        tm(ws, "done", "E2b", "--run", str(run))
+        tm(ws, "decide", "E2b", "green", "--by", "rule", "--note", "04_final/prelaunch_check_v01.md: all green",
+           "--run", str(run))
+        n = tm(ws, "next", "--run", str(run), ok=(0, 2))
+        assert n["action"] == "ask" and n["checkin"]["ids"] == ["G11"], n
     elif scn == "at_a5_hook":
         run = new_run(ws, ["creative_brief"], level="every_step")
         n = drive(ws, run, "A5", scn="hook")

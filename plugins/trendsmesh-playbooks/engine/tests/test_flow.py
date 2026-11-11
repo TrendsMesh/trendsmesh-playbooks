@@ -906,7 +906,7 @@ def test_diagnose_material_r4_cli_write_state_and_files(run, tmp_path):
     assert main(["material", *base, "text_cards"]) == 0 and state.load(run).material == "text_cards"
     assert main(["material", *base, "hologram"]) == 1
     assert main(["changes", "--stage", "hook", "--material", "text_cards", "--json"]) == 0
-    (run.path / "config.yaml").write_text("budget:\n  test_per_day: 150\n", encoding="utf-8")
+    (run.path / "config.yaml").write_text("budget:\n  test_per_day: 1\n", encoding="utf-8")
     cf = tmp_path / "control.json"
     cf.write_text(json.dumps(peak), encoding="utf-8")
     assert main(["r4", *base, "--stage", "hook", "--control", str(cf), "--variants", "2"]) == 2

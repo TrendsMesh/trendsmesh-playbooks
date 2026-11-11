@@ -39,7 +39,7 @@ spending card, a user who approves one budget and not another gets one decision 
 | Pick the ad | G1, G1a, G1b | the ranking, the diagnosis and the persona, with your recommendation |
 | Approve the changes | G2, G3, G4 | the direction, the hooks with the change register, the brief (in a middle run, the re-cut direction and its register); the re-cut variants (G3r) are asked on their own at CR3 |
 | Approve the spending | VB, RB, G6, G10 | before any paid step: the voice budget, the re-cut budget (ProPainter and Veo in USD, ElevenLabs Music in credits), the AI generation plan and the live test plan, each priced, with R4's minimum events (run `tm r4` before this card: G10 is refused without a feasible plan) |
-| Approve the launch | G11 | the R8 checklist, the final videos, the amount |
+| Approve the launch | G11 | the R8 checklist, the final videos, the amount; asked at every level, Hands-off too |
 | Act on the results | G12 | variant against control, the plan's thresholds, your recommendation |
 
 ## Choices per check-in
@@ -65,7 +65,7 @@ spending card, a user who approves one budget and not another gets one decision 
 | G9 | Approve the AI video | `approve` | known defects |
 | G10 | Approve the live test plan | `approve` or `reject` | per day × days; then `tm budget approve test` |
 | E2b | Quality and policy check | `green` or `red` (always by rule) | the checklist file |
-| G11 | Approve the launch | `activate` (only after a green E2b) or `keep_paused` | the amount |
+| G11 | Approve the launch | `activate` (only after a green E2b) or `keep_paused` | the amount; never by rule, at any level |
 | G12 | Act on the results | `scale`, `kill` or `keep` | the numbers against the thresholds |
 
 `<running total>`: what is already approved for the kind plus this check-in's amount (`tm status
@@ -96,7 +96,7 @@ user sees.
 ## Stops the user must clear
 
 Voice checks in Hands-off (V1c, GV), a red R8 item, a budget that would be exceeded, a plan
-below R4's minimum events, a missing file or an upload by hand, a missing install or sign-in.
+below R4's minimum events (or its estimate on the chosen ad, right after the diagnosis), a missing file or an upload by hand, a missing install or sign-in.
 Each stop message says what happened, what to do, and that the run continues from the same
 place. Then wait for the user. While a stop is open, the engine refuses every spend, budget
 approval and money decision (the spending check-ins, the launch, the results) except the

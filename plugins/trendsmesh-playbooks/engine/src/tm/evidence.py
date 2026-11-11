@@ -8,7 +8,7 @@ rising now. The engine records that choice in run state (`tm evidence`), and whi
 - `tm next` gives the playbook's notice (`NOTICES`) on its check-ins in `Notice.at` when they are
   shown to the user (Refresh an ad: the direction G2 and the launch G11; Creative brief: the
   concepts G2), and in the final report of a run that made its changes (so Hands-off hears it
-  once, at the end). Creative brief's final report carries it only when G2 was not asked
+  at the end, and at the launch, which every level asks). Creative brief's final report carries it only when G2 was not asked
   (`Notice.repeat_at_end`), so every level hears it once; the doctor's readiness card shows its
   short form;
 - Refresh an ad: the change register cannot call a change "proof" (`tm register check`), and the

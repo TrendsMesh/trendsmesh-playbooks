@@ -215,7 +215,8 @@ def test_e1_needs_an_r4_plan(run):
 def test_an_unreachable_sample_holds_the_run_with_the_options(run, tmp_path, capsys):
     _setup(run, "every_step", ["creative_brief", "live_test"], plan=False)
     _work_to(run, "E1")
-    (run.path / "config.yaml").write_text("budget:\n  test_per_day: 150\n", encoding="utf-8")
+    # a hook test is sized by its impressions (issue #23): 1 a day cannot buy them within 14 days
+    (run.path / "config.yaml").write_text("budget:\n  test_per_day: 1\n", encoding="utf-8")
     cf = tmp_path / "control.json"
     from tm import r2
     cf.write_text(json.dumps(r2.window_to_json(_control())), encoding="utf-8")
@@ -241,16 +242,16 @@ def test_an_unreachable_sample_holds_the_run_with_the_options(run, tmp_path, cap
 
 def test_more_days_also_make_the_plan_feasible(run):
     _setup(run, "every_step", ["live_test"], plan=False)
-    tight = r4.plan("hook", _control(), 2, _cfg(150))
+    tight = r4.plan("hook", _control(), 2, _cfg(1))
     assert not tight.feasible
-    loose = r4.plan("hook", _control(), 2, _cfg(150), max_days=tight.days)
+    loose = r4.plan("hook", _control(), 2, _cfg(1), max_days=tight.days)
     assert loose.feasible and loose.days == tight.days
 
 
 def test_skipping_the_live_test_clears_the_hold(run):
     _setup(run, "every_step", ["creative_brief", "live_test"], plan=False)
     _work_to(run, "E1")
-    _plan(run, per_day=150)
+    _plan(run, per_day=1)
     assert not state.load(run).test_plan["feasible"]
     assert flow.next(run).action == "stop"
     with pytest.raises(flow.Held):
