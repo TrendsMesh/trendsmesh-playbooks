@@ -69,7 +69,7 @@ keeping the same task. A previous `by_hand` stays `by_hand`.
      session does not start there. First run `cd "<workspace>"` on its own, then begin every `tm`
      command with `cd "<workspace>" &&`, for example `cd "<workspace>" && tm next --run <run>
      --json`. Find the last trend research run of this category in runs/04-trend-research/ and
-     start the weekly run after it. If publish_files refuses the page's files, keep the page
+     start the weekly run after it. If the Artifact tool refuses the page's files, keep the page
      local: give the path of its index.html, say plainly that the link was not updated this week,
      and record nothing as published."
 3. `tm research schedule --run R --how desktop_task --id <taskId> --cron "<cron>" --json`

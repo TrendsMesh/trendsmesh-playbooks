@@ -74,7 +74,7 @@ words a second, the facts with their sources (for the creator, never in the post
 posting kit per platform (line 1, the hashtags, the cover words, the trending sound and the
 volume split, or the business alternative), and how to post. Choice: `accept`, recorded with `tm
 decide script accept --run R --note "<their words>"`. A change is a new script version, checked,
-built and published to the same slug, and the card again.
+built and published to the same link, and the card again.
 
 ### An AI video's check-ins
 
@@ -136,7 +136,8 @@ then "ready". Choices: `accept`, `redo`, `drop`.
 
 For `proposals`, after the page is published, follow `flow.md#c2` and the plugin's
 `references/pages.md`, "Pages that take decisions": the wait (`tm page await --page proposals`),
-one unfiltered `db_list` when the user says they are done, `tm organic decisions --page
+one unfiltered `ArtifactData` list (or `db_list`) when the user says they are done, `tm organic
+decisions --page
 proposals`, and a decision in chat (`--text`). The images, takes and delivery pages work the same
 way (`flow.md#f1`, `#f2`, `#g4`): `tm organic decisions --page gate_images`, `gate_video` or
 `delivery`. **Picks carried over from an earlier page version** (the page shows the earlier

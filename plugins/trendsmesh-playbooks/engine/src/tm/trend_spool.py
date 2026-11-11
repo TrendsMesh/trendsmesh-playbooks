@@ -452,11 +452,14 @@ def handle(event: dict, workspace: Path) -> dict | None:
     tool_name = event.get("tool_name", "")
     tool = short_name(tool_name)
     kept = tool in mcp_saves.SAVES
+    if not kept and not str(tool_name).startswith("mcp__"):
+        return None                                   # a built-in tool the collector does not keep (ArtifactComments)
     if kept:
         # A Meta or artifacts call never claims, or is saved for, another playbook's marker: a
         # parallel refresh-ad session's Meta reads would otherwise take a trend research marker.
         run = active_run(workspace)
-        if run is None or not mcp_saves.kept_by(state.load(run).playbook, tool):
+        given = event.get("tool_input") if event.get("tool_input") is not None else {}
+        if run is None or not mcp_saves.kept_by(state.load(run).playbook, tool, given):
             return None
         if not claim(workspace, event.get("session_id")):
             return None
@@ -591,7 +594,7 @@ def _ingest(args: argparse.Namespace) -> int:
         answer, _ = parse_answer(run.given(args.file).read_text(encoding="utf-8-sig"))   # PowerShell writes a BOM
         tool = short_name(args.tool)
         playbook = state.load(run).playbook
-        if mcp_saves.kept_by(playbook, tool):
+        if mcp_saves.kept_by(playbook, tool, tool_input):
             path = _keep(run, tool, tool_input, answer,     # where the collector would have kept it
                          server=mcp_saves.server_of(args.tool))
         elif tool in mcp_saves.SAVES and playbook in mcp_saves.SAVED_BY:

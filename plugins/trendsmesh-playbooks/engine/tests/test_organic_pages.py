@@ -461,7 +461,7 @@ def test_partial_or_older_db_list_refused(tmp_path, capsys):
         text = good if why else _db_text(_doc("m1"), cursor="next")
         _save_db(run, text, at, tool=tool, **extra)
         code, out = _decide(run, capsys)
-        assert code == 2 and "one unfiltered db_list" in out["message"], out
+        assert code == 2 and "one unfiltered ArtifactData list" in out["message"], out
         assert (why or "one page of several") in out["message"]
     # an answer on another artifact, named by hand
     mcp_saves.save(run, "db_list", {"slug": OTHER_SLUG, "collection": "decisions"}, {"raw": good}, at=_later(4),
@@ -593,7 +593,7 @@ def _event(ws, prefix, tool, tool_input, answer, session="s1"):
 def test_organic_db_list_saved_by_collector(organic_ws, capsys):
     ws, run = organic_ws
     assert mcp_saves.SAVED_BY[ORGANIC_VIDEO] == ("db_list", "db_query", "publish_files", "read_declaration",
-                                                 "declare_capabilities")
+                                                 "declare_capabilities", "ArtifactData", "Artifact")
     assert mcp_saves.SAVED_BY[CREATIVE_BRIEF] == tuple(mcp_saves.SAVES)
     assert ORGANIC_VIDEO in trend_spool.COLLECTING
     assert main(["trends", "collect", "on", "--run", str(run.path)]) == 0
@@ -647,3 +647,34 @@ def test_capabilities_pinned():
                                                 "hands_off": "Hands-off"}
     assert copy.deepcopy(organic_pages.UI["pl"]["levels"]) == {
         "every_step": "Sprawdzaj każdy krok", "big_calls": "Tylko najważniejsze decyzje", "hands_off": "Bez zatrzymywania"}
+
+
+@pytest.mark.parametrize("lang", ["en", "pl"])
+def test_a_page_that_cannot_save_says_to_choose_in_chat(lang):
+    """Issue #2: opened as a local file (or with no page storage), a page never says the choices are saved
+    or that Claude reads them from it: it says to tell Claude in chat. Its published copy still says
+    choices save as you click."""
+    from tm.organic_pages import gate, proposals, week
+    hint = {"proposals": ("Mark each proposal below. Choices save as you click; when you are done, write “ready” to "
+                          "Claude in the chat and it reads them from this page."),
+            "gate": ("Pick an option where there is a choice, then Accept, Redo (write what to change) or Drop. "
+                     "Choices save as you click; write “ready” to Claude in the chat when done.")}
+    pages = {"proposals": organic_pages.worded(proposals.localize(proposals.JS + hint["proposals"], lang), lang),
+             "gate": organic_pages.worded(gate.localize(gate.JS + hint["gate"], lang), lang),
+             "week": organic_pages.worded(json.dumps(week.T[lang], ensure_ascii=False), lang)}
+    chat = {"en": "tell Claude your choices in chat", "pl": "w czacie"}[lang]
+    for name, text in pages.items():
+        for claim in ("Saved in this browser only", "Zapisane tylko w tej przeglądarce", "choices kept in this browser",
+                      "choices stay in this browser", "wybory zostają w tej przeglądarce",
+                      "it reads them from this page", "a Claude odczyta je z tej strony"):
+            assert claim not in text, (name, claim)
+        assert chat in text, name
+    for name in ("proposals", "gate"):
+        assert {"en": "claude.ai link", "pl": "linkiem claude.ai"}[lang] in pages[name], name
+
+
+def test_brief_page_that_cannot_save_says_to_decide_in_chat():
+    from tm import brief_page
+    text = brief_page.worded(brief_page.TEMPLATE.read_text(encoding="utf-8"))   # the handoff's template stays verbatim
+    assert "kept on this page only" not in text.lower()
+    assert text.count("tell Claude your decisions in chat") >= 2

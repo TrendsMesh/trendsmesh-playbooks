@@ -106,7 +106,8 @@ def test_page_rebuilds_ld_v05_exactly(run, capsys):
     assert code == 0, out
     assert out["folder"] == "04_final/brief_pack_v01"
     built = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
-    assert built == private.alias(V05.read_text(encoding="utf-8").replace("\r", ""))     # the reference page, under the alias
+    reference = private.alias(V05.read_text(encoding="utf-8").replace("\r", ""))   # the reference page, under the alias
+    assert built == brief_page.worded(reference)                                     # with the plugin's wording
     assert out["views"] == ["decision", "strategy", "creator", "editor", "media-buyer"]
     # the six animatics copied where the page links them; the nine thumbnails are not in the run
     assert out["media_copied"] == 6 and sorted(out["media_missing"]) == sorted(_thumbs(_ld_brief()))
@@ -420,7 +421,7 @@ def test_decisions_ignore_a_db_answer_of_another_slug(run, capsys):
     other = "\n".join([_summary(1), _doc("x9", C1=("change", "not this page")), REMINDER])
     _save_db(run, OTHER_SLUG, other, _later(1))
     code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
-    assert code == 2 and out["status"] == "stop" and "read the decisions with `db_list` first" in out["message"]
+    assert code == 2 and out["status"] == "stop" and "read the decisions with an ArtifactData list first" in out["message"]
     assert not list((run.path / "03_wip").glob("decisions_*"))
 
     _save_db(run, SLUG, _db_text(), _later(2), tool="db_query")
@@ -445,7 +446,7 @@ def test_decisions_refuse_a_partial_read(run, capsys, extra, why):
     mcp_saves.save(run, "db_query", {"slug": SLUG, "collection": "decisions", **extra}, {"raw": _db_text()},
                    at=_later(2), server="claude-artifacts")
     code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
-    assert code == 2 and why in out["message"] and "one unfiltered db_list" in out["message"]
+    assert code == 2 and why in out["message"] and "one unfiltered ArtifactData list" in out["message"]
     assert not list((run.path / "03_wip").glob("decisions_*"))
 
 
@@ -521,7 +522,8 @@ def test_decisions_of_an_earlier_page_are_never_read(run, capsys):
     for extra in ([], ["--file", "03_wip/decisions/db_list_v01.json"]):
         code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G3", *extra)
         assert code == 2 and "db_list_v01.json was saved at" in out["message"], out
-        assert "before this page was published" in out["message"] and "one unfiltered db_list" in out["message"]
+        assert "before this page was published" in out["message"]
+        assert "one unfiltered ArtifactData list" in out["message"]
     assert page.awaiting(run, brief_page.PAGE)["stage"] == "G3"         # still waiting
     assert not list((run.path / "03_wip").glob("decisions_G3_*"))
     # a newest answer that cannot be read is a Stop: the older one is never read in its place

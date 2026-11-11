@@ -76,7 +76,8 @@ page or in chat. Choice: `accept`.
 
 For G2, G3 and G4 at Check every step and Just the big calls, after the page is published, follow
 the plugin's `references/pages.md`, "Pages that take decisions", steps 5 to 11: the wait (`tm
-brief await`), one unfiltered `db_list`, `tm brief decisions`, the decisions carried over from an
+brief await`), one unfiltered `ArtifactData` list (or `db_list`), `tm brief decisions`, the
+decisions carried over from an
 earlier page (asked once: "These N approvals were carried over from the earlier review. Keep
 them?"), what each verdict means, notes as feedback, a change round, and a decision in chat. In
 short, per concept: **approved** goes on; **changes**, **split** and **none** go to the user in

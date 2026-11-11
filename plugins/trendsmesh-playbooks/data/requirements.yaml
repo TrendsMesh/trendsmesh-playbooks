@@ -197,7 +197,7 @@ checks:
     unchecked: "Can't be checked until Meta Ads is connected and signed in."
 
   # Trend research (04): every number comes from TrendsMesh, so it is not a warning there; the
-  # Meta Ad Library (the paid check) and the artifacts connector (the page's link) are.
+  # Meta Ad Library (the paid check) and the artifacts tools (the page's link) are.
   - id: mcp_trendsmesh_research
     name: TrendsMesh connected and signed in
     playbooks: [04-trend-research]
@@ -238,8 +238,9 @@ checks:
     warn: true
     warn_note: "Without the Meta Ads connector the paid check says 'not checked'; the report is otherwise complete."
     unchecked: "Not checked yet: I check it with one quick Meta Ads call, then look again."
-  # The claude.ai artifacts tools (publish_files) come with the Claude desktop app's Code tab,
-  # not from /mcp: without them the page is a local file, never a blocker.
+  # The claude.ai artifacts tools (the built-in Artifact tool of Claude Code in the Claude desktop
+  # app, or the older publish_files) are not added through /mcp: without them the page is a local
+  # file, never a blocker.
   - id: artifacts_pages
     name: Shared page links (claude.ai artifacts)
     playbooks: [04-trend-research]
@@ -247,7 +248,7 @@ checks:
     kind: mcp
     mcp: artifacts
     fixer: user
-    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here the page is saved as a file you can open and share."}
+    fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
     warn: true
     warn_note: "Without shared page links the report is otherwise complete."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
@@ -258,9 +259,9 @@ checks:
     kind: mcp
     mcp: artifacts
     fixer: user
-    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here the page is saved as a file you can open and share."}
+    fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
     warn: true
-    warn_note: "Without the claude.ai artifacts connector you get the page as a local file, and decisions are taken here in chat."
+    warn_note: "Without shared page links you get the page as a local file, and decisions are taken here in chat."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
 
   - id: browser_for_animatics
@@ -275,7 +276,7 @@ checks:
       linux: "Install Google Chrome (free), then say continue. I draw the animatics in it, on your computer."
 
   # Organic video (03): TrendsMesh is required, as in trend research (every idea rests on what is
-  # rising now), so its two rows do not warn. The keys, the artifacts connector and the browser are
+  # rising now), so its two rows do not warn. The keys, the artifacts tools and the browser are
   # warnings: what they hide, `tm organic stack` records (tm/organic.py). An idea run (A0) asks for
   # the base tier alone; a production run's D1 adds the media tiers through the `when` of the
   # tier rows above. The animatic tier has no row: Task 19's pack check refuses an animation
@@ -313,9 +314,9 @@ checks:
     kind: mcp
     mcp: artifacts
     fixer: user
-    fix: {any: "Shared page links need Claude Code in the Claude desktop app; here the page is saved as a file you can open and share."}
+    fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
     warn: true
-    warn_note: "Without the claude.ai artifacts connector you get each page as a local file, and choices are taken here in chat."
+    warn_note: "Without shared page links you get each page as a local file, and choices are taken here in chat."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
   - id: replicate_api_token_organic
     name: Replicate token set

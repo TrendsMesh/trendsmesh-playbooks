@@ -10,7 +10,7 @@ week, made by the reference tool under Python 3.12, is rebuilt exactly (fixtures
 changes:
 - `lang` is required (the reference tool defaults to Polish): the week check (`organic_week.check`) asks for the run's
   page language, and `render` refuses a week without en or pl;
-- the planned file is checked against publish_files' limits (`page.over_limits`) before it is written, and nothing
+- the planned file is checked against the Artifact tool's limits (`page.over_limits`) before it is written, and nothing
   is built while people decide on the page (`page.Deciding`);
 - no backslash inside an f-string expression (Python 3.11), and the page's script data cannot be ended by `</` or
   turned by `<!--` (the original's own escape covered only the ideas, and only `</`);
@@ -18,7 +18,7 @@ changes:
 
 Decisions. The page saves one document per slot in its db collection `week` (`week/<slot>`, the slot being the original's
 day key, `pon` … `niedz`: `{idea, output: video|script, decision: ok|skip, note, slot, updated_at}`) and one document
-`week/_week` (`{approved, total, updated_at}`). `take_decisions` reads the newest saved `db_list`, whole and read
+`week/_week` (`{approved, total, updated_at}`). `take_decisions` reads the newest saved db read, whole and read
 after the page was published and awaited (`page.saved_answer`, `page.whole_answer`, `page.db_docs`), or the user's
 words in chat (`--text`, one line per day: `<day>: ok|skip[; idea: <id>][; output: video|script][; note: <their
 words>]`, and `approved: yes|no`), into
@@ -265,7 +265,7 @@ def _rel(run: RunFolder, path: Path) -> str:
 def build(run: RunFolder, file: Path | None = None) -> dict:
     """Build the page from the checked week plan into a new `04_final/week_vNN/index.html`. Nothing is written while
     people decide on the page (`page.Deciding`), before the week is checked, or when the page would be over
-    publish_files' limits (each a Stop)."""
+    the Artifact tool's limits (each a Stop)."""
     if page.awaiting(run, PAGE) is not None:
         raise page.Deciding(PAGE, read=READ_WITH)
     path, rel, week = organic_week.checked_week(run)
@@ -401,7 +401,7 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
     slug = (state.load(run).pages.get(PAGE) or {}).get("slug")
     if text is None and not slug:
         raise Stop(f"The page's publish is not recorded (tm page published --page {PAGE}), so it is unknown which "
-                   "artifact's decisions to read. Record it, read the decisions with `db_list` first, or give the "
+                   "artifact's decisions to read. Record it, read the decisions with an ArtifactData list first, or give the "
                    f"user's answer in chat form with --text; {AGAIN}.")
     decided = decided_page(run)
     week = decided["data"]
@@ -411,8 +411,9 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
     else:
         source = Path(file) if file is not None else page.saved_answer(run, PAGE, COLLECTION)
         if source is None:
-            raise Stop(f"No saved answer holds the decisions of this page ({slug}): read them with `db_list` first "
-                       f"(slug {slug}, collection {COLLECTION}, limit 1000), then run this again; {AGAIN}.")
+            raise Stop(f"No saved answer holds the decisions of this page ({slug}): read them with an ArtifactData list "
+                       f"first (the page's url, collection {COLLECTION}, query.limit 1000; with the older "
+                       f"tools, db_list on slug {slug}), then run this again; {AGAIN}.")
         docs = page.db_docs(page.whole_answer(run, PAGE, source, COLLECTION), collection=COLLECTION)
         if not docs:
             raise Stop(EMPTY)

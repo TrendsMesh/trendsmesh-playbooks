@@ -422,19 +422,22 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   at Just the big calls the card **"Approve the picks and the page"** is shown once, here, for G2
   and G3 together, and each is recorded on its own: `tm decide G2 accept --run R`, then `tm
   decide G3 publish --run R` or `tm decide G3 keep_local --run R` (their choices differ, so the
-  card's own id is not used). Hands-off: G3 by rule, `keep_local` when `publish_files` is not in
-  the session, otherwise `publish`.
+  card's own id is not used). Hands-off: G3 by rule, `keep_local` when neither `Artifact` nor
+  `publish_files` is in the session, otherwise `publish`.
 
 <a id="e2"></a>
 ## E2 Publish
 
 - Follow `references/pages.md` (plugin root) with the page `report`: `tm page link --run R --page
-  report --json` for an earlier link; the first page is a new private artifact, a weekly page
-  goes to the same slug with `base_version` from `tm page link`; then `tm page published --run R
-  --page report --slug <slug> --version <version> --url <url> --json`. Never republish while the
-  user is still deciding on the page.
+  report --json` for an earlier link and `tm page files --run R --page report --json` for the
+  `Artifact` tool's `file_path` and `files`; the first page is a new private artifact, a weekly
+  page goes to the same `url` from `tm page link` (its files listed first, the ones this week's
+  page lacks removed with `null`); then `tm page published --run R --page report --url <url>
+  --version <the version id> --json`. With the older `publish_files`: the same slug and
+  `base_version`, `--slug` in the record. Never republish while the user is still deciding on the
+  page.
 - Skipped when G3 is `keep_local`: give the local `index.html` path instead.
-- When `publish_files` refuses the files: `references/pages.md`, "A refused publish" (the local
+- When the tool refuses the files: `references/pages.md`, "A refused publish" (the local
   page, said plainly, nothing recorded as published).
 - Delivery is the link only: no message is sent to anyone (TR8).
 - `tm done E2 --run R`.

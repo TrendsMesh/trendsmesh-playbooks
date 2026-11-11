@@ -67,9 +67,10 @@ and that the acceptance continues from the same place.
      to sign in to TrendsMesh in Claude Code (`/mcp`, **trendsmesh**, **Authenticate**) and to
      tell you when it's done. When they are, check it with one `get_usage` call: a plan without
      trend data is said as the doctor says it (`commands/doctor.md`, "Trend research" step 4).
-   - `artifacts`: when `publish_files` is not in this session, say that shared page links need
-     Claude Code in the Claude desktop app (the tools come with it, not from `/mcp`) and ask
-     whether they can run the case there; then see that `publish_files` is among the tools.
+   - `artifacts`: when neither `Artifact` nor the older `publish_files` is in this session, say
+     that this session can't publish claude.ai artifacts (the `Artifact` tool is built into Claude
+     Code in the Claude desktop app, not added from `/mcp`) and ask whether they can run the case
+     where it is; then see that `Artifact` (or `publish_files`) is among the tools.
    - `file`: ask for the path of the file the case's `steps` name (the original video as
      uploaded to Meta, a product clip, an earlier case's music take).
    - `key`: the doctor's card says whether the key is set. If it isn't, tell them where to set

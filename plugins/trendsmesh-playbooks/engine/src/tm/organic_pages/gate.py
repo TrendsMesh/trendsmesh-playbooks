@@ -14,7 +14,7 @@ per item, `{choice, action: accept|redo|drop, note, platforms, thumbnail, item, 
 The port keeps the original's HTML byte for byte, up to the wording table (`organic_pages.WORDING`: "check-in", never
 "gate"): the ExampleEdu walkthrough's delivery page, made by the reference tool, is rebuilt exactly
 (fixtures/organic/edit_gate_golden/README.md). Its changes:
-- the planned files are checked against publish_files' limits (`page.over_limits`) before any is written, and a
+- the planned files are checked against the Artifact tool's limits (`page.over_limits`) before any is written, and a
   video shown on the page over 15 MB is refused: make its 720p preview first (`tm tool deliver preview`);
 - media go into `media/` (the original's path; the empty `assets/` of `page.new_folder` stays), each under a Windows-safe
   name (`page.asset_name`); two different files of one name get `2_`, `3_` … before the later ones (the original's
@@ -370,7 +370,7 @@ def build(run: RunFolder, data: dict, *, page: str) -> dict:
     """Build `page` from its data into a new `04_final/<page>_vNN/` (index.html, media/), and keep the data it was
     built from in `03_wip/gates/<page>_vNN.json`. Nothing is written while people decide on the page
     (`page.Deciding`), for data that is not in the handoff's shape, for a video shown over 15 MB or for files over
-    publish_files' limits (each a Stop). Returns {folder, files, data, lang}."""
+    the Artifact tool's limits (each a Stop). Returns {folder, files, data, lang}."""
     check_page(page)
     if pages.awaiting(run, page) is not None:
         raise pages.Deciding(page, read=READ_WITH.format(page=page))

@@ -374,8 +374,8 @@ def _report(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
         views += "; no digest yet (first run), so the weekly digest view comes with the next run"
     text = (f"Built {rel}/index.html from {rel}/report.json: views {views}, "
             f"{len(report['act_now'])} act now and {len(report['still_rising'])} still rising picks, {images} evidence "
-            "thumbnails. Publish the folder's files with publish_files (tm page files --run RUN --page "
-            f"{research_report.PAGE} lists them), or give the local index.html.")
+            "thumbnails. Publish the folder with the Artifact tool (tm page files --run RUN --page "
+            f"{research_report.PAGE} gives its file_path and files), or give the local index.html.")
     cli.emit(args, {"status": "done", "folder": rel, "files": listed, "message": text}, text)
     return 0
 

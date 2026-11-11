@@ -24,7 +24,7 @@ How to read the copy in the plugin:
   why), the Shopify connector and Notion or Drive brand guides as connectors (an export or a file
   the user has works), organic-only use (the media-buyer view off, an organic KPI), and comment
   texts under ads (the Meta connection gives counts only).
-- **Decisions on the page** (CB12): the plugin reads them with `db_list` (one unfiltered read) and
+- **Decisions on the page** (CB12): the plugin reads them with `ArtifactData` (one unfiltered list; the older tools' `db_list`) and
   records them with `tm brief decisions` and `tm brief choose`; a decision written in chat always
   counts (`references/pages.md`, "Pages that take decisions").
 
@@ -84,12 +84,13 @@ the concepts and every sentence of the brief, with its source (R3).
 - **Target audience** from two sources, hypothesis first; a hypothesis is never stated as a finding (R3).
 - **Money for recipients in USD** at a stated rate; run files keep the account currency.
 - **Organic clips** are evidence, never footage; trending sounds are not licensed for paid ads unless the data says so.
-- **Artifacts:** a new artifact starts private; the user shares it. To store decisions: publish the page, then `declare_capabilities` with `db` rules `[{path:"decisions",read:"view",write:"owner"},{path:"decisions/{self}",read:"view",write:"interact"}]` and `user` with `scopes:["profile"]`, then republish. Viewers below Contributor cannot save.
+- **Artifacts:** a new artifact starts private; the user shares it. To store decisions: publish the page with the `capabilities` `db` rules `[{path:"decisions",read:"view",write:"owner"},{path:"decisions/{self}",read:"view",write:"interact"}]` and `user` with `scopes:["profile"]` (the `Artifact` tool declares them in the publish; the older tools: `declare_capabilities` after it). Viewers below Contributor cannot save.
 
 **Changed for the plugin:** the collector saves every MCP answer of the run (TrendsMesh, Meta and
 the page tools), so nothing is transcribed. There are no keys: TrendsMesh and Meta are signed in
-through `/mcp`, and nothing reads `.secrets/api_keys.env`. `declare_capabilities` publishes the
-new version itself, so there is no separate republish after it (`references/pages.md`). The
+through `/mcp`, and nothing reads `.secrets/api_keys.env`. The capabilities are declared in the
+page's publish itself (with the older tools, `declare_capabilities` publishes the new version), so
+there is no separate republish after it (`references/pages.md`). The
 saturation words are the full ones above ("none found in Ad Library titles").
 
 ## Hard rules (CB1–CB13, approved by the user on 2026-11-04)

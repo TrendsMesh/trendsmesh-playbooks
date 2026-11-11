@@ -174,11 +174,11 @@ def _setup(p: argparse.ArgumentParser) -> None:
                                    "checked script, or the checked week plan)")
     pg.add_argument("--gate", choices=("images", "video"), help="for the gate page: the images or the takes")
     pg.add_argument("--json", action="store_true")
-    dc = sub.add_parser("decisions", help="read the decisions taken on a page (its saved db_list, or chat text)")
+    dc = sub.add_parser("decisions", help="read the decisions taken on a page (its saved db read, or chat text)")
     dc.add_argument("--run", required=True, help="the run folder")
     dc.add_argument("--page", required=True, choices=DECIDED, help="the page decided on")
     src = dc.add_mutually_exclusive_group()
-    src.add_argument("--file", help="a saved db_list/db_query answer (default: the newest on this page's slug)")
+    src.add_argument("--file", help="a saved ArtifactData list/query answer (default: the newest on this page)")
     src.add_argument("--text", help="a file in the run holding the user's word in chat (the proposals page's Copy "
                                     "summary, or one line per item of a check-in page)")
     dc.add_argument("--keep-carried", action="store_true",
@@ -451,8 +451,8 @@ def _deliver_week(args: argparse.Namespace) -> int:
     message = (f"Built the week's delivery page in {got['folder']} ({got['items']} item{'' if got['items'] == 1 else 's'}, "
                f"{len(got['files'])} files) and the posting plan {got['posting_plan']} ({got['rows']} posts; its "
                f"Markdown {got['posting_plan_md']}). Publish it: tm page files --run {args.run} --page {name} gives the "
-               f"files for publish_files; record it with tm page published --page {name}, and declare "
-               "organic_pages.CAPABILITIES[\"gate\"].")
+               f"Artifact tool's file_path and files, with organic_pages.CAPABILITIES[\"gate\"] as its capabilities; "
+               f"record it with tm page published --page {name}.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -479,8 +479,8 @@ def _script_page(args: argparse.Namespace, run: RunFolder) -> int:
     page_name = Path(got["folder"]).name.rsplit("_v", 1)[0]
     message = (f"Built the script page in {got['folder']} from {got['script']} ({len(got['files'])} files, with the "
                f"Markdown {got['markdown']}). Publish it: tm page files --run {args.run} --page {page_name} gives the "
-               "files for publish_files; record it with tm page published, and declare the downloads capability "
-               "(organic_pages.CAPABILITIES[\"script\"]).")
+               "Artifact tool's file_path and files, with the downloads capability (organic_pages.CAPABILITIES"
+               "[\"script\"]) as its capabilities; record it with tm page published.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -499,9 +499,10 @@ def _gate_page(args: argparse.Namespace, run: RunFolder) -> int:
     message = (f"Built the {name} page in {got['folder']} ({got['items']} item{'' if got['items'] == 1 else 's'}, "
                f"{len(got['files'])} files"
                + (f"; {missing} evidence thumbnail{'' if missing == 1 else 's'} could not be had" if missing else "")
-               + f"). Publish it: tm page files --run {args.run} --page {name} gives the files for publish_files; "
-               f"record it with tm page published --page {name}, declare organic_pages.CAPABILITIES[\"gate\"] (its "
-               f"db collection is {gate.COLLECTIONS[name]}), and wait with tm page await --page {name}.")
+               + f"). Publish it: tm page files --run {args.run} --page {name} gives the Artifact tool's "
+               f"file_path and files, with organic_pages.CAPABILITIES[\"gate\"] as its capabilities (its db collection "
+               f"is {gate.COLLECTIONS[name]}); record it with tm page published --page {name}, and wait with tm page await "
+               f"--page {name}.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -522,8 +523,9 @@ def _page(args: argparse.Namespace) -> int:
     missing = len(got["missing_thumbnails"])
     message = (f"Built the proposals page in {got['folder']} from {got['proposals']} ({len(got['files'])} files"
                + (f"; {missing} thumbnail{'' if missing == 1 else 's'} could not be had and show empty" if missing else "")
-               + f"). Publish it: tm page files --run {args.run} --page proposals gives the files for publish_files; "
-               "record it with tm page published, declare its db, and wait with tm page await.")
+               + f"). Publish it: tm page files --run {args.run} --page proposals gives the Artifact tool's "
+               "file_path and files, with its db declared in the publish; record it with tm page published, and wait "
+               "with tm page await.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -533,8 +535,9 @@ def _week_page(args: argparse.Namespace, run: RunFolder) -> int:
 
     got = week.build(run, _in_run(run, args.file))
     message = (f"Built the week page in {got['folder']} from {got['week']}. Publish it: tm page files --run {args.run} "
-               "--page week gives the files for publish_files; record it with tm page published --page week, declare "
-               "organic_pages.CAPABILITIES[\"week\"] (db collection week), and wait with tm page await --page week.")
+               "--page week gives the Artifact tool's file_path and files, with organic_pages.CAPABILITIES[\"week\"] "
+               "(db collection week) as its capabilities; record it with tm page published --page week, and wait with "
+               "tm page await --page week.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

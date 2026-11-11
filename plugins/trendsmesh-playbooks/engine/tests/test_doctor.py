@@ -340,7 +340,7 @@ TR_OUTPUTS = {"category_report", "weekly_digest", "paid_view"}
 TR_OK = {"trendsmesh": "ok", "meta": "ok", "artifacts": "ok"}
 META_NOTE = ("Without the Meta Ads connector the paid check says 'not checked'; the report is "
              "otherwise complete.")
-ARTIFACTS_FIX = ("Shared page links need Claude Code in the Claude desktop app; here the page is "
+ARTIFACTS_FIX = ("This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is "
                  "saved as a file you can open and share.")
 ARTIFACTS_NOTE = "Without shared page links the report is otherwise complete."
 
@@ -510,7 +510,7 @@ CB = "02-creative-brief"
 CB_OUTPUTS = "review_pack,briefs,animatics,page"
 CB_NOTE = ("Without live trend data, the hooks in these concepts are my best guess from your "
            "customers' own words, your ads and the Ad Library, not proof from what is rising now.")
-CB_ARTIFACTS_NOTE = ("Without the claude.ai artifacts connector you get the page as a local file, and "
+CB_ARTIFACTS_NOTE = ("Without shared page links you get the page as a local file, and "
                      "decisions are taken here in chat.")
 CB_ROWS = ["tier_base", "tier_animatic", "disk_free", "mcp_trendsmesh_brief", "trendsmesh_agent_plan_brief",
            "mcp_meta", "meta_mcp_enabled_for_account", "artifacts_pages_brief", "browser_for_animatics"]

@@ -10,9 +10,10 @@
 # - G1's changed_a_lot and its stop: VARIANTS.md V26 ("show the new map at G1 again"), with "a
 #   lot" set by `digest.map_change_share` (the plan's decision 8), read by `tm research map-change`;
 # - G2's "top N by score": TR6's counts in `picks.*`;
-# - G3's keep_local when the session has no `publish_files` (decisions §5: no artifacts means a
-#   local file, never a blocker; preflight F12), and FLOWS.md E2's "first run: new private
-#   artifact; later runs: same slug";
+# - G3's keep_local when the session has no publishing tool (`Artifact`, or the older
+#   `publish_files`; decisions §5: no artifacts means a local file, never a blocker; preflight
+#   F12), and FLOWS.md E2's "first run: new private artifact; later runs: same slug" (the same
+#   URL with `Artifact`);
 # - GS: FLOWS.md F5, decisions §9 and the plan's decision 12 (a new standing schedule needs the
 #   user's yes; by hand, the user starts the weekly run with one sentence; only a desktop task
 #   is kept by rule, since `tm research schedule` records by_hand too);
@@ -67,7 +68,7 @@ checkins:
     card: approve_report
     route: {every_step: own, big_calls: card, hands_off: rule}
     rule: >-
-      keep_local when `publish_files` is not in the session; otherwise publish: a first page
+      keep_local when neither `Artifact` nor `publish_files` is in the session; otherwise publish: a first page
       starts private; a weekly page goes to the same link
     choices: [publish, keep_local]
     on_choice:

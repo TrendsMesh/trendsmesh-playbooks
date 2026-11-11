@@ -27,7 +27,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "mcp__(plugin_trendsmesh-playbooks_)?trendsmesh__.*|mcp__.*__ads_library_search|mcp__.*__ads_get_(ad_accounts|ad_entities|creatives)|mcp__.*__(db_list|db_query|publish_files|read_declaration|declare_capabilities)",
+        "matcher": "mcp__(plugin_trendsmesh-playbooks_)?trendsmesh__.*|mcp__.*__ads_library_search|mcp__.*__ads_get_(ad_accounts|ad_entities|creatives)|mcp__.*__(db_list|db_query|publish_files|read_declaration|declare_capabilities)|ArtifactData|Artifact",
         "hooks": [
           {
             "type": "command",

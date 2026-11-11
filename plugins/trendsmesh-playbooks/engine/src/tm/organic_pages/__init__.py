@@ -7,8 +7,8 @@
     week        the week plan (I2), `tm organic page week`
 
 Shared here:
-- `CAPABILITIES[page]`: what each page declares with `declare_capabilities` after its first publish
-  (HANDOFF "publish first, then declare capabilities"). A page's db holds one collection; its rules
+- `CAPABILITIES[page]`: what each page declares as the `capabilities` of its publish (the Artifact
+  tool's; with the older tools, `declare_capabilities` after the first publish). A page's db holds one collection; its rules
   let the owner read and write that collection and every document in it (PB02's rule shape,
   `brief_page.CAPABILITIES`). `downloads` is the original's own (`window.claude.use('downloads')` in
   gate_page.py and script_page.py). The live check against `describe_capabilities` is acceptance's
@@ -59,7 +59,21 @@ UI: dict[str, dict] = {
                        ("), each built on trends rising now, with the evidence videos behind it. Pick the ones to "
                         "produce; nothing is generated or paid until you approve a pack and its cost.",
                         "), każdy oparty na trendach, które rosną teraz, z filmami-dowodami. Wybierz te do produkcji; "
-                        "nic nie jest generowane ani opłacane, dopóki nie zatwierdzisz paczki i jej kosztu.")],
+                        "nic nie jest generowane ani opłacane, dopóki nie zatwierdzisz paczki i jej kosztu."),
+                       # a page that cannot save says to choose in chat (`WORDING`, issue #2)
+                       ("Oznacz każdą propozycję poniżej. Wybory zapisują się od razu; gdy skończysz, napisz w czacie "
+                        "„gotowe”, a Claude odczyta je z tej strony.",
+                        "Oznacz każdą propozycję poniżej, potem napisz w czacie „gotowe”. Pod linkiem claude.ai strony "
+                        "wybory zapisują się od razu i Claude odczyta je ze strony; kopia otwarta jako plik ich nie "
+                        "zapisze, więc napisz Claude swoje wybory w czacie („Kopiuj podsumowanie” pomoże)."),
+                       ("Wybory zapisują się od razu; gdy skończysz, napisz w czacie „gotowe”.",
+                        "Pod linkiem claude.ai strony wybory zapisują się od razu; gdy skończysz, napisz w czacie "
+                        "„gotowe”. Kopia otwarta jako plik ich nie zapisze: napisz Claude swoje wybory w czacie."),
+                       ("Zapisane tylko w tej przeglądarce (brak dostępu do zapisu strony)",
+                        "Niezapisane dla Claude (brak dostępu do zapisu strony): napisz Claude swoje wybory w czacie"),
+                       ("Zapisane tylko w tej przeglądarce", "Niezapisane dla Claude: napisz Claude swoje wybory w czacie"),
+                       ("Brak dostępu do zapisu strony; wybory zostają w tej przeglądarce",
+                        "Brak dostępu do zapisu strony, więc wybory nie trafiają do Claude: napisz je w czacie")],
            "gate": {}},
 }
 
@@ -71,6 +85,23 @@ WORDING: list[tuple[str, str]] = [
     # the proposals page's hint under Hands-off (the original's "A–Z")
     ("A–Z: Claude produces the whole video without stopping.", "Hands-off: Claude produces the whole video without stopping."),
     ("A–Z: Claude robi cały film bez zatrzymywania się.", "Bez zatrzymywania: Claude robi cały film od początku do końca."),
+    # A page that cannot save (opened as a local file, or without page storage) says to choose in chat, never that
+    # the choices are saved or read from it (issue #2). Longer strings first: each is a part of the next.
+    ("Mark each proposal below. Choices save as you click; when you are done, write “ready” to Claude in the chat "
+     "and it reads them from this page.",
+     "Mark each proposal below, then write “ready” to Claude in the chat. On the page’s claude.ai link, choices save "
+     "as you click and Claude reads them from the page; a copy opened as a file can’t save them, so tell Claude your "
+     "choices in chat (Copy summary helps)."),
+    ("Choices save as you click; write “ready” to Claude in the chat when done.",
+     "On the page’s claude.ai link, choices save as you click; write “ready” to Claude in the chat when done. A copy "
+     "opened as a file can’t save them: tell Claude your choices in chat."),
+    ("Saved in this browser only (page storage not reachable)",
+     "Not saved for Claude (page storage not reachable): tell Claude your choices in chat"),
+    ("Saved in this browser only", "Not saved for Claude: tell Claude your choices in chat"),
+    ("Page storage not reachable; choices kept in this browser",
+     "Page storage not reachable, so choices are not saved for Claude: tell Claude your choices in chat"),
+    ("No access to page storage; choices stay in this browser",
+     "No access to page storage, so choices are not saved for Claude: tell Claude your choices in chat"),
 ]
 
 

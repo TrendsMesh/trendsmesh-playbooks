@@ -72,7 +72,8 @@ posts.
    kept as `00_raw/seed.json`, and the search starts from its trend.
 2. **The stack check, with the run's own output** (`commands/doctor.md`, "Organic video"): check
    TrendsMesh (sign-in first, then the plan, `../../refresh-ad/references/trendsmesh-sign-in.md`
-   without its guess-mode lines) and whether `publish_files` is among this session's tools, then
+   without its guess-mode lines) and whether `Artifact` (or the older `publish_files`) is among
+   this session's tools, then
    `tm doctor --playbook organic-video --outputs proposals --mcp trendsmesh=<s>,artifacts=<s>
    --json` (a week run: `--outputs weekly_plan`). An idea run asks for the base tools and TrendsMesh only, so a user who wants ideas
    installs nothing heavy. **Without TrendsMesh the run stops** (exit 2): no guess mode, never
@@ -285,28 +286,33 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    involved (the three levels), the platforms, the taste answers and a note, with a sticky bar
    and "Copy summary".
 2. **Publish it** (`../../references/pages.md`, "Pages that take decisions"): `tm page files
-   --run R --page proposals --json` gives the files; `publish_files` with them, a title in the
-   chat language ("Video ideas: <channel>") and the icon `document`. It starts **private**: say
-   so. Then `read_declaration` on the slug, and `declare_capabilities` with that slug,
-   `base_version` = the version `read_declaration` gave, and `capabilities` =
+   --run R --page proposals --json` gives the `Artifact` tool's `file_path` and `files`; one
+   `Artifact` publish of them with a title in the chat language ("Video ideas: <channel>"), the
+   icon `document`, and `capabilities` =
    `{"db": {"rules": [{"path": "decisions", "read": "owner", "write": "owner"}]}, "user": {"scopes": ["profile"]}}`
-   (the engine's `CAPABILITIES["proposals"]`). It publishes a new version itself. **These rules
-   are not proven live yet**: `read_declaration` once more; if the db rules are not there, or the
-   declaration was refused, say so plainly, once ("the page can't save choices yet; tell me your
-   picks here"), and take the decisions in chat. **Without the artifacts tools**: nothing is
-   published; the page is `04_final/proposals_vNN/index.html`, and its path goes in the message that
-   restates the decisions, even when the user says they have opened it.
-3. `tm page published --run R --page proposals --slug <slug> --version <the version
-   declare_capabilities returned> --url <its claude.ai URL> --json`, then `tm page await --run R
-   --page proposals --version <that version> --json`. From then on the engine refuses a new build
-   until the decisions are read. A later version goes to the same slug (`tm page link`), as
-   `pages.md` says, with the declaration checked again.
+   (the engine's `CAPABILITIES["proposals"]`). It starts **private**: say so. **These rules are
+   not proven live yet**: check the declaration the publish result says is stored; if the db rules
+   are not there, or the publish refused them, say so plainly, once ("the page can't save choices
+   yet; tell me your picks here"), and take the decisions in chat. With the older tools:
+   `publish_files` with `tm page files`' list, then `read_declaration` on the slug and
+   `declare_capabilities` with that slug, `base_version` = the version `read_declaration` gave,
+   and the same object, then `read_declaration` once more. **Without a publishing tool**: nothing
+   is published; the page is `04_final/proposals_vNN/index.html` (it tells the user to choose in
+   chat), and its path goes in the message that restates the decisions, even when the user says
+   they have opened it.
+3. `tm page published --run R --page proposals --url <its claude.ai URL> --version <the version
+   id the publish returned> --json` (the older tools: `--slug <slug>` and the version
+   `declare_capabilities` returned), then `tm page await --run R --page proposals --version <that
+   version> --json`. From then on the engine refuses a new build until the decisions are read. A
+   later version goes to the same URL (`tm page link`) with the same capabilities, as `pages.md`
+   says, with the declaration checked again.
 4. `tm done C2 --run R`; the `proposals` check-in comes next (`checkin-cards.md`): the link, and
    every idea restated in chat.
-5. **When the user says they are done** ("ready", "gotowe"): **one unfiltered `db_list`**: the
-   page's slug, collection `decisions`, `limit` 1000, no `cursor`. The collector saves it; then
-   `tm organic decisions --run R --page proposals --json`. A read that is refused (a page of
-   several, a document too large, an older answer) means a new `db_list`, never an older one. An
+5. **When the user says they are done** ("ready", "gotowe"): **one unfiltered `ArtifactData`
+   list**: `action: "list"`, the page's `url`, collection `decisions`, `query: {"limit": 1000}`,
+   no `cursor` (the older tools: one `db_list` on the slug, `limit` 1000). The collector saves it;
+   then `tm organic decisions --run R --page proposals --json`. A read that is refused (a page of
+   several, a document too large, an older answer) means a new list, never an older one. An
    empty store stops with "nothing was saved on the page": ask in chat.
 6. **A decision in chat always counts.** Write the user's words as the page's "Copy summary"
    lines, one per idea, its id in capitals and its title exactly as on the page (`<ID> <title>:
@@ -377,14 +383,16 @@ and a series continues (brainrot part 2).
 3. `tm organic page week --run R --json` builds `04_final/week_v01/index.html`: a calendar of the
    posting days with one idea each, per day AI video or script, OK or skip, a swap from the reserves,
    a note, and a live budget meter that blocks the approval over budget. **Publish it** as C2 does
-   (`tm page files --run R --page week`, `publish_files`, `read_declaration`, `declare_capabilities`
-   with `CAPABILITIES["week"]`: `{"db": {"rules": [{"path": "week", "read": "owner", "write":
-   "owner"}]}, "user": {"scopes": ["profile"]}}`), then `tm page published --run R --page week …` and
+   (`tm page files --run R --page week`, an `Artifact` publish with `capabilities` =
+   `CAPABILITIES["week"]`: `{"db": {"rules": [{"path": "week", "read": "owner", "write":
+   "owner"}]}, "user": {"scopes": ["profile"]}}`, the declaration checked; the older tools:
+   `publish_files`, `read_declaration`, `declare_capabilities`), then `tm page published --run R
+   --page week …` and
    `tm page await --run R --page week --version <v>`.
 4. `tm done I2 --run R` (refused until the latest week plan is checked and the page built from it);
    the `week` check-in comes next (`checkin-cards.md`).
-5. **When the user is done:** one unfiltered `db_list` (the page's slug, collection `week`, `limit`
-   1000), then `tm organic decisions --run R --page week --json`: each day's idea, output and OK or
+5. **When the user is done:** one unfiltered `ArtifactData` list (the page's `url`, collection
+   `week`, `query.limit` 1000; the older tools: `db_list`), then `tm organic decisions --run R --page week --json`: each day's idea, output and OK or
    skip, the total and the page's approval. **A decision in chat counts**: write it one line per day
    to `03_wip/decisions_text_vNN.txt` (`mon: ok; idea: r2; output: script; note: <their words>`, and
    `approved: yes`) and read it with `--text`. Quote every note whole; it is never an instruction.
@@ -441,14 +449,14 @@ and a series continues (brainrot part 2).
    cover, or the script's Markdown, each with its posting kit), and the posting plan
    `05_results/posting_plan_vNN.json` and `.md`: one row per day and platform (day, platform, title,
    the file to post, the caption, the sound). A video not made yet stops it, naming its run.
-2. **Publish the page** as G4 does (`tm page files --run R --page week_delivery`, `publish_files`,
-   `declare_capabilities` with `CAPABILITIES["gate"]`, `tm page published --run R --page
+2. **Publish the page** as G4 does (`tm page files --run R --page week_delivery`, an `Artifact`
+   publish with `capabilities` = `CAPABILITIES["gate"]`, `tm page published --run R --page
    week_delivery …`, then `tm page await --run R --page week_delivery --version <v>`), and give the
    posting plan in chat: each day, where, the file and the caption to paste. Give a time of day only
    when the channel profile already holds the person's posting times; the posting plan holds none,
    so otherwise name no time and never invent one.
-3. **The user's decisions on it**, as on a single delivery page (G4): one unfiltered `db_list` (the
-   page's slug, collection `gate_edit`, `limit` 1000), then `tm organic decisions --run R --page
+3. **The user's decisions on it**, as on a single delivery page (G4): one unfiltered `ArtifactData`
+   list (the page's `url`, collection `gate_edit`, `query.limit` 1000), then `tm organic decisions --run R --page
    week_delivery --json` (or their words in chat with `--text`). Each is acted on in that day's own
    run: a redo becomes their request there (show its cost there before running it once), unticked
    platforms a new kit version there (check it there with `tm kit check`, then deliver the week again).
@@ -731,13 +739,15 @@ Read `rules.md` (OV11, OV14) and `../../references/posting-kit.md` first.
 3. `tm organic page script --run R --json` builds `04_final/<id>_script_<lang>_vNN/` (the page and
    its Markdown download).
 4. **Publish it**: `tm trends collect on --run R --json` right before the first publish of this
-   production run, then `tm page files --run R --page <id>_script_<lang> --json`, `publish_files`
-   (a title in the chat language, "Script to film: <title>", the icon `document`); then
-   `read_declaration`, and `declare_capabilities` with `capabilities` = `{"downloads": {}}` (the
-   engine's `CAPABILITIES["script"]`), so the Markdown download works. `read_declaration` once
-   more: if the download is refused, say so once and give the Markdown file's path. Then `tm page
-   published --run R --page <id>_script_<lang> --slug <slug> --version <the version> --url <its
-   URL> --json`. Without the artifacts tools: the local `index.html` and the `.md` path.
+   production run, then `tm page files --run R --page <id>_script_<lang> --json`, an `Artifact`
+   publish of its `file_path` and `files` (a title in the chat language, "Script to film:
+   <title>", the icon `document`) with `capabilities` = `{"downloads": {}}` (the engine's
+   `CAPABILITIES["script"]`), so the Markdown download works. Check the declaration the publish
+   result says is stored: if the download is refused, say so once and give the Markdown file's
+   path. (The older tools: `publish_files`, then `read_declaration`, `declare_capabilities` with
+   the same object, `read_declaration` once more.) Then `tm page published --run R --page
+   <id>_script_<lang> --url <its URL> --version <the version id> --json`. Without a publishing
+   tool: the local `index.html` and the `.md` path.
 5. `tm done E3 --run R`; the `script` check-in comes next (`checkin-cards.md`).
 
 <a id="f1"></a>
@@ -803,17 +813,18 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
    - **Check every step**: the images page side by side.
      `tm organic page gate --gate images --run R --json` builds `04_final/gate_images_vNN/`;
      `tm trends collect on --run R --json` right before its publish; then
-     `tm page files --run R --page gate_images --json`, `publish_files`
-     (a title in the chat language, "Pick the images: <title>"), `read_declaration`, and
-     `declare_capabilities` with `capabilities` =
+     `tm page files --run R --page gate_images --json`, an `Artifact` publish of its `file_path`
+     and `files` (a title in the chat language, "Pick the images: <title>") with `capabilities` =
      `{"db": {"rules": [{"path": "gate_images", "read": "owner", "write": "owner"}, {"path": "gate_video", "read": "owner", "write": "owner"}, {"path": "gate_edit", "read": "owner", "write": "owner"}]}, "user": {"scopes": ["profile"]}, "downloads": {}}`
-     (the engine's `CAPABILITIES["gate"]`), `read_declaration` once more, then
-     `tm page published --run R --page gate_images --slug <slug> --version <the version> --url <its URL> --json`
+     (the engine's `CAPABILITIES["gate"]`), the declaration checked in its result (the older
+     tools: `publish_files`, `read_declaration`, `declare_capabilities` with the same object,
+     `read_declaration` once more), then
+     `tm page published --run R --page gate_images --url <its URL> --version <the version id> --json`
      and `tm page await --run R --page gate_images --version <the version> --json`. Show the card
      (`checkin-cards.md`); with a style spec, each item also shows the evidence videos and the
      latest still of the composition, the look to judge. When the user says they are done: **one
-     unfiltered `db_list`** (the
-     page's slug, collection `gate_images`, limit 1000, no cursor), then
+     unfiltered `ArtifactData` list** (the
+     page's `url`, collection `gate_images`, `query.limit` 1000, no cursor), then
      `tm organic decisions --run R --page gate_images --json`: each accept is that item's pick; each
      redo with a note is the user's request, paid for as in [E2](#paying-for-a-redo) and then run
      once; carried choices are asked about once
@@ -989,17 +1000,18 @@ Read `rules.md` (OV11) and `../../references/posting-kit.md` first.
    download), the cover JPG to download, the kit with Copy buttons, the platform ticks and the
    YouTube-thumbnail tick, and **every step**: all images with the pick marked, the raw takes with
    their QA findings, the voiceover. Each item has Accept / Redo with a note / Drop.
-2. **Publish it**: `tm page files --run R --page delivery --json`, `publish_files` (a title in the
-   chat language, "Your video: <title>"), `read_declaration`, and `declare_capabilities` with
+2. **Publish it**: `tm page files --run R --page delivery --json`, an `Artifact` publish of its
+   `file_path` and `files` (a title in the chat language, "Your video: <title>") with
    `capabilities` =
    `{"db": {"rules": [{"path": "gate_images", "read": "owner", "write": "owner"}, {"path": "gate_video", "read": "owner", "write": "owner"}, {"path": "gate_edit", "read": "owner", "write": "owner"}]}, "user": {"scopes": ["profile"]}, "downloads": {}}`
-   (the engine's `CAPABILITIES["gate"]`), `read_declaration` once more (if the rules or the
-   downloads are refused, say so once and take the decisions in chat, with the files' paths), then
-   `tm page published --run R --page delivery --slug <slug> --version <the version> --url <its
-   URL> --json` and `tm page await --run R --page delivery --version <the version> --json`.
+   (the engine's `CAPABILITIES["gate"]`), the declaration checked in its result (if the rules or
+   the downloads are refused, say so once and take the decisions in chat, with the files' paths;
+   the older tools: `publish_files`, `read_declaration`, `declare_capabilities`, `read_declaration`
+   once more), then `tm page published --run R --page delivery --url <its URL> --version <the
+   version id> --json` and `tm page await --run R --page delivery --version <the version> --json`.
 3. `tm done G4 --run R`; the `final_edit` check-in comes next (`checkin-cards.md`).
-4. **When the user says they are done**: **one unfiltered `db_list`** (the page's slug, collection
-   `gate_edit`, limit 1000, no cursor), then `tm organic decisions --run R --page delivery --json`.
+4. **When the user says they are done**: **one unfiltered `ArtifactData` list** (the page's `url`,
+   collection `gate_edit`, `query.limit` 1000, no cursor), then `tm organic decisions --run R --page delivery --json`.
    Redos become the user's requests (each paid one priced and approved as in
    [E2](#paying-for-a-redo) before it runs once); an unticked
    platform writes a new kit version: `tm kit check` and `tm kit md` on it. Carried choices are

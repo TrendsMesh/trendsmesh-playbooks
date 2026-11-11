@@ -21,7 +21,7 @@ Its changes, plan Decision 10:
 
 Decisions. The page saves one document per proposal in its db collection `decisions`
 (`decisions/<pid>`: decision, level, output, platforms, answers, note, updated_at). `take_decisions`
-reads the newest saved `db_list`, whole and read after the page was published and awaited
+reads the newest saved db read (ArtifactData list), whole and read after the page was published and awaited
 (`page.saved_answer`, `page.whole_answer`, `page.db_docs`), or the page's "Copy summary" text that the
 user sent or the agent wrote from their words in chat (`--text`), into
 
@@ -408,7 +408,7 @@ def _asset(v: dict) -> str | None:
 def build(run: RunFolder, file: Path | None = None) -> dict:
     """Build the page from the checked proposals into a new `04_final/proposals_vNN/` (index.html,
     assets/<asset_id>.jpg). Nothing is written while people decide on the page (`page.Deciding`),
-    before C1 is done, or when the files would be over publish_files' limits (each a Stop). A
+    before C1 is done, or when the files would be over the Artifact tool's limits (each a Stop). A
     thumbnail that cannot be had is listed in `missing_thumbnails` and leaves an empty src."""
     if page.awaiting(run, PAGE) is not None:
         raise page.Deciding(PAGE, read=READ_WITH)
@@ -598,7 +598,7 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
     slug = (state.load(run).pages.get(PAGE) or {}).get("slug")
     if text is None and not slug:
         raise Stop(f"The page's publish is not recorded (tm page published --page {PAGE}), so it is unknown which "
-                   "artifact's decisions to read. Record it, read the decisions with `db_list` first, or give the "
+                   "artifact's decisions to read. Record it, read the decisions with an ArtifactData list first, or give the "
                    f"user's answer as Copy summary text with --text; {AGAIN}.")
     decided = decided_page(run)
     data = decided["data"]
@@ -608,8 +608,9 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
     else:
         source = Path(file) if file is not None else page.saved_answer(run, PAGE, COLLECTION)
         if source is None:
-            raise Stop(f"No saved answer holds the decisions of this page ({slug}): read them with `db_list` first "
-                       f"(slug {slug}, collection {COLLECTION}, limit 1000), then run this again; {AGAIN}.")
+            raise Stop(f"No saved answer holds the decisions of this page ({slug}): read them with an ArtifactData list "
+                       f"first (the page's url, collection {COLLECTION}, query.limit 1000; with the older "
+                       f"tools, db_list on slug {slug}), then run this again; {AGAIN}.")
         docs = page.db_docs(page.whole_answer(run, PAGE, source, COLLECTION), collection=COLLECTION)
         if not docs:
             raise Stop(EMPTY)

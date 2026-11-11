@@ -45,8 +45,8 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
 1. **TrendsMesh**: sign-in first, then the plan (`../refresh-ad/references/trendsmesh-sign-in.md`,
    without its guess-mode lines): `ok`, `free`, `no_agents`, `inactive`, `skipped` or `missing`.
    **Meta Ads**: one `ads_library_search` call: `ok`, `missing` or `not_enabled`. **Artifacts**:
-   `ok` when `publish_files` is among this session's tools, else `missing` (no call; never ask the
-   user to add it through `/mcp`). Never guess a result.
+   `ok` when the `Artifact` tool (or the older `publish_files`) is among this session's tools,
+   else `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result.
 2. `tm doctor --playbook trend-research --outputs <chosen, or all three> --mcp
    trendsmesh=<s>,meta=<s>,artifacts=<s> --json` (no `--report`: the support report is
    `/trendsmesh-playbooks:doctor`'s). The first `tm` call on a computer installs the
@@ -56,7 +56,7 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
    guesses. Say what is missing, then the sign-in (once) or the Agent-plan offer (once, `tm offer`),
    and that the run continues from the same place once TrendsMesh is ready. **Meta Ads and shared
    page links are warnings**, never stops: without Meta the paid check says "not checked"; without
-   the Claude desktop app the page is a local file instead of a link. Say each once.
+   a publishing tool the page is a local file instead of a link. Say each once.
 4. **Keys never appear in chat.** Trend research needs none: TrendsMesh and Meta are signed in
    through `/mcp`. Never search for, read, print or ask for a key or token.
 
@@ -109,10 +109,11 @@ section in `references/flow.md` (the `ref`): never from memory.
 ## 4. Pages and the schedule
 
 - The page is built by `tm research report` into `04_final/report_vNN/`; publishing follows the
-  plugin's `references/pages.md`: the first page a new private artifact, every later one the same
-  slug (`tm page link`), recorded with `tm page published`; never republished while the user is
-  deciding; without `publish_files`, or when it refuses the files, the local `index.html` path,
-  with nothing recorded as published. A decision in chat counts.
+  plugin's `references/pages.md`: with the `Artifact` tool (or the older `publish_files`), the
+  first page a new private artifact, every later one the same link (`tm page link`), recorded with
+  `tm page published`; never republished while the user is deciding; without a publishing tool,
+  or when it refuses the files, the local `index.html` path, with nothing recorded as published.
+  A decision in chat counts.
 - The weekly schedule follows the plugin's `references/schedule.md`: a desktop scheduled task when
   `create_scheduled_task` is in the session and the user says yes, else by hand. "Stop the weekly
   trend report": its "Stopping the schedule".

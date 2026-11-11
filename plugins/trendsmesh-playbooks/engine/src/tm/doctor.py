@@ -44,8 +44,8 @@ from tm.playbooks import REFRESH_AD
 # and free (signed in, a plan without trend data: free is what get_usage's plan_code "human"
 # gives), inactive (a suspended account), skipped (the user chose to go on without it).
 # no_agents: the sign-in page said the plan doesn't include agents (until free accounts can
-# connect), so nothing connected. artifacts: the claude.ai artifacts connector is in the
-# session (`publish_files`) or not.
+# connect), so nothing connected. artifacts: the session can publish claude.ai artifacts (the
+# built-in `Artifact` tool, or the older `publish_files`) or not.
 McpState = Literal["ok", "missing", "not_enabled", "no_plan", "free", "inactive", "skipped", "no_agents"]
 MCP_STATES = ("ok", "missing", "not_enabled", "no_plan", "free", "inactive", "skipped", "no_agents")
 MCP_STATES_OF = {"trendsmesh": ("ok", "missing", "no_plan", "free", "inactive", "skipped", "no_agents"),

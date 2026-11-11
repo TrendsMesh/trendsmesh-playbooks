@@ -6,7 +6,7 @@
     tm brief check --run R --file F --stage S [--json]   04_final/brief_pack_vNN.json at a stage, CB1-CB13
     tm brief pick --run R --file F [--json]          Hands-off G2: the top concepts that stay distinct
     tm brief page --run R [--file F] [--single-file] [--json]   the page from brief.json (CB12, CB13)
-    tm brief capabilities [--json]                   the declaration for declare_capabilities (HANDOFF §4)
+    tm brief capabilities [--json]                   the page's capabilities, for its publish (HANDOFF §4)
     tm brief await --run R --stage G2|G3|G4 --version V [--clear]   people decide on the page now
     tm brief decisions --run R --stage S [--file F | --text F] [--json]   03_wip/decisions_<stage>_vNN.json
     tm brief choose --run R --concepts C1 [C3 ...] --source page|chat|rule [--decisions F] [--keep-carried] [--json]
@@ -91,7 +91,7 @@ def _setup_page(sub) -> None:
     c.add_argument("--single-file", action="store_true",
                    help="one 04_final/brief_pack_vNN.html with the media inlined, for a recipient without claude.ai")
     c.add_argument("--json", action="store_true")
-    c = sub.add_parser("capabilities", help="the page's declaration for declare_capabilities (HANDOFF §4)")
+    c = sub.add_parser("capabilities", help="the page's capabilities, declared in its publish (HANDOFF §4)")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("await", help="people decide on the published page now: no new page version until read")
     c.add_argument("--run", required=True, help="the run folder")
@@ -99,11 +99,11 @@ def _setup_page(sub) -> None:
     c.add_argument("--version", help="the artifact version people decide on")
     c.add_argument("--clear", action="store_true", help="stop waiting without reading decisions")
     c.add_argument("--json", action="store_true")
-    c = sub.add_parser("decisions", help="read the decisions taken on the page (db_list answer or copied text)")
+    c = sub.add_parser("decisions", help="read the decisions taken on the page (a saved db read, or copied text)")
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--stage", required=True, choices=brief_page.STAGES, help="the check-in decided on the page")
     src = c.add_mutually_exclusive_group()
-    src.add_argument("--file", help="a saved db_list/db_query answer (default: the latest on this page's slug)")
+    src.add_argument("--file", help="a saved ArtifactData list/query answer (default: the latest on this page)")
     src.add_argument("--text", help="a file holding the page's \"Copy my decisions\" text, saved in the run")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("choose", help="record the concepts chosen to brief (it decides no check-in)")
@@ -221,8 +221,8 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
     if args.single_file:
         message += f" The file is {got['bytes'] / 2**20:.1f} MiB."
     else:
-        message += (" Publish its files with publish_files (tm page files --page brief_pack), then declare the "
-                    "decisions db (tm brief capabilities).")
+        message += (" Publish it with the Artifact tool (tm page files --page brief_pack gives its file_path and "
+                    "files), declaring the decisions db (tm brief capabilities) in the same publish.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

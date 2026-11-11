@@ -68,7 +68,7 @@ every sentence's source (R3).
 - **Naming:** `hook_trend` = hook, `format_trend` = format, `topic_trend` = topic.
 - **Organic clips** are evidence, never footage; trending sounds are not licensed for paid ads unless the data says so.
 - **Money** in USD at a stated rate, unless the context shows the client's own currency.
-- **Artifacts:** a new artifact starts private; the user shares it. Republish with `publish_files` and `base_version`; only changed files need to be sent.
+- **Artifacts:** a new artifact starts private; the user shares it. Republish to the same URL with the `Artifact` tool (with the older `publish_files`, the same slug and `base_version`), never a new link (`references/pages.md`).
 - **Asking the user for decisions:** always restate the full content of every point (rule, option) in the same message.
 
 ## Hard rules (TR1–TR10, approved by the user 2026-11-04 with the changes noted in TR1, TR2 and TR10)

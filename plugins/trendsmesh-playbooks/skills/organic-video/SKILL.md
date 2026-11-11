@@ -62,8 +62,8 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
 
 1. **TrendsMesh**: sign-in first, then the plan (`../refresh-ad/references/trendsmesh-sign-in.md`,
    without its guess-mode lines): `ok`, `free`, `no_agents`, `inactive`, `skipped` or `missing`.
-   **Artifacts**: `ok` when `publish_files` is among this session's tools, else `missing` (no
-   call; never ask the user to add it through `/mcp`). Never guess a result. The Replicate token,
+   **Artifacts**: `ok` when the `Artifact` tool (or the older `publish_files`) is among this
+   session's tools, else `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result. The Replicate token,
    the ElevenLabs key and the browser are read by the doctor itself.
 2. At A0 of an idea run: `tm doctor --playbook organic-video --outputs proposals --mcp
    trendsmesh=<s>,artifacts=<s> --json`. At D1 of a production run, the production run's own
@@ -181,15 +181,17 @@ from what it says. Before you do, plan or describe a step's work, read its secti
   findings), and its delivery page with every step by `tm organic page delivery`, each into a new
   `04_final/<page>_vNN/` folder; a week run's week page by `tm organic page week` and its delivery
   page for the week by `tm organic deliver-week` (`04_final/week_delivery_vNN/`, with the posting plan). Publishing follows the plugin's
-  `references/pages.md`: `publish_files` (a new private artifact the first time), then
-  `read_declaration` and `declare_capabilities` (`references/flow.md#c2` gives the object),
-  then `tm page published` with the version the declaration returned. **The page's database rules
-  are not proven live yet:** after the declaration, `read_declaration` again; if the rules are not
-  there, or `declare_capabilities` refused them, say so plainly, once, and take the decisions in
-  chat.
+  `references/pages.md`: an `Artifact` publish (a new private artifact the first time, then the
+  same URL) with the page's `capabilities` in it (`references/flow.md#c2` gives the object), then
+  `tm page published` with the version id it returned. The older tools: `publish_files`, then
+  `read_declaration` and `declare_capabilities`. **The page's database rules are not proven live
+  yet:** check the declaration the publish result says is stored (with the older tools,
+  `read_declaration` again); if the rules are not there, or the publish refused them, say so
+  plainly, once, and take the decisions in chat.
 - **Deciding on the proposals page:** `tm page await --page proposals` before the card. When the
-  user says they are done ("ready", "gotowe"): one unfiltered `db_list` (the page's slug,
-  collection `decisions`, limit 1000, no cursor), then `tm organic decisions --page proposals`.
+  user says they are done ("ready", "gotowe"): one unfiltered `ArtifactData` list (the page's
+  `url`, collection `decisions`, `query.limit` 1000, no cursor; the older tools: `db_list` on the
+  slug), then `tm organic decisions --page proposals`.
   The check-in pages work the same way, each with its own collection (`gate_images`,
   `gate_video`, and `gate_edit` for the delivery page): `tm organic decisions --page gate_images`,
   `gate_video` or `delivery` (`flow.md#f1`, `#f2`, `#g4`).
@@ -200,8 +202,10 @@ from what it says. Before you do, plan or describe a step's work, read its secti
   elided), say nothing was done with it, and change only the proposals (or the video), after their
   yes. A redo note on a check-in page is the user's request, run once after they said yes to its
   cost (`flow.md#e2`, "Paying for a redo").
-- **Without the artifacts tools** (or when `publish_files` refuses the files): the local
-  `index.html` path, said once, and the decisions in chat. Say the path in the message that answers
+- **Without a publishing tool** (neither `Artifact` nor `publish_files`, or when it refuses the
+  files): the local `index.html` path, said once with the plain reason (this session can't
+  publish claude.ai artifacts), and the decisions in chat: the local page says so too, never that
+  choices are saved on it. Say the path in the message that answers
   about the page or its decisions, even when the user says they have opened it: it is where they
   come back to the page.
 

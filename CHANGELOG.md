@@ -29,6 +29,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
   full-frame title is listed as an overlay to check. Each overlay says what kind it is, how sure the tool is and
   why to look at its frames, and places where the picture changes with the speech but no text was found are
   listed for a frame check.
+- **Pages publish in the Claude desktop app.** Creative brief, trend research and organic video now find the app's
+  built-in `Artifact` tool: the readiness check shows shared page links as ready, each page is published as a
+  private claude.ai artifact, a later version updates the same link, and the choices people make on a page are read
+  back from its database. Sessions with the older artifacts tools (`publish_files`) work as before.
+- **A page that can't save says to choose in chat.** Opened as a local file, the creative brief page and organic
+  video's proposals, check-in and week pages no longer say your choices are saved or that Claude reads them from the
+  page: they ask you to tell Claude your choices in chat.
+- **The real reason when a page stays local.** When a session can't publish claude.ai artifacts, Claude says so,
+  instead of telling you that shared links need the Claude desktop app.
 
 ## 0.10.0
 

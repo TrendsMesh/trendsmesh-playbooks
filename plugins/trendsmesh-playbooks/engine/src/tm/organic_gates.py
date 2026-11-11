@@ -744,7 +744,7 @@ def take_decisions(run: RunFolder, page_name: str, *, file: Path | None = None, 
     slug = (state.load(run).pages.get(page_name) or {}).get("slug")
     if text is None and not slug:
         raise Stop(f"The page's publish is not recorded (tm page published --page {page_name}), so it is unknown which "
-                   "artifact's decisions to read. Record it, read the decisions with `db_list` first, or write the "
+                   "artifact's decisions to read. Record it, read the decisions with an ArtifactData list first, or write the "
                    f"user's answer in chat form and read it with --text; {AGAIN}.")
     decided = decided_page(run, page_name)
     data = decided["data"]
@@ -755,8 +755,9 @@ def take_decisions(run: RunFolder, page_name: str, *, file: Path | None = None, 
     else:
         source = Path(file) if file is not None else page.saved_answer(run, page_name, collection)
         if source is None:
-            raise Stop(f"No saved answer holds the decisions of this page ({slug}): read them with `db_list` first "
-                       f"(slug {slug}, collection {collection}, limit 1000), then run this again; {AGAIN}.")
+            raise Stop(f"No saved answer holds the decisions of this page ({slug}): read them with an ArtifactData list "
+                       f"first (the page's url, collection {collection}, query.limit 1000; with the older "
+                       f"tools, db_list on slug {slug}), then run this again; {AGAIN}.")
         docs = page.db_docs(page.whole_answer(run, page_name, source, collection), collection=collection)
         if not docs:
             raise Stop("Nothing was saved on the page. Ask the user in chat; a decision written in chat counts. Write "

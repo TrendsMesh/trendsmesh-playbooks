@@ -363,7 +363,7 @@ def build(run: RunFolder, file: Path) -> dict:
     """Build the page and its Markdown from the checked script `file` into a new
     `04_final/<id>_script_<lang>_vNN/`. A Stop before the script is checked, when `file` is not the
     checked script, when the script is not in the page's shape, and when the files would be over
-    publish_files' limits (nothing is written then)."""
+    the Artifact tool's limits (nothing is written then)."""
     rel = _rel(run, file)
     gap = checked_gap(run)
     if gap is not None:

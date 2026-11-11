@@ -41,14 +41,14 @@ cases:
     needs: [trendsmesh, artifacts, human_verdict]
     steps:
       - "Go on from O1's run folder (offer O1's answers as one question) to the proposals page, published as a private artifact."
-      - "Show the declaration with `read_declaration` and compare its CAPABILITIES with what the engine declares (organic_pages.CAPABILITIES): the artifact tools were down when the engine was written, so this is where they are read live. Note any difference."
+      - "Show the stored declaration (the `Artifact` tool's file list of the page; with the older tools, `read_declaration`) and compare its CAPABILITIES with what the engine declares (organic_pages.CAPABILITIES): the artifact tools were down when the engine was written, so this is where they are read live. Note any difference."
       - "Run `tm organic proposals check` on the proposals, then give the person the page and wait. Build no new page version while they decide."
       - "Read their choices with `tm organic decisions`."
       - "Optional, last step of this case, only when the person agrees: ask them to turn the artifacts connector off for this step, then back on afterwards. With it off, build the proposals page again and give the path of the local `04_final/proposals_vNN/index.html` in chat. Skip this step when they would rather not."
     pass: >-
       4 to 6 proposals pass `proposals check`; the person's choices on the page are read by
-      `tm organic decisions`; no page version was built while they decided. `read_declaration`
-      shows the page's CAPABILITIES and they match what the engine declares. If that step was run
+      `tm organic decisions`; no page version was built while they decided. The stored
+      declaration (or `read_declaration`) shows the page's CAPABILITIES and they match what the engine declares. If that step was run
       (the optional last one): with the connector off, the proposals page is the local
       `04_final/proposals_vNN/index.html` and its path was given in chat. If it was skipped, the
       note says so; that is not a fail.
@@ -61,11 +61,11 @@ cases:
     needs: [artifacts, human_verdict]
     steps:
       - "Go on from O2's run folder with one chosen proposal (the person's pick on the page), through the script to film (`script_to_film`), published as a private artifact."
-      - "Show the declaration with `read_declaration` and compare its CAPABILITIES with what the engine declares for the script page (organic_pages.CAPABILITIES[\"script\"]). Note any difference."
+      - "Show the stored declaration (the `Artifact` tool's file list of the page; with the older tools, `read_declaration`) and compare its CAPABILITIES with what the engine declares for the script page (organic_pages.CAPABILITIES[\"script\"]). Note any difference."
       - "Open the `.md` download from the page, then run `tm kit check --run <run> --file 04_final/kits/<id>_kit_vNN.json` on the run's posting kit and `tm kit md --run <run> --file 04_final/kits/<id>_kit_vNN.json` for its .md."
     pass: >-
-      The script page and its `.md` download work; `kit check` exits 0. `read_declaration` shows
-      the script page's CAPABILITIES and they match what the engine declares.
+      The script page and its `.md` download work; `kit check` exits 0. The stored declaration
+      (or `read_declaration`) shows the script page's CAPABILITIES and they match what the engine declares.
     judge: >-
       Could you film it from this page alone?
 

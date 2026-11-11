@@ -58,8 +58,9 @@ as a new picks version, checked again).
 absolute path of `index.html`, so they can open it), the views it has (category report; the
 weekly digest, or "it comes next week"; paid vs organic), and what publishing does: a first page
 becomes a private link only they see until they share it; a weekly page goes to the same link
-as before, so whoever has it sees this week's. Without `publish_files` in the session, say the
-page stays a local file (shared links need Claude Code in the Claude desktop app). Choices:
+as before, so whoever has it sees this week's. Without a publishing tool in the session (neither
+`Artifact` nor `publish_files`), say the page stays a local file, because this session can't
+publish claude.ai artifacts. Choices:
 `publish`, `keep_local`.
 
 **GS · Set up the weekly report** (before F5, weekly digest only; on its own at Check every step
@@ -94,7 +95,7 @@ names (FLOWS.md section G):
 | G0 | logged: the seed phrases and market from the intake; in a weekly run, the previous run's | the phrases, market and language |
 | G1 | the review applied: `accept`; `changed_a_lot` when `tm research map-change` says the map changed a lot (V26); cleared only by `tm decide G1 accept --change` after the user saw the new map | kept, dropped, the share new and the new groups; the review names removed because their trends left the searches |
 | G2 | the review applied; the top N by score (`picks.act_now`, `picks.still_rising`) | the picks with their weighted totals, the moves |
-| G3 | `keep_local` when `publish_files` is not in the session; otherwise `publish` (a first page private, a weekly page the same link) | whether the session can publish, the slug if any |
+| G3 | `keep_local` when neither `Artifact` nor `publish_files` is in the session; otherwise `publish` (a first page private, a weekly page the same link) | whether the session can publish, the slug if any |
 | GS | `by_hand`, unless the previous run's `schedule.how` is `desktop_task` (`tm status --run <previous run> --json` → `schedule`): then `schedule`, keeping its task | the previous schedule, or none |
 
 Every decision by rule is listed in the final report with its rule and its data, and shown at the

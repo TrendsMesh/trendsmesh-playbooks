@@ -1,5 +1,5 @@
 ---
-description: "Hands-off trend research run (beauty, US) with the page built (E1) and the page check-in (G3) still to decide by rule. The session has no artifacts tools (publish_files): G3 is keep_local by rule, publishing is skipped, the run finishes, and the result is the local index.html, called complete (decisions section 5: no artifacts means a local file, never a blocker)."
+description: "Hands-off trend research run (beauty, US) with the page built (E1) and the page check-in (G3) still to decide by rule. The session has no artifacts tools (neither Artifact nor publish_files): G3 is keep_local by rule, publishing is skipped, the run finishes, and the result is the local index.html, called complete (decisions section 5: no artifacts means a local file, never a blocker)."
 tags: [trend-research, pages]
 max_turns: 40
 timeout_seconds: 1200

@@ -78,9 +78,10 @@ support report they can send us.
    - Meta Ads: one `ads_library_search` call (any short phrase, such as the user's category).
      It answers → `ok`. Not connected or not signed in → `missing`. It refuses the account →
      `not_enabled`.
-   - Artifacts: `ok` when `publish_files` (the claude.ai artifacts tools, which come with Claude
-     Code in the Claude desktop app) is among this session's tools, else `missing`. No call is
-     needed, and never ask the user to add it through `/mcp`.
+   - Artifacts: `ok` when this session can publish claude.ai artifacts: the `Artifact` tool (built
+     into Claude Code in the Claude desktop app, with `ArtifactData` for a page's database) or the
+     older `publish_files` is among its tools. Else `missing`. No call is needed, and never ask the
+     user to add it through `/mcp` (`references/pages.md`, "Which tool publishes").
 2. Run:
 
    ```
@@ -90,7 +91,7 @@ support report they can send us.
    Exit codes and the first `tm` call are as in step 3 above.
 3. Show the `card` as in step 4 above. Meta Ads and shared page links are warnings, never
    blockers: say each one's line from the card once (without Meta the paid check says "not
-   checked"; without the desktop app the page is a file they can open and share instead of a
+   checked"; without a publishing tool the page is a file they can open and share instead of a
    link) and that the report still runs.
 4. **Without TrendsMesh, trend research stops** (exit 2). It reads every number from
    TrendsMesh, so there is no guess mode: never offer to run it on guesses, and leave out the
@@ -117,8 +118,9 @@ support report they can send us.
      but find the account with `ads_get_ad_accounts` rather than asking: the brief's intake asks
      only which product. It answers → `ok`. Not connected or not signed in → `missing`. It refuses this ad account
      → `not_enabled`.
-   - Artifacts: `ok` when `publish_files` is among this session's tools, else `missing`, as for
-     trend research. No call is needed, and never ask the user to add it through `/mcp`.
+   - Artifacts: `ok` when `Artifact` (or the older `publish_files`) is among this session's tools,
+     else `missing`, as for trend research. No call is needed, and never ask the user to add it
+     through `/mcp`.
 2. Run:
 
    ```
@@ -133,7 +135,7 @@ support report they can send us.
      live trend data the concepts' hooks are best guesses from the customers' own words, the
      user's ads and the Ad Library, labelled as guesses), and that the brief still runs. The
      sign-in question and the plan offer were made in step 1: don't make them again.
-   - Shared page links are a warning too: say the card's line once (without the desktop app the
+   - Shared page links are a warning too: say the card's line once (without a publishing tool the
      page is a local file, and the team's decisions are taken here in chat).
    - The animatic tools and a browser (Chrome or Edge) are needed only for the animatics, late in
      the run: when they are all that is missing, offer the tools' install once, say which browser
@@ -158,8 +160,8 @@ check, and what it passes decides what is installed:
    - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`; a
      clear no is `tm signin skip --json` and `skipped`). It gives `ok`, `free`, `no_agents`,
      `inactive`, `skipped` or `missing`.
-   - Artifacts: `ok` when `publish_files` is among this session's tools, else `missing`, as for
-     trend research.
+   - Artifacts: `ok` when `Artifact` (or the older `publish_files`) is among this session's tools,
+     else `missing`, as for trend research.
    - The Replicate token, the ElevenLabs key and the browser (Chrome or Edge) are read by the
      doctor itself.
 2. Run:

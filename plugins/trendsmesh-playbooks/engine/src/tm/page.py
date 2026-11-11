@@ -1,7 +1,7 @@
 """Pages: built locally in a versioned folder, published as an artifact when the tool is there.
 
-    tm page files --run RUN --page PAGE [--json]          the latest folder's files, for publish_files
-    tm page published --run RUN --page PAGE --slug S --version V [--url U] [--json]
+    tm page files --run RUN --page PAGE [--json]          the latest folder's files, for the Artifact tool
+    tm page published --run RUN --page PAGE (--url U | --slug S) --version V [--json]
     tm page link --run RUN --page PAGE [--json]           where the page was last published
     tm page await --run RUN --page PAGE --version V [--clear] [--json]   people decide on the page now
 
@@ -11,9 +11,14 @@ is a new folder; media file names go through `asset_name` (Windows-safe). Where 
 finds it along `previous_run`, so a weekly page republishes under the same link. Shared by PB02,
 PB03 and PB04: keep the interfaces exact.
 
+The publishing tool is the Claude desktop app's built-in `Artifact` tool, which names a page by its
+claude.ai URL (the slug is the URL's id, `artifact_id`), and `ArtifactData`, which reads its db. Some
+hosts still have the older artifacts MCP tools (`publish_files` with a slug, `db_list`): their
+records and saved answers are read the same way.
+
 Decisions taken on a page (plan Decision 11, lifted from PB02's brief page). The page saves them in
-its artifact's db, one collection; the collector saves each `db_list`/`db_query` answer in
-`03_wip/decisions/` (`mcp_saves`).
+its artifact's db, one collection; the collector saves each `ArtifactData` list/query (or older
+`db_list`/`db_query`) answer in `03_wip/decisions/` (`mcp_saves`).
 - `await_(run, page, version)` marks that people decide on the published page
   (`pages[page]["awaiting"]`); `new_folder` refuses to build that page (`Deciding`) until it is
   cleared (`clear_await`, done when the decisions are read).
@@ -46,11 +51,13 @@ from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
 FINAL = "04_final"
-SOURCE = "artifacts MCP publish_files"
-# publish_files' limits for one call
-MAX_FILES = 256
-MAX_FILE_BYTES = 20 * 1024 * 1024
-MAX_TOTAL_BYTES = 64 * 1024 * 1024
+SOURCE = "claude.ai artifacts publish"
+# The Artifact tool's limits for one publish (255 files, 15 MB a binary file, 64 MB in all), in
+# decimal MB to stay under them; the older publish_files took a little more.
+MAX_FILES = 255
+MAX_FILE_BYTES = 15 * 10**6
+MAX_TOTAL_BYTES = 64 * 10**6
+_ARTIFACT_URL = re.compile(r"^https://claude\.ai/(?:code/)?artifact/([A-Za-z0-9_-]+)/?(?:[?#].*)?$")
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]*")
 _UNSAFE = re.compile(r'[<>:"|?*/\\\x00-\x1f]')
 
@@ -157,26 +164,31 @@ def fetch_image(url: str | None, dest: Path, *, timeout: float = 30) -> bool:
             tmp.unlink(missing_ok=True)
 
 
+def _mb(size: int) -> str:
+    return f"{size / 10**6:.1f} MB" if size >= 10**5 else f"{size} bytes"
+
+
 def over_limits(sizes: dict[str, int]) -> str:
-    """What puts a page's files (`{served path: bytes}`) over publish_files' limits, in words that
-    follow "it is too big to publish as one artifact:"; "" when it fits. A page builder checks its
-    planned files with it before writing any."""
+    """What puts a page's files (`{served path: bytes}`) over the Artifact tool's limits, in words
+    that follow "it is too big to publish as one artifact:"; "" when it fits. A page builder checks
+    its planned files with it before writing any."""
     big = [name for name, size in sizes.items() if size > MAX_FILE_BYTES]
     if len(sizes) > MAX_FILES:
-        return f"it has {len(sizes)} files and publish_files takes at most {MAX_FILES}"
+        return f"it has {len(sizes)} files and the Artifact tool takes at most {MAX_FILES} in one publish"
     if big:
-        return (f"{', '.join(big)} {'is' if len(big) == 1 else 'are'} over publish_files' "
-                f"{MAX_FILE_BYTES // 2**20} MiB a file")
+        return (f"{', '.join(big)} {'is' if len(big) == 1 else 'are'} over the Artifact tool's "
+                f"{_mb(MAX_FILE_BYTES)} a file")
     if sum(sizes.values()) > MAX_TOTAL_BYTES:
-        return (f"its files come to {sum(sizes.values()) / 2**20:.1f} MiB and publish_files takes at most "
-                f"{MAX_TOTAL_BYTES // 2**20} MiB in all")
+        return (f"its files come to {_mb(sum(sizes.values()))} and the Artifact tool takes at most "
+                f"{_mb(MAX_TOTAL_BYTES)} in all")
     return ""
 
 
 def files(folder: Path) -> list[dict]:
-    """The folder's files as `publish_files` takes them: `{"as": <served path>, "path": <absolute>}`,
-    `index.html` first, then the rest by served path. Hidden and temporary files are left out. A page
-    over publish_files' limits (MAX_FILES, MAX_FILE_BYTES each, MAX_TOTAL_BYTES in all) is refused."""
+    """The folder's files, `{"as": <served path>, "path": <absolute>}` (as the older `publish_files`
+    takes them; `artifact_args` gives the Artifact tool's), `index.html` first, then the rest by
+    served path. Hidden and temporary files are left out. A page over the limits (MAX_FILES,
+    MAX_FILE_BYTES each, MAX_TOTAL_BYTES in all) is refused."""
     folder = Path(folder)
     if not (folder / "index.html").is_file():
         raise ValueError(f"{folder} has no index.html, so there is no page to publish: build the page first. "
@@ -195,6 +207,19 @@ def files(folder: Path) -> list[dict]:
     return out
 
 
+def artifact_args(listed: list[dict]) -> dict:
+    """The Artifact tool's publish arguments for `files`' list: `file_path` (the local index.html)
+    and `files` (every other served path -> its local file)."""
+    return {"file_path": listed[0]["path"], "files": {f["as"]: f["path"] for f in listed[1:]}}
+
+
+def artifact_id(url: object) -> str | None:
+    """The id in a claude.ai artifact URL (`https://claude.ai/artifact/<id>`, or
+    `https://claude.ai/code/artifact/<uuid>`), else None."""
+    m = _ARTIFACT_URL.match(url.strip()) if isinstance(url, str) else None
+    return m.group(1) if m else None
+
+
 def _built(run: RunFolder, page: str) -> Path:
     folder = latest_folder(run, page)
     if folder is None:
@@ -203,11 +228,15 @@ def _built(run: RunFolder, page: str) -> Path:
     return folder
 
 
-def record_published(run: RunFolder, page: str, slug: str, version: str, url: str | None = None) -> dict:
+def record_published(run: RunFolder, page: str, slug: str | None, version: str, url: str | None = None) -> dict:
     """Store where the latest build of `page` was published (`state.pages[page]`) and add a manifest
-    row. Returns the record. A wait for decisions on the page (`awaiting`) is kept."""
+    row. Returns the record. The Artifact tool's page has no slug of its own: it is the URL's id
+    (`artifact_id`). A wait for decisions on the page (`awaiting`) is kept."""
+    slug = slug or artifact_id(url)
     if not all(isinstance(v, str) and v.strip() for v in (slug, version)):
-        raise ValueError("A published page needs the artifact's slug and version, as publish_files returned them.")
+        raise ValueError("A published page needs the artifact's slug and version: the claude.ai URL (--url) and "
+                         "the version id the Artifact tool's publish returned, or the slug and version the older "
+                         "publish_files returned.")
     folder = _built(run, page).relative_to(run.path).as_posix()
     record = {"slug": slug, "version": version, "url": url or None, "folder": folder,
               "published_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
@@ -247,11 +276,15 @@ def published(run: RunFolder, page: str) -> dict | None:
 
 # --- decisions taken on a page ------------------------------------------------------------------
 
-READ_AGAIN = ("Read the decisions again with one unfiltered db_list (the page's slug, collection {collection}, limit "
-              "1000, and no cursor, where or orderBy), so every saved decision is in one answer, then run this "
-              "again. The run continues from the same place.")
-_PARTIAL = ("cursor", "where", "orderBy")     # a db read that holds part of the decisions
+READ_AGAIN = ("Read the decisions again with one unfiltered ArtifactData list (the page's url, collection {collection}, "
+              "query.limit 1000, and no cursor, where or order_by, nor out_dir; with the older tools, one db_list "
+              "on its slug, limit 1000), so every saved decision is in one answer, then run this again. The run "
+              "continues from the same place.")
+_PARTIAL = ("cursor", "where", "orderBy", "order_by", "out_dir")     # a db read that holds part of the decisions
 _JSON_START = re.compile(r'\{\s*"')
+# ArtifactData's text answer: its summary line, and the line it adds when more pages exist
+_COUNT_LINE = re.compile(r'^(\d+) documents? from collection "', re.M)
+_CURSOR_LINE = re.compile(r'^next_cursor: "([^"]+)"', re.M)
 
 
 def _now() -> str:
@@ -269,7 +302,7 @@ def await_(run: RunFolder, page: str, version: str, stage: str | None = None) ->
     when its publish is not recorded in this run."""
     _check_name(page)
     if not (isinstance(version, str) and version.strip()):
-        raise ValueError("--version is the artifact version people decide on, as declare_capabilities returned it.")
+        raise ValueError("--version is the artifact version people decide on, the version id the last publish returned.")
     s = state.load(run)
     if not (s.pages.get(page) or {}).get("slug"):
         raise Stop(f"The page's publish is not recorded: publish it, then record it with tm page published --page "
@@ -309,8 +342,17 @@ def _objects(text: str, read_again: str) -> Iterable[Any]:
         i = end
 
 
+def _text(text: str, found: dict, read_again: str, chat: str) -> None:
+    """The documents in an answer's text, with ArtifactData's summary count and next page."""
+    found["counts"] += [int(n) for n in _COUNT_LINE.findall(text)]
+    found["pages"] += _CURSOR_LINE.findall(text)
+    for value in _objects(text, read_again):
+        _walk(value, found, read_again, chat)
+
+
 def _walk(value: Any, found: dict, read_again: str, chat: str) -> None:
-    """Collect the documents (objects with an `id`), the summaries' counts and any next page."""
+    """Collect the documents (objects with an `id`), the summaries' counts and any next page; a text
+    in the answer (a built-in tool's answer inside an object) is read as a text answer."""
     if isinstance(value, dict):
         if "id" in value:
             if value.get("tooLarge") or not isinstance(value.get("data"), dict) or not isinstance(value["id"], str):
@@ -328,14 +370,17 @@ def _walk(value: Any, found: dict, read_again: str, chat: str) -> None:
     elif isinstance(value, list):
         for inner in value:
             _walk(inner, found, read_again, chat)
+    elif isinstance(value, str) and "{" in value:
+        _text(value, found, read_again, chat)
 
 
 def db_docs(saved: dict | str, *, collection: str = "decisions", chat: str | None = None) -> list[tuple[str, dict]]:
-    """The documents `(id, data)` of a saved `db_list`/`db_query` answer (an envelope or its answer:
-    every JSON object with an `id` in its text, or in its JSON; a str is the answer's text), in the
-    answer's order. A read that may hold part of the decisions is a Stop: an error answer, one page
-    of several (nextCursor), a document without data (tooLarge; `chat` says what to do if it stays
-    so), a line that does not parse, a summary count that differs from the documents read."""
+    """The documents `(id, data)` of a saved ArtifactData list/query (or `db_list`/`db_query`) answer
+    (an envelope or its answer: every JSON object with an `id` in its text, or in its JSON; a str is
+    the answer's text), in the answer's order. A read that may hold part of the decisions is a Stop:
+    an error answer, one page of several (nextCursor, or ArtifactData's `next_cursor:` line), a
+    document without data (tooLarge; `chat` says what to do if it stays so), a line that does not
+    parse, a summary count that differs from the documents read."""
     read_again = READ_AGAIN.format(collection=collection)
     chat = chat or "If it says tooLarge again, ask for that decision in chat."
     answer = {"raw": saved} if isinstance(saved, str) else trends.unwrap(saved)
@@ -344,8 +389,7 @@ def db_docs(saved: dict | str, *, collection: str = "decisions", chat: str | Non
                    f"page's decisions. {read_again}")
     found: dict = {"docs": [], "pages": [], "counts": []}
     if isinstance(answer, dict) and isinstance(answer.get("raw"), str):
-        for value in _objects(answer["raw"], read_again):
-            _walk(value, found, read_again, chat)
+        _text(answer["raw"], found, read_again, chat)
     else:
         _walk(answer, found, read_again, chat)
     if found["pages"]:
@@ -370,6 +414,19 @@ def _slug(run: RunFolder, page: str) -> str | None:
     return (state.load(run).pages.get(page) or {}).get("slug") or None
 
 
+def _artifact_of(given: dict) -> str | None:
+    """The artifact a saved read was on: the older tools' `slug`, or the id in ArtifactData's `url`."""
+    return given.get("slug") or artifact_id(given.get("url"))
+
+
+def _partial(given: dict) -> list[str]:
+    """What in a saved read's input may leave decisions out: a cursor, a filter, a sort (at the top,
+    as the older tools take them, or in ArtifactData's `query`), or out_dir (the documents went to
+    files, not into the answer)."""
+    query = given.get("query") if isinstance(given.get("query"), dict) else {}
+    return [k for k in _PARTIAL if given.get(k) not in (None, "", [], {}) or query.get(k) not in (None, "", [], {})]
+
+
 def saved_answer(run: RunFolder, page: str, collection: str) -> Path | None:
     """The newest saved db_list/db_query answer on this run's `page` (its slug) and `collection`, by
     its `_at`; None when there is none (or the page's publish is not recorded). A saved answer that
@@ -390,7 +447,7 @@ def saved_answer(run: RunFolder, page: str, collection: str) -> Path | None:
                 damaged.append(f)
                 continue
             given = data.get("_input") if isinstance(data, dict) else None
-            if (slug is not None and isinstance(given, dict) and given.get("slug") == slug
+            if (slug is not None and isinstance(given, dict) and _artifact_of(given) == slug
                     and str(given.get("collection", "")).strip("/") == collection):
                 at = _when(data.get("_at"))
                 if at is None:
@@ -420,13 +477,13 @@ def whole_answer(run: RunFolder, page: str, source: Path, collection: str) -> di
     if not isinstance(given, dict):
         raise Stop(f"{source.name} is not an answer the collector saved (no _tool and _input), so it cannot be tied "
                    f"to this page. {read_again}")
-    if given.get("slug") != slug:
-        raise Stop(f"{source.name} is an answer on the artifact {given.get('slug')!r}, not this page "
-                   f"({slug}). Read this page's decisions with db_list, then run this again. The run continues "
-                   "from the same place.")
+    if _artifact_of(given) != slug:
+        raise Stop(f"{source.name} is an answer on the artifact {_artifact_of(given)!r}, not this page "
+                   f"({slug}). Read this page's decisions with an ArtifactData list on its url (or db_list on its "
+                   "slug), then run this again. The run continues from the same place.")
     if str(given.get("collection", "")).strip("/") != collection:
         raise Stop(f"{source.name} reads the collection {given.get('collection')!r}, not {collection}. {read_again}")
-    partial = [k for k in _PARTIAL if given.get(k) not in (None, "", [], {})]
+    partial = _partial(given)
     if partial:
         raise Stop(f"{source.name} was read with {', '.join(partial)}, so it may hold only part of the decisions. "
                    f"{read_again}")
@@ -488,11 +545,11 @@ def earlier_decisions(run: RunFolder, files: list[Path], build: str, *, built: s
 
 def _setup(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="action", required=True)
-    fl = sub.add_parser("files", help="the latest page folder's files, for publish_files")
+    fl = sub.add_parser("files", help="the latest page folder's files, for the Artifact tool")
     pu = sub.add_parser("published", help="record the artifact the latest page folder was published to")
-    pu.add_argument("--slug", required=True)
-    pu.add_argument("--version", required=True)
-    pu.add_argument("--url")
+    pu.add_argument("--slug", help="the older publish_files' slug (the Artifact tool's comes from --url)")
+    pu.add_argument("--version", required=True, help="the version id the publish returned")
+    pu.add_argument("--url", help="the artifact's claude.ai URL")
     li = sub.add_parser("link", help="where the page was last published, in this run or the runs it follows")
     aw = sub.add_parser("await", help="people decide on the published page now: no new version until read")
     aw.add_argument("--version", help="the artifact version people decide on")
@@ -507,7 +564,7 @@ def _files(args: argparse.Namespace, run: RunFolder) -> int:
     folder = _built(run, args.page)
     listed = files(folder)
     rel = folder.relative_to(run.path).as_posix()
-    cli.emit(args, {"status": "done", "folder": rel, "files": listed},
+    cli.emit(args, {"status": "done", "folder": rel, "files": listed, "artifact": artifact_args(listed)},
              "\n".join([f"{rel}:"] + [f"  {f['as']}  {f['path']}" for f in listed]))
     return 0
 
@@ -528,10 +585,16 @@ def _link(args: argparse.Namespace, run: RunFolder) -> int:
                  f"The {args.page} page has not been published in this run or the runs it follows: publish it "
                  "as a new artifact, or give the local index.html.")
         return 0
-    where = f" ({record['url']})" if record.get("url") else ""
+    older = f"with the older publish_files, to the same slug with base_version {record['version']}"
+    if record.get("url"):
+        again = (f"Republish it to the same link: with the Artifact tool, to the same url (list its files first); "
+                 f"{older}.")
+        said = f"{record['url']}, version {record['version']}"
+    else:
+        again = f"Republish it {older}."
+        said = f"{record['slug']}, version {record['version']}"
     cli.emit(args, {"status": "done", **record},
-             f"The {args.page} page was last published as {record['slug']}{where}, version {record['version']}, "
-             f"on {record['published_at'][:10]}. Republish to the same slug with base_version {record['version']}.")
+             f"The {args.page} page was last published as {said}, on {record['published_at'][:10]}. {again}")
     return 0
 
 

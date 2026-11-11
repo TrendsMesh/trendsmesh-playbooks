@@ -32,7 +32,7 @@ the Meta reads and the page tools' answers, and in an organic video run the page
   `ads_get_ad_accounts`; and at every resume, in any step, right before the next MCP call of any
   of the three. **An organic video run** turns it on at B1, right before the first
   `search_trends`; at every resume, right before the next TrendsMesh or page call; and **in each
-  production run, right before its first page publish** (`publish_files`): the marker names one
+  production run, right before its first page publish** (`Artifact`, or the older `publish_files`): the marker names one
   run, so the idea run's marker never collects for a production run. It writes the marker
   `<workspace>/.trendsmesh/collect.json` with no session, and the first answer that reaches the
   hook claims it for its session. Answers of every other session are left alone, so a refresh-ad
@@ -68,12 +68,13 @@ tool's input and the time it was saved, and you see the answer unchanged:
 | Tool | Saved to (run folder) |
 |---|---|
 | `ads_get_ad_accounts`, `ads_get_ad_entities`, `ads_get_creatives` | `01_base/meta/` |
-| `db_list`, `db_query` | `03_wip/decisions/` |
-| `publish_files`, `read_declaration`, `declare_capabilities` | `03_wip/publish/` |
+| `ArtifactData` `list` and `query` (saved as `db_list`, `db_query`); the older `db_list`, `db_query` | `03_wip/decisions/` |
+| `Artifact` publish (saved as `artifact_publish`); the older `publish_files`, `read_declaration`, `declare_capabilities` | `03_wip/publish/` |
 
-**In an organic video run** only the page tools' answers are saved this way (`db_list`,
-`db_query` in `03_wip/decisions/`; `publish_files`, `read_declaration`, `declare_capabilities` in
-`03_wip/publish/`); a Meta read is never saved to it, and none is needed.
+Only these actions of the built-in `Artifact` and `ArtifactData` tools are saved: an `Artifact`
+read or file listing, an asset upload, a database write is not, and Claude sees every answer
+whole. **In an organic video run** only the page tools' answers are saved this way (the same two
+folders); a Meta read is never saved to it, and none is needed.
 
 The engine finds them by their input, not their file name (the audience order at B1, the
 near-duplicate check at C1, the page's decisions at G2 to G4; in organic video, the proposals

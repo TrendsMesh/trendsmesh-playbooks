@@ -3,7 +3,7 @@ the decisions taken on it.
 
     render(brief)                  the page's HTML and its views, from brief.json alone (CB10)
     build(run, brief_path=None, *, single_file=False)   04_final/brief_pack_vNN/ or brief_pack_vNN.html
-    read_decisions(saved)          the decisions in a saved db_list/db_query answer or a copied text
+    read_decisions(saved)          the decisions in a saved ArtifactData list (or db_list) answer or a copied text
     verdicts(docs, concept_ids)    approved | changes | split | none per concept (plan Decision 8)
     mark_carried(docs, earlier)    rows equal to the earlier decisions file's: carried over, not a new look
     take_decisions / await_decisions / choose    `tm brief decisions`, `await`, `choose`
@@ -74,6 +74,27 @@ VIEW_LABEL = {'decision': 'Decision maker', 'strategy': 'Strategist', 'creator':
 TODO = '<span class="todo">to set</span>'
 _ID = re.compile(r"[A-Za-z0-9_-]+")
 _FILL = re.compile(r"\{\{(TITLE|TITLE_JS|RECIPIENTS|CONCEPT_IDS)\}\}|<!--BODY-->")
+# The handoff's template stays verbatim (TEMPLATE); the plugin's own wording goes over it here, as organic video's
+# pages do theirs (organic_pages.WORDING). A page that cannot save (opened as a local file, or not signed in) says to
+# decide in chat, never that the decisions are kept on it (issue #2).
+WORDING: list[tuple[str, str]] = [
+    ("'Kept on this page only. Open the page from its claude.ai link to save it for the team, or use "
+     "\"Copy my decisions\".'",
+     "'Not saved: this copy can\\'t save decisions. Open the page from its claude.ai link to save them for the "
+     "team, or tell Claude your decisions in chat (\"Copy my decisions\" helps).'"),
+    ("'Decisions are kept on this page only. Open it from its claude.ai link to save them for the team.'",
+     "'This copy can\\'t save decisions: tell Claude your decisions in chat (\"Copy my decisions\" helps), or "
+     "open the page from its claude.ai link to save them for the team.'"),
+]
+
+
+def worded(page: str) -> str:
+    """The page with `WORDING` applied."""
+    for old, new in WORDING:
+        page = page.replace(old, new)
+    return page
+
+
 _MIME = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".jpg": "image/jpeg",
          ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif"}
 
@@ -303,7 +324,7 @@ def render(brief: dict) -> tuple[str, list[str]]:
     title = brief['meta']['title']
     fills = {"{{TITLE}}": E(title), "{{TITLE_JS}}": title_js(str(title)), "{{RECIPIENTS}}": _script(views),
              "{{CONCEPT_IDS}}": _script([c['id'] for c in brief['concepts']]), "<!--BODY-->": body}
-    tpl = TEMPLATE.read_text(encoding="utf-8")
+    tpl = worded(TEMPLATE.read_text(encoding="utf-8"))
     return _FILL.sub(lambda mt: fills[mt.group(0)], tpl), views
 
 
@@ -409,7 +430,7 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     `04_final/brief_pack_vNN/` (index.html plus the media it names), or with `single_file` into
     `04_final/brief_pack_vNN.html` with every media file inlined (CB12's fallback). Nothing is
     written when a decision is awaited, an animatic the brief names is not rendered, the brief
-    cannot make a page, or the folder would be over publish_files' limits (each a Stop). A missing
+    cannot make a page, or the folder would be over the Artifact tool's limits (each a Stop). A missing
     thumbnail is listed in `media_missing` (a single file leaves its image out)."""
     if page.awaiting(run, PAGE) is not None:
         raise page.Deciding(PAGE, AWAITING)
@@ -508,7 +529,8 @@ def _from_text(text: str, title: str | None) -> list[dict]:
             if m["cid"] in seen:      # the page writes one line per concept: one of these is a note's line
                 raise Stop(f"Copied text {len(docs)} has two lines for {m['cid']}, so a note line reads like a "
                            "decision and the text is ambiguous. Ask that person what they decided on "
-                           f"{m['cid']}, or read the decisions with db_list. The run continues from the same place.")
+                           f"{m['cid']}, or read the decisions with an ArtifactData list. The run continues from the same "
+                           "place.")
             seen.add(m["cid"])
             last = None
             if m["label"] in _LABELS:
@@ -526,7 +548,7 @@ def _from_text(text: str, title: str | None) -> list[dict]:
 
 
 def read_decisions(saved: dict | str, *, title: str | None = None) -> list[dict]:
-    """The decisions in a saved `db_list`/`db_query` answer (an envelope or its answer: every JSON
+    """The decisions in a saved ArtifactData list/query (or `db_list`) answer (an envelope or its answer: every JSON
     object with an `id` in its text, or in its JSON) or in the page's "Copy my decisions" text
     (whose header must name `title`, when given). Each is `{"who", "decisions": {concept: {"d":
     "approve"|"change", "n": note}}}`; a note stays a plain string. A read that may hold part of the
@@ -624,7 +646,7 @@ def take_decisions(run: RunFolder, stage: str, *, file: Path | None = None, text
     slug = _slug(run)
     if text is None and slug is None:
         raise Stop(f"The page's publish is not recorded (tm page published --page {PAGE}), so it is unknown which "
-                   "artifact's decisions to read. Record it, read the decisions with `db_list` first, or give the "
+                   "artifact's decisions to read. Record it, read the decisions with an ArtifactData list first, or give the "
                    "copied text with --text. The run continues from the same place.")
     decided = decided_page(run)
     if text is not None:
@@ -635,7 +657,8 @@ def take_decisions(run: RunFolder, stage: str, *, file: Path | None = None, text
             file = page.saved_answer(run, PAGE, COLLECTION)
             if file is None:
                 raise Stop(f"No saved answer holds the decisions of this page ({slug}): read the decisions with "
-                           f"`db_list` first (slug {slug}, collection {COLLECTION}, limit 1000), then run this again. "
+                           f"an ArtifactData list first (the page's url, collection {COLLECTION}, query.limit 1000; "
+                           f"with the older tools, db_list on slug {slug}), then run this again. "
                            "The run continues from the same place.")
         source = Path(file)
         docs = read_decisions(page.whole_answer(run, PAGE, source, COLLECTION))

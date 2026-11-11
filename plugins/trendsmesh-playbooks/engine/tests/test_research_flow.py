@@ -103,7 +103,7 @@ def test_trend_research_catalogue():
     gs = cat.checkins["GS"]
     assert (gs.route, gs.card, gs.choices) == (
         {"every_step": "own", "big_calls": "own", "hands_off": "rule"}, None, ("schedule", "by_hand"))
-    assert cat.checkins["G3"].rule.startswith("keep_local when `publish_files` is not in the session")
+    assert cat.checkins["G3"].rule.startswith("keep_local when neither `Artifact` nor `publish_files` is in the session")
     assert "same link" in cat.checkins["G3"].rule
     assert "`tm research map-change`" in cat.checkins["G1"].rule
     assert cat.checkins["GS"].rule.startswith("by_hand unless the previous run's schedule.how is desktop_task")

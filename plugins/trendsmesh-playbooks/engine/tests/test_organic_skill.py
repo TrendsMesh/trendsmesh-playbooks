@@ -193,11 +193,13 @@ def test_flow_declares_what_the_engine_declares():
     """The capabilities flow.md tells the agent to declare are organic_pages.CAPABILITIES, verbatim."""
     flow_md = _text(SKILL / "references" / "flow.md")
     for page, anchor in (("proposals", "c2"), ("script", "e3"), *(("gate", a) for a in GATE_CAPABILITIES_AT)):
-        found = re.search(r"`(\{.*?\})`", _section(flow_md, anchor).split("declare_capabilities", 1)[1], re.S)
+        found = re.search(r"`(\{.*?\})`", _section(flow_md, anchor).split("`capabilities` =", 1)[1], re.S)
         assert found, anchor
         assert json.loads(found.group(1)) == CAPABILITIES[page], anchor
     for anchor in ("c2", "e3", *GATE_CAPABILITIES_AT):
-        assert "read_declaration" in _section(flow_md, anchor), anchor
+        section = re.sub(r"\s+", " ", _section(flow_md, anchor))
+        assert "`Artifact` publish" in section and "declaration" in section, anchor   # declared in the publish, checked
+        assert "read_declaration" in section, anchor                                 # and the older tools' way
 
 
 def test_flow_a0_and_d1_mirror_the_doctor():
@@ -253,7 +255,7 @@ def test_ai_video_steps_name_the_engine_commands():
     done = g1.rindex("`tm done G1")
     assert g1.index("tm tool deliver upload") < done and g1.index("tm tool deliver cover") < done
     gate = re.sub(r"\s+", " ", _section(flow_md, "f1"))
-    assert gate.index("tm page await") < gate.index("`db_list`") < gate.index("tm organic decisions")
+    assert gate.index("tm page await") < gate.index("`ArtifactData` list") < gate.index("tm organic decisions")
 
 
 def test_week_steps_name_the_engine_commands():

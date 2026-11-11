@@ -27,7 +27,7 @@ from the reference tool, nothing else:
 - no Google Fonts: every view of a shared page would call Google (GDPR), so the CSS's own Georgia
   and system-ui fallbacks are used;
 - links to videos are http(s) only (else no link), every text is escaped, and the thumbnails stop
-  at publish_files' file limit (`page.MAX_FILES`, less index.html and report.json): the ones left
+  at the Artifact tool's file limit (`page.MAX_FILES`, less index.html and report.json): the ones left
   out count as missing.
 """
 
@@ -206,7 +206,7 @@ class _Page:
         self.run, self.out, self.category, self.market, self.as_of = run, out, category, market, as_of
         self.sample, self.trends, self.paid, self.paid_checked = sample, trends_by_id, paid, paid_checked
         self.thumbs_missing = 0
-        self.files_left = page.MAX_FILES - 2         # index.html and report.json: never over publish_files' limit
+        self.files_left = page.MAX_FILES - 2         # index.html and report.json: never over the Artifact tool's limit
 
     # thumbnails ------------------------------------------------------------------------------
 

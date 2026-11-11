@@ -58,7 +58,7 @@ def test_the_other_warnings_have_their_own_notes(monkeypatch):
     r = _check(IDEA, {"trendsmesh": "ok", "artifacts": "missing"})
     assert r.ready
     assert item(r, "artifacts_pages_organic").note == (
-        "Without the claude.ai artifacts connector you get each page as a local file, and choices are taken "
+        "Without shared page links you get each page as a local file, and choices are taken "
         "here in chat.")
     assert item(r, "browser_for_organic_animation").note == "Without Chrome or Edge, animations are hidden."
     assert not item(r, "browser_for_organic_animation").ok

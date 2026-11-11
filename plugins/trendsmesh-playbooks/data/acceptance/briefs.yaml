@@ -92,13 +92,13 @@ cases:
     needs: [artifacts, human_verdict]
     steps:
       - "Go on from B5's run folder to the page, published as a private artifact. Do not make it public."
-      - "Show the declaration with `read_declaration`, with its db rules."
+      - "Show the stored declaration, with its db rules: the `Artifact` tool's file list of the page shows it (with the older tools, `read_declaration`)."
       - "Ask the person to share the page with a second person with Contributor access, who saves a decision on it. Read it with `tm brief decisions`."
       - "Publish a later version of the page."
     pass: >-
-      The artifact is private; `read_declaration` shows the db rules; a second person with
-      Contributor access saved a decision; `tm brief decisions` reads it; the later version keeps
-      the slug and the declaration.
+      The artifact is private; its stored declaration (or `read_declaration`) shows the db rules;
+      a second person with Contributor access saved a decision; `tm brief decisions` reads it; the
+      later version keeps the link and the declaration.
     judge: >-
       Did the second person save a decision on the page, and does what the agent read back match
       it?

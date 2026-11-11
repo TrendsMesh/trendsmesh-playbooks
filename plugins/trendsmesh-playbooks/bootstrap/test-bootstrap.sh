@@ -252,10 +252,10 @@ cmd=$(printf '%s\n' "$hook" | sed -n 's/^C\t//p' | sed "s|\${CLAUDE_PLUGIN_ROOT}
 [ -n "$cmd" ] && [ -n "$matcher" ] || fail "no PostToolUse matcher and command in hooks.json"
 for t in mcp__plugin_trendsmesh-playbooks_trendsmesh__get_trend_videos mcp__trendsmesh__search_trends \
          mcp__claude_ai_Meta_Ads__ads_library_search mcp__claude_ai_Meta_Ads__ads_get_creatives \
-         mcp__claude-artifacts__db_list; do
+         mcp__claude-artifacts__db_list Artifact ArtifactData; do
   printf '%s\n' "$t" | grep -Eqx "$matcher" || fail "the PostToolUse matcher misses $t"
 done
-for t in mcp__other__get_trend Bash mcp__plugin_x_trendsmesh2__get_usage mcp__other__ads_get_ad_videos; do
+for t in mcp__other__get_trend Bash mcp__plugin_x_trendsmesh2__get_usage mcp__other__ads_get_ad_videos ArtifactComments; do
   ! printf '%s\n' "$t" | grep -Eqx "$matcher" || fail "the PostToolUse matcher should not take $t"
 done
 WS="$TMP/my ws"
