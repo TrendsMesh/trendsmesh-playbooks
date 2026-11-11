@@ -3,11 +3,12 @@ from collections import namedtuple
 
 import pytest
 
-from tm import cli, doctor
+from tm import cli, doctor, envtiers
 
 Usage = namedtuple("Usage", "total used free")
 GB = 1024**3
 ALL_OK = {"trendsmesh": "ok", "meta": "ok"}
+REAL_INSTALLED = envtiers.installed  # the world fixture stubs it; a test that needs the real check puts it back
 
 
 @pytest.fixture(autouse=True)

@@ -474,10 +474,12 @@ def test_animatic_tier_shares_video_env(tmp_path, monkeypatch):
     assert envtiers.install("animatic", yes=True) == 1
 
     monkeypatch.setattr(envtiers, "_env_installed", lambda env: env == "video")
+    monkeypatch.setattr(render, "setup_done", lambda: True)   # the video tier's own Remotion setup (#4)
     monkeypatch.setattr(atlas, "setup_done", lambda: False)
     assert envtiers.installed("video") and not envtiers.installed("animatic")
     monkeypatch.setattr(atlas, "setup_done", lambda: True)
-    assert envtiers.installed("animatic")
+    monkeypatch.setattr(render, "setup_done", lambda: False)
+    assert envtiers.installed("animatic")   # Remotion's setup is not the animatic tier's
 
 
 # --- the real render ------------------------------------------------------------------------------

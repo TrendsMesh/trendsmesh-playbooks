@@ -7,6 +7,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Organic AI video shows up again.** A colon in its description kept Claude Code from loading the playbook, so
   Claude didn't know it was there. It loads now, and a test checks every playbook and command file the way Claude
   Code reads them, so one can't go missing like that again.
+- **The readiness check sees an unfinished video tools install.** When the video editing tools were installed
+  but their Remotion part was missing, interrupted or out of date, the check said ready and the render stopped at
+  the end of the run. The check now asks what the render asks, so the install is offered at the start, with its
+  size and time.
 
 ## 0.10.0
 

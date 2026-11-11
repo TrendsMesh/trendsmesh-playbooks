@@ -71,6 +71,19 @@ def test_installed_reads_marker_in_prefix(fake_pixi, tmp_path):
     assert installed("voice") is True
 
 
+def test_video_counts_as_installed_only_with_the_remotion_setup(monkeypatch):
+    """#4: render needs the Remotion packages and headless browser for this lock file (`render.setup_done`), which
+    `tm env install video` sets up; the pixi environment alone is not the video tier."""
+    from tm import render
+    monkeypatch.setattr(envtiers, "_env_installed", lambda env: True)
+    monkeypatch.setattr(render, "setup_done", lambda: False)
+    assert installed("video") is False and installed("base") is True
+    monkeypatch.setattr(render, "setup_done", lambda: True)
+    assert installed("video") is True
+    monkeypatch.setattr(envtiers, "_env_installed", lambda env: False)
+    assert installed("video") is False
+
+
 def test_installed_false_when_pixi_fails(fake_pixi):
     _result.append(_proc(1))
     assert installed("ai") is False

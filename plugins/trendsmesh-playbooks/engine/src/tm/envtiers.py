@@ -60,10 +60,16 @@ def _pixi_env() -> dict[str, str]:
 
 def installed(tier: str) -> bool:
     """True when pixi reports a prefix for the tier's environment that holds pixi's
-    conda-meta/pixi marker (written only after an install finished). The animatic tier also needs
-    its node package set up (`atlas.setup_done`)."""
+    conda-meta/pixi marker (written only after an install finished). The video tier also needs
+    the Remotion packages and headless browser for this lock file (`render.setup_done`), the
+    animatic tier its node package (`atlas.setup_done`): `tm env install` sets both up, and this
+    one check is what the doctor and the renderers ask."""
     if not _env_installed(TIERS[tier].env):
         return False
+    if tier == "video":
+        from tm import render
+
+        return render.setup_done()
     if tier == "animatic":
         from tm import atlas
 

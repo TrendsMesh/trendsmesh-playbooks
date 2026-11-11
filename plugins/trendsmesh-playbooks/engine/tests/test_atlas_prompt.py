@@ -359,6 +359,7 @@ def test_animation_pack_needs_the_animatic_setup_done(tmp_path, monkeypatch):
     """Task 19 review M6: the animatic environment installed but its node package not set up (`atlas.setup_done`) is
     the same refusal, read through the real `envtiers.installed`."""
     monkeypatch.setattr(envtiers, "_env_installed", lambda env: True)
+    monkeypatch.setattr(render, "setup_done", lambda: True)   # the video tier's Remotion setup (#4)
     monkeypatch.setattr(atlas, "setup_done", lambda: False)
     monkeypatch.setattr(atlas, "find_browser", lambda: Path("/Apps/Google Chrome"))
     assert envtiers.installed("animatic") is False and envtiers.installed("video") is True

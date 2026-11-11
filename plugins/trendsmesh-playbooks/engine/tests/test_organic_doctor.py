@@ -13,7 +13,7 @@ from tm.runfolder import RunFolder
 from tm.stops import Stop
 from tm.tools import TOOLS
 
-from test_doctor import REFRESH_AD_CARD_030, ALL_OK, ids, item, world  # noqa: F401  (world: autouse fixture)
+from test_doctor import REAL_INSTALLED, REFRESH_AD_CARD_030, ALL_OK, ids, item, world  # noqa: F401  (world: autouse fixture)
 
 OV = "organic-video"
 OK = {"trendsmesh": "ok", "artifacts": "ok"}
@@ -109,6 +109,23 @@ def test_production_run_needs_media_tiers(monkeypatch):
     assert "tier_animatic" not in ids(_check(PRODUCTION | IDEA))   # the pack check holds the animatic tier
     # script to film makes no media: the idea run's base tier is all it asks
     assert [i.id for i in _check({"script_to_film"}).items if i.id.startswith("tier_")] == ["tier_base"]
+
+
+def test_video_tier_needs_the_remotion_setup_render_needs(monkeypatch):
+    """#4: the video environment installed but the Remotion setup missing, interrupted or out of date (no marker
+    for this lock file) is not ready: the doctor asks `envtiers.installed`, the same check render makes, and offers
+    the install at D1 with its size and time instead of render stopping at G1."""
+    from tm import render
+    monkeypatch.setattr(doctor.envtiers, "installed", REAL_INSTALLED)
+    monkeypatch.setattr(envtiers, "_env_installed", lambda env: True)
+    monkeypatch.setattr(render, "setup_done", lambda: False)
+    r = _check(PRODUCTION)
+    it = item(r, "tier_video")
+    assert not r.ready and not it.ok and it.fixer == "agent" and it.size_mb == envtiers.TIERS["video"].approx_mb
+    assert "video editing tools (about 500 MB, about 1 min)" in it.fix
+    assert "Together: about" in doctor.card(r)
+    monkeypatch.setattr(render, "setup_done", lambda: True)
+    assert item(_check(PRODUCTION), "tier_video").ok
 
 
 def test_organic_cli_takes_the_playbook_by_skill_name(capsys, bundled_skills):

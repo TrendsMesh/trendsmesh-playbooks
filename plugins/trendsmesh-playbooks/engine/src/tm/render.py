@@ -152,15 +152,17 @@ def setup() -> None:
 
 
 def _need_setup() -> None:
-    if not envtiers.installed("video"):
+    """The doctor's check (`envtiers.installed`); when it fails, the stop says which part is missing."""
+    if envtiers.installed("video"):
+        return
+    if not envtiers._env_installed(envtiers.TIERS["video"].env):
         raise c.ToolStop("Rendering needs the 'video' tools, which are not installed yet. Nothing was "
                          "rendered. Install them with: tm env install video --yes (it asks before "
                          "downloading about 0.5 GB). The run continues from the same place.")
-    if not setup_done():
-        raise c.ToolStop("The 'video' tools are installed but the Remotion part is not set up (or is "
-                         "out of date). Nothing was rendered. Set it up with: tm env install video --yes "
-                         "(after the user's yes; it downloads the packages and a headless browser). "
-                         "The run continues from the same place.")
+    raise c.ToolStop("The 'video' tools are installed but the Remotion part is not set up (or is "
+                     "out of date). Nothing was rendered. Set it up with: tm env install video --yes "
+                     "(after the user's yes; it downloads the packages and a headless browser). "
+                     "The run continues from the same place.")
 
 
 def _check_props(run: RunFolder, comp: str, props: Path) -> dict:

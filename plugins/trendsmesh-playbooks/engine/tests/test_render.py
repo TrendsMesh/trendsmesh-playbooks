@@ -131,11 +131,24 @@ def test_stops_when_video_tier_missing(light, monkeypatch, capsys):
 
 def test_stops_when_setup_missing_and_downloads_nothing(light, monkeypatch, capsys):
     run, props, _ = light
-    monkeypatch.setattr(render.envtiers, "installed", lambda t: True)
+    monkeypatch.setattr(render.envtiers, "_env_installed", lambda env: True)   # the environment, no Remotion setup
     calls = []
     monkeypatch.setattr(render.subprocess, "run", lambda *a, **k: calls.append(a))
     assert render._run_cli(argparse_ns(run, props)) == 2
     assert calls == [] and "set up" in json.loads(capsys.readouterr().out)["message"]
+
+
+def test_stop_names_what_is_missing_from_the_one_video_check(light, monkeypatch, capsys):
+    """#4: render asks `envtiers.installed("video")`, the check the doctor makes, and only then says which part is
+    missing: the environment, or the Remotion setup for this lock file."""
+    run, props, _ = light
+    monkeypatch.setattr(render.envtiers, "_env_installed", lambda env: True)
+    monkeypatch.setattr(render, "setup_done", lambda: False)
+    assert render._run_cli(argparse_ns(run, props)) == 2
+    assert "Remotion part is not set up" in json.loads(capsys.readouterr().out)["message"]
+    monkeypatch.setattr(render.envtiers, "_env_installed", lambda env: False)
+    assert render._run_cli(argparse_ns(run, props)) == 2
+    assert "which are not installed yet" in json.loads(capsys.readouterr().out)["message"]
 
 
 def test_setup_reruns_only_when_lock_changes(light, monkeypatch):
