@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
+    branches: [main, dev]
   pull_request:
+    branches: [main, dev]
   workflow_dispatch:
 
 permissions:
@@ -81,6 +83,25 @@ jobs:
           CLAUDE_PLUGIN_DATA="$(cygpath -w "$d")" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Report
           "$d/pixi/bin/pixi.exe" --version | grep -q '0.84.1'
           test ! -e "$d/install-pixi.log"
+
+  # A pull request that changes the plugin says so in CHANGELOG.md, under ## Unreleased (RELEASING.md).
+  changelog:
+    name: changelog
+    if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changelog')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: A plugin change has a changelog line
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          changed=$(git diff --name-only "origin/$BASE...HEAD")
+          if printf '%s\n' "$changed" | grep -q '^plugins/' && ! printf '%s\n' "$changed" | grep -qx 'CHANGELOG.md'; then
+            echo "Add a line under ## Unreleased in CHANGELOG.md, or label the pull request no-changelog" >&2
+            exit 1
+          fi
 
   tools:
     name: heavy tool tiers (manual)
