@@ -9,8 +9,9 @@ The rules live in one table, `remotion/src/fonts.json`, which the compositions (
 - a script lists the subsets to load (always `latin` and `latin-ext`, plus its own); a composition's font that has
   them all is used as it is, otherwise the whole composition uses the script's fallback (a Noto Sans family);
 - the composition gets the language as its `language` prop. `tm render` fills it in from the run config when the
-  props do not give one: `languages.market`, else `account.language` (a tag or an English or native language
-  name), else an organic run's audience language (its channel profile's `audience_language`).
+  props do not give one: the market language the config states (`i18n.stated_market`: `languages.market`, else an
+  older config's `account.language`, a tag or an English or native language name), else an organic run's audience
+  language (its channel profile's `audience_language`).
 
 `check` reads the character ranges of the chosen family's subsets from the installed `@remotion/google-fonts`
 package (the version the render uses) and stops when a letter, digit, mark, punctuation or currency sign of an
@@ -27,6 +28,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from tm import i18n
 from tm.runfolder import RunFolder
 from tm.tools import _common as c
 
@@ -110,10 +112,9 @@ def market_language(run: RunFolder) -> tuple[str | None, str | None]:
         cfg = config.load(run)
     except ValueError:
         return None, None
-    for path in ("languages.market", "account.language"):
-        tag = language_tag(config._get(cfg, path))
-        if tag:
-            return tag, f"{path} in config.yaml"
+    tag, where = i18n.stated_market(cfg)                 # the one reading of the run's languages (issue #3)
+    if tag:
+        return tag, where
     if state.load(run).playbook == ORGANIC_VIDEO:
         from tm import organic_config
 

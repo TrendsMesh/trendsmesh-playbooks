@@ -15,6 +15,8 @@ from tm.runfolder import RunFolder
 @pytest.fixture
 def table(monkeypatch):
     """A small English table in place of the shipped one."""
+    from tm import cli
+    cli._load_commands()                    # modules that read the real table at import, before it is swapped
     en = {"demo.hello": "Hello", "demo.count": "{n} videos", "demo.bold": "Seen by <b>{who}</b>"}
     monkeypatch.setattr(i18n, "english", lambda: dict(en))
     monkeypatch.setattr(i18n, "_shipped", lambda lang: {})
@@ -235,3 +237,19 @@ def test_intake_languages_fill_the_older_keys():
 ])
 def test_transliterate(given, want):
     assert i18n.transliterate(given) == want
+
+
+def test_the_stated_market_language_is_never_a_default():
+    assert i18n.stated_market({}) == (None, None)
+    assert i18n.stated_market({"languages": {"working": "pl", "market": None}}) == (None, None)
+    assert i18n.stated_market({"languages": {"market": "uk"}, "account": {"language": "Polish"}}) == \
+        ("uk", "languages.market in config.yaml")
+    assert i18n.stated_market({"account": {"language": "Polish"}}) == ("pl", "account.language in config.yaml")
+    assert i18n.stated_market({"language": "en", "market_lang": "de"}) == ("de", "market_lang in config.yaml")
+    assert i18n.stated_market({"page_lang": "pl"}) == (None, None)        # organic pages: not the audience's
+
+
+def test_the_video_fonts_read_the_run_languages_through_i18n(tmp_path):
+    from tm import video_fonts
+    run = _run(tmp_path, TREND_RESEARCH, {"language": "English", "market_lang": "Belarusian"})
+    assert video_fonts.market_language(run) == ("be", "market_lang in config.yaml")

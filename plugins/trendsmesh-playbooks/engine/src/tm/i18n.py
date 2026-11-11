@@ -67,7 +67,8 @@ NAMES = {
     "ro": ("Romanian", "română"), "ru": ("Russian", "русский"), "sk": ("Slovak", "slovenčina"),
     "sl": ("Slovenian", "slovenščina"), "sr": ("Serbian", "српски"), "sv": ("Swedish", "svenska"),
     "th": ("Thai", "ไทย"), "tr": ("Turkish", "Türkçe"), "uk": ("Ukrainian", "українська"),
-    "vi": ("Vietnamese", "Tiếng Việt"), "zh": ("Chinese", "中文"),
+    "vi": ("Vietnamese", "Tiếng Việt"), "zh": ("Chinese", "中文"), "be": ("Belarusian", "беларуская"),
+    "mk": ("Macedonian", "македонски"), "kk": ("Kazakh", "қазақ тілі"), "ur": ("Urdu", "اردو"),
 }
 _BY_NAME = {n.casefold(): code for code, names in NAMES.items() for n in names}
 _BY_NAME.update({"polish language": "pl", "brazilian portuguese": "pt-BR", "castilian": "es", "flemish": "nl",
@@ -155,6 +156,22 @@ def languages_of(cfg: dict | None) -> Languages:
     market = tag(given.get("market")) or old_market
     working = working or market or ENGLISH
     return Languages(working, market or working)
+
+
+def stated_market(cfg: dict | None) -> tuple[str | None, str | None]:
+    """(the market language the config states, where), never a default: `languages.market`, else an older
+    config's account.language, market_lang or language; (None, None) when it states none (video fonts then look
+    at the organic channel profile)."""
+    cfg = cfg if isinstance(cfg, dict) else {}
+    given = cfg.get("languages") if isinstance(cfg.get("languages"), dict) else {}
+    if tag(given.get("market")):
+        return tag(given.get("market")), "languages.market in config.yaml"
+    account = cfg.get("account") if isinstance(cfg.get("account"), dict) else {}
+    for where, value in (("account.language", account.get("language")), ("market_lang", cfg.get("market_lang")),
+                         ("language", cfg.get("language"))):
+        if tag(value):
+            return tag(value), f"{where} in config.yaml"
+    return None, None
 
 
 def run_languages(run) -> Languages:
