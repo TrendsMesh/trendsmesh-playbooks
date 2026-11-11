@@ -15,18 +15,21 @@ try {
     $stdin = New-Object System.IO.StreamReader([Console]::OpenStandardInput(), (New-Object System.Text.UTF8Encoding $false))
     $text = $stdin.ReadToEnd()
     $dir = Value $text 'cwd'
+    $session = Value $text 'session_id'
 } catch { exit 0 }
+# Only this session's own marker (one per Claude Code session); a session id that is not a plain file
+# name never names one (tm's own rule, trend_spool.safe_session).
+if ($session -cnotmatch '^[A-Za-z0-9_-]{1,128}$') { exit 0 }
+$name = '.trendsmesh\collect\' + $session + '.json'
 $found = $false
 while ($dir) {
-    if (Test-Path -LiteralPath (Join-Path $dir '.trendsmesh\collect.json') -PathType Leaf) { $found = $true; break }
+    if (Test-Path -LiteralPath (Join-Path $dir $name) -PathType Leaf) { $found = $true; break }
     $up = Split-Path -Parent $dir
     if ($up -eq $dir) { break }
     $dir = $up
 }
 if (-not $found -or -not $env:CLAUDE_PLUGIN_ROOT) { exit 0 }
-# A marker another session claimed: that session's answers only.
-try { $marker = [IO.File]::ReadAllText((Join-Path $dir '.trendsmesh\collect.json')) | ConvertFrom-Json } catch { $marker = $null }
-if ($marker -and $marker.session -and ([string]$marker.session -ne (Value $text 'session_id'))) { exit 0 }
+try { $marker = [IO.File]::ReadAllText((Join-Path $dir $name)) | ConvertFrom-Json } catch { $marker = $null }
 
 $env:TM_PLUGIN_ROOT = $env:CLAUDE_PLUGIN_ROOT
 if ($env:CLAUDE_PLUGIN_DATA) { $env:TM_PLUGIN_DATA = $env:CLAUDE_PLUGIN_DATA }

@@ -93,9 +93,11 @@ def _run_run(args: argparse.Namespace) -> int:
         return _fail(args, str(exc))
     if pb.id in trend_spool.COLLECTING:
         try:
-            trend_spool.turn_off(workspace)   # a new run collects only once its skill turns it on
+            # A new run collects only once its skill turns it on: this session's marker goes, another
+            # session's (its own run) stays.
+            trend_spool.turn_off(workspace, trend_spool.this_session())
         except OSError:
-            pass                              # the run exists; the marker stays tied to its own session
+            pass                              # the run exists; the marker stays tied to its own run
     _emit(args, {"status": "done", "path": str(run.path), "run_id": run.path.name}, str(run.path))
     return 0
 

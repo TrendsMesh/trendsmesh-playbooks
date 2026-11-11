@@ -125,8 +125,8 @@ from what it says. Before you do, plan or describe a step's work, read its secti
   happened, what to do, and that the run continues from the same place.
 - **Collection:** `tm trends collect on --run R` right before the run's first MCP call (B1's
   first `search_trends`), **again at every resume**, right before the next MCP call, and in each
-  production run right before its first page publish (the marker is per run; the 10-minute claim
-  window runs only from `collect on` to that call). `tm trends collect off --run R` at the end of
+  production run right before its first page publish (the marker names one run, and collects for
+  this session only). `tm trends collect off --run R` at the end of
   each run. An answer that comes with "This answer was not saved…" is saved with `tm trends
   ingest`, as it says (`references/trend-collection.md`).
 - **The level** is the run's (run.json, set with `tm level`); each production run has its own,

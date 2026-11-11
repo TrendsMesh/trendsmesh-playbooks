@@ -87,7 +87,7 @@ def test_collect_on_says_what_a_brief_run_keeps(ws, capsys):
     assert main(["trends", "collect", "on", "--run", str(ws / BRIEF_REL)]) == 0
     out = capsys.readouterr().out
     assert "Its Meta reads (01_base/meta) and page answers (03_wip/decisions, 03_wip/publish) are saved too" in out
-    assert "Make the first MCP call within 10 minutes" in out
+    assert "in this Claude Code session" in out and "within 10 minutes" not in out
 
 
 def test_meta_answer_saved_not_replaced_in_brief_run(ws, monkeypatch, capsys):
@@ -183,39 +183,28 @@ def test_ingest_files_a_meta_answer_where_the_collector_would(ws, tmp_path, caps
     assert _files(ws) == ["01_base/meta/ads_get_creatives_v01.json"]
 
 
-def _marker(ws: Path) -> dict:
-    return json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))
+def test_meta_read_of_another_session_is_not_kept(ws):
+    trend_spool.handle(_event(ws, META, "ads_get_ad_accounts", {}, {"data": []}, session="s1"), ws)
+    before = _files(ws)
+    assert trend_spool.handle(_event(ws, META, "ads_get_creatives", {}, {"data": []}, session="s2"), ws) is None
+    assert _files(ws) == before == ["01_base/meta/ads_get_ad_accounts_v01.json"]
+    assert sorted(p.name for p in (ws / trend_spool.MARKERS).iterdir()) == ["s1.json"]
 
 
-@pytest.mark.parametrize("case", ["other_session", "expired"])
-def test_meta_read_of_another_session_or_after_the_window_is_not_kept(ws, case):
-    marker = ws / trend_spool.MARKER
-    if case == "other_session":
-        trend_spool.handle(_event(ws, META, "ads_get_ad_accounts", {}, {"data": []}, session="s1"), ws)
-        assert _marker(ws)["session"] == "s1"
-        before = _files(ws)
-        assert trend_spool.handle(_event(ws, META, "ads_get_creatives", {}, {"data": []}, session="s2"), ws) is None
-        assert _files(ws) == before and _marker(ws)["session"] == "s1"
-    else:
-        marker.write_text(json.dumps({**_marker(ws), "since": "2026-01-01T00:00:00+00:00"}), encoding="utf-8")
-        assert trend_spool.handle(_event(ws, META, "ads_get_creatives", {}, {"data": []}), ws) is None
-        assert _files(ws) == [] and not marker.exists()          # an expired marker is collection off
-
-
-def test_meta_read_never_claims_a_trend_research_marker(ws, capsys):
-    """A parallel refresh-ad session's Meta reads leave a trend research marker for its own session."""
+def test_meta_read_of_a_refresh_ad_session_is_never_kept(ws, monkeypatch, capsys):
+    """Issue #1: a parallel refresh-ad session's Meta reads (it never turns collection on) are saved
+    nowhere, neither in this creative brief run nor in a trend research run another session collects for."""
     from tm.playbooks import TREND_RESEARCH
     tr = RunFolder.create(ws, "beauty", date(2026, 11, 7), playbook=TREND_RESEARCH)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "research")
     assert main(["trends", "collect", "on", "--run", str(tr.path), "--json"]) == 0
     capsys.readouterr()
     for tool in ("ads_get_ad_entities", "ads_get_creatives"):
         assert trend_spool.handle(_event(ws, META, tool, {}, {"data": []}, session="refresh"), ws) is None
-    assert _marker(ws)["session"] is None                        # still unclaimed
-    files = [p for p in tr.path.rglob("*.json") if p.name != "run.json"]
-    assert files == []
+    assert _files(ws) == [] and [p for p in tr.path.rglob("*.json") if p.name != "run.json"] == []
     trend_spool.handle({**_event(ws, "mcp__trendsmesh__", "get_trend", {"trend_id": "t1"}, {"id": "t1"}),
                         "session_id": "research"}, ws)
-    assert _marker(ws)["session"] == "research"
+    assert (tr.path / "02_research" / "trend_t1.json").is_file()
 
 
 def test_server_comes_from_the_full_tool_name(ws, tmp_path, capsys):

@@ -98,8 +98,8 @@ section in `references/flow.md` (the `ref`): never from memory.
   <id> --what ... --todo ...`, cleared with `tm resume --run R`), says what happened, what to do,
   and that the run continues from the same place.
 - **Collection:** `tm trends collect on --run R` right before the first `search_trends` (B1), again
-  at every resume right before the next TrendsMesh or Ad Library call (the 10-minute claim window runs only
-  from `collect on` to that call), and `tm trends collect off --run R` at the end. An answer
+  at every resume right before the next TrendsMesh or Ad Library call (it collects for this session
+  only), and `tm trends collect off --run R` at the end. An answer
   that comes with "This answer was not saved…" is saved with `tm trends ingest`, as it says
   (`trend-collection.md`).
 - The user may change the level at any time: `tm level <every_step|big_calls|hands_off> --run R`.

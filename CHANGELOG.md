@@ -98,6 +98,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   the ads are built exactly as approved (Claude asks before any change), and the pre-launch check confirms it.
 - **One upload round in the desktop app.** When Meta's upload opens a file window in the chat, Claude first sends
   you every file it needs, videos and thumbnail, says which to pick, and you upload them all at once.
+- **Several sessions in one folder keep their answers apart.** Collection now belongs to the Claude Code session
+  that turned it on: each session's TrendsMesh, Ad Library, Meta and page answers are saved only into that
+  session's own run, and a session that never turned it on (a Refresh an ad session, for example) has nothing saved
+  anywhere. Turning collection on never takes over another session's run, says which other sessions collect in the
+  folder, and no longer needs the first call within 10 minutes. Leftover markers of finished runs are cleaned up.
 
 ## 0.10.0
 

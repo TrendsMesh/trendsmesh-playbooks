@@ -10,10 +10,8 @@ references (`pages.md`, `trend-collection.md`, `schedule.md`) sit in the plugin'
 - **Every TrendsMesh and Ad Library answer is saved by the collector** (`trend-collection.md`):
   `tm trends collect on --run R` runs right before the first `search_trends` (B1, step 1), and
   again at every resume, right before the first TrendsMesh or Ad Library call after it (a session
-  that resumes at D2 calls `ads_library_search` first). The marker it writes is
-  claimed by the first call that follows; that call must come within 10 minutes (the window counts
-  only between `collect on` and that first call), so run it immediately before the call, never
-  earlier. If an answer comes with "This answer was not saved…", save it with `tm trends ingest`
+  that resumes at D2 calls `ads_library_search` first). The marker it writes is this session's
+  own: only this session's answers are saved to the run. If an answer comes with "This answer was not saved…", save it with `tm trends ingest`
   as it says.
 - **JSON you write goes into a file** in `03_wip/` (or `02_research/` for the Ad Library summary)
   with the Write tool, a new `_vNN` for every change, never inline: inline JSON breaks on Windows.

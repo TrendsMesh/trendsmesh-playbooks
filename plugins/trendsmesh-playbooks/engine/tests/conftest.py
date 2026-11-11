@@ -92,3 +92,11 @@ def bundled_skills(tmp_path, monkeypatch):
         (root / skill / "SKILL.md").write_text("---\nname: test\n---\n", encoding="utf-8")
     monkeypatch.setattr(playbooks, "skills_root", lambda: root)
     return root
+
+
+@pytest.fixture(autouse=True)
+def _claude_code_session(monkeypatch):
+    """The Claude Code session tm runs in (`CLAUDE_CODE_SESSION_ID`, which Claude Code sets for every command it
+    runs): "s1", the session of the test hook events, never the session that happens to run pytest. A test of
+    another session sets it again, or removes it."""
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "s1")

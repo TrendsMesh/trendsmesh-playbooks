@@ -2,22 +2,26 @@
 brief or organic video run (`COLLECTING`), a creative brief run's Meta reads and artifacts answers,
 and an organic video run's artifacts answers (`mcp_saves.SAVED_BY`).
 
-    tm trends collect on|off --run RUN [--json]
+    tm trends collect on|off --run RUN [--session ID] [--json]
     tm trends spool [--event FILE]           the hook's command: one event on stdin (or in FILE)
     tm trends ingest --run RUN --tool T --input JSON --file ANSWER [--json]
 
-`collect on` writes `<workspace>/.trendsmesh/collect.json` (`{"run", "since", "session": null}`);
-`collect off` and `tm run new` for a `COLLECTING` playbook's run remove it (another playbook's
-`run new` leaves it). One marker per workspace: the run that turned collection on last collects.
-The first answer that reaches `spool` within 10 minutes of `since` claims the marker for its
-session (`session` = the event's `session_id`); answers of every other session are then left
-alone, so a refresh-ad session in the same workspace never sees summaries or feeds the run. An
-unclaimed marker older than that is removed by the first answer that finds it, as if collection were
-off: the skill runs `collect on` right before its first call, and again on every resume, which frees
-the marker for the new session. `collect on|off` find the workspace from the run folder, so they work
-from inside it too.
+One marker per Claude Code session (issue #1): `collect on` writes
+`<workspace>/.trendsmesh/collect/<session>.json` (`{"run", "since", "session"}`) for the session it
+runs in, so several sessions in one workspace each collect into their own run. The session is
+`--session`, else `CLAUDE_CODE_SESSION_ID`, which Claude Code sets for every command it runs to the
+same id its hooks receive as `session_id`; without one `collect on` refuses, as nothing could tie
+the answers to a session. A hook event is saved only into the run its own session's marker names: no
+marker for the event's `session_id`, nothing saved, so a refresh-ad session in the same workspace
+never sees summaries or feeds a run. `collect off` and `tm run new` for a `COLLECTING` playbook's run
+remove this session's marker only (another playbook's `run new` leaves it); another session's
+marker is never written or removed while its run is unfinished. A marker whose run is finished, or
+gone, or that cannot be read is stale: the hook removes its own session's marker of a finished run,
+and every `collect on` removes all stale ones, and the old one-per-workspace `.trendsmesh/collect.json`
+(0.10.0 and earlier), which belongs to no session. `collect on|off` find the workspace from the run
+folder, so they work from inside it too.
 
-While the marker names an unfinished run of a `COLLECTING` playbook, the hook
+While its session's marker names an unfinished run of a `COLLECTING` playbook, the hook
 (bootstrap/collect-mcp.sh, .ps1) hands each answer of that session that its matcher takes to
 `spool`. A TrendsMesh or Ad Library answer is saved with `trends.save_answer` and, for a search, a
 list or a video page in a known envelope (and never an error), `spool` prints a short summary that
@@ -37,23 +41,26 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
 from tm import cli, mcp_saves, paths, playbooks, state, trends
 from tm.runfolder import RunFolder
 
-MARKER = Path(".trendsmesh") / "collect.json"
+MARKERS = Path(".trendsmesh") / "collect"         # <session>.json: one marker per Claude Code session
+LEGACY_MARKER = Path(".trendsmesh") / "collect.json"   # 0.10.0 and earlier: one per workspace, no session
+SESSION_ENV = "CLAUDE_CODE_SESSION_ID"           # Claude Code sets it for every command it runs
+_SESSION = re.compile(r"[A-Za-z0-9_-]{1,128}")    # a file name, never a path
 SUMMARISED = ("search_trends", "list_trends", "get_trend_videos")
 LOCK = ".collect.lock"
 WINDOWS = os.name == "nt"
 FAILURES = Path(trends.RESEARCH) / "collect_failures.log"
 STALE_LOCK_S = 5.0
-CLAIM_WINDOW = timedelta(minutes=10)
 COLLECTING = (playbooks.TREND_RESEARCH, playbooks.CREATIVE_BRIEF, playbooks.ORGANIC_VIDEO)
 
 
@@ -153,68 +160,48 @@ def _break(lock: Path, seen: os.stat_result) -> None:
 
 # --- the marker -------------------------------------------------------------------------------
 
-def find_workspace(start: Path) -> Path | None:
-    """`start` or the nearest folder above it that holds the marker (Claude may have gone into a
-    run folder), else None."""
+def safe_session(value: Any) -> str | None:
+    """A session id that can name a marker file (Claude Code's are UUIDs), else None."""
+    return value if isinstance(value, str) and _SESSION.fullmatch(value) else None
+
+
+def this_session() -> str | None:
+    """The Claude Code session tm runs in: `CLAUDE_CODE_SESSION_ID`, the id its hooks receive as
+    `session_id`; None outside Claude Code (or in a version that does not set it)."""
+    return safe_session(os.environ.get(SESSION_ENV))
+
+
+def marker_path(workspace: Path, session: str) -> Path:
+    return Path(workspace) / MARKERS / f"{session}.json"
+
+
+def find_workspace(start: Path, session: Any) -> Path | None:
+    """`start` or the nearest folder above it that holds this session's marker (Claude may have gone
+    into a run folder), else None; None for a session id that cannot name a marker."""
+    session = safe_session(session)
+    if session is None:
+        return None
     start = Path(start)
     for folder in (start, *start.parents):
-        if (folder / MARKER).is_file():
+        if marker_path(folder, session).is_file():
             return folder
     return None
 
 
-def _read_marker(workspace: Path) -> dict:
-    marker = Path(workspace) / MARKER
+def _read_marker(marker: Path) -> dict:
     data = json.loads(_shared(lambda: marker.read_text(encoding="utf-8")))
     if not isinstance(data, dict) or not isinstance(data.get("run"), str) or not data["run"]:
         raise ValueError(f"{marker} does not name a run; turn collection on again with tm trends collect on.")
     return data
 
 
-def _marker_or_none(workspace: Path) -> dict | None:
-    """The marker, or None when another process (collect off, run new, an expiry) removed it after
-    it was seen: then collection is off."""
+def _marker_or_none(marker: Path) -> dict | None:
+    """The marker, or None when another process (collect off, run new) removed it after it was seen:
+    then collection is off."""
     try:
-        return _read_marker(workspace)
+        return _read_marker(marker)
     except FileNotFoundError:
         return None
-
-
-def claimable(marker: dict) -> bool:
-    """An unclaimed marker can be claimed only within CLAIM_WINDOW of its `since` (the skill runs
-    `collect on` right before its first call); an unreadable `since` cannot be claimed."""
-    try:
-        since = datetime.fromisoformat(marker.get("since"))
-    except (TypeError, ValueError):
-        return False
-    if since.tzinfo is None:
-        since = since.replace(tzinfo=timezone.utc)
-    return abs(datetime.now(timezone.utc) - since) <= CLAIM_WINDOW
-
-
-def claim(workspace: Path, session: Any) -> bool:
-    """Whether the marker belongs to this session; an unclaimed marker becomes this session's while
-    it is claimable. An expired one is removed, as if collection were off, so the hook stops starting
-    Python for every later call. A marker removed meanwhile is collection off: False."""
-    if not isinstance(session, str) or not session:
-        return False
-    data = _marker_or_none(workspace)
-    if data is None:
-        return False
-    if data.get("session") is not None:
-        return data["session"] == session
-    marker = Path(workspace) / MARKER
-    with _locked(marker.with_name(LOCK)):
-        data = _marker_or_none(workspace)
-        if data is None:
-            return False
-        if data.get("session") is None:
-            if not claimable(data):
-                marker.unlink(missing_ok=True)
-                return False
-            data["session"] = session
-            _write_json(marker, data)
-        return data["session"] == session
 
 
 def _names(ids: tuple[str, ...]) -> str:
@@ -223,22 +210,72 @@ def _names(ids: tuple[str, ...]) -> str:
     return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
 
 
-def active_run(workspace: Path) -> RunFolder | None:
-    """The run the marker names while it is an unfinished run of a `COLLECTING` playbook (Trend
-    research and Creative brief), else None (no marker, a finished run, a run of another
-    playbook)."""
-    marker = _marker_or_none(workspace) if (Path(workspace) / MARKER).is_file() else None
-    if marker is None:
+def active_run(workspace: Path, session: Any) -> RunFolder | None:
+    """The run this session's marker names while it is an unfinished run of a `COLLECTING` playbook
+    (trend research, creative brief, organic video), else None (no marker for this session, a
+    finished run, a run of another playbook). The marker of a finished run is removed, so the hook
+    stops starting Python for every later call. A run folder that is gone raises FileNotFoundError:
+    the hook says so."""
+    session = safe_session(session)
+    if session is None:
         return None
-    run = RunFolder.open(Path(workspace) / marker["run"])
+    marker = marker_path(workspace, session)
+    data = _marker_or_none(marker) if marker.is_file() else None
+    if data is None:
+        return None
+    run = RunFolder.open(Path(workspace) / data["run"])
     s = state.load(run)
-    if s.status == "done" or s.playbook not in COLLECTING:
+    if s.status == "done":
+        marker.unlink(missing_ok=True)
         return None
-    return run
+    return run if s.playbook in COLLECTING else None
 
 
-def collect_on(workspace: Path, run_path: Path) -> str:
-    """Write the marker for this run, claimed by no session yet; returns the run, workspace-relative."""
+def _live(workspace: Path, marker: Path) -> dict | None:
+    """The marker while its run is an unfinished run of a `COLLECTING` playbook; None when it is stale
+    (unreadable, its run finished, gone or of another playbook). A run whose state cannot be read is
+    left as live: only the run's own session finds out."""
+    try:
+        data = _read_marker(marker)
+        run = RunFolder.open(Path(workspace) / data["run"])
+    except (OSError, ValueError):
+        return None
+    try:
+        s = state.load(run)
+    except (OSError, ValueError):
+        return data
+    return data if s.status != "done" and s.playbook in COLLECTING else None
+
+
+def _sessions(workspace: Path) -> list[Path]:
+    folder = Path(workspace) / MARKERS
+    return sorted(p for p in folder.glob("*.json") if safe_session(p.stem)) if folder.is_dir() else []
+
+
+def prune(workspace: Path) -> None:
+    """Remove every stale marker (a session that ended without collect off leaves one behind) and the
+    old one-per-workspace marker, which belongs to no session. Live markers of other sessions stay."""
+    (Path(workspace) / LEGACY_MARKER).unlink(missing_ok=True)
+    for marker in _sessions(workspace):
+        if _live(workspace, marker) is None:
+            marker.unlink(missing_ok=True)
+
+
+def others(workspace: Path, session: str) -> list[dict]:
+    """The live markers of the other sessions in this workspace: [{"session", "run"}]."""
+    out = []
+    for marker in _sessions(workspace):
+        data = _live(workspace, marker) if marker.stem != session else None
+        if data is not None:
+            out.append({"session": marker.stem, "run": data["run"]})
+    return out
+
+
+def collect_on(workspace: Path, run_path: Path, session: str) -> str:
+    """Write this session's marker for this run (it replaces this session's own marker only), after
+    removing stale ones; returns the run, workspace-relative."""
+    if safe_session(session) is None:
+        raise ValueError(f"{session!r} is not a Claude Code session id (letters, digits, - and _ only).")
     run = RunFolder.open(run_path)
     try:
         rel = run.path.resolve().relative_to(Path(workspace).resolve()).as_posix()
@@ -253,10 +290,11 @@ def collect_on(workspace: Path, run_path: Path) -> str:
     if s.status == "done":
         raise ValueError(f"{run.path.name} is finished, so nothing more is collected for it. Start the "
                          "next run with tm run new, then turn collection on for that run.")
-    marker = Path(workspace) / MARKER
-    marker.parent.mkdir(parents=True, exist_ok=True)
-    with _locked(marker.with_name(LOCK)):        # never between a spool's read and its removal
-        _write_json(marker, {"run": rel, "since": _now(), "session": None})
+    folder = Path(workspace) / MARKERS
+    folder.mkdir(parents=True, exist_ok=True)
+    with _locked(folder / LOCK):                 # one collect on, off or run new at a time
+        prune(workspace)
+        _write_json(marker_path(workspace, session), {"run": rel, "since": _now(), "session": session})
     return rel
 
 
@@ -265,23 +303,27 @@ def workspace_of(run: RunFolder) -> Path:
     return run.path.resolve().parents[2]
 
 
-def _marked(workspace: Path) -> Path | None:
-    """The run folder the marker names, as written; None without a readable marker."""
+def _marked(workspace: Path, session: str) -> Path | None:
+    """The run folder this session's marker names, as written; None without a readable marker."""
     try:
-        run = json.loads((Path(workspace) / MARKER).read_text(encoding="utf-8")).get("run")
+        run = json.loads(marker_path(workspace, session).read_text(encoding="utf-8")).get("run")
     except (OSError, ValueError, AttributeError):
         return None
     return Path(workspace) / run if isinstance(run, str) and run else None
 
 
-def turn_off(workspace: Path) -> bool:
-    """Remove the marker, whichever run it names (`tm run new` for a `COLLECTING` playbook's run
-    calls this). True if it was there."""
-    marker = Path(workspace) / MARKER
-    if not marker.is_file():
+def turn_off(workspace: Path, session: str | None) -> bool:
+    """Remove this session's marker, whichever run it names (`tm run new` for a `COLLECTING`
+    playbook's run calls this), and the stale ones; another session's live marker stays. True if this
+    session's marker was there. Without a session only stale markers go."""
+    folder = Path(workspace) / MARKERS
+    if not folder.is_dir():
+        (Path(workspace) / LEGACY_MARKER).unlink(missing_ok=True)
         return False
-    with _locked(marker.with_name(LOCK)):
-        if not marker.is_file():
+    with _locked(folder / LOCK):
+        prune(workspace)
+        marker = marker_path(workspace, session) if safe_session(session) else None
+        if marker is None or not marker.is_file():
             return False
         marker.unlink()
         return True
@@ -439,36 +481,29 @@ def _failed(run: RunFolder, tool: str, reason: str) -> None:
 
 
 def handle(event: dict, workspace: Path) -> dict | None:
-    """Save one PostToolUse event's answer into the collecting run, if the event comes from the
-    session that collects. Returns the hook output: the summary that replaces a search, a list or a
-    video page; a note to Claude when the answer could not be saved; else None. A `mcp_saves.SAVES`
-    tool is kept by `mcp_saves.save` in a run whose playbook keeps it (`mcp_saves.SAVED_BY`; None:
-    Claude sees it unchanged), its answer as it came, and ignored in any other run, before `_save` could file it under
-    02_research/other/. Any other (TrendsMesh, Ad Library) answer that is not JSON is not saved: it is
-    logged and Claude is told how to ingest the whole answer (`_not_json`); an isError result is the
-    tool's answer and is saved."""
-    if not (Path(workspace) / MARKER).is_file():
+    """Save one PostToolUse event's answer into the run its own session collects for (the marker
+    named by the event's `session_id`); an event of a session without a marker is never saved
+    anywhere. Returns the hook output: the summary that replaces a search, a list or a video page; a
+    note to Claude when the answer could not be saved; else None. A `mcp_saves.SAVES` tool is kept
+    by `mcp_saves.save` in a run whose playbook keeps it (`mcp_saves.SAVED_BY`; None: Claude sees it
+    unchanged), its answer as it came, and ignored in any other run, before `_save` could file it
+    under 02_research/other/. Any other (TrendsMesh, Ad Library) answer that is not JSON is not saved:
+    it is logged and Claude is told how to ingest the whole answer (`_not_json`); an isError result
+    is the tool's answer and is saved."""
+    session = safe_session(event.get("session_id"))
+    if session is None or not marker_path(workspace, session).is_file():
         return None
     tool_name = event.get("tool_name", "")
     tool = short_name(tool_name)
     kept = tool in mcp_saves.SAVES
     if not kept and not str(tool_name).startswith("mcp__"):
         return None                                   # a built-in tool the collector does not keep (ArtifactComments)
-    if kept:
-        # A Meta or artifacts call never claims, or is saved for, another playbook's marker: a
-        # parallel refresh-ad session's Meta reads would otherwise take a trend research marker.
-        run = active_run(workspace)
-        given = event.get("tool_input") if event.get("tool_input") is not None else {}
-        if run is None or not mcp_saves.kept_by(state.load(run).playbook, tool, given):
-            return None
-        if not claim(workspace, event.get("session_id")):
-            return None
-    else:
-        if not claim(workspace, event.get("session_id")):
-            return None
-        run = active_run(workspace)
-        if run is None:
-            return None
+    run = active_run(workspace, session)
+    if run is None:
+        return None
+    given = event.get("tool_input") if event.get("tool_input") is not None else {}
+    if kept and not mcp_saves.kept_by(state.load(run).playbook, tool, given):
+        return None                                   # not this playbook's (a trend research run keeps no Meta read)
     tool_input = event.get("tool_input") if event.get("tool_input") is not None else {}
     response = event.get("tool_response")
     try:
@@ -502,6 +537,8 @@ def add_parsers(sub: argparse._SubParsersAction) -> None:
                                        "brief or organic video run (or stop)")
     c.add_argument("state", choices=("on", "off"))
     c.add_argument("--run", required=True, help="the run folder")
+    c.add_argument("--session", help=f"the Claude Code session that collects (default: ${SESSION_ENV}, "
+                                     "which Claude Code sets for every command it runs)")
     c.add_argument("--json", action="store_true")
     s = sub.add_parser("spool", help="the PostToolUse hook: one event on stdin")
     s.add_argument("--event", help="read the event from this file instead of stdin")
@@ -534,7 +571,8 @@ def _spool(args: argparse.Namespace) -> int:
             raise ValueError("the hook event is not a JSON object")
         tool = short_name(event.get("tool_name") or "?")
         cwd = event.get("cwd")
-        workspace = find_workspace(Path(cwd) if isinstance(cwd, str) and cwd else paths.workspace())
+        workspace = find_workspace(Path(cwd) if isinstance(cwd, str) and cwd else paths.workspace(),
+                                   event.get("session_id"))
         result = handle(event, workspace) if workspace else None
     except Exception as exc:  # noqa: BLE001 - the hook never fails a tool call; the log says why
         _log(f"{tool}: {type(exc).__name__}: {exc}")
@@ -544,41 +582,76 @@ def _spool(args: argparse.Namespace) -> int:
     return 0
 
 
+NO_SESSION = (f"Collection is tied to the Claude Code session that turns it on, and this command was given no "
+              f"session: {SESSION_ENV} is not set (tm was not run by Claude Code, or by a version that does not "
+              "set it) and there is no --session. Collection stays off, so no answer is saved to the run by "
+              "itself: save each TrendsMesh or Ad Library answer with tm trends ingest, or update Claude Code "
+              "and turn collection on again.")
+
+
+def _session(args: argparse.Namespace) -> str:
+    """--session, else this session (`CLAUDE_CODE_SESSION_ID`); ValueError without one."""
+    if args.session is not None:
+        if safe_session(args.session) is None:
+            raise ValueError(f"--session {args.session!r} is not a Claude Code session id (letters, digits, "
+                             "- and _ only).")
+        return args.session
+    session = this_session()
+    if session is None:
+        raise ValueError(NO_SESSION)
+    return session
+
+
+def _also_collecting(rel: str, theirs: list[dict]) -> str:
+    """What collect on says about the other sessions collecting in this workspace."""
+    same = [o for o in theirs if o["run"] == rel]
+    other = sorted({Path(o["run"]).name for o in theirs if o["run"] != rel})
+    text = (" Another session collects for this run too: its answers are saved to it as well." if same else "")
+    if other:
+        n = len([o for o in theirs if o["run"] != rel])
+        text += (f" {n} other session{'s' if n > 1 else ''} collect{'' if n > 1 else 's'} in this workspace, "
+                 f"each into its own run ({', '.join(other)}).")
+    return text
+
+
 def _collect(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
         workspace = workspace_of(run)
+        session = _session(args)
         if args.state == "on":
             here = paths.workspace().resolve()     # the hook looks for the marker from Claude's folder
             if here != workspace and workspace not in here.parents:
                 raise ValueError(f"{run.path} is not a run in this workspace ({paths.workspace()}).")
-            rel = collect_on(workspace, run.path)
+            rel = collect_on(workspace, run.path, session)
+            theirs = others(workspace, session)
             playbook = state.load(run).playbook
             brief = playbook == playbooks.CREATIVE_BRIEF
             also = (" Its Meta reads (01_base/meta) and page answers (03_wip/decisions, 03_wip/publish) "
                     "are saved too, and Claude sees them whole." if brief else
                     " Its page answers (03_wip/decisions, 03_wip/publish) are saved too, and Claude sees them whole."
                     if playbook in mcp_saves.SAVED_BY else "")
-            first = "MCP" if playbook in mcp_saves.SAVED_BY else "TrendsMesh"   # a page call may come first
-            cli.emit(args, {"status": "done", "collecting": True, "run": Path(rel).name},
-                     f"Collecting for {rel}: every TrendsMesh and Ad Library answer of this session is "
-                     "saved to its 02_research folder, and searches, lists and video pages show Claude a "
-                     f"short summary instead of the whole answer.{also} Make the first {first} call "
-                     "within 10 minutes, or turn collection on again. Turn it off with tm trends collect off.")
+            payload = {"status": "done", "collecting": True, "run": Path(rel).name}
+            if theirs:
+                payload["other_sessions"] = [{"run": Path(o["run"]).name} for o in theirs]
+            cli.emit(args, payload,
+                     f"Collecting for {rel} in this Claude Code session: every TrendsMesh and Ad Library answer "
+                     "of this session is saved to its 02_research folder, and searches, lists and video pages "
+                     f"show Claude a short summary instead of the whole answer.{also} Answers of other sessions "
+                     f"are never saved to it.{_also_collecting(rel, theirs)} Turn it off with tm trends collect off.")
             return 0
         name = run.path.resolve().name
-        named = _marked(workspace)
+        named = _marked(workspace, session)
         if named is not None and named.resolve() != run.path.resolve():
             cli.emit(args, {"status": "done", "collecting": True, "run": named.name},
-                     f"Collection is on for {named.name}, not {name}, so it is left on.")
+                     f"Collection in this session is on for {named.name}, not {name}, so it is left on.")
             return 0
-        if not turn_off(workspace):
+        if not turn_off(workspace, session):
             cli.emit(args, {"status": "none", "collecting": False, "run": name},
-                     f"No collection marker was found in {workspace}, so collection was not on for {name}: "
-                     "nothing was turned off.")
+                     f"Collection was not on for {name} in this session: nothing was turned off.")
             return 0
         cli.emit(args, {"status": "done", "collecting": False, "run": name},
-                 f"Collection is off: TrendsMesh answers are no longer saved to {name}.")
+                 f"Collection is off: this session's TrendsMesh answers are no longer saved to {name}.")
         return 0
     except (OSError, ValueError) as exc:
         return cli.fail(args, str(exc))

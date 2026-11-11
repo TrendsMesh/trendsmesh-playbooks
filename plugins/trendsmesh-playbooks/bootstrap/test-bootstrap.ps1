@@ -193,8 +193,8 @@ try { throw 'no network' } catch { Write-Host "Error: 'https://github.com/x.zip'
 
     # The PostToolUse collector (collect-mcp.ps1), through the exact hooks.json command, with the
     # event on stdin. The plugin root is a copy whose bin\tm.cmd is a stub that records what it got,
-    # so no pixi runs. Without .trendsmesh\collect.json in the event's cwd (or a folder above it) it
-    # exits 0, prints nothing and never starts tm.
+    # so no pixi runs. Without the event's own session's marker, .trendsmesh\collect\<session_id>.json,
+    # in the event's cwd (or a folder above it) it exits 0, prints nothing and never starts tm.
     $stubRoot = Join-Path $tmp 'stub plugin'
     New-Item -ItemType Directory -Force -Path (Join-Path $stubRoot 'bootstrap'), (Join-Path $stubRoot 'bin') | Out-Null
     Copy-Item (Join-Path $here 'collect-mcp.ps1') (Join-Path $stubRoot 'bootstrap\collect-mcp.ps1')
@@ -222,22 +222,26 @@ try { throw 'no network' } catch { Write-Host "Error: 'https://github.com/x.zip'
     if (Test-Path (Join-Path $stubRoot 'bin\args.txt')) { Fail 'the collector started tm without a marker' }
     # A marker in the workspace, Claude inside the run folder: the event goes to tm trends spool
     # (through a file) as it came, and only tm's stdout is printed.
-    New-Item -ItemType Directory -Force -Path (Join-Path $ws '.trendsmesh') | Out-Null
-    [IO.File]::WriteAllText((Join-Path $ws '.trendsmesh\collect.json'), '{"run": "runs/04-trend-research/2026-11-07_beauty", "since": "2026-11-07T09:00:00+00:00"}')
+    New-Item -ItemType Directory -Force -Path (Join-Path $ws '.trendsmesh\collect') | Out-Null
+    $mine = Join-Path $ws '.trendsmesh\collect\s.json'
+    [IO.File]::WriteAllText($mine, '{"run": "runs/04-trend-research/2026-11-07_beauty", "since": "2026-11-07T09:00:00+00:00", "session": "s"}')
     $out = Invoke-Native { $event | & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $hookFile 2>$null }
     if ($script:rc -ne 0) { Fail "the collector exited $($script:rc) with a marker" }
     if ($out -ne '{"hookSpecificOutput": {"hookEventName": "PostToolUse"}}') { Fail "the collector printed: $out" }
     $got = (Get-Content -Raw (Join-Path $stubRoot 'bin\args.txt')).Trim()
     if ($got -notlike 'trends spool --event *') { Fail "the collector did not run tm trends spool --event: $got" }
     if ((Get-Content -Raw (Join-Path $stubRoot 'bin\event.txt')).Trim() -ne $event) { Fail 'tm got another event' }
-    # A marker another session claimed: tm is not started for this one.
+    # Another session's marker, or the old one-per-workspace collect.json: tm is not started for this
+    # session's answer (issue #1).
     Remove-Item (Join-Path $stubRoot 'bin\args.txt')
-    [IO.File]::WriteAllText((Join-Path $ws '.trendsmesh\collect.json'), '{"run": "runs/04-trend-research/2026-11-07_beauty", "session": "other session"}')
+    Move-Item $mine (Join-Path $ws '.trendsmesh\collect\other-session.json')
+    [IO.File]::WriteAllText((Join-Path $ws '.trendsmesh\collect.json'), '{"run": "runs/04-trend-research/2026-11-07_beauty", "session": "s"}')
     $out = Invoke-Native { $event | & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $hookFile }
     if ($script:rc -ne 0 -or $out) { Fail "the collector answered for another session: $out" }
     if (Test-Path (Join-Path $stubRoot 'bin\args.txt')) { Fail 'the collector started tm for another session' }
+    Remove-Item (Join-Path $ws '.trendsmesh\collect.json')
     # tm fails (the engine never ran): exit 0, one fixed line telling Claude, a line in the run's log.
-    [IO.File]::WriteAllText((Join-Path $ws '.trendsmesh\collect.json'), '{"run": "runs/04-trend-research/2026-11-07_beauty", "session": "s"}')
+    [IO.File]::WriteAllText($mine, '{"run": "runs/04-trend-research/2026-11-07_beauty", "session": "s"}')
     [IO.File]::WriteAllText((Join-Path $stubRoot 'bin\tm.cmd'), "@echo off`r`necho broken 1>&2`r`nexit /b 1`r`n")
     $out = Invoke-Native { $event | & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $hookFile 2>$null }
     if ($script:rc -ne 0) { Fail "the collector exited $($script:rc) when tm failed" }

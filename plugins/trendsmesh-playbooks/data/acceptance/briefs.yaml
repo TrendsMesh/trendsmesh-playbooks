@@ -64,13 +64,13 @@ cases:
     proves: "the collector reads the real TrendsMesh MCP into the brief run, and the shortlist is made from what it saved"
     needs: [trendsmesh]
     steps:
-      - "Go on from B3's run folder to the trend step. The claim window runs from `tm trends collect on` at A1, so check that the collector claimed this session's calls for this run."
+      - "Go on from B3's run folder to the trend step. Collection is this session's from `tm trends collect on` at A1, so check that the collector saved this session's calls into this run."
       - "Run `tm trends check-fields` on the run, then `tm trends shortlist`."
       - "Note in the record: whether `list_trends` took `format_trend` and `sound_trend`; whether the cards carry `visible_until` and a sound licence (`check-fields` looks at neither); the exact Meta and artifacts tool names the session showed (the matcher's)."
       - "Note in the record whether each `search_trends` answer reached the agent whole or as Claude Code's \"output too large\" notice, and whether the brief run's saved searches hold cards or that notice."
     pass: >-
-      The collector saved searches, cards and videos into the brief run (claimed by this session
-      after `collect on` at A1); `tm trends check-fields` exits 0 on its fixed list; the shortlist
+      The collector saved searches, cards and videos into the brief run (this session's, after
+      `collect on` at A1); `tm trends check-fields` exits 0 on its fixed list; the shortlist
       has hooks and topics. The note holds the items above.
     judge: null
 

@@ -570,14 +570,14 @@ def organic_ws(tmp_path, monkeypatch, capsys):
     return workspace, run
 
 
-def test_collect_on_in_an_organic_run_says_mcp_and_its_help_names_it(organic_ws, capsys):
-    """PR B review Minor 1 / Task 7 Minor 3: a production run's first collected call is a page call
-    (publish_files), so the claim window names the first MCP call; the help names organic video."""
+def test_collect_on_in_an_organic_run_says_what_it_keeps_and_its_help_names_it(organic_ws, capsys):
+    """PR B review Minor 1 / Task 7 Minor 3: collect on says an organic run keeps its page answers, and
+    collects for this session only (issue #1: no claim window any more); the help names organic video."""
     _, run = organic_ws
     capsys.readouterr()
     assert main(["trends", "collect", "on", "--run", str(run.path)]) == 0
     out = capsys.readouterr().out
-    assert "Make the first MCP call within 10 minutes" in out
+    assert "in this Claude Code session" in out and "within 10 minutes" not in out
     assert "page answers (03_wip/decisions, 03_wip/publish) are saved too" in out
     assert main(["trends", "--help"]) == 0
     help_text = " ".join(capsys.readouterr().out.split())
@@ -613,7 +613,7 @@ def test_meta_read_never_saved_in_an_organic_run(organic_ws, capsys, tmp_path):
     ws, run = organic_ws
     for tool in ("ads_get_ad_accounts", "ads_get_creatives"):
         assert trend_spool.handle(_event(ws, META, tool, {}, {"data": []}, session="refresh"), ws) is None
-    assert json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))["session"] is None   # never claimed
+    assert [p.name for p in (ws / trend_spool.MARKERS).iterdir()] == ["s1.json"]   # never another session's
     answer = tmp_path / "answer.json"
     answer.write_text('{"data": []}', encoding="utf-8")
     code, out = _cli(capsys, "trends", "ingest", "--run", str(run.path), "--tool", META + "ads_get_creatives",

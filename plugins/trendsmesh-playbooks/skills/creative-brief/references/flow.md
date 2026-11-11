@@ -14,8 +14,8 @@ brief.json), and **E2** is its section F (decisions and the hand-off to PB1).
 - **Every MCP answer of the run is saved by the collector** (`trend-collection.md`): TrendsMesh,
   the Meta reads and the page tools. `tm trends collect on --run R` runs right before the run's
   first MCP call (A1, right before `ads_get_ad_accounts`), and **again at every resume, in any
-  step**, right before the next MCP call. The marker it writes is claimed by the first call that
-  follows, which must come within 10 minutes: run it immediately before the call, never earlier.
+  step**, right before the next MCP call. The marker it writes is this session's own: only this
+  session's answers are saved to the run.
   If an answer comes with "This answer was not saved…", save it with `tm trends ingest` as it
   says.
 - **JSON you write goes into a file** with the Write tool, a new `_vNN` for every change, never
@@ -61,8 +61,7 @@ brief.json), and **E2** is its section F (decisions and the hand-off to PB1).
   has lines that are not JSON rows: they are left out). Then `tm run new --playbook
   creative-brief --name <name> --seed <seed_id> --json`: the whole pick is kept as
   `00_raw/seed.json`, and the intake card starts from its category and market.
-- **Collection is not turned on yet**: the claim window is 10 minutes from `collect on`, so it is
-  turned on at A1, right before the first Meta call.
+- **Collection is not turned on yet**: it is turned on at A1, right before the first Meta call.
 - `tm done A0 --run R`.
 
 <a id="a1"></a>

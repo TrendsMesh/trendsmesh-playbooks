@@ -1,16 +1,18 @@
 #!/bin/sh
 # PostToolUse hook for the TrendsMesh tools, the Ad Library search, and a creative brief's Meta reads
 # and artifacts answers (macOS, Linux, and Windows with Git Bash; collect-mcp.ps1 is the same for
-# Windows without Git Bash). While a trend research or creative brief run collects (`tm trends
-# collect on` wrote <workspace>/.trendsmesh/collect.json), it hands the event to `tm trends spool`,
+# Windows without Git Bash). While this session collects for a trend research, creative brief or
+# organic video run (`tm trends collect on` wrote <workspace>/.trendsmesh/collect/<session_id>.json,
+# one marker per Claude Code session), it hands the event to `tm trends spool`,
 # which saves the answer into the run and prints the summary Claude sees instead of a search, a list
 # or a video page. hooks.json's matcher picks the tools; this script has no filter of its own. It
 # always exits 0.
 #
 # The workspace comes from the event's `cwd` on stdin (paths.json knows the plugin, not the
 # workspace): that folder, or the nearest one above it holding the marker, as Claude may have gone
-# into a run folder. With no marker, or a marker claimed by another session (`session` in it is not
-# this event's `session_id`), it exits at once, without starting Python. Values are read with awk's
+# into a run folder. With no marker of this event's own `session_id` (other sessions' markers, the
+# old one-per-workspace collect.json, a session id that is not a plain file name), it exits at once,
+# without starting Python. Values are read with awk's
 # leftmost match, not json-fields.awk, which takes half a second on a 400 KB search answer; a key
 # inside the answer's text is escaped (\"cwd\"), so only the event's own keys match.
 #
@@ -26,15 +28,16 @@ value() {  # the first string value of key $1 in the JSON on stdin, unescaped
 event=$(cat)
 cwd=$(printf '%s\n' "$event" | value cwd | tr '\\' '/')
 [ -n "$cwd" ] || exit 0
+session=$(printf '%s\n' "$event" | value session_id)
+case $session in ''|*[!A-Za-z0-9_-]*) exit 0 ;; esac   # tm's own rule (trend_spool.safe_session)
+[ "${#session}" -le 128 ] || exit 0
 dir=${cwd%/}
-while [ ! -f "$dir/.trendsmesh/collect.json" ]; do
+while [ ! -f "$dir/.trendsmesh/collect/$session.json" ]; do
   up=${dir%/*}
   if [ -z "$up" ] || [ "$up" = "$dir" ]; then exit 0; fi
   dir=$up
 done
-marker="$dir/.trendsmesh/collect.json"
-owner=$(value session < "$marker")
-if [ -n "$owner" ] && [ "$owner" != "$(printf '%s\n' "$event" | value session_id)" ]; then exit 0; fi
+marker="$dir/.trendsmesh/collect/$session.json"
 
 # bin/tm finds the plugin from these (else from ~/.trendsmesh/paths.json): this plugin's own root,
 # so the engine and the hook come from the same version.

@@ -444,7 +444,7 @@ def test_trends_cases_are_worked_from_the_suite_folder(ws, capsys, monkeypatch):
     monkeypatch.setenv("TM_WORKSPACE", str(folder))
     assert main(["trends", "collect", "on", "--run", str(t1), "--json"]) == 0
     capsys.readouterr()
-    assert (folder / ".trendsmesh" / "collect.json").is_file() and not (ws / ".trendsmesh").exists()
+    assert trend_spool.marker_path(folder, "s1").is_file() and not (ws / ".trendsmesh").exists()
     assert main(after) == 0
     weekly = RunFolder.open(json.loads(capsys.readouterr().out)["path"])
     assert weekly.path.parent == t2.parent

@@ -34,8 +34,7 @@ posts.
   (B1, right before the first `search_trends`), **again at every resume, in any step**, right
   before the next MCP call, and **in each production run right before its first page publish**
   (the marker is per run: an idea run's marker does not collect for the production run). The
-  marker is claimed by the first call that follows, which must come within 10 minutes: run it
-  immediately before the call, never earlier. If an answer comes with "This answer was not
+  marker is this session's own: only this session's answers are saved to the run. If an answer comes with "This answer was not
   saved…", save it with `tm trends ingest` as it says. `tm trends collect off --run R` at the end
   of each run (C3, H1).
 - **JSON you write goes into a file** with the Write tool, a new `_vNN` for every change, never
@@ -136,8 +135,7 @@ posts.
      same name> --after <that run's folder> --json`, then `tm config write --run R --from-previous`
      (its config, outputs and level; no intake questions), then the stack check above, `tm done A0`,
      and `reuse_profile` reuses the confirmed profile.
-6. **Collection is not turned on yet**: the claim window is 10 minutes from `collect on`, so it is
-   turned on at B1, right before the first search.
+6. **Collection is not turned on yet**: it is turned on at B1, right before the first search.
 7. `tm done A0 --run R` (refused until the config passes and names the channels, and the stack is
    recorded).
 

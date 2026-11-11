@@ -32,23 +32,33 @@ the Meta reads and the page tools' answers, and in an organic video run the page
   `ads_get_ad_accounts`; and at every resume, in any step, right before the next MCP call of any
   of the three. **An organic video run** turns it on at B1, right before the first
   `search_trends`; at every resume, right before the next TrendsMesh or page call; and **in each
-  production run, right before its first page publish** (`Artifact`, or the older `publish_files`): the marker names one
-  run, so the idea run's marker never collects for a production run. It writes the marker
-  `<workspace>/.trendsmesh/collect.json` with no session, and the first answer that reaches the
-  hook claims it for its session. Answers of every other session are left alone, so a refresh-ad
-  session in the same workspace never feeds this run. A Meta read never claims the marker of
-  another playbook's run: only a creative brief run collects it. A page tool's answer is kept by
-  a creative brief or an organic video run only.
-- **The 10-minute window** applies only between `collect on` and that first call: an unclaimed
-  marker older than that expires (it is treated as off). Once claimed it stays with its session,
-  however long the run takes. So run `collect on` immediately before the call, never earlier. Two
-  sessions of the same workspace calling TrendsMesh inside the window race for the claim: run one
-  trend research session at a time.
+  production run, right before its first page publish** (`Artifact`, or the older
+  `publish_files`): the marker names one run, so the idea run's marker never collects for a
+  production run.
+- **One marker per session.** `collect on` writes `<workspace>/.trendsmesh/collect/<session>.json`
+  for the Claude Code session it runs in: Claude Code gives every command it runs that session's id
+  (`CLAUDE_CODE_SESSION_ID`, the same id its hooks receive), and `--session <id>` names one by
+  hand. An answer is saved only into the run its own session turned collection on for (a
+  subagent's calls count as its session's); a session that did not turn it on (a refresh-ad
+  session, a session of another run) has nothing saved, anywhere. So several sessions can run playbooks in one
+  workspace at the same time, each collecting into its own run. `collect on` never takes or
+  changes another session's marker; it says which other sessions collect in the workspace, and
+  when one collects for the same run. A Meta read is kept by a creative brief run only, and a page
+  tool's answer by a creative brief or an organic video run only.
+- Without a session id (tm not run by Claude Code, or by a version that does not set it, and no
+  `--session`), `collect on` refuses: nothing would tie the answers to this session. Save each
+  answer with `tm trends ingest` (the fallback below), or update Claude Code and turn it on again.
+- The marker has no time limit: it collects for its session however long the run takes. Turning
+  it on again (a resume) only rewrites this session's own marker.
 - `tm trends collect off --run R` **at the end of the run** (trend research: after E3; creative
-  brief: after E2; organic video: an idea run after C3, a production run after H1). `tm run new`
-  for a new trend research, creative brief or organic video run also turns it off; another
-  playbook's `run new` leaves it. One marker per workspace: the run that turned it on
-  last collects, so run one collecting session at a time.
+  brief: after E2; organic video: an idea run after C3, a production run after H1) removes this
+  session's marker. `tm run new` for a new trend research, creative brief or organic video run
+  also turns this session's collection off; another playbook's `run new` leaves it, and another
+  session's collection always stays on.
+- **Stale markers** (a session that ended without `collect off`): a marker whose run is finished
+  or gone, or that cannot be read, collects nothing, and every `collect on` removes it, as well as
+  the old one-per-workspace `.trendsmesh/collect.json` of 0.10.0 and earlier, which belongs to no
+  session and is never used.
 - `collect on` refuses a run of another playbook and a finished run.
 
 ## What you see instead of the answer
@@ -102,8 +112,8 @@ content (the evidence videos at D1: `tm research evidence` gives the top five pe
   `tm trends ingest … --file <the file the notice names>`, with the input as above. A tool's own
   plain-text message (a limit, an outage) is not saved and needs nothing.
 - **Nothing is said, and the whole answer came back** (the claude.ai connector, collection off,
-  or a new session that did not turn it on again): run `collect on` right before the next call;
-  if answers still come back whole, use the fallback.
+  or a new session that did not turn it on again for itself): run `collect on` right before the
+  next call; if answers still come back whole, use the fallback.
 
 ## The fallback: no collector in this session
 
@@ -124,6 +134,5 @@ each meter with the pull's size (`tm research fetch-plan`'s `calls_estimate`, pl
 checks; in a brief, the pages of every trend whose videos you read). If it is short, say so plainly
 ("TrendsMesh allows N more calls until <reset time>; the pull needs about M"), stop and wait for
 the reset, then continue from the same place and fetch only what is not saved yet. In the same
-session the claim holds; in a new session it is a resume: `collect on` right before the next
-call. A rate limit
-hit mid-pull is handled the same way.
+session collection stays on; in a new session it is a resume: `collect on` right before the next
+call. A rate limit hit mid-pull is handled the same way.

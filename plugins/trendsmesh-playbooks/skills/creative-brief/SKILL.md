@@ -129,8 +129,7 @@ from what it says. Before you do, plan or describe a step's work, read its secti
   happened, what to do, and that the run continues from the same place.
 - **Collection:** `tm trends collect on --run R` right before the run's first MCP call (A1's
   `ads_get_ad_accounts`), **again at every resume, in any step**, right before the next MCP call
-  (the 10-minute claim window runs only from `collect on` to that call), and `tm trends collect
-  off --run R` at the end (E2). An answer that comes with "This answer was not saved…" is saved
+  (it collects for this session only), and `tm trends collect off --run R` at the end (E2). An answer that comes with "This answer was not saved…" is saved
   with `tm trends ingest`, as it says (`references/trend-collection.md`).
 - **What the concepts rest on:** at B3, `tm evidence trendsmesh --run R --why "<reason>"` when
   TrendsMesh answers with trend data, `tm evidence guess --run R --why "<reason>"` when it does

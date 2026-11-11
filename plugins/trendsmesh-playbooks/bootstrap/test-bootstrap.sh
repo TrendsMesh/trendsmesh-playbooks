@@ -243,7 +243,8 @@ fi  # not Windows
 
 # The PostToolUse collector (collect-mcp.sh), through the exact hooks.json command. It finds the
 # workspace from the event's cwd (or a folder above it) and starts tm only when that workspace has
-# .trendsmesh/collect.json. A stub pixi records what tm was given.
+# the event's own session's marker, .trendsmesh/collect/<session_id>.json. A stub pixi records what
+# tm was given.
 hook=$(awk -f "$HERE/json-fields.awk" "$ROOT/hooks/hooks.json" | awk -F '\t' '
   $1 == "hooks.PostToolUse.0.matcher" { sub(/^[^\t]*\t/, ""); print "M\t" $0 }
   $1 == "hooks.PostToolUse.0.hooks.0.command" { sub(/^[^\t]*\t/, ""); print "C\t" $0 }')
@@ -264,8 +265,9 @@ mkdir -p "$RUNDIR/02_research"
 event() {  # cwd [session]: the input and the answer's text hold a "cwd" of their own, which must not count
   printf '{"session_id":"%s","transcript_path":"/t.jsonl","cwd":"%s","hook_event_name":"PostToolUse","tool_name":"mcp__plugin_trendsmesh-playbooks_trendsmesh__get_trend_videos","tool_input":{"trend_id":"t1","cwd":"/elsewhere"},"tool_response":[{"type":"text","text":"{\\"cwd\\":\\"/elsewhere\\",\\"data\\":[],\\"page\\":1,\\"has_more\\":false}"}],"tool_use_id":"x"}' "${2:-s}" "$1"
 }
-marker() {  # session: null or a quoted id, written as tm trends collect on writes it (indent 2)
-  printf '{\n  "run": "runs/04-trend-research/2026-11-07_beauty",\n  "since": "2026-11-07T09:00:00+00:00",\n  "session": %s\n}\n' "$1" > "$WS/.trendsmesh/collect.json"
+marker() {  # session: its marker, written as tm trends collect on writes it (indent 2)
+  rm -f "$WS/.trendsmesh/collect/"*.json
+  printf '{\n  "run": "runs/04-trend-research/2026-11-07_beauty",\n  "since": "2026-11-07T09:00:00+00:00",\n  "session": "%s"\n}\n' "$1" > "$WS/.trendsmesh/collect/$1.json"
 }
 cat > "$CLAUDE_PLUGIN_DATA/pixi/bin/pixi" <<'STUB'
 #!/bin/sh
@@ -288,8 +290,8 @@ limit=200; [ -z "$WIN" ] || limit=1000   # Git Bash starts processes slowly
 [ "$took" -lt "$limit" ] || fail "the collector took $took ms without a marker (limit $limit ms)"
 # A marker in the workspace, Claude inside the run folder (its cwd written with backslashes, as on
 # Windows): the event goes to tm trends spool as it came, and only tm's stdout is printed.
-mkdir -p "$WS/.trendsmesh"
-marker null
+mkdir -p "$WS/.trendsmesh/collect"
+marker s
 INSIDE=$(printf '%s' "$RUNDIR/02_research" | sed 's|/|\\\\|g')
 out=$(event "$INSIDE" | sh -c "$cmd" 2>"$TMP/err") || fail "the collector exited non-zero"
 [ "$out" = '{"hookSpecificOutput": {"hookEventName": "PostToolUse"}}' ] || fail "the collector printed: $out"
@@ -297,14 +299,22 @@ out=$(event "$INSIDE" | sh -c "$cmd" 2>"$TMP/err") || fail "the collector exited
 grep -qxF '[spool]' "$CLAUDE_PLUGIN_DATA/pixi/spool-args" && grep -qxF '[trends]' "$CLAUDE_PLUGIN_DATA/pixi/spool-args" \
   || fail "the collector did not run tm trends spool: $(cat "$CLAUDE_PLUGIN_DATA/pixi/spool-args")"
 [ "$(cat "$CLAUDE_PLUGIN_DATA/pixi/spool-stdin")" = "$(event "$INSIDE")" ] || fail "tm got another event"
-# A marker another session claimed: that session's answers only; tm is not started for this one.
+# Another session's marker, the old one-per-workspace collect.json, or a session id that is not a
+# file name: tm is not started for this session's answer (issue #1).
 rm -f "$CLAUDE_PLUGIN_DATA/pixi/spool-args"
-marker '"other session"'
+marker other-session
+printf '{"run": "runs/04-trend-research/2026-11-07_beauty", "session": "s"}' > "$WS/.trendsmesh/collect.json"
 out=$(event "$WS" | sh -c "$cmd") || fail "the collector exited non-zero for another session"
 [ -z "$out" ] && [ ! -e "$CLAUDE_PLUGIN_DATA/pixi/spool-args" ] || fail "the collector ran for another session: $out"
-marker '"s"'
+rm -f "$WS/.trendsmesh/collect.json"
+mkdir -p "$WS/.trendsmesh/collect/x"
+printf '{}' > "$WS/.trendsmesh/collect/x/s.json"
+out=$(event "$WS" x/s | sh -c "$cmd") || fail "the collector exited non-zero for an unsafe session id"
+[ -z "$out" ] && [ ! -e "$CLAUDE_PLUGIN_DATA/pixi/spool-args" ] || fail "the collector ran for session x/s: $out"
+rm -rf "$WS/.trendsmesh/collect/x"
+marker s
 out=$(event "$WS" | sh -c "$cmd" 2>/dev/null) || fail "the collector exited non-zero for its session"
-[ -e "$CLAUDE_PLUGIN_DATA/pixi/spool-args" ] || fail "the collector did not run for the session that claimed it"
+[ -e "$CLAUDE_PLUGIN_DATA/pixi/spool-args" ] || fail "the collector did not run for the session that turned it on"
 # A ./tm.sh in the workspace is never run, by a user's session or an eval: the engine is bin/tm.
 printf '#!/bin/sh\nd=$(dirname "$0")\nfor a in "$@"; do printf "[%%s]\\n" "$a"; done > "$d/shim-args"\necho "{\\"from\\": \\"shim\\"}"\n' > "$WS/tm.sh"
 rm -f "$CLAUDE_PLUGIN_DATA/pixi/spool-args"

@@ -43,6 +43,19 @@ def _on(ws: Path, capsys) -> None:
     capsys.readouterr()
 
 
+def _marker(ws: Path, session: str = "s1", run: str = RUN_REL, since: str | None = None) -> Path:
+    """A session's marker, written as `tm trends collect on` writes it."""
+    path = trend_spool.marker_path(ws, session)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"run": run, "since": since or trend_spool._now(), "session": session}),
+                    encoding="utf-8")
+    return path
+
+
+def _read_marker(ws: Path, session: str = "s1") -> dict:
+    return json.loads(trend_spool.marker_path(ws, session).read_text(encoding="utf-8"))
+
+
 def _event(ws: Path, tool: str, tool_input: dict, answer, *, prefix: str = FULL, cwd: Path | None = None,
            session: str = "s1") -> dict:
     text = answer if isinstance(answer, str) else json.dumps(answer)
@@ -183,9 +196,7 @@ def test_done_run_or_pb01_run_is_ignored(ws, capsys):
     # the three collecting playbooks are named, now that organic video's skill ships too
     message = json.loads(capsys.readouterr().out)["message"]
     assert "Collection is only for runs of Trend research, Creative brief and Organic AI video." in message
-    marker = ws / trend_spool.MARKER
-    marker.parent.mkdir()
-    marker.write_text(json.dumps({"run": "runs/01-refresh-ad/2026-11-07_ad", "since": "x"}), encoding="utf-8")
+    _marker(ws, run="runs/01-refresh-ad/2026-11-07_ad")
     event = _event(ws, "get_trend_videos", {"trend_id": "t1"}, {"data": [], "page": 1, "has_more": False})
     assert trend_spool.handle(event, ws) is None
     assert not (ad.path / "02_research" / "videos").exists()
@@ -239,16 +250,95 @@ def test_an_error_result_without_json_is_still_saved(ws, capsys):
 
 
 def test_other_sessions_are_left_alone(ws, monkeypatch, capsys):
+    """The marker belongs to the session that ran collect on (CLAUDE_CODE_SESSION_ID), from the start:
+    an answer of any other session, or of none, is never saved, whichever reaches the hook first."""
     _on(ws, capsys)
-    assert json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))["session"] is None
-    mine = _event(ws, "search_trends", {"about": "nails"}, {"data": [{"id": "a"}]})
-    assert _summary(trend_spool.handle(mine, ws))["results"] == 1               # claims the marker
-    assert json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))["session"] == "s1"
+    assert _read_marker(ws) == {"run": RUN_REL, "since": _read_marker(ws)["since"], "session": "s1"}
     other = _event(ws, "search_trends", {"about": "lashes"}, {"data": [{"id": "b"}]}, session="s2")
-    assert trend_spool.handle(other, ws) is None
+    assert trend_spool.handle(other, ws) is None                                # first, and still not saved
     assert _spool(monkeypatch, capsys, other) == ""
     assert _spool(monkeypatch, capsys, {**other, "session_id": None}) == ""
+    mine = _event(ws, "search_trends", {"about": "nails"}, {"data": [{"id": "a"}]})
+    assert _summary(trend_spool.handle(mine, ws))["results"] == 1
     assert _saved(ws) == ["search/search_nails.json"]
+    assert sorted(p.name for p in (ws / trend_spool.MARKERS).iterdir()) == ["s1.json"]   # nothing claimed
+
+
+def test_parallel_sessions_each_collect_into_their_own_run(ws, monkeypatch, capsys):
+    """Issue #1: four sessions in one workspace. Each answer goes to the run its own session turned
+    collection on for; a refresh-ad session's Meta read and a session that never turned it on are
+    saved nowhere."""
+    _on(ws, capsys)                                                             # s1: trend research
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "brief")
+    brief = _brief_on(ws, capsys)                                               # brief: creative brief
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "s1")
+    assert _read_marker(ws)["run"] == RUN_REL                                   # s1's marker is untouched
+    assert _read_marker(ws, "brief")["run"] == BRIEF_REL
+
+    ads = {"data": [{"ad_creative_bodies": ["Glow"]}]}
+    meta = "mcp__claude_ai_Meta_Ads__"
+    assert trend_spool.handle(_event(ws, "ads_library_search", {"search_terms": "glow"}, ads, prefix=meta,
+                                     session="brief"), ws) is None
+    assert _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "nails"}, {"data": []}), ws))[
+        "saved_to"] == f"{RUN_REL}/02_research/search/search_nails.json"
+    assert _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "serum"}, {"data": []},
+                                              session="brief"), ws))[
+        "saved_to"] == f"{BRIEF_REL}/02_research/search/search_serum.json"
+    for session in ("refresh", "s1"):            # a refresh-ad session; the trend research run keeps no Meta read
+        assert trend_spool.handle(_event(ws, "ads_get_ad_entities", {"level": "ad"}, {"data": []}, prefix=meta,
+                                         session=session), ws) is None
+    assert trend_spool.handle(_event(ws, "ads_get_ad_entities", {"level": "ad"}, {"data": []}, prefix=meta,
+                                     session="brief"), ws) is None
+    assert trend_spool.handle(_event(ws, "get_trend", {"trend_id": "t1"}, {"id": "t1"}, session="video"), ws) is None
+
+    assert _saved(ws) == ["search/search_nails.json"]
+    brief_files = sorted(p.relative_to(brief.path).as_posix() for p in brief.path.rglob("*.json")
+                         if p.name != "run.json")
+    assert brief_files == ["01_base/meta/ads_get_ad_entities_v01.json", "02_research/ad_library/ads_glow.json",
+                           "02_research/search/search_serum.json"]
+
+
+def test_collect_on_says_which_other_sessions_collect(ws, monkeypatch, capsys):
+    """collect on never takes or overwrites another session's marker, and says who else collects here."""
+    _on(ws, capsys)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "brief")
+    run = RunFolder.create(ws, "ld", date(2026, 11, 7), playbook=CREATIVE_BRIEF)
+    assert main(["trends", "collect", "on", "--run", str(run.path), "--json"]) == 0
+    capsys.readouterr()
+    assert main(["trends", "collect", "on", "--run", str(run.path)]) == 0
+    text = capsys.readouterr().out
+    assert "1 other session collects in this workspace, each into its own run (2026-11-07_beauty)" in text
+    assert _read_marker(ws)["run"] == RUN_REL and _read_marker(ws, "brief")["run"] == BRIEF_REL
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "again")                      # a second session on the same run
+    assert main(["trends", "collect", "on", "--run", str(ws / RUN_REL)]) == 0
+    assert "Another session collects for this run too" in capsys.readouterr().out
+    assert _read_marker(ws)["run"] == RUN_REL
+
+
+def test_collect_on_without_a_session_refuses(ws, monkeypatch, capsys):
+    """No session id (not run by Claude Code, or an older one): collection cannot be tied to a session, so
+    it is refused instead of collecting for whichever session answers first. --session names one."""
+    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID")
+    assert main(["trends", "collect", "on", "--run", str(ws / RUN_REL), "--json"]) == 1
+    message = json.loads(capsys.readouterr().out)["message"]
+    assert "CLAUDE_CODE_SESSION_ID" in message and "--session" in message and "tm trends ingest" in message
+    assert not (ws / trend_spool.MARKERS).exists()
+    for bad in ("../../etc", "a b", ""):
+        assert main(["trends", "collect", "on", "--run", str(ws / RUN_REL), "--session", bad, "--json"]) == 1
+        capsys.readouterr()
+    assert not (ws / trend_spool.MARKERS).exists()
+    assert main(["trends", "collect", "on", "--run", str(ws / RUN_REL), "--session", "abc-1", "--json"]) == 0
+    capsys.readouterr()
+    assert _read_marker(ws, "abc-1")["session"] == "abc-1"
+    assert trend_spool.handle(_event(ws, "get_trend", {"trend_id": "t1"}, {"id": "t1"}, session="abc-1"), ws) is None
+    assert _saved(ws) == ["trend_t1.json"]
+
+
+def test_an_event_with_an_unsafe_session_id_is_ignored(ws, capsys):
+    _on(ws, capsys)
+    for session in ("../s1", "s1/../s1", "", None, 7):
+        assert trend_spool.handle(_event(ws, "get_trend", {"trend_id": "t1"}, {"id": "t1"}, session=session), ws) is None
+    assert _saved(ws) == []
 
 
 def test_refresh_ad_session_in_the_same_workspace_is_not_replaced(ws, monkeypatch, capsys):
@@ -262,15 +352,17 @@ def test_refresh_ad_session_in_the_same_workspace_is_not_replaced(ws, monkeypatc
     assert not (ad.path / "02_research" / "search").exists()
 
 
-def test_resume_turns_collection_on_again_for_the_new_session(ws, capsys):
+def test_resume_turns_collection_on_again_for_the_new_session(ws, monkeypatch, capsys):
     _on(ws, capsys)
     trend_spool.handle(_event(ws, "search_trends", {"about": "nails"}, {"data": []}), ws)
     later = _event(ws, "search_trends", {"about": "lashes"}, {"data": []}, session="resumed")
     assert trend_spool.handle(later, ws) is None
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "resumed")
     _on(ws, capsys)                                   # the skill does this on every resume
-    assert json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))["session"] is None
+    assert _read_marker(ws, "resumed")["session"] == "resumed"
     assert _summary(trend_spool.handle(later, ws))["saved_to"].endswith("search/search_lashes.json")
-    assert trend_spool.handle(_event(ws, "search_trends", {"about": "brows"}, {"data": []}), ws) is None
+    # the first session's own marker is its own: still on, for the same run
+    assert _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "brows"}, {"data": []}), ws))
 
 
 def test_errors_and_unknown_envelopes_are_saved_not_replaced(ws, capsys):
@@ -300,11 +392,8 @@ def test_a_tool_result_envelope_is_unwrapped_and_kept_in_shape(ws):
     failed = {"content": [{"type": "text", "text": "quota exceeded"}], "isError": True}
     assert trend_spool.parse_answer(failed) == ({"error": {"raw": "quota exceeded"}}, False)
 
-    _on_dir = ws / trend_spool.MARKER
-    _on_dir.parent.mkdir(exist_ok=True)
-    _on_dir.write_text(json.dumps({"run": RUN_REL, "since": trend_spool._now(), "session": None}),
-                       encoding="utf-8")
-    event = {**_event(ws, "get_trend_videos", {"trend_id": "t1"}, page), "tool_response": result}
+    _marker(ws)
+    event ={**_event(ws, "get_trend_videos", {"trend_id": "t1"}, page), "tool_response": result}
     out = trend_spool.handle(event, ws)["hookSpecificOutput"]["updatedToolOutput"]
     assert set(out) == {"content", "structuredContent"} and out["structuredContent"]["videos"] == 1
     assert json.loads(out["content"][0]["text"]) == out["structuredContent"]
@@ -317,16 +406,13 @@ def test_only_collecting_playbooks_collect(ws, capsys, playbook_two, bundled_ski
     assert trend_spool.COLLECTING == (TREND_RESEARCH, CREATIVE_BRIEF, ORGANIC_VIDEO)
     two = RunFolder.create(ws, "two", date(2026, 11, 7), playbook=playbook_two)
     ad = RunFolder.create(ws, "ad", date(2026, 11, 7), playbook=REFRESH_AD)
-    marker = ws / trend_spool.MARKER
-    marker.parent.mkdir()
     for other, name in ((two, "Playbook two"), (ad, "Refresh an ad")):
         assert main(["trends", "collect", "on", "--run", str(other.path), "--json"]) == 1
         message = json.loads(capsys.readouterr().out)["message"]
         assert f"is a run of {name}" in message
         assert message.endswith("Collection is only for runs of Trend research, Creative brief and Organic AI video.")
-        marker.write_text(json.dumps({"run": other.path.relative_to(ws).as_posix(), "since": trend_spool._now(),
-                                     "session": None}), encoding="utf-8")
-        assert trend_spool.active_run(ws) is None
+        _marker(ws, run=other.path.relative_to(ws).as_posix())
+        assert trend_spool.active_run(ws, "s1") is None
         assert trend_spool.handle(_event(ws, "search_trends", {"about": "x"}, {"data": []}), ws) is None
         assert trend_spool.handle(_event(ws, "ads_get_creatives", {}, {"data": []},
                                          prefix="mcp__claude_ai_Meta_Ads__"), ws) is None
@@ -341,8 +427,9 @@ def _brief_on(ws: Path, capsys) -> RunFolder:
     run = RunFolder.create(ws, "ld", date(2026, 11, 7), playbook=CREATIVE_BRIEF)
     assert main(["trends", "collect", "on", "--run", str(run.path), "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
-    assert out == {"status": "done", "collecting": True, "run": "2026-11-07_ld"}
-    assert trend_spool.active_run(ws).path == run.path
+    assert {k: out[k] for k in ("status", "collecting", "run")} == {"status": "done", "collecting": True,
+                                                                     "run": "2026-11-07_ld"}
+    assert trend_spool.active_run(ws, os.environ["CLAUDE_CODE_SESSION_ID"]).path == run.path
     return run
 
 
@@ -387,14 +474,18 @@ def test_trendsmesh_answer_saved_and_summarised_in_brief_run(ws, capsys, monkeyp
     assert not (ws / RUN_REL / "02_research" / "search").exists()   # the trend research run got nothing
 
 
-def test_brief_run_new_turns_collection_off(ws, capsys, bundled_skills):
+def test_brief_run_new_turns_collection_off(ws, monkeypatch, capsys, bundled_skills):
+    """tm run new turns off only its own session's collection: a parallel session goes on collecting."""
     _brief_on(ws, capsys)
+    _marker(ws, "other")                                 # another session collects for the trend research run
     assert main(["run", "new", "--playbook", "creative-brief", "--name", "ld2", "--json"]) == 0
     capsys.readouterr()
-    assert not (ws / trend_spool.MARKER).exists()
+    assert not trend_spool.marker_path(ws, "s1").exists()
     meta = _event(ws, "ads_get_ad_accounts", {}, {"data": []}, prefix="mcp__claude_ai_Meta_Ads__")
     assert trend_spool.handle(meta, ws) is None
     assert not list(ws.glob("runs/02-creative-brief/*/01_base/meta"))
+    assert _read_marker(ws, "other")["run"] == RUN_REL
+    assert _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "x"}, {"data": []}, session="other"), ws))
 
 
 def test_a_stale_lock_is_broken_and_a_fresh_one_waited_for(ws, capsys):
@@ -430,9 +521,9 @@ def test_answer_shapes_are_read():
 
 def test_run_new_turns_collection_off(ws, capsys, bundled_skills):
     _on(ws, capsys)
-    assert (ws / trend_spool.MARKER).is_file()
+    assert trend_spool.marker_path(ws, "s1").is_file()
     assert main(["run", "new", "--playbook", "trend-research", "--name", "w2", "--json"]) == 0
-    assert not (ws / trend_spool.MARKER).exists()
+    assert not trend_spool.marker_path(ws, "s1").exists()
     event = _event(ws, "search_trends", {"about": "nails"}, {"data": []})
     assert trend_spool.handle(event, ws) is None
     assert _saved(ws) == []
@@ -442,80 +533,76 @@ def test_run_new_of_another_playbook_leaves_collection_on(ws, capsys, bundled_sk
     _on(ws, capsys)
     assert main(["run", "new", "--playbook", REFRESH_AD, "--name", "ad", "--json"]) == 0
     capsys.readouterr()
-    assert json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))["run"] == RUN_REL
+    assert _read_marker(ws)["run"] == RUN_REL
     event = _event(ws, "search_trends", {"about": "nails"}, {"data": []})
     assert _summary(trend_spool.handle(event, ws))["saved_to"].endswith("search/search_nails.json")
 
 
-def _marker_since(ws: Path, minutes_ago: float, session: str | None = None) -> None:
-    since = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
-    (ws / trend_spool.MARKER).parent.mkdir(exist_ok=True)
-    (ws / trend_spool.MARKER).write_text(json.dumps({"run": RUN_REL, "since": since.isoformat(timespec="seconds"),
-                                                     "session": session}), encoding="utf-8")
-
-
-def test_an_unclaimed_marker_expires_after_ten_minutes(ws, monkeypatch, capsys):
-    event = _event(ws, "search_trends", {"about": "nails"}, {"data": [{"id": "a"}]})
-    for stale in (11, 60 * 24 * 3):                     # minutes, then days after collect on
-        _marker_since(ws, stale)
-        assert trend_spool.handle(event, ws) is None
-        assert not (ws / trend_spool.MARKER).exists()                   # removed: the hook stops early
-        _marker_since(ws, stale)
-        assert _spool(monkeypatch, capsys, event) == ""                 # nothing replaced, nothing said
-        assert not (ws / trend_spool.MARKER).exists()
-    for unreadable in ("x", None, "2026-13-45"):
-        (ws / trend_spool.MARKER).write_text(json.dumps({"run": RUN_REL, "since": unreadable, "session": None}),
-                                             encoding="utf-8")
-        assert trend_spool.handle(event, ws) is None
-        assert not (ws / trend_spool.MARKER).exists()
-    _marker_since(ws, 30, session="s2")                 # a claimed marker is never removed by another session
-    assert trend_spool.handle(event, ws) is None and (ws / trend_spool.MARKER).is_file()
-    assert _saved(ws) == []
-
-    _marker_since(ws, 9)                                # still within the ten minutes: claimed
-    assert _summary(trend_spool.handle(event, ws))["results"] == 1
-    assert json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))["session"] == "s1"
-
-
-def test_a_claimed_marker_does_not_expire(ws):
-    _marker_since(ws, 60 * 24, session="s1")            # claimed a day ago, the run goes on
+def test_a_marker_does_not_expire_with_time(ws):
+    """The marker is its session's from collect on: a day later, the run going on, it still collects."""
+    _marker(ws, since=(datetime.now(timezone.utc) - timedelta(days=1)).isoformat(timespec="seconds"))
     event = _event(ws, "search_trends", {"about": "nails"}, {"data": []})
     assert _summary(trend_spool.handle(event, ws))["saved_to"].endswith("search/search_nails.json")
     assert trend_spool.handle({**event, "session_id": "s2"}, ws) is None
 
 
-@pytest.mark.parametrize("session, vanishes_at", [
-    (None, 1),        # unclaimed: before claim's first read
-    (None, 2),        # unclaimed: while claim waited for the lock
-    (None, 3),        # unclaimed: after the claim, before active_run reads it
-    ("s1", 1),        # claimed: before claim's read
-    ("s1", 2),        # claimed: before active_run's read
-])
-def test_a_marker_removed_mid_claim_is_collection_off(ws, tmp_path, monkeypatch, capsys, session, vanishes_at):
-    """Another process (collect off, run new, an expiry) removes the marker after handle saw it."""
-    real = trend_spool._read_marker
-    reads = []
+def test_stale_markers_are_removed(ws, monkeypatch, capsys):
+    """A marker whose run is finished or gone, or that cannot be read, collects nothing: the hook removes
+    its own session's for a finished run (a gone one is said, test_failure_before_the_save_is_said_too),
+    and any session's collect on removes every such one; live ones stay."""
+    event = _event(ws, "search_trends", {"about": "nails"}, {"data": []})
+    run = RunFolder.open(ws / RUN_REL)
+    done = RunFolder.create(ws, "old", date(2026, 10, 1), playbook=TREND_RESEARCH)
+    s = state.load(done)
+    s.status = "done"
+    state.save(done, s)
+    _marker(ws, run=done.path.relative_to(ws).as_posix())
+    assert trend_spool.handle(event, ws) is None
+    assert not trend_spool.marker_path(ws, "s1").exists()
 
-    def read(workspace):
-        reads.append(workspace)
-        if len(reads) == vanishes_at:
-            (ws / trend_spool.MARKER).unlink()
-        return real(workspace)
+    _marker(ws, "ended", run=done.path.relative_to(ws).as_posix())    # sessions that left their marker behind
+    _marker(ws, "vanished", run="runs/04-trend-research/gone")
+    trend_spool.marker_path(ws, "broken").write_text("{not json", encoding="utf-8")
+    _marker(ws, "live")                                             # a session still at work
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "new")
+    assert main(["trends", "collect", "on", "--run", str(run.path), "--json"]) == 0
+    capsys.readouterr()
+    assert sorted(p.name for p in (ws / trend_spool.MARKERS).iterdir()) == ["live.json", "new.json"]
+
+
+def test_the_old_workspace_marker_is_ignored_and_removed(ws, capsys):
+    """0.10.0's one marker per workspace (.trendsmesh/collect.json) belongs to no session: the hook never
+    saves for it, and collect on (every run turns it on again on resuming) removes it."""
+    legacy = ws / trend_spool.LEGACY_MARKER
+    legacy.parent.mkdir()
+    legacy.write_text(json.dumps({"run": RUN_REL, "since": trend_spool._now(), "session": "s1"}), encoding="utf-8")
+    assert trend_spool.handle(_event(ws, "search_trends", {"about": "nails"}, {"data": []}), ws) is None
+    assert _saved(ws) == []
+    _on(ws, capsys)
+    assert not legacy.exists() and _read_marker(ws)["run"] == RUN_REL
+
+
+def test_a_marker_removed_before_it_is_read_is_collection_off(ws, tmp_path, monkeypatch, capsys):
+    """Another process (collect off, run new) removes the marker after handle saw it."""
+    real = trend_spool._read_marker
+
+    def read(path):
+        path.unlink()
+        return real(path)
 
     monkeypatch.setattr(trend_spool, "_read_marker", read)
     event = _event(ws, "search_trends", {"about": "nails"}, {"data": [{"id": "a"}]})
-    _marker_since(ws, 1, session=session)
+    _marker(ws)
     assert trend_spool.handle(event, ws) is None
-    reads.clear()
-    _marker_since(ws, 1, session=session)
+    _marker(ws)
     assert _spool(monkeypatch, capsys, event) == ""                     # nothing replaced, nothing said
-    assert not (ws / trend_spool.MARKER).exists()
+    assert not trend_spool.marker_path(ws, "s1").exists()
     assert _saved(ws) == []                                             # nothing saved
     assert not (tmp_path / "data" / "logs" / "collect.log").exists()
 
 
 def test_run_new_succeeds_even_when_the_marker_cannot_be_removed(ws, capsys, bundled_skills, monkeypatch):
-    def refuse(workspace):
+    def refuse(*_args, **_kw):
         raise PermissionError("read-only folder")
     monkeypatch.setattr(trend_spool, "turn_off", refuse)
     assert main(["run", "new", "--playbook", "trend-research", "--name", "w3", "--json"]) == 0
@@ -526,8 +613,8 @@ def test_collect_on_off_and_answers_found_from_a_subfolder(ws, monkeypatch, caps
     assert main(["trends", "collect", "on", "--run", str(ws / RUN_REL), "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "done" and out["collecting"] is True and out["run"] == "2026-11-07_beauty"
-    marker = json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))
-    assert marker["run"] == RUN_REL and marker["since"]
+    marker = _read_marker(ws)
+    assert marker["run"] == RUN_REL and marker["since"] and marker["session"] == "s1"
     # Claude went into the run folder: the workspace is the nearest folder above with the marker.
     event = _event(ws, "search_trends", {"about": "nails"}, {"data": []}, cwd=ws / RUN_REL / "02_research")
     assert _summary(json.loads(_spool(monkeypatch, capsys, event)))["results"] == 0
@@ -539,10 +626,11 @@ def test_collect_on_off_and_answers_found_from_a_subfolder(ws, monkeypatch, caps
     second = RunFolder.create(ws, "second", date(2026, 11, 7), playbook=TREND_RESEARCH)
     assert main(["trends", "collect", "off", "--run", str(second.path), "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["collecting"] is True          # another run's: left on
-    assert (ws / trend_spool.MARKER).is_file()
+    assert trend_spool.marker_path(ws, "s1").is_file()
+    _marker(ws, "s2")                                                          # another session's: never touched
     assert main(["trends", "collect", "off", "--run", str(ws / RUN_REL), "--json"]) == 0
     assert json.loads(capsys.readouterr().out) == {"status": "done", "collecting": False, "run": "2026-11-07_beauty"}
-    assert not (ws / trend_spool.MARKER).exists()
+    assert not trend_spool.marker_path(ws, "s1").exists() and trend_spool.marker_path(ws, "s2").is_file()
     assert main(["trends", "collect", "off", "--run", str(ws / RUN_REL), "--json"]) == 0   # already off
     assert json.loads(capsys.readouterr().out)["status"] == "none"
 
@@ -568,12 +656,11 @@ def test_spool_never_fails_and_logs_why(ws, tmp_path, monkeypatch, capsys):
 
 def test_failure_before_the_save_is_said_too(ws, monkeypatch, capsys):
     _on(ws, capsys)
-    marker = ws / trend_spool.MARKER
-    marker.write_text(json.dumps({"run": "runs/04-trend-research/gone", "since": trend_spool._now(), "session": None}),
-                      encoding="utf-8")
+    _marker(ws, run="runs/04-trend-research/gone")
     out = json.loads(_spool(monkeypatch, capsys, _event(ws, "search_trends", {"about": "nails"}, {"data": []})))
     text = out["hookSpecificOutput"]["additionalContext"]
     assert "not a run folder" in text and "tm trends ingest" in text and "--tool search_trends" in text
+    assert _spool(monkeypatch, capsys, _event(ws, "search_trends", {"about": "x"}, {"data": []}, session="s2")) == ""
 
 
 def test_ingest_saves_through_save_answer(ws, tmp_path, capsys):
@@ -607,16 +694,16 @@ def test_collect_off_from_inside_the_run_folder(ws, monkeypatch, capsys):
     monkeypatch.chdir(run)
     assert main(["trends", "collect", "on", "--run", ".", "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["collecting"] is True
-    assert json.loads((ws / trend_spool.MARKER).read_text(encoding="utf-8"))["run"] == RUN_REL
-    assert not (run / trend_spool.MARKER).exists()
+    assert _read_marker(ws)["run"] == RUN_REL
+    assert not (run / trend_spool.MARKERS).exists()
     assert main(["trends", "collect", "off", "--run", ".", "--json"]) == 0
     assert json.loads(capsys.readouterr().out) == {"status": "done", "collecting": False, "run": "2026-11-07_beauty"}
-    assert not (ws / trend_spool.MARKER).exists()
+    assert not trend_spool.marker_path(ws, "s1").exists()
     assert main(["trends", "collect", "off", "--run", ".", "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out == {"status": "none", "collecting": False, "run": "2026-11-07_beauty"}
     assert main(["trends", "collect", "off", "--run", "."]) == 0
-    assert "No collection marker was found" in capsys.readouterr().out
+    assert "Collection was not on for 2026-11-07_beauty in this session" in capsys.readouterr().out
     monkeypatch.chdir(ws.parent)                        # Claude works outside the run's workspace
     assert main(["trends", "collect", "on", "--run", str(run), "--json"]) == 1
     assert "not a run in this workspace" in json.loads(capsys.readouterr().out)["message"]
@@ -638,29 +725,30 @@ def test_answers_arriving_together_are_all_saved(ws, capsys):
 
 
 def test_marker_waits_while_windows_holds_it_open(ws, capsys, monkeypatch):
-    """Windows refuses os.replace over a marker another hook is reading, and a read of a marker
-    being replaced: the claim waits a moment instead of losing the answer."""
+    """Windows refuses os.replace over a marker the hook is reading, and a read of a marker being
+    replaced: collect on and the hook wait a moment instead of failing or losing the answer."""
     _on(ws, capsys)
     real_replace, real_read = os.replace, Path.read_text
     left = {"replace": 2, "read": 2}
 
     def busy_replace(src, dst):
-        if Path(dst).name == "collect.json" and left["replace"]:
+        if Path(dst).name == "s1.json" and left["replace"]:
             left["replace"] -= 1
             raise PermissionError(5, "Access is denied")
         return real_replace(src, dst)
 
     def busy_read(self, *a, **k):
-        if self.name == "collect.json" and left["read"]:
+        if self.name == "s1.json" and left["read"]:
             left["read"] -= 1
             raise PermissionError(13, "Permission denied")
         return real_read(self, *a, **k)
 
     monkeypatch.setattr(trend_spool.os, "replace", busy_replace)
     monkeypatch.setattr(Path, "read_text", busy_read)
-    assert trend_spool.claim(ws, "s1") is True
+    trend_spool.collect_on(ws, ws / RUN_REL, "s1")
+    assert _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "a"}, {"data": []}), ws))
     assert left == {"replace": 0, "read": 0}
-    assert json.loads(real_read(ws / trend_spool.MARKER, encoding="utf-8"))["session"] == "s1"
+    assert json.loads(real_read(trend_spool.marker_path(ws, "s1"), encoding="utf-8"))["session"] == "s1"
 
 
 def test_lock_waits_while_windows_finishes_removing_it(ws, capsys, monkeypatch):
@@ -704,4 +792,4 @@ def test_marker_still_refused_after_the_wait(ws, capsys, monkeypatch):
 
     monkeypatch.setattr(trend_spool.os, "replace", refused)
     with pytest.raises(PermissionError):
-        trend_spool.claim(ws, "s1")
+        trend_spool.collect_on(ws, ws / RUN_REL, "s1")
