@@ -778,3 +778,31 @@ run_page:
     days: Days
     min_events_per_variant: Events needed per variant
     variants: Variants
+
+# --- Create an ad: the copy card and page (engine/src/tm/create_copy.py), the upload card and its outcome
+# (engine/src/tm/create_upload.py); what each page shows: skills/create-ad/references/pages.md ---
+ad:
+  copy:
+    title: Meta copy
+    question: Do you want to change anything?
+    primary: Primary text
+    headline: Headline
+    description: Description
+    keep: Keep
+    count: "{n} of {limit} characters"
+    over: "{n} of {limit} characters: too long"
+    facts: Ad name, video title, call to action, display link and URL
+  upload:
+    title: Upload to Meta, PAUSED
+    question: Shall I create these in your ad account, PAUSED?
+    paused_note: "Everything is created PAUSED: nothing runs and nothing is spent until you switch it on yourself in Ads Manager."
+    fact_no_description: Video ads show no description on Facebook Feed or Instagram.
+    fact_display_link: The display-link line is being removed from Facebook mobile Feed.
+    pixel_none: "This site has no pixel, so Meta can't optimise for or report conversions: the ad can optimise for clicks, with the UTM link to see visits in your analytics. We can also wait until the pixel is set up."
+    pixel_silent: "This site's pixel ({dataset}) sends no events, so Meta can't optimise for or report conversions: the ad can optimise for clicks, with the UTM link to see visits in your analytics. We can also wait until the pixel fires."
+    ai_question: Do these ads contain media created or edited with generative AI?
+    budget_question: How much do you want to spend, and per day or for the whole run?
+    created_paused: "Created PAUSED: the campaign, ad set, creative and ad are in your ad account, switched off."
+    created_draft: "Created as a draft: the campaign, ad set, creative and ad are in your ad account and not published."
+    activate_howto: "To switch it on: open Ads Manager, find the campaign {campaign}, and turn on the campaign, the ad set and the ad. Nothing in this run switches it on."
+    active_found: "{what} is not paused in Meta ({status}). Nothing should run from this playbook: pause it now in Ads Manager (or with the Meta Ads connector), then record the objects again."

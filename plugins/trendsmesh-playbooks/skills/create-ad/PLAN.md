@@ -18,7 +18,7 @@ the paid-tool guard (`tools.PRECHECK`) and refresh-ad's E2 upload knowledge.
 **Scope of this build:** the engine core. Pages come later (the shared page template, issue #19, and the
 translation mechanism, issue #3, are built in parallel): every gate is answerable in chat, and the data each
 page will show is defined (`references/pages.md`) and, for the copy page and the upload proposal, built by the
-engine. Fixed UI words live in one keyed English table, `data/create-ad/strings.yaml`, to move onto `tm.i18n`.
+engine. Fixed UI words are the `ad` area of the shared table (`data/i18n/en.yaml`), read through `tm.i18n`.
 
 ## Owner decisions (this session)
 
@@ -104,14 +104,14 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 `engine/src/tm/create_config.py` (new), `engine/src/tm/config.py` (`_for_playbook`), `data/requirements.yaml`,
 `engine/src/tm/evidence.py` (`NOTICES[CREATE_AD]`), `engine/src/tm/flow.py` (`_EVIDENCE_WINDOW[CREATE_AD] =
 ("S1", "S3")`), `skills/create-ad/SKILL.md`, `skills/create-ad/references/{flow,rules,pages}.md`,
-`data/create-ad/strings.yaml`, tests `engine/tests/test_create_config.py`, `test_create_doctor.py`,
+`data/i18n/en.yaml` (the `ad` area), tests `engine/tests/test_create_config.py`, `test_create_doctor.py`,
 `test_playbooks.py`.
 
 - Config schema (spec "Config" plus the plugin's): `brand.{product,url,persona,language}`,
   `intake.{audience,makes,sells,length_s,placements,live,assets}`, `meta.{ad_account_id,page_id,dataset_id}`,
   `mode` (from the level), `budget.{generation_usd,voice_credits,daily_ad_spend}` (the last never a default),
   `generation.provider` (fixed `replicate`), `models.<asset_type>`, `audio.{music_source,transition_sound}`,
-  `chat_language`, `currency`, `fx_rate`, `copy` limits, `take.max_s` (15) and `take.words_max` (45).
+  `languages: {working, market}` (tm.i18n), `currency`, `fx_rate`, `copy` limits, `take.max_s` (15) and `take.words_max` (45).
 - `write_from_intake(run, answers)`: level and outputs (`video_ad`) to run.json; Hands-off approves
   `generation_usd` and `voice_credits` from the intake (`budget.approve_from_intake`).
 - `intake_gap`: the config validates; the four questions answered (who + what they make, what it sells,
@@ -182,7 +182,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 ## Status of this build
 
 Built: Tasks 1 to 6 (commits on the branch, one per step). The engine modules are `create_config`, `create_plan`,
-`create_copy`, `create_upload`, `create_strings` and the `tm ad` command (`create_ad`). Evals added, not run:
+`create_copy`, `create_upload` and the `tm ad` command (`create_ad`). Evals added, not run:
 `ca_upload_stays_paused`, `ca_plan_cost_needs_yes` (scenarios `ca_at_s10b_hands_off`, `ca_at_s5_plan`).
 Calls made while building, beyond the spec: the edit QA (S7) and the takes (G4) have no engine check yet (the
 tools exist; the gate decides); a Create an ad money wait names the plan or the storyboard, not organic video's

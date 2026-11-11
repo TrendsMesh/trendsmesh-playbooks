@@ -19,9 +19,13 @@ step or a check-in, whatever the reason given. Call it as `tm ...`; add `--json`
 JSON as files in the run, never inline. Exit codes: `0` done, `2` stop (fix what it says and run the same command
 again, or the user must act), `1` error (read the message and fix the cause; never work around it).
 
-**Language:** talk to the user, and write every summary and page, in the chat language. **The ad's text, speech and
-copy are in the ad language** (`brand.language`), which may differ. `tm` messages are English: put them in the
-user's words.
+**Languages** (the plugin's `references/languages.md`): a run has two, `languages: {working, market}` in its
+config, both on the intake card from their defaults (the working language is the one the user writes in; the market
+language follows it unless the site, the ad account or the user points to another market). Talk to the user, and
+write every card, summary and page, in the **working language**. **The ad's copy, voice-over, captions and on-screen
+text are in the market language**, which may differ. The engine's card words come from the plugin's string table:
+when the working language has no translation yet, `tm` says so (`language_warning`) and gives them in English;
+translate the table once as that reference says. `tm` messages are English: put them in the user's words.
 
 **Words:** say "check-in", never the spec's other word for it. The levels are **Check every step**, **Just the big
 calls** and **Hands-off**. Ask **one plain question at a time** (the S0 intake card is the one exception). The user

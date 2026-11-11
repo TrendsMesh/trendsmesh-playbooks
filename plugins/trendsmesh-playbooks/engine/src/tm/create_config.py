@@ -13,6 +13,10 @@ The intake (S0, CA1) asks four questions, each with options pre-filled from the 
 `intake.live` says whether what is sold is live; when it is not (early access, a waitlist), `intake.not_live` says
 what it is, and nothing that is not live may be promised (CA1, CA3).
 
+The run's two languages are `languages: {working, market}` (tm.i18n, issue #3; references/languages.md), shown on
+the intake card from their defaults: the cards and pages follow the working language, the ad's copy, voice-over,
+captions and on-screen text the market language.
+
 Intake-only answers, not kept in config.yaml: `level` (run.json; `mode` follows it: Hands-off is `auto`) and
 `outputs` (always `video_ad`). Hands-off spends only inside the budgets the intake gives (CA7): they are approved
 here, as Refresh an ad's are. The Meta ad budget (`budget.daily_ad_spend`) is never a default and never approved
@@ -26,7 +30,7 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
-from tm import budget, config, flow, state
+from tm import budget, config, flow, i18n, state
 from tm.config import Problem
 from tm.runfolder import RunFolder
 
@@ -45,7 +49,8 @@ MODES = {"hands_off": "auto"}  # the level -> the spec's mode; any other level i
 BUDGETS = {"ai_usd": "generation_usd", "voice_credits": "voice_credits"}  # budget kind -> its budget.* key
 
 DEFAULTS: dict = {
-    "brand": {"product": None, "url": None, "persona": {"who": None, "makes": None}, "language": None},
+    "brand": {"product": None, "url": None, "persona": {"who": None, "makes": None}},
+    "languages": {"working": None, "market": None},   # tm.i18n: BCP 47 tags (issue #3)
     "intake": {"sells": {"kind": None, "what": None}, "length_s": None, "placements": None, "live": None,
                "not_live": None},
     "meta": {"ad_account_id": None, "page_id": None, "dataset_id": None},
@@ -54,7 +59,6 @@ DEFAULTS: dict = {
     "generation": {"provider": "replicate"},
     "models": {},  # asset type -> the model the user confirmed for it (ASSET_TYPES)
     "audio": {"music_source": None, "transition_sound": None},
-    "chat_language": None,
     "currency": "USD",
     "fx_rate": None,
     "pricing": {"max_age_days": 7},
@@ -104,7 +108,7 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     outputs = answers.pop("outputs", [OUTPUT])
     if outputs != [OUTPUT]:
         raise ValueError(f"outputs must be [\"{OUTPUT}\"]: a Create an ad run makes one video ad.")
-    cfg = config._merge(defaults(), answers)
+    cfg = i18n.settle(config._merge(defaults(), answers))
     if level is not None:
         cfg["mode"] = MODES.get(level, "hitl")
     if cfg["meta"].get("ad_account_id") is not None:
@@ -136,7 +140,6 @@ def _need(out: list[Problem], cfg: dict, path: str, what: str) -> None:
 
 def _intake(out: list[Problem], cfg: dict) -> None:
     _need(out, cfg, "brand.product", "The product")
-    _need(out, cfg, "brand.language", "The ad language (the language the ad's text and speech are in)")
     url = config.get(cfg, "brand.url")
     if not (_text(url) and urlparse(url).scheme in ("http", "https") and urlparse(url).netloc):
         out.append(Problem("brand.url", f"brand.url must be the product site's address (https://...), not {url!r}.",
@@ -203,6 +206,7 @@ def validate(run: RunFolder) -> list[Problem]:
             out.append(config.range_problem(path, value, spec))
     _intake(out, cfg)
     _models(out, cfg)
+    out += i18n.config_problems(cfg)    # both languages, as tags: the working one for the cards, the market one for the ad
     currency = cfg.get("currency")
     if not (isinstance(currency, str) and len(currency) == 3 and currency.isalpha() and currency.isupper()):
         out.append(Problem("currency", f"currency must be a three-letter code such as USD or PLN, not {currency!r}.",
@@ -261,3 +265,10 @@ def intake_gap(run: RunFolder) -> str | None:
     else:
         gaps.extend(inventory_problems(inventory))
     return ", and ".join(gaps) or None
+
+
+def page_words(run: RunFolder) -> tuple[i18n.Translator, i18n.PageLang]:
+    """The words of Create an ad's cards and pages (the `ad` area of data/i18n/en.yaml) in the run's working language,
+    or in English with the warning to show the user when that language has no translation of them yet."""
+    built = i18n.page_lang(i18n.run_languages(run).working, "ad")
+    return i18n.translator(built.lang), built

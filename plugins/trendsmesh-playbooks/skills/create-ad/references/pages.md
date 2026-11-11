@@ -6,8 +6,10 @@ the decision (record it with `tm decide`, their words in `--note`). This file is
 what the user does there; it is the contract the page builder follows. Pages and summaries are in the chat
 language; ad text and speech stay in the ad language. Never name an asset by a bare code.
 
-Fixed words (labels, questions, the placement facts) come from `data/create-ad/strings.yaml` by key, never written
-inline, so they move to the shared translations unchanged.
+Fixed words (labels, questions, the placement facts) come from the plugin's string table, the `ad` area of
+`data/i18n/en.yaml`, read through `tm.i18n` in the working language; never written inline. A working language
+without its translation gets them in English with `language_warning` (translate once: the plugin's
+`references/languages.md`). The ad's own texts stay in the market language, as written.
 
 | Page (check-in) | Shows (data source) | The user does | Saved state |
 |---|---|---|---|

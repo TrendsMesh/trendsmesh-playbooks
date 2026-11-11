@@ -7,7 +7,7 @@ everything in full, that rests on a check it did not save, whose objective, ad b
 from the user (the budget is never inferred; the disclosure is the advertiser's call), that optimises for a
 conversion the pixel does not send, that runs several text variants under Traffic, whose names read like "Ad set 1",
 whose files are not the delivered ones, whose copy is not the accepted copy, or whose status is not PAUSED. `card`
-gives what the go-ahead card shows: the proposal and the placement facts, in the keyed strings.
+gives what the go-ahead card shows: the proposal and the placement facts, in the working language (tm.i18n).
 
 S10b. After the user's go-ahead, the objects are created PAUSED (or as drafts), read back, and written to
 `05_results/meta_objects_vNN.json`. `tm ad upload record` checks it: every object's id and status, each video
@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from tm import create_copy, create_plan, create_strings, state, stepchecks
+from tm import create_config, create_copy, create_plan, i18n, state, stepchecks
 from tm.config import Problem
 from tm.playbooks import CREATE_AD
 from tm.runfolder import RunFolder
@@ -166,7 +166,7 @@ def check_proposal(run: RunFolder, data: dict) -> list[Problem]:
     if ai.get("value") not in DISCLOSURES or not _text(ai.get("said")):
         out.append(Problem("ai_disclosure", "The AI-content disclosure needs the user's answer (OPT_IN or OPT_OUT) in "
                            "their words: it is the advertiser's decision, set when the creative is made.",
-                           f"Ask: \"{create_strings.text('upload.ai.question')}\""))
+                           f"Ask: \"{i18n.t('ad.upload.ai_question')}\""))
     if data.get("status") != PAUSED:
         out.append(Problem("status", f"The objects are created {PAUSED}, never {data.get('status')!r}.",
                            f"Set status to {PAUSED}."))
@@ -201,18 +201,20 @@ def card(run: RunFolder) -> dict:
     """What the go-ahead card (and later its page) shows: the proposal in full, the accepted copy, the placement facts
     and, without a pixel that fires, what that costs; in the keyed strings."""
     data = proposal(run) or {}
+    tr, built = create_config.page_words(run)
     pixel = (data.get("checks") or {}).get("pixel") or {}
     notes = []
     if not pixel.get("dataset_id"):
-        notes.append(create_strings.text("upload.pixel.none"))
+        notes.append(tr("ad.upload.pixel_none"))
     elif not pixel.get("fires"):
-        notes.append(create_strings.text("upload.pixel.silent", dataset=pixel["dataset_id"]))
+        notes.append(tr("ad.upload.pixel_silent", dataset=pixel["dataset_id"]))
     obj = data.get("objective") or {}
     pick = (obj.get("options") or [{}])[obj.get("chosen") or 0] if obj.get("options") else {}
-    return {"title": create_strings.text("upload.title"), "question": create_strings.text("upload.question"),
-            "paused_note": create_strings.text("upload.paused_note"),
-            "facts": [create_strings.text("upload.fact.no_description"),
-                      create_strings.text("upload.fact.display_link")],
+    return {"lang": built.lang, "language_warning": built.warning,
+            "title": tr("ad.upload.title"), "question": tr("ad.upload.question"),
+            "paused_note": tr("ad.upload.paused_note"),
+            "facts": [tr("ad.upload.fact_no_description"), tr("ad.upload.fact_display_link")],
+            "asks": {"budget": tr("ad.upload.budget_question"), "ai_disclosure": tr("ad.upload.ai_question")},
             "pixel_notes": notes,
             "ad_account_id": data.get("ad_account_id"), "page_id": data.get("page_id"), "names": data.get("names"),
             "objective": pick.get("objective"), "event": pick.get("event"), "why": pick.get("why"),
@@ -246,7 +248,7 @@ def check_record(run: RunFolder, data: dict) -> list[Problem]:
                 continue
             if obj["status"].upper() not in allowed:
                 label = f"The {what} {obj.get('name') or obj['id']}"
-                not_paused.append(create_strings.text("upload.active_found", what=label, status=obj["status"]))
+                not_paused.append(i18n.t("ad.upload.active_found", what=label, status=obj["status"]))
     if not_paused:
         raise Stop(" ".join(not_paused) + f" Nothing was recorded; {AGAIN}.")
     ads = {a.get("key"): a for a in groups[2][1] if isinstance(a, dict)}
@@ -295,9 +297,9 @@ def outcome(run: RunFolder) -> dict:
         raise ValueError("The objects are not recorded yet (tm ad upload record).")
     data = create_plan._read(run.latest(RESULTS, OBJECTS, "json"))[0]
     campaign = data["campaign"].get("name") or data["campaign"]["id"]
-    text = " ".join([create_strings.text(f"upload.created.{data['created_as']}"),
-                     create_strings.text("upload.activate_howto", campaign=campaign)])
-    return {"created_as": data["created_as"], "text": text,
+    tr, built = create_config.page_words(run)
+    text = " ".join([tr(f"ad.upload.created_{data['created_as']}"), tr("ad.upload.activate_howto", campaign=campaign)])
+    return {"created_as": data["created_as"], "text": text, "lang": built.lang, "language_warning": built.warning,
             "ids": {"campaign": data["campaign"]["id"], "adset": data["adset"]["id"],
                     "creatives": [c["id"] for c in data.get("creatives") or []],
                     "ads": [a["id"] for a in data.get("ads") or []]},

@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from tm import create_config, create_strings, doctor, evidence, flow, playbooks, state, stepchecks
+from tm import create_config, doctor, evidence, flow, i18n, playbooks, state, stepchecks
 from tm.cli import main
 from tm.playbooks import CREATE_AD
 from tm.runfolder import RunFolder
@@ -15,8 +15,8 @@ from test_doctor import ids, item, world  # noqa: F401  (world: autouse fixture)
 
 ANSWERS = {
     "level": "every_step",
-    "chat_language": "pl",
-    "brand": {"product": "Example Planner", "url": "https://planner.example.com", "language": "en",
+    "languages": {"working": "pl", "market": "en"},
+    "brand": {"product": "Example Planner", "url": "https://planner.example.com",
               "persona": {"who": "freelance designers", "makes": "brand identities for small shops"}},
     "intake": {"sells": {"kind": "feature", "what": "the client brief generator"}, "length_s": [15, 20],
                "placements": ["reels", "stories"], "live": True},
@@ -162,8 +162,25 @@ def test_the_guess_notice_comes_with_the_concept():
     assert evidence.notice_for(s, ["plan"]) is None
 
 
-def test_every_string_key_has_a_text():
-    for key in create_strings.keys():
-        assert create_strings.text(key, n=1, limit=2, dataset="d", campaign="c", what="w", status="s").strip()
-    with pytest.raises(ValueError):
-        create_strings.text("no.such.key")
+def test_the_ad_languages_are_the_runs_two(run):
+    create_config.write_from_intake(run, _answers())
+    assert i18n.run_languages(run) == i18n.Languages("pl", "en")   # cards in Polish, the ad in English
+    create_config.write_from_intake(run, _answers(languages={"market": "de"}))
+    assert create_config.load(run)["languages"] == {"working": "de", "market": "de"}   # the one left out is the other
+    create_config.write_from_intake(run, _answers(languages={"working": "the boss reads it", "market": "en"}))
+    assert "languages.working" in _fields(run)                     # a language, or nothing
+    create_config.write_from_intake(run, _answers(languages=None))
+    assert "languages" in _fields(run)                             # asked on the intake card, never a silent English
+
+
+def test_every_ad_string_is_read_and_every_key_read_is_in_the_table():
+    import re
+    from pathlib import Path
+    src = Path(create_config.__file__).parent
+    code = "".join((src / f).read_text(encoding="utf-8") for f in ("create_copy.py", "create_upload.py"))
+    read = set(re.findall(r'"(ad\.[a-z_]+\.[a-z_]+)"', code))
+    read |= {f"ad.upload.created_{how}" for how in ("paused", "draft")}   # read by the outcome's created_as
+    table = {k for k in i18n.english() if k.startswith("ad.")}
+    assert sorted(read - table) == [] and sorted(table - read) == []
+    for key in table:
+        assert i18n.t(key, **{p: "x" for p in i18n.placeholders(i18n.english()[key])}).strip()

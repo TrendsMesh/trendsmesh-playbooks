@@ -22,8 +22,11 @@ counts. Rules: `rules.md`.
   `budget.voice_credits` when the plan will use ElevenLabs). The ad budget is **not** asked here: it is asked in the
   upload proposal, in the user's words.
 - **Not live yet** (early access, a waitlist): warn now; `intake.live: false` and `intake.not_live` say what it is.
-- Write the answers file (the config's shape, plus `level` and `chat_language`), `tm config write --run R --answers
-  <file>`, `tm config check --run R`.
+- **The two languages** on the same card, filled from the defaults ("Working language: Polish · Market language:
+  Polish"): `languages: {working, market}` as tags (`pl`, `pt-BR`). The working language is for the cards and
+  pages, the market language for the ad's copy, voice-over, captions and on-screen text.
+- Write the answers file (the config's shape, plus `level`), `tm config write --run R --answers <file>`, `tm config
+  check --run R`.
 - **The asset inventory**, `03_wip/assets_vNN.json`: `{"earlier_runs_checked": true, "assets": [{"file", "kind"
   (music, voiceover, footage, broll, product_shot, logo, brand_guide, past_ad, earlier_run), "usable": true|false,
   "replaces": <asset type or null>}]}`. Each usable file removes a generation step (say which); a voice-over

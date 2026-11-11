@@ -52,6 +52,8 @@ def test_good_copy_passes_and_s8_follows_it(run):
     assert _draft(run, ad()) == []
     assert stepchecks.run("ad_copy_checked", run) is None
     page = create_copy.page_data(run)
+    assert page["lang"] == "en" and page["language_warning"]          # no Polish table yet: English, and it says so
+    assert "tm i18n export --lang pl" in page["language_warning"]
     assert page["question"] == "Do you want to change anything?"
     first = page["ads"][0]["primary_texts"]["items"][0]
     assert (first["limit"], first["keep"]) == (125, True) and first["count_text"].endswith("of 125 characters")

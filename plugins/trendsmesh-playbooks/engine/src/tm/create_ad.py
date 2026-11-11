@@ -62,8 +62,11 @@ def _run(args: argparse.Namespace) -> int:
                 rel, problems = create_copy.check(run, args.file)
                 if problems:
                     return cli.refuse_problems(args, rel, problems)
-                cli.emit(args, {"status": "done", "file": rel, "page": create_copy.page_data(run)},
-                         f"{rel} passed the check. Show the copy to the user and ask whether to change anything.")
+                page = create_copy.page_data(run)
+                cli.emit(args, {"status": "done", "file": rel, "page": page,
+                                "language_warning": page["language_warning"]},
+                         f"{rel} passed the check. Show the copy to the user and ask whether to change anything."
+                         + (f" {page['language_warning']}" if page["language_warning"] else ""))
                 return 0
             rel, problems = create_copy.accept(run, args.file)
             if problems:
@@ -76,8 +79,9 @@ def _run(args: argparse.Namespace) -> int:
             if problems:
                 return cli.refuse_problems(args, rel, problems)
             card = create_upload.card(run)
-            cli.emit(args, {"status": "done", "file": rel, "card": card},
-                     f"{rel} passed the check. Show the user the proposal in full and ask for the go-ahead.")
+            cli.emit(args, {"status": "done", "file": rel, "card": card, "language_warning": card["language_warning"]},
+                     f"{rel} passed the check. Show the user the proposal in full and ask for the go-ahead."
+                     + (f" {card['language_warning']}" if card["language_warning"] else ""))
             return 0
         rel, problems = create_upload.record(run, args.file)
         if problems:

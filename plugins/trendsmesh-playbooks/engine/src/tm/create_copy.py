@@ -22,7 +22,7 @@ import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from tm import create_config, create_plan, create_strings, state, stepchecks
+from tm import create_config, create_plan, state, stepchecks
 from tm.config import Problem
 from tm.playbooks import CREATE_AD
 from tm.runfolder import RunFolder
@@ -30,8 +30,9 @@ from tm.runfolder import RunFolder
 WIP, FINAL = create_config.WIP, "04_final"
 DRAFT, DECISIONS, ACCEPTED = "copy", "copy_decisions", "copy"
 KEY_DRAFT, KEY_ACCEPTED = "ad_copy", "ad_copy_final"
-LISTS = {"primary_texts": ("copy.primary_max", "copy.primary"), "headlines": ("copy.headline_max", "copy.headline"),
-         "descriptions": ("copy.description_max", "copy.description")}
+LISTS = {"primary_texts": ("copy.primary_max", "ad.copy.primary"),
+         "headlines": ("copy.headline_max", "ad.copy.headline"),
+         "descriptions": ("copy.description_max", "ad.copy.description")}
 # Meta's call-to-action types a video ad with a website takes (the Marketing API's call_to_action_type).
 META_CTAS = ("LEARN_MORE", "SHOP_NOW", "SIGN_UP", "SUBSCRIBE", "DOWNLOAD", "GET_OFFER", "GET_QUOTE", "BOOK_TRAVEL",
              "CONTACT_US", "APPLY_NOW", "ORDER_NOW", "WATCH_MORE", "GET_STARTED", "REQUEST_TIME", "SEE_MENU",
@@ -249,24 +250,27 @@ def accepted(run: RunFolder) -> dict | None:
 
 def page_data(run: RunFolder) -> dict:
     """What the copy page shows (references/pages.md "Copy"): per ad its facts and each text with its live count
-    against its limit and a keep tick; the question. Until the page is built, the card in chat shows the same."""
+    against its limit and a keep tick; the question. Until the page is built, the card in chat shows the same. Its
+    words are in the working language (`lang`), or in English with `language_warning` when it has no translation;
+    the texts themselves are in the market language, as written."""
     data = draft(run) or {"ads": []}
     cfg = _cfg(run)
+    tr, built = create_config.page_words(run)
     ads = []
     for ad in data["ads"]:
         lists = {}
         for field, (limit_key, label) in LISTS.items():
             limit = cfg["copy"][limit_key.split(".")[1]]
-            lists[field] = {"label": create_strings.text(label), "items": [
+            lists[field] = {"label": tr(label), "items": [
                 {"n": i, "text": it["text"], "limit": limit, "count": len(it["text"]), "keep": True,
-                 "count_text": create_strings.text("copy.count" if len(it["text"]) <= limit else "copy.over",
-                                                   n=len(it["text"]), limit=limit)}
+                 "count_text": tr("ad.copy.count" if len(it["text"]) <= limit else "ad.copy.over",
+                                  n=len(it["text"]), limit=limit)}
                 for i, it in enumerate(ad.get(field) or [], 1)]}
         ads.append({"key": ad["key"], "facts": {k: ad.get(k) for k in ("ad_name", "video_title", "cta",
                                                                       "display_link", "url")},
-                    "facts_label": create_strings.text("copy.facts"), **lists})
-    return {"title": create_strings.text("copy.title"), "question": create_strings.text("copy.question"),
-            "keep_label": create_strings.text("copy.keep"), "ads": ads}
+                    "facts_label": tr("ad.copy.facts"), **lists})
+    return {"lang": built.lang, "language_warning": built.warning, "title": tr("ad.copy.title"),
+            "question": tr("ad.copy.question"), "keep_label": tr("ad.copy.keep"), "ads": ads}
 
 
 # --- step checks ---------------------------------------------------------------

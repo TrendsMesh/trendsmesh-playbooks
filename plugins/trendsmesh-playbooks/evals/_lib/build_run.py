@@ -1627,8 +1627,8 @@ CA_KEY = "planner-brief-freelancers-nobody-told-me"
 
 
 def _ca_answers(level: str) -> dict:
-    return {"level": level, "chat_language": "en",
-            "brand": {"product": "Example Planner", "url": "https://planner.example.com", "language": "en",
+    return {"level": level, "languages": {"working": "en", "market": "en"},
+            "brand": {"product": "Example Planner", "url": "https://planner.example.com",
                       "persona": {"who": "freelance designers", "makes": "brand identities for small shops"}},
             "intake": {"sells": {"kind": "feature", "what": "the client brief generator"}, "length_s": [15, 20],
                        "placements": ["reels", "stories"], "live": True},
