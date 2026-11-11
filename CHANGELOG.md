@@ -6,6 +6,8 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 - **Developed in the open.** Issues, changes and releases now happen in this repository; release candidates come
   before each release (RELEASING.md).
+- **Report an issue.** Ask Claude to report a problem or request a change: it removes your account details, shows
+  you the exact text, and files it on GitHub, or sends it privately to TrendsMesh if you have no GitHub account.
 
 ## 0.9.2
 

@@ -20,6 +20,8 @@ for your yes at the points you choose.
 - **Organic AI videos.** Give it your channel. It proposes videos from real trends on a page you can share; you
   choose what to make: a script to film yourself, or an AI video. Or say "plan my week of videos" for a weekly pack.
   Each video comes with a posting kit for every platform.
+- **Report an issue.** Say "report this problem" or "I'd like a change": Claude writes it up without your account
+  details, shows you the exact text, and after your yes files it on GitHub or sends it privately to TrendsMesh.
 
 ## What you need
 
