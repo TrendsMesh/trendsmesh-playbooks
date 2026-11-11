@@ -34,5 +34,7 @@ def test_private_links_are_complete():
 @pytest.mark.private_data
 def test_pushes_from_here_are_guarded():   # design 2: warn when private/ exists but the hook doesn't
     hook = Path(git("rev-parse", "--git-path", "hooks/pre-push"))   # works in a worktree too
-    assert (hook if hook.is_absolute() else REPO / hook).is_file()
+    hook = hook if hook.is_absolute() else REPO / hook
+    assert hook.is_file()
+    assert "private/tools/scan.py" in hook.read_text(encoding="utf-8")   # the leak scan, not some other hook
     assert git_config("user.email") == "contact@trendsmesh.com" and git_config("user.name") == "TrendsMesh"
