@@ -48,7 +48,7 @@ flow is `flow.md`; the rules `rules.md`. **What the plugin does with them:**
 ## 3. Market and language
 | Case | What changes | Status |
 |---|---|---|
-| **Non-English market** (e.g. PL) | trends mostly EN: transfer is a hypothesis, rank by creators and view lift (PB1 lesson 5); category voice from local forums / reviews (Wykop, Ceneo, local Facebook groups) plus EN as a fallback marked as such; page and brief in English, ad copy and lines in the market language | untested |
+| **Non-English market** (e.g. PL) | trends mostly EN: transfer is a hypothesis, rank by creators and view lift (PB1 lesson 5); category voice from local forums / reviews (Wykop, Ceneo, local Facebook groups) plus EN as a fallback marked as such; page and brief in the working language, ad copy and lines in the market language, customer phrases from another language translated and marked (`references/languages.md`) | untested |
 | **Money in another currency** | page shows USD at a stated rate (CB13); run files keep the account currency | tested (1 USD = 3.70 PLN) |
 
 ## 4. Recipients and delivery

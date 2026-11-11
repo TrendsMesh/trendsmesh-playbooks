@@ -26,7 +26,8 @@ background (SKILL.md section 1: long commands).
 
   ```json
   {"level": "big_calls",
-   "account": {"id": "1234567890", "market": "PL", "language": "Polish"},
+   "account": {"id": "1234567890", "market": "PL"},
+   "languages": {"working": "pl", "market": "pl"},
    "product": {"name": "...", "landing_url": "https://..."},
    "brand": {"assets_dir": "C:/Users/.../Moje reklamy", "rules": "...", "compliance": "..."},
    "outputs": ["creative_brief", "edited_video", "ai_video"],

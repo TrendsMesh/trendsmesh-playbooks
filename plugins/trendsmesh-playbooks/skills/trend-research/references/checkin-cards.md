@@ -27,7 +27,7 @@ needs `tm decide <id> <choice> --change --run R`.
 ## The cards
 
 **G0 · Confirm the seed phrases and market** (after A1). The seed phrases, each with its source;
-the market and language; the currency; the focus, if any; the outputs chosen. Choice: `accept`
+the market, the working language and the market language (`references/languages.md`); the currency; the focus, if any; the outputs chosen. Choice: `accept`
 (after any change the user asks for).
 
 **G1 · Accept the category map** (after B4). The sub-categories, each with its count of trends;

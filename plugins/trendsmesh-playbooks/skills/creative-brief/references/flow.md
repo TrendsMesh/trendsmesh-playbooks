@@ -112,7 +112,8 @@ The user gives one thing: the product. Everything else you derive and show on on
    recorded with the source "the user's copy of <url>".
 4. **Derive the rest**: market (the country in the product's ad set targeting, `geo_locations`,
    from `ads_get_ad_entities` at ad set level; else the landing page's language and currency),
-   language (ad copy and landing page), the account's currency, the category phrase (a short noun
+   the market language (ad copy and landing page; the working language is the one the user writes in,
+   `references/languages.md`), the account's currency, the category phrase (a short noun
    phrase from the landing page and ad copy), competitors (from the Ad Library later, and what
    the user names).
 5. **Draft the brand profile** from the landing page and the running ads
@@ -120,7 +121,8 @@ The user gives one thing: the product. Everything else you derive and show on on
    `tm brand check --run R --file 03_wip/brand_v01.json --json` (exit 2 lists what to fix). If the user
    points to a brand guide (a file or a link), read it and use it (`guide`).
 6. **The card**, one message with every field of PLAYBOOK's confirmation card: product, account,
-   landing page, market, language, category phrase, the brand draft (what it stands for, tone in
+   landing page, market, working language and market language (`languages: {working, market}` in the
+   answers, as tags), category phrase, the brand draft (what it stands for, tone in
    three words, claims and their wording, off-limits), the recipients (all five by default: decision
    maker, strategist, creator, editor, media buyer), the number of concepts (3), how involved the
    user wants to be (**Check every step** by default; **Just the big calls**; **Hands-off**), the

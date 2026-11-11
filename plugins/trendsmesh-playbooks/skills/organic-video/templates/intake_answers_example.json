@@ -1,8 +1,7 @@
 {
   "level": "every_step",
   "outputs": ["proposals"],
-  "chat_language": "pl",
-  "audience_language": "pl",
+  "languages": {"working": "pl", "market": "pl"},
   "channels": ["ExampleEdu"],
   "output": "script",
   "generation": {"quality_tier": "default", "resolution": "768p", "upscale": "none"},

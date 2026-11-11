@@ -1,6 +1,6 @@
 """The trend shortlist: the handoff's tools/pb2/trend_shortlist.py, ported for every playbook.
 
-    tm trends shortlist --run RUN --terms T [T ...] [--inputs GLOB ...] [--market-language en]
+    tm trends shortlist --run RUN --terms T [T ...] [--inputs GLOB ...] [--market-language pl]
                         [--exclude-terms T ...] [--top 10] [--min-topics 3] [--today YYYY-MM-DD]
                         [--sounds-commercial-only] [--anchor-terms T ...] [--sound-relevance]
                         [--recent-days N] [--json]
@@ -45,7 +45,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from tm import cli, manifest, trends
+from tm import cli, i18n, manifest, trends
 from tm.runfolder import ReadOnlyError, RunFolder
 
 # ---------------------------------------------------------------------------- weights (verbatim)
@@ -833,7 +833,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--terms", required=True, nargs="+",
                    help="category, persona and angle terms (comma-separated or one per argument)")
     p.add_argument("--inputs", nargs="+", help="trend answer files or globs (default: the run's saved answers)")
-    p.add_argument("--market-language", default="en", help="ISO code of the market language (default en)")
+    p.add_argument("--market-language", help="ISO code of the market language (default: the run config's "
+                                              "languages.market, else en)")
     p.add_argument("--exclude-terms", nargs="+", default=[], help="noise words (a topic penalty)")
     p.add_argument("--top", type=int, default=10, help="entries per list (default 10)")
     p.add_argument("--min-topics", type=int, default=3, help="fill the topic list up to this many with weak fits")
@@ -870,7 +871,8 @@ def run_shortlist(args: argparse.Namespace) -> int:
             raise ValueError(f"No saved TrendsMesh answers matched ({where}), so there is nothing to rank. Search "
                              "TrendsMesh with collection on (or give --inputs), then run the shortlist again; the "
                              "run continues from the same place.")
-        out = write(run, inputs, terms, exclude=_terms(args.exclude_terms), market=args.market_language,
+        market = (args.market_language or i18n.primary(i18n.run_languages(run).market)).lower()
+        out = write(run, inputs, terms, exclude=_terms(args.exclude_terms), market=market,
                         today=today, top=args.top, min_topics=args.min_topics,
                         sounds_commercial_only=args.sounds_commercial_only, anchors=_terms(args.anchor_terms),
                         sound_fit=args.sound_relevance, recent_days=args.recent_days)

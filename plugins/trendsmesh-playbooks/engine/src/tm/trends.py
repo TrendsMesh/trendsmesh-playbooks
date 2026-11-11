@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from tm import cli, manifest
+from tm import cli, i18n, manifest
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -194,7 +194,7 @@ def _part(value: Any, fallback: str) -> str:
     if not text:
         return fallback
     digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
-    part = slug(text)
+    part = slug(i18n.transliterate(text))    # "łódź" -> lodz, never "d" (issue #3)
     if not part:
         return digest
     if len(part) > NAME_PART_MAX:

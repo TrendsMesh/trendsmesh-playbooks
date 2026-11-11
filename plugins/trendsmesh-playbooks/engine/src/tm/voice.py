@@ -59,7 +59,7 @@ from typing import Literal
 
 import requests
 
-from tm import __version__, cli, library, manifest, trends
+from tm import __version__, cli, i18n, library, manifest, trends
 from tm.runfolder import ReadOnlyError, RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -563,7 +563,7 @@ def _refuse_relabel(run: RunFolder, items: list[dict]) -> None:
 
 
 def _save(run: RunFolder, kind: str, subreddit: str, query: str, payload: dict) -> str:
-    stem = f"reddit_{trends.slug(subreddit)}_{kind}_{trends.slug(query) or 'recent'}"
+    stem = f"reddit_{trends.slug(subreddit)}_{kind}_{trends.slug(i18n.transliterate(query)) or 'recent'}"
     target = run.next_version(STAGE, stem, "json")
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(f".{target.name}.{os.getpid()}.tmp")   # whole or not at all

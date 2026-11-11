@@ -78,7 +78,7 @@
         "key_message": {"type": "string"},
         "hypothesis": {"type": "string"},
         "animatic": {"type": "object", "properties": {"9x16": {"type": "string"}, "4x5": {"type": "string"}, "default": {"enum": ["9x16", "4x5"]}}},
-        "glance": {"type": "array", "description": "Evidence at a glance: Rising hook (TrendsMesh, highlighted), Customers, Account, Competition", "items": {"type": "object", "required": ["label", "text", "source"], "properties": {"label": {"type": "string"}, "text": {"type": "string"}, "source": {"type": "string"}, "highlight": {"type": "boolean"}}}},
+        "glance": {"type": "array", "description": "Evidence at a glance: Rising hook (TrendsMesh, highlighted), Customers, Account, Competition", "items": {"type": "object", "required": ["label", "text", "source"], "properties": {"label": {"type": "string"}, "text": {"type": "string"}, "source": {"type": "string"}, "highlight": {"type": "boolean"}, "key": {"enum": ["trend", "guess", "customers", "account", "competition"], "description": "the row's name in any language; the label is then in the brief's language"}}}},
         "decision_facts": {
           "type": "object",
           "properties": {

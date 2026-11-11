@@ -68,7 +68,8 @@ what each does in a weekly run is under the step. In order:
   - **the category**: a short phrase ("beauty", "nail art"). A product or landing-page link, a
     store or brand, competitors, or an ad as the input are not supported yet: say so in one line
     and ask for the phrase (for example the product type);
-  - **market and language** (US / English; PL / Polish);
+  - **market and the two languages** (US / working English, market English; PL / Polish and Polish), from
+    the defaults of `references/languages.md`, correctable in the same reply;
   - **focus (optional)**: who reads the report, a brand or sub-category ("a nail brand"); the data
     stays the category's, the page adds a section for them;
   - **outputs**: the category report (always), the weekly digest (the same page next week, with
@@ -81,7 +82,7 @@ what each does in a weekly run is under the step. In order:
   ```json
   {"level": "big_calls",
    "category": {"inputs": ["beauty"], "phrase": "beauty", "seeds": []},
-   "market": "US", "language": "English", "market_lang": "en",
+   "market": "US", "languages": {"working": "en", "market": "en"},
    "focus": "a nail brand", "currency": "USD",
    "outputs": ["category_report", "weekly_digest", "paid_view"]}
   ```

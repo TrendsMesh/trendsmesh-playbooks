@@ -1,6 +1,7 @@
 {
   "level": "every_step",
-  "account": {"id": "act_000000", "market": "CA", "language": "English", "currency": "PLN"},
+  "account": {"id": "act_000000", "market": "CA", "currency": "PLN"},
+  "languages": {"working": "en", "market": "en"},
   "product": {
     "name": "Night School e-book",
     "landing_url": "https://nightschool.example.com/",

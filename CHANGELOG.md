@@ -10,6 +10,28 @@ What changed in each version of the TrendsMesh playbooks plugin.
   Hebrew, Thai, Japanese, Chinese, Korean, or Cyrillic in Refresh an ad's cards and the Poppins ranking) the whole
   video switches to a matching Noto Sans font. Before a render, `tm render` checks that the font has every letter
   on screen, and if one is missing it stops and names the letter, instead of rendering it in another font.
+- **Every run has a working language and a market language.** The working language is what you and your team
+  read (cards, pages, briefs, reports); the market language is what your audience sees and hears (ad copy,
+  captions, voiceover, on-screen and cover text). Both are filled in from the language you write in, shown on the
+  intake card and corrected in the same reply, with no extra question. Runs set up before keep their language.
+- **Pages in your language, whatever it is.** The Creative brief page, the trend report (with its digest and
+  paid view) and the Organic AI video pages take their headings, labels, buttons and help from one table that
+  Claude translates into your language once and reuses in every later run; each page declares its language.
+  Until a language is translated, the page is built in English and Claude tells you so, instead of mixing the
+  two. Organic AI video is no longer limited to English or Polish pages.
+- **The creator-view check reads your languages.** In Creative brief, the check that keeps ad numbers, research
+  sources and competitors out of the creator's view now also looks for those words in the run's languages, and
+  says plainly when a language isn't covered yet. Brief rows like Account and Competition can carry your
+  language's labels.
+- **Customer words translated, and said so.** When a customer phrase comes from another language, Creative brief
+  translates it into the market language, marks it as translated and keeps the original as its source.
+- **The trend shortlist ranks for your market's language.** It no longer assumes English: it reads the run's
+  market language unless you name another.
+- **The weekly update phrase is in your language.** When no schedule is set up, the phrase Claude offers for next
+  week's report is in the language you work in.
+- **File names keep their letters.** Saved files whose names come from a search phrase or a query now turn
+  accented letters into plain ones (é → e, ß → ss, ł → l, ś → s) instead of dropping them.
+
 - **Organic AI video shows up again.** A colon in its description kept Claude Code from loading the playbook, so
   Claude didn't know it was there. It loads now, and a test checks every playbook and command file the way Claude
   Code reads them, so one can't go missing like that again.

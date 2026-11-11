@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: ov_intake_two_languages
+context:
+  scaffold_script: fixture.sh

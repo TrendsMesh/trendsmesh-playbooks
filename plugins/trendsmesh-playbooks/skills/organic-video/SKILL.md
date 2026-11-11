@@ -31,11 +31,13 @@ must act: the message says what; fix it and run the same command again), `1` err
 the command line is wrong: read the message and fix the cause; never work around it). Never run
 the handoff's scripts or call a trend API directly.
 
-**Language:** talk to the user, and write the pages and summaries, in the chat language. Pages
-are built in English or Polish: in any other chat language they are in English, and the engine
-gives the note to say once (`page_lang_note`). **Post text and speech are in the audience
-language** (the channel's); an explicit request ("an English version") wins. `tm` messages are
-English: put them in the user's words.
+**Language:** a run has two (`languages` in the config, `../../references/languages.md`): the
+**working language**, for the pages and summaries (by default the language the user writes in),
+and the **market language**, the channel's audience language: **post text, captions, speech and
+cover text are in it**; an explicit request ("an English version") wins. Any working language
+works: a page whose language has no translated table yet is built in English and the page
+command says so (`language_warning`): tell the user once and translate the table (`tm i18n`).
+`tm` messages are English: put them in the user's words.
 
 **Words:** say "check-in", never the spec's other word for it. The levels are **Check every
 step**, **Just the big calls** and **Hands-off**. Ask **one plain question at a time** (the A0

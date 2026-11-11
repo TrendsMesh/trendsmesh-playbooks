@@ -28,7 +28,7 @@ changes is recorded in brief.json and with `tm brief choose`.
 ## The cards
 
 **G0 · Confirm the intake card** (after A1). The card A1 showed: product, ad account, landing
-page, market, language, category phrase, the brand draft (what it stands for, tone in three
+page, market, working language and market language (`references/languages.md`), category phrase, the brand draft (what it stands for, tone in three
 words, claims, off-limits), recipients, number of concepts, the level, the outputs, and budget,
 deadline, approver, rights and fee ("to set" when not given). At Check every step, the user's
 reply to A1's card is this check-in's answer: record `tm decide G0 accept --run R --note "<their

@@ -1,0 +1,1 @@
+I run ExampleEdu, a channel for Polish parents about kids and gaming: screen time, Roblox, staying safe online. The videos are in Polish, but I'd rather read everything you send me in English. Can you set up short videos built on what's trending right now?

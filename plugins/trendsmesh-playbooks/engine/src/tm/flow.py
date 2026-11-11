@@ -43,7 +43,7 @@ from typing import Literal
 
 import yaml
 
-from tm import changes, checkins, evidence, library, playbooks, state, stepchecks, stops
+from tm import changes, checkins, evidence, i18n, library, playbooks, state, stepchecks, stops
 from tm.playbooks import CREATIVE_BRIEF, REFRESH_AD
 from tm.runfolder import RunFolder
 
@@ -920,7 +920,7 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
         return _with_notice(s, result)
 
     if s.status == "done":
-        return _with_notice(s, _done(_picture(s)))
+        return _with_notice(s, _offered(run, _done(_picture(s))))
     held = [x for x in _open_stops(s) if not x.get("engine")]
     if s.status == "stopped" and held:
         last = held[-1]
@@ -960,7 +960,7 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
             return finish(_step_view(_first(st for st in pic.app if st.measures), "work", gap))
         _release(s)
         s.status = "done"
-        return finish(_done(pic))
+        return finish(_offered(run, _done(pic)))
     st = pic.app[pic.p]
     pending = _pending_measurements(s) if st.measures else []
     if pending and date.fromisoformat(pending[0]) > today:
@@ -1002,6 +1002,13 @@ def _ended_early(s: state.RunState) -> bool:
     cat = checkins.load(playbook=s.playbook)
     return any("end" in cat.checkins[d["checkin"]].on_choice.get(d.get("choice"), {})
                for d in s.decisions if d.get("checkin") in cat.checkins)
+
+
+def _offered(run: RunFolder, result: NextStep) -> NextStep:
+    """The phrases a done run offers the user to say (the weekly run's), in the run's working language (issue #3)."""
+    if result.message:
+        result.message = i18n.offered(result.message, i18n.run_languages(run).working)
+    return result
 
 
 def _with_notice(s: state.RunState, result: NextStep) -> NextStep:

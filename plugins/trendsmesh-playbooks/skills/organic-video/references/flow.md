@@ -97,8 +97,9 @@ posts.
      3 links, or "none yet");
    - the company and its catalogue (products and the problems they solve), or "nothing sold"; the
      product role per channel, from "not shown" to "hero" (OV5);
-   - the audience language (derived from the channel, confirmed) and the chat language you are
-     talking in;
+   - the market language (the audience's, derived from the channel, confirmed) and the working
+     language (the one you are talking in), both shown with their defaults
+     (`references/languages.md`);
    - the output: **a script to film** ($0) or **a ready AI video** (paid, each cost approved
      first); it is chosen again per idea on the proposals page. For "plan my week of videos", **a
      week run** (`outputs: ["weekly_plan"]`, `output: weekly_pack`), with its own questions: the
@@ -121,14 +122,14 @@ posts.
 5. **Write it down**, after the reply:
    - `tm level <every_step|big_calls|hands_off> --run R`;
    - the answers as `03_wip/intake_answers_v01.json` (shape: `templates/intake_answers_example.json`:
-     `level`, `outputs: ["proposals"]` (a week run: `["weekly_plan"]` with `weekly`), `chat_language`, `audience_language`, `channels` by name,
+     `level`, `outputs: ["proposals"]` (a week run: `["weekly_plan"]` with `weekly`), `languages: {working, market}` (tags), `channels` by name,
      `output`, `generation`, `budget`, `currency` and `fx_rate`). **Never send a `mode` key**: the
      level replaces the handoff's two variants, and is read from the run, never from `mode.variant`.
      Keep the profile's answers (bubble, catalogue, product role, rules) for A1;
    - `tm config write --run R --answers 03_wip/intake_answers_v01.json`, then `tm config check
      --run R --json`. Each problem says what and what to do: ask, write the next `_vNN`, write again
-     (allowed until A0 is done). A chat language other than English or Polish gives English pages
-     and a note (`page_lang_note`): say it once.
+     (allowed until A0 is done). A working language whose table is not translated yet gives English
+     pages, and the page command says so: say it once, and translate the table (`tm i18n`).
    - **next week's week run** (the user says "plan my week of videos" again, the scheduled task, or `tm
      due`'s reminder): find the last week run of this channel in `runs/03-organic-ai-video/` (outputs
      `weekly_plan`, the one no other run follows); `tm run new --playbook organic-video --name <the
@@ -247,7 +248,7 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
 2. **4 to 6 proposals** (`proposals.min`, `proposals.max`), each with a different production type
    where possible, written as `03_wip/proposals_v01.json` in the handoff's schema
    (`engine/src/tm/schemas/pb3_proposals.schema.json` in the plugin), **in the page language** (`lang`:
-   the config's `page_lang`), with:
+   the config's `languages.working`), with:
    - the approach: **Recreate** (the whole video type with its look; it needs two evidence videos
      of one trend with the same structure) or **Inspire** (one or more ingredients; the weaker
      link said) (OV3);

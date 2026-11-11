@@ -25,9 +25,14 @@ codes: `0` done, `2` stop (something to fix or fetch first, or the user must act
 says what), `1` error (read the message and fix the cause; never work around it). Never run the
 handoff's scripts or call a trend API directly.
 
-**Language:** talk to the user, and write every output (the cards, the brief, the page's texts),
-in the run's language (`account.language`); ad copy and lines in the market's language. `tm`
-messages are English: put them in the user's words.
+**Language:** a run has two (`languages` in the config, `../../references/languages.md`, the one
+rule for runs outside English): the **working language**, for everything the user and their team
+read (the cards, the brief, the page and its labels; by default the language the user writes in),
+and the **market language**, for everything the audience sees or hears (ad copy, hooks, lines,
+on-screen text; by default the working language unless the account or landing page points
+elsewhere). The page's fixed words come from the engine's table: a language without its
+translation builds in English and says so; translate it once (`tm i18n`). `tm` messages are
+English: put them in the user's words.
 
 **Words:** say "check-in", never the spec's other word for it. The levels are **Check every
 step**, **Just the big calls** and **Hands-off**. Ask **one plain question at a time**. The user
@@ -87,7 +92,7 @@ MCP call (`ads_get_ad_accounts`), then:
   be found. The page is saved as its own text with `tm page fetch` (WebFetch gives a summary, a
   last resort no quote may come from). Everything else you derive.
 - **One card**, one message, with every field of the spec's confirmation card: product, account,
-  landing page, market, language, category phrase, the brand draft (what it stands for, tone in
+  landing page, market, working language and market language, category phrase, the brand draft (what it stands for, tone in
   three words, claims, off-limits), recipients (all five), number of concepts (3), how involved
   they want to be (Check every step, the default; Just the big calls; Hands-off), outputs (all
   four, or the review pack alone: chosen here only), and the optional budget, deadline, approver,

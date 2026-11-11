@@ -177,12 +177,17 @@ def _check_brief(args: argparse.Namespace, run: RunFolder) -> int:
     message = (f"{rel} holds at stage {args.stage}: {n} concept{'' if n == 1 else 's'} pass CB1-CB13"
                f"{'' if args.stage == 'concepts' else ' (the earlier stages included)'}. Near-duplicates checked "
                f"against {len(ads)} running ad texts in {reads} Meta read{'' if reads == 1 else 's'}.")
+    languages = {}
+    if args.stage == "production":                      # CB13's word check: say which languages it read (issue #3)
+        cfg = brief_research.run_config(run)
+        message += " " + brief_checks.language_note(cfg)
+        languages = {"languages_not_covered": brief_checks.language_words(cfg)[1]}
     warned = brief_checks.warnings(data)            # it holds all the same: worth a fix, not a stop
     if warned:
         message += "\nWarnings (it holds; better fixed in a new version):\n" + "\n".join(
             f"- {w.field}: {w.what} {w.todo}" for w in warned)
     cli.emit(args, {"status": "done", "file": rel, "stage": args.stage, "concepts": n, "ad_texts": len(ads),
-                    "ad_reads": reads, "message": message,
+                    "ad_reads": reads, **languages, "message": message,
                     "warnings": [{"field": w.field, "what": w.what, "todo": w.todo} for w in warned]}, message)
     return 0
 
@@ -236,6 +241,8 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
                     f" No PDFs: {got['pdf_note']}. The page works without them; its download buttons are left out.")
         message += (" Publish it with the Artifact tool (tm page files --page brief_pack gives its file_path and "
                     "files), declaring the decisions db and the downloads (tm brief capabilities) in the same publish.")
+    if got.get("language_warning"):
+        message += " " + got["language_warning"]
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

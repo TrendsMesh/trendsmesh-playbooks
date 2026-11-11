@@ -17,8 +17,12 @@ Pass JSON arguments as files in `03_wip/`, never inline (inline JSON breaks on W
 Exit codes: `0` done, `2` stop (the user must act), `1` error (read the message and fix the
 cause; never work around it). Never run `python -m tm.tools.*` or the handoff's scripts.
 
-**Language:** talk to the user, and write every output (briefs, plans, reports, cards), in the
-run's language (`account.language`). `tm` messages are English: put them in the user's words.
+**Language:** a run has two (`languages` in the config, `../../references/languages.md`): the
+**working language**, for everything the user and their team read (cards, briefs, plans, reports;
+by default the language the user writes in), and the **market language**, for everything the
+audience sees or hears (ad copy, captions, voiceover, on-screen text; by default the working
+language unless the account or landing page points elsewhere). `tm` messages are English: put
+them in the user's words.
 
 **Words:** say "check-in", never "gate". The levels are **Check every step**, **Just the big
 calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-in or step id
@@ -68,7 +72,7 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
 
 `tm run new --name <product or short label> --json` gives the run folder (the ad is not
 chosen yet; the name never needs to change). Then ask everything at once,
-each with a default: ad account, market and language, product and landing page, brand assets
+each with a default: ad account, market, the working and market languages, product and landing page, brand assets
 folder (where the original video should be), outputs (default: the creative brief, the edited
 video and the AI video), brand and compliance rules, budgets (AI in USD, ElevenLabs credits;
 required in Hands-off for the outputs that spend; in Hands-off with the edited video, also how far

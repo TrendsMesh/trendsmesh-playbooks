@@ -396,6 +396,25 @@ def html_lang(lang: str) -> str:
     return tag(lang) or ENGLISH
 
 
+# --- phrases offered to the user -------------------------------------------------------------------
+
+OFFERED = ("trends.weekly_phrase",)    # what the engine's messages tell the user to say, quoted
+
+
+def offered(text: str, lang: str | None) -> str:
+    """`text` (an engine message for the agent) with each phrase it offers the user to say in `lang`: the
+    translation when the table has it, else the English with a note to say it in `lang` (never silently English)."""
+    if is_english(lang) or not text:
+        return text
+    en, have = english(), table(lang)
+    for key in OFFERED:
+        quoted = f"'{en[key]}'"
+        if quoted in text:
+            text = text.replace(quoted, f"'{have[key]}'" if key in have else
+                                f"{quoted} (offer it to the user in {name(lang)})")
+    return text
+
+
 # --- export and import --------------------------------------------------------------------------------
 
 _HOW = ("Translate each string into {name}, for the people who read the pages (the run's working language). Keep "

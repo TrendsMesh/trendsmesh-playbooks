@@ -7,7 +7,7 @@ from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
-from tm import checkins, cli, flow, paths, state, stops
+from tm import checkins, cli, flow, i18n, paths, state, stops
 from tm.runfolder import RunFolder
 
 STOP = 2
@@ -76,7 +76,8 @@ def _decide(args: argparse.Namespace) -> int:
     recorded = [cat.checkins[d["checkin"]] for d in s.decisions[before:]]  # what this call decided
     notes = list(dict.fromkeys(n for c in recorded
                                if (n := c.on_choice.get(args.choice, {}).get("skips"))))
-    text = " ".join([f"Recorded {args.checkin}: {args.choice}.", *notes])
+    text = i18n.offered(" ".join([f"Recorded {args.checkin}: {args.choice}.", *notes]),
+                        i18n.run_languages(run).working)    # the weekly phrase in the user's language
     cli.emit(args, {**payload, **({"message": text} if notes else {})}, text)
     return 0
 

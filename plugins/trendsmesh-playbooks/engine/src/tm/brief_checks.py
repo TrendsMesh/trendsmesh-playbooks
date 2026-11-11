@@ -40,7 +40,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from tm import animatic, brief_research, brand, json_schema, page_text, research_checks, state, stepchecks
+from tm import animatic, brief_research, brand, i18n, json_schema, page_text, research_checks, state, stepchecks
 from tm import trends, voice
 from tm import voice_themes
 from tm.brief_config import SEED_KINDS
@@ -63,6 +63,7 @@ MIN_PHRASE_WORDS = 3     # CB5: a customer phrase is a whole bank phrase, or thi
 RELATIONS = ("consistent", "setup_payoff", "contradiction")       # CB7
 LICENCES = ("commercial", "organic", "unknown")                   # CB9, as the shortlist reads them
 GUESS_LABEL = "Hook (agent's guess)"
+GLANCE_KEYS = ("trend", "guess", "customers", "account", "competition")   # a glance row's name in any language
 COMPETITOR_FOUND = "competitor found"
 # The review pack's: what its page shows of a concept, with the plugin block.
 CONCEPT_FIELDS = ["id", "brief_id", "title", "one_liner", "key_message", "hypothesis", "glance", "hook", "beats", "plugin"]
@@ -131,6 +132,7 @@ def _schema(stage: str) -> dict:
     props["plugin"] = CONCEPT_PLUGIN
     props["copy_from_hook"]["properties"]["evidence"]["items"]["properties"]["plugin"] = CLIP_PLUGIN
     props["customer_phrases"]["items"]["properties"]["adapted_from"] = _TEXT
+    props["customer_phrases"]["items"]["properties"]["translated"] = {"type": "boolean"}   # CB5, issue #3
     concept["required"] = list(CONCEPT_FIELDS) if stage == "concepts" else [*concept["required"], "plugin"]
     return schema
 
@@ -268,8 +270,10 @@ def _card(run: RunFolder, trend_id: str) -> tuple[dict | None, str]:
 
 
 def _row(concept: dict, label: str) -> tuple[int | None, dict | None]:
-    """The glance row with this label and its index, else (None, None)."""
-    return next(((k, r) for k, r in enumerate(concept["glance"]) if _norm(r["label"]) == _norm(label)), (None, None))
+    """The glance row with this English label and its index, else (None, None). A row's `key` (GLANCE_KEYS) names
+    it in any language: a brief in another language labels its rows in that language (issue #3)."""
+    return next(((k, r) for k, r in enumerate(concept["glance"])
+                 if r.get("key") == label.lower() or _norm(r["label"]) == _norm(label)), (None, None))
 
 
 def _list(items: list[str]) -> str:
@@ -364,10 +368,11 @@ def _trend_row(run: RunFolder, i: int, c: dict, evidence: str | None) -> list[Pr
         if trend is not None:
             out.append(Problem(f"{field}.plugin.trend", f"{cid} names a trend, but a guess run has no trend data.",
                                "Set plugin.trend to null."))
-        if _norm(first["label"]) != _norm(GUESS_LABEL):
+        if first.get("key") != "guess" and _norm(first["label"]) != _norm(GUESS_LABEL):
             out.append(Problem(f"{field}.glance[0].label", f"The first glance row of {cid} is {first['label']!r}; in "
                                                            f"a guess run it is \"{GUESS_LABEL}\" (CB2, R3).",
-                               f"Label it \"{GUESS_LABEL}\"."))
+                               f"Label it \"{GUESS_LABEL}\" (in another language: key it guess, with the "
+                               "label in that language)."))
     elif evidence == TRENDSMESH:
         if trend is None:
             return out + [Problem(f"{field}.plugin.trend", f"{cid} has no trend, and this run rests on TrendsMesh "
@@ -379,11 +384,12 @@ def _trend_row(run: RunFolder, i: int, c: dict, evidence: str | None) -> list[Pr
                                                                  f"{c['plugin']['candidate']}: a concept builds on the "
                                                                  "trend it was scored and checked as (CB3, CB4).",
                                "Name the same trend in plugin.trend and plugin.candidate."))
-        if first["label"].strip() != want:
+        if first.get("key") != "trend" and first["label"].strip() != want:
             out.append(Problem(f"{field}.glance[0].label", f"The first glance row of {cid} is {first['label']!r}; its "
                                                            f"trend is a {kind}, so the row is \"{want}\" (CB2: a "
                                                            "hook_trend is never called a format).",
-                               f"Label it \"{want}\"."))
+                               f"Label it \"{want}\" (in another language: key it trend, with \"{want}\" said "
+                               "in that language)."))
         card, where = _card(run, tid)
         if card is None:
             out.append(Problem(f"{field}.plugin.trend.trend_id", f"{cid}'s trend {tid}: {where}.",
@@ -466,6 +472,11 @@ def _phrases(i: int, c: dict, bank: list[str] | None, where: str, least: int) ->
         phrase, adapted = p.get("phrase"), p.get("adapted_from")
         if not _filled(phrase):
             out.append(Problem(f"{field}[{j}]", f"{cid}'s customer phrase {j + 1} is empty.", "Give the phrase."))
+            continue
+        if p.get("translated") is True and adapted is None:      # issue #3: the original stays the source
+            out.append(Problem(f"{field}[{j}].adapted_from", f"{cid}'s phrase {phrase!r} is marked translated, but "
+                                                             "does not name the bank phrase it translates (CB5).",
+                               "Put the original phrase, as the bank has it, in adapted_from."))
             continue
         if bank is not None:
             whole = {_norm(b) for b in bank}
@@ -780,7 +791,41 @@ def _creator_words(cfg: dict, brief: dict, advertisers: list[str]) -> list[tuple
         return re.compile(start + re.escape(_norm(word)) + end)
     account = brief_research._setting(cfg, "account.currency") or brief["meta"]["plugin"]["account_currency"]
     words = [(w, pattern(w, "(?:s|es|ing)?")) for w in CREATOR_WORDS]
+    words += [(w, pattern(w.rstrip("*"), r"\w*" if w.endswith("*") else ""))   # "wydat*": any ending
+              for w in language_words(cfg)[0] if w.rstrip("*")]
     return words + [(w, pattern(w, "")) for w in [account, *advertisers] if _filled(w)]
+
+
+def language_words(cfg: dict) -> tuple[list[str], list[str]]:
+    """CB13's words in the run's working and market languages other than English, from their translated tables
+    (`checks.creator_words`, tm i18n): (the words, the languages no table covers yet)."""
+    langs = i18n.languages_of(cfg)
+    words: list[str] = []
+    uncovered: list[str] = []
+    for lang in dict.fromkeys((langs.working, langs.market)):
+        if i18n.is_english(lang):
+            continue
+        text = i18n.table(lang).get("checks.creator_words")
+        if text is None:
+            uncovered.append(lang)
+        else:
+            words += [w.strip() for w in text.split(",") if w.strip() and w.strip() not in CREATOR_WORDS]
+    return words, uncovered
+
+
+def language_note(cfg: dict) -> str:
+    """What CB13's word check read, said plainly: the languages it covers, and the ones it does not."""
+    langs = i18n.languages_of(cfg)
+    words, uncovered = language_words(cfg)
+    covered = ["English"] + [i18n.name(x) for x in dict.fromkeys((langs.working, langs.market))
+                             if not i18n.is_english(x) and x not in uncovered]
+    note = f"CB13 read the creator view for ad and research words in {_list(covered)}."
+    if uncovered:
+        names = _list([f"{i18n.name(x)} ({x})" for x in uncovered])
+        note += (f" {names} is not covered: its words for spend, CPA, competitors and the like are unknown, so read "
+                 f"the creator view yourself, or translate the table (tm i18n export --lang {uncovered[0]}, then "
+                 "tm i18n import) and check again.")
+    return note
 
 
 def _production_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:

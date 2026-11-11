@@ -43,8 +43,8 @@ your answers") and record `tm decide reuse_profile new --run R --note "no saved 
 **Confirm the channel profile** (`profile`, after A1; at every level: a channel's first profile is
 always the user's). One card per channel, in the template's fields
 (`templates/channel_profile_template.md`): channel and platforms, account type (a business
-account gets a commercial-library alternative to trending sounds), audience language (captions
-and speech; pages follow the chat language), the topic and bubble, the audience, tone and style,
+account gets a commercial-library alternative to trending sounds), audience language (the run's market language:
+captions and speech; pages follow the working language), the topic and bubble, the audience, tone and style,
 what performed, the products or "nothing sold", the product role, the output, the quality tier and
 resolution, the level, the budget, the tools the stack check found, and the content rules for a
 sensitive niche. **Each assumption is marked** (A), and the question is "Anything to correct?" A

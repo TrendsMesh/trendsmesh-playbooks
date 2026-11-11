@@ -22,8 +22,11 @@ breaks on Windows). Exit codes: `0` done, `2` stop (something to fix or fetch fi
 must act: the message says what), `1` error (read the message and fix the cause; never work around
 it). Never run the handoff's scripts or call a trend API directly.
 
-**Language:** talk to the user, and write every output (picks, the digest text, cards), in the
-run's language (`language` in the config). `tm` messages are English: put them in the user's words.
+**Language:** a run has two (`languages` in the config, `../../references/languages.md`): the
+**working language**, for everything the user and their team read (picks, the page, the digest
+text, cards, the weekly phrase offered; by default the language the user writes in), and the
+**market language**, the audience's, that trends and hooks are judged in (by default the working
+language). `tm` messages are English: put them in the user's words.
 
 **Words:** say "check-in", never the spec's other word for it. The levels are **Check every
 step**, **Just the big calls** and **Hands-off**. Ask **one plain question at a time**. The user
@@ -64,7 +67,7 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
 
 A new category: `tm run new --playbook trend-research --name <category> --json`, then the intake
 in one batch with defaults: the level, the category phrase (a link, store, competitor or ad as the
-input is "not supported yet": ask for a phrase), market and language, focus (optional), outputs
+input is "not supported yet": ask for a phrase), market, the working and market languages, focus (optional), outputs
 (the category report always; weekly digest; paid view; default all three), currency. Then `tm
 config write`, `tm config check`, `tm done A0`. Details: `references/flow.md#a0`.
 
