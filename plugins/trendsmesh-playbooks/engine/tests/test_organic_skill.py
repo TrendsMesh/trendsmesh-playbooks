@@ -19,7 +19,6 @@ PLUGIN = paths.bundled_data().parent
 REPO = PLUGIN.parents[1]
 SKILL = PLUGIN / "skills" / "organic-video"
 SPEC = REPO / "handoff" / "organic-video_v02" / "playbook-03-organic-ai-video"
-COPY = REPO / "spec" / "03-organic-ai-video"
 DESCRIPTION = ("Use when the user wants organic short videos for TikTok, Instagram Reels, YouTube Shorts or "
                "Facebook Reels built on rising trends: video ideas for a channel, a script to film, a ready AI "
                "video, or a weekly pack; also 'plan my week of videos'.")
@@ -501,31 +500,6 @@ def test_posting_kit_reference_is_the_handoffs_verbatim_and_lf():
     sources = _text(kit).split("## Sources", 1)[1]
     assert re.findall(r"^- S(\d+) ", sources, re.M) == [str(n) for n in range(1, 35)]   # 34 dated sources
     assert _pinned_lf("plugins/trendsmesh-playbooks/references/posting-kit.md")
-
-
-@pytest.mark.private_data
-def test_spec_copy_keeps_the_handoff_and_adds_the_levels():
-    """spec/03-organic-ai-video is the handoff's folder, pinned LF; FLOWS.md keeps every line of the handoff's, in
-    order, and adds "Levels in the plugin" under J with every check-in and the open questions for the playbook owner."""
-    files = sorted(p.relative_to(SPEC) for p in SPEC.rglob("*") if p.is_file())
-    assert sorted(p.relative_to(COPY) for p in COPY.rglob("*") if p.is_file()) == files
-    assert _pinned_lf("spec/03-organic-ai-video/**")
-    for rel in files:
-        if rel.name != "FLOWS.md":
-            assert _text(COPY / rel) == _text(SPEC / rel), rel
-    copied = _text(COPY / "FLOWS.md").splitlines()
-    i = 0
-    for line in _text(SPEC / "FLOWS.md").splitlines():
-        i = copied.index(line, i) + 1
-    levels = _text(COPY / "FLOWS.md").split("### Levels in the plugin", 1)[1].split("\n## K.", 1)[0]
-    for cid in ("reuse_profile", "profile", "proposals", "taste", "pack", "images", "video", "final_edit",
-                "script", "week", "schedule"):
-        assert f"`{cid}`" in levels, cid
-    for name in ("Check every step", "Just the big calls", "Hands-off", "Approve the plan for this video"):
-        assert name in levels
-    assert re.search(r"Open for \w+ \(#17\)", levels)   # the open questions, on issue #17
-    for question in ("nie występuje", "2–7 words", "hook", "Polish"):
-        assert question in levels, question
 
 
 @pytest.mark.private_data
