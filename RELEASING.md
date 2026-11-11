@@ -6,7 +6,13 @@ default branch, and users get new files only when `version` changes, so:
 - **`main`** is the default branch and holds released versions only. It moves at release time, by a fast-forward to
   `dev`. Only the repository admins can push to it.
 - **`dev`** is where every pull request goes, with green CI and a bullet under `## Unreleased` in `CHANGELOG.md`
-  (the `Changelog` workflow checks it).
+  (the `Changelog` workflow checks it). Pull requests target `dev`: the `Pull request base` workflow fails a pull
+  request into `main` unless its branch is `dev` or starts with `hotfix/`.
+- **Merging is a fast-forward push, never GitHub's merge button**, which writes its own commit under the clicking
+  person's name and email, unseen by any scan. After a counted green and the owner's yes, from the TrendsMesh
+  checkout: `git fetch origin && git push origin <pr-head-sha>:dev`, and GitHub shows the pull request as merged
+  (`CONTRIBUTING.md`, "Merging", has the steps). `dev`'s protection must let admins push. `main` moves the same way:
+  a fast-forward push of the scanned commit.
 - **Every push, tag and release only after the owner's yes.** An agent prepares each step and waits for that yes
   before it pushes, merges, tags or publishes anything. Each such step below says so again.
 
@@ -49,7 +55,7 @@ Run these in the shell you tag from: the tag goes on exactly the commit that was
    "Release X.Y.Z-rc.N". The changelog stays under `## Unreleased` until the release, so the pull request carries
    `no-changelog`. Only after the owner's yes, push the branch and open it:
    `gh pr create -B dev --title "Release X.Y.Z-rc.N" --label no-changelog`. Merge it after a counted green, only
-   after the owner's yes.
+   after the owner's yes, by pushing its head to `dev` (`CONTRIBUTING.md`, "Merging").
 2. **Check:** the steps under "Before every tag", which set `$sha` to the merged `dev`.
 3. **Tag** that commit, and push the tag only after the owner's yes:
    ```
@@ -57,7 +63,7 @@ Run these in the shell you tag from: the tag goes on exactly the commit that was
    git push origin vX.Y.Z-rc.N
    ```
 4. **Pre-release**, only after the owner's yes:
-   `gh release create vX.Y.Z-rc.N --prerelease --notes-file notes.md --target dev`
+   `gh release create vX.Y.Z-rc.N --prerelease --notes-file notes.md`
 5. Ask the tester to check it, with the steps below.
 
 ### The tester's check of a release candidate
@@ -92,14 +98,15 @@ A finding goes into an issue and a fix into `dev`; the next candidate is `X.Y.Z-
 1. **Version pull request.** On a branch from `dev`, set the version to `X.Y.Z` in the four places and turn
    `## Unreleased` in `CHANGELOG.md` into `## X.Y.Z`. Commit "Release X.Y.Z". Only after the owner's yes, push the
    branch and open it: `gh pr create -B dev --title "Release X.Y.Z"`. Merge it after a counted green, only after
-   the owner's yes.
+   the owner's yes, by pushing its head to `dev` (`CONTRIBUTING.md`, "Merging").
 2. **Check:** the steps under "Before every tag", which set `$sha` to the merged `dev`. `notes.md` is the
    `## X.Y.Z` section.
 3. **Move `main`** to that commit, as a fast-forward, only after the owner's yes:
    ```
    git push origin "$sha":main
    ```
-   Git refuses the push if it isn't a fast-forward: then stop and find out why `main` has moved.
+   Git refuses the push if it isn't a fast-forward: then stop and find out why `main` has moved. Never force it,
+   and never move `main` with a merge on GitHub.
 4. **Tag** the same commit, and push the tag only after the owner's yes:
    ```
    git tag vX.Y.Z "$sha"
@@ -125,6 +132,14 @@ auto-update on.
   5. Move `main`, tag and release that commit as in steps 3 to 5 above, each only after the owner's yes:
      `git push origin "$sha":main`, `git tag vX.Y.Z+1 "$sha"`, `git push origin vX.Y.Z+1` and
      `gh release create vX.Y.Z+1 --notes-file notes.md`.
-  6. Merge the fix back: `gh pr create -B dev --head hotfix/X.Y.Z --title "Hotfix X.Y.Z+1 into dev"`, keeping `dev`'s
-     `## Unreleased` section above the hotfix's section. Merge it after a counted green, only after the owner's
-     yes. Delete the branch once it's merged.
+  6. Merge the fix back into `dev`, as a fast-forward of `dev`. On a branch from `dev`, merge the hotfix locally,
+     keeping `dev`'s `## Unreleased` section above the hotfix's section (the merge commit is TrendsMesh's own):
+     ```
+     git fetch origin
+     git switch -c hotfix-X.Y.Z+1-into-dev origin/dev
+     git merge --no-ff origin/hotfix/X.Y.Z -m "Hotfix X.Y.Z+1 into dev"
+     ```
+     Only after the owner's yes, push it and open the pull request:
+     `gh pr create -B dev --title "Hotfix X.Y.Z+1 into dev"`. After a counted green and the owner's yes, push its
+     head to `dev` (`git push origin "$(git rev-parse HEAD)":dev`, a fast-forward). Delete both branches once
+     it's merged.
