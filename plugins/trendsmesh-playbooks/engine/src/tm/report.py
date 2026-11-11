@@ -292,9 +292,13 @@ def _send_run(args: argparse.Namespace) -> int:
 
 
 subcommand("send", _send_setup, _send_run)
+
+
 # --- github: a public issue under the user's own name ----------------------------------------
 
-REPO = "TrendsMesh/trendsmesh-playbooks"
+REPO = "github.com/TrendsMesh/trendsmesh-playbooks"
+_AUTH_TIMEOUT = 15
+_CREATE_TIMEOUT = 30
 _LABELS = {"bug": "bug", "change": "enhancement"}
 
 
@@ -313,31 +317,35 @@ def github(body_file: Path, kind: str, title: str) -> dict:
     gh = shutil.which("gh")
     if not gh:
         return {"outcome": "no_gh"}
-    env = dict(os.environ, GH_PROMPT_DISABLED="1")
+    env = {k: v for k, v in os.environ.items() if k not in ("GH_HOST", "GH_REPO")}
+    env["GH_PROMPT_DISABLED"] = "1"
     try:
-        if subprocess.run([gh, "auth", "status"], capture_output=True, env=env, timeout=15).returncode != 0:
+        if subprocess.run([gh, "auth", "status", "--hostname", "github.com"], capture_output=True,
+                           env=env, timeout=_AUTH_TIMEOUT).returncode != 0:
             return {"outcome": "no_gh"}
     except (OSError, subprocess.TimeoutExpired):
         return {"outcome": "no_gh"}
-    base = [gh, "issue", "create", "-R", REPO, "--title", title, "--body-file", str(body_file)]
+    base = [gh, "issue", "create", "-R", REPO, "--title", title, "--body-file", "-"]
     command = base + ["--label", _LABELS[kind]]
     for attempt in (1, 2):
         try:
-            done = subprocess.run(command, capture_output=True, text=True, errors="replace", env=env,
-                                  timeout=30)
+            done = subprocess.run(command, input=body.encode("utf-8"), capture_output=True, env=env,
+                                  timeout=_CREATE_TIMEOUT)
         except subprocess.TimeoutExpired:
             return {"outcome": "failed", "reason": "gh issue create timed out"}
         except OSError as exc:
             return {"outcome": "failed", "reason": f"{type(exc).__name__}: {exc}"[:200]}
+        out = done.stdout.decode("utf-8", "replace")
+        err = done.stderr.decode("utf-8", "replace")
         if done.returncode == 0:
-            for line in reversed(done.stdout.splitlines()):
+            for line in reversed(out.splitlines()):
                 if line.strip().startswith("https://"):
                     return {"outcome": "filed", "url": line.strip()}
             return {"outcome": "failed", "reason": "gh printed no issue URL"}
-        if attempt == 1 and "label" in (done.stderr + done.stdout).lower():
+        if attempt == 1 and "label" in (err + out).lower():
             command = base
             continue
-        return {"outcome": "failed", "reason": _last_line(done.stderr) or f"gh exited {done.returncode}"}
+        return {"outcome": "failed", "reason": _last_line(err) or f"gh exited {done.returncode}"}
     return {"outcome": "failed", "reason": "unreachable"}  # pragma: no cover
 
 
