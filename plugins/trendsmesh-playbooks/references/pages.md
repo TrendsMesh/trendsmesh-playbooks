@@ -104,7 +104,7 @@ the publish result says are stored (step 2), and say plainly if they are missing
    files; a title in the user's language, the icon `document`), with **the database declared in
    the same publish**: `capabilities` = the object `tm brief capabilities --json` prints (HANDOFF
    §4's rules verbatim: everyone with the link reads the decisions, each person writes only their
-   own, and their profile names them).
+   own, and their profile names them; and `downloads`, for the buttons that save the page's PDFs).
 2. **Check the declaration:** the publish result says what is stored for the page (its
    capabilities and access rules: `decisions` read view, write owner; `decisions/{self}` read view,
    write interact). When they are missing or differ, say so plainly, and the decisions are taken in

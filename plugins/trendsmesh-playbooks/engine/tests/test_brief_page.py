@@ -99,8 +99,11 @@ def _published(run: RunFolder) -> None:
 
 def _per_view_header(reference: str) -> str:
     """The reference page with the header of issue #15: who a concept is for and its trend line on every view but
-    the creator's (the reference shows them on all; the brief has no phone note, so no title line is added)."""
+    the creator's (the reference shows them on all; the brief has no phone note, so no title line is added); and the
+    view bar's hint of issue #10, built without PDFs (no browser in the tests): share the link with the team only."""
     facts = f' data-v="{" ".join(brief_page.HEADER_FACTS_VIEWS)}"'
+    reference = reference.replace("To send one view, open it and use Share, then Copy link.",
+                                  brief_page.E(brief_page.PDF_WORDS["hint_no_pdf"]))
     return re.sub(r'<div class="(who|trendline)">', lambda m: f'<div class="{m.group(1)}"{facts}>', reference)
 
 
@@ -341,7 +344,9 @@ def test_capabilities_are_handoff_verbatim(capsys):
     rules = re.search(r"`db` rules `(\[.*?\])`", text).group(1)
     scopes = re.search(r"`user` with `scopes:(\[.*?\])`", text).group(1)
     as_json = lambda s: json.loads(re.sub(r"([{,])(\w+):", r'\1"\2":', s))   # noqa: E731 (keys unquoted)
-    assert brief_page.CAPABILITIES == {"db": {"rules": as_json(rules)}, "user": {"scopes": json.loads(scopes)}}
+    # the handoff's db and user, verbatim, and the downloads of the PDFs' buttons (issue #10)
+    assert brief_page.CAPABILITIES == {"db": {"rules": as_json(rules)}, "user": {"scopes": json.loads(scopes)},
+                                       "downloads": True}
     assert main(["brief", "capabilities", "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["capabilities"] == brief_page.CAPABILITIES
     assert main(["brief", "capabilities"]) == 0

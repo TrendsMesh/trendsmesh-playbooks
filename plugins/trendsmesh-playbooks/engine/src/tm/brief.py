@@ -230,8 +230,12 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
     if args.single_file:
         message += f" The file is {got['bytes'] / 2**20:.1f} MiB."
     else:
+        pdfs = got["pdfs"]
+        message += (f" Printed {len(pdfs)} PDFs (the full report and one per view, in {where}/pdf/): they publish with "
+                    "the page, and its buttons download them." if pdfs else
+                    f" No PDFs: {got['pdf_note']}. The page works without them; its download buttons are left out.")
         message += (" Publish it with the Artifact tool (tm page files --page brief_pack gives its file_path and "
-                    "files), declaring the decisions db (tm brief capabilities) in the same publish.")
+                    "files), declaring the decisions db and the downloads (tm brief capabilities) in the same publish.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

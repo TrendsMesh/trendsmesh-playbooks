@@ -179,6 +179,7 @@ The creator part (rendered as the creator view, the former shot list): role, cas
 
 ### CB13. One brief, a view per recipient (user decision, 2026-11-04)
 - At intake the user ticks **one or more recipients**; the brief is written once (one data source) and the page shows one view per ticked recipient, each with its own link (`#decision`, `#strategy`, `#creator`, `#editor`, `#media-buyer`).
+- The page's link opens every view, so it goes to the team only. One view for someone outside it (an outside creator) is sent as that view's PDF: `tm brief page` prints the full report and one PDF per view (issue #10), and the page's buttons download them.
 
 | View | Recipient | Shows | Never shows |
 |---|---|---|---|

@@ -383,13 +383,16 @@ the example). One file is the source of the page, the animatics and the hand-off
   2. `tm brief check --run R --file 04_final/brief_pack_vNN.json --stage concepts --json` on the
      latest version. Exit 2 lists each problem: fix it as a new version (`tm brief evidence`
      again if it adds a clip) and check again.
-  3. `tm brief page --run R --json`: the page `04_final/brief_pack_vNN/` from the latest brief.
-     The page folder is numbered on its own: `brief_pack_v01/` built from `brief_pack_v02.json`
+  3. `tm brief page --run R --json`: the page `04_final/brief_pack_vNN/` from the latest brief,
+     with its PDFs printed by the user's Chrome or Edge (`pdf/brief_pack-full.pdf` and one per
+     view; a minute or so; without a browser the page is built without them, and the answer says
+     so). The page folder is numbered on its own: `brief_pack_v01/` built from `brief_pack_v02.json`
      (the version `tm brief evidence` wrote) is the latest page. Whether a page is built from the
      latest brief is `tm done C1`'s check (`page_built`), never the numbers: don't build again
      only because they differ.
   4. **Publish** per `references/pages.md`, "Pages that take decisions": `tm page files --run R
-     --page brief_pack --json` for the `Artifact` tool's `file_path` and `files`, published with
+     --page brief_pack --json` for the `Artifact` tool's `file_path` and `files` (the PDFs among
+     them), published with
      `capabilities` = the declaration `tm brief capabilities --json` prints; the result's stored
      declaration checked; then `tm page published --run R --page brief_pack --url <url>
      --version <the version id the publish returned> --json`. Later versions go to the same URL
@@ -494,7 +497,9 @@ CB13. One new brief version completes all three parts (the reference playbook's 
   rate.
 - Keep the animatic paths of the latest brief. Then `tm brief check --run R --file
   04_final/brief_pack_vNN.json --stage production --json` (it runs every earlier check too), `tm
-  brief page --run R --json`, publish to the same URL.
+  brief page --run R --json`, then the same check again: it reads the creator PDF the page just
+  printed (CB13), and a word it finds there is fixed in the brief, then the page built again.
+  Then publish to the same URL.
 - `tm done E1 --run R`. G4 follows: on its own at Check every step (decided on the page, `--stage
   G4`); at Just the big calls the card "Approve the briefs" covers G3 and G4 (`checkin-cards.md`),
   read with `--stage G4`; in Hands-off by rule. As at G3, earlier choices are pre-filled: carried

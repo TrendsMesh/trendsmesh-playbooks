@@ -59,6 +59,16 @@ def _no_real_layout_check(request, monkeypatch):
     monkeypatch.setattr(atlas, "layout", lambda page: dict(CLEAN_LAYOUT))
 
 
+@pytest.fixture(autouse=True)
+def _no_real_pdf_print(request, monkeypatch):
+    """`tm brief page` prints its PDFs with a real browser (`brief_pdf`): outside the `video` tests no browser is
+    found, so a page builds without PDFs. A test of the PDFs patches `brief_pdf.browser` and `print_pdf` again."""
+    if request.node.get_closest_marker("video"):
+        return
+    from tm import brief_pdf
+    monkeypatch.setattr(brief_pdf, "browser", lambda: None)
+
+
 @pytest.fixture
 def animatic_ready(monkeypatch):
     """The Atlas renderer can draw here: the `animatic` tier set up and a browser found (`atlas.missing()` is None),

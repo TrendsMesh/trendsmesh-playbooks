@@ -132,6 +132,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
   `.secrets/` is still blocked, and so are now a dump of the whole environment (`env`, `printenv`,
   `Get-ChildItem Env:`) and a recursive search or copy of a folder above the data folder (`~/.claude`). A block
   names its rule and the part of the call that matched, and says how to go on.
+- **Creative brief: download the report or one view as a PDF.** `tm brief page` now prints the full report and
+  one PDF per view with your Chrome or Edge, published with the page, and two buttons in the view bar download
+  them (on claude.ai after you confirm the save; opened as a file, they open the PDF). Each PDF shows only its
+  view, with the animatic's stills in place of the video and no decision forms. The page's link opens every
+  view, so it now says to share it with your team only and to send one view to someone outside it as its PDF;
+  the production check also reads the creator PDF for ad numbers, sources, competitors and the currency.
 
 ## 0.10.0
 

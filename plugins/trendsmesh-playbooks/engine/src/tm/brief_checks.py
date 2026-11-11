@@ -815,6 +815,7 @@ def _production_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
                     out.append(_creator_word(whose, prefix, where, word))
     if "creator" in meta["recipients"]:
         out += _creator_view_words(brief, words, found)
+        out += _creator_pdf_words(run, brief, words, out)
     return out
 
 
@@ -865,6 +866,38 @@ def _creator_view_words(brief: dict, words: list[tuple[str, re.Pattern]], found:
                     "Find it in the creator view (tm brief page) and say it without that word.")
             for word, pattern in words if pattern.search(rest)]
     return out
+
+
+def _creator_pdf_words(run: RunFolder, brief: dict, words: list[tuple[str, re.Pattern]],
+                       said: list[Problem]) -> list[Problem]:
+    """CB13 on the creator PDF (issue #10): the text of the creator PDF the latest page built from this brief
+    printed (`brief_page.creator_pdf`), each word of `words` in it that no problem in `said` names already. The
+    usage line may name the fee, as in the field scan. A PDF that is gone or has no text to read is a problem
+    too: it is never sent unread. No page printed from this brief yet: nothing to read."""
+    from tm import brief_page, brief_pdf          # brief_page imports this module
+    found = brief_page.creator_pdf(run, brief)
+    if found is None:
+        return []
+    rel, path = found
+    try:
+        shown = [brief_pdf.text(path, joiner) for joiner in (" ", "")]   # a word whose letters change font: ""
+    except (OSError, ValueError) as exc:
+        shown, why = [], f"cannot be read ({exc})"
+    else:
+        why = "has no text the check can read"
+    if not shown or not _filled(shown[0]):
+        return [Problem("creator PDF", f"The creator PDF {rel} {why}, so CB13 cannot be checked on it.",
+                        "Build the page again (tm brief page), then check again.")]
+    lows = [_norm(t) for t in shown]
+    for c in brief["concepts"]:
+        usage = (c.get("creator") or {}).get("usage") if isinstance(c, dict) else None
+        if _filled(usage):
+            lows = [low.replace(_norm(usage), " ") for low in lows]
+    named = " ".join(x.what for x in said)
+    return [Problem("creator PDF", f"The creator PDF {rel} says \"{word}\" (CB13: the creator sees no ad numbers, "
+                                   "research sources, competitors or the account's currency).",
+                    "Find it in the creator view, say it without that word, then build the page again (tm brief page).")
+            for word, pattern in words if any(pattern.search(low) for low in lows) and f'"{word}"' not in named]
 
 
 # --- the check -----------------------------------------------------------------------------------

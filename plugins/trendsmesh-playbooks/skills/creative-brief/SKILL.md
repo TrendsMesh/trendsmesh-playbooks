@@ -167,6 +167,10 @@ the category.
   older tools: `publish_files`, then `read_declaration` and `declare_capabilities`), the stored
   declaration checked in its result, then `tm page published` with the version it returns; later
   versions go to the same URL with the same capabilities, the declaration checked again.
+- **The PDFs:** `tm brief page` prints the full report and one PDF per view (the user's Chrome or
+  Edge; none without a browser), published with the page; its buttons download them. The link
+  goes to the team only (it opens every view): one view for someone outside it is sent as that
+  view's PDF. The PDFs hold no decisions: they are built before people decide.
 - **Deciding on the page** (G2, G3, G4 at Check every step and Just the big calls): `tm brief
   await` before the card; when the user says the team has decided, one unfiltered `ArtifactData`
   list (collection `decisions`, `query.limit` 1000; the older tools: `db_list`), `tm brief

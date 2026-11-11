@@ -4,6 +4,7 @@ the decisions taken on it.
     render(brief)                  the page's HTML and its views, from brief.json alone (CB10)
     view_text(brief, view)         the texts one view of that page shows (CB13's scan of the creator view)
     build(run, brief_path=None, *, single_file=False)   04_final/brief_pack_vNN/ or brief_pack_vNN.html
+    creator_pdf(run, brief)        the creator PDF of the page built from that brief (CB13 reads its text)
     read_decisions(saved)          the decisions in a saved ArtifactData list (or db_list) answer or a copied text
     verdicts(docs, concept_ids)    approved | changes | split | none per concept (plan Decision 8)
     mark_carried(docs, earlier)    rows equal to the earlier decisions file's: carried over, not a new look
@@ -29,6 +30,13 @@ records. The page pre-fills each person's earlier choice and the db keeps it whe
 republished, so a row equal to the earlier decisions file's is marked `carried`; choosing from the
 page refuses a carried approval unless the user kept it in chat (`--keep-carried`). A viewer's decision note is data: it is kept as a string and shown to the user, never
 acted on.
+
+The PDFs (issue #10, `tm.brief_pdf`): a folder build prints `pdf/brief_pack-full.pdf` and one PDF per view
+from the page's print mode (`render(..., stills=...)`: one view or all, no view bar, sidebar or decision
+forms, each animatic as its stills, a banner), and the page's view bar gets two buttons that save them (the
+`downloads` capability on claude.ai) or open them (a local file). A computer without a browser builds the
+page without them. The print mode and the buttons are the plugin's, over the handoff's template, which stays
+verbatim (as `WORDING`); the page without PDFs keeps the reference HTML but for the view bar's hint.
 """
 
 from __future__ import annotations
@@ -44,7 +52,7 @@ from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from urllib.parse import urlsplit
 
-from tm import animatic, brief_checks, manifest, page, state, stepchecks, trends
+from tm import animatic, brief_checks, brief_pdf, manifest, page, state, stepchecks, trends
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -53,6 +61,7 @@ PAGE = STEM                                   # the page's name for tm page: 04_
 TEMPLATE = Path(__file__).parent / "brief_pack" / "template.html"
 SOURCE = "tm brief page"
 DECISIONS_SOURCE = "tm brief decisions"
+PDF_SOURCE = "tm brief page (PDF)"           # a PDF's manifest row: not a page build, which `SOURCE` rows are
 RENDERS = animatic.RENDERS                    # where `tm brief animatic --render` writes
 EVIDENCE = "02_research/evidence"             # where `tm brief evidence` saves the thumbnails
 MEDIA_DIRS = (RENDERS, EVIDENCE)
@@ -61,10 +70,11 @@ STAGES = ("G2", "G3", "G4")
 SOURCES = ("page", "chat", "rule")
 FORMATS = ("9x16", "4x5")
 COLLECTION = "decisions"
-# HANDOFF §4, verbatim (plan Global Constraints): the page's decisions in the artifact's db.
+# HANDOFF §4, verbatim (plan Global Constraints): the page's decisions in the artifact's db; and the downloads.
 CAPABILITIES = {"db": {"rules": [{"path": "decisions", "read": "view", "write": "owner"},
                                  {"path": "decisions/{self}", "read": "view", "write": "interact"}]},
-                "user": {"scopes": ["profile"]}}
+                "user": {"scopes": ["profile"]},
+                "downloads": True}                    # the PDFs' buttons (issue #10)
 AWAITING = ("People are deciding on the page now. A new version would change it under them. Read their decisions "
             "first (`tm brief decisions`), then build again. If the team decided another way (in chat, say), "
             "record it with `tm brief choose --source chat` and stop waiting with `tm brief await --run <run> "
@@ -98,6 +108,98 @@ def worded(page: str) -> str:
     for old, new in WORDING:
         page = page.replace(old, new)
     return page
+
+
+# The PDFs (issue #10): the page's labels for them, and its print mode. The view bar's hint says to share the link
+# with the team only (it opens every view) and, with the PDFs, to send one view as its PDF.
+PDF_WORDS = {
+    "full": "Download full report (PDF)",
+    "view": "Download {view} view (PDF)",
+    "hint": "Share this page's link with your team. To send one view to someone outside it, download that view's PDF.",
+    "hint_no_pdf": "Share this page's link with your team only: it opens every view.",
+    "unavailable": "Downloads don't work here: open the page from its claude.ai link, or ask the sender for the PDF.",
+    "failed": "The download failed. Try again in a moment.",
+    "banner_full": "Full report",
+    "banner_view": "View: {view}",
+    "stills": "Stills from the animatic. The animatic plays on the online page.",
+}
+PRINT_CSS = """
+  /* print mode (issue #10): print.html#print-full or #print-<view>, as the PDFs are printed */
+  @page{size:A4;margin:12mm}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.print{font-size:14px}
+  body.print .viewbar,body.print aside,body.print .decide,body.print .decisions,body.print .toggle,body.print .toast{display:none !important}
+  body.print .night{padding:28px 16px 32px}
+  body.print .page{display:block;padding:28px 0 0}
+  body.print .phones{grid-template-columns:repeat(3,minmax(0,1fr));max-width:none;gap:18px;margin-top:24px}
+  body.print .phone .frame{width:min(100%,170px)}
+  .phone img.still{width:100%;height:100%;object-fit:cover;border-radius:22px;display:block;background:#000}
+  body.print .concept{padding:20px}
+  body.print .concept header{grid-template-columns:1fr}
+  .stills{margin:6px 0 0}
+  .stills-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+  .stills img{width:100%;border-radius:8px;display:block;background:#000}
+  .stills figcaption{color:var(--muted);font-size:13px;margin-top:6px}
+  .print-banner{background:var(--note);color:var(--note-ink);font-weight:700;padding:10px 16px}
+  .print-banner[hidden]{display:none}
+  body.print tr,body.print .fact,body.print .glance .g,body.print blockquote,body.print .findings li,body.print .evidence a,body.print .phone,body.print .stills,body.print .hookline,body.print .note-box,body.print .copy{break-inside:avoid}
+  body.print h2,body.print h3{break-after:avoid}
+"""
+DOWNLOAD_CSS = """
+  /* the PDFs' buttons (issue #10) */
+  .vb-pdf{display:flex;flex-wrap:wrap;gap:6px}
+  .vb-pdf button{font:inherit;font-weight:600;padding:8px 14px;border-radius:999px;border:1px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer}
+  .vb-pdf button:disabled{opacity:.5;cursor:default}
+"""
+PRINT_SCRIPT = """<script>
+  // print mode (issue #10): one view, or every view of the brief for the full report, and its banner
+  (() => {
+    const m = location.hash.match(/^#print-([A-Za-z0-9_-]+)$/); if (!m) return;
+    const key = m[1]; document.body.classList.add('print');
+    if (key === 'full') document.querySelectorAll('[data-v]').forEach(el => { el.hidden = !el.dataset.v.split(' ').some(x => RECIPIENTS.includes(x)); });
+    else showView(key);
+    document.querySelectorAll('.print-banner').forEach(b => { b.hidden = b.dataset.print !== key; });
+  })();
+</script>
+"""
+DOWNLOAD_SCRIPT = """<script>
+  // the PDFs (issue #10): on claude.ai saved with the downloads capability, elsewhere opened as files
+  (() => {
+    const bs = [...document.querySelectorAll('.vb-dl')], note = document.querySelector('.vb-dl-note');
+    const say = t => { note.textContent = t || ''; note.hidden = !t; };
+    const open = () => bs.forEach(b => b.addEventListener('click', () => window.open(b.dataset.file, '_blank', 'noopener')));
+    if (location.protocol === 'file:') { open(); return; }
+    bs.forEach(b => { b.disabled = true; });
+    (async () => {
+      for (let i = 0; i < 50 && !(window.claude && window.claude.use); i++) await new Promise(r => setTimeout(r, 200));
+      if (!(window.claude && window.claude.use)) { bs.forEach(b => { b.disabled = false; }); open(); return; }
+      let dls = null; try { dls = await window.claude.use('downloads'); } catch (e) { dls = null; }
+      if (!dls) { say(note.dataset.unavailable); return; }
+      bs.forEach(b => { b.disabled = false; b.addEventListener('click', async () => {
+        if (b.disabled) return;
+        b.disabled = true; say('');
+        try {
+          const res = await fetch(b.dataset.file); if (!res.ok) throw new Error(String(res.status));
+          await dls.save({ filename: b.dataset.file.split('/').pop(), data: await res.blob() });
+        } catch (e) { if (!(e && e.code === 'declined')) say(note.dataset.failed); }
+        finally { b.disabled = false; }
+      }); });
+    })();
+  })();
+</script>
+"""
+
+
+def _with_parts(tpl: str, *, pdfs: bool, printing: bool) -> str:
+    """The template with the plugin's print mode (print.html) or download script (a page with PDFs)."""
+    css = (PRINT_CSS if printing else "") + (DOWNLOAD_CSS if pdfs else "")
+    if css:
+        tpl = tpl.replace("</style>", css + "</style>", 1)
+    scripts = (PRINT_SCRIPT if printing else "") + (DOWNLOAD_SCRIPT if pdfs else "")
+    if scripts:
+        head, end, tail = tpl.rpartition("</body>")
+        tpl = head + scripts + end + tail
+    return tpl
 
 
 _MIME = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".jpg": "image/jpeg",
@@ -154,12 +256,25 @@ def _thumb(x) -> str:
     return f'<img src="{E(x["thumb"])}" alt="{E(x["caption"])}">' if x.get("thumb") else ''
 
 
-def concept_html(c, idx, total):
+def _stills_html(shots: list[str]) -> str:
+    """The print mode's player: the animatic's stills, captioned (none without stills)."""
+    if not shots:
+        return ''
+    imgs = ''.join(f'<img src="{E(s)}" alt="">' for s in shots)
+    return f'<figure class="stills"><div class="stills-row">{imgs}</div><figcaption>{E(PDF_WORDS["stills"])}</figcaption></figure>'
+
+
+def concept_html(c, idx, total, stills=None):
+    """A concept's section; with `stills` ({animatic path: its stills}) the print mode's, its stills in
+    place of the player."""
     cid = E(c['id'])
     a = c.get('animatic', {})
     default = a.get('default', '9x16')
     src = a.get(default, '')
     toggle = ''.join(f'<button aria-pressed="{"true" if f == default else "false"}" data-src="{E(a[f])}">{f.replace("x", ":")}</button>' for f in FORMATS if a.get(f))
+    player = (_stills_html(stills.get(src) or []) if stills is not None else
+              f'<div class="player" data-player="{cid}"><video src="{E(src)}" controls muted playsinline preload="metadata"></video>'
+              f'<div class="toggle" role="group" aria-label="Format">{toggle}</div></div>')
     out = [f'<section id="{cid.lower()}" class="concept">',
            '<header><div>',
            f'<p class="tag">Concept {idx} of {total}</p>',
@@ -168,8 +283,7 @@ def concept_html(c, idx, total):
            f'<p class="keymsg"><b>Key message:</b> {E(c["key_message"])}</p>',
            f'<p class="hyp"{v("decision", "strategy", "media-buyer")}><b>What this tests:</b> {E(c["hypothesis"])}</p>',
            '</div>',
-           f'<div class="player" data-player="{cid}"><video src="{E(src)}" controls muted playsinline preload="metadata"></video>'
-           f'<div class="toggle" role="group" aria-label="Format">{toggle}</div></div>',
+           player,
            '</header>']
     # evidence at a glance
     rows = ''.join(f'<div class="g{" trend" if g.get("highlight") else ""}"><dt>{E(g["label"])}</dt><dd>{E(g["text"])}<span class="src">{E(g["source"])}</span></dd></div>' for g in c['glance'])
@@ -237,10 +351,25 @@ def concept_html(c, idx, total):
     return '\n'.join(out)
 
 
-def body_html(p):
+def _pdf_buttons(pdfs: dict[str, str], views: list[str]) -> str:
+    """The view bar's download buttons: the full report, and the view shown (a button per view, shown with it)."""
+    full = f'<button type="button" class="vb-dl" data-file="{E(pdfs[brief_pdf.FULL])}">{E(PDF_WORDS["full"])}</button>'
+    per = ''.join(f'<button type="button" class="vb-dl"{v(x)} data-file="{E(pdfs[x])}">'
+                  f'{E(PDF_WORDS["view"].format(view=VIEW_LABEL[x]))}</button>' for x in views if x in pdfs)
+    return (f'<div class="vb-pdf">{full}{per}</div><span class="vb-hint vb-dl-note" role="status" '
+            f'data-unavailable="{E(PDF_WORDS["unavailable"])}" data-failed="{E(PDF_WORDS["failed"])}" hidden></span>')
+
+
+def body_html(p, pdfs=None, stills=None):
+    """The page's body and its views. `pdfs` ({"full" | view: served path}) adds the download buttons; `stills`
+    ({animatic path: its stills}) makes the print mode's body: a banner per PDF, stills in place of videos."""
     m = p['meta']
     views = [x for x in ALL_VIEWS if x in m['recipients']]
     out = ['<div class="night"><div class="wrap">', f'<h1>{E(m["title"])}</h1>']
+    if stills is not None:
+        banners = [(brief_pdf.FULL, PDF_WORDS["banner_full"])] + [(x, PDF_WORDS["banner_view"].format(view=VIEW_LABEL[x]))
+                                                                 for x in views]
+        out.insert(0, ''.join(f'<div class="print-banner" data-print="{x}" hidden>{E(t)}</div>' for x, t in banners))
     for k, txt in m.get('lede', {}).items():
         out.append(f'<p class="lede"{v(E(k))}>{E(txt)}</p>')
     out.append(f'<p class="meta">Market: {E(m["market"])}, {E(m["language"])}. Prepared {E(m["prepared"])}. Trend data valid until {E(m["valid_until"])}.</p><div class="phones">')
@@ -250,12 +379,17 @@ def body_html(p):
         facts = v(*HEADER_FACTS_VIEWS)
         # the creator's card: the title under the phone note (when the note is not the title), no account data
         title = f'<div class="who"{v("creator")}>{E(c["title"])}</div>' if c.get("phone_note", c["title"]) != c["title"] else ''
-        out.append(f'<a class="phone" href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}"><div class="frame"><video src="{E(phone)}" autoplay muted loop playsinline aria-label="{E(c["id"])} animatic"></video></div>'
+        shots = (stills or {}).get(phone) or []
+        screen = ((f'<img class="still" src="{E(shots[min(1, len(shots) - 1)])}" alt="">' if shots else '') if stills is not None
+                  else f'<video src="{E(phone)}" autoplay muted loop playsinline aria-label="{E(c["id"])} animatic"></video>')
+        out.append(f'<a class="phone" href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}"><div class="frame">{screen}</div>'
                    f'<div class="note">{E(c.get("phone_note", c["title"]))}</div>{title}<div class="who"{facts}>{E(c.get("for_whom"))}</div><div class="trendline"{facts}>{E(c.get("trend_line"))}</div></a>')
     out.append('</div></div></div>')
     btns = ''.join(f'<button type="button" data-view="{x}">{VIEW_LABEL[x]}</button>' for x in views)
-    if len(views) > 1:
-        out.append(f'<div class="viewbar" role="navigation" aria-label="Choose your view"><div class="wrap viewbar-in"><span class="vb-label">I am the</span><div class="vb-buttons">{btns}</div><span class="vb-hint">To send one view, open it and use Share, then Copy link.</span></div></div>')
+    if len(views) > 1 or pdfs:
+        pick = f'<span class="vb-label">I am the</span><div class="vb-buttons">{btns}</div>' if len(views) > 1 else ''
+        hint = PDF_WORDS["hint"] if pdfs else PDF_WORDS["hint_no_pdf"]
+        out.append(f'<div class="viewbar" role="navigation" aria-label="Choose your view"><div class="wrap viewbar-in">{pick}{_pdf_buttons(pdfs, views) if pdfs else ""}<span class="vb-hint">{E(hint)}</span></div></div>')
     out.append('<div class="wrap page"><main>')
     f = p.get('findings')
     if f:
@@ -276,7 +410,7 @@ def body_html(p):
         out.append(f'<section id="tone"{v("strategy", "creator", "editor")}><h2>Tone and must-haves</h2><div class="two"><div><h3>Tone</h3><p>{E(t.get("tone"))}</p><h3>Must have</h3><ul class="plain">{must}</ul></div><div><h3>Never</h3><ul class="plain">{never}</ul></div></div></section>')
     n = len(p['concepts'])
     for i, c in enumerate(p['concepts'], 1):
-        out.append(concept_html(c, i, n))
+        out.append(concept_html(c, i, n, stills))
     out.append(f'<footer><p{v("decision", "strategy", "media-buyer")}>{E(m.get("sources_note"))}</p><p>{E(m.get("animatic_note"))}</p></footer></main>')
     nav = ''.join(f'<a href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}">{E(c["id"])} {E(c["title"][:28])}</a>' for c in p['concepts'])
     tally = ''.join(f'<li>{E(c["id"])}: none yet</li>' for c in p['concepts'])
@@ -315,16 +449,18 @@ def _required(brief: object) -> list[str]:
     return miss
 
 
-def render(brief: dict) -> tuple[str, list[str]]:
+def render(brief: dict, *, pdfs: dict[str, str] | None = None,
+           stills: dict[str, list[str]] | None = None) -> tuple[str, list[str]]:
     """The page's HTML and the views it shows (`meta.recipients` in the page's order). Stop for a
-    brief the page cannot be built from."""
+    brief the page cannot be built from. `pdfs` ({"full" | view: served path}) adds the buttons that download
+    them; `stills` ({animatic path: its stills' paths}) makes the print mode the PDFs are printed from."""
     miss = _required(brief)
     if miss:
         raise Stop(f"The brief is missing {', '.join(miss)}, so the page cannot be built from it. Fix brief.json "
                    f"(a new version) and check it (tm brief check), then build again. The run continues from the "
                    "same place.")
     try:
-        body, views = body_html(brief)
+        body, views = body_html(brief, pdfs, stills)
     except (KeyError, TypeError, ValueError, AttributeError, IndexError) as exc:
         raise Stop(f"The brief is not in its shape ({type(exc).__name__}: {exc}), so the page cannot be built from "
                    "it. Check it with tm brief check, fix it (a new version), then build again. The run continues "
@@ -332,7 +468,7 @@ def render(brief: dict) -> tuple[str, list[str]]:
     title = brief['meta']['title']
     fills = {"{{TITLE}}": E(title), "{{TITLE_JS}}": title_js(str(title)), "{{RECIPIENTS}}": _script(views),
              "{{CONCEPT_IDS}}": _script([c['id'] for c in brief['concepts']]), "<!--BODY-->": body}
-    tpl = worded(TEMPLATE.read_text(encoding="utf-8"))
+    tpl = _with_parts(worded(TEMPLATE.read_text(encoding="utf-8")), pdfs=bool(pdfs), printing=stills is not None)
     return _FILL.sub(lambda mt: fills[mt.group(0)], tpl), views
 
 
@@ -488,13 +624,44 @@ def _data_uri(path: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
+def _print_pdfs(run: RunFolder, out: Path, brief: dict, served: dict[str, str], present: dict[str, Path],
+                missing: list[str], views: list[str], planned: dict[str, int]) -> tuple[dict[str, str], str | None]:
+    """Print the page's PDFs into `out/pdf/` (`brief_pdf`): the print page `.print/print.html` (media from the
+    page folder, each animatic's stills as JPEGs beside it), then one PDF per key of `brief_pdf.names`. Returns
+    ({key: served path}, None), or ({}, why there are none): no browser, a print that failed, or a page the PDFs
+    would put over the Artifact tool's limits. The page is built either way."""
+    browser = brief_pdf.browser()
+    if browser is None:
+        return {}, "no Chrome or Edge was found on this computer to print them"
+    to_print = {ref: f"../{served[ref]}" for ref in present} | {ref: "" for ref in missing}
+    shots = {}
+    for _, kind, ref in _refs(brief):
+        if kind == "animatic" and ref in present and to_print[ref] not in shots:
+            made = brief_pdf.stills(run.path, present[ref], out / brief_pdf.PRINT_DIR / "stills")
+            shots[to_print[ref]] = [f"stills/{f.name}" for f in made]
+    print_page = brief_pdf.write_print_page(out, render(_swap(brief, to_print), stills=shots)[0])
+    wanted = brief_pdf.names(views)
+    try:
+        for key, served_at in wanted.items():
+            brief_pdf.print_pdf(browser, print_page, key, out / served_at)
+    except ValueError as exc:
+        brief_pdf.remove(out)
+        return {}, f"printing them failed: {exc}"
+    over = page.over_limits(planned | {p: (out / p).stat().st_size for p in wanted.values()})
+    if over:
+        brief_pdf.remove(out)
+        return {}, f"with them the page would be too big to publish as one artifact: {over}"
+    return wanted, None
+
+
 def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool = False) -> dict:
     """Build the page from brief.json (default: the latest `04_final/brief_pack_vNN.json`) into a new
     `04_final/brief_pack_vNN/` (index.html plus the media it names), or with `single_file` into
     `04_final/brief_pack_vNN.html` with every media file inlined (CB12's fallback). Nothing is
     written when a decision is awaited, an animatic the brief names is not rendered, the brief
     cannot make a page, or the folder would be over the Artifact tool's limits (each a Stop). A missing
-    thumbnail is listed in `media_missing` (a single file leaves its image out)."""
+    thumbnail is listed in `media_missing` (a single file leaves its image out). A folder build prints the
+    PDFs (`_print_pdfs`, `pdfs`), each with a manifest row; without them `pdf_note` says why."""
     if page.awaiting(run, PAGE) is not None:
         raise page.Deciding(PAGE, AWAITING)
     path, rel, brief = load_brief(run, brief_path)
@@ -541,16 +708,53 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
             dest = out / served[ref]
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(f, dest)
+        try:
+            pdfs, pdf_note = _print_pdfs(run, out, brief, served, present, missing, views, planned)
+        except OSError as exc:                   # the page is written all the same: PDFs are its extra
+            brief_pdf.remove(out)
+            pdfs, pdf_note = {}, f"printing them failed: {exc}"
+        if pdfs:
+            html_text = render(_swap(brief, served), pdfs=pdfs)[0]
         with open(out / "index.html", "x", encoding="utf-8", newline="\n") as fh:
             fh.write(html_text)
     out_rel = out.relative_to(run.path).as_posix()
-    manifest.record(run, out_rel, FINAL, SOURCE, parent=rel,
-                    params={"brief_sha256": stepchecks.sha256(path), "views": views, "single_file": single_file,
-                            "media_missing": missing})
+    if not single_file:                          # before the page's row, which decided_page takes as the last
+        for key, served_at in pdfs.items():
+            manifest.record(run, f"{out_rel}/{served_at}", FINAL, PDF_SOURCE, parent=out_rel, model=brief_pdf.MODEL,
+                            cost="0", params={"view": key})
+    params = {"brief_sha256": stepchecks.sha256(path), "views": views, "single_file": single_file,
+              "media_missing": missing}
+    manifest.record(run, out_rel, FINAL, SOURCE, parent=rel, params=params | ({} if single_file else {"pdfs": pdfs}))
     result = {"views": views, "media_copied": len(present), "media_missing": missing, "brief": rel}
     if single_file:
         return {"file": out_rel, **result, "bytes": out.stat().st_size}
-    return {"folder": out_rel, **result, "files": page.files(out)}
+    return {"folder": out_rel, **result, "pdfs": [f"{out_rel}/{p}" for p in pdfs.values()], "pdf_note": pdf_note,
+            "files": page.files(out)}
+
+
+def creator_pdf(run: RunFolder, brief: dict) -> tuple[str, Path] | None:
+    """The creator PDF of the latest page built from a brief file equal to `brief` and unchanged since (its
+    `tm brief page` row: the brief's sha256, the PDFs it printed), as (run-relative path, path); None when no
+    such page printed one. The path may be gone: the caller says so."""
+    for row in reversed(manifest.rows(run)):
+        if row["source"] != SOURCE:
+            continue
+        try:
+            params = json.loads(row["params"]) if row["params"] else {}
+            parent = run.path / row["parent"]
+            same = (isinstance(params, dict) and parent.is_file()
+                    and params.get("brief_sha256") == stepchecks.sha256(parent)
+                    and json.loads(parent.read_text(encoding="utf-8-sig")) == brief)
+        except (OSError, ValueError):
+            continue
+        if not same:
+            continue
+        served = (params.get("pdfs") or {}).get("creator")
+        if not isinstance(served, str):
+            return None
+        rel = f"{row['file']}/{served}"
+        return rel, run.path / rel
+    return None
 
 
 # --- decisions ---------------------------------------------------------------------------------
