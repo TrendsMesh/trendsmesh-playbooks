@@ -26,12 +26,13 @@ How to read the copy in the plugin:
 
 What the engine computes, so you never compute it by hand: relevant counts, the split rule and
 the depth (`tm research search-status`), the map with noise, seasonal tags and the review
-(`tm research map`), the hooks path (`tm research hooks`), growth, stages, bands, confidence and
-the snapshot (`tm research growth`), the backtest (`tm research backtest`), the fetch plan and the
-digest with the call check (`tm research fetch-plan`, `digest`), the checks of your Ad Library
-reading and your picks (`tm research paid check`, `picks check`), the page (`tm research report`)
-and the seeds (`tm research seeds`). Yours to keep: the seed phrases and the split, the relevance
-review, the review of the picks and their write-ups, the Ad Library reading, the digest text, and
+(`tm research map`), the hooks' ranking and shortlist (`tm research hook-fit`), their category
+videos (`tm research hooks`), growth, stages, bands, confidence and the snapshot (`tm research
+growth`), the backtest (`tm research backtest`), the fetch plan and the digest with the call check
+(`tm research fetch-plan`, `digest`), the checks of your Ad Library reading and your picks (`tm
+research paid check`, `picks check`), the page (`tm research report`) and the seeds (`tm research
+seeds`). Yours to keep: the seed phrases and the split, the relevance review, the hooks' fit
+scores, the review of the picks and their write-ups, the Ad Library reading, the digest text, and
 every sentence's source (R3).
 
 ## The words fixed by the spec (use them verbatim, on the page and in messages)
@@ -46,7 +47,10 @@ every sentence's source (R3).
 ## The numbers (copied from PLAYBOOK.md; the config's defaults)
 
 - TR1: `min_match` 40, `min_relevant` 10, split into 5–8 sub-categories, max depth 2.
-- Hooks path: keep at ≥ 2 matching videos and ≥ 20 %, or ≥ 3.
+- Hooks path: every hook scored 1–5 on Creative brief's seven CB3 criteria, equal weights; the best
+  `hooks.shortlist` 8 with a mean fit of at least `hooks.min_fit` 3 are fetched and kept; category
+  videos counted on whole words, any match (issue #8; until 0.10 a hook was kept only at ≥ 2
+  matching videos and ≥ 20 %, or ≥ 3).
 - TR2: window 14 days, baseline 28 days, lag 2 days; baseline floor 1 creator per window.
 - TR3 rule v3: act now index ≥ 1.3 and ≥ 3 new creators, last new ≤ 5 days, median views ≥ 5,000,
   top account ≤ 60 %, not crowded; still rising index ≥ 0.6 and ≥ 2, ≤ 7 days; crowded ≥ 100
@@ -88,7 +92,7 @@ Rules from PB1 and PB2 that apply unchanged: **R3** (every number has a source; 
 - **Noise:** results matching `trends.exclude_terms` (news, sport, politics, celebrities unless the category is about them) are dropped and listed in the map, so the user can restore them. **Seasonal trends inside the category are not noise** (Halloween makeup in "beauty"): they are tagged and the seasonal guard in TR3 decides (dry run 2026-11-04).
 - **Agent relevance review (part of G1, also in AUTO):** the match threshold alone lets off-category trends in (dry run: "Dementia in family life" matched "anti-aging" at 41; fashion and fan-edit topics matched "makeup" and "k-beauty"). The agent reads every kept trend and records drops and re-tags with a reason in `03_wip/map_review_vNN.json`; the map is rebuilt from it.
 - **Stop splitting** at depth 2 even when leaves stay thin: a thin leaf after two splits means the corpus has little there (dry run: sunscreen, body lotion, self tanning returned 0 relevant), not that the query is badly worded.
-- **Hooks have their own path:** hook trends are opening structures for any subject and score low on topic phrases. The SKILL lists rising hooks (`sort=rising`, `trend_type=hook_trend`) and keeps those whose evidence videos are in the category (`excerpt` / `hook_text` match category terms); others may appear as "general hooks" with that label.
+- **Hooks have their own path:** hook trends are opening structures for any subject and score low on topic phrases. The SKILL lists rising hooks (`sort=rising`, `trend_type=hook_trend`) and **ranks them by fit, not by use** (issue #8, as Creative brief's CB3 and Organic AI video's transfers do): each hook is scored from its card on Creative brief's seven criteria for this category, market and focus, and only the best-fitting few (`hooks.shortlist`, 8) have their videos fetched. Whether the category already uses a hook (its evidence videos' `excerpt` / `hook_text` / `slot_fill` hold category words, as whole words) is shown next to it, never a gate: a hook with no category video yet is a **transfer**, labelled so (a hypothesis, R3). In a niche category the old gate ("used by ≥ 2 category videos") kept none of 138 rising hooks after a fetch of minutes.
 - **Never write "no trends in the category":** when the map stays thin after expansion, show the closest trends marked "weak match".
 - HITL: the map (sub-categories, counts, dropped items) is gate G1.
 
@@ -120,7 +124,7 @@ Backtest result of rule v2 (median new creators in the next 14 days, act now vs 
 **Rule v3 (current, 2026-11-04, after the user's review of the first report):**
 - **Velocity is read against the category, not as a raw count.** Velocity index = new creators in the last 14 days ÷ new creators of the typical active trend in the same category at the same date (median). A raw count grows when TrendsMesh simply collects more videos; the index does not. Act now: index ≥ 1.3 (and ≥ 3 new creators); still rising: index ≥ 0.6 (and ≥ 2).
 - **Concentration gate:** a trend whose evidence views come more than 60% from one account is not spreading and cannot be "act now" (dry run: "Lip combo" 85% from the brand's own account, "Fall almond nails" 98% from one creator).
-- **Band:** a topic is ranked among the category's topics, a hook among **all** rising hooks (hooks are cross-category; ranking the 5 beauty hooks among themselves meant nothing).
+- **Band:** a topic is ranked among the category's topics, a hook among the rising hooks whose videos were read (hooks are cross-category; ranking the 5 beauty hooks that the category used among themselves meant nothing). Since issue #8 only the shortlisted hooks are read, so the page says "among the N rising hooks whose videos were read (the shortlist; M listed)"; the stage still comes from the velocity index against the category's typical trend.
 - **Confidence** per trend: low when < 8 creators or one account > 60% of views; high when ≥ 15 creators, no account above 40% and status confirmed; otherwise medium. (Evidence language is not part of it for now, see TR2.)
 - Other conditions of v2 stay (recency, median views ≥ 5,000, crowded, seasonal guard, review of the picks).
 - Backtest v3 vs v2, same dates (median new creators after / share with 3+ new, act now): 3.0 / 64% vs 2.5 / 50%; 10 / 100% vs 10 / 100%; 8.0 / 90% vs 3.0 / 59%. A smaller and sharper "act now".

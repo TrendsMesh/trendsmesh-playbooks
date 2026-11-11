@@ -38,6 +38,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
   page: they ask you to tell Claude your choices in chat.
 - **The real reason when a page stays local.** When a session can't publish claude.ai artifacts, Claude says so,
   instead of telling you that shared links need the Claude desktop app.
+- **Trend research ranks rising hooks by fit instead of filtering them.** Claude scores every rising hook for
+  your category from its card (the same seven criteria Creative brief uses), fetches videos only for the best
+  few (8 by default), and shows each one as already used in your category or as a transfer. A niche category
+  no longer ends with no hooks after a fetch of several minutes, and category words match whole words only
+  ("curl" no longer counts a video that says "curlyhead"). Claude tells you up front when fetching the
+  evidence videos will take minutes.
 
 ## 0.10.0
 

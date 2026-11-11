@@ -529,8 +529,12 @@ def tr_b4(ws: Path, run: Path) -> None:
             {"data": cards, "page": 1, "has_more": False})
     if json.loads((run / "run.json").read_text(encoding="utf-8")).get("previous_run"):
         tm(ws, "research", "map-change", "--run", str(run))
+    # issue #8: the hooks ranked by fit (the dry run's kept hooks first), only the shortlist fetched
+    place(ws, run, "03_wip/hook_fit_v01.json", beauty.fit_scores(hooks),
+          "the hooks' fit scores, the dry run's kept hooks first (eval fixture)")
+    tm(ws, "research", "hook-fit", "--run", str(run), "--file", "03_wip/hook_fit_v01.json")
     plan = tm(ws, "research", "fetch-plan", "--run", str(run))
-    tr_videos(run, plan.get("fetch") or [c["id"] for c in cards])
+    tr_videos(run, plan.get("fetch") or [])
     tm(ws, "research", "hooks", "--run", str(run), "--terms", ",".join(hooks["terms"]))
 
 

@@ -20,7 +20,7 @@ import pytest
 import requests
 
 import beauty
-from tm import config, page, research_config, research_growth, research_map, research_report
+from tm import config, page, research_config, research_growth, research_map, research_report, trends
 from tm.cli import main
 from tm.playbooks import TREND_RESEARCH
 from tm.runfolder import RunFolder
@@ -91,7 +91,8 @@ def test_report_json_rebuilds_report_v05(beauty_run, tmp_path):
     folder = _build_beauty(run)
     assert folder == run.path / "04_final" / "report_v01"
     got = _read(folder / "report.json")
-    assert _strip(got) == _strip(_read(REPORT_V05 / "report.json"))
+    expected, changed = beauty.as_whole_words(_strip(_read(REPORT_V05 / "report.json")), run)
+    assert _strip(got) == expected and changed == beauty.WHOLE_WORDS      # issue #8: whole words
     assert research_report.schema_problems(got) == []
     # F7b: the weighted total goes under each pick's plugin key (the reference picks have no score table)
     assert got["act_now"][0]["plugin"] == {"weighted_total": None, "scale": [7.0, 35.0]}
@@ -113,6 +114,21 @@ def test_page_has_three_views_and_switch(beauty_run, tmp_path):
     # the reference digest's previous state is not marked rebuilt: no "rebuilt" line
     assert "Compared with the report of 29 Oct 2026 (6 days of evidence)." in text
     assert "rebuilt from the evidence dates" not in text
+    assert "a hook among all 101 rising hooks" in text and "of all rising hooks" in text
+
+
+@pytest.mark.private_data
+def test_page_says_hooks_rank_among_the_hooks_read(beauty_run, tmp_path):
+    """Issue #8: only the shortlisted hooks' videos are fetched, so the page never says "all rising hooks"."""
+    run = _copy(beauty_run, tmp_path)
+    mapped = {r["id"] for r in research_growth.category_map(run)["kept"]}   # one hook is on the map too
+    for row in beauty.handoff("02_research/hooks_in_category.json")["not_in_category"]:
+        for f in trends.video_files(run, row["id"]) if row["id"] not in mapped else []:
+            f.unlink()
+    research_growth.compute(run, AS_OF, _cfg(run))
+    text = (_build_beauty(run) / "index.html").read_text(encoding="utf-8")
+    assert "a hook among the 6 rising hooks whose videos were read (the shortlist; 101 listed)" in text
+    assert "of the rising hooks read" in text and "all rising hooks" not in text
 
 
 @pytest.mark.private_data

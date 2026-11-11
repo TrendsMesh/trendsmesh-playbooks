@@ -120,10 +120,53 @@ def terms() -> list[str]:
     return handoff("02_research/hooks_in_category.json")["terms"]
 
 
+# Issue #8: the hooks path counts category words as whole words. The reference counted word starts, so
+# "curl" matched inside a longer hashtag word in one of "day _ of _"'s videos: 3 category videos there, 2 here.
+WHOLE_WORDS = {"day _ of _"}
+CATEGORY_KEYS = ("category_videos", "category_share", "category_examples")
+
+
+def as_whole_words(reference: Any, run: RunFolder) -> tuple[Any, set[str]]:
+    """`reference` (a growth file, a report) with every hook row's category counts as this run's latest
+    hooks path gives them, and the names of the hooks that changed (WHOLE_WORDS, in a test's assert)."""
+    path = run.latest(trends.RESEARCH, research_growth.HOOKS_STEM, "json")
+    ours = {r["id"]: r for r in trends.read(path)["kept"]}
+    changed: set[str] = set()
+
+    def walk(x: Any) -> Any:
+        if isinstance(x, list):
+            return [walk(v) for v in x]
+        if not isinstance(x, dict):
+            return x
+        out = {k: walk(v) for k, v in x.items()}
+        mine = ours.get(out.get("id"))
+        if out.get("kind") == "hook_trend" and mine and all(k in out for k in CATEGORY_KEYS):
+            if any(out[k] != mine[k] for k in CATEGORY_KEYS):
+                changed.add(out.get("name"))
+                out.update({k: mine[k] for k in CATEGORY_KEYS})
+        return out
+
+    return walk(reference), changed
+
+
+def fit_scores(hooks_in_category: dict) -> dict:
+    """Fit scores (issue #8) that rank the reference's kept hooks first, in their order, and every other
+    hook card last: the shortlist of `len(kept)` is then the hooks the reference dry run kept."""
+    from tm import brief_config
+    kept = [r["id"] for r in hooks_in_category["kept"]]
+    rows = {c["id"]: {k: 1 for k in brief_config.CRITERIA} for c in hook_cards(hooks_in_category)}
+    for i, hid in enumerate(kept):
+        rows[hid] = {k: 5 if j > i else 4 for j, k in enumerate(brief_config.CRITERIA)}
+    return rows
+
+
 def mapped_run(tmp_path: Path) -> RunFolder:
-    """`make_run`, then the category map from the reference split and review, then the hooks path."""
+    """`make_run`, then the category map from the reference split and review, then the hooks path: the
+    fit scores of `fit_scores`, a shortlist as long as the reference's kept hooks, and their videos."""
     run = make_run(tmp_path)
     handoff_map = handoff("02_research/category_map.json")
     research_map.build(run, split_of(handoff_map), handoff("03_wip/map_review_v01.json"), cfg())
+    reference = handoff("02_research/hooks_in_category.json")
+    research_growth.hook_fit(run, fit_scores(reference), cfg(hooks={"shortlist": len(reference["kept"])}))
     research_growth.hooks(run, terms(), cfg())
     return run

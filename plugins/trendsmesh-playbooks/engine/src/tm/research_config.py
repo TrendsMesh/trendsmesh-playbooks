@@ -44,7 +44,7 @@ DEFAULTS: dict = {
                 "crowded_creators": 100, "crowded_age_days": 90, "active_days": 14,
                 "season_after_days": 60},
     "confidence": {"low_creators": 8, "low_top_share": 0.6, "high_creators": 15, "high_top_share": 0.4},
-    "hooks": {"min_share": 0.2, "min_hits": 3, "min_share_hits": 2},
+    "hooks": {"shortlist": 8, "min_fit": 3},
     "picks": {"act_now": 5, "still_rising": 5, "valid_days": 14},
     "paid": {"too_late_min_creators": 30},
     "scoring": {"weights": {c: 1 for c in CRITERIA}},
@@ -52,6 +52,10 @@ DEFAULTS: dict = {
     "digest": {"map_change_share": 0.25, "schedule": "weekly_monday", "channel": "link"},
     "delivery": {"channel": "artifact"},
 }
+
+# The hooks path's gate before issue #8 (a hook kept only when enough of its videos named the category).
+# A config written then still holds these keys: accepted, never read.
+OLD_KEYS = {"hooks": {"min_share": None, "min_hits": None, "min_share_hits": None}}
 
 FIXED = {  # rules, not thresholds: path -> (the fixed value, why another value is refused)
     "benchmark.source": ("meta_ad_library", "{value} is not supported yet; it is tracked at " + ISSUES),
@@ -90,9 +94,8 @@ NUMBERS = {  # path: (integer?, lowest, highest, lowest allowed?, highest allowe
     "confidence.low_top_share": _SHARE,
     "confidence.high_creators": _COUNT,
     "confidence.high_top_share": _SHARE,
-    "hooks.min_share": _SHARE,
-    "hooks.min_hits": _COUNT,
-    "hooks.min_share_hits": _COUNT,
+    "hooks.shortlist": (True, 1, 20, True, True),
+    "hooks.min_fit": (False, 1, 5, True, True),
     "picks.act_now": _FROM0,
     "picks.still_rising": _FROM0,
     "picks.valid_days": _COUNT,
@@ -227,7 +230,7 @@ def validate(run: RunFolder) -> list[Problem]:
     except ValueError as exc:
         return [Problem(config.FILE, str(exc), "Answer the intake questions so the config can be written.")]
     out: list[Problem] = []
-    config._unknown_keys(cfg, DEFAULTS, "", out)
+    config._unknown_keys(cfg, config._merge(defaults(), OLD_KEYS), "", out)
     for path, (fixed, why) in FIXED.items():
         value = config._get(cfg, path)
         if value is not None and value != fixed:

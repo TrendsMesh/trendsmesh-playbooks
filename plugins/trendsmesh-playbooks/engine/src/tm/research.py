@@ -4,7 +4,8 @@
                                                                       what is still to search
     tm research map --run RUN --split FILE [--review FILE] [--json]   TR1: the category map
     tm research map-change --run RUN [--json]                         V26: how much of the map is new
-    tm research hooks --run RUN --terms "a,b,..." [--json]            TR1: the hooks path
+    tm research hook-fit --run RUN --file F [--json]                  TR1: the hooks ranked by fit, the shortlist
+    tm research hooks --run RUN --terms "a,b,..." [--json]            TR1: the shortlist's category videos
     tm research growth --run RUN [--as-of D] [--stem S] [--json]      TR2-TR4: growth, stages, snapshot
     tm research backtest --run RUN --as-of D [--horizon N] [--json]   TR3 calibration: stages then, outcome after
     tm research previous --run RUN [--json]                           A2: the previous run's files into 00_raw
@@ -124,17 +125,39 @@ def _rel(run: RunFolder, path: Path) -> str:
     return path.relative_to(run.path).as_posix()
 
 
+def _hook_fit(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
+    data = _json_file(run, args.file)
+    problems = research_growth.check_hook_fit(run, data)
+    if problems:
+        return _checked(args, problems, "")
+    given = Path(args.file.strip())
+    fit_file = given.as_posix() if (run.path / given).is_file() else None
+    path = research_growth.hook_fit(run, data, cfg, fit_file=fit_file)
+    out = json.loads(path.read_text(encoding="utf-8"))
+    ids = [r["id"] for r in out["shortlist"]]
+    scored = len(out["shortlist"]) + len(out["not_shortlisted"]) + len(out["contradicted"])
+    lines = [f"Wrote {_rel(run, path)}: the {len(ids)} best-fitting of {scored} hooks (fit 1-5, Creative brief's "
+             "criteria). Fetch only these hooks' videos (tm research fetch-plan lists them):"]
+    lines += [f"  {r['rank']:>2}. {(r['name'] or '')[:40]:40} {r['fit']}" for r in out["shortlist"]]
+    cli.emit(args, {"status": "done", "json": _rel(run, path), "shortlist": ids, "scored": scored,
+                    "message": "\n".join(lines)}, "\n".join(lines))
+    return 0
+
+
 def _hooks(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     path = research_growth.hooks(run, args.terms.split(","), cfg)
     out = json.loads(path.read_text(encoding="utf-8"))
     candidates = research_growth.candidates_of(path)
-    checked = len(out["kept"]) + len(out["not_in_category"])
+    used = [r for r in out["kept"] if r["plugin"]["in_category"]]
     payload = {"status": "done", "json": _rel(run, path), "candidates": _rel(run, candidates),
-               "kept": len(out["kept"]), "checked": checked}
-    lines = [f"Wrote {payload['json']} and {payload['candidates']}: {payload['kept']} of {checked} hooks are in "
-             "the category (category videos / videos checked):"]
-    lines += [f"  {r['name'][:40]:40} {r['category_videos']}/{r['videos_checked']}" for r in out["kept"]]
-    payload["message"] = lines[0]
+               "kept": len(out["kept"]), "in_category": len(used), "transfer": len(out["kept"]) - len(used),
+               "checked": len(out["kept"]) + len(out["not_shortlisted"])}
+    lines = [f"Wrote {payload['json']} and {payload['candidates']}: the {payload['kept']} shortlisted hooks, by fit; "
+             f"{payload['in_category']} already used in the category, {payload['transfer']} a transfer (no category "
+             "video yet). Fit, then category videos / videos checked:"]
+    lines += [f"  {r['name'][:40]:40} {r['plugin']['fit']}  {r['category_videos']}/{r['videos_checked']}"
+              f"{'' if r['plugin']['in_category'] else '  transfer'}" for r in out["kept"]]
+    payload["message"] = "\n".join(lines)
     cli.emit(args, payload, "\n".join(lines))
     return 0
 
@@ -219,8 +242,10 @@ def _rebuild_previous(args: argparse.Namespace, run: RunFolder, cfg: dict) -> in
 
 def _fetch_plan(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     plan = research_digest.fetch_plan(run, cfg)
+    n = plan["minutes_estimate"]
     text = (f"Fetch the videos of {len(plan['fetch'])} trends (every page, about {plan['calls_estimate']} "
-            "get_trend_videos calls)")
+            f"get_trend_videos calls, about {n} minute{'' if n == 1 else 's'}: tell the user before a fetch of "
+            "minutes)")
     if plan["reuse"]:
         text += (f"; copy the {len(plan['reuse'])} not updated since {plan['since']} from "
                  f"{Path(plan['previous_run']).name} with tm research reuse")
@@ -403,7 +428,8 @@ def _schedule(args: argparse.Namespace) -> int:
     return schedule.run_command(args, _open_run(args))
 
 
-ACTIONS = {"search-status": _search_status, "map": _map, "map-change": _map_change, "hooks": _hooks,
+ACTIONS = {"search-status": _search_status, "map": _map, "map-change": _map_change, "hook-fit": _hook_fit,
+           "hooks": _hooks,
            "growth": _growth, "backtest": _backtest, "previous": _previous_run, "rebuild-previous": _rebuild_previous,
            "fetch-plan": _fetch_plan, "reuse": _reuse, "digest": _digest, "evidence": _evidence, "paid": _paid,
            "picks": _picks, "report": _report, "seeds": _seeds}
@@ -422,7 +448,11 @@ def _setup(p: argparse.ArgumentParser) -> None:
     c = sub.add_parser("map-change", help="how much of the map is new since the previous run (V26)")
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--json", action="store_true")
-    h = sub.add_parser("hooks", help="the hooks path: rising and searched hooks used in the category (TR1)")
+    f = sub.add_parser("hook-fit", help="rank the hook candidates by the agent's fit scores, keep the shortlist (TR1)")
+    f.add_argument("--run", required=True, help="the run folder")
+    f.add_argument("--file", required=True, help="the fit scores, 03_wip/hook_fit_vNN.json (or the JSON itself)")
+    f.add_argument("--json", action="store_true")
+    h = sub.add_parser("hooks", help="the hooks path: the shortlisted hooks, each with its category videos (TR1)")
     h.add_argument("--run", required=True, help="the run folder")
     h.add_argument("--terms", required=True, help="the category's words, comma-separated")
     h.add_argument("--json", action="store_true")

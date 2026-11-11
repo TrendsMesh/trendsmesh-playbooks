@@ -341,7 +341,7 @@ def trends_gap(run: RunFolder) -> str | None:
 
 # --- B4: scores (CB3) ---------------------------------------------------------------------------
 
-def _score_problems(row: object) -> list[str]:
+def score_problems(row: object) -> list[str]:
     if not isinstance(row, dict):
         return ["are not a table of criteria"]
     crit = brief_config.CRITERIA
@@ -392,7 +392,7 @@ def check_scores(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
         found = _candidate_problem(run, candidate, evidence)
         if found:
             out.append(found)
-        wrong = _score_problems(row)
+        wrong = score_problems(row)
         if wrong:
             out.append(Problem(candidate, f"{candidate}'s scores {'; '.join(wrong)}.",
                                f"Score it 1-5, as a whole number, on {criteria}."))
@@ -405,7 +405,7 @@ def totals(data: dict, weights: dict) -> dict[str, float]:
     if not total:                     # all weights 0: tm config check refuses it
         return {}
     return {cid: round(sum(weights[c] * row[c] for c in brief_config.CRITERIA) / total, 2)
-            for cid, row in data.items() if not _score_problems(row)}
+            for cid, row in data.items() if not score_problems(row)}
 
 
 def _latest_scores(run: RunFolder) -> tuple[dict | None, str | None]:

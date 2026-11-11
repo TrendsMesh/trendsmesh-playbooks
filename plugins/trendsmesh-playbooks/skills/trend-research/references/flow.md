@@ -41,9 +41,10 @@ what each does in a weekly run is under the step. In order:
 | 3 | `tm trends collect on`, the searches of last week's split, and the `list_trends sort=updated` list (unfiltered, from page 1 back to last week's date) | B1 |
 | 4 | the map (with last week's review carried over) | B2, B3 |
 | 5 | the rising hooks, then `tm research map-change` | B4 |
-| 6 | `tm research fetch-plan` | B4 |
+| 5b | the hooks' fit scores, then `tm research hook-fit` (the shortlist) | B4 |
+| 6 | `tm research fetch-plan` (tell the user how many minutes the fetch takes) | B4 |
 | 7 | `tm research reuse` | B4 |
-| 8 | fetch the plan's videos (every page) and the `get_trend` cards of its `check` list: the hooks' first (B4), the rest after the map check-in (C1) | B4, C1 |
+| 8 | fetch the plan's videos (every page) and the `get_trend` cards of its `check` list: the shortlisted hooks' first (B4), the rest after the map check-in (C1) | B4, C1 |
 | 9 | `tm research hooks` | B4 |
 | 10 | `tm research growth` | C2 |
 | 11 | `tm research digest` (it stops until every called trend has videos) | F2 |
@@ -231,25 +232,63 @@ own path (TR1).
    (`checkin-cards.md`); when the user says to go on (after any review changes they ask for and the
    map rebuilt), record `tm decide G1 accept --change --run R --note "<their words, and what
    changed>"`. `tm resume` does not clear it: only that decision does. Then `tm next`.
-3. **The fetch plan:** `tm research fetch-plan --run R --json`. `fetch` = this map's trends and the
-   hook cards (in a weekly run minus `reuse`, plus every previous "act now", "still rising" and
-   "past its peak" trend); `check` = last week's trends not in this week's map (C1 gets their
-   cards); `calls_estimate` = about how many `get_trend_videos` pages. A weekly run then copies the
-   unchanged ones: `tm research reuse --run R --json`.
-4. **`get_usage`** and compare with `calls_estimate` (`trend-collection.md`, pacing). Short: say so,
-   record the stop, wait for the reset.
-5. **The hooks' videos:** for each hook trend in `fetch` (the hook cards of the rising lists and
-   the searches), `get_trend_videos` as in C1. After the first trend's pages, **`tm trends
-   check-fields --run R --json`**: exit 2 names the fields the answers lack (the run needs
-   `creator` or a handle in `url`, `published`, `views`, `thumbnail_url`, `url`, and `match` on
-   search cards): tell the user and wait.
-6. **`tm research hooks --run R --terms "<the category's words>" --json`**: the words a category
+3. **Rank the hooks by fit, from their cards** (no video is fetched for this). A hook is a structure
+   that can carry almost any subject, so the question is which few fit this category best, not
+   whether the category uses them already. Read every hook card of the rising lists and the
+   searches (its name, `what_it_is`, `reach`, `momentum`, `active_for_days`, `status`) and score it
+   1–5 on Creative brief's seven criteria (CB3, `../../creative-brief/references/rules.md`), read for
+   this category, its market and the focus:
+   - `brand_fit`: the category's tone (and the focus brand's, if one is given);
+   - `persona_fit`: the category's audience, its age and culture;
+   - `bridge`: the structure carries a story of this category (a "day _ of _" log of a routine, a
+     "step 3 of N" for a product with steps);
+   - `lifecycle`: early or tired, from `momentum` and `active_for_days`;
+   - `transfer`: it survives the market language (no English-only wordplay or sound-alike) and the
+     subject change: a hook no category video uses yet is a hypothesis (Organic AI video's transfer
+     rule), not a reason to drop it;
+   - `sensitivity`: `sensitivity_level`, and anything the category should not touch;
+   - `feasibility`: it can be made in the category (a face on camera, a setting, a prop).
+
+   Write `03_wip/hook_fit_v01.json`, every hook candidate, a `why` (one sentence) for the ones that
+   score best:
+
+   ```json
+   {"c2173b6a4e7f496093804bb8efb3e785": {"brand_fit": 4, "persona_fit": 5, "bridge": 5,
+     "lifecycle": 3, "transfer": 4, "sensitivity": 5, "feasibility": 5,
+     "why": "a numbered daily log fits a 30-day skincare routine"}}
+   ```
+
+   Record it, then **`tm research hook-fit --run R --file 03_wip/hook_fit_v01.json --json`**: it ranks
+   the hooks by their mean score (ties keep TrendsMesh's rising order) and keeps the best
+   `hooks.shortlist` (8) that fit at least `hooks.min_fit` (a mean of 3), never a contradicted one,
+   in `02_research/hooks_shortlist_vNN.json`. Exit 2 lists each problem (a hook not scored, a score
+   outside 1–5): fix it as a new version.
+4. **The fetch plan:** `tm research fetch-plan --run R --json`. `fetch` = this map's trends and the
+   shortlisted hooks (in a weekly run minus `reuse`, plus every previous "act now", "still rising"
+   and "past its peak" trend); `check` = last week's trends not in this week's map (C1 gets their
+   cards); `calls_estimate` = about how many `get_trend_videos` pages; `minutes_estimate` = about
+   how long they take. It stops while the hooks are saved but not ranked (step 3 first). A weekly
+   run then copies the unchanged ones: `tm research reuse --run R --json`.
+5. **`get_usage`** and compare with `calls_estimate` (`trend-collection.md`, pacing). Short: say so,
+   record the stop, wait for the reset. **Before a fetch of minutes** (`minutes_estimate` 2 or more,
+   here and at C1), tell the user in one line, at every level: "Fetching the evidence videos: about
+   N minutes." It is a notice, not a question; then go on.
+6. **The shortlisted hooks' videos:** for each shortlisted hook in `fetch`, `get_trend_videos` as in
+   C1. Only these hooks are fetched. After the first trend's pages, **`tm trends check-fields --run R
+   --json`**: exit 2 names the fields the answers lack (the run needs `creator` or a handle in `url`,
+   `published`, `views`, `thumbnail_url`, `url`, and `match` on search cards): tell the user and wait.
+7. **`tm research hooks --run R --terms "<the category's words>" --json`**: the words a category
    video would carry in its excerpt, hook text or slot fill (the phrase, the sub-categories and
-   their common words: "beauty,makeup,hair,nail,lash,brow,skin,lip"). It keeps a hook with ≥ 2
-   matching videos and ≥ 20 %, or ≥ 3. A stop names the hook candidates that have no saved videos:
-   fetch them, run it again.
-7. Prepare the G1 card (`checkin-cards.md`): the sub-categories with counts, what was kept and
-   dropped and why, the weak matches, the hooks kept. `tm done B4 --run R`.
+   their common words). Words match whole, never inside another word ("art" is not in "start"), so
+   give each in the forms the videos use: "beauty,makeup,hair,nail,nails,lash,lashes,brow,brows,
+   skin,lip,lips", and phrases as they are written ("nail art"). It keeps every shortlisted hook,
+   in fit order, and counts its videos in the category as information, never as a gate: a hook with
+   at least one is **used in the category**, one with none is a **transfer** (it fits, nobody in the
+   category uses it yet). A stop names the shortlisted hooks with no saved videos (fetch them), or
+   hooks saved after the fit scores (score them in a new version, `hook-fit` again).
+8. Prepare the G1 card (`checkin-cards.md`): the sub-categories with counts, what was kept and
+   dropped and why, the weak matches, the shortlisted hooks in two lists (used in the category, with
+   "used in your category: N videos", and transfers), each with its fit. `tm done B4 --run R`.
 
 <a id="c1"></a>
 ## C1 Evidence videos

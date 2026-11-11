@@ -20,7 +20,7 @@ from datetime import date
 import pytest
 
 import beauty
-from tm import config, page, research_config, research_digest, research_growth, research_map, state, trends
+from tm import brief_config, config, page, research_config, research_digest, research_growth, research_map, state, trends
 from tm.cli import main
 from tm.playbooks import TREND_RESEARCH
 from tm.runfolder import RunFolder
@@ -348,6 +348,7 @@ def test_fetch_plan_reuses_not_updated_and_refetches_act_now(tmp_path, capsys):
     hooks = run.path / "02_research" / "lists" / "list_rising_hook_trend_all_p01.json"
     hooks.parent.mkdir(parents=True)
     hooks.write_text(json.dumps({"data": [{"id": "k", "kind": "hook_trend", "name": "day _ of _"}]}), encoding="utf-8")
+    research_growth.hook_fit(run, {"k": {c: 3 for c in brief_config.CRITERIA}}, {})   # the shortlist (issue #8)
 
     # before the previous run's files are copied, nothing can be reused
     assert research_digest.fetch_plan(run, {})["reuse"] == []

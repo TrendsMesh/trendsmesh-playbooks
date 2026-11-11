@@ -31,6 +31,7 @@ and a top-level `plugin`; the original keys keep their meaning.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import shutil
@@ -40,7 +41,7 @@ from pathlib import Path
 from tm import config, library, manifest, page, research_growth, research_map, state, trend_spool, trends
 from tm.research_growth import BUCKETS, d
 from tm.runfolder import RunFolder
-from tm.stops import Stop
+from tm.stops import AGAIN, Stop
 
 RAW = "00_raw"
 WIP = "03_wip"
@@ -53,6 +54,7 @@ STEM = "digest"
 REBUILT = re.compile(r"^snapshot_growth_(.+)_rebuilt_v(\d+)\.json$")
 CALLED = ("act_now", "past_peak")                    # TR9: the calls checked a week later
 REFETCH = ("act_now", "still_rising", "past_peak")   # TR8: fetched again whether updated or not
+SECONDS_PER_CALL = 2.5   # issue #8: 142 get_trend_videos calls took about 6 minutes, rate limits included
 UPDATED_LISTS = "list_updated_*.json"
 DEFAULT_FEED = "global"                              # list_trends' feed when none is given
 COVER_INPUTS = ("sort", "trend_type", "page", "limit")   # what may be given to a list that counts as cover
@@ -181,14 +183,34 @@ def default_prev(run: RunFolder) -> Path | None:
 
 # --- the fetch plan (TR8) ---------------------------------------------------------------------
 
+def _hooks_to_fetch(run: RunFolder) -> list[str]:
+    """The hooks whose videos this week needs: the shortlist (issue #8); in a run whose hooks path ran
+    before the shortlist, every hook card (that path read all of them). Stops when hooks are listed but
+    not ranked yet: fetching every one of them is what the shortlist avoids."""
+    short = research_growth.shortlist(run)
+    if short is not None:
+        return [r["id"] for r in short["shortlist"]]
+    cards = [c["id"] for c in research_growth.hook_cards(run)]
+    if cards and run.latest(trends.RESEARCH, research_growth.HOOKS_STEM, "json") is None:
+        raise Stop(f"The {len(set(cards))} saved hook candidates are not ranked yet, so the plan can't tell which "
+                   "hooks to fetch. Score every one for fit (03_wip/hook_fit_vNN.json) and run tm research hook-fit "
+                   f"first: only its shortlist is fetched. Then run this again; {AGAIN}.")
+    return cards
+
+
+def minutes(calls: int) -> int:
+    """About how many minutes `calls` get_trend_videos calls take (a niche run: 142 in about 6)."""
+    return math.ceil(calls * SECONDS_PER_CALL / 60)
+
+
 def _current(run: RunFolder) -> tuple[dict[str, str | None], set[str]]:
-    """This week's trends that need videos, id -> kind: the map's kept trends, then every hook card
-    (the hooks path reads all of them); and the ids growth evaluates, the map's kept trends and the
-    hooks path's kept hooks (this week's snapshot)."""
+    """This week's trends that need videos, id -> kind: the map's kept trends, then the shortlisted
+    hooks (`_hooks_to_fetch`); and the ids growth evaluates, the map's kept trends and the hooks
+    path's kept hooks (this week's snapshot)."""
     kept = research_growth.category_map(run).get("kept") or []
     out: dict[str, str | None] = {r["id"]: r.get("kind") for r in kept if r.get("id")}
-    for c in research_growth.hook_cards(run):
-        out.setdefault(c["id"], "hook_trend")
+    for hid in _hooks_to_fetch(run):
+        out.setdefault(hid, "hook_trend")
     hooks = run.latest(trends.RESEARCH, research_growth.HOOKS_STEM, "json")
     kept_hooks = (trends.read(hooks).get("kept") or []) if hooks else []
     return out, {r["id"] for r in [*kept, *kept_hooks] if r.get("id")}
@@ -277,8 +299,8 @@ def _plan(run: RunFolder) -> dict:
     if prev is None or not stored.is_file():
         note = ("there is no previous snapshot in 00_raw (a first run, or run tm research previous first), so "
                 "every trend is fetched")
-        return {"fetch": sorted(current), "reuse": [], "check": [], "calls_estimate": len(current), "since": None,
-                "previous_run": rel, "note": note}
+        return {"fetch": sorted(current), "reuse": [], "check": [], "calls_estimate": len(current),
+                "minutes_estimate": minutes(len(current)), "since": None, "previous_run": rel, "note": note}
     snap = _snapshot(stored)
     since = date.fromisoformat(snap["params"]["ref"])
     updated, covered, listed = updated_lists(run, since)
@@ -300,22 +322,25 @@ def _plan(run: RunFolder) -> dict:
                 "so other trends are fetched")
     else:
         note = None
+    calls = sum(_pages(prev, t) or 1 for t in fetch)
     return {"fetch": fetch, "reuse": reuse, "check": sorted(t for t in snap["trends"] if t not in evaluated),
-            "calls_estimate": sum(_pages(prev, t) or 1 for t in fetch), "since": since.isoformat(),
+            "calls_estimate": calls, "minutes_estimate": minutes(calls), "since": since.isoformat(),
             "previous_run": rel, "note": note}
 
 
 def fetch_plan(run: RunFolder, cfg: dict) -> dict:
-    """`{fetch, reuse, check, calls_estimate, since, previous_run, note}`.
-    - fetch = this map and the hook cards, minus `reuse`, plus every previous "act now", "still
-      rising" and "past its peak" trend (on the map or not);
+    """`{fetch, reuse, check, calls_estimate, minutes_estimate, since, previous_run, note}`.
+    - fetch = this map and the shortlisted hooks (issue #8), minus `reuse`, plus every previous "act
+      now", "still rising" and "past its peak" trend (on the map or not); Stops when hooks are saved
+      but not ranked yet (tm research hook-fit);
     - reuse = the trends the previous run has videos for, not updated since its reference date
       (`since`), and not among those three stages. A trend is known not updated only when a saved
       list of updated trends of its type (or of every type) reaches back to `since`: with no such
       list nothing is reused, and `note` says why;
     - check = the previous snapshot's trends that are not in this week's (the map's kept trends and
       the hooks path's kept hooks): each needs a get_trend answer, or the digest counts it as ended;
-    - calls_estimate counts get_trend_videos pages: the previous run's pages of a trend, else 1.
+    - calls_estimate counts get_trend_videos pages: the previous run's pages of a trend, else 1;
+      minutes_estimate is about how long they take, to tell the user before a long fetch.
     Before load_previous (or in a first run) everything is fetched. `cfg` is the run's config; no
     threshold of it changes the plan today."""
     return _plan(run)

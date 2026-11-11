@@ -2,8 +2,12 @@
 tools/pb4/growth.py `hooks`, `compute` and `backtest`, ported to the run's saved TrendsMesh answers (`tm.trends`)
 instead of the original's REST calls.
 
-    hooks    the hook trends of the saved rising hook lists and searches whose evidence videos are in
-             the category: 02_research/hooks_candidates_vNN.json and hooks_in_category_vNN.json
+    hook_fit the hook trends of the saved rising hook lists and searches, ranked by the agent's fit
+             scores (Creative brief's CB3 criteria, read from the cards), and the top `hooks.shortlist`
+             of them: 02_research/hooks_shortlist_vNN.json (issue #8)
+    hooks    the shortlisted hooks, each with how many of its evidence videos are in the category
+             (information, not a gate): 02_research/hooks_candidates_vNN.json and
+             hooks_in_category_vNN.json
     compute  growth, position in the sample, bucket and confidence of every mapped trend and kept
              hook, read at one date: 02_research/<stem>_vNN.json/.md and the snapshot for the next
              digest, snapshot_vNN.json (snapshot_<stem>_vNN.json for another stem)
@@ -26,7 +30,16 @@ flagged `is_sensitive`; `unattributed_videos`, those with no creator; the trend'
 the growth file's top-level `plugin.no_creator_data` when a hook candidate used only to rank hooks
 has no creator data (it counts as 0 new creators and never stops growth; an evaluated trend does
 stop), and the snapshot's `pool_ids` (every id the map's searches and the hook candidates returned,
-for the weekly digest). `snapshot_extra` adds keys to the snapshot when it is first written (ruling
+for the weekly digest).
+
+The hooks path differs from the original (issue #8): the original kept a hook only when enough of
+its videos carried a category word (matched on word starts), so it fetched every rising hook's
+videos and, in a niche, kept none. Here the agent scores every hook candidate for fit from its card,
+`hook_fit` keeps the top `hooks.shortlist`, only those are fetched, and `hooks` counts their category
+videos on whole words as information (a kept hook's `plugin.use`: `in_category` with any match,
+else `transfer`). A hook is ranked against the hook candidates whose videos are saved (all of them
+in a run from before the shortlist); the others are listed in the growth file's
+`plugin.hooks_not_read`. `snapshot_extra` adds keys to the snapshot when it is first written (ruling
 F9: `{"rebuilt": true}`), never replaces one; no file is rewritten.
 """
 
@@ -40,7 +53,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from tm import manifest, research_map, state, trends
-from tm.stops import Stop
+from tm.config import Problem
+from tm.stops import AGAIN, Stop
 from tm.runfolder import RunFolder
 
 BUCKETS = ["act_now", "still_rising", "too_late", "past_peak"]
@@ -50,6 +64,8 @@ USE_LANGUAGE = False  # user, 2026-11-04: no evidence-language metric until the 
 STEM = "growth"
 HOOKS_STEM = "hooks_in_category"
 CANDIDATES_STEM = "hooks_candidates"
+SHORTLIST_STEM = "hooks_shortlist"
+SOURCE_FIT = "tm research hook-fit"
 HOOK_LISTS = "list_rising_hook_trend_*.json"
 SOURCE_HOOKS = "tm research hooks"
 SOURCE_GROWTH = "tm research growth"
@@ -167,47 +183,153 @@ def hook_cards(run: RunFolder) -> list[dict]:
     return [c for c in cards if isinstance(c, dict) and c.get("kind") == "hook_trend" and c.get("id")]
 
 
-def hooks(run: RunFolder, terms: list[str], cfg: dict) -> Path:
-    """The original's `cmd_hooks`: keep a hook when it is not contradicted and its evidence videos are in
-    the category (a term in excerpt, hook_text or slot_fill) at >= `hooks.min_share` with >=
-    `hooks.min_share_hits` videos, or >= `hooks.min_hits` videos. The cards are the hook trends of
-    the saved rising hook lists and of the searches, de-duplicated by id (the later card wins, in the
-    first one's place). Writes hooks_candidates_vNN.json (every card) and hooks_in_category_vNN.json
-    with one NN; returns the latter. Stops, writing nothing, when a candidate has no saved videos."""
+def _candidates(run: RunFolder) -> list[dict]:
+    """The hook cards, de-duplicated by id (the later card wins, in the first one's place)."""
+    return list({c["id"]: c for c in hook_cards(run)}.values())
+
+
+def _no_hooks() -> Stop:
+    return Stop("No hook trend is saved yet. List the rising hooks (TrendsMesh list_trends, sort rising, "
+                f"trend_type hook_trend) with collection on, then run the hooks path again; {AGAIN}.")
+
+
+def _criteria() -> tuple[tuple[str, ...], dict]:
+    """Creative brief's CB3 criteria and their default (equal) weights. Imported here: brief_config
+    imports seeds, which imports this module."""
+    from tm import brief_config
+    return brief_config.CRITERIA, dict(brief_config.DEFAULTS["scoring"]["weights"])
+
+
+def check_hook_fit(run: RunFolder, data: object) -> list[Problem]:
+    """Everything wrong in the agent's hook fit scores (issue #8); empty when they hold. One row per
+    hook candidate, `{"<id>": {<the seven CB3 criteria>: 1-5, "why": "..."}}`, `why` optional."""
+    from tm import brief_research
+    criteria, _ = _criteria()
+    names = ", ".join(criteria)
+    cards = {c["id"]: c for c in _candidates(run)}
+    if not cards:
+        raise _no_hooks()
+    if not isinstance(data, dict) or not data:
+        return [Problem("hook_fit", "The fit scores must be one table {\"<hook id>\": {criterion: 1-5}}.",
+                        f"Write a row per hook candidate with {names}, then check again.")]
+    out = []
+    for hid, row in data.items():
+        if hid not in cards:
+            out.append(Problem(hid, f"{hid} is not a hook candidate of this run (no saved rising hook list or "
+                                    "search holds it).", "Score the hooks of the saved lists and searches only."))
+            continue
+        scores = {k: v for k, v in row.items() if k != "why"} if isinstance(row, dict) else row
+        wrong = brief_research.score_problems(scores)
+        if isinstance(row, dict) and not isinstance(row.get("why", ""), (str, type(None))):
+            wrong.append("why is not a sentence")
+        if wrong:
+            out.append(Problem(hid, f"{hid} ({cards[hid].get('name')!r}): its scores {'; '.join(wrong)}.",
+                               f"Score it 1-5, as a whole number, on {names}; why, if given, is a sentence."))
+    missing = [c for hid, c in cards.items() if hid not in data]
+    if missing:
+        shown = ", ".join(f"{c.get('name')!r} ({c['id']})" for c in missing[:10])
+        more = f" and {len(missing) - 10} more" if len(missing) > 10 else ""
+        out.append(Problem("hook_fit", f"{len(missing)} hook candidates are not scored: {shown}{more}.",
+                           "Score every hook candidate from its card (a hook that fits badly scores low, it is "
+                           "never left out)."))
+    return out
+
+
+def hook_fit(run: RunFolder, data: object, cfg: dict, *, fit_file: str | None = None) -> Path:
+    """Rank every hook candidate by its weighted fit (Creative brief's CB3 criteria, equal weights) and
+    keep the top `hooks.shortlist` as the shortlist, the only hooks whose videos are fetched (issue
+    #8). Ties keep the candidates' order (the rising list first: TrendsMesh's own ranking). A
+    contradicted hook, or one whose fit is below `hooks.min_fit` (3, neutral), is never shortlisted.
+    Writes 02_research/hooks_shortlist_vNN.json and returns it; Stops, writing nothing, when no hook is
+    saved or a score is wrong."""
+    from tm import brief_research
     cfg = research_map.settings(cfg)
+    cards = _candidates(run)
+    problems = check_hook_fit(run, data)          # Stops first when no hook is saved
+    if problems:
+        raise Stop(" ".join(f"{p.what} {p.todo}" for p in problems)
+                   + f" Fix the file, save it as a new version and run this again; {AGAIN}.")
+    criteria, weights = _criteria()
+    totals = brief_research.totals({hid: {c: row[c] for c in criteria} for hid, row in data.items()}, weights)
+    order = {c["id"]: i for i, c in enumerate(cards)}
+    ranked = sorted(cards, key=lambda c: (-totals[c["id"]], order[c["id"]]))
+    size, floor = cfg["hooks"]["shortlist"], cfg["hooks"]["min_fit"]
+    live = [c for c in ranked if c.get("status") != "contradicted"]
+    short = [c for c in live if totals[c["id"]] >= floor][:size]
+    rest = [c for c in live if c not in short]
+    out = {"fit_file": fit_file, "criteria": list(criteria), "weights": weights, "shortlist_size": size,
+           "min_fit": floor,
+           "shortlist": [{"rank": i, "id": c["id"], "name": c.get("name"), "fit": totals[c["id"]],
+                          "scores": {k: data[c["id"]][k] for k in criteria}, "why": data[c["id"]].get("why")}
+                         for i, c in enumerate(short, 1)],
+           "not_shortlisted": [{"id": c["id"], "name": c.get("name"), "fit": totals[c["id"]]} for c in rest],
+           "contradicted": [{"id": c["id"], "name": c.get("name"), "fit": totals[c["id"]]}
+                            for c in ranked if c.get("status") == "contradicted"]}
+    target = run.next_version(trends.RESEARCH, SHORTLIST_STEM, "json")
+    _write(run, target, _dump(out), {"shortlist": size, "min_fit": floor, **({"fit_file": fit_file} if fit_file else {})},
+           SOURCE_FIT)
+    return target
+
+
+def shortlist(run: RunFolder) -> dict | None:
+    """The latest hook shortlist (`hook_fit`), with its run-relative path as `path`; None before one."""
+    path = run.latest(trends.RESEARCH, SHORTLIST_STEM, "json")
+    return None if path is None else {**trends.read(path), "path": path.relative_to(run.path).as_posix()}
+
+
+def term_matcher(terms: list[str]):
+    """Whether a text holds one of `terms` as whole words, case-blind, in any script ("art" never in
+    "start" or "artist"; "nail art" as the two words). Issue #8, the matching side of issue #3."""
+    rx = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(t) for t in terms) + r")(?!\w)", re.I)
+    return lambda text: rx.search(text) is not None
+
+
+def hooks(run: RunFolder, terms: list[str], cfg: dict) -> Path:
+    """The shortlisted hooks (the latest `hook_fit`), in fit order, each with its evidence videos in the
+    category: a video holding a term as whole words in its excerpt, hook_text or slot_fill. Any match
+    marks the hook `in_category`, none marks it a `transfer`; no hook is dropped for it (issue #8).
+    Writes hooks_candidates_vNN.json (every hook card) and hooks_in_category_vNN.json with one NN;
+    returns the latter. Stops, writing nothing, without a shortlist, with one made before a hook
+    candidate was saved, or when a shortlisted hook has no saved videos."""
     terms = [t.strip() for t in terms if t.strip()]
     if not terms:
         raise ValueError("Give the category's words for the hooks path (--terms \"makeup,hair,nail,...\").")
-    cards = list({c["id"]: c for c in hook_cards(run)}.values())
+    cards = _candidates(run)
     if not cards:
-        raise Stop("No hook trend is saved yet. List the rising hooks (TrendsMesh list_trends, sort rising, "
-                   "trend_type hook_trend) with collection on, then run the hooks path again; the run "
-                   "continues from the same place.")
-    _need_videos(run, cards, "hook candidates")
-    h = cfg["hooks"]
-    rx = re.compile(r"\b(" + "|".join(re.escape(t) for t in terms) + r")\w*", re.I)
-    kept, rest = [], []
-    for c in cards:
+        raise _no_hooks()
+    short = shortlist(run)
+    if short is None:
+        raise Stop("The rising hooks are not ranked yet. Score every hook candidate for fit (03_wip/hook_fit_vNN.json) "
+                   f"and run tm research hook-fit, then fetch the shortlist's videos and run this again; {AGAIN}.")
+    scored = {r["id"] for r in short["shortlist"] + short["not_shortlisted"] + short["contradicted"]}
+    new = [c for c in cards if c["id"] not in scored]
+    if new:
+        shown = ", ".join(f"{c.get('name')!r} ({c['id']})" for c in new[:10])
+        raise Stop(f"{len(new)} hook candidates were saved after the fit scores ({short['path']}): {shown}. Score "
+                   f"them too (a new version of the fit file), run tm research hook-fit again, then this; {AGAIN}.")
+    by_id = {c["id"]: c for c in cards}
+    picked = [(r, by_id[r["id"]]) for r in short["shortlist"] if r["id"] in by_id]
+    _need_videos(run, [c for _, c in picked], "shortlisted hooks")
+    match = term_matcher(terms)
+    kept = []
+    for r, c in picked:
         vids = trends.load_videos(run, c["id"])
-        hits = [v for v in vids if rx.search(" ".join(str(v.get(k) or "") for k in ("excerpt", "hook_text", "slot_fill")))]
+        hits = [v for v in vids if match(" ".join(str(v.get(k) or "") for k in ("excerpt", "hook_text", "slot_fill")))]
         share = len(hits) / len(vids) if vids else 0
-        rec = {"id": c["id"], "kind": "hook_trend", "name": c["name"], "sub_category": "hooks",
-               "group": "hooks", "status": c.get("status"), "reach": c.get("reach"), "since": c.get("since"),
-               "active_for_days": c.get("active_for_days"), "momentum": c.get("momentum"),
-               "what_it_is": c.get("what_it_is"), "category_videos": len(hits), "videos_checked": len(vids),
-               "category_share": round(share, 2),
-               "category_examples": [{"url": v.get("url"), "excerpt": (v.get("excerpt") or "")[:140],
-                                      "slot_fill": v.get("slot_fill")} for v in hits[:5]]}
-        # one matching video is chance (dry run: "habibi, come to _" 1/3), so a share needs >= 2 hits
-        ok = c.get("status") != "contradicted" and (
-            (share >= h["min_share"] and len(hits) >= h["min_share_hits"]) or len(hits) >= h["min_hits"])
-        (kept if ok else rest).append(rec)
-    kept.sort(key=lambda r: -r["category_videos"])
-    out = {"terms": terms, "min_share": h["min_share"], "min_hits": h["min_hits"], "kept": kept,
-           "not_in_category": [{k: r[k] for k in ("id", "name", "category_videos", "videos_checked")} for r in rest]}
+        kept.append({"id": c["id"], "kind": "hook_trend", "name": c["name"], "sub_category": "hooks",
+                     "group": "hooks", "status": c.get("status"), "reach": c.get("reach"), "since": c.get("since"),
+                     "active_for_days": c.get("active_for_days"), "momentum": c.get("momentum"),
+                     "what_it_is": c.get("what_it_is"), "category_videos": len(hits), "videos_checked": len(vids),
+                     "category_share": round(share, 2),
+                     "category_examples": [{"url": v.get("url"), "excerpt": (v.get("excerpt") or "")[:140],
+                                            "slot_fill": v.get("slot_fill")} for v in hits[:5]],
+                     "plugin": {"fit": r["fit"], "fit_rank": r["rank"], "in_category": bool(hits),
+                                "use": "in_category" if hits else "transfer", "why": r.get("why")}})
+    out = {"terms": terms, "shortlist": short["path"], "kept": kept,
+           "not_shortlisted": [{k: r[k] for k in ("id", "name", "fit")} for r in short["not_shortlisted"]]}
     nn = _versioned(run, [(CANDIDATES_STEM, "json"), (HOOKS_STEM, "json")])
     target = run.path / trends.RESEARCH / f"{HOOKS_STEM}_v{nn:02d}.json"
-    params = {"terms": terms, **h}
+    params = {"terms": terms, "shortlist": short["path"]}
     _write(run, candidates_of(target), _dump(cards), params, SOURCE_HOOKS)
     _write(run, target, _dump(out), params, SOURCE_HOOKS)
     return target
@@ -399,8 +521,6 @@ def _evaluate(run: RunFolder, ref: date, cfg: dict) -> tuple[list[dict], dict, d
     window, baseline = cfg["growth"]["window_days"], cfg["growth"]["baseline_days"]
     cmap, trend_rows, candidates = _inputs(run)
     _need_videos(run, trend_rows, "trends of the map and the hooks path")
-    if candidates:
-        _need_videos(run, candidates, "hook candidates")
     levels = {c["id"]: c.get("sensitivity_level") for c in candidates or []}
     rows = []
     for t in trend_rows:
@@ -408,18 +528,20 @@ def _evaluate(run: RunFolder, ref: date, cfg: dict) -> tuple[list[dict], dict, d
         rows.append({**t, "growth": growth_of(vids, ref, window, baseline, trend_id=t["id"]),
                      "seasonal_over": event_passed(t, ref, th.season_after_days),
                      "platforms": sorted({v.get("platform") for v in vids if v.get("platform")}),
-                     "plugin": {"sensitive_videos": sum(v.get("is_sensitive") is True for v in vids),
+                     "plugin": {**(t.get("plugin") or {}), "sensitive_videos": sum(v.get("is_sensitive") is True for v in vids),
                                 "unattributed_videos": sum(trends.creator_of(v) is None for v in vids),
                                 "sensitivity_level": t.get("sensitivity_level", levels.get(t["id"]))}})
     ctx = category_context(rows)
     pools: dict[bool, list[int]] = {}
     for r in rows:
         pools.setdefault(r.get("kind") == "hook_trend", []).append(r["growth"].get("new_recent", 0))
-    # Hooks are opening structures used across categories, so a hook is ranked against ALL rising
+    # Hooks are opening structures used across categories, so a hook is ranked against the rising
     # hooks (the hook candidates), not against the few that reach this category (dry run: 5 of 101).
+    # Only the shortlisted hooks' videos are fetched (issue #8): the pool is the candidates read.
     no_creator: list[str] = []
     if candidates is not None:    # an evaluated hook without creators has stopped above already
-        pools[True] = [_pool_new(run, c, ref, window, baseline, no_creator) for c in candidates]
+        pools[True] = [_pool_new(run, c, ref, window, baseline, no_creator) for c in candidates
+                       if trends.video_files(run, c["id"])]
         ctx["hooks_pool"] = len(pools[True])
     for r in rows:
         g = r["growth"]
@@ -465,8 +587,9 @@ def compute(run: RunFolder, as_of: date, cfg: dict, *, stem: str = STEM, snapsho
     """The original's `cmd_compute`: the growth table of every trend as of `as_of` (ref = as_of -
     `growth.lag_days`), sorted by bucket then index, written as <stem>_vNN.json/.md, and its snapshot
     as snapshot_vNN.json (snapshot_<stem>_vNN.json for another stem), all with one NN. Returns the
-    growth JSON. Stops, writing nothing, on a trend or hook candidate without saved videos, or on an
-    evaluated trend whose videos carry no creator."""
+    growth JSON. Stops, writing nothing, on an evaluated trend (the map's, the kept hooks) without saved
+    videos or whose videos carry no creator; a hook candidate without videos is left out of the hooks'
+    pool and listed in `plugin.hooks_not_read`."""
     if not _STEM_OK.fullmatch(stem):
         raise ValueError(f"{stem!r} is not a file name stem: use letters, digits, '_', '-' and '.'.")
     if stem != STEM and not stem.startswith(STEM + "_"):
@@ -491,7 +614,10 @@ def compute(run: RunFolder, as_of: date, cfg: dict, *, stem: str = STEM, snapsho
     nn = _versioned(run, [(stem, "json"), (stem, "md"), (snapshot_stem(stem), "json")])
     params = {"as_of": meta["as_of"], "lag": lag, "window": window, "baseline": baseline, "rule": RULE}
     target = run.path / trends.RESEARCH / f"{stem}_v{nn:02d}.json"
-    out = {"params": meta, "trends": rows, **({"plugin": {"no_creator_data": no_creator}} if no_creator else {})}
+    not_read = [c["id"] for c in candidates or [] if not trends.video_files(run, c["id"])]
+    plugin = {**({"no_creator_data": no_creator} if no_creator else {}),
+              **({"hooks_not_read": not_read} if not_read else {})}
+    out = {"params": meta, "trends": rows, **({"plugin": plugin} if plugin else {})}
     _write(run, target, _dump(out), params, SOURCE_GROWTH)
     _write(run, snapshot_of(target, stem), _dump(snap), params, SOURCE_GROWTH)
     _write(run, target.with_suffix(".md"), _markdown(rows, ctx, meta["as_of"], ref, window, baseline, no_creator),

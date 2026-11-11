@@ -202,9 +202,10 @@ class _Page:
     """One build: the run, its folder, and the words of this category and market."""
 
     def __init__(self, run: RunFolder, out: Path, *, category: str, market: str, as_of: date, sample: dict,
-                 trends_by_id: dict[str, dict], paid: dict[str, dict], paid_checked: bool):
+                 trends_by_id: dict[str, dict], paid: dict[str, dict], paid_checked: bool, hooks_not_read: int = 0):
         self.run, self.out, self.category, self.market, self.as_of = run, out, category, market, as_of
         self.sample, self.trends, self.paid, self.paid_checked = sample, trends_by_id, paid, paid_checked
+        self.hooks_not_read = hooks_not_read     # issue #8: only the shortlisted hooks' videos were read
         self.thumbs_missing = 0
         self.files_left = page.MAX_FILES - 2         # index.html and report.json: never over the Artifact tool's limit
 
@@ -261,7 +262,8 @@ class _Page:
 
     def momentum(self, t: dict) -> tuple[str, str]:
         rel = t.get("relative") or {}
-        pool = "of all rising hooks" if t.get("kind") == "hook_trend" else f"of {self.category} topics"
+        hooks = "of the rising hooks read" if self.hooks_not_read else "of all rising hooks"
+        pool = hooks if t.get("kind") == "hook_trend" else f"of {self.category} topics"
         return (f"{rel.get('band', '—').capitalize()} {pool}",
                 f"{rel.get('velocity_index', 0)}× the new creators of a typical {self.category} trend")
 
@@ -600,7 +602,8 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
 
     out = page.new_folder(run, PAGE)
     pg = _Page(run, out, category=category, market=market, as_of=as_of, sample=ctx, trends_by_id=by_id,
-               paid=paid_rows, paid_checked=paid_checked)
+               paid=paid_rows, paid_checked=paid_checked,
+               hooks_not_read=len((gj.get("plugin") or {}).get("hooks_not_read") or []))
     prev = prev_snapshot if prev_snapshot is not None else _prev_snapshot(run, digest)
     prev_snap = _json(Path(prev), "the previous snapshot") if digest is not None and prev else {}
     html_text = _render(pg, picks, report, cmap, gj, by, moved, picked, totals, scale, backtest_data, digest,
@@ -665,6 +668,9 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
         f"<section id='{b.replace('_', '-')}' style='--c:var(--{colour[b]})'><div class='sec-head'><h2>{LABEL[b]} · "
         f"{len(by[b])}</h2><p>{BUCKET_NOTE[b]}</p></div>{pg.table(by[b], moved, picked)}</section>" for b in LABEL)
     n_hooks = sum(1 for t in gj["trends"] if t.get("kind") == "hook_trend")
+    pool = ctx.get("hooks_pool", "")
+    hook_pool = (f"a hook among the {pool} rising hooks whose videos were read (the shortlist; "
+                 f"{pool + pg.hooks_not_read} listed)" if pg.hooks_not_read else f"a hook among all {pool} rising hooks")
     outputs = report["outputs"]
     nav = "".join(f"<a href='#{o}'>{E(VIEWS[o])}</a>" for o in outputs)
     cat = E(category)
@@ -708,7 +714,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
 <div class="meta"><span>Market: {E(picks['market'])}</span><span>As of {E(day(picks['as_of']))}</span><span>{len(gj['trends']) - n_hooks} topics + {n_hooks} hooks mapped</span><span>Source: TrendsMesh evidence videos, Meta Ad Library</span></div>
 <p class="lede">{lede}</p>
 <div class="counts">{counts}</div>
-<p class="sample"><b>The sample.</b> In the {p['window']} days to {E(day(p['ref']))}, {ctx.get('creators_active')} creators joined one of the {ctx.get('trends')} mapped {cat} trends in TrendsMesh evidence ({E(', '.join(report['sample']['platforms']) or 'unknown platform')} only). A typical active trend gained {ctx.get('median_new')} of them; "2×" means twice that. Bands rank a topic among {cat} topics and a hook among all {ctx.get('hooks_pool', '')} rising hooks. Raw counts sit under each card.</p></header>
+<p class="sample"><b>The sample.</b> In the {p['window']} days to {E(day(p['ref']))}, {ctx.get('creators_active')} creators joined one of the {ctx.get('trends')} mapped {cat} trends in TrendsMesh evidence ({E(', '.join(report['sample']['platforms']) or 'unknown platform')} only). A typical active trend gained {ctx.get('median_new')} of them; "2×" means twice that. Bands rank a topic among {cat} topics and {hook_pool}. Raw counts sit under each card.</p></header>
 {lead}
 <section><div class="sec-head"><h2>Moved by review</h2><p>The numbers put these in one stage; reading the evidence moved them.</p></div><ul class="moves">{moves}</ul></section>
 {tables}
