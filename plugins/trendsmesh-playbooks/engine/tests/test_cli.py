@@ -3,7 +3,7 @@ from tm.cli import main
 
 def test_version_prints_and_exits_zero(capsys):
     assert main(["--version"]) == 0
-    assert capsys.readouterr().out.strip() == "tm 0.10.0-rc.2"
+    assert capsys.readouterr().out.strip() == "tm 0.10.0"
 
 
 def test_unknown_command_exits_one():

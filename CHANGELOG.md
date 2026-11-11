@@ -2,7 +2,7 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
-## Unreleased
+## 0.10.0
 
 - **Developed in the open.** Issues, changes and releases now happen in this repository; release candidates come
   before each release (RELEASING.md).
