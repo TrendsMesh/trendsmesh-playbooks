@@ -18,8 +18,8 @@ repository.
 1. Branch from `dev`, and open the pull request into `dev`: `gh pr create -B dev`. `main` holds released versions
    only and moves at release time (`RELEASING.md`).
 2. Add a bullet for your change under `## Unreleased` in `CHANGELOG.md`, in its style: one bullet per change, with
-   a bold lead. A pull request that changes `plugins/` without it fails CI, unless it carries the `no-changelog`
-   label (for a change users won't notice).
+   a bold lead. A pull request that changes `plugins/` without it fails the `Changelog` check, unless it carries
+   the `no-changelog` label (for a change users won't notice).
 3. Run the tests: from `plugins/trendsmesh-playbooks/env`, `pixi run --frozen -e dev test`.
 4. Fill in the pull request template, ticking each line you checked.
 
