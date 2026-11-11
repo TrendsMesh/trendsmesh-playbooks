@@ -42,8 +42,15 @@ the video is never fetched through it (A2).
 
 Meta sends numbers as strings, with units and percent signs (`"14.24%"`,
 `{"value": "93.22", "unit": "PLN"}`), and sometimes without `results`. Never convert or round
-them yourself: save the answer verbatim and let `tm r1` read it (it accepts a list of rows, a
-raw `{"data": [...]}` answer, and several pages). The result is the **campaign objective's
+them yourself: save the answer verbatim and let `tm r1` read it. The Meta MCP answers
+`ads_get_ad_entities` as `{"ad_entities": "<the rows as a JSON text>", "client_conversation_id":
+"…"}`: give that file as it came, never unwrapped or rewritten by hand. `tm r1`, `tm formats` and
+`tm audience pick` read that shape, a list of rows, a `{"data": [...]}` answer and several pages.
+When a file gives no ad rows, no spend or no results they can read, they stop with an error
+(exit 1) instead of an empty answer: fetch again with the fields the step names, don't work around
+it. `tm r1` says what it read (`read`: ads, rows, dates, spend, results); check it against what you
+fetched before you tell the user that no ad is fading. `tm formats` shows the feed's share of the
+results next to the formats. The result is the **campaign objective's
 result** (purchase, lead, install), not always a purchase. The average watch time
 (`video_avg_time_watched_actions`) comes in whole seconds per day: it is a rough figure, shown as
 "about 6 s", never as a precise one. Meta counts p25 to p100 separately, so a later mark can

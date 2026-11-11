@@ -15,6 +15,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   cloning no longer stops the readiness check: it's a note that the plan is checked later, at the voice step,
   and only if the ad needs a clone of its voice because the original voice isn't in your ElevenLabs history.
   Claude then reads the plan from your key, and asks you only if ElevenLabs doesn't say.
+- **Refresh an ad reads Meta's answers as they come.** Picking the ad to refresh now reads the Meta Ads MCP's own
+  answer shape, so it no longer reports "no ad is fading" after reading nothing. When a Meta file holds no ad rows,
+  no spend or no results it can read, it stops with a clear error instead of an empty ranking, and it says how many
+  ads, rows, days and how much spend it read.
+- **The 4:5 version is no longer dropped.** Refresh an ad now reads Meta's results by placement, so a feed that
+  brings a quarter of the results or more gets its 4:5 version again. A placement breakdown with no results it can
+  read is an error, not "9:16 only", and the answer shows the feed's share of the results.
 
 ## 0.10.0
 

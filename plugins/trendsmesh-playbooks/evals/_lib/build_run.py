@@ -177,7 +177,7 @@ def write_ranking(ws: Path, run: Path, scn: str) -> dict:
     a = m.answers(scn)
     base = run / "01_base"
     files = {"meta_weekly_ads_p01.json": a["ad_7"], "meta_weekly_account.json": a["account_7"],
-             f"{m.AD_A}_meta_daily.json": {"data": [r for r in a["ad_1"]["data"] if r["id"] == m.AD_A]}}
+             f"{m.AD_A}_meta_daily.json": m.mcp_answer([r for r in m.rows_of(a["ad_1"]) if r["id"] == m.AD_A])}
     for name, data in files.items():
         (base / name).write_text(json.dumps(data), encoding="utf-8")
         tm(ws, "record", "--run", str(run), "--file", f"01_base/{name}", "--stage", "01_base",
@@ -195,7 +195,7 @@ def diagnose(ws: Path, run: Path, cand: dict) -> None:
 
 def structural(ws: Path, run: Path, scn: str) -> None:
     """R2b as A1a leaves it: the whole-life rows of every ad that runs the file, then `tm structural`."""
-    life = {r["id"]: [r] for r in m.lifetime(scn)["data"]}
+    life = {r["id"]: [r] for r in m.rows_of(m.lifetime(scn))}
     uploads = {ad: life[ad] for ad in m.same_file(scn)}
     f = place(ws, run, "03_wip/retention/uploads_v01.json", uploads,
               "copied from 01_base: Meta Ads MCP ads_get_ad_entities, whole life (eval fixture)")

@@ -4,10 +4,15 @@ Meta sends numbers as strings, money as `{"value": "93.22", "unit": "PLN"}`, rat
 `"14.24%"`, and the result count as `results.values[0].value`. A missing or unreadable number is
 0; this module never raises on a number. A row with no readable date cannot be placed in time, so
 it is skipped. Rows may be daily or 7-day periods (`date_start` to `date_stop`).
+
+`answer_rows` is the one reader of a saved Meta answer (the Meta MCP's `{"ad_entities": "<JSON
+text>", ...}`, the collector's envelope, `{"data": [...]}` pages, a plain list): every command that
+reads saved Meta answers takes its rows from it.
 """
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 from datetime import date
@@ -64,6 +69,70 @@ def results(value: object) -> float:
 
 
 _results = results  # the name PB01's modules knew
+
+
+def results_readable(value: object) -> bool:
+    """Whether a row's `results` holds a number at all (a readable 0 counts; a missing or unreadable
+    value does not), so a reader can tell "no results" from "results it could not read"."""
+    if isinstance(value, dict) and isinstance(value.get("values"), list):
+        value = value["values"][0] if value["values"] else None
+    if isinstance(value, dict):
+        value = value.get("value")
+    if isinstance(value, bool) or value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return math.isfinite(value)
+    if isinstance(value, str):
+        try:
+            return math.isfinite(float(value.strip().rstrip("%").strip()))
+        except ValueError:
+            return False
+    return False
+
+
+# --- a saved Meta answer --------------------------------------------------------------------------
+
+ROW_KEYS = ("data", "rows", "ad_entities")
+
+
+def _text_blocks(value: object) -> bool:
+    """MCP content blocks (`[{"type": "text", "text": ...}]`), as a tool result file may hold them."""
+    return isinstance(value, list) and bool(value) and all(
+        isinstance(b, dict) and b.get("type") == "text" and isinstance(b.get("text"), str) for b in value)
+
+
+def answer_rows(data: object, _depth: int = 0) -> list[dict] | None:
+    """The rows of a Meta answer, in any shape it is saved in; None when `data` is not one.
+
+    Opens the collector's envelope (`{"_tool", "_input", "_at", "answer"}`), a JSON text, MCP text
+    content blocks, then takes a list as it is, or the list under `data`, `rows` or `ad_entities`.
+    The Meta MCP answers `ads_get_ad_entities` as `{"ad_entities": "<the rows as a JSON text>",
+    "client_conversation_id": ...}`, so a text under those keys is parsed too. An answer with no
+    rows gives `[]`; an object with none of those keys (`{ad_id: rows}`, an error) gives None, so the
+    caller decides: never read an envelope's own keys as rows.
+    """
+    if _depth > 4:
+        return None
+    again = lambda value: answer_rows(value, _depth + 1)  # noqa: E731
+    if isinstance(data, str):
+        try:
+            return again(json.loads(data.lstrip("﻿")))
+        except ValueError:
+            return None
+    if _text_blocks(data):
+        return again("".join(b["text"] for b in data))
+    if isinstance(data, list):
+        return [r for r in data if isinstance(r, dict)]
+    if not isinstance(data, dict):
+        return None
+    if "_tool" in data and "answer" in data:
+        return again(data["answer"])
+    for key in ROW_KEYS:
+        if key in data and isinstance(data[key], (list, str, dict)):
+            found = again(data[key])
+            if found is not None:
+                return found
+    return None
 
 
 def _day(value: object) -> date | None:

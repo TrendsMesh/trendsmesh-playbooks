@@ -348,3 +348,109 @@ def test_window_peak_matches_the_reference_ladder():  # retention_ladder_v01.jso
 
 def test_window_with_no_plays_has_zero_avg_time():
     assert aggregate([], date(2026, 8, 9), date(2026, 8, 13)).avg_time_s == 0.0
+
+
+# --- reading saved Meta answers on the command line (issue #28) -------------------------------------
+
+def _mcp(rows):
+    """The Meta MCP's answer to ads_get_ad_entities: the rows as a JSON text, next to its own id."""
+    return {"ad_entities": json.dumps(rows), "client_conversation_id": "conv-0001"}
+
+
+def _r1(tmp_path, ads, account, name="mcp"):
+    run = RunFolder.create(tmp_path, name, date(2026, 11, 5))
+    a, acc = tmp_path / f"{name}_ads.json", tmp_path / f"{name}_acc.json"
+    a.write_text(ads if isinstance(ads, str) else json.dumps(ads), encoding="utf-8")
+    acc.write_text(account if isinstance(account, str) else json.dumps(account), encoding="utf-8")
+    return run, main(["r1", "--run", str(run.path), "--ads", str(a), "--account", str(acc),
+                      "--today", "2026-11-05", "--json"])
+
+
+def test_cli_opens_the_meta_mcp_envelope(tmp_path, capsys):
+    capsys.readouterr()
+    run, code = _r1(tmp_path, _mcp(A + B), _mcp(A + B))
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0, out
+    data = json.loads((run.path / "01_base" / "winner_ranking_v01.json").read_text(encoding="utf-8"))
+    assert {c["ad_id"] for c in data["candidates"]} == {"A", "B"}
+    plain, code = _r1(tmp_path, A + B, A + B, "plain")   # the same rows as a plain list rank the same
+    assert code == 0
+    same = json.loads((plain.path / "01_base" / "winner_ranking_v01.json").read_text(encoding="utf-8"))
+    assert same["candidates"] == data["candidates"]
+
+
+def test_cli_reads_the_real_fixture_as_saved(tmp_path, capsys):
+    """The fixture in the real shape, given to the command as it came (not unwrapped by hand)."""
+    raw = load("ad3_meta_daily_video_raw.json")
+    assert set(raw) == {"ad_entities", "client_conversation_id"}
+    capsys.readouterr()
+    _, code = _r1(tmp_path, raw, raw)
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0 and out["fading"] == ["90000000000001"], out
+    assert out["read"]["ads"] == 1 and out["read"]["rows"] == 88
+    assert out["read"]["from"] == "2026-08-07" and out["read"]["spend"] > 0
+
+
+def test_cli_opens_the_collectors_envelope_and_text_pages(tmp_path, capsys):
+    saved = {"_tool": "ads_get_ad_entities", "_input": {"level": "ad"}, "_at": "2026-11-05T08:00:00+00:00",
+             "answer": _mcp(A)}
+    run = RunFolder.create(tmp_path, "pages2", date(2026, 11, 5))
+    p1, p2 = tmp_path / "p1.json", tmp_path / "p2.json"
+    p1.write_text(json.dumps(saved), encoding="utf-8")
+    p2.write_text(json.dumps(_mcp(B)), encoding="utf-8-sig")   # PowerShell's BOM
+    capsys.readouterr()
+    assert main(["r1", "--run", str(run.path), "--ads", str(p1), str(p2), "--account", str(p1), str(p2),
+                 "--today", "2026-11-05", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["candidates"] == 2 and out["read"]["ads"] == 2 and out["read"]["rows"] == 8
+
+
+def test_cli_says_what_it_read(tmp_path, capsys):
+    capsys.readouterr()
+    _, code = _r1(tmp_path, A + B, A + B)
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert out["read"] == {"ads": 2, "rows": 8, "from": "2026-10-07", "to": "2026-11-03",
+                           "spend": 6400.0, "results": 560.0, "account_rows": 8}
+
+
+@pytest.mark.parametrize("ads", [
+    _mcp([]),                                                         # an answer with no rows
+    {"ad_entities": "not json", "client_conversation_id": "conv-0001"},   # rows that cannot be read
+    {"client_conversation_id": "conv-0001"},                          # an envelope with no rows at all
+    {"A": [{"id": "A", "amount_spent": "10"}]},                        # every row dropped (no dates)
+    [],
+])
+def test_cli_fails_when_no_ad_rows_were_read(tmp_path, capsys, ads):
+    capsys.readouterr()
+    run, code = _r1(tmp_path, ads, A + B)
+    out = json.loads(capsys.readouterr().out)
+    assert code == 1 and out["status"] == "error", out
+    assert "ad rows" in out["message"]
+    assert not (run.path / "01_base" / "winner_ranking_v01.json").exists()
+
+
+def test_cli_fails_when_no_spend_or_no_results_can_be_read(tmp_path, capsys):
+    no_spend = [{**r, "amount_spent": {"value": "0", "unit": "PLN"}} for r in A]
+    no_results = [{k: v for k, v in r.items() if k != "results"} for r in A]
+    capsys.readouterr()
+    _, code = _r1(tmp_path, no_spend, A + B, "nospend")
+    out = json.loads(capsys.readouterr().out)
+    assert code == 1 and "spend" in out["message"], out
+    _, code = _r1(tmp_path, no_results, A + B, "noresults")
+    out = json.loads(capsys.readouterr().out)
+    assert code == 1 and "results" in out["message"], out
+
+
+def test_cli_fails_when_the_account_file_has_no_rows(tmp_path, capsys):
+    capsys.readouterr()
+    _, code = _r1(tmp_path, A + B, _mcp([]))
+    out = json.loads(capsys.readouterr().out)
+    assert code == 1 and "account" in out["message"], out
+
+
+def test_a_real_ranking_with_nothing_fading_is_still_a_success(tmp_path, capsys):
+    capsys.readouterr()
+    _, code = _r1(tmp_path, _mcp(B), _mcp(A + B))
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0 and out["fading"] == [] and out["read"]["ads"] == 1

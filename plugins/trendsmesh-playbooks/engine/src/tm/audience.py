@@ -50,7 +50,6 @@ HYPOTHESIS = re.compile(r"02_research/audience/hypothesis_v\d+\.md")
 FORMAT_IDS = {"9:16": "9x16", "4:5": "4x5"}
 DEFAULT_FORMATS = ["9x16", "4x5"]   # no placement data: both (VARIANTS "new product")
 NO_DATA_SEGMENT = "hypothesis"
-_ROW_KEYS = ("data", "rows", "ad_entities")
 
 Rule = Literal["lowest_cost", "directional_fallback", "hypothesis_only"]
 
@@ -290,24 +289,13 @@ def record_hypothesis(run: RunFolder, file: str | Path) -> dict:
 
 
 def _rows(path: Path, rel: str) -> list[dict]:
-    """The rows of a saved Meta answer (the envelope's answer: a list, or a list under data, rows
-    or ad_entities, which the Meta MCP may send as a JSON text)."""
-    answer = trends.unwrap(trends.read(path))
-    if isinstance(answer, dict):
-        for key in _ROW_KEYS:
-            value = answer.get(key)
-            if isinstance(value, str):
-                try:
-                    value = json.loads(value)
-                except ValueError:
-                    continue
-            if isinstance(value, list):
-                answer = value
-                break
-    if not isinstance(answer, list):
+    """The rows of a saved Meta answer (`meta_rows.answer_rows`: the envelope's answer, a list, or a
+    list under data, rows or ad_entities, which the Meta MCP sends as a JSON text)."""
+    answer = meta_rows.answer_rows(trends.read(path))
+    if answer is None:
         raise Stop(f"{rel} holds no rows of a Meta read. Give the saved answer of the breakdown read "
                    f"(01_base/meta/ads_get_ad_entities_vNN.json); {AGAIN}.")
-    return [r for r in answer if isinstance(r, dict)]
+    return answer
 
 
 def _breakdown_rows(path: Path, rel: str) -> list[dict]:
@@ -325,6 +313,10 @@ def _placement_rows(path: Path, rel: str) -> list[dict]:
     if not any(_label(r["placement"]) for r in rows):
         raise Stop(f"{rel} has no placement rows. Give the saved answer of the read with breakdowns "
                    f"publisher_platform and platform_position; nothing was written; {AGAIN}.")
+    if not any(r["results"] > 0 for r in rows):   # R6 would read it as "9:16 only" (issue #20)
+        raise Stop(f"{rel} has placement rows but no results could be read from them, so the formats cannot "
+                   "be decided. Give the saved answer of the placement read with the results field, or leave "
+                   f"out --placements to keep both formats; nothing was written; {AGAIN}.")
     return rows
 
 

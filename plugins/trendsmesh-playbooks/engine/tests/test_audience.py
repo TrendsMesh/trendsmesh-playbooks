@@ -284,6 +284,36 @@ def test_reads_that_are_not_audience_data_never_block(run, capsys):
     assert audience.order_gap(run) is None
 
 
+def _mcp(rows: list[dict]) -> dict:
+    """The Meta MCP's own answer: the rows as a JSON text next to its id (issue #28)."""
+    return {"ad_entities": json.dumps(rows), "client_conversation_id": "conv-0001"}
+
+
+def test_reads_are_taken_in_the_meta_mcp_shape(run, capsys):
+    code, out = _hypothesis(capsys, run)
+    assert code == 0, out
+    breakdown = mcp_saves.save(run, "ads_get_ad_entities", AGE_GENDER_INPUT, _mcp(_age_gender_rows()), at=AFTER)
+    placements = mcp_saves.save(run, "ads_get_ad_entities", PLACEMENT_INPUT, _mcp(_placement_rows()), at=AFTER)
+    code, out = _cli(capsys, "audience", "pick", "--run", str(run.path), "--breakdown", str(breakdown),
+                     "--placements", str(placements))
+    assert code == 0, out
+    assert out["pick"]["segment"] == "65+" and out["formats"] == ["9x16", "4x5"]
+
+
+def test_placements_with_no_readable_results_stop_instead_of_9x16(run, capsys):
+    """Issue #20: a placement read whose results cannot be read is not "9:16 only"."""
+    code, out = _hypothesis(capsys, run)
+    assert code == 0, out
+    breakdown = _save(run, AGE_GENDER_INPUT, _age_gender_rows(), AFTER)
+    unread = [{**r, "results": {"indicator": "actions:x"}} for r in _placement_rows()]
+    placements = _save(run, PLACEMENT_INPUT, unread, AFTER)
+    code, out = _cli(capsys, "audience", "pick", "--run", str(run.path), "--breakdown", str(breakdown),
+                     "--placements", str(placements))
+    assert code == 2 and out["status"] == "stop", out
+    assert "no results" in out["message"] and "nothing was written" in out["message"]
+    assert _audience_files(run) == []
+
+
 # The LD dry run's first Meta read (its manifest row 1, meta_adsets_targeting_maximum.json): A1 derives
 # the market from the ad sets' targeting (`geo_locations`, PLAYBOOK "Inputs"), before B1's hypothesis.
 LD_A1_INPUT = {"account_id": "act_12345678", "level": "adset",

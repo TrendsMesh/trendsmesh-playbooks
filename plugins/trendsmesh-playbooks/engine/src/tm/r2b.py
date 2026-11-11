@@ -20,7 +20,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tm import cli, ladder, manifest, state
+from tm import cli, ladder, manifest, meta_rows, state
 from tm.meta_rows import Row, normalise
 from tm.r1 import aggregate
 from tm.runfolder import ReadOnlyError, RunFolder
@@ -78,10 +78,27 @@ def check(uploads: dict[str, list[Row]], length_s: float, min_plays: int = MIN_P
 
 
 def uploads_from_json(data: object) -> dict[str, list[Row]]:
-    """{ad_id: [Meta rows]} as the skill passes it."""
-    if not isinstance(data, dict) or not all(isinstance(v, list) for v in data.values()):
+    """{ad_id: Meta rows} as the skill passes it: each upload's rows as a list, or as the Meta answer
+    they came in (`meta_rows.answer_rows`). The whole Meta answer is not an uploads file (its keys
+    are not ad ids), and an upload with rows none of which can be read is an error, not "too few
+    plays"."""
+    if meta_rows.answer_rows(data) is not None:
+        raise ValueError("The uploads file is a Meta answer, not a map of uploads: write one JSON object of ad id "
+                         "to that ad's rows, for each ad that runs the same video (flow.md, A1a).")
+    if not isinstance(data, dict):
         raise ValueError("The uploads file must be a JSON object of ad id to a list of Meta rows.")
-    return {str(k): normalise(v) for k, v in data.items()}
+    out: dict[str, list[Row]] = {}
+    for k, v in data.items():
+        rows = v if isinstance(v, list) else meta_rows.answer_rows(v)
+        if rows is None:
+            raise ValueError(f"The rows of upload {str(k)[:40]!r} are not a list of Meta rows or a Meta answer: "
+                             "the uploads file must be a JSON object of ad id to a list of Meta rows.")
+        normed = normalise(rows)
+        if rows and not normed:
+            raise ValueError(f"No row of upload {str(k)[:40]!r} can be read (none has a date_start or date_stop); "
+                             "copy the rows unchanged from the saved Meta answer.")
+        out[str(k)] = normed
+    return out
 
 
 def record(run: RunFolder, s: Structural) -> Path:

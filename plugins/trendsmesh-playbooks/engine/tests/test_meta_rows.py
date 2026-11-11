@@ -55,3 +55,46 @@ def test_normalise_reads_the_ladder():  # first row of the Ad 3 fixture (2026-08
     r = normalise(_ad3_video_rows())[0]
     assert (r.plays, r.p25, r.p50, r.p75, r.p95, r.p100) == (955, 329, 182, 98, 60, 53)
     assert r.avg_time_s == 7.0
+
+
+# --- reading a saved Meta answer (issues #28, #20) --------------------------------------------------
+
+from tm.meta_rows import answer_rows  # noqa: E402
+
+_ROWS = [{"id": "1", "date_start": "2026-10-01", "date_stop": "2026-10-07"}]
+
+
+def test_answer_rows_opens_the_meta_mcp_envelope():
+    # The Meta MCP answers ads_get_ad_entities as the rows in a JSON text, next to its own ids.
+    mcp = {"ad_entities": json.dumps(_ROWS), "client_conversation_id": "c-1"}
+    assert answer_rows(mcp) == _ROWS
+    assert answer_rows({"ad_entities": _ROWS, "client_conversation_id": "c-1"}) == _ROWS
+    assert answer_rows(json.dumps(mcp)) == _ROWS   # the whole answer as a JSON text
+
+
+def test_answer_rows_reads_every_saved_shape():
+    assert answer_rows(_ROWS) == _ROWS
+    assert answer_rows({"data": _ROWS, "paging": {"next": "x"}}) == _ROWS
+    assert answer_rows({"rows": _ROWS}) == _ROWS
+    saved = {"_tool": "ads_get_ad_entities", "_input": {}, "_at": "2026-11-01T00:00:00+00:00",
+             "answer": {"ad_entities": json.dumps(_ROWS), "client_conversation_id": "c-1"}}
+    assert answer_rows(saved) == _ROWS   # the collector's envelope
+    blocks = [{"type": "text", "text": json.dumps({"ad_entities": json.dumps(_ROWS)})}]
+    assert answer_rows(blocks) == _ROWS   # MCP content blocks, as a tool result file holds them
+    assert answer_rows({"ad_entities": json.dumps({"data": _ROWS})}) == _ROWS
+
+
+def test_answer_rows_is_none_when_it_is_not_a_meta_answer():
+    assert answer_rows({"ad_entities": "not json", "client_conversation_id": "c-1"}) is None
+    assert answer_rows({"client_conversation_id": "c-1"}) is None
+    assert answer_rows({"90000000000001": _ROWS}) is None   # {ad_id: rows}: the caller's own shape
+    assert answer_rows({"error": {"raw": "Rate limit"}}) is None
+    assert answer_rows("not json") is None and answer_rows(None) is None
+    assert answer_rows({"ad_entities": "[]"}) == []   # an answer with no rows is still an answer
+
+
+def test_results_readable_tells_a_zero_from_a_missing_value():
+    from tm.meta_rows import results_readable
+    assert results_readable({"values": [{"value": "0"}]}) and results_readable(3) and results_readable("2")
+    assert not results_readable(None) and not results_readable({"indicator": "x"})
+    assert not results_readable({"values": []}) and not results_readable("n/a")

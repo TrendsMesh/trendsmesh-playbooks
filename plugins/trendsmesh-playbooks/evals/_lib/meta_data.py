@@ -9,6 +9,7 @@ Used by gen_mocks.py (writes the committed fixtures) and by the fixture scripts.
 """
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 
 TODAY = date(2026, 11, 5)          # the eval's fixed "today"; R1 cuts the last two days
@@ -150,14 +151,24 @@ def account_weekly(scn: str) -> list[dict]:
     return out
 
 
+def mcp_answer(rows: list[dict]) -> dict:
+    """`ads_get_ad_entities` as the Meta MCP answers it: the rows as a JSON text next to its own id."""
+    return {"ad_entities": json.dumps(rows, ensure_ascii=False), "client_conversation_id": "eval-mock-0001"}
+
+
+def rows_of(answer: dict) -> list[dict]:
+    """The rows of an `mcp_answer`."""
+    return json.loads(answer["ad_entities"])
+
+
 def answers(scn: str) -> dict[str, dict]:
     """The mock answers by `<level>_<time_increment>` (the file name the mock tool picks)."""
     ads_w = weekly(scn, AD_A, NAME_A) + weekly(scn, AD_B, NAME_B)
     ads_d = daily(scn, AD_A, NAME_A, 28) + daily(scn, AD_B, NAME_B, 28)
     return {
-        "ad_7": {"data": ads_w},
-        "account_7": {"data": account_weekly(scn)},
-        "ad_1": {"data": ads_d},
+        "ad_7": mcp_answer(ads_w),
+        "account_7": mcp_answer(account_weekly(scn)),
+        "ad_1": mcp_answer(ads_d),
     }
 
 
@@ -195,7 +206,7 @@ def uploads(scn: str) -> dict[str, tuple[str, tuple[int, ...]]]:
 
 def lifetime(scn: str) -> dict:
     """`ads_get_ad_entities` at ad level over each ad's whole life: one total row per ad."""
-    return {"data": [_lifetime_row(ad, start, counts) for ad, (start, counts) in uploads(scn).items()]}
+    return mcp_answer([_lifetime_row(ad, start, counts) for ad, (start, counts) in uploads(scn).items()])
 
 
 def same_file(scn: str) -> list[str]:

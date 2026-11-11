@@ -32,7 +32,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from tm import cli, manifest
-from tm.meta_rows import Row, normalise
+from tm.meta_rows import Row, answer_rows, normalise, results_readable
 from tm.runfolder import ReadOnlyError, RunFolder
 
 VERDICTS = ("fading", "stable", "not_a_winner", "not_enough_data")
@@ -349,15 +349,23 @@ def rank(ads: dict[str, list[Row]], account: list[Row], cfg: WinnerCfg, today: d
 # --- command line ---------------------------------------------------------------------
 
 def load_ads(data: object) -> dict[str, list[Row]]:
-    """`{ad_id: [rows]}` or a flat list of rows that each carry `id`."""
-    if isinstance(data, dict):
+    """A saved Meta answer (any shape `meta_rows.answer_rows` reads: the Meta MCP's
+    `{"ad_entities": "<JSON text>", ...}`, `{"data": [...]}`, the collector's envelope, a flat list of
+    rows that each carry `id`) or `{ad_id: [rows]}`. ValueError when an `{ad_id: rows}` value is not a
+    list: an envelope's own keys are never taken for ads."""
+    rows = answer_rows(data)
+    if rows is None and isinstance(data, dict):
         out = {}
-        for ad_id, rows in data.items():
-            normed = normalise(rows)
+        for ad_id, value in data.items():
+            if not isinstance(value, list):
+                raise ValueError(
+                    f"{str(ad_id)[:40]!r} is not an ad id with a list of Meta rows, and the file is not a "
+                    "Meta answer with ad rows under data, rows or ad_entities.")
+            normed = normalise(value)
             out[str(ad_id)] = [r if r.ad_id else _with_id(r, str(ad_id)) for r in normed]
         return out
     out: dict[str, list[Row]] = {}
-    for r in normalise(data if isinstance(data, list) else []):
+    for r in normalise(rows or []):
         out.setdefault(r.ad_id, []).append(r)
     return out
 
@@ -368,18 +376,66 @@ def _with_id(row: Row, ad_id: str) -> Row:
 
 
 def _answer(path: str) -> object:
-    """A saved file as the engine reads it: a raw Meta answer `{"data": [...]}` gives its rows."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    if isinstance(data, dict) and isinstance(data.get("data"), list):
-        return data["data"]
-    return data
+    """A saved file's JSON (a BOM from PowerShell is dropped); `load_ads` opens the answer."""
+    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
+
+
+_AGAIN = ("Save the Meta answer of ads_get_ad_entities as it came (meta-mcp.md) and give that file; "
+          "nothing was ranked.")
+
+
+def _read(files: list[str], what: str) -> tuple[dict[str, list[Row]], bool]:
+    """Every file's ads joined, and whether any raw row holds a readable `results`. ValueError naming
+    the file when it gives no rows, or names an ad none of whose rows can be read."""
+    ads: dict[str, list[Row]] = {}
+    readable = False
+    for f in files:
+        data = _answer(f)
+        part = load_ads(data)
+        if not any(part.values()):
+            raise ValueError(f"{Path(f).name} holds no {what} rows of a Meta read (rows with a date). {_AGAIN}")
+        empty = next((ad for ad, rows in part.items() if not rows), None)
+        if empty is not None:
+            raise ValueError(f"{Path(f).name}: no row of ad {empty[:40]!r} can be read (none has a date), so "
+                             f"no ad rows of it were read. {_AGAIN}")
+        raw = answer_rows(data)
+        if raw is None:   # {ad_id: [rows]}
+            raw = [r for rs in data.values() for r in rs if isinstance(r, dict)]
+        readable = readable or any(results_readable(r.get("results")) for r in raw)
+        for ad_id, rows in part.items():
+            ads.setdefault(ad_id, []).extend(rows)
+    return ads, readable
+
+
+def read_summary(ads: dict[str, list[Row]], account: list[Row]) -> dict:
+    """What was read, for the agent to compare with what it fetched (and for the card)."""
+    rows = [r for rs in ads.values() for r in rs]
+    return {"ads": len(ads), "rows": len(rows),
+            "from": min(r.start for r in rows).isoformat(), "to": max(r.stop for r in rows).isoformat(),
+            "spend": round(sum(r.spend for r in rows), 2), "results": round(sum(r.results for r in rows), 2),
+            "account_rows": len(account)}
+
+
+def _check(ads: dict[str, list[Row]], results_read: bool, account: list[Row]) -> None:
+    """Refuse a read that cannot give a true ranking, rather than an empty one that reads as
+    "nothing is fading"."""
+    if not any(r.spend > 0 for rs in ads.values() for r in rs):
+        raise ValueError("No spend could be read from the ad rows (amount_spent), so no ad can be ranked. "
+                         f"Ask Meta for amount_spent with R1's fields. {_AGAIN}")
+    if not results_read:
+        raise ValueError("The ads spent, but no results could be read from their rows (results is missing or "
+                         f"not a number). Ask Meta for results with R1's fields. {_AGAIN}")
+    if not account:
+        raise ValueError("The account files hold no rows. When the account read is empty, give the ad files "
+                         f"as --account too (meta-mcp.md). {_AGAIN}")
 
 
 def _setup(p: argparse.ArgumentParser) -> None:
     p.add_argument("--run", required=True, help="the run folder")
     p.add_argument("--ads", required=True, nargs="+",
-                   help="JSON files: {ad_id: [rows]}, a flat list of rows with id, or a raw Meta "
-                        "answer {\"data\": [rows]}; several files (pages) are joined")
+                   help="JSON files: the Meta answer saved as it came ({\"ad_entities\": \"<rows>\", ...}, "
+                        "{\"data\": [rows]} or the collector's envelope), a flat list of rows with id, or "
+                        "{ad_id: [rows]}; several files (pages) are joined")
     p.add_argument("--account", required=True, nargs="+",
                    help="JSON files of account-level rows (or every ad's rows: they are summed), "
                         "in the same shapes")
@@ -398,26 +454,28 @@ def _run(args: argparse.Namespace) -> int:
             if bad:
                 return cli.fail(args, " ".join(f"{p.what} {p.todo}" for p in bad))
         cfg = WinnerCfg.from_config(config.load(run) if config_file.is_file() else None)
-        ads: dict[str, list[Row]] = {}
-        for part in (load_ads(_answer(f)) for f in args.ads):
-            for ad_id, rows in part.items():
-                ads.setdefault(ad_id, []).extend(rows)
-        account = [r for f in args.account for rs in load_ads(_answer(f)).values() for r in rs]
+        ads, results_read = _read(args.ads, "ad")
+        account = [r for rs in _read(args.account, "account")[0].values() for r in rs]
+        _check(ads, results_read, account)
+        read = read_summary(ads, account)
         ranking = rank(ads, account, cfg, today)
         target = run.next_version("01_base", "winner_ranking", "json")
         run.assert_writable(target)
         target.write_text(json.dumps(ranking.to_json(), indent=2, ensure_ascii=False) + "\n",
                           encoding="utf-8")
         manifest.record(run, f"01_base/{target.name}", "01_base", "tm r1",
-                        params={"today": today.isoformat(), "ads": len(ads)})
+                        params={"today": today.isoformat(), "ads": len(ads), "rows": read["rows"]})
     except (OSError, ValueError, TypeError, KeyError, AttributeError, ReadOnlyError) as exc:
         return cli.fail(args, f"Could not rank: {exc!r}" if not isinstance(exc, (OSError, ValueError, ReadOnlyError)) else str(exc))
     rows = ranking.ranked
     text = (f"Wrote 01_base/{target.name}: {len(rows)} fading of {len(ranking.candidates)} ads."
+            + f"\nRead {read['ads']} ads, {read['rows']} rows, {read['from']} to {read['to']}, spend "
+              f"{read['spend']}, results {read['results']}; {read['account_rows']} account rows."
             + "".join(f"\n{c.rank}. {c.name or c.ad_id}: value to recover {c.value_to_recover}"
                       for c in rows))
     cli.emit(args, {"status": "done", "file": f"01_base/{target.name}",
-                    "fading": [c.ad_id for c in rows], "candidates": len(ranking.candidates)}, text)
+                    "fading": [c.ad_id for c in rows], "candidates": len(ranking.candidates),
+                    "read": read}, text)
     return 0
 
 

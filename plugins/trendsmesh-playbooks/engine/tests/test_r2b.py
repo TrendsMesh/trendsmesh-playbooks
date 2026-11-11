@@ -146,3 +146,38 @@ def test_a_done_run_refuses_structural_and_writes_nothing(run, tmp_path):
     assert main(["structural", "--run", str(run.path), "--uploads", str(_uploads_file(tmp_path)),
                  "--length-s", "24.149"]) == 1
     assert not list((run.path / "04_final").glob("structural_v*.json"))
+
+
+# --- the uploads file and saved Meta answers (issues #28, #20) --------------------------------------
+
+def test_an_upload_may_be_given_as_the_meta_mcp_answer(run, tmp_path, capsys):
+    r2.record(run, r2.Diagnosis(stage="hook", refresh=True))
+    as_mcp = {ad: {"ad_entities": json.dumps(rows), "client_conversation_id": "conv-0001"} for ad, rows in RAW.items()}
+    args = ["structural", "--run", str(run.path), "--uploads", str(_uploads_file(tmp_path, as_mcp)),
+            "--length-s", "24.149", "--json"]
+    capsys.readouterr()
+    assert main(args) == 0
+    assert json.loads(capsys.readouterr().out)["structural"] is True
+
+
+def test_the_whole_meta_answer_is_not_an_uploads_file(run, tmp_path, capsys):
+    """The envelope's keys are not ad ids: say what the file must be instead of a vague error."""
+    r2.record(run, r2.Diagnosis(stage="hook", refresh=True))
+    rows = [r for rs in RAW.values() for r in rs]
+    whole = {"ad_entities": json.dumps(rows), "client_conversation_id": "conv-0001"}
+    capsys.readouterr()
+    assert main(["structural", "--run", str(run.path), "--uploads", str(_uploads_file(tmp_path, whole)),
+                 "--length-s", "24.149", "--json"]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert "Meta answer" in out["message"] and "ad id" in out["message"]
+
+
+def test_an_upload_whose_rows_cannot_be_read_is_an_error(run, tmp_path, capsys):
+    r2.record(run, r2.Diagnosis(stage="hook", refresh=True))
+    bad = {**RAW, "9000000000099": [{"id": "9000000000099", "video_play_actions": "5000"}]}   # no dates
+    capsys.readouterr()
+    assert main(["structural", "--run", str(run.path), "--uploads", str(_uploads_file(tmp_path, bad)),
+                 "--length-s", "24.149", "--json"]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert "9000000000099" in out["message"]
+    assert not list((run.path / "04_final").glob("structural_v*.json"))
