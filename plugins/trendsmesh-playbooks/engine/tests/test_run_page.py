@@ -398,7 +398,7 @@ def test_review_build_now_builds_the_run_page_locally(run, capsys):
     _decide(run, "G5", "approve")
     assert main(["review", "build", "--run", str(run.path), "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
-    assert out["path"].endswith("run_page_v01/index.html") and "tm page build" in out["message"]
+    assert Path(out["path"]).as_posix().endswith("run_page_v01/index.html") and "tm page build" in out["message"]
     html = Path(out["path"]).read_text(encoding="utf-8")
     assert "Before: 01_base/orig.mp4" in html and 'class="play"' in html and "<input class=\"seek\"" in html
     assert review.pairs(run) == [("01_base/orig.mp4", "03_wip/edit_v02.mp4")]
