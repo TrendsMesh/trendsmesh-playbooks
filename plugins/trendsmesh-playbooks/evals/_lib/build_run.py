@@ -100,6 +100,13 @@ run record", which the cases' graders look for); the spend through `tm budget sp
 
 Steps the fixture finishes past A5 and A7 are a TrendsMesh run: a saved trend answer and a checked
 change register, as the engine asks.
+
+Create an ad scenarios (playbook 05, `runs/05-create-ad/2026-11-11_planner`, a made-up planner app, a guess run,
+English; every file written and checked with the engine's own `tm ad` commands, prices dated the build day):
+  ca_at_s5_plan  Check every step; the concepts, claims, board and production plan checked (casting 0.12 USD before
+                 the video, the presenter take 1.50 USD); at "Confirm the production plan and its cost"
+  ca_at_s10b_hands_off  Hands-off (5 USD at intake); everything through the accepted copy, the delivered files and
+                 the checked upload proposal (20 USD a day, OPT_IN); the go-ahead given; run at S10b
 """
 from __future__ import annotations
 
@@ -1609,6 +1616,176 @@ PLANS_OFFER = {"plans": [{"code": "human", "name": "Human", "monthlyPriceUsd": 0
 RECUT_LIMITS = {"recut": {"max_level": 2}, "diagnosis": {"structural_recut": False}}
 
 
+
+# --- Create an ad (playbook 05) ------------------------------------------------------------------------------
+# `runs/05-create-ad/2026-11-11_planner`: a made-up planner app for freelance designers (planner.example.com), a
+# guess run (no TrendsMesh), English chat and ad. Every file is the agent's, written here and checked with the
+# engine's own `tm ad` commands; prices are dated the day the case is built, so they are fresh.
+
+CA_RUN = "2026-11-11_planner"
+CA_KEY = "planner-brief-freelancers-nobody-told-me"
+
+
+def _ca_answers(level: str) -> dict:
+    return {"level": level, "chat_language": "en",
+            "brand": {"product": "Example Planner", "url": "https://planner.example.com", "language": "en",
+                      "persona": {"who": "freelance designers", "makes": "brand identities for small shops"}},
+            "intake": {"sells": {"kind": "feature", "what": "the client brief generator"}, "length_s": [15, 20],
+                       "placements": ["reels", "stories"], "live": True},
+            "budget": {"generation_usd": 5}}
+
+
+def _ca_write(run: Path, rel: str, data) -> str:
+    target = run / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(data, indent=1), encoding="utf-8") if not isinstance(data, bytes) \
+        else target.write_bytes(data)
+    return rel
+
+
+def _ca_files(ws: Path, run: Path, upto: str) -> None:
+    """Write and check the run's files up to `upto` (plan, copy or proposal)."""
+    from datetime import date as _date
+    today = _date.today().isoformat()
+    price = {"checked": today, "price_file": "02_research/prices_v01.json"}
+    _ca_write(run, "03_wip/assets_v01.json", {"earlier_runs_checked": True, "assets": [
+        {"file": "00_raw/logo.svg", "kind": "logo", "usable": True, "replaces": None}]})
+    _ca_write(run, "02_research/prices_v01.json", {"gpt-image-2": "0.04 USD an image", "gemini-omni": "0.10 USD a second",
+                                                    "checked": today})
+    checks = [
+        ("concepts", {"model_ads": [{"id": "m1", "source": "guess", "why": "the to-camera complaint opener"},
+                                    {"id": "m2", "source": "guess", "why": "a screen walkthrough"}],
+                      "trends": [{"id": "t1", "type": "hook", "source": "guess", "name": "the 'nobody told me' opener"}],
+                      "concepts": [{"key": "c1", "name": "Nobody told me", "model_ad": "m1", "trends": ["t1"],
+                                    "combine": "the opener on the brief tool", "beats": [{"t": "0-3", "picture": "creator"}],
+                                    "length_s": 18, "length_why": "Reels", "cost_usd": [2, 4]},
+                                   {"key": "c2", "name": "Two minutes, one brief", "model_ad": "m2", "trends": ["t1"],
+                                    "combine": "a screen walkthrough", "beats": [{"t": "0-2", "picture": "screen"}],
+                                    "length_s": 16, "length_why": "Stories", "cost_usd": [1, 3]}]}),
+        ("claims", {"claims": [{"id": "k1", "text": "Writes a client brief in 3 minutes", "source": "site",
+                                "ref": "https://planner.example.com/features"},
+                               {"id": "k2", "text": "Made for freelance designers", "source": "user", "ref": "intake"}]}),
+        ("board", {"model_ad_wpm": 160, "scenes": [
+            {"n": 1, "start": 0, "end": 3, "picture": "creator to camera", "on_screen_text": "Nobody told me this",
+             "line": "Nobody told me briefs could take three minutes", "speaker": "presenter", "source": "generate",
+             "claims": ["k1"]},
+            {"n": 2, "start": 3, "end": 12, "picture": "the brief screen", "line": "You answer five questions and it "
+             "writes the brief", "speaker": "presenter", "source": "site", "claims": ["k1"]},
+            {"n": 3, "start": 12, "end": 18, "picture": "logo sting", "source": "asset:00_raw/logo.svg"}]}),
+        ("plan", {"voice_route": "native", "lines": [
+            {"item": "casting", "type": "presenter", "stage": "pre_video", "model": "gpt-image-2",
+             "alternative": "flux-1.1-pro", "cost": 0.12, "budget": "ai_usd", **price},
+            {"item": "presenter_take", "type": "presenter", "stage": "video", "model": "gemini-omni",
+             "alternative": "seedance-2.0", "cost": 1.5, "budget": "ai_usd", **price}]}),
+    ]
+    names = {"concepts": "concepts", "claims": "claims", "board": "board", "plan": "production_plan"}
+    tm(ws, "evidence", "guess", "--run", str(run), "--why", "the user is not on the TrendsMesh Agent plan")
+    for what, data in checks:
+        rel = _ca_write(run, f"03_wip/{names[what]}_v01.json", data)
+        tm(ws, "ad", "check", what, "--run", str(run), "--file", rel)
+        if what == upto:
+            return
+    for n in (1, 2, 3):
+        _ca_write(run, f"03_wip/frame_{n}.png", b"png")
+    _ca_write(run, "03_wip/edit_placeholder_v01.mp4", b"mp4")
+    rel = _ca_write(run, "03_wip/storyboard_v01.json", {
+        "frames": [{"scene": n, "file": f"03_wip/frame_{n}.png"} for n in (1, 2, 3)],
+        "placeholder_render": "03_wip/edit_placeholder_v01.mp4",
+        "videos": [{"item": "presenter_take", "model": "gemini-omni", "prompt": "a different, non-identifiable person, "
+                    "handheld, natural light, says the two lines", "prompt_rules": "gemini-omni guide (saved)",
+                    "cost": 1.5, "budget": "ai_usd", **price}]})
+    tm(ws, "ad", "check", "storyboard", "--run", str(run), "--file", rel)
+    url = (f"https://planner.example.com/brief?utm_source=meta&utm_medium=paid_social&utm_campaign=planner-launch"
+           f"&utm_content={CA_KEY}")
+    copy = {"ads": [{"key": CA_KEY, "ad_name": "Planner brief tool, freelancers, nobody told me",
+                     "video_title": "Client briefs in three minutes", "cta": "SIGN_UP",
+                     "display_link": "planner.example.com", "url": url,
+                     "primary_texts": [{"text": t, "claims": ["k1"]} for t in (
+                         "Write a client brief in 3 minutes", "Client briefs in 3 minutes flat",
+                         "Your brief, ready in 3 minutes", "A brief in 3 minutes, then back to design",
+                         "Stop chasing clients for briefs: 3 minutes")],
+                     "headlines": [{"text": t, "claims": []} for t in (
+                         "Briefs, done fast", "Your next brief", "Brief your clients", "Stop chasing briefs",
+                         "Briefs without the back-and-forth")],
+                     "descriptions": [{"text": "For freelance designers", "claims": ["k2"]}] * 5}]}
+    rel = _ca_write(run, "03_wip/copy_v01.json", copy)
+    tm(ws, "ad", "copy", "check", "--run", str(run), "--file", rel)
+    if upto == "copy":
+        return
+    rel = _ca_write(run, "03_wip/copy_decisions_v01.json", {"ads": [{"key": CA_KEY, **{
+        f: [{"n": n, "keep": True} for n in range(1, 6)] for f in ("primary_texts", "headlines", "descriptions")}}],
+        "note": None})
+    tm(ws, "ad", "copy", "accept", "--run", str(run), "--file", rel)
+    for rel in (f"04_final/{CA_KEY}_v01.mp4", f"04_final/{CA_KEY}_thumb_v01.jpg"):
+        _ca_write(run, rel, b"media")
+        tm(ws, "record", "--run", str(run), "--file", rel, "--stage", "04_final", "--source", "the edit")
+    for rel in ("02_research/meta_pages_v01.json", "02_research/meta_pixel_v01.json"):
+        _ca_write(run, rel, {"saved": "the Meta Ads answer"})
+    rel = _ca_write(run, "05_results/upload_proposal_v01.json", {
+        "ad_account_id": "act_12345678", "page_id": "page_000000000001", "copy": "04_final/copy_v01.json",
+        "checks": {"pages": {"saved": "02_research/meta_pages_v01.json", "ids": ["page_000000000001"]},
+                   "pixel": {"dataset_id": "ds_000000000001", "fires": True,
+                             "events": ["PageView", "CompleteRegistration"], "saved": "02_research/meta_pixel_v01.json"}},
+        "objective": {"options": [{"objective": "OUTCOME_LEADS", "event": "COMPLETE_REGISTRATION",
+                                   "why": "the sign-up arrives on the pixel"}], "chosen": 0, "said": "sign-ups"},
+        "budget": {"amount": 20, "cadence": "daily", "currency": "USD", "said": "20 dollars a day"},
+        "country": ["US"], "audience": "advantage_plus", "placements": "advantage_plus",
+        "names": {"campaign": "Planner brief tool launch, sign-ups", "adset": "Planner freelancers US broad",
+                  "ads": {CA_KEY: "Planner brief tool, freelancers, nobody told me"}},
+        "ads": [{"key": CA_KEY, "video": f"04_final/{CA_KEY}_v01.mp4", "thumbnail": f"04_final/{CA_KEY}_thumb_v01.jpg"}],
+        "ai_disclosure": {"value": "OPT_IN", "said": "yes, the presenter is AI-generated"}, "status": "PAUSED"})
+    tm(ws, "ad", "upload", "check", "--run", str(run), "--file", rel)
+
+
+def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None, hooks: dict | None = None) -> dict:
+    """Walk the run: the user's first choice at every ask, the rule at every auto, each step's files before its
+    `tm done` (hooks), until `stop_at` (its work, or `stop_checkin` asked there)."""
+    hooks = hooks or {}
+    cat = __import__("yaml").safe_load((Path(ROOT) / "data" / "create-ad" / "checkins.yaml").read_text())
+    first = {c["id"]: c["choices"][0] for c in cat["checkins"]}
+    approved = False
+    for _ in range(80):
+        n = tm(ws, "next", "--run", str(run), ok=(0, 2))
+        if n.get("action") == "stop" and not approved:      # the plan's money: the yes was given, approve its amount
+            tm(ws, "budget", "approve", "ai_usd", "0.12", "--run", str(run))
+            approved = True
+            continue
+        if n["step"] == stop_at and (stop_checkin is None and n["action"] == "work"
+                                     or stop_checkin and n["action"] == "ask"
+                                     and stop_checkin in n["checkin"]["ids"]):
+            return n
+        if n["action"] == "work":
+            if n["step"] in hooks:
+                hooks[n["step"]]()
+            tm(ws, "done", n["step"], "--run", str(run))
+        elif n["action"] in ("ask", "auto"):
+            for cid in n["checkin"]["ids"]:
+                by = ["--note", "the user's yes"] if n["action"] == "ask" else ["--by", "rule", "--note", "the rule"]
+                tm(ws, "decide", cid, first[cid], "--run", str(run), *by)
+        else:
+            raise SystemExit(f"create-ad walk stopped at {n['step']}: {n.get('message')}")
+    raise SystemExit("create-ad walk never reached " + stop_at)
+
+
+def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
+    level = {"ca_at_s5_plan": "every_step", "ca_at_s10b_hands_off": "hands_off"}[scn]
+    made = Path(tm(ws, "run", "new", "--playbook", "create-ad", "--name", "planner")["path"])
+    run = made.with_name(CA_RUN)
+    if made != run:
+        made.rename(run)
+    f = ws / ".answers.json"
+    f.write_text(json.dumps(_ca_answers(level)), encoding="utf-8")
+    tm(ws, "config", "write", "--run", str(run), "--answers", str(f))
+    f.unlink()
+    if scn == "ca_at_s5_plan":
+        _ca_files(ws, run, "plan")
+        return run, ca_drive(ws, run, "S5", stop_checkin="plan")
+    _ca_files(ws, run, "proposal")
+    n = ca_drive(ws, run, "S10a", stop_checkin="upload")
+    tm(ws, "decide", "upload", "create", "--run", str(run), "--note", "yes, create it")
+    return run, tm(ws, "next", "--run", str(run))
+
+
 def main(scn: str, ws: Path) -> int:
     if scn == "plans_offer":
         (ws / ".plans.json").write_text(json.dumps(PLANS_OFFER), encoding="utf-8")
@@ -1676,6 +1853,8 @@ def main(scn: str, ws: Path) -> int:
         run, n = tr_main(scn, ws)
     elif scn.startswith("cb_"):
         run, n = cb_main(scn, ws)
+    elif scn.startswith("ca_"):
+        run, n = ca_main(scn, ws)
     elif scn.startswith("ov_"):
         run, n = ov_main(scn, ws)
         if run is None:

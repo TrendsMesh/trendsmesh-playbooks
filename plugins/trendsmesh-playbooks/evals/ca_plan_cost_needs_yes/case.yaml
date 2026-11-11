@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: ca_plan_cost_needs_yes
+context:
+  scaffold_script: fixture.sh

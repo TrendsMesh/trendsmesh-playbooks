@@ -4,6 +4,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **New playbook: Create an ad (first build).** Makes a new Meta video ad from zero for a product with a website:
+  a short intake, concepts built on a proven ad format and rising trends, the claims, a script-board, a production
+  plan with each model's dated price, the paid stages each shown first, the Meta copy (5 primary texts, 5 headlines,
+  5 descriptions, checked for length, links, UTM tags and no invented numbers) and, when you take the offer, the
+  campaign, ad set, creative and ad created in your account, all PAUSED. You approve the plan's cost before anything
+  is made and the video's cost before the video; a video is never made again without your say. The ad budget and
+  the AI-content label are always yours to state, and nothing in this playbook ever switches an ad on: you do that in
+  Ads Manager. Without TrendsMesh it still runs, and says plainly that its model ads and trends are guesses. Its
+  pages come in a later version: for now each step is shown and decided in chat.
 - **Video captions keep their font in every language.** Letters with diacritics (ą, ł, ő, ş, …) and Cyrillic letters
   no longer come out in a thinner fallback font in Organic AI video's captions, rankings and quizzes. Every video
   now loads the letters of the market language, and when its font has no letters for that script (Greek, Arabic,

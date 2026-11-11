@@ -1,0 +1,1 @@
+{"data":[{"id":"cmp_000000000001","name":"Planner brief tool launch, sign-ups","status":"PAUSED"},{"id":"set_000000000001","name":"Planner freelancers US broad","status":"PAUSED"},{"id":"ad_000000000001","name":"Planner brief tool, freelancers, nobody told me","status":"PAUSED"}]}
