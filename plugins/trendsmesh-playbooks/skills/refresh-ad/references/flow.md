@@ -525,18 +525,23 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 <a id="vc"></a>
 ## VC Remove and recreate the captions
 
-- `variants.md` section 4a. A clean source first. Otherwise decide the mode:
-  `tm tool inpaint_mode --run R <mask> <composite> --crop X0 Y0 X1 Y1 --json` (a mode set in the
-  config wins). Pro is ProPainter through `tm tool replicate_run` (paid: estimate, approval,
-  `--cost`). No check-in asks for that money at VC, so ask it here, the same way whether or not
-  the AI video is in the run: show the estimate with a sample frame next to the free way and its
+- `variants.md` section 4a. A clean source first. Otherwise the free plate always comes first:
+  `tm tool inpaint --run R <video> --teardown <teardown.json> [--from S --to S] --json` (free, no
+  approval: OpenCV Telea on the old captions, from the teardown's overlay boxes and the times their
+  words are on screen, held and averaged over neighbouring frames so the patch does not flicker; a
+  caption the teardown missed goes in with `--box X0 Y0 X1 Y1`). It writes the plate and its mask.
+  Render the new captions over the plate, then decide the mode:
+  `tm tool inpaint_mode --run R <mask> <composite> --crop <the plate's crop> --json` (a mode set in
+  the config wins). With no AI budget approved it answers `budget` with `pro_wanted` when ProPainter
+  would do better: then ask, as below. Pro is ProPainter through `tm tool replicate_run` (paid:
+  estimate, approval, `--cost`). No check-in asks for that money at VC, so ask it here, the same
+  way whether or not the AI video is in the run: show the estimate with a sample frame next to the free way and its
   known defect (`variants.md` 4a: a patch on texture such as sand or water), and record the user's
   yes for this amount alone: `tm budget approve --run R ai_usd <total> --for VC --note "<their
   words>"` (`<total>`: the `ai_usd` already approved plus this amount). It approves nothing for
   the AI video: its plan and budget (G6) come later and approve the running total, this spend
   included. Hands-off: the intake's AI budget; without one, take the free way and list its defect
-  in the final report. Budget (OpenCV Telea) has no tool in this version: use pro after approval,
-  or stop and ask for a clean source.
+  in the final report. Budget is the free plate from `tm tool inpaint`.
 - New captions in the original's style: WordCaptions props (word times from the transcript,
   style matched with comparison stills), `tm render still|video --comp WordCaptions`. QA as in
   section 4a.

@@ -293,14 +293,20 @@ def decode_mono(video: Path | str, sr: int):
     return np.frombuffer(raw, dtype=np.float32).copy()
 
 
-def decode(path: Path | str, width: int, height: int, pix_fmt: str = "gray") -> Iterator:
-    """Decoded frames as numpy arrays (height, width[, 3]), streamed from ffmpeg (any path works)."""
+EXACT_SWS = "accurate_rnd+full_chroma_int+bitexact"   # colour conversion without swscale's rounding drift
+
+
+def decode(path: Path | str, width: int, height: int, pix_fmt: str = "gray", exact: bool = False) -> Iterator:
+    """Decoded frames as numpy arrays (height, width[, 3]), streamed from ffmpeg (any path works). `exact`
+    converts the colours with EXACT_SWS: frames that are encoded again keep their colours (the default
+    conversion darkens B and R by about 1.5 levels each way)."""
     import numpy as np
 
     channels = {"gray": 1, "bgr24": 3}[pix_fmt]
     size = width * height * channels
+    scale = f"scale={width}:{height}" + (f":flags=bicubic+{EXACT_SWS}" if exact else "")
     proc = subprocess.Popen(
-        [ffmpeg_bin(), "-nostdin", "-v", "error", "-i", media(path), "-vf", f"scale={width}:{height}",
+        [ffmpeg_bin(), "-nostdin", "-v", "error", "-i", media(path), "-vf", scale,
          "-f", "rawvideo", "-pix_fmt", pix_fmt, "-"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     try:
         assert proc.stdout is not None

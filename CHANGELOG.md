@@ -25,6 +25,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   plan has no voice cloning, the readiness check notes that cloning isn't available and lets you start. It matters
   only if the ad needs a clone of its voice: then the voice step stops and you choose a plan with cloning, a stock
   voice, or no voice change.
+- **Old captions come off for free.** When there is no clean copy of the ad without its captions, Refresh an ad
+  now removes them itself at no cost and without asking for money: it paints them out where the ad's breakdown
+  found them, word by word, steady from frame to frame so the patch doesn't flicker. When the paid way (ProPainter)
+  would look better and no AI budget is approved yet, Claude shows you both and asks first.
 - **Refresh an ad reads Meta's answers as they come.** Picking the ad to refresh now reads the Meta Ads MCP's own
   answer shape, so it no longer reports "no ad is fading" after reading nothing. When a Meta file holds no ad rows,
   no spend or no results it can read, it stops with a clear error instead of an empty ranking, and it says how many

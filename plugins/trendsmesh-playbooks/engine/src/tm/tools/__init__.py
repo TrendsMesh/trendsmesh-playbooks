@@ -82,6 +82,7 @@ TOOLS: dict[str, Tool] = {
     "teardown": Tool("breakdown", (), "scenes, frames, overlays and the material keys of the original"),
     "transcribe": Tool("breakdown", (), "faster-whisper transcript with word timestamps"),
     "inpaint_mode": Tool("breakdown", (), "budget (OpenCV) or pro (ProPainter) caption removal"),
+    "inpaint": Tool("breakdown", (), "free caption removal (OpenCV Telea) from the teardown's overlay boxes and times"),
     "recut": Tool("breakdown", (), "render an edit list (picture, music or speech in sync)"),
     "recut_qa": Tool("breakdown", (), "QA of a re-cut: joints, flash, music, words, captions"),
     "segment_map": Tool("breakdown", (), "retention steps mapped to seconds, with cards, visual change, loudness and speech"),

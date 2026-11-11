@@ -6,9 +6,12 @@
 The old-caption mask only matters where the new captions do not cover it. Render the new captions
 over the free (OpenCV Telea) base first, then measure how much of the inpainted area stays visible.
 
-Decision: "budget" (OpenCV) when, in every frame, visible residue <= max-share of the frame area and
-the frames with residue add up to <= max-seconds; otherwise "pro" (ProPainter). A mode set by hand
-in the run config (`generation.caption_removal`) always wins over this; the caller applies it.
+Decision (`measured`): "budget" (OpenCV) when, in every frame, visible residue <= max-share of the
+frame area and the frames with residue add up to <= max-seconds; otherwise "pro" (ProPainter).
+`mode` is what can run now: "pro" only while some AI budget (`ai_usd`) is approved and not spent;
+with none, "budget" (the free `tm tool inpaint`) and `pro_wanted` true, so the agent shows both
+ways and asks before any money is approved (follow-up to issue 21). A mode set by hand in the run
+config (`generation.caption_removal`) always wins over this; the caller applies it.
 Ported from handoff/refresh-ad_v02/tools/inpaint_mode.py (VARIANTS 4a). Frames are decoded with
 ffmpeg so any path works.
 """
@@ -17,6 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tm import state
 from tm.tools import _common as c
 
 
@@ -57,6 +61,23 @@ def decide(mask: Path | str, composite: Path | str, crop: tuple[int, int, int, i
             "frames_with_old_caption": len(shares)}
 
 
+def ai_usd_left(run) -> float:
+    """The AI budget approved and not yet spent (0 when the run has none)."""
+    try:
+        s = state.load(run)
+    except (OSError, ValueError):
+        return 0.0
+    return max(0.0, float(s.budgets.get("ai_usd") or 0) - float(s.spend.get("ai_usd") or 0))
+
+
+def choose(res: dict, left: float) -> dict:
+    """`res` from decide() with the mode that can run now (module docstring)."""
+    measured = res["mode"]
+    mode = "budget" if measured == "pro" and left <= 1e-9 else measured
+    return {**res, "mode": mode, "measured": measured, "ai_usd_left": round(left, 4),
+            "pro_wanted": measured == "pro" and mode == "budget"}
+
+
 @c.guarded
 def main(argv: list[str] | None = None) -> int:
     p = c.parser("inpaint_mode", "Budget (OpenCV) or pro (ProPainter) caption removal.")
@@ -70,8 +91,8 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     run = c.open_run(a.run)
     out = c.output(run, a.out, "wip", "inpaint_mode", "json")
-    res = decide(a.mask, a.composite, tuple(a.crop), tuple(a.band) if a.band else None,
-                 a.max_share, a.max_seconds, a.min_pixels)
+    res = choose(decide(a.mask, a.composite, tuple(a.crop), tuple(a.band) if a.band else None,
+                        a.max_share, a.max_seconds, a.min_pixels), ai_usd_left(run))
     c.write_json(out, res)
     parents = [c.parent_ref(run, a.mask), c.parent_ref(run, a.composite)]
     c.record(run, out, "tm tool inpaint_mode (OpenCV)", ", ".join(parents),
@@ -79,7 +100,9 @@ def main(argv: list[str] | None = None) -> int:
              request={"mask": parents[0], "composite": parents[1], "crop": a.crop, "band": a.band}, response=res)
     return c.finish(a, {"tool": "inpaint_mode", "outputs": [c.rel(run, out)], **res},
                     f"Mode: {res['mode']} (largest visible residue {res['max_visible_share']:.3%} of the frame, "
-                    f"{res['visible_seconds']} s with residue). Saved to {c.rel(run, out)}.")
+                    f"{res['visible_seconds']} s with residue)"
+                    + (". ProPainter would do better, but no AI budget is approved: show both ways and ask"
+                       if res["pro_wanted"] else "") + f". Saved to {c.rel(run, out)}.")
 
 
 if __name__ == "__main__":
