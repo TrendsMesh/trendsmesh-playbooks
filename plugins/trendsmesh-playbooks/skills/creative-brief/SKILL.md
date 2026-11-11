@@ -104,10 +104,15 @@ MCP call (`ads_get_ad_accounts`), then:
 
 ## 3. The loop
 
-**Start from the run's state.** When a run exists (the user names it, or one under
-`runs/02-creative-brief/` is not done), run `tm next` on it **before you answer**, and answer
-from what it says. Before you do, plan or describe a step's work, read its section in
-`references/flow.md` (the `ref`): never from memory.
+**Start from the run's state.** When the user names a run (its folder, or the run they mean) or
+plainly asks to continue it ("carry on", "continue my run"), run `tm next` on it **before you
+answer**, and answer from what it says. When a run under `runs/02-creative-brief/` is not done but
+the request does not plainly continue it (it asks for something new, or does not say), **ask one
+short question before anything else**, with enough to recognise the run: "You have an unfinished
+creative brief run <run folder name> from <created>, stopped at <step>. Continue it, or start a new
+one?" (`tm status --run R --json` gives `created` and `step`, and changes nothing). Then `tm next`
+on that run, or a new run (`tm run new`). Before you do, plan or describe a step's work, read its
+section in `references/flow.md` (the `ref`): never from memory.
 
 `tm next --run R --json` → act on `action`, then `tm next` again. Always.
 

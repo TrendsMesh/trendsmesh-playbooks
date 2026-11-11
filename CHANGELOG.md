@@ -103,6 +103,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   session's own run, and a session that never turned it on (a Refresh an ad session, for example) has nothing saved
   anywhere. Turning collection on never takes over another session's run, says which other sessions collect in the
   folder, and no longer needs the first call within 10 minutes. Leftover markers of finished runs are cleaned up.
+- **An unfinished run is no longer resumed without asking.** When a run of the playbook is unfinished and your
+  request doesn't plainly continue it, Claude first asks one short question: continue that run (named, with its
+  date and step) or start a new one. Saying "carry on" or naming the run still continues it straight away.
+- **A run name already taken suggests a free one.** `tm run new` with a name used that day now names the existing
+  run, its step and how to continue it, and offers a free name (for example `Ad-3-2`) for a new run.
 
 ## 0.10.0
 

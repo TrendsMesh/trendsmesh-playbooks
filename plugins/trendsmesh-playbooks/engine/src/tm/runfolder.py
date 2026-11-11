@@ -21,6 +21,15 @@ class ReadOnlyError(Exception):
     pass
 
 
+class RunExists(FileExistsError):
+    """A run of that name already exists that day (issue #7): its folder and a free name to use instead."""
+
+    def __init__(self, path: Path, suggested: str):
+        self.path, self.suggested = path, suggested
+        super().__init__(f"A run folder already exists at {path}. To continue that run, use it: tm next --run "
+                         f"{path}. To start a new one, run tm run new again with --name {suggested}.")
+
+
 def slug(name: str) -> str:
     out: list[str] = []
     for ch in name.strip():
@@ -39,13 +48,29 @@ def stage_dir(stage: str) -> str:
 class RunFolder:
     path: Path
 
+    @staticmethod
+    def _path(workspace: Path, name: str, today: date, pb: playbooks.Playbook) -> Path:
+        return Path(workspace) / "runs" / pb.id / f"{today:%Y-%m-%d}_{name}"
+
+    @classmethod
+    def free_name(cls, workspace: Path, name: str, today: date, playbook: str = REFRESH_AD) -> str:
+        """The run name as its folder spells it, while no run of `playbook` has it that day; else the
+        first free <name>-2, <name>-3 ..."""
+        pb, base = playbooks.get(playbook), slug(name)
+        candidate, n = base, 1
+        while cls._path(workspace, candidate, today, pb).exists():
+            n += 1
+            candidate = f"{base}-{n}"
+        return candidate
+
     @classmethod
     def create(cls, workspace: Path, name: str, today: date, playbook: str = REFRESH_AD) -> "RunFolder":
-        """A new run of `playbook` (its id or skill name). Raises ValueError for an unknown one."""
+        """A new run of `playbook` (its id or skill name). Raises ValueError for an unknown one, and
+        RunExists (a FileExistsError naming a free name) when a run of that name exists that day."""
         pb = playbooks.get(playbook)
-        path = Path(workspace) / "runs" / pb.id / f"{today:%Y-%m-%d}_{slug(name)}"
+        path = cls._path(workspace, slug(name), today, pb)
         if path.exists():
-            raise FileExistsError(f"A run folder already exists at {path}. Pick another name.")
+            raise RunExists(path, cls.free_name(workspace, name, today, pb.id))
         for s in STAGES:
             (path / s).mkdir(parents=True)
         (path / "manifest.md").write_text(

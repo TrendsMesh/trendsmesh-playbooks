@@ -98,7 +98,9 @@ what each does in a weekly run is under the step. In order:
   config has the same `category.phrase` and `market`; take the one no other run follows (the
   newest). When two are left from the same day, take the one furthest along: a done run before
   an unfinished one. The scheduled task's prompt names the category, market and workspace folder.
-  - If it is not done, it is not a weekly run: resume it (`tm next`).
+  - If it is not done, it is not a weekly run. A scheduled task resumes it (`tm next`). On the
+    user's own request, unless they plainly said to continue it, ask first (SKILL.md section 3):
+    continue that run from its step, or start a new one.
   - If there is none, it is a first run: ask the intake.
 - `tm run new --playbook trend-research --name <the same name> --after <that run's folder>
   --json`, then `tm config write --run R --from-previous` (it copies the config and sets

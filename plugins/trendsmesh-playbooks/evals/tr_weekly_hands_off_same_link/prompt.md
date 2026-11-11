@@ -16,4 +16,4 @@ append_system_prompt: |
   plain words.
 ---
 
-Update my trend report for beauty in the US.
+Carry on with this week's update of my trend report for beauty in the US.

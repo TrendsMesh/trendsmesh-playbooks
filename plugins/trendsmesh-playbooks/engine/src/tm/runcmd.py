@@ -8,7 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from tm import cli, manifest, paths, playbooks, state, trend_spool
-from tm.runfolder import ReadOnlyError, RunFolder
+from tm.runfolder import ReadOnlyError, RunExists, RunFolder
 
 
 _emit = cli.emit
@@ -78,6 +78,19 @@ def _finish(run: RunFolder, previous: str | None, seed: dict | None) -> None:
                          "again with the same command.") from None
 
 
+def _taken(args: argparse.Namespace, exc: RunExists) -> int:
+    """A run of that name exists today: say which (its status and step, so the user can be asked whether
+    to continue it) and a free name for a new one. Nothing is made."""
+    payload = {"status": "error", "message": str(exc), "existing": str(exc.path), "suggested_name": exc.suggested}
+    try:
+        s = state.load(RunFolder.open(exc.path))
+        payload.update(existing_status=s.status, existing_step=s.step)
+    except (OSError, ValueError):
+        pass                                  # a folder without a readable state: the message still says it
+    cli.emit(args, payload, str(exc))
+    return 1
+
+
 def _run_run(args: argparse.Namespace) -> int:
     if args.run_command != "new":
         return _fail(args, "Use: tm run new --name <name> [--playbook <id|skill>] [--after <run folder>] "
@@ -89,6 +102,8 @@ def _run_run(args: argparse.Namespace) -> int:
         seed = _seed(workspace, args.seed, pb) if args.seed is not None else None
         run = RunFolder.create(workspace, args.name, date.today(), playbook=pb.id)
         _finish(run, previous, seed)
+    except RunExists as exc:
+        return _taken(args, exc)
     except (OSError, ValueError) as exc:
         return _fail(args, str(exc))
     if pb.id in trend_spool.COLLECTING:

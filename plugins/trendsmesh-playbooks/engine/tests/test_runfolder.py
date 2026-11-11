@@ -177,3 +177,33 @@ def test_run_new_after_reads_a_relative_path_from_the_workspace(tmp_path, monkey
     assert main(["run", "new", "--playbook", "two", "--name", "w2", "--after", rel, "--json"]) == 0
     second = json.loads(capsys.readouterr().out)
     assert state.load(RunFolder.open(second["path"])).previous_run == rel
+
+
+def test_a_taken_name_suggests_a_free_one(tmp_path):
+    """Issue #7: a run name already taken that day is refused with a free name to use instead, never
+    by a bare refusal that leaves the agent to invent one."""
+    first = RunFolder.create(tmp_path, "Ad 3", date(2026, 11, 5))
+    assert RunFolder.free_name(tmp_path, "Ad 3", date(2026, 11, 5)) == "Ad-3-2"
+    assert RunFolder.free_name(tmp_path, "Ad 3", date(2026, 11, 6)) == "Ad-3"     # another day: free
+    assert RunFolder.free_name(tmp_path, "Ad 3", date(2026, 11, 5), playbook="trend-research") == "Ad-3"
+    with pytest.raises(FileExistsError) as taken:
+        RunFolder.create(tmp_path, "Ad 3", date(2026, 11, 5))
+    assert taken.value.path == first.path and taken.value.suggested == "Ad-3-2"
+    RunFolder.create(tmp_path, "Ad-3-2", date(2026, 11, 5))
+    assert RunFolder.free_name(tmp_path, "Ad 3", date(2026, 11, 5)) == "Ad-3-3"
+
+
+def test_cli_run_new_with_a_taken_name_names_the_run_and_a_free_name(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TM_WORKSPACE", str(tmp_path))
+    assert main(["run", "new", "--name", "Ad 3", "--json"]) == 0
+    first = json.loads(capsys.readouterr().out)["path"]
+    s = state.load(RunFolder.open(first))
+    s.step = "A2"
+    state.save(RunFolder.open(first), s)
+    assert main(["run", "new", "--name", "Ad 3", "--json"]) == 1
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "error" and out["existing"] == first and out["suggested_name"] == "Ad-3-2"
+    assert out["existing_status"] == s.status and out["existing_step"] == "A2"
+    assert f"tm next --run {first}" in out["message"] and "--name Ad-3-2" in out["message"]
+    assert "Pick another name" not in out["message"]
+    assert len(list((tmp_path / "runs" / "01-refresh-ad").iterdir())) == 1      # nothing made
