@@ -859,7 +859,8 @@ def _production_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
                     found.add((prefix + where, word))
                     out.append(_creator_word(whose, prefix, where, word))
     if "creator" in meta["recipients"]:
-        out += _creator_view_words(brief, words, found)
+        out += _creator_view_words(brief, words, found,
+                                   i18n.page_lang(i18n.languages_of(cfg).working, "brief").lang)   # as built
         out += _creator_pdf_words(run, brief, words, out)
     return out
 
@@ -880,7 +881,8 @@ def _whole(low: str) -> re.Pattern:
     return re.compile(start + re.escape(low) + end)
 
 
-def _creator_view_words(brief: dict, words: list[tuple[str, re.Pattern]], found: set[tuple[str, str]]) -> list[Problem]:
+def _creator_view_words(brief: dict, words: list[tuple[str, re.Pattern]], found: set[tuple[str, str]],
+                        lang: str = "en") -> list[Problem]:
     """CB13 on the creator view as the page builds it (`brief_page.view_text`), the header included:
     each of the brief's texts the view shows that says a word of `words` (a field and word in `found`
     already said aside), then any such word in the rest of the view (the page's own text, a cut text).
@@ -888,7 +890,7 @@ def _creator_view_words(brief: dict, words: list[tuple[str, re.Pattern]], found:
     left to the page's own check."""
     from tm import brief_page              # brief_page imports this module
     try:
-        rest = "\n".join(_norm(t) for t in brief_page.view_text(brief, "creator"))
+        rest = "\n".join(_norm(t) for t in brief_page.view_text(brief, "creator", lang))
     except Stop:
         return []
     out = []

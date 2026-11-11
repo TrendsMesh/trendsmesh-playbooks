@@ -443,6 +443,13 @@ def _drop_slot(args: argparse.Namespace) -> int:
     return 0
 
 
+def _built(message: str, got: dict) -> str:
+    """A page command's message, with the build's `language_warning` (the page is in English, not the run's working
+    language, whose table has no translation yet) when it has one."""
+    warning = got.get("language_warning")
+    return f"{message} {warning}" if warning else message
+
+
 def _deliver_week(args: argparse.Namespace) -> int:
     from tm import organic_week_delivery
 
@@ -453,6 +460,7 @@ def _deliver_week(args: argparse.Namespace) -> int:
                f"Markdown {got['posting_plan_md']}). Publish it: tm page files --run {args.run} --page {name} gives the "
                f"Artifact tool's file_path and files, with organic_pages.CAPABILITIES[\"gate\"] as its capabilities; "
                f"record it with tm page published --page {name}.")
+    message = _built(message, got)
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -481,6 +489,7 @@ def _script_page(args: argparse.Namespace, run: RunFolder) -> int:
                f"Markdown {got['markdown']}). Publish it: tm page files --run {args.run} --page {page_name} gives the "
                "Artifact tool's file_path and files, with the downloads capability (organic_pages.CAPABILITIES"
                "[\"script\"]) as its capabilities; record it with tm page published.")
+    message = _built(message, got)
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -503,6 +512,7 @@ def _gate_page(args: argparse.Namespace, run: RunFolder) -> int:
                f"file_path and files, with organic_pages.CAPABILITIES[\"gate\"] as its capabilities (its db collection "
                f"is {gate.COLLECTIONS[name]}); record it with tm page published --page {name}, and wait with tm page await "
                f"--page {name}.")
+    message = _built(message, got)
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -526,6 +536,7 @@ def _page(args: argparse.Namespace) -> int:
                + f"). Publish it: tm page files --run {args.run} --page proposals gives the Artifact tool's "
                "file_path and files, with its db declared in the publish; record it with tm page published, and wait "
                "with tm page await.")
+    message = _built(message, got)
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -538,6 +549,7 @@ def _week_page(args: argparse.Namespace, run: RunFolder) -> int:
                "--page week gives the Artifact tool's file_path and files, with organic_pages.CAPABILITIES[\"week\"] "
                "(db collection week) as its capabilities; record it with tm page published --page week, and wait with "
                "tm page await --page week.")
+    message = _built(message, got)
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

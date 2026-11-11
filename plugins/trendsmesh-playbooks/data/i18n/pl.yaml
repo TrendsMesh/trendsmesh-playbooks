@@ -1,0 +1,246 @@
+# The plugin's own Polish of the string table (data/i18n/en.yaml), read by tm.i18n: what a Polish page says. It holds
+# the organic video pages' strings (organic.*); every other string Polish needs is the agent's translation, kept in
+# the plugin data folder (tm i18n export / import), and a kept translation wins over this file. Keep {placeholders}
+# and <markup> as in English; never translate keys.
+
+strings:
+  organic:
+    # the levels (how much Claude stops to ask), named as the plugin names them
+    level_every_step: Sprawdzaj każdy krok
+    level_big_calls: Tylko najważniejsze decyzje
+    level_hands_off: Bez zatrzymywania
+    # shared by the pages
+    decision: Decyzja
+    decision_for: Decyzja dla
+    post_to: Publikuj na
+    your_decisions: Twoje decyzje
+    output: Output
+    length: Długość
+    run_folder: "Folder runu:"
+    not_saved: "Niezapisane dla Claude: napisz Claude swoje wybory w czacie"
+    not_saved_unreachable: "Niezapisane dla Claude (brak dostępu do zapisu strony): napisz Claude swoje wybory w czacie"
+    storage_unreachable: "Brak dostępu do zapisu strony, więc wybory nie trafiają do Claude: napisz je w czacie"
+    saving: Zapisuję…
+    saved: Zapisane · Claude widzi Twoje wybory
+    connecting: Wybory zostają w tej przeglądarce, dopóki strona się nie połączy…
+    ready: Gotowe · wybory zapisują się automatycznie
+    copy: Kopiuj
+    copied: Skopiowane
+    saved_check: "✓ Zapisano"
+    download_failed: "✕ Nie udało się pobrać"
+    # the posting kit's fields (check-in, delivery and script pages)
+    kit:
+      posting_kit: Zestaw do publikacji
+      title: Tytuł
+      caption: Opis
+      description: Opis
+      hashtags: Hashtagi
+      cover: Okładka
+      ai_label: Etykieta AI
+      sound: Dźwięk
+      product: Wzmianka o produkcie
+      pinned_comment: Przypięty komentarz
+      first_comment: Pierwszy komentarz
+    # the proposals page (organic_pages/proposals.py); the Copy summary's words (summary_*) are read back too
+    proposals:
+      risk_low: "Ryzyko: Niskie"
+      risk_medium: "Ryzyko: Średnie"
+      risk_high: "Ryzyko: Wysokie"
+      produce: Produkuj
+      later: Może później
+      skip: Pomiń
+      taste_placeholder: Zostaw puste, a Claude zaproponuje opcje
+      how: Jak
+      hands_off_hint: "Bez zatrzymywania: Claude robi cały film od początku do końca. W fazie testów dokładny koszt i tak potwierdzasz raz, zanim cokolwiek zostanie opłacone."
+      notes_label: Uwagi dla Claude (opcjonalnie)
+      notes_placeholder: np. inna postać, inny ton
+      not_decided: Bez decyzji
+      sum_to_produce: do produkcji
+      sum_later: później
+      sum_skipped: pominięte
+      sum_not_decided: bez decyzji
+      sum_estimate: Szac.
+      save_failed: Nie udało się zapisać na stronie
+      save_failed_kept: zostaje w tej przeglądarce
+      summary_copied: Podsumowanie skopiowane
+      copy_blocked: Przeglądarka zablokowała kopiowanie
+      eyebrow: Organiczne wideo AI · propozycje
+      already_made: "Już zrobione:"
+      produce_all: Produkuj wszystkie
+      copy_summary: Kopiuj podsumowanie
+      hint: Oznacz każdą propozycję poniżej, potem napisz w czacie „gotowe”. Pod linkiem claude.ai strony wybory zapisują się od razu i Claude odczyta je ze strony; kopia otwarta jako plik ich nie zapisze, więc napisz Claude swoje wybory w czacie („Kopiuj podsumowanie” pomoże).
+      product_chip: "Produkt:"
+      the_video: Film
+      recipe: Przepis
+      production: Produkcja
+      voice: Głos
+      music: Muzyka / dźwięk
+      text: Tekst
+      product: Produkt
+      risks: Ryzyka
+      cost: Koszt
+      facts: "Fakty do potwierdzenia źródłem:"
+      trends_behind: Trendy, na których to stoi
+      creators: twórców
+      videos: filmów
+      views: wyświetleń
+      used_for: "Do czego:"
+      evidence_by: Film-dowód od
+      views_short: wyśw.
+      watch_on: Zobacz na
+      kind_hook: Hook
+      kind_topic: Temat
+      kind_sound: Dźwięk
+      kind_format: Format
+      mode_for: Tryb produkcji dla
+      nav: Propozycje
+      summary_produce: produkuj
+      summary_later: później
+      summary_skip: pomiń
+      summary_not_decided: bez decyzji
+      summary_platforms: platformy
+      summary_answers: odpowiedzi
+      summary_note: uwagi
+      summary_output: output
+      out_video: Wideo AI
+      out_script: Skrypt do nagrania
+      output_for: Output dla
+      trend_hook: hook
+      trend_id: id
+      lede_ideas_one: "{n} pomysł na filmy dla"
+      lede_ideas_few: "{n} pomysły na filmy dla"
+      lede_ideas_many: "{n} pomysłów na filmy dla"
+      lede_rest: każdy oparty na trendach, które rosną teraz, z filmami-dowodami. Wybierz te do produkcji; nic nie jest generowane ani opłacane, dopóki nie zatwierdzisz paczki i jej kosztu.
+    # the check-in and delivery pages (organic_pages/gate.py) and their data (organic_gates.py)
+    gate:
+      eyebrow_images: "Organiczne wideo AI · punkt kontrolny: obraz"
+      eyebrow_video: "Organiczne wideo AI · punkt kontrolny: wideo"
+      eyebrow_edit: "Organiczne wideo AI · punkt kontrolny: finalny montaż"
+      accept_rest: Akceptuj resztę
+      note: "Wybierz opcję tam, gdzie jest wybór, potem Akceptuj, Popraw (napisz, co zmienić) albo Odrzuć. Pod linkiem claude.ai strony wybory zapisują się od razu; gdy skończysz, napisz w czacie „gotowe”. Kopia otwarta jako plik ich nie zapisze: napisz Claude swoje wybory w czacie."
+      agent_pick: Wybór agenta
+      accept: Akceptuj
+      redo: Popraw
+      drop: Odrzuć
+      make_thumbnail: Zrób miniaturę YouTube
+      note_label: Uwaga dla Claude (co zmienić przy „Popraw”)
+      sum_accepted: zaakceptowane
+      sum_redo: do poprawy
+      sum_dropped: odrzucone
+      sum_open: otwarte
+      save_failed: Nie udało się zapisać na stronie; zostaje w tej przeglądarce
+      blocked: Zablokowane
+      download: Pobierz
+      title_images: "{title}: obrazy"
+      title_video: "{title}: ujęcia"
+      title_edit: "{title}: gotowy film i zestaw do publikacji"
+      lede_images: Obrazy zrobione do tego filmu, obok produktu i odniesień. Wybierz jeden tam, gdzie jest wybór, potem Akceptuj, Popraw z uwagą albo Odrzuć. Nic nie powstaje od nowa bez Twojej prośby.
+      lede_video: Każde ujęcie z wynikami kontroli jakości (podglądy 720p), obok odniesień. Wybierz jedno tam, gdzie jest wybór, potem Akceptuj, Popraw z uwagą albo Odrzuć. Wideo nigdy nie powstaje od nowa bez Twojej prośby.
+      lede_edit: "Gotowy film, okładka i zestaw do publikacji, a potem każdy krok, który do nich doprowadził: obrazy, surowe ujęcia, grafika w ruchu, lektor, storyboard i wyniki kontroli jakości. Wszystkie platformy są zaznaczone; odznacz te, których nie chcesz. Miniatura YouTube jest opcjonalna (pokazuje się poza feedem Shorts). Film (1080p) i okładkę pobierzesz przyciskami „Pobierz”."
+      proposal: "{id} · {channel}"
+      label_final: "{id} · „{title}”"
+      q_final: Obejrzyj film, sprawdź okładkę i opisy. Odznacz platformę, jeśli nie chcesz na niej publikować.
+      label_images: "Obrazy: {name}"
+      q_images: Który obraz {name}?
+      label_takes: "Ujęcia: {name}"
+      q_takes: Które ujęcie {name}? Wyniki kontroli jakości są pod każdym ujęciem.
+      label_voiceover: Lektor
+      q_voiceover: Odsłuchaj tempo, wymowę i ton.
+      label_storyboard: "Storyboard: {name}"
+      q_storyboard: Czy taki wygląd i przebieg pasuje? Przy „Popraw” napisz, który kadr zmienić i jak.
+      label_animation: "Animacja: {name}"
+      q_animation: Obejrzyj animację, myśląc o lektorze. Przy „Popraw” napisz, który moment zmienić i jak.
+      label_motion: "Grafika w ruchu: {name}"
+      q_motion: "Obejrzyj render: obrazy, tekst i tempo. Zaakceptuj ten, z którego powstanie wideo; przy „Popraw” napisz, co zmienić."
+      cap_final: Gotowy film {version}
+      cap_cover: Okładka
+      cap_packshot: Zdjęcie produktu
+      cap_host: Obraz prowadzącej osoby
+      cap_evidence: Film-dowód od @{creator}
+      cap_still: Skopiowany wygląd, wyrenderowany ({comp}, klatka {frame})
+      cap_contact: Arkusz kontroli jakości {take}
+      dl_video: wideo (1080p)
+      dl_cover: okładkę
+      cover_file: okladka
+      qa_pass: "kontrola jakości: bez zastrzeżeń"
+      qa_fails: "kontrola jakości nie przeszła: {fails}"
+      qa_findings: "uwagi: {findings}"
+      qa_none: jeszcze bez kontroli jakości
+    # the script to film and its Markdown (organic_pages/script.py)
+    script:
+      eyebrow: Organiczne wideo AI · skrypt do nagrania
+      download: "⬇ Pobierz skrypt (.md)"
+      format: Format
+      goal: Cel
+      trends: Na podstawie
+      hook: Hook (pierwsze 2 sekundy)
+      on_screen: Na ekranie
+      why: Dlaczego działa
+      shots: Lista ujęć
+      time: Czas
+      framing: Kadr
+      action: Akcja
+      line: Kwestia
+      filming: Nagrywanie
+      edit: Montaż
+      facts: Sprawdzenie faktów (dla Ciebie, nie do opisu)
+      gen: Wygeneruj zamiast nagrywać (opcjonalnie)
+      host: Prompt obrazu prowadzącej (GPT Image 2)
+      video: Prompt wideo (MiniMax H3)
+      words: słów
+      all_lines: Wszystkie kwestie (prompter)
+    # the week plan page (organic_pages/week.py)
+    week:
+      day_mon: Poniedziałek
+      day_tue: Wtorek
+      day_wed: Środa
+      day_thu: Czwartek
+      day_fri: Piątek
+      day_sat: Sobota
+      day_sun: Niedziela
+      risk_low: niskie
+      risk_medium: średnie
+      risk_high: wysokie
+      production: "Produkcja:"
+      trend: "Trend:"
+      risk: "Ryzyko:"
+      reserve: rezerwa
+      eyebrow: Organiczne wideo AI · pakiet tygodniowy
+      of: z
+      sum_video: wideo AI
+      sum_scripts: skrypty
+      sum_skipped: pominięte
+      approve: Zatwierdź tydzień
+      approved: "✓ Tydzień zatwierdzony"
+      saved: Zapisane · Claude widzi Twoje wybory
+      save_failed: Nie udało się zapisać na stronie; zostaje w tej przeglądarce
+      connecting: Wybory zostają w tej przeglądarce, dopóki strona się nie połączy…
+      ready: Gotowe · wybory zapisują się automatycznie
+      video: Wideo AI
+      script: Skrypt
+      ok: OK
+      skip: Pomiń
+      swap: Zamień pomysł
+      note: Uwaga do tego filmu (opcjonalnie)
+      note_label: Uwaga
+      empty: bez publikacji
+      reserve_cost: "Koszt: wideo ${v} · skrypt ${s}. Wybierz go w „Zamień pomysł” przy dowolnym dniu."
+      meta: "{n} filmów w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień."
+      bar: Budżet i zatwierdzenie
+      over: "Plan przekracza budżet: zmień jakiś film na skrypt, zamień go na tańszy pomysł albo pomiń."
+      help: Przy każdym dniu wybierz „Wideo AI” albo „Skrypt” (nagrasz sam, $0), zamień pomysł na inny z listy albo go pomiń. „Zatwierdź tydzień” uruchamia produkcję całego tygodnia; potem dostaniesz jedną stronę z gotowymi filmami, skryptami i zestawami do publikacji.
+      calendar: Kalendarz tygodnia
+      reserves: Pomysły w rezerwie
+      no_db: "Brak dostępu do zapisu strony, więc wybory nie trafiają do Claude: napisz je w czacie"
+    # the week's delivery page and posting plan (organic_week_delivery.py)
+    week_delivery:
+      title: "{title}: filmy, skrypty i zestawy do publikacji z tego tygodnia"
+      lede: Każdy film i skrypt tygodnia z zestawem do publikacji, w kolejności publikacji. Film i okładkę albo skrypt do nagrania pobierzesz przyciskami „Pobierz”; plan publikacji mówi, kiedy i gdzie wrzucić każdy z nich.
+      eyebrow: "{day} {date} · {time}"
+      label: "„{title}”"
+      q_video: Obejrzyj film i sprawdź opisy.
+      q_script: Przeczytaj skrypt do nagrania i sprawdź opisy.
+      cap_script: Skrypt do nagrania
+      dl_script: skrypt (.md)
+      plan: Plan publikacji
+      none: nic do publikacji

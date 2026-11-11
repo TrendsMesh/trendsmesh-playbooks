@@ -225,7 +225,7 @@ def test_polish_ui_strings(tmp_path, capsys):
     assert _check(en, capsys, exampleedu.script())[0] == 0
     assert _cli(capsys, "organic", "page", "script", "--run", str(en.path))[0] == 0
     assert "Shot list" in (en.path / "04_final" / "M5_script_en_v01" / "index.html").read_text(encoding="utf-8")
-    assert script.UI["pl"]["pf"] == script.UI["en"]["pf"]          # platform names are the same in both languages
+    assert script.labels("pl")["pf"] == script.labels("en")["pf"]          # platform names are the same in both languages
 
 
 def test_the_two_checks_are_registered():

@@ -52,7 +52,7 @@ from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from urllib.parse import urlsplit
 
-from tm import animatic, brief_checks, brief_pdf, manifest, page, state, stepchecks, trends
+from tm import animatic, brief_checks, brief_pdf, i18n, manifest, page, state, stepchecks, trends
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -81,12 +81,15 @@ AWAITING = ("People are deciding on the page now. A new version would change it 
             "--clear`. The run continues from the same place.")
 
 ALL_VIEWS = ['decision', 'strategy', 'creator', 'editor', 'media-buyer']
-VIEW_LABEL = {'decision': 'Decision maker', 'strategy': 'Strategist', 'creator': 'Creator', 'editor': 'Editor',
-              'media-buyer': 'Media buyer'}
+# Every fixed word of the page is a key of the string table (data/i18n/en.yaml, area brief), in the language the
+# page is built in (`render(brief, lang)`; `build` takes the run's working language, `i18n.page_lang`).
+VIEW_KEY = {'decision': 'brief.view_decision', 'strategy': 'brief.view_strategy', 'creator': 'brief.view_creator',
+            'editor': 'brief.view_editor', 'media-buyer': 'brief.view_media_buyer'}
+VIEW_LABEL = {view: i18n.english()[key] for view, key in VIEW_KEY.items()}   # the English, as before
 # The views whose phone cards show who a concept is for and its trend line (CB13): every view but the
 # creator's, whose cards show the concept's title and phone note alone (issue #15).
 HEADER_FACTS_VIEWS = [x for x in ALL_VIEWS if x != 'creator']
-TODO = '<span class="todo">to set</span>'
+TODO = '<span class="todo">{}</span>'               # with brief.to_set
 _ID = re.compile(r"[A-Za-z0-9_-]+")
 _FILL = re.compile(r"\{\{(TITLE|TITLE_JS|RECIPIENTS|CONCEPT_IDS)\}\}|<!--BODY-->")
 # The handoff's template stays verbatim (TEMPLATE); the plugin's own wording goes over it here, as organic video's
@@ -112,17 +115,9 @@ def worded(page: str) -> str:
 
 # The PDFs (issue #10): the page's labels for them, and its print mode. The view bar's hint says to share the link
 # with the team only (it opens every view) and, with the PDFs, to send one view as its PDF.
-PDF_WORDS = {
-    "full": "Download full report (PDF)",
-    "view": "Download {view} view (PDF)",
-    "hint": "Share this page's link with your team. To send one view to someone outside it, download that view's PDF.",
-    "hint_no_pdf": "Share this page's link with your team only: it opens every view.",
-    "unavailable": "Downloads don't work here: open the page from its claude.ai link, or ask the sender for the PDF.",
-    "failed": "The download failed. Try again in a moment.",
-    "banner_full": "Full report",
-    "banner_view": "View: {view}",
-    "stills": "Stills from the animatic. The animatic plays on the online page.",
-}
+# Their words are the table's `brief.pdf_<name>` (issue #3); PDF_WORDS is the English, for the tests.
+PDF_KEYS = ("full", "view", "hint", "hint_no_pdf", "unavailable", "failed", "banner_full", "banner_view", "stills")
+PDF_WORDS = {name: i18n.english()[f"brief.pdf_{name}"] for name in PDF_KEYS}
 PRINT_CSS = """
   /* print mode (issue #10): print.html#print-full or #print-<view>, as the PDFs are printed */
   @page{size:A4;margin:12mm}
@@ -202,6 +197,65 @@ def _with_parts(tpl: str, *, pdfs: bool, printing: bool) -> str:
     return tpl
 
 
+# The words of the template's script (the handoff's English, and WORDING's), in another language: each (the
+# English as the worded template writes it, its key, how it is written there, the script's expressions for its
+# placeholders). `js` is a single-quoted string, `tpl` a template literal. Applied after `worded`; the template
+# itself stays verbatim. {{TITLE_JS}} stays for the fill.
+TEMPLATE_WORDS: list[tuple[str, str, str, dict[str, str]]] = [
+    ("'Approved'", "brief.approved", "js", {}),
+    ("'Changes requested'", "brief.changes_requested", "js", {}),
+    ("'Not saved yet.'", "brief.not_saved_yet", "js", {}),
+    ("'Choose Approve or Ask for changes first.'", "brief.choose_first", "js", {}),
+    (WORDING[0][1], "brief.cannot_save_here", "js", {}),
+    ("'Your access is view-only. Ask the sender for Contributor access, or use \"Copy my decisions\".'",
+     "brief.view_only", "js", {}),
+    ("'Saving…'", "brief.saving", "js", {}),
+    ("'Saved. Everyone with this link can see it.'", "brief.saved", "js", {}),
+    ("'Not saved: the connection failed. Try again in a moment.'", "brief.save_failed", "js", {}),
+    ("'You'", "brief.you", "js", {}),
+    ("'Someone'", "brief.someone", "js", {}),
+    ("`${c}: ${a} approved, ${ch} changes requested`", "brief.tally_counts", "tpl",
+     {"id": "${c}", "approved": "${a}", "changes": "${ch}"}),
+    ("`${c}: none yet`", "brief.tally_none", "tpl", {"id": "${c}"}),
+    ("'Decisions on this concept:'", "brief.decisions_on_concept", "js", {}),
+    ("'Decisions on \"{{TITLE_JS}}\"'", "brief.copy_header", "js", {"title": "{{TITLE_JS}}"}),
+    ("'no decision'", "brief.no_decision", "js", {}),
+    ("'Copied. Paste it wherever you send feedback.'", "brief.copied", "js", {}),
+    ("'Select the text below and copy it.'", "brief.select_and_copy", "js", {}),
+    (WORDING[1][1], "brief.page_cannot_save", "js", {}),
+    ("'Still connecting to shared decisions…'", "brief.still_connecting", "js", {}),
+    ("'Shared decisions are unavailable here (sign in on claude.ai). Use \"Copy my decisions\".'",
+     "brief.shared_unavailable", "js", {}),
+    ("'Sign in to save decisions for the team. Use \"Copy my decisions\" meanwhile.'", "brief.sign_in", "js", {}),
+    ("'Decisions you save are shared with everyone who has this link.'", "brief.shared_with_link", "js", {}),
+    ("'You can read decisions; your access does not allow saving.'", "brief.read_only", "js", {}),
+    ("'Shared decisions could not be loaded. Use \"Copy my decisions\".'", "brief.load_failed", "js", {}),
+]
+_HTML_LANG = '<html lang="en">'
+_TEMPLATE_WORD = re.compile("|".join(re.escape(w[0]) for w in sorted(TEMPLATE_WORDS, key=lambda w: -len(w[0]))))
+
+
+def js_text(text: str, kind: str, fills: dict[str, str] | None = None) -> str:
+    """`text` as the script writes it: a single-quoted string (`js`) or a template literal (`tpl`), its
+    {placeholders} then filled with `fills` as they are (script expressions). `</` and `<!--` cannot end the
+    script."""
+    out = (text.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("</", "<\\/")
+           .replace("<!--", "<\\!--"))
+    out = "'" + out.replace("'", "\\'") + "'" if kind == "js" else "`" + out.replace("`", "\\`").replace("${", "\\${") + "`"
+    for name, expr in (fills or {}).items():
+        out = out.replace("{" + name + "}", expr)
+    return out
+
+
+def translated(page: str, tr: i18n.Translator) -> str:
+    """The worded template in `tr`'s language: `TEMPLATE_WORDS` in one pass (a translation is never read as
+    English again), and its `lang`."""
+    if not i18n.is_english(tr.lang):
+        swap = {old: js_text(tr(key), kind, fills) for old, key, kind, fills in TEMPLATE_WORDS}
+        page = _TEMPLATE_WORD.sub(lambda m: swap[m.group(0)], page)
+    return page.replace(_HTML_LANG, f'<html lang="{E(i18n.html_lang(tr.lang))}">', 1)
+
+
 _MIME = {".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".jpg": "image/jpeg",
          ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".gif": "image/gif"}
 
@@ -233,21 +287,38 @@ def title_js(title: str) -> str:
 
 # --- the port of build_brief_pack.py ---------------------------------------------------------------
 
+def _english() -> i18n.Translator:
+    return i18n.translator(i18n.ENGLISH)
+
+
+def W(tr: i18n.Translator, key: str, **fills) -> str:
+    """A word of the table as HTML text, its {placeholders} filled with `fills` as they are (HTML already)."""
+    text = html.escape(tr(key), quote=False)
+    return text.format(**fills) if fills else text
+
+
+def A(tr: i18n.Translator, key: str, **fills) -> str:
+    """A word of the table in an attribute's value, its {placeholders} filled with `fills` (escaped already)."""
+    text = E(tr(key))
+    return text.format(**fills) if fills else text
+
+
 def v(*views):
     return f' data-v="{" ".join(views)}"'
 
 
-def todo_or(x):
-    return E(x) if x else TODO
+def todo_or(x, tr: i18n.Translator | None = None):
+    return E(x) if x else TODO.format(W(tr or _english(), "brief.to_set"))
 
 
 def labeled_dl(items):
     return '<dl class="copy">' + ''.join(f'<dt>{E(i["label"])}</dt><dd>{E(i["text"])}</dd>' for i in items) + '</dl>'
 
 
-def _beat(b) -> str:
+def _beat(b, tr: i18n.Translator | None = None) -> str:
     ost = ' class="ost"' if b.get("ost_strong") else ""
-    return (f'<tr><td class="t">{b["t0"]:g}–{b["t1"]:g} s</td><td>{E(b["see"])}</td><td>{E(b["hear"])}</td>'
+    t = W(tr or _english(), "brief.beat_time", start=f'{b["t0"]:g}', end=f'{b["t1"]:g}')
+    return (f'<tr><td class="t">{t}</td><td>{E(b["see"])}</td><td>{E(b["hear"])}</td>'
             f'<td{ost}>{E(b["ost"])}</td></tr>')
 
 
@@ -256,123 +327,138 @@ def _thumb(x) -> str:
     return f'<img src="{E(x["thumb"])}" alt="{E(x["caption"])}">' if x.get("thumb") else ''
 
 
-def _stills_html(shots: list[str]) -> str:
+def _stills_html(shots: list[str], tr: i18n.Translator | None = None) -> str:
     """The print mode's player: the animatic's stills, captioned (none without stills)."""
     if not shots:
         return ''
     imgs = ''.join(f'<img src="{E(s)}" alt="">' for s in shots)
-    return f'<figure class="stills"><div class="stills-row">{imgs}</div><figcaption>{E(PDF_WORDS["stills"])}</figcaption></figure>'
+    return (f'<figure class="stills"><div class="stills-row">{imgs}</div>'
+            f'<figcaption>{E((tr or _english())("brief.pdf_stills"))}</figcaption></figure>')
 
 
-def concept_html(c, idx, total, stills=None):
+def _translated(p, tr: i18n.Translator) -> str:
+    """After a customer phrase marked `translated` (CB5): the original words it was translated from."""
+    if p.get("translated") is not True:
+        return ''
+    return f' <span class="src">({W(tr, "brief.phrase_translated", original=E(p.get("adapted_from")))})</span>'
+
+
+def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
     """A concept's section; with `stills` ({animatic path: its stills}) the print mode's, its stills in
     place of the player."""
+    tr = tr or _english()
     cid = E(c['id'])
     a = c.get('animatic', {})
     default = a.get('default', '9x16')
     src = a.get(default, '')
     toggle = ''.join(f'<button aria-pressed="{"true" if f == default else "false"}" data-src="{E(a[f])}">{f.replace("x", ":")}</button>' for f in FORMATS if a.get(f))
-    player = (_stills_html(stills.get(src) or []) if stills is not None else
+    player = (_stills_html(stills.get(src) or [], tr) if stills is not None else
               f'<div class="player" data-player="{cid}"><video src="{E(src)}" controls muted playsinline preload="metadata"></video>'
-              f'<div class="toggle" role="group" aria-label="Format">{toggle}</div></div>')
+              f'<div class="toggle" role="group" aria-label="{A(tr, "brief.format")}">{toggle}</div></div>')
     out = [f'<section id="{cid.lower()}" class="concept">',
            '<header><div>',
-           f'<p class="tag">Concept {idx} of {total}</p>',
+           f'<p class="tag">{W(tr, "brief.concept_of", idx=idx, total=total)}</p>',
            f'<h2>{E(c["title"])}</h2>',
            f'<p>{E(c["one_liner"])}</p>',
-           f'<p class="keymsg"><b>Key message:</b> {E(c["key_message"])}</p>',
-           f'<p class="hyp"{v("decision", "strategy", "media-buyer")}><b>What this tests:</b> {E(c["hypothesis"])}</p>',
+           f'<p class="keymsg"><b>{W(tr, "brief.key_message")}</b> {E(c["key_message"])}</p>',
+           f'<p class="hyp"{v("decision", "strategy", "media-buyer")}><b>{W(tr, "brief.what_this_tests")}</b> {E(c["hypothesis"])}</p>',
            '</div>',
            player,
            '</header>']
     # evidence at a glance
     rows = ''.join(f'<div class="g{" trend" if g.get("highlight") else ""}"><dt>{E(g["label"])}</dt><dd>{E(g["text"])}<span class="src">{E(g["source"])}</span></dd></div>' for g in c['glance'])
-    out.append(f'<div class="glance"{v("decision", "strategy", "media-buyer")}><h3>Evidence at a glance</h3><dl>{rows}</dl></div>')
+    out.append(f'<div class="glance"{v("decision", "strategy", "media-buyer")}><h3>{W(tr, "brief.evidence_at_a_glance")}</h3><dl>{rows}</dl></div>')
     d = c.get('decision_facts', {})
     if d:
-        bda = 'Budget: {} · Deadline: {} · Approver: {}'.format(todo_or(d.get('budget')), todo_or(d.get('deadline')), todo_or(d.get('approver')))
+        bda = W(tr, "brief.budget_line", budget=todo_or(d.get('budget'), tr), deadline=todo_or(d.get('deadline'), tr), approver=todo_or(d.get('approver'), tr))
         out.append(f'<div class="facts small"{v("decision", "strategy")}>'
-                   f'<div class="fact"><b>Goal</b><span>{E(d.get("goal"))}</span></div>'
-                   f'<div class="fact"><b>Effort</b><span>{E(d.get("effort"))}</span></div>'
-                   f'<div class="fact"><b>Budget, deadline, approver</b><span>{bda}</span></div>'
-                   f'<div class="fact"><b>Main risk</b><span>{E(d.get("risk"))}</span></div></div>')
+                   f'<div class="fact"><b>{W(tr, "brief.goal")}</b><span>{E(d.get("goal"))}</span></div>'
+                   f'<div class="fact"><b>{W(tr, "brief.effort")}</b><span>{E(d.get("effort"))}</span></div>'
+                   f'<div class="fact"><b>{W(tr, "brief.budget_deadline_approver")}</b><span>{bda}</span></div>'
+                   f'<div class="fact"><b>{W(tr, "brief.main_risk")}</b><span>{E(d.get("risk"))}</span></div></div>')
     h = c['hook']
-    out.append(f'<div{v("strategy", "creator", "editor")}><h3>The hook</h3><div class="hookline">{E(h["text"])}</div><p>{E(h.get("description"))}</p></div>')
-    trs = ''.join(_beat(b) for b in c['beats'])
+    out.append(f'<div{v("strategy", "creator", "editor")}><h3>{W(tr, "brief.the_hook")}</h3><div class="hookline">{E(h["text"])}</div><p>{E(h.get("description"))}</p></div>')
+    trs = ''.join(_beat(b, tr) for b in c['beats'])
     note = c.get('note')
     note_html = f'<div class="note-box"><b>{E(note["title"])}</b> {E(note["text"])}</div>' if note else ''
-    out.append(f'<div{v("strategy", "editor")}><h3>Second by second ({E(c.get("length_s", c["beats"][-1]["t1"]))} s)</h3>'
-               f'<div class="table-scroll"><table><tr><th>Time</th><th>What we see</th><th>What we hear</th><th>Text on screen</th></tr>{trs}</table></div>{note_html}</div>')
+    heads = ''.join(f'<th>{W(tr, k)}</th>' for k in ("brief.col_time", "brief.col_see", "brief.col_hear", "brief.col_on_screen"))
+    out.append(f'<div{v("strategy", "editor")}><h3>{W(tr, "brief.second_by_second", length=E(c.get("length_s", c["beats"][-1]["t1"])))}</h3>'
+               f'<div class="table-scroll"><table><tr>{heads}</tr>{trs}</table></div>{note_html}</div>')
     if c.get('why'):
         qs = ''.join(f'<blockquote>{E(q["quote"])}<cite><a href="{E(_href(q["url"]))}" target="_blank" rel="noopener">{E(q["source_label"])}</a></cite></blockquote>' for q in c['why'])
-        out.append(f'<div{v("strategy")}><h3>Why people will care</h3>{qs}</div>')
+        out.append(f'<div{v("strategy")}><h3>{W(tr, "brief.why_people_care")}</h3>{qs}</div>')
     if c.get('customer_phrases'):
-        lis = ''.join(f'<li>"{E(p["phrase"])}": {E(p["used_in"])} (<a href="{E(_href(p["url"]))}" target="_blank" rel="noopener">source</a>)</li>' for p in c['customer_phrases'])
-        out.append(f'<div{v("strategy")}><h3>Customers\' own words in this ad</h3><ul class="plain">{lis}</ul></div>')
+        lis = ''.join(f'<li>{W(tr, "brief.customer_phrase", phrase=E(p["phrase"]), used_in=E(p["used_in"]))}{_translated(p, tr)} (<a href="{E(_href(p["url"]))}" target="_blank" rel="noopener">{W(tr, "brief.source")}</a>)</li>' for p in c['customer_phrases'])
+        out.append(f'<div{v("strategy")}><h3>{W(tr, "brief.customers_own_words")}</h3><ul class="plain">{lis}</ul></div>')
     cf = c.get('copy_from_hook')
     if cf:
         ev = ''.join(f'<a href="{E(_href(x["url"]))}" target="_blank" rel="noopener">{_thumb(x)}<b>{E(x["views"])}</b><br>{E(x["caption"])}</a>' for x in cf.get('evidence', []))
-        out.append(f'<div{v("strategy", "creator", "editor")}><h3>What we copy from the hook</h3><p>{E(cf["text"])}</p><div class="evidence">{ev}</div></div>')
+        out.append(f'<div{v("strategy", "creator", "editor")}><h3>{W(tr, "brief.copy_from_hook")}</h3><p>{E(cf["text"])}</p><div class="evidence">{ev}</div></div>')
     ac = c.get('ad_copy')
     if ac or c.get('hooks_to_test'):
-        left = (f'<div><h3>Ad copy</h3><dl class="copy"><dt>Primary text</dt><dd>{E(ac.get("primary"))}</dd><dt>Headline</dt><dd>{E(ac.get("headline"))}</dd><dt>Button</dt><dd>{E(ac.get("button"))}</dd></dl></div>') if ac else ''
+        left = (f'<div><h3>{W(tr, "brief.ad_copy")}</h3><dl class="copy"><dt>{W(tr, "brief.primary_text")}</dt><dd>{E(ac.get("primary"))}</dd><dt>{W(tr, "brief.headline")}</dt><dd>{E(ac.get("headline"))}</dd><dt>{W(tr, "brief.button")}</dt><dd>{E(ac.get("button"))}</dd></dl></div>') if ac else ''
         hk = ''.join(f'<tr><td>{chr(65 + i)}</td><td>{E(t)}</td></tr>' for i, t in enumerate(c.get('hooks_to_test', [])))
-        out.append(f'<div class="two"{v("strategy", "media-buyer")}>{left}<div><h3>Hooks to test</h3><table>{hk}</table></div></div>')
+        out.append(f'<div class="two"{v("strategy", "media-buyer")}>{left}<div><h3>{W(tr, "brief.hooks_to_test")}</h3><table>{hk}</table></div></div>')
     if c.get('casting'):
-        out.append(f'<div{v("strategy")}><h3>Casting and look</h3><p>{E(c["casting"])}</p></div>')
+        out.append(f'<div{v("strategy")}><h3>{W(tr, "brief.casting_and_look")}</h3><p>{E(c["casting"])}</p></div>')
     cr = c.get('creator')
     if cr:
         has_key = any(s.get('key') for s in cr.get('say', []))
-        head = '<tr><th>Moment</th>' + ('<th>Key point</th>' if has_key else '') + '<th>' + ('Sample line' if has_key else 'Line') + '</th></tr>'
+        head = (f'<tr><th>{W(tr, "brief.col_moment")}</th>' + (f'<th>{W(tr, "brief.col_key_point")}</th>' if has_key else '') + '<th>'
+                + (W(tr, "brief.col_sample_line") if has_key else W(tr, "brief.col_line")) + '</th></tr>')
         say = ''.join('<tr><td>{}</td>{}<td>{}</td></tr>'.format(E(s['moment']), f'<td><b>{E(s["key"])}</b></td>' if has_key else '', E(s['line'])) for s in cr.get('say', []))
         shots = ''.join(f'<tr><td>{i}</td><td>{E(s["shot"])}</td><td>{E(s["framing"])}</td><td>{E(s["takes"])}</td></tr>' for i, s in enumerate(cr.get('shots', []), 1))
         send = ''.join(f'<li>{E(x)}</li>' for x in cr.get('send_back', []))
-        send += f'<li>Deadline: {todo_or(cr.get("deadline"))}. Usage: {todo_or(cr.get("usage"))}.</li>'
+        send += f'<li>{W(tr, "brief.deadline_usage", deadline=todo_or(cr.get("deadline"), tr), usage=todo_or(cr.get("usage"), tr))}</li>'
         extra = f'<p><b>{E(cr["extra_takes"])}</b></p>' if cr.get('extra_takes') else ''
-        out.append(f'<div class="role"{v("creator")}><h3>Your part</h3><p>{E(cr.get("role"))}</p>'
-                   f'<h3>What to say</h3><p class="small-note">{E(cr.get("say_note"))}</p><table>{head}{say}</table>'
-                   f'<h3>Shots to record</h3><table><tr><th>#</th><th>Shot</th><th>Framing</th><th>Takes</th></tr>{shots}</table>{extra}'
-                   f'<h3>Look and props</h3><p>{E(cr.get("look"))}</p><h3>Send back</h3><ul class="plain">{send}</ul></div>')
+        shot_heads = ''.join(f'<th>{W(tr, k)}</th>' for k in ("brief.col_shot", "brief.col_framing", "brief.col_takes"))
+        out.append(f'<div class="role"{v("creator")}><h3>{W(tr, "brief.your_part")}</h3><p>{E(cr.get("role"))}</p>'
+                   f'<h3>{W(tr, "brief.what_to_say")}</h3><p class="small-note">{E(cr.get("say_note"))}</p><table>{head}{say}</table>'
+                   f'<h3>{W(tr, "brief.shots_to_record")}</h3><table><tr><th>#</th>{shot_heads}</tr>{shots}</table>{extra}'
+                   f'<h3>{W(tr, "brief.look_and_props")}</h3><p>{E(cr.get("look"))}</p><h3>{W(tr, "brief.send_back")}</h3><ul class="plain">{send}</ul></div>')
     if c.get('editor'):
-        out.append(f'<div class="role"{v("editor")}><h3>Edit spec</h3>{labeled_dl(c["editor"])}</div>')
+        out.append(f'<div class="role"{v("editor")}><h3>{W(tr, "brief.edit_spec")}</h3>{labeled_dl(c["editor"])}</div>')
     if c.get('media'):
-        out.append(f'<div class="role"{v("media-buyer")}><h3>Test plan</h3>{labeled_dl(c["media"])}</div>')
+        out.append(f'<div class="role"{v("media-buyer")}><h3>{W(tr, "brief.test_plan")}</h3>{labeled_dl(c["media"])}</div>')
     if c.get('qa'):
         qa = ''.join(f'<li><label><input type="checkbox"> {E(q)}</label></li>' for q in c['qa'])
-        out.append(f'<div{v("strategy", "editor")}><h3>Before it goes live</h3><ul class="qa">{qa}</ul></div>')
+        out.append(f'<div{v("strategy", "editor")}><h3>{W(tr, "brief.before_live")}</h3><ul class="qa">{qa}</ul></div>')
     out.append(f'''<div class="decide" data-concept="{cid}"{v("decision", "strategy", "media-buyer")}>
-    <h3>Your decision on {cid}</h3>
-    <div class="row"><button type="button" class="choice" data-d="approve" aria-pressed="false">Approve</button><button type="button" class="choice" data-d="change" aria-pressed="false">Ask for changes</button></div>
-    <label class="sr" for="note-{cid}">Note for {cid}</label>
-    <textarea id="note-{cid}" placeholder="What should change? Optional when you approve."></textarea>
-    <div class="row"><button type="button" class="save">Save decision</button><span class="status" role="status" aria-live="polite"></span></div>
+    <h3>{W(tr, "brief.decision_on", id=cid)}</h3>
+    <div class="row"><button type="button" class="choice" data-d="approve" aria-pressed="false">{W(tr, "brief.approve")}</button><button type="button" class="choice" data-d="change" aria-pressed="false">{W(tr, "brief.ask_for_changes")}</button></div>
+    <label class="sr" for="note-{cid}">{W(tr, "brief.note_for", id=cid)}</label>
+    <textarea id="note-{cid}" placeholder="{A(tr, "brief.note_placeholder")}"></textarea>
+    <div class="row"><button type="button" class="save">{W(tr, "brief.save_decision")}</button><span class="status" role="status" aria-live="polite"></span></div>
     <div class="others" aria-live="polite"></div></div>''')
     out.append('</section>')
     return '\n'.join(out)
 
 
-def _pdf_buttons(pdfs: dict[str, str], views: list[str]) -> str:
+def _pdf_buttons(pdfs: dict[str, str], views: list[str], tr: i18n.Translator | None = None) -> str:
     """The view bar's download buttons: the full report, and the view shown (a button per view, shown with it)."""
-    full = f'<button type="button" class="vb-dl" data-file="{E(pdfs[brief_pdf.FULL])}">{E(PDF_WORDS["full"])}</button>'
+    tr = tr or _english()
+    full = f'<button type="button" class="vb-dl" data-file="{E(pdfs[brief_pdf.FULL])}">{E(tr("brief.pdf_full"))}</button>'
     per = ''.join(f'<button type="button" class="vb-dl"{v(x)} data-file="{E(pdfs[x])}">'
-                  f'{E(PDF_WORDS["view"].format(view=VIEW_LABEL[x]))}</button>' for x in views if x in pdfs)
+                  f'{E(tr("brief.pdf_view", view=tr(VIEW_KEY[x])))}</button>' for x in views if x in pdfs)
     return (f'<div class="vb-pdf">{full}{per}</div><span class="vb-hint vb-dl-note" role="status" '
-            f'data-unavailable="{E(PDF_WORDS["unavailable"])}" data-failed="{E(PDF_WORDS["failed"])}" hidden></span>')
+            f'data-unavailable="{A(tr, "brief.pdf_unavailable")}" data-failed="{A(tr, "brief.pdf_failed")}" hidden></span>')
 
 
-def body_html(p, pdfs=None, stills=None):
+def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None):
     """The page's body and its views. `pdfs` ({"full" | view: served path}) adds the download buttons; `stills`
     ({animatic path: its stills}) makes the print mode's body: a banner per PDF, stills in place of videos."""
+    tr = tr or _english()
     m = p['meta']
     views = [x for x in ALL_VIEWS if x in m['recipients']]
     out = ['<div class="night"><div class="wrap">', f'<h1>{E(m["title"])}</h1>']
     if stills is not None:
-        banners = [(brief_pdf.FULL, PDF_WORDS["banner_full"])] + [(x, PDF_WORDS["banner_view"].format(view=VIEW_LABEL[x]))
-                                                                 for x in views]
+        banners = [(brief_pdf.FULL, tr("brief.pdf_banner_full"))] + [
+            (x, tr("brief.pdf_banner_view", view=tr(VIEW_KEY[x]))) for x in views]
         out.insert(0, ''.join(f'<div class="print-banner" data-print="{x}" hidden>{E(t)}</div>' for x, t in banners))
     for k, txt in m.get('lede', {}).items():
         out.append(f'<p class="lede"{v(E(k))}>{E(txt)}</p>')
-    out.append(f'<p class="meta">Market: {E(m["market"])}, {E(m["language"])}. Prepared {E(m["prepared"])}. Trend data valid until {E(m["valid_until"])}.</p><div class="phones">')
+    meta = W(tr, "brief.meta_line", market=E(m["market"]), language=E(m["language"]), prepared=E(m["prepared"]), valid_until=E(m["valid_until"]))
+    out.append(f'<p class="meta">{meta}</p><div class="phones">')
     for c in p['concepts'][:3]:
         a = c.get('animatic', {})
         phone = a.get("9x16") or a.get(a.get("default", "9x16"), "")   # a run drawn in 4x5 alone has no 9x16
@@ -381,41 +467,42 @@ def body_html(p, pdfs=None, stills=None):
         title = f'<div class="who"{v("creator")}>{E(c["title"])}</div>' if c.get("phone_note", c["title"]) != c["title"] else ''
         shots = (stills or {}).get(phone) or []
         screen = ((f'<img class="still" src="{E(shots[min(1, len(shots) - 1)])}" alt="">' if shots else '') if stills is not None
-                  else f'<video src="{E(phone)}" autoplay muted loop playsinline aria-label="{E(c["id"])} animatic"></video>')
+                  else f'<video src="{E(phone)}" autoplay muted loop playsinline aria-label="{A(tr, "brief.animatic_label", id=E(c["id"]))}"></video>')
         out.append(f'<a class="phone" href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}"><div class="frame">{screen}</div>'
                    f'<div class="note">{E(c.get("phone_note", c["title"]))}</div>{title}<div class="who"{facts}>{E(c.get("for_whom"))}</div><div class="trendline"{facts}>{E(c.get("trend_line"))}</div></a>')
     out.append('</div></div></div>')
-    btns = ''.join(f'<button type="button" data-view="{x}">{VIEW_LABEL[x]}</button>' for x in views)
+    btns = ''.join(f'<button type="button" data-view="{x}">{W(tr, VIEW_KEY[x])}</button>' for x in views)
     if len(views) > 1 or pdfs:
-        pick = f'<span class="vb-label">I am the</span><div class="vb-buttons">{btns}</div>' if len(views) > 1 else ''
-        hint = PDF_WORDS["hint"] if pdfs else PDF_WORDS["hint_no_pdf"]
-        out.append(f'<div class="viewbar" role="navigation" aria-label="Choose your view"><div class="wrap viewbar-in">{pick}{_pdf_buttons(pdfs, views) if pdfs else ""}<span class="vb-hint">{E(hint)}</span></div></div>')
+        pick = (f'<span class="vb-label">{W(tr, "brief.i_am_the")}</span><div class="vb-buttons">{btns}</div>'
+                if len(views) > 1 else '')
+        hint = E(tr("brief.pdf_hint" if pdfs else "brief.pdf_hint_no_pdf"))
+        out.append(f'<div class="viewbar" role="navigation" aria-label="{A(tr, "brief.choose_view")}"><div class="wrap viewbar-in">{pick}{_pdf_buttons(pdfs, views, tr) if pdfs else ""}<span class="vb-hint">{hint}</span></div></div>')
     out.append('<div class="wrap page"><main>')
     f = p.get('findings')
     if f:
         items = ''.join(f'<li><strong>{E(i["title"])}</strong> {E(i["text"])}</li>' for i in f.get('items', []))
         cav = f'<p class="caveat">{E(f["caveat"])}</p>' if f.get('caveat') else ''
-        out.append(f'<section id="evidence"{v("decision", "strategy", "media-buyer")}><h2>What the evidence changed</h2><ul class="findings">{items}</ul>{cav}</section>')
+        out.append(f'<section id="evidence"{v("decision", "strategy", "media-buyer")}><h2>{W(tr, "brief.evidence_changed")}</h2><ul class="findings">{items}</ul>{cav}</section>')
     au = p.get('audience')
     if au:
         facts = ''.join(f'<div class="fact"><b>{E(x["value"])}</b><span>{E(x["label"])}</span></div>' for x in au.get('facts', []))
-        out.append(f'<section id="audience"{v("decision", "strategy", "media-buyer")}><h2>Who we are talking to</h2><p>{E(au.get("text"))}</p><div class="facts">{facts}</div><p class="src">{E(au.get("source"))}</p></section>')
+        out.append(f'<section id="audience"{v("decision", "strategy", "media-buyer")}><h2>{W(tr, "brief.audience")}</h2><p>{E(au.get("text"))}</p><div class="facts">{facts}</div><p class="src">{E(au.get("source"))}</p></section>')
     pr = m['product']
     plan = ''.join(f'<li>{E(x)}</li>' for x in pr.get('plan', []))
-    out.append(f'<section id="product"{v("creator", "editor")}><h2>The product in plain words</h2><p><b>{E(pr["name"])}</b>. {E(pr.get("plain_description"))}</p><ul class="plain">{plan}</ul><p>{E(pr.get("price_note"))}</p></section>')
+    out.append(f'<section id="product"{v("creator", "editor")}><h2>{W(tr, "brief.product_plain")}</h2><p><b>{E(pr["name"])}</b>. {E(pr.get("plain_description"))}</p><ul class="plain">{plan}</ul><p>{E(pr.get("price_note"))}</p></section>')
     t = p.get('tone')
     if t:
         must = ''.join(f'<li>{E(x)}</li>' for x in t.get('must', []))
         never = ''.join(f'<li>{E(x)}</li>' for x in t.get('never', []))
-        out.append(f'<section id="tone"{v("strategy", "creator", "editor")}><h2>Tone and must-haves</h2><div class="two"><div><h3>Tone</h3><p>{E(t.get("tone"))}</p><h3>Must have</h3><ul class="plain">{must}</ul></div><div><h3>Never</h3><ul class="plain">{never}</ul></div></div></section>')
+        out.append(f'<section id="tone"{v("strategy", "creator", "editor")}><h2>{W(tr, "brief.tone_must")}</h2><div class="two"><div><h3>{W(tr, "brief.tone")}</h3><p>{E(t.get("tone"))}</p><h3>{W(tr, "brief.must_have")}</h3><ul class="plain">{must}</ul></div><div><h3>{W(tr, "brief.never")}</h3><ul class="plain">{never}</ul></div></div></section>')
     n = len(p['concepts'])
     for i, c in enumerate(p['concepts'], 1):
-        out.append(concept_html(c, i, n, stills))
+        out.append(concept_html(c, i, n, stills, tr))
     out.append(f'<footer><p{v("decision", "strategy", "media-buyer")}>{E(m.get("sources_note"))}</p><p>{E(m.get("animatic_note"))}</p></footer></main>')
     nav = ''.join(f'<a href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}">{E(c["id"])} {E(c["title"][:28])}</a>' for c in p['concepts'])
-    tally = ''.join(f'<li>{E(c["id"])}: none yet</li>' for c in p['concepts'])
-    out.append(f'<aside><nav aria-label="Sections">{nav}</nav><div class="decisions"{v("decision", "strategy", "media-buyer")}><h3>Decisions so far</h3><ul id="tally">{tally}</ul><p id="mode">Connecting…</p>'
-               '<button type="button" class="save" id="copy">Copy my decisions</button><textarea id="copybox" class="copybox" readonly hidden aria-label="Your decisions as text"></textarea></div></aside></div>')
+    tally = ''.join(f'<li>{W(tr, "brief.tally_none", id=E(c["id"]))}</li>' for c in p['concepts'])
+    out.append(f'<aside><nav aria-label="{A(tr, "brief.sections")}">{nav}</nav><div class="decisions"{v("decision", "strategy", "media-buyer")}><h3>{W(tr, "brief.decisions_so_far")}</h3><ul id="tally">{tally}</ul><p id="mode">{W(tr, "brief.connecting")}</p>'
+               f'<button type="button" class="save" id="copy">{W(tr, "brief.copy_my_decisions")}</button><textarea id="copybox" class="copybox" readonly hidden aria-label="{A(tr, "brief.decisions_as_text")}"></textarea></div></aside></div>')
     return '\n'.join(out), views
 
 
@@ -449,18 +536,21 @@ def _required(brief: object) -> list[str]:
     return miss
 
 
-def render(brief: dict, *, pdfs: dict[str, str] | None = None,
+def render(brief: dict, lang: str = i18n.ENGLISH, *, pdfs: dict[str, str] | None = None,
            stills: dict[str, list[str]] | None = None) -> tuple[str, list[str]]:
-    """The page's HTML and the views it shows (`meta.recipients` in the page's order). Stop for a
-    brief the page cannot be built from. `pdfs` ({"full" | view: served path}) adds the buttons that download
-    them; `stills` ({animatic path: its stills' paths}) makes the print mode the PDFs are printed from."""
+    """The page's HTML in `lang` and the views it shows (`meta.recipients` in the page's order). Stop for a
+    brief the page cannot be built from; i18n.Missing when `lang` has no translation of a word of the page
+    (`build` picks the language with `i18n.page_lang`). `pdfs` ({"full" | view: served path}) adds the buttons
+    that download them; `stills` ({animatic path: its stills' paths}) makes the print mode the PDFs are printed
+    from."""
+    tr = i18n.translator(lang)
     miss = _required(brief)
     if miss:
         raise Stop(f"The brief is missing {', '.join(miss)}, so the page cannot be built from it. Fix brief.json "
                    f"(a new version) and check it (tm brief check), then build again. The run continues from the "
                    "same place.")
     try:
-        body, views = body_html(brief, pdfs, stills)
+        body, views = body_html(brief, pdfs, stills, tr)
     except (KeyError, TypeError, ValueError, AttributeError, IndexError) as exc:
         raise Stop(f"The brief is not in its shape ({type(exc).__name__}: {exc}), so the page cannot be built from "
                    "it. Check it with tm brief check, fix it (a new version), then build again. The run continues "
@@ -468,7 +558,8 @@ def render(brief: dict, *, pdfs: dict[str, str] | None = None,
     title = brief['meta']['title']
     fills = {"{{TITLE}}": E(title), "{{TITLE_JS}}": title_js(str(title)), "{{RECIPIENTS}}": _script(views),
              "{{CONCEPT_IDS}}": _script([c['id'] for c in brief['concepts']]), "<!--BODY-->": body}
-    tpl = _with_parts(worded(TEMPLATE.read_text(encoding="utf-8")), pdfs=bool(pdfs), printing=stills is not None)
+    tpl = translated(_with_parts(worded(TEMPLATE.read_text(encoding="utf-8")), pdfs=bool(pdfs),
+                                 printing=stills is not None), tr)
     return _FILL.sub(lambda mt: fills[mt.group(0)], tpl), views
 
 
@@ -512,11 +603,11 @@ class _ViewText(HTMLParser):
             self.texts.append(data)
 
 
-def view_text(brief: dict, view: str) -> list[str]:
-    """Every text the page built from `brief` shows in `view`, in page order (CB13's scan of the
+def view_text(brief: dict, view: str, lang: str = i18n.ENGLISH) -> list[str]:
+    """Every text the page built from `brief` (in `lang`) shows in `view`, in page order (CB13's scan of the
     creator view reads it, so a field new on the page cannot slip past). Stop as `render` does."""
     parser = _ViewText(view)
-    parser.feed(render(brief)[0])
+    parser.feed(render(brief, lang)[0])
     parser.close()
     return parser.texts
 
@@ -625,7 +716,8 @@ def _data_uri(path: Path) -> str:
 
 
 def _print_pdfs(run: RunFolder, out: Path, brief: dict, served: dict[str, str], present: dict[str, Path],
-                missing: list[str], views: list[str], planned: dict[str, int]) -> tuple[dict[str, str], str | None]:
+                missing: list[str], views: list[str], planned: dict[str, int],
+                lang: str = i18n.ENGLISH) -> tuple[dict[str, str], str | None]:
     """Print the page's PDFs into `out/pdf/` (`brief_pdf`): the print page `.print/print.html` (media from the
     page folder, each animatic's stills as JPEGs beside it), then one PDF per key of `brief_pdf.names`. Returns
     ({key: served path}, None), or ({}, why there are none): no browser, a print that failed, or a page the PDFs
@@ -639,7 +731,7 @@ def _print_pdfs(run: RunFolder, out: Path, brief: dict, served: dict[str, str], 
         if kind == "animatic" and ref in present and to_print[ref] not in shots:
             made = brief_pdf.stills(run.path, present[ref], out / brief_pdf.PRINT_DIR / "stills")
             shots[to_print[ref]] = [f"stills/{f.name}" for f in made]
-    print_page = brief_pdf.write_print_page(out, render(_swap(brief, to_print), stills=shots)[0])
+    print_page = brief_pdf.write_print_page(out, render(_swap(brief, to_print), lang, stills=shots)[0])
     wanted = brief_pdf.names(views)
     try:
         for key, served_at in wanted.items():
@@ -661,11 +753,14 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     written when a decision is awaited, an animatic the brief names is not rendered, the brief
     cannot make a page, or the folder would be over the Artifact tool's limits (each a Stop). A missing
     thumbnail is listed in `media_missing` (a single file leaves its image out). A folder build prints the
-    PDFs (`_print_pdfs`, `pdfs`), each with a manifest row; without them `pdf_note` says why."""
+    PDFs (`_print_pdfs`, `pdfs`), each with a manifest row; without them `pdf_note` says why. The page and its
+    PDFs are in the run's working language, or in English while that language's table lacks a word of it:
+    `language_warning` says so."""
     if page.awaiting(run, PAGE) is not None:
         raise page.Deciding(PAGE, AWAITING)
     path, rel, brief = load_brief(run, brief_path)
-    render(brief)                                         # the brief can make a page: Stop before anything is written
+    pl = i18n.page_lang(i18n.run_languages(run).working, "brief")
+    render(brief, pl.lang)                                # the brief can make a page: Stop before anything is written
     undated = _undated_clips(brief)
     if undated:
         raise Stop(f"{rel} cites {len(undated)} TrendsMesh clip{'' if len(undated) == 1 else 's'} with no as-of date "
@@ -687,13 +782,13 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     if single_file:
         # a standalone file cannot reach a thumbnail that is not there: its <img> is left out
         inline = {ref: _data_uri(f) for ref, f in present.items()} | {ref: "" for ref in missing}
-        html_text, views = render(_swap(brief, inline))
+        html_text, views = render(_swap(brief, inline), pl.lang)
         out = run.next_version(FINAL, STEM, "html")
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, "x", encoding="utf-8", newline="\n") as fh:    # never over an earlier file
             fh.write(html_text)
     else:
-        html_text, views = render(_swap(brief, served))
+        html_text, views = render(_swap(brief, served), pl.lang)
         planned = {"index.html": len(html_text.encode("utf-8"))}
         planned |= {served[ref]: f.stat().st_size for ref, f in present.items()}
         over = page.over_limits(planned)
@@ -709,12 +804,12 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(f, dest)
         try:
-            pdfs, pdf_note = _print_pdfs(run, out, brief, served, present, missing, views, planned)
+            pdfs, pdf_note = _print_pdfs(run, out, brief, served, present, missing, views, planned, pl.lang)
         except OSError as exc:                   # the page is written all the same: PDFs are its extra
             brief_pdf.remove(out)
             pdfs, pdf_note = {}, f"printing them failed: {exc}"
         if pdfs:
-            html_text = render(_swap(brief, served), pdfs=pdfs)[0]
+            html_text = render(_swap(brief, served), pl.lang, pdfs=pdfs)[0]
         with open(out / "index.html", "x", encoding="utf-8", newline="\n") as fh:
             fh.write(html_text)
     out_rel = out.relative_to(run.path).as_posix()
@@ -725,7 +820,9 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     params = {"brief_sha256": stepchecks.sha256(path), "views": views, "single_file": single_file,
               "media_missing": missing}
     manifest.record(run, out_rel, FINAL, SOURCE, parent=rel, params=params | ({} if single_file else {"pdfs": pdfs}))
-    result = {"views": views, "media_copied": len(present), "media_missing": missing, "brief": rel}
+    result = {"views": views, "media_copied": len(present), "media_missing": missing, "brief": rel, "lang": pl.lang}
+    if pl.warning:
+        result["language_warning"] = pl.warning
     if single_file:
         return {"file": out_rel, **result, "bytes": out.stat().st_size}
     return {"folder": out_rel, **result, "pdfs": [f"{out_rel}/{p}" for p in pdfs.values()], "pdf_note": pdf_note,
@@ -760,9 +857,26 @@ def creator_pdf(run: RunFolder, brief: dict) -> tuple[str, Path] | None:
 # --- decisions ---------------------------------------------------------------------------------
 
 _HEADER = 'Decisions on "'
-_LINE = re.compile(r"^(?P<cid>[A-Za-z0-9_-]+): (?P<label>Approved|Changes requested|no decision)(?: \| (?P<note>.*))?$")
-_LABELS = {"Approved": "approve", "Changes requested": "change"}
 _CHOICES = ("approve", "change")
+_COPY_KEYS = ("brief.copy_header", "brief.approved", "brief.changes_requested", "brief.no_decision")
+
+
+def _copy_words(lang: str | None) -> list[tuple[str, str, dict[str, str], re.Pattern]]:
+    """How a "Copy my decisions" text is written, in English and (when its table has the words) `lang`: the
+    header's start and end around the title, the labels of a choice, and a concept's line."""
+    out = []
+    for code in dict.fromkeys((i18n.ENGLISH, lang or i18n.ENGLISH)):
+        words = i18n.table(code)
+        if not all(k in words for k in _COPY_KEYS):
+            continue
+        head, _, tail = words["brief.copy_header"].partition("{title}")
+        if not head.strip():                  # a header that starts with the title is not told from a line
+            continue
+        labels = {words["brief.approved"]: "approve", words["brief.changes_requested"]: "change"}
+        said = "|".join(re.escape(x) for x in (*labels, words["brief.no_decision"]))
+        line = re.compile(rf"^(?P<cid>[A-Za-z0-9_-]+): (?P<label>{said})(?: \| (?P<note>.*))?$")
+        out.append((head, tail, labels, line))
+    return out
 READ_AGAIN = page.READ_AGAIN.format(collection=COLLECTION)
 _TOO_LARGE = ("If it says tooLarge again, ask that person for their decision in chat, record the choice with `tm brief "
               "choose --source chat` and stop waiting with `tm brief await --clear`.")
@@ -779,19 +893,23 @@ def _from_db(data: dict) -> dict:
             if isinstance(x, dict) and x.get("d") in _CHOICES}
 
 
-def _from_text(text: str, title: str | None) -> list[dict]:
+def _from_text(text: str, title: str | None, lang: str | None = None) -> list[dict]:
     docs: list[dict] = []
     current, last, seen = None, None, set()
+    languages, words = _copy_words(lang), None
     for line in text.splitlines():
-        if line.startswith(_HEADER):
-            named = line[len(_HEADER):-1] if line.endswith('"') else line[len(_HEADER):]
+        header = next((w for w in languages if line.startswith(w[0])), None)
+        if header is not None:
+            head, tail = header[0], header[1]
+            named = line[len(head):-len(tail)] if tail and line.endswith(tail) else line[len(head):]
             if title is not None and named != title:
                 raise Stop(f'This "Copy my decisions" text is from the page "{named}", not this one ("{title}"). Ask '
                            "for the text from this page. The run continues from the same place.")
             current, last, seen = {"who": f"copied text {len(docs) + 1}", "decisions": {}}, None, set()
+            words = header
             docs.append(current)
             continue
-        m = _LINE.match(line) if current is not None else None
+        m = words[3].match(line) if current is not None else None
         if m:
             if m["cid"] in seen:      # the page writes one line per concept: one of these is a note's line
                 raise Stop(f"Copied text {len(docs)} has two lines for {m['cid']}, so a note line reads like a "
@@ -800,8 +918,8 @@ def _from_text(text: str, title: str | None) -> list[dict]:
                            "place.")
             seen.add(m["cid"])
             last = None
-            if m["label"] in _LABELS:
-                current["decisions"][m["cid"]] = {"d": _LABELS[m["label"]], "n": m["note"] or ""}
+            if m["label"] in words[2]:
+                current["decisions"][m["cid"]] = {"d": words[2][m["label"]], "n": m["note"] or ""}
                 last = current["decisions"][m["cid"]] if m["note"] is not None else None
         elif last is not None:                   # a note with a line break goes on
             last["n"] += "\n" + line
@@ -814,16 +932,16 @@ def _from_text(text: str, title: str | None) -> list[dict]:
     return docs
 
 
-def read_decisions(saved: dict | str, *, title: str | None = None) -> list[dict]:
+def read_decisions(saved: dict | str, *, title: str | None = None, lang: str | None = None) -> list[dict]:
     """The decisions in a saved ArtifactData list/query (or `db_list`) answer (an envelope or its answer: every JSON
     object with an `id` in its text, or in its JSON) or in the page's "Copy my decisions" text
-    (whose header must name `title`, when given). Each is `{"who", "decisions": {concept: {"d":
+    (whose header must name `title`, when given; in English or `lang`, the page's language). Each is `{"who", "decisions": {concept: {"d":
     "approve"|"change", "n": note}}}`; a note stays a plain string. A read that may hold part of the
     decisions is a Stop: an error answer, one page of several, a document without data (tooLarge),
     a line that does not parse, a summary count that differs from the documents read; and for
     copied text, another page's title or two lines for one concept."""
     if isinstance(saved, str):
-        return _from_text(saved, title)
+        return _from_text(saved, title, lang)
     docs = dict(page.db_docs(saved, collection=COLLECTION, chat=_TOO_LARGE))
     return [{"who": who, "decisions": _from_db(data)} for who, data in docs.items()]
 
@@ -918,7 +1036,8 @@ def take_decisions(run: RunFolder, stage: str, *, file: Path | None = None, text
     decided = decided_page(run)
     if text is not None:
         source = Path(text)
-        docs = read_decisions(source.read_text(encoding="utf-8-sig"), title=decided["title"])
+        docs = read_decisions(source.read_text(encoding="utf-8-sig"), title=decided["title"],
+                              lang=i18n.run_languages(run).working)
     else:
         if file is None:
             file = page.saved_answer(run, PAGE, COLLECTION)

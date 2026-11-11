@@ -13,6 +13,9 @@ from the reference tool, nothing else:
   config's `market` ("Meta Ad Library (US)" becomes "Meta Ad Library (<market>)"), the footer says
   where the trend data came from and when, never "staging" or "dry run";
 - dates print as "18 Nov 2026" on every OS and locale (no strftime);
+- the page's fixed words are the `report` keys of data/i18n/en.yaml (months: `common`), in the run's working
+  language when its table has all of them, else in English with a warning (`page_language`, issue #3);
+  report.json keeps the original's English;
 - the views are the run's outputs, mapped to the original's words by `research_config.PICK_OUTPUTS` (F7c);
 - the review's moves, the picks and the weighted totals come from `research_checks` (`after_moves`,
   `pick_ids`, `weighted_totals`). `build` does not check the picks (ruling F7b: `tm research picks
@@ -37,11 +40,12 @@ import copy
 import html
 import json
 from datetime import date, timedelta
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from tm import (json_schema, manifest, page, research_checks, research_config, research_digest, research_growth,
-                research_map, trends)
+from tm import (i18n, json_schema, manifest, page, research_checks, research_config, research_digest,
+                research_growth, research_map, trends)
 from tm.runfolder import RunFolder
 from tm.stops import Stop
 
@@ -51,22 +55,40 @@ SCHEMA_FILE = Path(__file__).with_name("schemas") / "pb4_report.schema.json"
 CSS_FILE = Path(__file__).with_name("research_report.css")
 PAID_STEM = "ad_library_summary"
 SOURCE = "tm research report"
-MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+AREAS = ("report", "common")         # the page's words (data/i18n/en.yaml): its own and the month names
 RECENT_DAYS = 45                     # the cards' thumbnails: videos of the 45 days before as_of first
 
+# The page's fixed words are keys of the string table, read in the run's working language (issue #3);
+# report.json keeps the original's English (the constants below are those words, for it and for tests).
 LABEL = research_growth.LABEL
-BUCKET_NOTE = {
-    "act_now": "Early and spreading: new creators keep coming, recently, with an audience.",
-    "still_rising": "Still gaining creators, but slower, smaller or older.",
-    "too_late": "Crowded or slowing: many creators already, or few new ones.",
-    "past_peak": "No new creators for two weeks, or the event it belonged to is over.",
-}
-PAID_LABEL = {"none": "None found in Ad Library titles", "found": "A few advertisers", "crowded": "Crowded in paid",
-              "not_checkable": "Not checkable without Foreplay"}
-VIEWS = {"report": "Category report", "digest": "Weekly digest", "paid": "Paid vs organic"}
-assert set(VIEWS) == set(research_config.PICK_OUTPUTS.values())
-NO_ACT_NOW = "No trend reaches 'act now' this time."
+LABEL_KEY = {"act_now": "report.bucket_act_now", "still_rising": "report.bucket_still_rising",
+             "too_late": "report.bucket_too_late", "past_peak": "report.bucket_past_peak"}
+NOTE_KEY = {"act_now": "report.note_act_now", "still_rising": "report.note_still_rising",
+            "too_late": "report.note_too_late", "past_peak": "report.note_past_peak"}
+PAID_KEY = {"none": "report.paid_none", "found": "report.paid_found", "crowded": "report.paid_crowded",
+            "not_checkable": "report.paid_not_checkable"}
+VIEW_KEY = {"report": "report.view_report", "digest": "report.view_digest", "paid": "report.view_paid"}
+NUMBER_KEY = {2: "report.number_2", 3: "report.number_3", 4: "report.number_4", 5: "report.number_5",
+              6: "report.number_6"}
+_EN = i18n.english()
+BUCKET_NOTE = {b: _EN[k] for b, k in NOTE_KEY.items()}
+PAID_LABEL = {c: _EN[k] for c, k in PAID_KEY.items()}
+VIEWS = {v: _EN[k] for v, k in VIEW_KEY.items()}
+assert set(VIEWS) == set(research_config.PICK_OUTPUTS.values()) and set(LABEL_KEY) == set(LABEL)
+NO_ACT_NOW = _EN["report.no_act_now"]
 E = html.escape
+
+
+@lru_cache(maxsize=1)
+def _en() -> i18n.Translator:
+    """The English table: report.json's words, and the page's when no other language is given."""
+    return i18n.translator(i18n.ENGLISH)
+
+
+def page_language(run: RunFolder) -> i18n.PageLang:
+    """The language to build the page in: the run's working language when its table has every word of the
+    page, else English (with `.warning` for what `tm research report` says)."""
+    return i18n.page_lang(i18n.run_languages(run).working, *AREAS)
 
 SCRIPT = """<script>
 (function(){
@@ -93,9 +115,9 @@ SCRIPT = """<script>
 
 # --- small helpers (the original's, unchanged unless said) ---------------------------------------
 
-def day(value: date | str | None) -> str:
-    """`18 Nov 2026`, the same on every OS and locale; an ISO text is read first (an unreadable one
-    is shown as it is)."""
+def day(value: date | str | None, tr: i18n.Translator | None = None) -> str:
+    """`18 Nov 2026`, the same on every OS and locale (the month's name from the table, in `tr`'s
+    language, else English); an ISO text is read first (an unreadable one is shown as it is)."""
     if isinstance(value, str):
         try:
             value = date.fromisoformat(value[:10])
@@ -103,7 +125,7 @@ def day(value: date | str | None) -> str:
             return value
     if not isinstance(value, date):
         return ""
-    return f"{value.day} {MONTHS[value.month - 1]} {value.year}"
+    return f"{value.day} {(tr or _en())(f'common.month_{value.month}')} {value.year}"
 
 
 def fmt(n) -> str:
@@ -119,17 +141,19 @@ def kind(t: dict) -> str:
     return (t.get("kind") or "").replace("_trend", "")
 
 
-def spread(g: dict) -> tuple[str, str]:
+def spread(g: dict, tr: i18n.Translator | None = None) -> tuple[str, str]:
+    tr = tr or _en()
     s = g.get("top_creator_share", 0)
     if s > 0.6:
-        return "One account", f"{round(s * 100)}% of views from @{g.get('top_creator')}"
+        return tr("report.spread_one"), tr("report.spread_one_sub", share=round(s * 100), creator=g.get('top_creator'))
     if s > 0.4:
-        return "A few accounts", f"top account {round(s * 100)}% of views"
-    return "Broad", f"no account above {max(round(s * 100), 1)}% of views"
+        return tr("report.spread_few"), tr("report.spread_few_sub", share=round(s * 100))
+    return tr("report.spread_broad"), tr("report.spread_broad_sub", share=max(round(s * 100), 1))
 
 
-def _label(bucket: str) -> str:
-    return LABEL.get(bucket, bucket)
+def _label(bucket: str, tr: i18n.Translator | None = None) -> str:
+    """A stage's name (research_growth.LABEL) in `tr`'s language, else English; an unknown one as it is."""
+    return (tr or _en())(LABEL_KEY[bucket]) if bucket in LABEL_KEY else bucket
 
 
 def safe_url(url: object) -> str | None:
@@ -202,7 +226,9 @@ class _Page:
     """One build: the run, its folder, and the words of this category and market."""
 
     def __init__(self, run: RunFolder, out: Path, *, category: str, market: str, as_of: date, sample: dict,
-                 trends_by_id: dict[str, dict], paid: dict[str, dict], paid_checked: bool, hooks_not_read: int = 0):
+                 trends_by_id: dict[str, dict], paid: dict[str, dict], paid_checked: bool, hooks_not_read: int = 0,
+                 tr: i18n.Translator | None = None):
+        self.tr = tr or _en()                    # the page's words, in the language it is built in
         self.run, self.out, self.category, self.market, self.as_of = run, out, category, market, as_of
         self.sample, self.trends, self.paid, self.paid_checked = sample, trends_by_id, paid, paid_checked
         self.hooks_not_read = hooks_not_read     # issue #8: only the shortlisted hooks' videos were read
@@ -247,12 +273,12 @@ class _Page:
         pool = sorted(fresh, key=lambda v: -(v.get("views") or 0))
         return self._fetch(pool, f"dg_{tid[:8]}", n, excerpt=False)
 
-    @staticmethod
-    def strip_html(th: list[dict], alt: str = "Video by") -> str:
+    def strip_html(self, th: list[dict], alt: str = "report.video_by") -> str:
+        tr = self.tr
         out = []
         for x in th:
-            inner = (f"<img src='{E(x['src'])}' alt='{E(alt)} {E(x['creator'] or '')}' loading='lazy'>"
-                     f"<span>{fmt(x['views'])} views · {E(day(x['date']))}</span>")
+            inner = (f"<img src='{E(x['src'])}' alt='{E(tr(alt, creator=x['creator'] or ''))}' loading='lazy'>"
+                     f"<span>{tr('report.thumb_views', views=fmt(x['views']), date=E(day(x['date'], tr)))}</span>")
             url = safe_url(x["url"])
             out.append(f"<a class='thumb' href='{E(url)}' target='_blank' rel='noopener'>{inner}</a>" if url
                        else f"<span class='thumb'>{inner}</span>")
@@ -261,57 +287,65 @@ class _Page:
     # the report view -------------------------------------------------------------------------
 
     def momentum(self, t: dict) -> tuple[str, str]:
-        rel = t.get("relative") or {}
-        hooks = "of the rising hooks read" if self.hooks_not_read else "of all rising hooks"
-        pool = hooks if t.get("kind") == "hook_trend" else f"of {self.category} topics"
-        return (f"{rel.get('band', '—').capitalize()} {pool}",
-                f"{rel.get('velocity_index', 0)}× the new creators of a typical {self.category} trend")
+        rel, tr = t.get("relative") or {}, self.tr
+        hooks = "report.band_hooks_read" if self.hooks_not_read else "report.band_all_hooks"
+        pool = hooks if t.get("kind") == "hook_trend" else "report.band_topics"
+        return (tr(pool, band=rel.get('band', '—').capitalize(), category=self.category),
+                tr("report.velocity", index=rel.get('velocity_index', 0), category=self.category))
 
     def glance(self, t: dict, paid: dict | None) -> str:
-        """TR10 (v02): position in the sample first; raw counts behind 'Raw counts'."""
-        g, ctx = t["growth"], self.sample
+        """TR10 (v02): position in the sample first; raw counts behind 'Raw counts'. Each cell's class is
+        its English label's first word, in every language."""
+        g, ctx, tr = t["growth"], self.sample, self.tr
         m, msub = self.momentum(t)
-        sp, spsub = spread(g)
+        sp, spsub = spread(g, tr)
         cells = [
-            ("Momentum, last 14 days", m, msub),
-            ("Spread", sp, spsub),
-            ("Reach of the evidence", f"{fmt(g.get('views_total'))} views", f"across {g.get('videos_known', 0)} videos"),
-            ("Freshness", f"new video {g.get('last_seen_days', '—')} d ago", f"trend seen for {g.get('age_days', '—')} d"),
-            ("Confidence", (t.get("confidence") or "—").capitalize(),
-             f"{t.get('confidence_why', '')}; status {t.get('status')}"),
-            (f"Meta Ad Library ({self.market})", (paid or {}).get("verdict", "not checked"),
+            ("report.glance_momentum", m, msub),
+            ("report.spread", sp, spsub),
+            ("report.glance_reach", tr("report.reach_views", views=fmt(g.get('views_total'))),
+             tr("report.reach_videos", videos=g.get('videos_known', 0))),
+            ("report.glance_freshness", tr("report.fresh_new_video", days=g.get('last_seen_days', '—')),
+             tr("report.fresh_seen", days=g.get('age_days', '—'))),
+            ("report.confidence", (t.get("confidence") or "—").capitalize(),
+             tr("report.confidence_sub", why=t.get('confidence_why', ''), status=t.get('status'))),
+            ("report.glance_ad_library", (paid or {}).get("verdict", tr("report.not_checked")),
              (paid or {}).get("query_note", "")),
         ]
-        raw = (f"<details class='raw'><summary>Raw counts in the sample</summary><p>{g.get('new_recent', 0)} new creators "
-               f"in the last 14 days (of {ctx.get('creators_active')} creators who joined any mapped {E(self.category)} "
-               f"trend in that window), {g.get('new_base', 0)} in the 28 days before; {g.get('creators', 0)} creators in "
-               f"all; median {fmt(g.get('median_views'))} views per video. TrendsMesh evidence is a collected sample, "
-               "not platform totals.</p></details>")
+        raw = (f"<details class='raw'><summary>{tr('report.raw_summary')}</summary><p>"
+               + tr("report.raw_counts", new_recent=g.get('new_recent', 0), active=ctx.get('creators_active'),
+                    category=E(self.category), new_base=g.get('new_base', 0), creators=g.get('creators', 0),
+                    median=fmt(g.get('median_views')))
+               + "</p></details>")
         return "<dl class='glance'>" + "".join(
-            f"<div class='c-{E(a.split()[0].lower())}'><dt>{E(a)}</dt><dd class='num'>{E(b)}</dd>"
-            f"<dd class='sub'>{E(c)}</dd></div>" for a, b, c in cells) + "</dl>" + raw
+            f"<div class='c-{E(_en()(k, market=self.market).split()[0].lower())}'>"
+            f"<dt>{E(tr(k, market=self.market))}</dt><dd class='num'>{E(b)}</dd>"
+            f"<dd class='sub'>{E(c)}</dd></div>" for k, b, c in cells) + "</dl>" + raw
 
     def card(self, p: dict, big: bool, valid_until: str, total: float | None, scale: tuple[float, float]) -> str:
-        t = self.trends[p["id"]]
+        t, tr = self.trends[p["id"]], self.tr
         th = self.thumbs(t["id"], 3 if big else 2)
-        strip = self.strip_html(th, "Evidence video by")
+        strip = self.strip_html(th, "report.evidence_video_by")
         tags = f"<span class='pill k-{E(kind(t))}'>{E(kind(t))}</span><span class='pill'>{E(t.get('group') or '')}</span>"
         if p.get("maturity"):
             tags += f"<span class='pill soft'>{E(p['maturity'])}</span>"
-        body = "".join(f"<p><b>{lab}</b> {E(p[k])}</p>" for lab, k in
-                       (("What it is.", "what"), ("How to use it.", "how"), ("Risk.", "risk")) if p.get(k))
-        score = (f"<p class='valid'>Fit score {total:g} on a scale of {scale[0]:g}–{scale[1]:g} (TR5: "
-                 f"{len(research_config.CRITERIA)} criteria scored 1–5, weighted)</p>" if total is not None else "")
+        body = "".join(f"<p><b>{tr(lab)}</b> {E(p[k])}</p>" for lab, k in
+                       (("report.card_what", "what"), ("report.card_how", "how"), ("report.card_risk", "risk"))
+                       if p.get(k))
+        score = ("<p class='valid'>" + tr("report.fit_score", total=format(total, "g"), low=format(scale[0], "g"),
+                                          high=format(scale[1], "g"), criteria=len(research_config.CRITERIA))
+                 + "</p>" if total is not None else "")
         return (f"<article class='card {'big' if big else ''}' id='t-{_short_id(t)}'><header><h3>{E(t['name'])}</h3>"
                 f"<div class='tags'>{tags}</div></header>{self.glance(t, self.paid.get(p['id']))}"
                 f"<div class='strip'>{strip}</div>{body}{score}"
-                f"<p class='valid'>Valid until {E(valid_until)} · trend id {_short_id(t)}</p></article>")
+                f"<p class='valid'>{tr('report.card_valid', date=E(valid_until), id=_short_id(t))}</p></article>")
 
-    @staticmethod
-    def table(rows: list[dict], moved: dict, picked: set) -> str:
-        head = ("<tr><th>Trend</th><th>Type</th><th>Group</th><th>Momentum</th><th class='r'>× typical</th><th>Spread</th>"
-                "<th class='r'>Reach</th><th class='r'>New video (d ago)</th><th>Confidence</th><th>Note</th>"
-                "<th class='r raw'>Raw: new / before</th></tr>")
+    def table(self, rows: list[dict], moved: dict, picked: set) -> str:
+        tr = self.tr
+        head = (f"<tr><th>{tr('report.col_trend')}</th><th>{tr('report.col_type')}</th><th>{tr('report.col_group')}</th>"
+                f"<th>{tr('report.col_momentum')}</th><th class='r'>{tr('report.col_typical')}</th>"
+                f"<th>{tr('report.spread')}</th><th class='r'>{tr('report.col_reach')}</th>"
+                f"<th class='r'>{tr('report.col_new_video')}</th><th>{tr('report.confidence')}</th>"
+                f"<th>{tr('report.col_note')}</th><th class='r raw'>{tr('report.col_raw')}</th></tr>")
         body = []
         for t in rows:
             g, rel = t["growth"], t.get("relative") or {}
@@ -319,7 +353,7 @@ class _Page:
             name = f"<a href='#t-{_short_id(t)}'>{E(t['name'])}</a>" if t["id"] in picked else E(t["name"])
             body.append(f"<tr><td>{name}</td><td>{E(kind(t))}</td><td>{E(t.get('group') or '')}</td>"
                         f"<td>{E(rel.get('band', '—'))}</td><td class='r num'>{rel.get('velocity_index', '—')}</td>"
-                        f"<td>{E(spread(g)[0])}</td><td class='r num'>{fmt(g.get('views_total'))}</td>"
+                        f"<td>{E(spread(g, tr)[0])}</td><td class='r num'>{fmt(g.get('views_total'))}</td>"
                         f"<td class='r num'>{g.get('last_seen_days', '—')}</td><td><span class='conf "
                         f"conf-{E(t.get('confidence') or '')}'>{E(t.get('confidence') or '')}</span></td>"
                         f"<td class='note'>{E(note)}</td><td class='r num raw'>{g.get('new_recent', 0)} / "
@@ -328,7 +362,7 @@ class _Page:
 
     def lens_section(self, lens: dict) -> str:
         items = "".join(f"<li><b>{E(self.trends[i['id']]['name'])}</b> <span class='pill'>"
-                        f"{E(_label(self.trends[i['id']]['bucket']))}</span> {E(i.get('line') or '')}</li>"
+                        f"{E(_label(self.trends[i['id']]['bucket'], self.tr))}</span> {E(i.get('line') or '')}</li>"
                         for i in lens.get("items") or [])
         return (f"<section id='lens'><div class='sec-head'><h2>{E(lens.get('label') or '')}</h2>"
                 f"<p>{E(lens.get('note') or '')}</p></div><ol class='lens'>{items}</ol></section>")
@@ -339,22 +373,22 @@ class _Page:
         """TR8 digest + TR9 call check (v02): the week in one minute (agent), numbers strip, what to do
         this week (agent), last week's calls with this week's videos, moved up and new on the radar
         as cards with this week's videos, cooling down grouped by reason, ended or merged."""
-        trends_ = self.trends
+        trends_, tr = self.trends, self.tr
         since = dg["prev"]["ref"]
         days = (date.fromisoformat(dg["now"]["ref"]) - date.fromisoformat(since)).days
         pt = prev.get("trends", {})
-        then = day(dg["prev"].get("as_of"))
+        then = day(dg["prev"].get("as_of"), tr)
 
         def mini(t: dict, tid: str, head: str, line: str, th_n: int = 3, was: str | None = None) -> str:
             rel = t.get("relative") or {}
             pd = self.paid.get(tid)
             th = self.thumbs_since(tid, since, th_n)
-            chips = (f"<span class='pill b-{E(str(t.get('bucket')))}'>{E(_label(t.get('bucket') or ''))}</span>"
+            chips = (f"<span class='pill b-{E(str(t.get('bucket')))}'>{E(_label(t.get('bucket') or '', tr))}</span>"
                      f"<span class='pill'>{E(rel.get('band', '—'))}</span><span class='pill'>{E(kind(t))} · "
                      f"{E(t.get('group') or '')}</span>" + (f"<span class='pill'>{E(pd['verdict'])}</span>" if pd else ""))
             vids = f"<div class='strip'>{self.strip_html(th)}</div>" if th else \
-                "<p class='sub'>No new evidence video this week.</p>"
-            title = E(t["name"]) + (f" <span class='sub'>(was {E(was)})</span>" if was else "")
+                f"<p class='sub'>{tr('report.no_new_video')}</p>"
+            title = E(t["name"]) + (f" <span class='sub'>{tr('report.was', name=E(was))}</span>" if was else "")
             return (f"<article class='card dgcard'><header><p class='kicker'>{head}</p><h3>{title}</h3>"
                     f"<div class='tags'>{chips}</div></header><p>{E(line)}</p>{vids}</article>")
 
@@ -377,26 +411,29 @@ class _Page:
             as_now = (c.get("plugin") or {}).get("reidentified_as")
             now_id = c["id"] if c["id"] in trends_ else as_now if as_now in trends_ else None
             if c["held"] is None:
-                mark, verdict = "?", "Unknown: TrendsMesh has no dated video with a creator"
+                mark, verdict = "?", tr("report.call_unknown")
             else:
-                mark, verdict = ("✓", "Kept adding creators") if c["held"] else ("✗", "Stalled: no new creator")
+                mark, verdict = ("✓", tr("report.call_kept")) if c["held"] else ("✗", tr("report.call_stalled"))
             if now_id is None:            # it left this week's map (Review Focus 2)
-                calls_html += (f"<article class='card dgcard'><header><p class='kicker'>{mark} Last week: act now · "
-                               f"{E(verdict)}</p><h3>{E(c['name'])}</h3></header><p>Not on this week's map.</p></article>")
+                calls_html += (f"<article class='card dgcard'><header><p class='kicker'>"
+                               f"{tr('report.call_kicker', mark=mark, verdict=E(verdict))}</p><h3>{E(c['name'])}</h3>"
+                               f"</header><p>{tr('report.call_off_map')}</p></article>")
                 continue
             t_now = trends_[now_id]
             now_b = t_now["bucket"]
             idx = (t_now.get("relative") or {}).get("velocity_index")
-            stage = "Still 'act now'" if now_b == "act_now" else f"Now '{_label(now_b).lower()}'"
+            stage = (tr("report.call_still_act_now") if now_b == "act_now"
+                     else tr("report.call_now_stage", stage=_label(now_b, tr).lower()))
             note = (f"{stage}" + (f": {t_now['seasonal_over']}" if t_now.get("seasonal_over") else "")
-                    + (f". This fortnight {idx}× the new creators of a typical {self.category} trend."
+                    + (". " + tr("report.call_fortnight", index=idx, category=self.category)
                        if idx is not None else ".") + f" {what(now_id)}")
-            calls_html += mini(t_now, now_id, f"{mark} Last week: act now · {E(verdict)}", note, 2,
+            calls_html += mini(t_now, now_id, tr("report.call_kicker", mark=mark, verdict=E(verdict)), note, 2,
                                was=c["name"] if now_id != c["id"] else None)
 
-        up_html = "".join(mini(trends_[x["id"]], x["id"], f"Moved up · {E(_label(x['from']))} → {E(_label(x['to']))}",
+        up_html = "".join(mini(trends_[x["id"]], x["id"], tr("report.moved_up_kicker", was=E(_label(x['from'], tr)),
+                                                             now=E(_label(x['to'], tr))),
                                what(x["id"])) for x in dg["up"] if x["id"] in trends_)
-        new_html = "".join(mini(trends_[x["id"]], x["id"], "New on the radar", what(x["id"])) for x in
+        new_html = "".join(mini(trends_[x["id"]], x["id"], tr("report.new_on_radar"), what(x["id"])) for x in
                            sorted(new_live, key=lambda x: -((trends_[x["id"]].get("relative") or {}).get("velocity_index")
                                                             or 0)))
 
@@ -405,86 +442,93 @@ class _Page:
             trend under a new id, under the id it had (`plugin.was_id`); "—" when unknown."""
             was = pt.get(x["id"]) or pt.get((x.get("plugin") or {}).get("was_id")) or {}
             bucket = x.get("from") or was.get("bucket")
-            return _label(bucket) if bucket else "—"
+            return _label(bucket, tr) if bucket else "—"
 
         def rows(items, why):
             return "".join(
                 f"<tr><td>{E(x.get('name') or trends_[x['id']]['name'])}</td><td>{E(then_stage(x))} → "
-                f"{E(_label((trends_.get(x['id']) or {}).get('bucket') or x.get('to') or ''))}</td>"
+                f"{E(_label((trends_.get(x['id']) or {}).get('bucket') or x.get('to') or '', tr))}</td>"
                 f"<td class='note'>{E(why(x))}</td></tr>" for x in items)
-        cool = rows(cooled, lambda x: seasonal(x) or "") + rows(slowing, lambda x: "fewer new creators than last week")
+        cool = rows(cooled, lambda x: seasonal(x) or "") + rows(slowing, lambda x: tr("report.fewer_new_creators"))
         plug = dg.get("plugin") or {}
         ended_checked = plug.get("ended_checked", True)
         ended = "".join(f"<li>{E(x['name'])}</li>" for x in dg["ended"])
         if not ended_checked:
-            why = ("the previous week is rebuilt from evidence dates" if prev.get("rebuilt") is True
-                   else "the previous snapshot has no pool list")
-            ended = f"<li>Not checked this week: {why}, so ended trends are left out.</li>"
+            why = (tr("report.ended_rebuilt") if prev.get("rebuilt") is True
+                   else tr("report.ended_no_pool"))
+            ended = f"<li>{tr('report.ended_not_checked', why=why)}</li>"
         unknown = (plug.get("unknown_calls") or {}).get("act_now")
         if not isinstance(unknown, int):
             unknown = sum(c["held"] is None for c in held)
         reid = "".join(f"<li>{E(x['was'])} → {E(x['name'])}</li>" for x in dg.get("reidentified", []))
         summary = "".join(f"<li>{E(s)}</li>" for s in reading.get("summary", []))
         todo = "".join(f"<li>{E(s)}</li>" for s in reading.get("todo", []))
-        stats = [(f"{sum(c['held'] is True for c in held)}/{a_n}", "last week's 'act now' calls kept adding creators"
-                  + (f" ({unknown} unknown)" if unknown else "")),
-                 (str(len(dg["up"])), "moved up"), (str(len(new_live)), "new and rising"),
-                 (str(len(cooled)), "seasonal, now over"), (str(len(slowing)), "slowing"),
-                 (str(len(dg["ended"])) if ended_checked else "—", "ended or merged")]
+        kept = sum(c['held'] is True for c in held)
+        stats = [(f"{kept}/{a_n}", tr("report.stat_calls_unknown", unknown=unknown) if unknown
+                  else tr("report.stat_calls")),
+                 (str(len(dg["up"])), tr("report.stat_moved_up")), (str(len(new_live)), tr("report.stat_new_rising")),
+                 (str(len(cooled)), tr("report.stat_seasonal")), (str(len(slowing)), tr("report.stat_slowing")),
+                 (str(len(dg["ended"])) if ended_checked else "—", tr("report.stat_ended"))]
         strip = "".join(f"<div class='count'><b>{E(a)}</b><span>{E(b)}</span></div>" for a, b in stats)
         if prev.get("rebuilt") is True:
-            compared = (f"Compared with {E(then)} ({days} days of evidence). This digest uses a snapshot of that week "
-                        "rebuilt from the evidence dates, so \"new\" means no creators then and ended trends are left "
-                        "out; from next week it compares with the stored snapshot.")
+            compared = tr("report.compared_rebuilt", then=E(then), days=days)
         else:
-            compared = f"Compared with the report of {E(then)} ({days} days of evidence)."
-        also = (f"<p class=small-print>Also new, not rising: " + E(", ".join(
-            trends_[x["id"]]["name"] + " (" + _label(trends_[x["id"]]["bucket"]).lower() + ")" for x in new_other))
-            + ".</p>" if new_other else "")
+            compared = tr("report.compared", then=E(then), days=days)
+        also = ("<p class=small-print>" + tr("report.also_new", names=E(", ".join(
+            trends_[x["id"]]["name"] + " (" + _label(trends_[x["id"]]["bucket"], tr).lower() + ")" for x in new_other)))
+            + "</p>" if new_other else "")
+        none = f"<p>{tr('report.none')}</p>"
+        reid_html = (f"<p class=small-print>{tr('report.reidentified')}</p><ul class=small-print>{reid}</ul>"
+                     if reid else "")
         return (f"<section id='since'><p class='sample'>{compared}</p><div class='counts six'>{strip}</div></section>"
-                f"<section><div class='sec-head'><h2>The week in one minute</h2></div><ul class='reading big'>{summary}"
-                "</ul></section>"
-                f"<section style='--c:var(--act)'><div class='sec-head'><h2>What to do this week</h2></div>"
+                f"<section><div class='sec-head'><h2>{tr('report.week_in_a_minute')}</h2></div>"
+                f"<ul class='reading big'>{summary}</ul></section>"
+                f"<section style='--c:var(--act)'><div class='sec-head'><h2>{tr('report.todo_heading')}</h2></div>"
                 f"<ol class='todo'>{todo}</ol></section>"
-                f"<section style='--c:var(--rise)'><div class='sec-head'><h2>Moved up</h2><p>Trends that climbed a stage, "
-                f"with videos posted since {E(then)}.</p></div><div class='cards small'>{up_html or '<p>none</p>'}</div>"
+                f"<section style='--c:var(--rise)'><div class='sec-head'><h2>{tr('report.moved_up')}</h2>"
+                f"<p>{tr('report.moved_up_note', then=E(then))}</p></div><div class='cards small'>{up_html or none}</div>"
                 "</section>"
-                f"<section style='--c:var(--rise)'><div class='sec-head'><h2>New on the radar</h2><p>Trends that entered "
-                f"the TrendsMesh list since {E(then)} and are rising now.</p></div>"
-                f"<div class='cards small'>{new_html or '<p>none</p>'}</div>{also}</section>"
-                f"<section style='--c:var(--act)'><div class='sec-head'><h2>Last week's calls</h2><p>Did the 'act now' "
-                f"picks of {E(then)} keep growing? This week's videos under each.</p></div>"
-                f"<div class='cards small'>{calls_html or '<p>none</p>'}</div></section>"
-                f"<section style='--c:var(--late)'><div class='sec-head'><h2>Cooling down</h2></div><div class='tw'><table>"
-                f"<tr><th>Trend</th><th>Stage</th><th>Why</th></tr>{cool}</table></div></section>"
-                f"<section style='--c:var(--past)'><div class='sec-head'><h2>Ended or merged</h2><p>Gone from the trend "
-                f"list since {E(then)}.</p></div><ul class='small-print'>{ended}</ul>"
-                f"{'<p class=small-print>Same trend under a new id:</p><ul class=small-print>' + reid + '</ul>' if reid else ''}"
+                f"<section style='--c:var(--rise)'><div class='sec-head'><h2>{tr('report.new_on_radar')}</h2>"
+                f"<p>{tr('report.new_on_radar_note', then=E(then))}</p></div>"
+                f"<div class='cards small'>{new_html or none}</div>{also}</section>"
+                f"<section style='--c:var(--act)'><div class='sec-head'><h2>{tr('report.calls_heading')}</h2>"
+                f"<p>{tr('report.calls_note', then=E(then))}</p></div>"
+                f"<div class='cards small'>{calls_html or none}</div></section>"
+                f"<section style='--c:var(--late)'><div class='sec-head'><h2>{tr('report.cooling_heading')}</h2></div>"
+                f"<div class='tw'><table><tr><th>{tr('report.col_trend')}</th><th>{tr('report.col_stage')}</th>"
+                f"<th>{tr('report.col_why')}</th></tr>{cool}</table></div></section>"
+                f"<section style='--c:var(--past)'><div class='sec-head'><h2>{tr('report.ended_heading')}</h2>"
+                f"<p>{tr('report.ended_note', then=E(then))}</p></div><ul class='small-print'>{ended}</ul>"
+                f"{reid_html}"
                 "</section>")
 
     # the paid view ---------------------------------------------------------------------------
 
     def paid_view(self, reading: list[str]) -> str:
         """TR7 view: organic stage x presence in paid ads, for rising trends and the largest slowing ones."""
-        trends_, paid = self.trends, self.paid
+        trends_, paid, tr = self.trends, self.paid, self.tr
         rows = {"rising": [t for t in trends_.values() if t["bucket"] in ("act_now", "still_rising")],
                 "slowing": [t for t in trends_.values() if t["bucket"] == "too_late" and t["id"] in paid]}
         cols = ["none", "found", "crowded"]
-        head = "".join(f"<th>{E(PAID_LABEL[c])}</th>" for c in cols)
+        head = "".join(f"<th>{E(tr(PAID_KEY[c]))}</th>" for c in cols)
+        none = tr("report.none")
 
         def cell(ts):
             items = []
             for t in sorted(ts, key=lambda t: -((t.get("relative") or {}).get("velocity_index") or 0)):
                 pd = paid[t["id"]]
                 adv = ", ".join(str(a).split(" (")[0] for a in (pd["advertisers"] or [])[:3])
-                items.append(f"<li><b>{E(t['name'])}</b> <span class='pill b-{E(t['bucket'])}'>{E(_label(t['bucket']))}</span>"
+                items.append(f"<li><b>{E(t['name'])}</b> <span class='pill b-{E(t['bucket'])}'>"
+                             f"{E(_label(t['bucket'], tr))}</span>"
                              f"<span class='sub'>{E((t.get('relative') or {}).get('band', ''))}"
                              f"{' · ' + E(adv) if adv else ''}</span></li>")
-            return "<ul class='cell'>" + "".join(items) + "</ul>" if items else "<p class='sub'>none</p>"
+            return "<ul class='cell'>" + "".join(items) + "</ul>" if items else f"<p class='sub'>{none}</p>"
 
         body = ""
-        for key, label in (("rising", "Rising in organic<br><span class='sub'>act now, still rising</span>"),
-                           ("slowing", "Slowing in organic<br><span class='sub'>the largest 'too late' trends</span>")):
+        for key, label in (("rising", f"{tr('report.paid_rising')}<br><span class='sub'>"
+                                      f"{tr('report.paid_rising_sub')}</span>"),
+                           ("slowing", f"{tr('report.paid_slowing')}<br><span class='sub'>"
+                                       f"{tr('report.paid_slowing_sub')}</span>")):
             body += f"<tr><th class='rowh'>{label}</th>" + "".join(
                 f"<td class='q q-{key}-{c}'>{cell([t for t in rows[key] if paid.get(t['id'], {}).get('level') == c])}</td>"
                 for c in cols) + "</tr>"
@@ -492,31 +536,31 @@ class _Page:
         unchecked = [t for t in rows["rising"] if t["id"] not in paid]
         read = "".join(f"<li>{E(x)}</li>" for x in reading)
         if self.paid_checked:
-            what = (f"Every rising trend and the largest slowing ones, checked in Meta Ad Library (active "
-                    f"{E(self.market)} ads). Titles only: 'none found' means none in titles, not proof that nobody "
-                    "advertises it.")
+            what = tr("report.paid_checked", market=E(self.market))
         else:                                       # V22: the Meta Ads connector was unavailable
-            what = (f"Meta Ad Library was not checked in this run (active {E(self.market)} ads), so every trend "
-                    "here is \"not checked\"; the report is otherwise complete.")
-        return (f"<div class='sec-head'><h2>Organic stage × presence in paid</h2><p>What is rising in organic but not yet "
-                f"in ads. {what}</p></div><ul class='reading'>{read}</ul>"
+            what = tr("report.paid_unchecked", market=E(self.market))
+        not_checked = (f"<b>{tr('report.paid_not_checked')}</b> " + E(', '.join(t['name'] for t in unchecked)) + ". "
+                       if unchecked else "")
+        return (f"<div class='sec-head'><h2>{tr('report.paid_heading')}</h2><p>{tr('report.paid_intro')} "
+                f"{what}</p></div><ul class='reading'>{read}</ul>"
                 f"<div class='tw'><table class='matrix'><tr><th></th>{head}</tr>{body}</table></div>"
-                f"<p class='small-print'><b>Hooks, not checkable in titles:</b> "
-                f"{E(', '.join(t['name'] for t in hooks)) or 'none'}. "
-                f"{'<b>Not checked:</b> ' + E(', '.join(t['name'] for t in unchecked)) + '. ' if unchecked else ''}"
-                "With Foreplay connected this view adds, per trend and hook, how many paid ads use it, on which "
-                "platforms, and how long the longest has run.</p>")
+                f"<p class='small-print'><b>{tr('report.paid_hooks')}</b> "
+                f"{E(', '.join(t['name'] for t in hooks)) or none}. "
+                f"{not_checked}"
+                f"{tr('report.paid_foreplay')}</p>")
 
 
 # --- build ------------------------------------------------------------------------------------
 
-def _paid_rows(raw: list, rows: dict[str, dict], market: str) -> dict[str, dict]:
+def _paid_rows(raw: list, rows: dict[str, dict], market: str, tr: i18n.Translator | None = None) -> dict[str, dict]:
+    """The Ad Library checks by trend id, their words in `tr`'s language (English for report.json)."""
+    tr = tr or _en()
     paid = {}
     for c in raw:
-        if isinstance(c, dict) and c.get("trend_id") in rows and c.get("level") in PAID_LABEL:
-            paid[c["trend_id"]] = {"level": c["level"], "verdict": PAID_LABEL[c["level"]],
-                                   "query_note": f"search '{c['query']}', active {market} ads" if c.get("query")
-                                   else "needs Foreplay",
+        if isinstance(c, dict) and c.get("trend_id") in rows and c.get("level") in PAID_KEY:
+            paid[c["trend_id"]] = {"level": c["level"], "verdict": tr(PAID_KEY[c["level"]]),
+                                   "query_note": tr("report.paid_query", query=c['query'], market=market)
+                                   if c.get("query") else tr("report.paid_needs_foreplay"),
                                    "advertisers": c.get("advertisers", []), "estimated": c.get("estimated"),
                                    "example_id": c.get("example_id"), "note": c.get("note", "")}
     return paid
@@ -527,6 +571,7 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
     """Build the page into a new 04_final/report_vNN/ (index.html, report.json, assets/) and return
     the folder. Nothing is written when an input is missing or the report breaks its schema."""
     cfg = research_map.settings(cfg)
+    tr = i18n.translator(page_language(run).lang)      # the page's words; report.json keeps the English
     gj = _latest(run, research_growth.STEM, "growth")
     cmap = _latest(run, research_map.STEM, "category map")
     picks = _json(Path(picks_path), "the picks")
@@ -545,6 +590,7 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
         raise Stop("The picks have no as_of date (YYYY-MM-DD): the page's dates and its valid-until come from it. Add "
                    "it, then build again; the run continues from the same place.")
     valid_until = day(as_of + timedelta(days=cfg["picks"]["valid_days"]))
+    valid_until_page = day(as_of + timedelta(days=cfg["picks"]["valid_days"]), tr)
 
     paid_file = Path(paid) if paid else run.latest(trends.RESEARCH, PAID_STEM, "json")
     summary = _json(paid_file, "the Ad Library summary") if paid_file else {}
@@ -555,8 +601,11 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
     rows = [{**copy.deepcopy(t), "bucket": stage[t["id"]]} for t in gj["trends"]]
     by_id = {t["id"]: t for t in rows}
     paid_rows = _paid_rows(paid_raw, by_id, market)
-    moved = {m["id"]: f"Moved by review from {_label(m['from'])}: {m.get('why', '')}" for m in picks.get("moves") or []
-             if isinstance(m, dict) and stage.get(m.get("id")) != growth_rows.get(m.get("id"), {}).get("bucket")}
+    moves_made = [m for m in picks.get("moves") or []
+                  if isinstance(m, dict) and stage.get(m.get("id")) != growth_rows.get(m.get("id"), {}).get("bucket")]
+    moved = {m["id"]: _en()("report.moved_by_review", stage=_label(m['from']), why=m.get('why', '')) for m in moves_made}
+    moved_page = {m["id"]: tr("report.moved_by_review", stage=_label(m['from'], tr), why=m.get('why', ''))
+                  for m in moves_made}
     by = {b: [t for t in rows if t["bucket"] == b] for b in LABEL}
     picked = set(research_checks.pick_ids(picks))
     totals = research_checks.weighted_totals(picks, cfg)
@@ -602,12 +651,12 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
 
     out = page.new_folder(run, PAGE)
     pg = _Page(run, out, category=category, market=market, as_of=as_of, sample=ctx, trends_by_id=by_id,
-               paid=paid_rows, paid_checked=paid_checked,
-               hooks_not_read=len((gj.get("plugin") or {}).get("hooks_not_read") or []))
+               paid=_paid_rows(paid_raw, by_id, market, tr), paid_checked=paid_checked,
+               hooks_not_read=len((gj.get("plugin") or {}).get("hooks_not_read") or []), tr=tr)
     prev = prev_snapshot if prev_snapshot is not None else _prev_snapshot(run, digest)
     prev_snap = _json(Path(prev), "the previous snapshot") if digest is not None and prev else {}
-    html_text = _render(pg, picks, report, cmap, gj, by, moved, picked, totals, scale, backtest_data, digest,
-                        prev_snap, valid_until)
+    html_text = _render(pg, picks, report, cmap, gj, by, moved_page, picked, totals, scale, backtest_data, digest,
+                        prev_snap, valid_until_page)
     (out / "index.html").write_text(html_text, encoding="utf-8")
     (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     rel = out.relative_to(run.path).as_posix()
@@ -620,22 +669,21 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
 def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict, moved: dict, picked: set,
             totals: dict, scale: tuple[float, float], backtest_data: list[dict], digest: dict | None,
             prev_snap: dict, valid_until: str) -> str:
-    category, market, trends_ = pg.category, pg.market, pg.trends
+    category, market, trends_, tr = pg.category, pg.market, pg.trends, pg.tr
     ctx, p = gj["params"]["category"], gj["params"]
     act, rising = picks.get("act_now") or [], picks.get("still_rising") or []
     big = "".join(pg.card(x, True, valid_until, totals.get(x["id"]), scale) for x in act)
     small = "".join(pg.card(x, False, valid_until, totals.get(x["id"]), scale) for x in rising)
     digest_html = pg.digest_section(digest, prev_snap, picks.get("digest_reading") or {}) if digest is not None else ""
     lens = pg.lens_section(picks["lens"]) if isinstance(picks.get("lens"), dict) else ""
-    n_words = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
-    n_act = n_words.get(len(act), str(len(act)))
+    n_act = tr(NUMBER_KEY[len(act)]) if len(act) in NUMBER_KEY else str(len(act))
     one = len(act) == 1
     other = "".join(f"<li><b>{E(trends_[o['id']]['name'])}</b>: {E(o.get('note') or '')}</li>"
                     for o in picks.get("act_now_other") or [])
-    moves = "".join(f"<li><b>{E(trends_[m['id']]['name'])}</b>: {E(_label(m.get('from') or ''))} → "
-                    f"{E(_label(m.get('to') or ''))}. {E(m.get('why') or '')}</li>" for m in picks.get("moves") or [])
-    counts = "".join(f"<a class='count b-{b}' href='#{b.replace('_', '-')}'><b>{len(by[b])}</b><span>{LABEL[b]}</span></a>"
-                     for b in LABEL)
+    moves = "".join(f"<li><b>{E(trends_[m['id']]['name'])}</b>: {E(_label(m.get('from') or '', tr))} → "
+                    f"{E(_label(m.get('to') or '', tr))}. {E(m.get('why') or '')}</li>" for m in picks.get("moves") or [])
+    counts = "".join(f"<a class='count b-{b}' href='#{b.replace('_', '-')}'><b>{len(by[b])}</b>"
+                     f"<span>{_label(b, tr)}</span></a>" for b in LABEL)
 
     q = cmap["queries"]
     kept_by_sub: dict[str, int] = {}
@@ -643,91 +691,100 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
         kept_by_sub[r["sub_category"]] = kept_by_sub.get(r["sub_category"], 0) + 1
     qrows = "".join(f"<tr><td>{E(x['query'])}</td><td>{E(x['parent'] or '—')}</td><td class='r num'>{x['relevant']}</td>"
                     f"<td class='r num'>{kept_by_sub.get(x['query'], 0)}</td>"
-                    f"<td>{'split further' if x['relevant'] < cmap['min_relevant'] else ''}</td></tr>"
+                    f"<td>{tr('report.split_further') if x['relevant'] < cmap['min_relevant'] else ''}</td></tr>"
                     for x in sorted(q, key=lambda x: ((x['parent'] or ''), x['query'])))
     dropped = "".join(f"<li>{E(r['name'])}: {E('; '.join(r['dropped_because']))}</li>" for r in cmap["dropped"])
     root = cmap.get("root") or category
     root_relevant = next((x["relevant"] for x in q if x["query"] == root), 0)
     split = any(x.get("parent") for x in q)
-    mapped = (f'One phrase in: "{E(root)}" matched only {root_relevant} trend{"" if root_relevant == 1 else "s"} '
-              "strongly, so it was split into sub-categories, and thin ones split once more" if split else
-              f'One phrase in: "{E(root)}" matched {root_relevant} trend{"" if root_relevant == 1 else "s"} strongly, '
-              "so it was not split")
+    mapped = tr(("report.mapped_split_one" if root_relevant == 1 else "report.mapped_split_many") if split else
+                ("report.mapped_whole_one" if root_relevant == 1 else "report.mapped_whole_many"),
+                root=E(root), n=root_relevant)
 
     bt_rows = ""
     for b in backtest_data:
         s = b["summary"]
-        bt_rows += "".join(f"<tr><td>{E(day(b['ref']))} · rule {E(b.get('rule', ''))}</td><td>{LABEL[k]}</td>"
+        bt_rows += "".join(f"<tr><td>{tr('report.backtest_ref', date=E(day(b['ref'], tr)), rule=E(b.get('rule', '')))}"
+                           f"</td><td>{_label(k, tr)}</td>"
                            f"<td class='r num'>{s[k]['n']}</td><td class='r num'>{s[k]['median_new']}</td>"
                            f"<td class='r num'>{round((s[k]['share_with_3plus'] or 0) * 100)}%</td></tr>" for k in LABEL)
     if not bt_rows:
-        bt_rows = "<tr><td colspan='5'>No backtest in this run.</td></tr>"
+        bt_rows = f"<tr><td colspan='5'>{tr('report.no_backtest')}</td></tr>"
 
     colour = {"act_now": "act", "still_rising": "rise", "too_late": "late", "past_peak": "past"}
     tables = "".join(
-        f"<section id='{b.replace('_', '-')}' style='--c:var(--{colour[b]})'><div class='sec-head'><h2>{LABEL[b]} · "
-        f"{len(by[b])}</h2><p>{BUCKET_NOTE[b]}</p></div>{pg.table(by[b], moved, picked)}</section>" for b in LABEL)
+        f"<section id='{b.replace('_', '-')}' style='--c:var(--{colour[b]})'><div class='sec-head'><h2>{_label(b, tr)} · "
+        f"{len(by[b])}</h2><p>{tr(NOTE_KEY[b])}</p></div>{pg.table(by[b], moved, picked)}</section>" for b in LABEL)
     n_hooks = sum(1 for t in gj["trends"] if t.get("kind") == "hook_trend")
     pool = ctx.get("hooks_pool", "")
-    hook_pool = (f"a hook among the {pool} rising hooks whose videos were read (the shortlist; "
-                 f"{pool + pg.hooks_not_read} listed)" if pg.hooks_not_read else f"a hook among all {pool} rising hooks")
+    hook_pool = (tr("report.hook_pool_read", pool=pool, listed=pool + pg.hooks_not_read) if pg.hooks_not_read
+                 else tr("report.hook_pool_all", pool=pool))
     outputs = report["outputs"]
-    nav = "".join(f"<a href='#{o}'>{E(VIEWS[o])}</a>" for o in outputs)
+    nav = "".join(f"<a href='#{o}'>{E(tr(VIEW_KEY[o]))}</a>" for o in outputs)
     cat = E(category)
 
-    still = (f'<section style="--c:var(--rise)"><div class="sec-head"><h2>Still rising: worth watching</h2>'
-             f'<p>{BUCKET_NOTE["still_rising"]}</p></div><div class="cards small">{small}</div></section>')
-    watch = (f'<section><div class="sec-head"><h2>Watch next</h2></div><p class="callout">'
+    still = (f'<section style="--c:var(--rise)"><div class="sec-head"><h2>{tr("report.still_heading")}</h2>'
+             f'<p>{tr(NOTE_KEY["still_rising"])}</p></div><div class="cards small">{small}</div></section>')
+    watch = (f'<section><div class="sec-head"><h2>{tr("report.watch_next")}</h2></div><p class="callout">'
              f'{E(picks.get("watch_next") or "")}</p></section>')
-    others = (f"<div class='small-print'><b>Also in 'act now' by the numbers, not recommended yet:</b><ul>{other}</ul>"
+    others = (f"<div class='small-print'><b>{tr('report.others')}</b><ul>{other}</ul>"
               "</div>" if other else "")
     if act:
-        lede = (f"{n_act.capitalize()} trend{'' if one else 's'} to act on now, what is still rising, and what to "
-                "leave out.")
-        act_html = (f'<section style="--c:var(--act)"><div class="sec-head"><h2>Act on '
-                    f'{"this one" if one else "these " + n_act}</h2>'
-                    f'<p>{BUCKET_NOTE["act_now"]} Ordered by fit to the {E(market)} market and room left in paid.</p>'
+        lede = tr("report.lede_one") if one else tr("report.lede_many", n=n_act.capitalize())
+        act_html = (f'<section style="--c:var(--act)"><div class="sec-head"><h2>'
+                    f'{tr("report.act_on_one") if one else tr("report.act_on_these", n=n_act)}</h2>'
+                    f'<p>{tr(NOTE_KEY["act_now"])} {tr("report.act_order", market=E(market))}</p>'
                     f'</div><div class="cards">{big}</div>{others}</section>')
         lead = act_html + lens + still + watch
     else:                                     # V15: one line, and the page leads with still rising
-        lede = NO_ACT_NOW
+        lede = tr("report.no_act_now")
         lead = still + watch + (f'<section style="--c:var(--act)">{others}</section>' if others else "") + lens
-    lede += (f" Each trend is placed against the rest of the {cat} sample: how fast new creators join it compared with a "
-             f"typical {cat} trend, how widely its views are spread, and how much reach its evidence has.")
+    lede += " " + tr("report.lede_sample", category=cat)
 
-    digest_view = (f'<div class="view" id="view-digest"><header><h1>Weekly digest: {cat}</h1><div class="meta">'
-                   f'<span>{E(picks["market"])}</span><span>this week vs the previous run</span></div></header>'
-                   f'{digest_html}</div>' if digest_html else "")
-    paid_view = (f'<div class="view" id="view-paid"><header><h1>Paid vs organic: {cat}</h1><div class="meta">'
-                 f'<span>{E(picks["market"])}</span><span>Meta Ad Library, active ads</span></div></header>'
-                 f'<section>{pg.paid_view(picks.get("paid_reading") or [])}</section></div>' if "paid" in outputs else "")
+    digest_view = (f'<div class="view" id="view-digest"><header><h1>{tr("report.digest_title", category=cat)}</h1>'
+                   f'<div class="meta"><span>{E(picks["market"])}</span><span>{tr("report.digest_meta")}</span></div>'
+                   f'</header>{digest_html}</div>' if digest_html else "")
+    paid_view = (f'<div class="view" id="view-paid"><header><h1>{tr("report.paid_title", category=cat)}</h1>'
+                 f'<div class="meta"><span>{E(picks["market"])}</span><span>{tr("report.paid_meta")}</span></div>'
+                 f'</header><section>{pg.paid_view(picks.get("paid_reading") or [])}</section></div>'
+                 if "paid" in outputs else "")
     css = CSS_FILE.read_text(encoding="utf-8")
-    paid_note = (f'Paid check: Meta Ad Library, active {E(market)} ads, titles only, so "none found" means none in '
-                 'titles, not "not in ads".' if pg.paid_checked else
-                 f"Paid check: Meta Ad Library was not checked in this run, so every paid verdict is \"not checked\".")
-    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{E(category[:1].upper() + category[1:])} Trend Report</title>
+    paid_note = (tr("report.paid_note_checked", market=E(market)) if pg.paid_checked else
+                 tr("report.paid_note_unchecked"))
+    title = tr("report.page_title", category=E(category[:1].upper() + category[1:]))
+    meta = (f"<span>{tr('report.meta_market', market=E(picks['market']))}</span>"
+            f"<span>{tr('report.meta_as_of', date=E(day(picks['as_of'], tr)))}</span>"
+            f"<span>{tr('report.meta_mapped', topics=len(gj['trends']) - n_hooks, hooks=n_hooks)}</span>"
+            f"<span>{tr('report.meta_source')}</span>")
+    sample = tr("report.sample", window=p['window'], ref=E(day(p['ref'], tr)), active=ctx.get('creators_active'),
+                trends=ctx.get('trends'), category=cat,
+                platforms=E(', '.join(report['sample']['platforms']) or tr('report.unknown_platform')),
+                median=ctx.get('median_new'), hook_pool=hook_pool)
+    mapped_note = tr("report.mapped_note", mapped=mapped, min_match=format(cmap['min_match'], "g"), category=cat)
+    footer = tr("report.footer", date=E(day(p['as_of'], tr)), paid_note=paid_note, valid_until=E(valid_until))
+    return f"""<!DOCTYPE html><html lang="{E(i18n.html_lang(tr.lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
 <style>{css}</style></head><body><main>
-<nav class="views" aria-label="Views">{nav}</nav>
+<nav class="views" aria-label="{E(tr('report.nav_label'))}">{nav}</nav>
 <div class="view" id="view-report">
-<header><h1>What is moving in {cat}</h1>
-<div class="meta"><span>Market: {E(picks['market'])}</span><span>As of {E(day(picks['as_of']))}</span><span>{len(gj['trends']) - n_hooks} topics + {n_hooks} hooks mapped</span><span>Source: TrendsMesh evidence videos, Meta Ad Library</span></div>
+<header><h1>{tr('report.h1', category=cat)}</h1>
+<div class="meta">{meta}</div>
 <p class="lede">{lede}</p>
 <div class="counts">{counts}</div>
-<p class="sample"><b>The sample.</b> In the {p['window']} days to {E(day(p['ref']))}, {ctx.get('creators_active')} creators joined one of the {ctx.get('trends')} mapped {cat} trends in TrendsMesh evidence ({E(', '.join(report['sample']['platforms']) or 'unknown platform')} only). A typical active trend gained {ctx.get('median_new')} of them; "2×" means twice that. Bands rank a topic among {cat} topics and {hook_pool}. Raw counts sit under each card.</p></header>
+<p class="sample"><b>{tr('report.sample_head')}</b> {sample}</p></header>
 {lead}
-<section><div class="sec-head"><h2>Moved by review</h2><p>The numbers put these in one stage; reading the evidence moved them.</p></div><ul class="moves">{moves}</ul></section>
+<section><div class="sec-head"><h2>{tr('report.moved_heading')}</h2><p>{tr('report.moved_note')}</p></div><ul class="moves">{moves}</ul></section>
 {tables}
-<section><div class="sec-head"><h2>How the category was mapped</h2><p>{mapped} (relevant = search match score ≥ {cmap['min_match']:g}). Hooks were kept when their evidence videos are about {cat}.</p></div>
-<div class="tw"><table><tr><th>Search</th><th>Parent</th><th class="r">Relevant results</th><th class="r">Trends kept here</th><th></th></tr>{qrows}</table></div>
-<details><summary>Left out ({len(cmap['dropped'])}) and why</summary><ul class="small-print">{dropped}</ul></details></section>
-<section><div class="sec-head"><h2>How sure are we</h2><p>Backtest: stages computed with the evidence known on a past date, then the new creators that joined in the next 14 days. A good rule puts more growth in "act now" than in "past its peak".</p></div>
-<div class="tw"><table><tr><th>Reference date</th><th>Stage then</th><th class="r">Trends</th><th class="r">Median new creators after</th><th class="r">Share with 3+ new</th></tr>{bt_rows}</table></div>
-<p class="small-print">Limits: evidence is a sample; most trends have 5–50 creators, so single weeks are noisy. Trends that ended before today are not in the pool, which flatters every stage. A trend whose views come mostly from one account is not counted as spreading, however many creators it has. "Too late" includes crowded trends that still add creators: they grow, but there is little room left. When the stage rule was calibrated, the growth ratio alone did not predict anything; the count of new creators and how recently they posted did.</p></section>
+<section><div class="sec-head"><h2>{tr('report.mapped_heading')}</h2><p>{mapped_note}</p></div>
+<div class="tw"><table><tr><th>{tr('report.col_search')}</th><th>{tr('report.col_parent')}</th><th class="r">{tr('report.col_relevant')}</th><th class="r">{tr('report.col_kept')}</th><th></th></tr>{qrows}</table></div>
+<details><summary>{tr('report.left_out', n=len(cmap['dropped']))}</summary><ul class="small-print">{dropped}</ul></details></section>
+<section><div class="sec-head"><h2>{tr('report.sure_heading')}</h2><p>{tr('report.backtest_note')}</p></div>
+<div class="tw"><table><tr><th>{tr('report.col_ref_date')}</th><th>{tr('report.col_stage_then')}</th><th class="r">{tr('report.col_trends')}</th><th class="r">{tr('report.col_median_after')}</th><th class="r">{tr('report.col_share_3')}</th></tr>{bt_rows}</table></div>
+<p class="small-print">{tr('report.limits')}</p></section>
 </div>
 {digest_view}
 {paid_view}
-<footer class="small-print">Built by the TrendsMesh trend-research playbook. Trend data: TrendsMesh, {E(day(p['as_of']))}. {paid_note} Valid until {E(valid_until)}.</footer>
+<footer class="small-print">{footer}</footer>
 </main>
 {SCRIPT}
 </body></html>"""

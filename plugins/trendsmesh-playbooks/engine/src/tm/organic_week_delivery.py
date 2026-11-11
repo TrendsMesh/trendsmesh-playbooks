@@ -23,7 +23,7 @@ import copy
 import json
 from pathlib import Path
 
-from tm import brand, manifest, organic_week, runfolder, state, stepchecks, trend_spool
+from tm import brand, i18n, manifest, organic_week, runfolder, state, stepchecks, trend_spool
 from tm.organic_week import DELIVERY, PLAN_STEM, RESULTS, _text, day_date
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
@@ -62,22 +62,17 @@ def _script_md(prod: RunFolder, script: dict) -> Path:
     return md
 
 
-WORDS = {
-    "en": {"title": "{title}: the week's videos, scripts and posting kits",
-           "lede": ("Every video and script of the week, each with its posting kit, in posting order. Download each video "
-                    "and cover, or the script to film, with the Download buttons; the posting plan says when and where "
-                    "to post each one."),
-           "eyebrow": "{day} {date} · {time}", "label": "“{title}”", "q_video": "Watch the video and check the texts.",
-           "q_script": "Read the script you film, and check the texts.", "cap_script": "Script to film",
-           "dl_script": "script (.md)", "plan": "Posting plan", "none": "nothing to post"},
-    "pl": {"title": "{title}: filmy, skrypty i zestawy do publikacji z tego tygodnia",
-           "lede": ("Każdy film i skrypt tygodnia z zestawem do publikacji, w kolejności publikacji. Film i okładkę albo "
-                    "skrypt do nagrania pobierzesz przyciskami „Pobierz”; plan publikacji mówi, kiedy i gdzie wrzucić "
-                    "każdy z nich."),
-           "eyebrow": "{day} {date} · {time}", "label": "„{title}”", "q_video": "Obejrzyj film i sprawdź opisy.",
-           "q_script": "Przeczytaj skrypt do nagrania i sprawdź opisy.", "cap_script": "Skrypt do nagrania",
-           "dl_script": "skrypt (.md)", "plan": "Plan publikacji", "none": "nic do publikacji"},
-}
+# The page's and the posting plan's words and the keys they are read from (organic.week_delivery.*).
+WORDS = {name: f"organic.week_delivery.{name}" for name in (
+    "title", "lede", "eyebrow", "label", "q_video", "q_script", "cap_script", "dl_script", "plan", "none")}
+
+
+def words(lang) -> dict[str, str]:
+    """`WORDS` in `lang` (placeholders unfilled)."""
+    from tm.organic_pages import translator
+
+    tr = translator(lang)
+    return {name: tr(key) for name, key in WORDS.items()}
 
 
 def _caption(platform: str, block: dict) -> str:
@@ -95,9 +90,12 @@ def deliver(run: RunFolder) -> dict:
     from tm.organic_pages import gate as gate_page, lang_of, script as script_page, week as week_page
 
     _, week_rel, week = organic_week.checked_week(run)
-    lang = lang_of(week)
-    t = WORDS[lang]
-    days = dict(zip(organic_week.WEEKDAYS, week_page.T[lang]["days"]))
+    # the page's words are in the language it is built in; the data keeps the week's lang (the run's working
+    # language), so gate_page.build says when that language's table is missing
+    built = lang_of(week)
+    lang = i18n.tag(week.get("lang")) or built
+    t = words(built)
+    days = dict(zip(organic_week.WEEKDAYS, week_page.labels(built)["days"]))
     slot_of = {organic_week.DAY[str(s["day"])]: s for s in week["slots"]}
     slots = organic_week.slot_runs(run)
     if not slots:

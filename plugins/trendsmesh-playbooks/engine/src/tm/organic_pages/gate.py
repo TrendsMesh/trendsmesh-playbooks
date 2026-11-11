@@ -20,7 +20,10 @@ The port keeps the original's HTML byte for byte, up to the wording table (`orga
   name (`page.asset_name`); two different files of one name get `2_`, `3_` … before the later ones (the original's
   `put` kept the first and showed it twice);
 - the page's script data cannot be ended by `</` or turned by `<!--`; nothing is built while people decide on
-  the page (`page.Deciding`).
+  the page (`page.Deciding`);
+- the original's Polish table is the string table's `organic.gate.*` keys (`FRAGS`, `localize`), with the kit's
+  pinned and first comment, which it left in English: the page is built in any language whose table has them
+  (`organic_pages.page_lang` of the data's `lang`), else in English with a warning.
 """
 
 from __future__ import annotations
@@ -31,8 +34,8 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import json_schema, manifest, page as pages, stepchecks
-from tm.organic_pages import lang_of, worded
+from tm import i18n, json_schema, manifest, organic_pages, page as pages, stepchecks
+from tm.organic_pages import Frag
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -223,37 +226,38 @@ def kit_html(it_id: str, kit: dict) -> str:
     return "".join(out)
 
 
-PL = [
-    ('Organic AI video · gate: images', 'Organiczne wideo AI · bramka: obraz'), ('Organic AI video · gate: video', 'Organiczne wideo AI · bramka: wideo'),
-    ('Organic AI video · gate: edit', 'Organiczne wideo AI · bramka: finalny montaż'), ('Organic AI video · gate: ', 'Organiczne wideo AI · bramka: '), ('aria-label="Your decisions"', 'aria-label="Twoje decyzje"'),
-    ('>Accept the rest<', '>Akceptuj resztę<'),
-    ('Pick an option where there is a choice, then Accept, Redo (write what to change) or Drop. Choices save as you click; write “ready” to Claude in the chat when done.',
-     'Wybierz opcję tam, gdzie jest wybór, potem Akceptuj, Popraw (napisz, co zmienić) albo Odrzuć. Wybory zapisują się od razu; gdy skończysz, napisz w czacie „gotowe”.'),
-    ('Agent’s pick', 'Wybór agenta'), ('>Accept<', '>Akceptuj<'), ('>Redo<', '>Popraw<'), ('>Drop<', '>Odrzuć<'),
-    ('<span class="lbl">Decision</span>', '<span class="lbl">Decyzja</span>'), ('aria-label="Decision for ', 'aria-label="Decyzja dla '),
-    ('<span class="lbl">Post to</span>', '<span class="lbl">Publikuj na</span>'), ('>Make a YouTube thumbnail<', '>Zrób miniaturę YouTube<'),
-    ('<h3>Posting kit</h3>', '<h3>Zestaw do publikacji</h3>'), ('>Copy</button>', '>Kopiuj</button>'),
-    ('Note for Claude (what to change on Redo)', 'Uwaga dla Claude (co zmienić przy „Popraw”)'), ('>Run folder: ', '>Folder runu: '),
-    ('<span class="k">Title ', '<span class="k">Tytuł '), ('<span class="k">Caption ', '<span class="k">Opis '), ('<span class="k">Description ', '<span class="k">Opis '),
-    ('<span class="k">Hashtags ', '<span class="k">Hashtagi '), ('<span class="k">Cover ', '<span class="k">Okładka '), ('<span class="k">AI label ', '<span class="k">Etykieta AI '),
-    ('<span class="k">Sound ', '<span class="k">Dźwięk '), ('<span class="k">Product mention ', '<span class="k">Wzmianka o produkcie '),
-    ("`<span><b>${n.accept}</b> accepted</span><span>${n.redo} redo · ${n.drop} dropped · ${open} open</span>`", "`<span><b>${n.accept}</b> zaakceptowane</span><span>${n.redo} do poprawy · ${n.drop} odrzucone · ${open} otwarte</span>`"),
-    ("'Saved in this browser only'", "'Zapisane tylko w tej przeglądarce'"), ("'Saving…'", "'Zapisuję…'"), ("'Saved · Claude can read your choices'", "'Zapisane · Claude widzi Twoje wybory'"),
-    ("'Could not save to the page; kept in this browser'", "'Nie udało się zapisać na stronie; zostaje w tej przeglądarce'"), ("'Copied'", "'Skopiowane'"), ("'Copy'", "'Kopiuj'"), ("'Blocked'", "'Zablokowane'"),
-    ("'Choices are kept in this browser until the page connects…'", "'Wybory zostają w tej przeglądarce, dopóki strona się nie połączy…'"),
-    ("'Ready · your choices save automatically'", "'Gotowe · wybory zapisują się automatycznie'"), ("'Page storage not reachable; choices kept in this browser'", "'Brak dostępu do zapisu strony; wybory zostają w tej przeglądarce'"),
-    ('>⬇ Download ', '>⬇ Pobierz '), ("'✓ Saved'", "'✓ Zapisano'"), ("'✕ Download failed'", "'✕ Nie udało się pobrać'"),
-    ('<html lang="en">', '<html lang="pl">'),
+# The page's fixed fragments in another language (the original's Polish table, keyed, in its order), each the
+# plugin's English (after `WORDING`) -> the same in the page language.
+_G = "organic.gate."
+FRAGS: list[Frag] = [
+    Frag("§", _G + "eyebrow_images"), Frag("§", _G + "eyebrow_video"), Frag("§", _G + "eyebrow_edit"),
+    Frag('aria-label="§"', "organic.your_decisions"),
+    Frag(">§<", _G + "accept_rest"),
+    Frag("§", _G + "note"),
+    Frag("<span class=pick>§</span>", _G + "agent_pick"), Frag(">§<", _G + "accept"), Frag(">§<", _G + "redo"),
+    Frag(">§<", _G + "drop"),
+    Frag('<span class="lbl">§</span>', "organic.decision"), Frag('aria-label="§ ', "organic.decision_for"),
+    Frag('<span class="lbl">§</span>', "organic.post_to"), Frag(">§<", _G + "make_thumbnail"),
+    Frag("<h3>§</h3>", "organic.kit.posting_kit"), Frag(">§</button>", "organic.copy"),
+    Frag("§", _G + "note_label"), Frag(">§ ", "organic.run_folder"),
+    *(Frag('<span class="k">§ ', f"organic.kit.{k}") for k in (
+        "title", "caption", "description", "hashtags", "cover", "ai_label", "sound", "product", "pinned_comment",
+        "first_comment")),
+    Frag("`<span><b>${n.accept}</b> §0</span><span>${n.redo} §1 · ${n.drop} §2 · ${open} §3</span>`",
+         (_G + "sum_accepted", _G + "sum_redo", _G + "sum_dropped", _G + "sum_open"), "tpl"),
+    Frag("'§'", "organic.not_saved", "js"), Frag("'§'", "organic.saving", "js"), Frag("'§'", "organic.saved", "js"),
+    Frag("'§'", _G + "save_failed", "js"), Frag("'§'", "organic.copied", "js"), Frag("'§'", "organic.copy", "js"),
+    Frag("'§'", _G + "blocked", "js"),
+    Frag("'§'", "organic.connecting", "js"), Frag("'§'", "organic.ready", "js"),
+    Frag("'§'", "organic.storage_unreachable", "js"),
+    Frag(">⬇ § ", _G + "download"), Frag("'§'", "organic.saved_check", "js"),
+    Frag("'§'", "organic.download_failed", "js"),
 ]
 
 
-
-def localize(page: str, lang: str) -> str:
-    if lang != "pl":
-        return page
-    for a, b in PL:
-        page = page.replace(a, b)
-    return page
+def localize(page: str, lang) -> str:
+    """The page in `lang` (`organic_pages.localize`)."""
+    return organic_pages.localize(page, lang, FRAGS)
 
 
 def _script(value) -> str:
@@ -302,6 +306,12 @@ def render(data: dict, put) -> str:
 <script>window.__ITEMS__ = {_script(meta)}; window.__GATE__ = {_script(gate)}; window.__RUN_ID__ = {_script(Path(data['run']).name)};</script>
 <script>{JS}</script></body></html>""")
     return "".join(out)
+
+
+def page_html(data: dict, put) -> tuple[str, i18n.PageLang]:
+    """The page as built, and the language it is built in (`organic_pages.page_lang` of its data)."""
+    built = organic_pages.page_lang(data)
+    return localize(render(data, put), built.lang), built
 
 
 # --- building it in the run ------------------------------------------------------------------------
@@ -370,7 +380,8 @@ def build(run: RunFolder, data: dict, *, page: str) -> dict:
     """Build `page` from its data into a new `04_final/<page>_vNN/` (index.html, media/), and keep the data it was
     built from in `03_wip/gates/<page>_vNN.json`. Nothing is written while people decide on the page
     (`page.Deciding`), for data that is not in the handoff's shape, for a video shown over 15 MB or for files over
-    the Artifact tool's limits (each a Stop). Returns {folder, files, data, lang}."""
+    the Artifact tool's limits (each a Stop). Returns {folder, files, data, lang, language_warning}: the language it is
+    built in, and why when that is English and not the data's `lang` (`organic_pages.page_lang`)."""
     check_page(page)
     if pages.awaiting(run, page) is not None:
         raise pages.Deciding(page, read=READ_WITH.format(page=page))
@@ -387,8 +398,8 @@ def build(run: RunFolder, data: dict, *, page: str) -> dict:
         raise Stop(f"{', '.join(big)} {'is' if len(big) == 1 else 'are'} over 15 MB, too big to play on the page. "
                    "Make a 720p preview first (tm tool deliver preview --run <run> <video>), then build the page "
                    f"again: it shows the preview. Nothing was written; {AGAIN}.")
-    lang = lang_of(data)
-    text = worded(localize(render(data, lambda src: f"media/{names[src][0]}"), lang), lang)
+    text, built = page_html(data, lambda src: f"media/{names[src][0]}")
+    lang = built.lang
     planned = {"index.html": len(text.encode("utf-8"))} | {f"media/{n}": p.stat().st_size for n, p in names.values()}
     over = pages.over_limits(planned)
     if over:
@@ -410,4 +421,5 @@ def build(run: RunFolder, data: dict, *, page: str) -> dict:
     if isinstance(final, str) and (run.path / final).is_file():
         params |= {"final": final, "final_sha256": stepchecks.sha256(run.path / final)}
     manifest.record(run, out_rel, pages.FINAL, f"{SOURCE} {page}", parent=kept_rel, params=params)
-    return {"folder": out_rel, "files": pages.files(out), "data": kept_rel, "lang": lang}
+    return {"folder": out_rel, "files": pages.files(out), "data": kept_rel, "lang": lang,
+            "language_warning": built.warning}

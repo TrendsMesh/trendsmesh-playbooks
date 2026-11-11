@@ -5,11 +5,13 @@ on it.
     take_decisions(run, *, file, text)          03_wip/decisions_week_vNN.json from the page's db or chat
     built_gap(run)                              the step check `week_page_built`
 
-The port keeps the original's HTML byte for byte, up to the wording table (`organic_pages.WORDING`): the ExampleEdu walkthrough's
+The port keeps the original's HTML byte for byte, up to the plugin's wording (`organic_pages.WORDING`): the ExampleEdu walkthrough's
 week, made by the reference tool under Python 3.12, is rebuilt exactly (fixtures/organic/README.md, week_golden.html). Its
 changes:
 - `lang` is required (the reference tool defaults to Polish): the week check (`organic_week.check`) asks for the run's
-  page language, and `render` refuses a week without en or pl;
+  working language, and `render` refuses a week without one. The original's two tables (`T`) are the string table's
+  `organic.week.*` keys (`labels`): the page is built in any language whose table has them
+  (`organic_pages.page_lang`), else in English with a warning; each label is escaped where it sits;
 - the planned file is checked against the Artifact tool's limits (`page.over_limits`) before it is written, and nothing
   is built while people decide on the page (`page.Deciding`);
 - no backslash inside an f-string expression (Python 3.11), and the page's script data cannot be ended by `</` or
@@ -41,8 +43,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import manifest, organic_week, page, state, stepchecks
-from tm.organic_pages import worded
+from tm import i18n, manifest, organic_pages, organic_week, page, state, stepchecks
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -58,32 +59,34 @@ EMPTY = ("Nothing was saved on the week page. Ask the user in chat; a decision w
 
 DAY_KEYS = ["pon", "wt", "śr", "czw", "pt", "sob", "niedz"]  # slot keys in week.json (also accepted: mon..sun)
 DAY_EN = {"mon": "pon", "tue": "wt", "wed": "śr", "thu": "czw", "fri": "pt", "sat": "sob", "sun": "niedz"}
-T = {
-    "pl": dict(days=["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"], risk={"low": "niskie", "medium": "średnie", "high": "wysokie"},
-               prod="Produkcja: ", trend="Trend: ", risk_l="Ryzyko: ", of="z", sum_v="wideo AI", sum_s="skrypty", sum_k="pominięte",
-               approve="Zatwierdź tydzień", approved="✓ Tydzień zatwierdzony", local="Zapisane tylko w tej przeglądarce", saved="Zapisane · Claude widzi Twoje wybory",
-               save_err="Nie udało się zapisać na stronie; zostaje w tej przeglądarce", wait="Wybory zostają w tej przeglądarce, dopóki strona się nie połączy…",
-               ready="Gotowe · wybory zapisują się automatycznie", no_db="Brak dostępu do zapisu strony; wybory zostają w tej przeglądarce",
-               reserve=" (rezerwa)", video="Wideo AI", script="Skrypt", ok="OK", skip="Pomiń", decision="Decyzja", swap="Zamień pomysł",
-               note="Uwaga do tego filmu (opcjonalnie)", note_l="Uwaga", empty="bez publikacji",
-               res_cost="Koszt: wideo ${v} · skrypt ${s}. Wybierz go w „Zamień pomysł” przy dowolnym dniu.",
-               eyebrow="Organiczne wideo AI · pakiet tygodniowy · ", meta="{n} filmów w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień.",
-               bar="Budżet i zatwierdzenie", over="Plan przekracza budżet: zmień jakiś film na skrypt, zamień go na tańszy pomysł albo pomiń.",
-               help="Przy każdym dniu wybierz „Wideo AI” albo „Skrypt” (nagrasz sam, $0), zamień pomysł na inny z listy albo go pomiń. „Zatwierdź tydzień” uruchamia produkcję całego tygodnia; potem dostaniesz jedną stronę z gotowymi filmami, skryptami i zestawami do publikacji.",
-               cal="Kalendarz tygodnia", res="Pomysły w rezerwie", run="Folder runu: "),
-    "en": dict(days=["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], risk={"low": "low", "medium": "medium", "high": "high"},
-               prod="Production: ", trend="Trend: ", risk_l="Risk: ", of="of", sum_v="AI video", sum_s="scripts", sum_k="skipped",
-               approve="Approve the week", approved="✓ Week approved", local="Saved in this browser only", saved="Saved · Claude sees your choices",
-               save_err="Could not save on the page; kept in this browser", wait="Choices stay in this browser until the page connects…",
-               ready="Ready · choices save automatically", no_db="No access to page storage; choices stay in this browser",
-               reserve=" (reserve)", video="AI video", script="Script", ok="OK", skip="Skip", decision="Decision", swap="Swap idea",
-               note="Note for this video (optional)", note_l="Note", empty="no post",
-               res_cost="Cost: video ${v} · script ${s}. Pick it in “Swap idea” on any day.",
-               eyebrow="Organic AI video · weekly pack · ", meta="{n} videos this week · posting to: {pf} · production: {rh} · budget ${b} for the whole week.",
-               bar="Budget and approval", over="The plan is over budget: switch a video to a script, swap it for a cheaper idea, or skip it.",
-               help="For each day pick “AI video” or “Script” (you film it, $0), swap the idea for another one from the list, or skip it. “Approve the week” starts production of the whole week; then you get one page with the finished videos, scripts and posting kits.",
-               cal="Week calendar", res="Reserve ideas", run="Run folder: "),
-}
+_W = "organic.week."
+DAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+# The page's labels (`window.__L__`, in this order) and the keys they are read from; a label the original writes
+# with a space beside it gets the space here, so the string table holds the words alone.
+LABELS = {"risk": {"low": _W + "risk_low", "medium": _W + "risk_medium", "high": _W + "risk_high"},
+          "prod": (_W + "production", "{} "), "trend": (_W + "trend", "{} "), "risk_l": (_W + "risk", "{} "),
+          "of": _W + "of", "sum_v": _W + "sum_video", "sum_s": _W + "sum_scripts", "sum_k": _W + "sum_skipped",
+          "approve": _W + "approve", "approved": _W + "approved", "local": "organic.not_saved", "saved": _W + "saved",
+          "save_err": _W + "save_failed", "wait": _W + "connecting", "ready": _W + "ready", "no_db": _W + "no_db",
+          "reserve": (_W + "reserve", " ({})"), "video": _W + "video", "script": _W + "script", "ok": _W + "ok",
+          "skip": _W + "skip", "decision": "organic.decision", "swap": _W + "swap", "note": _W + "note",
+          "note_l": _W + "note_label", "empty": _W + "empty", "res_cost": _W + "reserve_cost",
+          "eyebrow": (_W + "eyebrow", "{} · "), "meta": _W + "meta", "bar": _W + "bar", "over": _W + "over",
+          "help": _W + "help", "cal": _W + "calendar", "res": _W + "reserves", "run": ("organic.run_folder", "{} ")}
+
+
+def labels(lang) -> dict:
+    """The page's words in `lang`: `days` (Monday first) and `LABELS` (placeholders unfilled)."""
+    tr = organic_pages.translator(lang)
+
+    def word(spec):
+        if isinstance(spec, dict):
+            return {k: word(v) for k, v in spec.items()}
+        key, shape = spec if isinstance(spec, tuple) else (spec, "{}")
+        return shape.replace("{}", tr(key))
+    return {"days": [tr(f"{_W}day_{d}") for d in DAYS], **{name: word(spec) for name, spec in LABELS.items()}}
+
+
 PF = {"tiktok": "TikTok", "instagram": "Instagram", "youtube": "YouTube", "facebook": "Facebook"}
 
 
@@ -196,25 +199,29 @@ JS = r"""
 """
 
 
-def card(slot: str, s: dict, all_ideas: list, L: dict) -> str:
-    opts = "".join(f'<option value="{esc(i["id"])}">{esc(i["title"])}{L["reserve"] if i["id"].startswith("r") else ""}</option>' for i in all_ideas)
-    out = "".join(f'<label><input type="radio" name="o-{slot}" value="{v}"><span>{t}</span></label>' for v, t in (("video", L["video"]), ("script", L["script"])))
-    dec = "".join(f'<label><input type="radio" name="d-{slot}" value="{v}"><span>{t}</span></label>' for v, t in (("ok", L["ok"]), ("skip", L["skip"])))
+def card(slot: str, s: dict, all_ideas: list, L: dict, output: str = "Output") -> str:
+    """One day's card; `L` the page's labels (`labels`), `output` the name of its output choice."""
+    opts = "".join(f'<option value="{esc(i["id"])}">{esc(i["title"])}{esc(L["reserve"]) if i["id"].startswith("r") else ""}</option>' for i in all_ideas)
+    out = "".join(f'<label><input type="radio" name="o-{slot}" value="{v}"><span>{esc(t)}</span></label>' for v, t in (("video", L["video"]), ("script", L["script"])))
+    dec = "".join(f'<label><input type="radio" name="d-{slot}" value="{v}"><span>{esc(t)}</span></label>' for v, t in (("ok", L["ok"]), ("skip", L["skip"])))
     return f"""<div class="card" id="c-{slot}"><div class="fmt"></div><div class="t"></div><p class="why"></p>
 <div class="chips"><span class="chip risk"></span><span class="chip">{esc(s['time'])}</span></div>
 <p class="small prod"></p><p class="small ev"></p>
-<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="seg" role="radiogroup" aria-label="Output">{out}</span><span class="cost"></span></div>
-<span class="seg" role="radiogroup" aria-label="{L['decision']}">{dec}</span>
-<label class="small">{L['swap']}<select data-slot="{slot}" aria-label="{L['swap']}">{opts}</select></label>
-<textarea rows="1" placeholder="{L['note']}" aria-label="{L['note_l']}"></textarea></div>"""
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="seg" role="radiogroup" aria-label="{esc(output)}">{out}</span><span class="cost"></span></div>
+<span class="seg" role="radiogroup" aria-label="{esc(L['decision'])}">{dec}</span>
+<label class="small">{esc(L['swap'])}<select data-slot="{slot}" aria-label="{esc(L['swap'])}">{opts}</select></label>
+<textarea rows="1" placeholder="{esc(L['note'])}" aria-label="{esc(L['note_l'])}"></textarea></div>"""
 
 
-def render(week: dict) -> str:
-    """The original's `render`, on a copy of the week, with `lang` required (en or pl): a ValueError without it."""
+def render(week: dict, lang: str | None = None) -> str:
+    """The original's `render`, on a copy of the week, in `lang` (else the language it is built in,
+    `organic_pages.lang_of`); the week's `lang` is required: a ValueError without it."""
     w = copy.deepcopy(week)
-    if w.get("lang") not in T:
-        raise ValueError(f"The week page's language is en or pl, and the week's lang is {w.get('lang')!r}.")
-    L = T[w["lang"]]
+    if i18n.tag(w.get("lang")) is None:
+        raise ValueError(f"The week page is built in the week's lang, a language tag (en or pl, or another whose "
+                         f"table is translated: tm i18n), and its lang is {w.get('lang')!r}.")
+    tr = organic_pages.translator(lang or organic_pages.lang_of(w))
+    L = labels(tr)
     for s in w["slots"]:
         s["day"] = DAY_EN.get(s["day"], s["day"])
     by_day = {s["day"]: s for s in w["slots"]}
@@ -224,33 +231,39 @@ def render(week: dict) -> str:
     cal = []
     for key, name in zip(DAY_KEYS, L["days"]):
         s = by_day.get(key)
-        body = card(key, s, ideas, L) if s else f'<div class="empty">{L["empty"]}</div>'
+        body = card(key, s, ideas, L, tr("organic.output")) if s else f'<div class="empty">{esc(L["empty"])}</div>'
         date = s["date"] if s else ""
-        cal.append(f'<div class="day"><div class="dh">{name}<span>{esc(date)}</span></div>{body}</div>')
+        cal.append(f'<div class="day"><div class="dh">{esc(name)}<span>{esc(date)}</span></div>{body}</div>')
     res = "".join(f'<div class="card"><div class="fmt">{esc(r["format"])}</div><div class="t">{esc(r["title"])}</div><p class="why">{esc(r["why"])}</p>'
                   f'<p class="small">{esc(L["res_cost"].replace("{v}", format(r["cost_video"], ".2f")).replace("{s}", format(r["cost_script"], ".2f")))}</p></div>' for r in w["reserves"])
     ideas_js = {i["id"]: {k: i[k] for k in ("title", "format", "why", "trend", "evidence", "cost_video", "cost_script", "production", "risk")} for i in ideas}
     pfs = " · ".join(PF[p] for p in w["platforms"])
-    labels = _script({k: L[k] for k in L if k != "days"})
+    labels_js = _script({k: L[k] for k in L if k != "days"})
     week_js = _script(dict(week=w['week'], budget=w['budget'], slots=[dict(slot=s['slot'], id=s['id'], output=s.get('output', 'video')) for s in w['slots']], reserves=[]))
     ideas_text = _script(ideas_js)
-    return f"""<!DOCTYPE html><html lang="{esc(w['lang'])}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    return f"""<!DOCTYPE html><html lang="{esc(i18n.html_lang(tr.lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(w['title'])}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class="wrap">
-<header style="display:grid;gap:8px"><div class="eyebrow">{L['eyebrow']}{esc(w['channel'])}</div><h1>{esc(w['title'])}</h1>
+<header style="display:grid;gap:8px"><div class="eyebrow">{esc(L['eyebrow'])}{esc(w['channel'])}</div><h1>{esc(w['title'])}</h1>
 <p class="meta">{esc(L['meta'].format(n=len(w['slots']), pf=pfs, rh=w['rhythm'], b=format(w['budget'], '.2f')))}</p>
 <p class="meta" style="font-size:14px">{esc(w.get('note',''))}</p></header>
-<div class="bar" role="region" aria-label="{L['bar']}"><div class="brow"><span class="sum" id="sum"></span><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="approve" type="button">{L['approve']}</button><span class="status" id="st" aria-live="polite"></span></span></div>
-<div class="meter" id="meter"><i></i></div><p class="small" id="over" hidden>{L['over']}</p>
-<p class="small">{L['help']}</p></div>
-<section style="display:grid;gap:10px"><h2>{L['cal']}</h2><div class="cal">{''.join(cal)}</div></section>
-<section style="display:grid;gap:10px"><h2>{L['res']}</h2><div class="res">{res}</div></section>
-<p class="small">{L['run']}{esc(w['run'])}</p></div>
-<script>window.__L__ = {labels};
+<div class="bar" role="region" aria-label="{esc(L['bar'])}"><div class="brow"><span class="sum" id="sum"></span><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="approve" type="button">{esc(L['approve'])}</button><span class="status" id="st" aria-live="polite"></span></span></div>
+<div class="meter" id="meter"><i></i></div><p class="small" id="over" hidden>{esc(L['over'])}</p>
+<p class="small">{esc(L['help'])}</p></div>
+<section style="display:grid;gap:10px"><h2>{esc(L['cal'])}</h2><div class="cal">{''.join(cal)}</div></section>
+<section style="display:grid;gap:10px"><h2>{esc(L['res'])}</h2><div class="res">{res}</div></section>
+<p class="small">{esc(L['run'])}{esc(w['run'])}</p></div>
+<script>window.__L__ = {labels_js};
 window.__WEEK__ = {week_js};
 (function(){{ const I = {ideas_text}; window.__WEEK__.slots.forEach(s => Object.assign(s, I[s.id], {{id: s.id}})); window.__WEEK__.reserves = Object.keys(I).filter(k => !window.__WEEK__.slots.some(s => s.id === k)).map(k => Object.assign({{id: k}}, I[k])); }})();</script>
 <script>{JS}</script></body></html>"""
+
+
+def page_html(week: dict) -> tuple[str, i18n.PageLang]:
+    """The page as built, and the language it is built in (`organic_pages.page_lang` of the week)."""
+    built = organic_pages.page_lang(week)
+    return render(week, built.lang), built
 
 
 # --- building it in the run ------------------------------------------------------------------------
@@ -273,7 +286,7 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
         raise Stop(f"{_rel(run, file)} is not the checked week plan ({rel}): check it first (tm organic week check), "
                    f"then build the page from it; {AGAIN}.")
     try:
-        text = worded(render(week), week["lang"])
+        text, built = page_html(week)
     except (KeyError, ValueError, TypeError) as exc:   # the file's shape
         raise Stop(f"{rel} is not in the page's shape ({type(exc).__name__}: {exc}); check it again (tm organic week "
                    f"check); {AGAIN}.") from None
@@ -286,8 +299,9 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
         fh.write(text)
     out_rel = out.relative_to(run.path).as_posix()
     manifest.record(run, out_rel, page.FINAL, SOURCE, parent=rel,
-                    params={"week_sha256": stepchecks.sha256(path), "lang": week["lang"]})
-    return {"folder": out_rel, "files": page.files(out), "week": rel, "lang": week["lang"]}
+                    params={"week_sha256": stepchecks.sha256(path), "lang": built.lang})
+    return {"folder": out_rel, "files": page.files(out), "week": rel, "lang": built.lang,
+            "language_warning": built.warning}
 
 
 def built_gap(run: RunFolder) -> str | None:

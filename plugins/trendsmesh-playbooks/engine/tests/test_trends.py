@@ -145,7 +145,7 @@ def test_save_answer_names_and_never_overwrites(tmp_path):
 
     assert name("search_trends", {"about": "Nail Art!", "trend_type": "hook_trend", "page": 2}) == \
         "search/search_nail_art_hook_trend_p02.json"
-    assert name("search_trends", {"about": "Uroda, włosy", "page": 1}) == "search/search_uroda_w_osy.json"
+    assert name("search_trends", {"about": "Uroda, włosy", "page": 1}) == "search/search_uroda_wlosy.json"   # ł kept as l (issue #3)
     assert name("list_trends", {"sort": "rising", "trend_type": "hook_trend"}) == "lists/list_rising_hook_trend_p01.json"
     assert name("list_trends", {"sort": "updated", "page": 3}) == "lists/list_updated_all_p03.json"
     assert name("get_trend", {"trend_id": "t1"}) == "trend_t1.json"

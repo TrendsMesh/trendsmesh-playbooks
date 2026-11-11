@@ -9,13 +9,15 @@ The port keeps the original's HTML byte for byte, up to the wording table (`orga
 ExampleEdu walkthrough's page, made by the reference tool, is rebuilt exactly (fixtures/organic/README.md).
 Its changes, plan Decision 10:
 - "How" is the plugin's level radio (document key `level`), named in the page language
-  (`organic_pages.UI`); the original's "Gates" row is gone, since the level decides the check-ins. The page reads
+  (`organic_pages.levels`); the original's "Gates" row is gone, since the level decides the check-ins. The page reads
   the original's `mode`/`gates` documents too (`levelOf`, as `organic_proposals._level`). The run's level
   (run.json `level`, never `mode.variant`) is ticked first.
 - Trends come from the run's saved answers (`organic_research.resolve`, `trends.load_videos`), not
   the original's `card_<id8>.json` files; a thumbnail is an asset file beside index.html
   (`assets/<asset_id>.jpg`, `page.fetch_image`), not a data URI; one that cannot be had leaves an
   empty `src`, as the reference tool does without a `thumbnail_url`.
+- The original's Polish table is the string table's `organic.proposals.*` keys (`FRAGS`, `localize`): the page is
+  built in any language whose table has them (`organic_pages.page_lang`), else in English with a warning.
 - No backslash inside an f-string expression (Python 3.11); the page's script data cannot be ended by
   `</` or turned by `<!--`.
 
@@ -47,9 +49,11 @@ import shutil
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
 
-from tm import checkins, manifest, organic_proposals, organic_research, page, state, stepchecks, trends
-from tm.organic_pages import CSS, UI, lang_of, worded
+from tm import (checkins, i18n, manifest, organic_pages, organic_proposals, organic_research, page, state, stepchecks,
+                trends)
+from tm.organic_pages import CSS, Frag, levels as level_names
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -205,64 +209,80 @@ JS = r"""
 """
 
 
-# UI strings per page language (the handoff's round 37: pages follow the chat language), verbatim: exact
-# fragments of the rendered page. The original's entries for the gates row and the "A–Z" mode match nothing now.
-PL = [
-    ('Risk: Low', 'Ryzyko: Niskie'), ('Risk: Medium', 'Ryzyko: Średnie'), ('Risk: High', 'Ryzyko: Wysokie'),
-    ('>Produce<', '>Produkuj<'), ('>Maybe later<', '>Może później<'), ('>Skip<', '>Pomiń<'),
-    ('>Stop at my gates<', '>Zatrzymuj się na moich bramkach<'), ('>A–Z automatic<', '>Automatycznie od A do Z<'),
-    ('Generation pack + exact cost', 'Paczka i dokładny koszt'), ('Key images / first frames', 'Kluczowe obrazy i pierwsze klatki'),
-    ('>Video or animation<', '>Wideo lub animacja<'), ('>Final edit<', '>Finalny montaż<'),
-    ('placeholder="Leave empty and Claude proposes options"', 'placeholder="Zostaw puste, a Claude zaproponuje opcje"'),
-    ('<span class="lbl">Decision</span>', '<span class="lbl">Decyzja</span>'), ('<span class="lbl">How</span>', '<span class="lbl">Jak</span>'),
-    ('<span class="lbl">Gates</span>', '<span class="lbl">Bramki</span>'), ('<span class="lbl">Post to</span>', '<span class="lbl">Publikuj na</span>'),
-    ('A–Z: Claude produces the whole video without stopping. While we test, the exact cost is still confirmed once before anything is paid.',
-     'A–Z: Claude robi cały film bez zatrzymywania się. W fazie testów dokładny koszt i tak potwierdzasz raz, zanim cokolwiek zostanie opłacone.'),
-    ('Notes for Claude (optional)', 'Uwagi dla Claude (opcjonalnie)'), ('placeholder="e.g. use a golden retriever instead of the husky"', 'placeholder="np. inna postać, inny ton"'),
-    ("{produce:'Produce', later:'Maybe later', skip:'Skip'}[s.decision] || 'Not decided'", "{produce:'Produkuj', later:'Może później', skip:'Pomiń'}[s.decision] || 'Bez decyzji'"),
-    ('> to produce<', '> do produkcji<'), (' later · ', ' później · '), (' skipped · ', ' pominięte · '), (' not decided<', ' bez decyzji<'), ('<span>Est. <b>', '<span>Szac. <b>'),
-    ("'Saved in this browser only (page storage not reachable)'", "'Zapisane tylko w tej przeglądarce (brak dostępu do zapisu strony)'"),
-    ("'Saved in this browser only'", "'Zapisane tylko w tej przeglądarce'"), ("'Saving…'", "'Zapisuję…'"), ("'Saved · Claude can read your choices'", "'Zapisane · Claude widzi Twoje wybory'"),
-    ("'Could not save to the page ('", "'Nie udało się zapisać na stronie ('"), ("'); kept in this browser'", "'); zostaje w tej przeglądarce'"),
-    ("'Summary copied'", "'Podsumowanie skopiowane'"), ("'Copy was blocked by the browser'", "'Przeglądarka zablokowała kopiowanie'"),
-    ("'Choices are kept in this browser until the page connects…'", "'Wybory zostają w tej przeglądarce, dopóki strona się nie połączy…'"),
-    ("'Page storage not reachable; choices kept in this browser'", "'Brak dostępu do zapisu strony; wybory zostają w tej przeglądarce'"),
-    ("'Ready · your choices save automatically'", "'Gotowe · wybory zapisują się automatycznie'"),
-    ('Organic AI video · proposals · ', 'Organiczne wideo AI · propozycje · '), ('>Already made:<', '>Już zrobione:<'),
-    ('>Produce all<', '>Produkuj wszystkie<'), ('>Copy summary<', '>Kopiuj podsumowanie<'),
-    ('Mark each proposal below. Choices save as you click; when you are done, write “ready” to Claude in the chat and it reads them from this page.',
-     'Oznacz każdą propozycję poniżej. Wybory zapisują się od razu; gdy skończysz, napisz w czacie „gotowe”, a Claude odczyta je z tej strony.'),
-    ('>Risk: ', '>Ryzyko: '), ('>Product: <b>', '>Produkt: <b>'), ('>Length <b>', '>Długość <b>'),
-    ('<h3>The video</h3>', '<h3>Film</h3>'), ('<h3>Recipe</h3>', '<h3>Przepis</h3>'), ('<dt>Production</dt>', '<dt>Produkcja</dt>'), ('<dt>Voice</dt>', '<dt>Głos</dt>'),
-    ('<dt>Music / sound</dt>', '<dt>Muzyka / dźwięk</dt>'), ('<dt>Text</dt>', '<dt>Tekst</dt>'), ('<dt>Product</dt>', '<dt>Produkt</dt>'),
-    ('<h3>Risks</h3>', '<h3>Ryzyka</h3>'), ('<h3>Cost</h3>', '<h3>Koszt</h3>'), ('<b>Facts to source:</b>', '<b>Fakty do potwierdzenia źródłem:</b>'),
-    ('<h3>Trends behind it</h3>', '<h3>Trendy, na których to stoi</h3>'), (' creators · ', ' twórców · '), (' videos · ', ' filmów · '), (' views · ', ' wyświetleń · '),
-    ('<p class="role">Used for: ', '<p class="role">Do czego: '), ('alt="Evidence video by ', 'alt="Film-dowód od '), (' views</span>', ' wyśw.</span>'),
-    ('>Watch on ', '>Zobacz na '), ('<p>Run folder: ', '<p>Folder runu: '),
-    ('>Low<', '>Niskie<'), ('>Medium<', '>Średnie<'), ('>High<', '>Wysokie<'),
-    ('>Hook<', '>Hook<'), ('>Topic<', '>Temat<'), ('>Sound<', '>Dźwięk<'), ('>Format<', '>Format<'),
-    ('>Not decided<', '>Bez decyzji<'), ('aria-label="Decision for', 'aria-label="Decyzja dla'), ('aria-label="Production mode for', 'aria-label="Tryb produkcji dla'),
-    ('aria-label="Your decisions"', 'aria-label="Twoje decyzje"'), ('aria-label="Proposals"', 'aria-label="Propozycje"'),
-    ("${s.decision || 'not decided'}", "${({produce:'produkuj', later:'później', skip:'pomiń'})[s.decision] || 'bez decyzji'}"),
-    ("'A–Z automatic' : 'gates: '", "'automatycznie A–Z' : 'bramki: '"), ("`; platforms: ", "`; platformy: "), ("`; answers: ", "`; odpowiedzi: "), ("`; note: ", "`; uwagi: "),
-    ('<span class="lbl">Output</span>', '<span class="lbl">Output</span>'), ('>AI video<', '>Wideo AI<'), ('>Script to film<', '>Skrypt do nagrania<'), ('aria-label="Output for', 'aria-label="Output dla'), ("`; output: ", "`; output: "),
-    ('<html lang="en">', '<html lang="pl">'),
+# The page's fixed fragments in another language (the original's Polish table, keyed, in its order; its entries
+# for the gates row, the "A–Z" mode and the risk words alone matched nothing on the page and are gone). Each is
+# the plugin's English (after `WORDING`) -> the same in the page language.
+_P = "organic.proposals."
+FRAGS: list[Frag] = [
+    Frag("§", _P + "risk_low"), Frag("§", _P + "risk_medium"), Frag("§", _P + "risk_high"),
+    Frag(">§<", _P + "produce"), Frag(">§<", _P + "later"), Frag(">§<", _P + "skip"),
+    Frag('placeholder="§"', _P + "taste_placeholder"),
+    Frag('<span class="lbl">§</span>', "organic.decision"), Frag('<span class="lbl">§</span>', _P + "how"),
+    Frag('<span class="lbl">§</span>', "organic.post_to"),
+    Frag("§", _P + "hands_off_hint"),
+    Frag("§", _P + "notes_label"), Frag('placeholder="§"', _P + "notes_placeholder"),
+    Frag("{produce:'§0', later:'§1', skip:'§2'}[s.decision] || '§3'",
+         (_P + "produce", _P + "later", _P + "skip", _P + "not_decided"), "js"),
+    Frag("> §<", _P + "sum_to_produce", "tpl"), Frag(" § · ", _P + "sum_later", "tpl"),
+    Frag(" § · ", _P + "sum_skipped", "tpl"), Frag(" §<", _P + "sum_not_decided", "tpl"),
+    Frag("<span>§ <b>", _P + "sum_estimate", "tpl"),
+    Frag("'§'", "organic.not_saved_unreachable", "js"), Frag("'§'", "organic.not_saved", "js"),
+    Frag("'§'", "organic.saving", "js"), Frag("'§'", "organic.saved", "js"),
+    Frag("'§ ('", _P + "save_failed", "js"), Frag("'); §'", _P + "save_failed_kept", "js"),
+    Frag("'§'", _P + "summary_copied", "js"), Frag("'§'", _P + "copy_blocked", "js"),
+    Frag("'§'", "organic.connecting", "js"), Frag("'§'", "organic.storage_unreachable", "js"),
+    Frag("'§'", "organic.ready", "js"),
+    Frag("§ · ", _P + "eyebrow"), Frag(">§<", _P + "already_made"),
+    Frag(">§<", _P + "produce_all"), Frag(">§<", _P + "copy_summary"),
+    Frag("§", _P + "hint"),
+    Frag(">§ <b>", _P + "product_chip"), Frag(">§ <b>", "organic.length"),
+    Frag("<h3>§</h3>", _P + "the_video"), Frag("<h3>§</h3>", _P + "recipe"), Frag("<dt>§</dt>", _P + "production"),
+    Frag("<dt>§</dt>", _P + "voice"), Frag("<dt>§</dt>", _P + "music"), Frag("<dt>§</dt>", _P + "text"),
+    Frag("<dt>§</dt>", _P + "product"), Frag("<h3>§</h3>", _P + "risks"), Frag("<h3>§</h3>", _P + "cost"),
+    Frag("<b>§</b>", _P + "facts"), Frag("<h3>§</h3>", _P + "trends_behind"),
+    Frag(" § · ", _P + "creators"), Frag(" § · ", _P + "videos"), Frag(" § · ", _P + "views"),
+    Frag('<p class="role">§ ', _P + "used_for"), Frag('alt="§ ', _P + "evidence_by"),
+    Frag(" §</span>", _P + "views_short"), Frag(">§ ", _P + "watch_on"), Frag("<p>§ ", "organic.run_folder"),
+    Frag(">§<", _P + "kind_hook"), Frag(">§<", _P + "kind_topic"), Frag(">§<", _P + "kind_sound"),
+    Frag(">§<", _P + "kind_format"),
+    Frag(">§<", _P + "not_decided"), Frag('aria-label="§', "organic.decision_for"),
+    Frag('aria-label="§', _P + "mode_for"), Frag('aria-label="§"', "organic.your_decisions"),
+    Frag('aria-label="§"', _P + "nav"),
+    Frag("${({produce:'§0', later:'§1', skip:'§2'})[s.decision] || '§3'}",
+         (_P + "summary_produce", _P + "summary_later", _P + "summary_skip", _P + "summary_not_decided"), "js",
+         english="${s.decision || 'not decided'}"),
+    Frag("`; §: ", _P + "summary_platforms", "text"), Frag("`; §: ", _P + "summary_answers", "text"),
+    Frag("`; §: ", _P + "summary_note", "text"),
+    Frag('<span class="lbl">§</span>', "organic.output"), Frag(">§<", _P + "out_video"), Frag(">§<", _P + "out_script"),
+    Frag('aria-label="§', _P + "output_for"), Frag("`; §: ", _P + "summary_output", "text"),
+    # English the original's Polish table leaves as it is (the trend's stats line)
+    Frag(" · § ", _P + "trend_hook"), Frag(" · § ", _P + "trend_id"),
 ]
 
 
-def localize(text: str, lang: str) -> str:
-    if lang != "pl":
-        return text
-    for a, b in PL:
-        text = text.replace(a, b)
-    return text
+def plural(n: int) -> str:
+    """The form a count of n takes: `one`, `few` (2–4, 22–24 …, not 12–14) or `many` (Polish's rule; a language
+    with two forms gives `few` and `many` the same words)."""
+    return "one" if n == 1 else "few" if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else "many"
 
 
-def render(data: dict, trends_of, thumb_of, *, level: str) -> str:
-    """The page in its language (`lang_of`), `WORDING` applied: the original's `render` and `localize`.
-    `trends_of(id)` gives a proposal trend's (card, videos); `thumb_of(video)` its thumbnail's src."""
-    lang = lang_of(data)
-    levels = UI[lang]["levels"]
+def lede_frags(n: int) -> list[Frag]:
+    """The lede's words around the store, for n proposals."""
+    return [Frag('<p class="lede">§ ', f"{_P}lede_ideas_{plural(n)}", values={"n": n}),
+            Frag("), §</p>", _P + "lede_rest")]
+
+
+def localize(text: str, lang) -> str:
+    """The page in `lang` (`organic_pages.localize`), the lede for its count of proposals included."""
+    found = re.search(r'<p class="lede">(\d+) ', text)
+    return organic_pages.localize(text, lang, FRAGS + (lede_frags(int(found.group(1))) if found else []))
+
+
+def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = None) -> str:
+    """The page in `lang` (else the language it is built in, `organic_pages.lang_of`): the original's `render`,
+    then `localize`. `trends_of(id)` gives a proposal trend's (card, videos); `thumb_of(video)` its thumbnail's src."""
+    tr = i18n.translator(lang or organic_pages.lang_of(data))
+    levels = level_names(tr)
     chan = {c["id"]: c for c in data["channels"]}
     out = []
     out.append(f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -331,7 +351,7 @@ def render(data: dict, trends_of, thumb_of, *, level: str) -> str:
     out.append(f"""<footer><p>{esc(data['data_note'])}</p><p>Run folder: {esc(data['run'])}</p></footer></div>
 <script>window.__PROPOSALS__ = {proposals_js}; window.__RUN_ID__ = {run_js}; window.__DEFAULT_OUTPUT__ = {output_js}; window.__DEFAULT_LEVEL__ = {level_js}; window.__LEVELS__ = {_script(levels)};</script>
 <script>{JS}</script></body></html>""")
-    return worded(localize("".join(out), lang), lang)
+    return localize("".join(out), tr)
 
 
 # --- building it in the run ------------------------------------------------------------------------
@@ -409,10 +429,12 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
     """Build the page from the checked proposals into a new `04_final/proposals_vNN/` (index.html,
     assets/<asset_id>.jpg). Nothing is written while people decide on the page (`page.Deciding`),
     before C1 is done, or when the files would be over the Artifact tool's limits (each a Stop). A
-    thumbnail that cannot be had is listed in `missing_thumbnails` and leaves an empty src."""
+    thumbnail that cannot be had is listed in `missing_thumbnails` and leaves an empty src. `lang` is the language
+    it is built in; `language_warning` says why when that is English and not the run's (`organic_pages.page_lang`)."""
     if page.awaiting(run, PAGE) is not None:
         raise page.Deciding(PAGE, read=READ_WITH)
     path, rel, data = _checked(run, file)
+    built = organic_pages.page_lang(data)
     level = _level(run)
     found = _trends(run, data)
     with tempfile.TemporaryDirectory() as tmp:
@@ -428,7 +450,7 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
                 missing.append(str(v.get("asset_id") or v.get("url")))
         try:
             text = render(data, lambda tid: found[tid], lambda v: f"assets/{_asset(v)}" if _asset(v) in thumbs else "",
-                          level=level)
+                          level=level, lang=built.lang)
         except (KeyError, ValueError) as exc:   # the file's shape; anything else is the engine's, not the user's file
             raise Stop(f"{rel} is not in the page's shape ({type(exc).__name__}: {exc}); check it again (tm organic "
                        f"proposals check); {AGAIN}.") from None
@@ -444,10 +466,10 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
         fh.write(text)
     out_rel = out.relative_to(run.path).as_posix()
     manifest.record(run, out_rel, page.FINAL, SOURCE, parent=rel,
-                    params={"proposals_sha256": stepchecks.sha256(path), "lang": lang_of(data), "level": level,
+                    params={"proposals_sha256": stepchecks.sha256(path), "lang": built.lang, "level": level,
                             "missing_thumbnails": len(missing)})
     return {"folder": out_rel, "files": page.files(out), "missing_thumbnails": missing, "proposals": rel,
-            "lang": lang_of(data), "level": level}
+            "lang": built.lang, "level": level, "language_warning": built.warning}
 
 
 def built_gap(run: RunFolder) -> str | None:
@@ -494,50 +516,72 @@ def decided_page(run: RunFolder) -> dict:
     return {"folder": row["file"], "proposals": row["parent"], "data": _read(path, row["parent"])}
 
 
-_DECISION_WORDS = {"produce": "produce", "later": "later", "skip": "skip", "not decided": None,
-                   "produkuj": "produce", "później": "later", "pomiń": "skip", "bez decyzji": None}
-_FIELDS = {"output: ": "output", "platforms: ": "platforms", "platformy: ": "platforms", "answers: ": "answers",
-           "odpowiedzi: ": "answers", "note: ": "note", "uwagi: ": "note"}
-_LEVEL_WORDS = {name.lower(): lid for words in UI.values() for lid, name in words["levels"].items()}
+_DECISION_KEYS = {"produce": _P + "summary_produce", "later": _P + "summary_later", "skip": _P + "summary_skip",
+                  None: _P + "summary_not_decided"}
+_FIELD_KEYS = {"output": _P + "summary_output", "platforms": _P + "summary_platforms",
+               "answers": _P + "summary_answers", "note": _P + "summary_note"}
+
+
+class _Words(NamedTuple):
+    decisions: dict      # a decision's word (lower case) -> the decision
+    fields: dict         # a part's head ("platforms: ") -> the field
+    levels: dict         # a level's name (lower case) -> the level
+
+
+def _words(lang: str = i18n.ENGLISH) -> _Words:
+    """The Copy summary's words in English, Polish and `lang` (the page's language)."""
+    out = _Words({}, {}, {})
+    for code in dict.fromkeys((i18n.ENGLISH, "pl", lang)):
+        try:
+            tr = i18n.translator(code)
+            out.decisions.update({tr(key).lower(): value for value, key in _DECISION_KEYS.items()})
+            out.fields.update({f"{tr(key)}: ": value for value, key in _FIELD_KEYS.items()})
+            out.levels.update({name.lower(): lid for lid, name in level_names(tr).items()})
+        except i18n.Missing:            # a language without the organic table: its pages are built in English
+            continue
+    return out
+
+
 _AUTO = ("a–z automatic", "automatycznie a–z")
 _GATES = ("gates: ", "bramki: ")
 
 
-def _how(text: str, line: str) -> dict:
+def _how(text: str, line: str, words: _Words) -> dict:
     """The level part of a produce line: a level's name, or the original page's "A–Z" or gates."""
     low = text.strip().lower()
-    if low in _LEVEL_WORDS:
-        return {"level": _LEVEL_WORDS[low]}
+    if low in words.levels:
+        return {"level": words.levels[low]}
     if low in _AUTO:
         return {"mode": "auto"}
     for head in _GATES:
         if low.startswith(head):
             return {"mode": "gates", "gates": [g.strip() for g in text.strip()[len(head):].split(",") if g.strip()]}
     raise Stop(f"The Copy summary line {line!r} names the level {text.strip()!r}, which is none of "
-               f"{', '.join(sorted({n for w in UI.values() for n in w['levels'].values()}))}. Ask the user which "
+               f"{', '.join(sorted(words.levels))}. Ask the user which "
                f"level they want and write the line again; {AGAIN}.")
 
 
-def _line(rest: str, line: str) -> dict:
+def _line(rest: str, line: str, words: _Words | None = None) -> dict:
     """One proposal's document from its Copy summary line, after `<ID> <title>: `."""
+    words = words or _words()
     parts = rest.split("; ")
     word, _, how = parts[0].partition(", ")
-    if word.strip().lower() not in _DECISION_WORDS:
+    if word.strip().lower() not in words.decisions:
         raise Stop(f"The Copy summary line {line!r} starts with {word!r}, which is not produce, later, skip or not "
                    f"decided. Ask the user and write the line again; {AGAIN}.")
-    doc: dict = {"decision": _DECISION_WORDS[word.strip().lower()]}
+    doc: dict = {"decision": words.decisions[word.strip().lower()]}
     if how:
-        doc |= _how(how, line)
+        doc |= _how(how, line, words)
     field, values = None, {}
     for i, part in enumerate(parts[1:], 1):
-        head = next((h for h in _FIELDS if part.startswith(h)), None)
+        head = next((h for h in words.fields if part.startswith(h)), None)
         if head is None:
             if field is None:
                 raise Stop(f"The Copy summary line {line!r} has a part it cannot read ({part!r}). Write it as the "
                            f"page writes it; {AGAIN}.")
             values[field] += "; " + part
             continue
-        field = _FIELDS[head]
+        field = words.fields[head]
         if field == "note":                     # the last part: a note may hold "; "
             values[field] = "; ".join([part[len(head):], *parts[i + 1:]])
             break
@@ -556,9 +600,10 @@ def _line(rest: str, line: str) -> dict:
 def parse_summary(text: str, data: dict) -> list[tuple[str, dict]]:
     """The page's "Copy summary" text as page documents `(pid, document)`: one line per proposal,
     `<ID> <title>: <decision>[, <level>]; output: …; platforms: …[; answers: a | b][; note: …]`, in
-    English or Polish. A line for a proposal is known by its id and title; a line with a proposal's
+    English, Polish or the page's language. A line for a proposal is known by its id and title; a line with a proposal's
     id and another title, or two lines for one proposal, is a Stop, and so is a text with none."""
     proposals = [p for p in data.get("proposals") or [] if isinstance(p, dict) and isinstance(p.get("id"), str)]
+    words = _words(organic_pages.lang_of(data))
     docs: dict[str, dict] = {}
     for line in text.splitlines():
         line = line.strip()
@@ -573,7 +618,7 @@ def parse_summary(text: str, data: dict) -> list[tuple[str, dict]]:
             if p["id"] in docs:
                 raise Stop(f"The text has two lines for {p['id'].upper()}, so it is unclear what the user decided. Ask "
                            f"them once and write one line; {AGAIN}.")
-            docs[p["id"]] = _line(line[len(prefix):], line)
+            docs[p["id"]] = _line(line[len(prefix):], line, words)
             break
     if not docs:
         raise Stop("The text holds no Copy summary line of this page (each starts with a proposal's id and title, e.g. "

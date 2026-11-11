@@ -3,9 +3,13 @@
     check    `tm organic script check`: the script file `03_wip/script_<id>_<lang>_vNN.json` against the handoff's schema
              (`schemas/pb3_script.schema.json`, copied) and the plugin's rules; marks it `script`
     build    `tm organic page script`: `04_final/<id>_script_<lang>_vNN/index.html` and `<id>_script_<version>.md`
+             (`<lang>` the script's language tag)
 
 The page and the Markdown are the original's `render` and `to_md` as they are, except that the backslash in an
-f-string expression (Python 3.12 only) is a variable (`md_js`). Proof: the ExampleEdu walkthrough's
+f-string expression (Python 3.12 only) is a variable (`md_js`), the original's two tables (`UI`) are the string
+table's keys (`WORDS`, `labels`) and each label is escaped where it sits on the page: the page and its Markdown are
+built in the script's language when its table has every organic key (`organic_pages.page_lang`), else in English
+with a warning. Proof: the ExampleEdu walkthrough's
 `script_M5_en_v01.json` gives the handoff's packaged `04_final/M5_script_en_v01/index.html` and `M5_script_v01.md`
 (tests/test_organic_script.py); the reference tool under Python 3.12 gives the same two files, so no golden is made.
 
@@ -37,13 +41,14 @@ from pathlib import Path
 
 from tm import config, i18n, json_schema, kit, manifest, organic_config, organic_proposals, page, state, stepchecks
 from tm.config import Problem
-from tm.organic_pages import lang_of
+from tm import organic_pages
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
 KEY = "script"                       # the stepchecks.mark key
 WIP = "03_wip"
-NAME = re.compile(rf"^{WIP}/script_(?P<id>[A-Za-z0-9][A-Za-z0-9_-]*)_(?P<lang>en|pl)_v(?P<n>\d{{2,}})\.json$")
+NAME = re.compile(rf"^{WIP}/script_(?P<id>[A-Za-z0-9][A-Za-z0-9_-]*)_(?P<lang>[a-z]{{2,3}}(?:-[A-Za-z0-9]{{2,8}})*)"
+                  rf"_v(?P<n>\d{{2,}})\.json$")
 FILE_PATTERN = f"{WIP}/script_<id>_<lang>_vNN.json"
 SCHEMA = Path(__file__).resolve().parent.parent / "schemas" / "pb3_script.schema.json"
 SOURCE = "tm organic page script"
@@ -52,20 +57,24 @@ _NUMBER = re.compile(r"(\d+):([0-5]\d(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)")   # m:ss,
 _URL = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
-UI = {
- "en": {"eyebrow": "Organic AI video · script to film", "download": "⬇ Download script (.md)", "copy": "Copy", "copied": "Copied", "saved": "✓ Saved", "fail": "✕ Download failed",
-        "length": "Length", "format": "Format", "goal": "Goal", "trends": "Built on", "hook": "Hook (first 2 seconds)", "on_screen": "On screen", "why": "Why it works",
-        "shots": "Shot list", "time": "Time", "framing": "Framing", "action": "Action", "line": "Line", "filming": "Filming", "edit": "Edit", "sound": "Sound",
-        "kit": "Posting kit", "facts": "Fact check (for you, not for the caption)", "gen": "Generate instead of filming (optional)", "host": "Host image prompt (GPT Image 2)",
-        "video": "Video prompt (MiniMax H3)", "words": "words", "all_lines": "All lines (teleprompter)", "title": "Title", "caption": "Caption", "description": "Description",
-        "hashtags": "Hashtags", "ai_label": "AI label", "pf": {"tiktok": "TikTok", "instagram": "Instagram Reels", "youtube": "YouTube Shorts", "facebook": "Facebook Reels"}},
- "pl": {"eyebrow": "Organiczne wideo AI · skrypt do nagrania", "download": "⬇ Pobierz skrypt (.md)", "copy": "Kopiuj", "copied": "Skopiowane", "saved": "✓ Zapisano", "fail": "✕ Nie udało się pobrać",
-        "length": "Długość", "format": "Format", "goal": "Cel", "trends": "Na podstawie", "hook": "Hook (pierwsze 2 sekundy)", "on_screen": "Na ekranie", "why": "Dlaczego działa",
-        "shots": "Lista ujęć", "time": "Czas", "framing": "Kadr", "action": "Akcja", "line": "Kwestia", "filming": "Nagrywanie", "edit": "Montaż", "sound": "Dźwięk",
-        "kit": "Zestaw do publikacji", "facts": "Sprawdzenie faktów (dla Ciebie, nie do opisu)", "gen": "Wygeneruj zamiast nagrywać (opcjonalnie)", "host": "Prompt obrazu prowadzącej (GPT Image 2)",
-        "video": "Prompt wideo (MiniMax H3)", "words": "słów", "all_lines": "Wszystkie kwestie (prompter)", "title": "Tytuł", "caption": "Opis", "description": "Opis",
-        "hashtags": "Hashtagi", "ai_label": "Etykieta AI", "pf": {"tiktok": "TikTok", "instagram": "Instagram Reels", "youtube": "YouTube Shorts", "facebook": "Facebook Reels"}},
-}
+_S = "organic.script."
+# The page's and its Markdown's words (the original's `UI[lang]`) and the keys they are read from.
+WORDS = {"eyebrow": _S + "eyebrow", "download": _S + "download", "copy": "organic.copy", "copied": "organic.copied",
+         "saved": "organic.saved_check", "fail": "organic.download_failed", "length": "organic.length",
+         "format": _S + "format", "goal": _S + "goal", "trends": _S + "trends", "hook": _S + "hook",
+         "on_screen": _S + "on_screen", "why": _S + "why", "shots": _S + "shots", "time": _S + "time",
+         "framing": _S + "framing", "action": _S + "action", "line": _S + "line", "filming": _S + "filming",
+         "edit": _S + "edit", "sound": "organic.kit.sound", "kit": "organic.kit.posting_kit", "facts": _S + "facts",
+         "gen": _S + "gen", "host": _S + "host", "video": _S + "video", "words": _S + "words",
+         "all_lines": _S + "all_lines", "title": "organic.kit.title", "caption": "organic.kit.caption",
+         "description": "organic.kit.description", "hashtags": "organic.kit.hashtags", "ai_label": "organic.kit.ai_label"}
+PF = {"tiktok": "TikTok", "instagram": "Instagram Reels", "youtube": "YouTube Shorts", "facebook": "Facebook Reels"}
+
+
+def labels(lang) -> dict:
+    """The words in `lang` (`WORDS`), and `pf`, the platforms' names (the same in every language)."""
+    tr = organic_pages.translator(lang)
+    return {**{name: tr(key) for name, key in WORDS.items()}, "pf": dict(PF)}
 
 
 def esc(s) -> str:
@@ -118,7 +127,7 @@ pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:14px/1.45 var(--bo
 
 
 def field(fid: str, label: str, value: str, t: dict) -> str:
-    return f'<div class="fld"><span class="k">{esc(label)} <button class="copy" type="button" data-src="{fid}">{t["copy"]}</button></span><pre id="{fid}">{esc(value)}</pre></div>'
+    return f'<div class="fld"><span class="k">{esc(label)} <button class="copy" type="button" data-src="{fid}">{esc(t["copy"])}</button></span><pre id="{fid}">{esc(value)}</pre></div>'
 
 
 _SCRIPT_BREAK = re.compile(r"</|<!--|<script", re.IGNORECASE)
@@ -131,35 +140,38 @@ def _js(value) -> str:
     return _SCRIPT_BREAK.sub(lambda m: "<\\" + m.group()[1:], json.dumps(value, ensure_ascii=False))
 
 
-def render(s: dict, md_name: str, md: str) -> str:
-    t = UI.get(s.get("lang", "en"), UI["en"])
+def render(s: dict, md_name: str, md: str, lang: str | None = None) -> str:
+    """The page in `lang` (else the language it is built in, `organic_pages.lang_of`), its labels escaped."""
+    lang = lang or organic_pages.lang_of(s)
+    t = labels(lang)
+    e = {k: esc(v) for k, v in t.items() if isinstance(v, str)}
     md_js = _js(md)   # a backslash cannot sit in an f-string expression before Python 3.12
     shots = "".join(f'<div class="shot"><span class="t">{esc(sh["time"])}</span><div><p class="line" style="margin:0">{esc(sh["line"]) or "—"}</p>'
-                    f'<p class="k" style="margin:2px 0 0">{t["framing"]}: {esc(sh["framing"])}<br>{t["action"]}: {esc(sh["action"])}'
-                    f'{"<br>" + t["on_screen"] + ": " + esc(sh["on_screen"]) if sh["on_screen"] else ""}</p></div></div>' for sh in s["shots"])
+                    f'<p class="k" style="margin:2px 0 0">{e["framing"]}: {esc(sh["framing"])}<br>{e["action"]}: {esc(sh["action"])}'
+                    f'{"<br>" + e["on_screen"] + ": " + esc(sh["on_screen"]) if sh["on_screen"] else ""}</p></div></div>' for sh in s["shots"])
     lines = " ".join(sh["line"] for sh in s["shots"] if sh["line"])
     kit = ""
     for k, v in s["kit"].items():
         rows = "".join(field(f"k-{k}-{f}", t.get(f, f), " ".join(v[f]) if isinstance(v[f], list) else v[f], t) for f in ("title", "caption", "description", "hashtags") if v.get(f))
-        rows += "".join(f'<p class="meta" style="font-size:14px">{t.get(f, f)}: {esc(v[f])}</p>' for f in ("ai_label", "sound") if v.get(f))
-        kit += f'<div class="pf"><h2 style="font-size:16px">{t["pf"][k]}</h2>{rows}</div>'
+        rows += "".join(f'<p class="meta" style="font-size:14px">{esc(t.get(f, f))}: {esc(v[f])}</p>' for f in ("ai_label", "sound") if v.get(f))
+        kit += f'<div class="pf"><h2 style="font-size:16px">{esc(t["pf"][k])}</h2>{rows}</div>'
     facts = "".join(f'<li>{esc(f["claim"])} <a href="{esc(f["url"])}" target="_blank" rel="noopener">{esc(f["source"])}</a>. {esc(f.get("note",""))}</li>' for f in s.get("facts", []))
     g = s.get("generate_instead")
-    gen = (f'<section class="card"><h2>{t["gen"]}</h2><p class="meta">{esc(g["note"])}</p>{field("g-host", t["host"], g["host_image_prompt"], t)}{field("g-video", t["video"], g["video_prompt"], t)}</section>' if g else "")
-    return f"""<!DOCTYPE html><html lang="{esc(s.get('lang','en'))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    gen = (f'<section class="card"><h2>{e["gen"]}</h2><p class="meta">{esc(g["note"])}</p>{field("g-host", t["host"], g["host_image_prompt"], t)}{field("g-video", t["video"], g["video_prompt"], t)}</section>' if g else "")
+    return f"""<!DOCTYPE html><html lang="{esc(i18n.html_lang(lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(s['title'])}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class="wrap">
-<header style="display:grid;gap:8px"><div class="eyebrow">{t['eyebrow']} · {esc(s['id'])} · {esc(s['date'])}</div><h1>{esc(s['title'])}</h1>
-<p class="meta">{esc(s['channel'])} · {t['format']}: {esc(s['format'])} · {t['length']}: {esc(s['length'])} · {esc(s.get('word_count',''))} {t['words']}</p>
-<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="dl" type="button" hidden>{t['download']}</button><span class="status" id="st" aria-live="polite"></span></div></header>
-<section class="card"><p style="margin:0"><b>{t['goal']}:</b> {esc(s['goal'])}</p><p class="meta" style="margin:0">{t['trends']}: {esc('; '.join(s.get('trends', [])))}</p></section>
-<section class="card"><h2>{t['hook']}</h2><p class="hook">{esc(s['hook']['line'])}</p><p class="meta" style="margin:0">{t['on_screen']}: {esc(s['hook']['on_screen'])} · {t['why']}: {esc(s['hook']['why'])}</p></section>
-<section class="card"><h2>{t['shots']}</h2><div class="shots">{shots}</div>{field('all-lines', t['all_lines'], lines, t)}</section>
-<section class="card"><h2>{t['filming']}</h2><ul>{''.join(f'<li>{esc(x)}</li>' for x in s['filming'])}</ul></section>
-<section class="card"><h2>{t['edit']}</h2><ul>{''.join(f'<li>{esc(x)}</li>' for x in s['edit'])}</ul><p class="meta" style="margin:0">{t['sound']}: {esc(s['sound'])}</p></section>
-<section class="card"><h2>{t['kit']}</h2><div class="kit">{kit}</div></section>
-<section class="card"><h2>{t['facts']}</h2><ul>{facts}</ul></section>
+<header style="display:grid;gap:8px"><div class="eyebrow">{e['eyebrow']} · {esc(s['id'])} · {esc(s['date'])}</div><h1>{esc(s['title'])}</h1>
+<p class="meta">{esc(s['channel'])} · {e['format']}: {esc(s['format'])} · {e['length']}: {esc(s['length'])} · {esc(s.get('word_count',''))} {e['words']}</p>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="dl" type="button" hidden>{e['download']}</button><span class="status" id="st" aria-live="polite"></span></div></header>
+<section class="card"><p style="margin:0"><b>{e['goal']}:</b> {esc(s['goal'])}</p><p class="meta" style="margin:0">{e['trends']}: {esc('; '.join(s.get('trends', [])))}</p></section>
+<section class="card"><h2>{e['hook']}</h2><p class="hook">{esc(s['hook']['line'])}</p><p class="meta" style="margin:0">{e['on_screen']}: {esc(s['hook']['on_screen'])} · {e['why']}: {esc(s['hook']['why'])}</p></section>
+<section class="card"><h2>{e['shots']}</h2><div class="shots">{shots}</div>{field('all-lines', t['all_lines'], lines, t)}</section>
+<section class="card"><h2>{e['filming']}</h2><ul>{''.join(f'<li>{esc(x)}</li>' for x in s['filming'])}</ul></section>
+<section class="card"><h2>{e['edit']}</h2><ul>{''.join(f'<li>{esc(x)}</li>' for x in s['edit'])}</ul><p class="meta" style="margin:0">{e['sound']}: {esc(s['sound'])}</p></section>
+<section class="card"><h2>{e['kit']}</h2><div class="kit">{kit}</div></section>
+<section class="card"><h2>{e['facts']}</h2><ul>{facts}</ul></section>
 {gen}
 </div>
 <script>window.__MD__ = {md_js}; window.__MDNAME__ = {_js(md_name)}; window.__T__ = {_js({k: t[k] for k in ('copy', 'copied', 'saved', 'fail')})};</script>
@@ -181,6 +193,12 @@ def render(s: dict, md_name: str, md: str) -> str:
   }})();
 }})();
 </script></body></html>"""
+
+
+def page_html(s: dict, md_name: str, md: str) -> tuple[str, i18n.PageLang]:
+    """The page as built, and the language it is built in (`organic_pages.page_lang` of the script)."""
+    built = organic_pages.page_lang(s)
+    return render(s, md_name, md, built.lang), built
 
 
 # --- E3: the check -----------------------------------------------------------------------------------
@@ -377,12 +395,13 @@ def build(run: RunFolder, file: Path) -> dict:
         s = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
         raise Stop(f"{rel} cannot be read ({exc}); check it again; {AGAIN}.") from None
-    lang = lang_of(s)
-    t = UI[lang]
+    built = organic_pages.page_lang(s)
+    lang = i18n.tag(s["lang"]) or built.lang     # the folder is named by the script's language
+    t = labels(built.lang)
     md_name = f"{page.asset_name(s['id'])}_script_{page.asset_name(s['version'])}.md"
     try:
         md = to_md(s, t)
-        text = render(s, md_name, md)
+        text = render(s, md_name, md, built.lang)
     except (KeyError, TypeError, ValueError, AttributeError, IndexError) as exc:
         raise Stop(f"{rel} is not in the page's shape ({type(exc).__name__}: {exc}); check it again; {AGAIN}.") from None
     over = page.over_limits({"index.html": len(text.encode("utf-8")), md_name: len(md.encode("utf-8"))})
@@ -400,5 +419,6 @@ def build(run: RunFolder, file: Path) -> dict:
         shutil.rmtree(out, ignore_errors=True)
         raise
     out_rel = out.relative_to(run.path).as_posix()
-    manifest.record(run, out_rel, page.FINAL, SOURCE, parent=rel, params={"script_sha256": stepchecks.sha256(path), "lang": lang})
-    return {"folder": out_rel, "files": page.files(out), "script": rel, "lang": lang, "markdown": md_name}
+    manifest.record(run, out_rel, page.FINAL, SOURCE, parent=rel, params={"script_sha256": stepchecks.sha256(path), "lang": built.lang})
+    return {"folder": out_rel, "files": page.files(out), "script": rel, "lang": built.lang, "markdown": md_name,
+            "language_warning": built.warning}

@@ -29,11 +29,543 @@ checks:
 # --- Creative brief page: engine/src/tm/brief_page.py and brief_pack/template.html ---
 brief:
   view_decision: Decision maker
+  view_strategy: Strategist
+  view_creator: Creator
+  view_editor: Editor
+  view_media_buyer: Media buyer
+  # the page's header and view bar
+  meta_line: "Market: {market}, {language}. Prepared {prepared}. Trend data valid until {valid_until}."
+  animatic_label: "{id} animatic"
+  choose_view: Choose your view
+  i_am_the: I am the
+  # the PDFs (issue #10): the view bar's buttons and hint, the print mode's banners and stills caption
+  pdf_full: Download full report (PDF)
+  pdf_view: Download {view} view (PDF)
+  pdf_hint: "Share this page's link with your team. To send one view to someone outside it, download that view's PDF."
+  pdf_hint_no_pdf: "Share this page's link with your team only: it opens every view."
+  pdf_unavailable: "Downloads don't work here: open the page from its claude.ai link, or ask the sender for the PDF."
+  pdf_failed: The download failed. Try again in a moment.
+  pdf_banner_full: Full report
+  pdf_banner_view: "View: {view}"
+  pdf_stills: Stills from the animatic. The animatic plays on the online page.
+  # the page's sections
+  evidence_changed: What the evidence changed
+  audience: Who we are talking to
+  product_plain: The product in plain words
+  tone_must: Tone and must-haves
+  tone: Tone
+  must_have: Must have
+  never: Never
+  # a concept
+  concept_of: Concept {idx} of {total}
+  key_message: "Key message:"
+  what_this_tests: "What this tests:"
+  format: Format
+  evidence_at_a_glance: Evidence at a glance
+  goal: Goal
+  effort: Effort
+  budget_deadline_approver: Budget, deadline, approver
+  budget_line: "Budget: {budget} · Deadline: {deadline} · Approver: {approver}"
+  main_risk: Main risk
+  to_set: to set
+  the_hook: The hook
+  second_by_second: Second by second ({length} s)
+  beat_time: "{start}–{end} s"
+  col_time: Time
+  col_see: What we see
+  col_hear: What we hear
+  col_on_screen: Text on screen
+  why_people_care: Why people will care
+  customers_own_words: Customers' own words in this ad
+  customer_phrase: '"{phrase}": {used_in}'
+  # after a phrase marked translated (CB5): the customer's own words, as the bank has them
+  phrase_translated: "translated from: {original}"
+  source: source
+  copy_from_hook: What we copy from the hook
+  ad_copy: Ad copy
+  primary_text: Primary text
+  headline: Headline
+  button: Button
+  hooks_to_test: Hooks to test
+  casting_and_look: Casting and look
+  your_part: Your part
+  what_to_say: What to say
+  col_moment: Moment
+  col_key_point: Key point
+  col_sample_line: Sample line
+  col_line: Line
+  shots_to_record: Shots to record
+  col_shot: Shot
+  col_framing: Framing
+  col_takes: Takes
+  look_and_props: Look and props
+  send_back: Send back
+  deadline_usage: "Deadline: {deadline}. Usage: {usage}."
+  edit_spec: Edit spec
+  test_plan: Test plan
+  before_live: Before it goes live
+  # a concept's decision box
+  decision_on: Your decision on {id}
+  approve: Approve
+  ask_for_changes: Ask for changes
+  note_for: Note for {id}
+  note_placeholder: What should change? Optional when you approve.
+  save_decision: Save decision
+  # the side bar
+  sections: Sections
+  decisions_so_far: Decisions so far
+  tally_none: "{id}: none yet"
+  connecting: Connecting…
+  copy_my_decisions: Copy my decisions
+  decisions_as_text: Your decisions as text
+  # the page's script: what a decision box and the side bar say while people decide
+  approved: Approved
+  changes_requested: Changes requested
+  tally_counts: "{id}: {approved} approved, {changes} changes requested"
+  decisions_on_concept: "Decisions on this concept:"
+  you: You
+  someone: Someone
+  not_saved_yet: Not saved yet.
+  choose_first: Choose Approve or Ask for changes first.
+  cannot_save_here: "Not saved: this copy can't save decisions. Open the page from its claude.ai link to save them for the team, or tell Claude your decisions in chat (\"Copy my decisions\" helps)."
+  view_only: 'Your access is view-only. Ask the sender for Contributor access, or use "Copy my decisions".'
+  saving: Saving…
+  saved: Saved. Everyone with this link can see it.
+  save_failed: "Not saved: the connection failed. Try again in a moment."
+  # "Copy my decisions": a header line, then one line per concept (tm brief decisions --text reads it back)
+  copy_header: 'Decisions on "{title}"'
+  no_decision: no decision
+  copied: Copied. Paste it wherever you send feedback.
+  select_and_copy: Select the text below and copy it.
+  # the side bar's line on whether decisions are shared
+  page_cannot_save: "This copy can't save decisions: tell Claude your decisions in chat (\"Copy my decisions\" helps), or open the page from its claude.ai link to save them for the team."
+  still_connecting: Still connecting to shared decisions…
+  shared_unavailable: 'Shared decisions are unavailable here (sign in on claude.ai). Use "Copy my decisions".'
+  sign_in: 'Sign in to save decisions for the team. Use "Copy my decisions" meanwhile.'
+  shared_with_link: Decisions you save are shared with everyone who has this link.
+  read_only: You can read decisions; your access does not allow saving.
+  load_failed: 'Shared decisions could not be loaded. Use "Copy my decisions".'
 
 # --- Trend research page: engine/src/tm/research_report.py (report, digest and paid views) ---
 report:
   view_report: Category report
+  view_digest: Weekly digest
+  view_paid: Paid vs organic
+  # the stages (research_growth.LABEL) and what each means
+  bucket_act_now: Act now
+  bucket_still_rising: Still rising
+  bucket_too_late: Too late
+  bucket_past_peak: Past its peak
+  note_act_now: "Early and spreading: new creators keep coming, recently, with an audience."
+  note_still_rising: Still gaining creators, but slower, smaller or older.
+  note_too_late: "Crowded or slowing: many creators already, or few new ones."
+  note_past_peak: No new creators for two weeks, or the event it belonged to is over.
+  # presence in paid ads (Meta Ad Library), and how it was searched
+  paid_none: None found in Ad Library titles
+  paid_found: A few advertisers
+  paid_crowded: Crowded in paid
+  paid_not_checkable: Not checkable without Foreplay
+  paid_query: "search '{query}', active {market} ads"
+  paid_needs_foreplay: needs Foreplay
+  not_checked: not checked
+  none: none
+  moved_by_review: "Moved by review from {stage}: {why}"
+  # the page's header
+  page_title: "{category} Trend Report"
+  nav_label: Views
+  h1: "What is moving in {category}"
+  meta_market: "Market: {market}"
+  meta_as_of: "As of {date}"
+  meta_mapped: "{topics} topics + {hooks} hooks mapped"
+  meta_source: "Source: TrendsMesh evidence videos, Meta Ad Library"
+  number_2: two
+  number_3: three
+  number_4: four
+  number_5: five
+  number_6: six
+  lede_one: One trend to act on now, what is still rising, and what to leave out.
+  lede_many: "{n} trends to act on now, what is still rising, and what to leave out."
+  no_act_now: "No trend reaches 'act now' this time."
+  lede_sample: "Each trend is placed against the rest of the {category} sample: how fast new creators join it compared with a typical {category} trend, how widely its views are spread, and how much reach its evidence has."
+  sample_head: The sample.
+  sample: 'In the {window} days to {ref}, {active} creators joined one of the {trends} mapped {category} trends in TrendsMesh evidence ({platforms} only). A typical active trend gained {median} of them; "2×" means twice that. Bands rank a topic among {category} topics and {hook_pool}. Raw counts sit under each card.'
+  unknown_platform: unknown platform
+  hook_pool_read: "a hook among the {pool} rising hooks whose videos were read (the shortlist; {listed} listed)"
+  hook_pool_all: "a hook among all {pool} rising hooks"
+  # the picks
+  act_on_one: Act on this one
+  act_on_these: "Act on these {n}"
+  act_order: "Ordered by fit to the {market} market and room left in paid."
+  others: "Also in 'act now' by the numbers, not recommended yet:"
+  still_heading: "Still rising: worth watching"
+  watch_next: Watch next
+  # a trend's card
+  band_all_hooks: "{band} of all rising hooks"
+  band_hooks_read: "{band} of the rising hooks read"
+  band_topics: "{band} of {category} topics"
+  velocity: "{index}× the new creators of a typical {category} trend"
+  spread_one: One account
+  spread_one_sub: "{share}% of views from @{creator}"
+  spread_few: A few accounts
+  spread_few_sub: "top account {share}% of views"
+  spread_broad: Broad
+  spread_broad_sub: "no account above {share}% of views"
+  glance_momentum: Momentum, last 14 days
+  spread: Spread
+  glance_reach: Reach of the evidence
+  reach_views: "{views} views"
+  reach_videos: "across {videos} videos"
+  glance_freshness: Freshness
+  fresh_new_video: "new video {days} d ago"
+  fresh_seen: "trend seen for {days} d"
+  confidence: Confidence
+  confidence_sub: "{why}; status {status}"
+  glance_ad_library: "Meta Ad Library ({market})"
+  raw_summary: Raw counts in the sample
+  raw_counts: "{new_recent} new creators in the last 14 days (of {active} creators who joined any mapped {category} trend in that window), {new_base} in the 28 days before; {creators} creators in all; median {median} views per video. TrendsMesh evidence is a collected sample, not platform totals."
+  thumb_views: "{views} views · {date}"
+  video_by: "Video by {creator}"
+  evidence_video_by: "Evidence video by {creator}"
+  card_what: What it is.
+  card_how: How to use it.
+  card_risk: Risk.
+  fit_score: "Fit score {total} on a scale of {low}–{high} (TR5: {criteria} criteria scored 1–5, weighted)"
+  card_valid: "Valid until {date} · trend id {id}"
+  # the stage tables
+  col_trend: Trend
+  col_type: Type
+  col_group: Group
+  col_momentum: Momentum
+  col_typical: × typical
+  col_reach: Reach
+  col_new_video: New video (d ago)
+  col_note: Note
+  col_raw: "Raw: new / before"
+  # moved by review, the category map, the backtest, the limits
+  moved_heading: Moved by review
+  moved_note: The numbers put these in one stage; reading the evidence moved them.
+  mapped_heading: How the category was mapped
+  mapped_split_one: 'One phrase in: "{root}" matched only {n} trend strongly, so it was split into sub-categories, and thin ones split once more'
+  mapped_split_many: 'One phrase in: "{root}" matched only {n} trends strongly, so it was split into sub-categories, and thin ones split once more'
+  mapped_whole_one: 'One phrase in: "{root}" matched {n} trend strongly, so it was not split'
+  mapped_whole_many: 'One phrase in: "{root}" matched {n} trends strongly, so it was not split'
+  mapped_note: "{mapped} (relevant = search match score ≥ {min_match}). Hooks were kept when their evidence videos are about {category}."
+  col_search: Search
+  col_parent: Parent
+  col_relevant: Relevant results
+  col_kept: Trends kept here
+  split_further: split further
+  left_out: "Left out ({n}) and why"
+  sure_heading: How sure are we
+  backtest_note: 'Backtest: stages computed with the evidence known on a past date, then the new creators that joined in the next 14 days. A good rule puts more growth in "act now" than in "past its peak".'
+  col_ref_date: Reference date
+  col_stage_then: Stage then
+  col_trends: Trends
+  col_median_after: Median new creators after
+  col_share_3: Share with 3+ new
+  backtest_ref: "{date} · rule {rule}"
+  no_backtest: No backtest in this run.
+  limits: 'Limits: evidence is a sample; most trends have 5–50 creators, so single weeks are noisy. Trends that ended before today are not in the pool, which flatters every stage. A trend whose views come mostly from one account is not counted as spreading, however many creators it has. "Too late" includes crowded trends that still add creators: they grow, but there is little room left. When the stage rule was calibrated, the growth ratio alone did not predict anything; the count of new creators and how recently they posted did.'
+  footer: "Built by the TrendsMesh trend-research playbook. Trend data: TrendsMesh, {date}. {paid_note} Valid until {valid_until}."
+  paid_note_checked: 'Paid check: Meta Ad Library, active {market} ads, titles only, so "none found" means none in titles, not "not in ads".'
+  paid_note_unchecked: 'Paid check: Meta Ad Library was not checked in this run, so every paid verdict is "not checked".'
+  # the digest view
+  digest_title: "Weekly digest: {category}"
+  digest_meta: this week vs the previous run
+  compared: "Compared with the report of {then} ({days} days of evidence)."
+  compared_rebuilt: 'Compared with {then} ({days} days of evidence). This digest uses a snapshot of that week rebuilt from the evidence dates, so "new" means no creators then and ended trends are left out; from next week it compares with the stored snapshot.'
+  stat_calls: "last week's 'act now' calls kept adding creators"
+  stat_calls_unknown: "last week's 'act now' calls kept adding creators ({unknown} unknown)"
+  stat_moved_up: moved up
+  stat_new_rising: new and rising
+  stat_seasonal: seasonal, now over
+  stat_slowing: slowing
+  stat_ended: ended or merged
+  week_in_a_minute: The week in one minute
+  todo_heading: What to do this week
+  moved_up: Moved up
+  moved_up_note: "Trends that climbed a stage, with videos posted since {then}."
+  moved_up_kicker: "Moved up · {was} → {now}"
+  new_on_radar: New on the radar
+  new_on_radar_note: "Trends that entered the TrendsMesh list since {then} and are rising now."
+  also_new: "Also new, not rising: {names}."
+  calls_heading: Last week's calls
+  calls_note: "Did the 'act now' picks of {then} keep growing? This week's videos under each."
+  call_kicker: "{mark} Last week: act now · {verdict}"
+  call_unknown: "Unknown: TrendsMesh has no dated video with a creator"
+  call_kept: Kept adding creators
+  call_stalled: "Stalled: no new creator"
+  call_off_map: Not on this week's map.
+  call_still_act_now: Still 'act now'
+  call_now_stage: "Now '{stage}'"
+  call_fortnight: "This fortnight {index}× the new creators of a typical {category} trend."
+  was: "(was {name})"
+  no_new_video: No new evidence video this week.
+  cooling_heading: Cooling down
+  col_stage: Stage
+  col_why: Why
+  fewer_new_creators: fewer new creators than last week
+  ended_heading: Ended or merged
+  ended_note: "Gone from the trend list since {then}."
+  ended_not_checked: "Not checked this week: {why}, so ended trends are left out."
+  ended_rebuilt: the previous week is rebuilt from evidence dates
+  ended_no_pool: the previous snapshot has no pool list
+  reidentified: "Same trend under a new id:"
+  # the paid view
+  paid_title: "Paid vs organic: {category}"
+  paid_meta: Meta Ad Library, active ads
+  paid_heading: Organic stage × presence in paid
+  paid_intro: What is rising in organic but not yet in ads.
+  paid_checked: "Every rising trend and the largest slowing ones, checked in Meta Ad Library (active {market} ads). Titles only: 'none found' means none in titles, not proof that nobody advertises it."
+  paid_unchecked: 'Meta Ad Library was not checked in this run (active {market} ads), so every trend here is "not checked"; the report is otherwise complete.'
+  paid_rising: Rising in organic
+  paid_rising_sub: act now, still rising
+  paid_slowing: Slowing in organic
+  paid_slowing_sub: the largest 'too late' trends
+  paid_hooks: "Hooks, not checkable in titles:"
+  paid_not_checked: "Not checked:"
+  paid_foreplay: With Foreplay connected this view adds, per trend and hook, how many paid ads use it, on which platforms, and how long the longest has run.
 
 # --- Organic AI video pages: engine/src/tm/organic_pages/*, organic_gates.py, organic_week_delivery.py ---
 organic:
+  # the levels (how much Claude stops to ask), named as the plugin names them
   level_every_step: Check every step
+  level_big_calls: Just the big calls
+  level_hands_off: Hands-off
+  # shared by the pages
+  decision: Decision
+  decision_for: Decision for
+  post_to: Post to
+  your_decisions: Your decisions
+  output: Output
+  length: Length
+  run_folder: "Run folder:"
+  not_saved: "Not saved for Claude: tell Claude your choices in chat"
+  not_saved_unreachable: "Not saved for Claude (page storage not reachable): tell Claude your choices in chat"
+  storage_unreachable: "Page storage not reachable, so choices are not saved for Claude: tell Claude your choices in chat"
+  saving: Saving…
+  saved: Saved · Claude can read your choices
+  connecting: Choices are kept in this browser until the page connects…
+  ready: Ready · your choices save automatically
+  copy: Copy
+  copied: Copied
+  saved_check: "✓ Saved"
+  download_failed: "✕ Download failed"
+  # the posting kit's fields (check-in, delivery and script pages)
+  kit:
+    posting_kit: Posting kit
+    title: Title
+    caption: Caption
+    description: Description
+    hashtags: Hashtags
+    cover: Cover
+    ai_label: AI label
+    sound: Sound
+    product: Product mention
+    pinned_comment: Pinned comment
+    first_comment: First comment
+  # the proposals page (organic_pages/proposals.py); the Copy summary's words (summary_*) are read back too
+  proposals:
+    risk_low: "Risk: Low"
+    risk_medium: "Risk: Medium"
+    risk_high: "Risk: High"
+    produce: Produce
+    later: Maybe later
+    skip: Skip
+    taste_placeholder: Leave empty and Claude proposes options
+    how: How
+    hands_off_hint: "Hands-off: Claude produces the whole video without stopping. While we test, the exact cost is still confirmed once before anything is paid."
+    notes_label: Notes for Claude (optional)
+    notes_placeholder: e.g. use a golden retriever instead of the husky
+    not_decided: Not decided
+    sum_to_produce: to produce
+    sum_later: later
+    sum_skipped: skipped
+    sum_not_decided: not decided
+    sum_estimate: Est.
+    save_failed: Could not save to the page
+    save_failed_kept: kept in this browser
+    summary_copied: Summary copied
+    copy_blocked: Copy was blocked by the browser
+    eyebrow: Organic AI video · proposals
+    already_made: "Already made:"
+    produce_all: Produce all
+    copy_summary: Copy summary
+    hint: Mark each proposal below, then write “ready” to Claude in the chat. On the page’s claude.ai link, choices save as you click and Claude reads them from the page; a copy opened as a file can’t save them, so tell Claude your choices in chat (Copy summary helps).
+    product_chip: "Product:"
+    the_video: The video
+    recipe: Recipe
+    production: Production
+    voice: Voice
+    music: Music / sound
+    text: Text
+    product: Product
+    risks: Risks
+    cost: Cost
+    facts: "Facts to source:"
+    trends_behind: Trends behind it
+    creators: creators
+    videos: videos
+    views: views
+    used_for: "Used for:"
+    evidence_by: Evidence video by
+    views_short: views
+    watch_on: Watch on
+    kind_hook: Hook
+    kind_topic: Topic
+    kind_sound: Sound
+    kind_format: Format
+    mode_for: Production mode for
+    nav: Proposals
+    summary_produce: produce
+    summary_later: later
+    summary_skip: skip
+    summary_not_decided: not decided
+    summary_platforms: platforms
+    summary_answers: answers
+    summary_note: note
+    summary_output: output
+    out_video: AI video
+    out_script: Script to film
+    output_for: Output for
+    trend_hook: hook
+    trend_id: id
+    # the lede's start for 1, for 2–4 (22–24 …) and for 5 or more ideas; English says the same for all three
+    lede_ideas_one: "{n} video ideas for"
+    lede_ideas_few: "{n} video ideas for"
+    lede_ideas_many: "{n} video ideas for"
+    lede_rest: each built on trends rising now, with the evidence videos behind it. Pick the ones to produce; nothing is generated or paid until you approve a pack and its cost.
+  # the check-in and delivery pages (organic_pages/gate.py) and their data (organic_gates.py)
+  gate:
+    eyebrow_images: "Organic AI video · check-in: images"
+    eyebrow_video: "Organic AI video · check-in: video"
+    eyebrow_edit: "Organic AI video · check-in: final edit"
+    accept_rest: Accept the rest
+    note: "Pick an option where there is a choice, then Accept, Redo (write what to change) or Drop. On the page’s claude.ai link, choices save as you click; write “ready” to Claude in the chat when done. A copy opened as a file can’t save them: tell Claude your choices in chat."
+    agent_pick: Agent’s pick
+    accept: Accept
+    redo: Redo
+    drop: Drop
+    make_thumbnail: Make a YouTube thumbnail
+    note_label: Note for Claude (what to change on Redo)
+    sum_accepted: accepted
+    sum_redo: redo
+    sum_dropped: dropped
+    sum_open: open
+    save_failed: Could not save to the page; kept in this browser
+    blocked: Blocked
+    download: Download
+    title_images: "{title}: the images"
+    title_video: "{title}: the takes"
+    title_edit: "{title}: the final video and its posting kit"
+    lede_images: The images made for this video, beside the product and the references. Pick one where there is a choice, then Accept, Redo with a note, or Drop. Nothing is made again until you say so.
+    lede_video: Each take with its QA findings (720p previews), beside the references. Pick one where there is a choice, then Accept, Redo with a note, or Drop. A video is never made again unless you ask.
+    lede_edit: "The final video, its cover and the posting kit, then every step that made it: the images, the raw takes, the motion graphics, the voiceover, the storyboard and the QA findings. Every platform is ticked; untick the ones you do not want. The YouTube thumbnail is optional (it shows outside the Shorts feed). Download the video (1080p) and the cover with the Download buttons."
+    proposal: "{id} · {channel}"
+    label_final: "{id} · “{title}”"
+    q_final: Watch the video, check the cover and the texts. Untick a platform you do not want to post on.
+    label_images: "Images: {name}"
+    q_images: Which image of {name}?
+    label_takes: "Takes: {name}"
+    q_takes: Which take of {name}? The QA findings are under each take.
+    label_voiceover: Voiceover
+    q_voiceover: Listen to the pace, the pronunciation and the tone.
+    label_storyboard: "Storyboard: {name}"
+    q_storyboard: Do the look and the order fit? On Redo, say which panel to change and how.
+    label_animation: "Animation: {name}"
+    q_animation: Watch the animation with the voiceover in mind. On Redo, say which moment to change and how.
+    label_motion: "Motion graphics: {name}"
+    q_motion: "Watch the render: the pictures, the text and the timing. Accept the one the video is made from; on Redo, say what to change."
+    cap_final: Final video {version}
+    cap_cover: Cover
+    cap_packshot: Product packshot
+    cap_host: Host image
+    cap_evidence: Evidence video by @{creator}
+    cap_still: The copied look, rendered ({comp}, frame {frame})
+    cap_contact: QA contact sheet of {take}
+    dl_video: video (1080p)
+    dl_cover: cover
+    # the cover's file name part: plain letters (a file name)
+    cover_file: cover
+    qa_pass: QA passes
+    qa_fails: "QA fails: {fails}"
+    qa_findings: "findings: {findings}"
+    qa_none: no QA yet
+  # the script to film and its Markdown (organic_pages/script.py)
+  script:
+    eyebrow: Organic AI video · script to film
+    download: "⬇ Download script (.md)"
+    format: Format
+    goal: Goal
+    trends: Built on
+    hook: Hook (first 2 seconds)
+    on_screen: On screen
+    why: Why it works
+    shots: Shot list
+    time: Time
+    framing: Framing
+    action: Action
+    line: Line
+    filming: Filming
+    edit: Edit
+    facts: Fact check (for you, not for the caption)
+    gen: Generate instead of filming (optional)
+    host: Host image prompt (GPT Image 2)
+    video: Video prompt (MiniMax H3)
+    words: words
+    all_lines: All lines (teleprompter)
+  # the week plan page (organic_pages/week.py)
+  week:
+    day_mon: Monday
+    day_tue: Tuesday
+    day_wed: Wednesday
+    day_thu: Thursday
+    day_fri: Friday
+    day_sat: Saturday
+    day_sun: Sunday
+    risk_low: low
+    risk_medium: medium
+    risk_high: high
+    production: "Production:"
+    trend: "Trend:"
+    risk: "Risk:"
+    reserve: reserve
+    eyebrow: Organic AI video · weekly pack
+    of: of
+    sum_video: AI video
+    sum_scripts: scripts
+    sum_skipped: skipped
+    approve: Approve the week
+    approved: "✓ Week approved"
+    saved: Saved · Claude sees your choices
+    save_failed: Could not save on the page; kept in this browser
+    connecting: Choices stay in this browser until the page connects…
+    ready: Ready · choices save automatically
+    video: AI video
+    script: Script
+    ok: OK
+    skip: Skip
+    swap: Swap idea
+    note: Note for this video (optional)
+    note_label: Note
+    empty: no post
+    reserve_cost: "Cost: video ${v} · script ${s}. Pick it in “Swap idea” on any day."
+    meta: "{n} videos this week · posting to: {pf} · production: {rh} · budget ${b} for the whole week."
+    bar: Budget and approval
+    over: "The plan is over budget: switch a video to a script, swap it for a cheaper idea, or skip it."
+    help: For each day pick “AI video” or “Script” (you film it, $0), swap the idea for another one from the list, or skip it. “Approve the week” starts production of the whole week; then you get one page with the finished videos, scripts and posting kits.
+    calendar: Week calendar
+    reserves: Reserve ideas
+    no_db: "No access to page storage, so choices are not saved for Claude: tell Claude your choices in chat"
+  # the week's delivery page and posting plan (organic_week_delivery.py)
+  week_delivery:
+    title: "{title}: the week's videos, scripts and posting kits"
+    lede: Every video and script of the week, each with its posting kit, in posting order. Download each video and cover, or the script to film, with the Download buttons; the posting plan says when and where to post each one.
+    eyebrow: "{day} {date} · {time}"
+    label: "“{title}”"
+    q_video: Watch the video and check the texts.
+    q_script: Read the script you film, and check the texts.
+    cap_script: Script to film
+    dl_script: script (.md)
+    plan: Posting plan
+    none: nothing to post

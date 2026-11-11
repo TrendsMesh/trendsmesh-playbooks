@@ -12,7 +12,8 @@ own delivery page's, `delivery:<stem>`), and a video's ticks a new kit version t
 
 The pages are `gate_images`, `gate_video` and `delivery` (drift check 26); `tm.organic_pages.gate` builds them from
 this data (the handoff's `gate.schema.json`) and their db collections are `gate_images`, `gate_video` and `gate_edit`.
-Every label is the page language's (`organic_pages.UI[lang]["gate"]`, the pack's `lang`). The data's `plugin`
+Every label is in the language the page is built in (`organic_pages.gate_words`, of `organic_pages.lang_of` the
+pack: its `lang` when that language's table is translated, else English); the data's `lang` is the pack's. The data's `plugin`
 block (not shown) ties each item to the run: `{page, pack, final, kit, items: {item id: {kind, name, stem, files:
 {option id: run-relative file}}}, missing_thumbnails}`.
 
@@ -75,9 +76,9 @@ import unicodedata
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from tm import (flow, kit, manifest, organic_final, organic_pack, organic_qa, organic_specs, page, render,
+from tm import (flow, i18n, kit, manifest, organic_final, organic_pack, organic_qa, organic_specs, page, render,
                 runfolder, state, stepchecks, trend_spool, trends)
-from tm.organic_pages import UI, lang_of
+from tm.organic_pages import gate_words, lang_of
 from tm.organic_pages import gate as gate_page
 from tm.r2 import run_config
 from tm.review import VIDEO_EXT
@@ -98,7 +99,7 @@ READ_WITH = gate_page.READ_WITH
 
 
 def _ui(lang: str) -> dict:
-    return UI[lang]["gate"]
+    return gate_words(lang)
 
 
 def _rel(run: RunFolder, path: Path) -> str:
@@ -287,8 +288,9 @@ def _stage_items(run: RunFolder, pack: dict, t: dict, *, video: bool, refs: list
 
 
 def _data(run: RunFolder, pack: dict, gate: str, items: list, plugin: dict) -> dict:
-    lang = lang_of(pack)
-    t = _ui(lang)
+    t = _ui(lang_of(pack))
+    # the data's lang is the run's working language (the pack's): the page build says when its table is missing
+    lang = i18n.tag(pack.get("lang")) or i18n.ENGLISH
     return {"lang": lang, "title": t[f"title_{gate}"].format(title=pack["title"]), "run": _run_ref(run),
             "gate": gate, "date": date.today().isoformat(), "lede": t[f"lede_{gate}"], "items": items,
             "plugin": plugin}

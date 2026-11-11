@@ -189,7 +189,7 @@ def test_pl_page_has_no_english_ui_left(tmp_path, capsys):
         for p in places:
             rest = rest.replace(p, "")
         assert word not in rest, word                                   # nowhere else on the page
-    for name in organic_pages.UI["pl"]["levels"].values():
+    for name in organic_pages.levels("pl").values():
         assert f"<span>{name}</span>" in text
     assert 'value="big_calls" checked' in text and '<html lang="pl">' in text
     assert "Bez zatrzymywania: Claude robi cały film" in text
@@ -212,7 +212,7 @@ def test_pages_escape_quotes_script_and_polish(tmp_path, capsys):
     meta = json.loads(found)
     assert [m["title"] for m in meta[:2]] == [title, "Gry <!--<script> rodzinne"]
     assert '<html lang="en">' in text and "Ryzyko" not in text
-    for name in organic_pages.UI["en"]["levels"].values():
+    for name in organic_pages.levels("en").values():
         assert f"<span>{name}</span>" in text
     assert 'value="hands_off" checked' in text
     assert "Hands-off: Claude produces the whole video without stopping." in text
@@ -643,9 +643,9 @@ def test_capabilities_pinned():
     assert "db.collection('week')" in (tools / "weekly_page.py").read_text(encoding="utf-8")
     assert "collection `gate_<gate>`" in (tools / "gate_page.py").read_text(encoding="utf-8")
     assert json.loads(json.dumps(organic_pages.CAPABILITIES)) == organic_pages.CAPABILITIES
-    assert organic_pages.UI["en"]["levels"] == {"every_step": "Check every step", "big_calls": "Just the big calls",
+    assert organic_pages.levels("en") == {"every_step": "Check every step", "big_calls": "Just the big calls",
                                                 "hands_off": "Hands-off"}
-    assert copy.deepcopy(organic_pages.UI["pl"]["levels"]) == {
+    assert copy.deepcopy(organic_pages.levels("pl")) == {
         "every_step": "Sprawdzaj każdy krok", "big_calls": "Tylko najważniejsze decyzje", "hands_off": "Bez zatrzymywania"}
 
 
@@ -661,7 +661,7 @@ def test_a_page_that_cannot_save_says_to_choose_in_chat(lang):
                      "Choices save as you click; write “ready” to Claude in the chat when done.")}
     pages = {"proposals": organic_pages.worded(proposals.localize(proposals.JS + hint["proposals"], lang), lang),
              "gate": organic_pages.worded(gate.localize(gate.JS + hint["gate"], lang), lang),
-             "week": organic_pages.worded(json.dumps(week.T[lang], ensure_ascii=False), lang)}
+             "week": organic_pages.worded(json.dumps(week.labels(lang), ensure_ascii=False), lang)}
     chat = {"en": "tell Claude your choices in chat", "pl": "w czacie"}[lang]
     for name, text in pages.items():
         for claim in ("Saved in this browser only", "Zapisane tylko w tej przeglądarce", "choices kept in this browser",
