@@ -1,13 +1,13 @@
 """The private test data: the playbook handoff packages (`handoff/` at the repository root) and the fixtures made from
-them that carry real people's words (the EXCLUDE list of tools/public_export.py). They stay in the private
-repository; the public copy leaves them out.
+them that carry real people's words. They live in the private data repository, which a TrendsMesh machine clones as
+`private/` inside this checkout; `private/tools/install-hooks.sh` links each path in `private/LINKS` into place here
+(git-ignored), so tests and evals find them at their usual paths. Anyone else's clone has no `private/`.
 
 A test that needs any of it is marked `@pytest.mark.private_data` (or its module sets `pytestmark`). conftest.py
-skips those tests when `handoff/` is missing, so the public copy's suite runs everything else; in the private
-repository a missing `handoff/` is an error. `handoff/` stands for all the private data: the left-out fixtures are
-in the private repository whenever it is. The CI job `public copy` runs the suite on the export, so a test that
-needs the data but lacks the mark fails there (video and tool tests do not run in that job: test_public_export.py
-checks their marks by reading the code).
+skips those tests when `private/` is missing, so a public clone's suite runs everything else; when `private/` is
+cloned but `handoff/` isn't linked in, it is an error, since a skip would hide the tests. `handoff/` stands for all
+the private data: the other links are there whenever it is (test_private_links.py checks every one). CI runs the
+suite without `private/`, so a test that needs the data but lacks the mark fails there.
 
 The skip comes after collection, so a module must not read private data at import: read it inside the test or a
 fixture, or through `json_fixture` (as test_voice.py's GOLDEN does).
@@ -22,9 +22,9 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
 HANDOFF = REPO / "handoff"
 AVAILABLE = HANDOFF.is_dir()
-PRIVATE_REPO = (REPO / "tools" / "public_export.py").is_file()   # left out of the public copy
+PRIVATE_REPO = (REPO / "private").is_dir()   # the private data repo, cloned on TrendsMesh machines only
 
-ALIASES_FILE = REPO / "tools" / "client_aliases.json"
+ALIASES_FILE = REPO / "private" / "tools" / "client_aliases.json"
 
 
 @functools.lru_cache(maxsize=1)
@@ -42,7 +42,7 @@ def _aliases() -> tuple[re.Pattern | None, dict[str, str]]:
 
 def alias(value):
     """`value` (text, bytes, or JSON data) with each client's real name replaced by the made-up one the plugin uses
-    (tools/client_aliases.json, private): the handoff's data, as the port would write it under the alias."""
+    (private/tools/client_aliases.json): the handoff's data, as the port would write it under the alias."""
     if isinstance(value, bytes):
         return alias(value.decode("utf-8")).encode("utf-8")
     if isinstance(value, str):
@@ -55,12 +55,12 @@ def alias(value):
     return value
 
 
-SKIP_REASON = "needs the private test data (handoff/ and the fixtures made from it), not in the public copy"
+SKIP_REASON = "needs the private test data (handoff/ and the fixtures made from it), not in a public clone"
 
 
 def json_fixture(rel: str, empty):
-    """The JSON fixture `fixtures/<rel>`, or `empty` in the public copy, where private fixtures are left out. In the
-    private repository the file must exist."""
+    """The JSON fixture `fixtures/<rel>`, or `empty` in a public clone, where private fixtures are missing. Where
+    private/ is linked in, the file must exist."""
     path = HERE / "fixtures" / rel
     if not AVAILABLE and not path.exists():
         return empty

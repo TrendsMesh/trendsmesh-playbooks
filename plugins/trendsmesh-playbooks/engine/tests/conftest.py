@@ -14,13 +14,12 @@ PLAYBOOK_TWO = Path(__file__).parent / "fixtures" / "playbook_two"
 
 
 def pytest_collection_modifyitems(config, items):
-    """In the public copy (no handoff/), tests marked private_data are skipped (tests/private.py). The private
-    repository (where tools/public_export.py is) must have handoff/: there a skip would hide the tests."""
+    """In a public clone (no private/), tests marked private_data are skipped (tests/private.py). Where private/ is
+    cloned, its data must be linked in (handoff/ there): a skip would hide the tests."""
     if private.AVAILABLE:
         return
     if private.PRIVATE_REPO:
-        raise pytest.UsageError(f"{private.HANDOFF} is missing, but this is the private repository "
-                                "(tools/public_export.py is here): its private_data tests would all be skipped.")
+        raise pytest.UsageError("private/ is cloned but its data isn't linked in: run private/tools/install-hooks.sh")
     skip = pytest.mark.skip(reason=private.SKIP_REASON)
     for item in items:
         if item.get_closest_marker("private_data"):
