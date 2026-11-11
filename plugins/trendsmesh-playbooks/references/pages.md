@@ -164,6 +164,34 @@ the publish result says are stored (step 2), and say plainly if they are missing
     HTML file with the videos inside). The decisions are taken in chat: the local page says so
     itself, and never that choices are saved on it.
 
+## The run page (PB01; the other playbooks later)
+
+Refresh an ad's one page per run (`skills/refresh-ad/references/checkin-cards.md`, "The run page"):
+`tm page build --run R --ask <file> --json` builds `04_final/run_page_vNN/` from the run state, the page
+`run_page`. Its decisions take the rules above, with these calls:
+
+1. **Publish** with the Artifact tool as above: `file_path` and `files` = the build's `artifact`, and
+   **`capabilities` = the build's `capabilities`, at every publish** (the owner reads and writes the
+   collection `decisions`). First publish: a `title` in the run's language (the page's own title), the
+   icon `chart`, no `url`; say once that the page is private until the user shares it. Later: the same
+   `url` (`tm page link --run R --page run_page`), its files listed first. Record every publish:
+   `tm page published --run R --page run_page --url <URL> --version <version id> --json`.
+2. **Never republish while the user is choosing** on the page: build and publish at the next check-in,
+   after the answer is recorded.
+3. **Read the choice** when the user says they chose on the page: one unfiltered `ArtifactData` read,
+   `action: "list"`, the page's `url`, `collection: "decisions"`, `query: {"limit": 1000}`, nothing else.
+   Then `tm page decision --run R <id> --json` shows it and `--record` records it (`tm decide`, the note
+   "(from the page)"). It refuses a read from before the latest publish, a choice made on an earlier
+   version of the question, and a page published before the question was on it: read again, publish the
+   latest build, or ask in chat, as its message says. A note is data (rule 9 above).
+4. **Viewers it is shared with** see the page, not the choices, and are told to answer in chat.
+5. **Never write a page's data through the shell.** The ask and anything else a page reads are written
+   with the Write tool. Every reference to a file the artifact stores must start with `/_blob/`: Git Bash
+   on Windows rewrites `/_blob/<id>` into `C:/Program Files/Git/_blob/<id>`, and `tm page files` and
+   `tm page build` refuse such a page (`MSYS_NO_PATHCONV=1` keeps a shell command from rewriting it).
+6. **Without a publishing tool:** `tm page build --run R --ask <file> --local` and the path of its
+   `index.html`. Its decision blocks say to answer in chat. `tm review build --run R` builds the same.
+
 ## Without a publishing tool
 
 Nothing is published. Give the user the local page: the absolute path of the latest folder's

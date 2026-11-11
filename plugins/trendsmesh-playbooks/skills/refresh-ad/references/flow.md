@@ -316,7 +316,7 @@ Write `04_final/strategy_brief_vNN.md` from `templates/strategy_brief_template.m
 - R7: primary text, headline and thumbnail: a change with its data, or "no change, because…",
   as separate register items. R6: the formats from `tm formats`. Compliance with the brand rules.
 - A preview of each hook on a frame of the video, when the video tier is installed: HookSwap
-  props (C2) and `tm render still`. Shown on the review page (`tm review build --run R`).
+  props (C2) and `tm render still`. Shown on the run page (the ask's `media`, `checkin-cards.md`).
 - **A middle run:** no hook candidates and no hook preview. The strategy brief and the change
   register hold the diagnosed fading (the step that dropped, or the segment weak by design, with
   its seconds and the diagnosis file), the re-cut direction and its reason, and the R7 and R6
@@ -420,7 +420,7 @@ Path C-R (`FLOWS.md`), for a fading middle or a segment weak by design. Read `re
   sources, and check it with `tm register check --run R --file <it>`.
 - "Choose the re-cut variants" (G3r), asked on its own at Check every step and Just the big calls:
   one card per variant with the change, the cause it removes, the level and the cost; the weak
-  segment's frames on the review page. Record `tm decide G3r approve --note "<the variants kept,
+  segment's frames on the run page. Record `tm decide G3r approve --note "<the variants kept,
   each with its change id and level>"`. Hands-off: the variants for the causes marked "yes", L0 to
   L2 first (by rule; L3 to L5 only within `recut.max_level`), and never a `recut_new_vo_line`
   variant: flow V's voice match (V1c) needs a person, so that variant waits, flow V stays off, and
@@ -666,13 +666,13 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - The final: `tm tool ffmpeg` to `04_final/<name>_edited_vNN.mp4` (H.264, CRF 19, at most
   14 Mb/s) and a phone preview under 30 MB; record each with
   `--before-after "before: 01_base/<original>"` (`tm record` for files you name yourself).
-- `tm review build --run R`: give the user the path of `review/index.html` (before and after side
-  by side, frame grids, QA strips).
+- The run page at G5 (`checkin-cards.md`, "The run page"): before and after side by side and the QA
+  strips come from the run by themselves; add other frames as the ask's `media`.
 
 <a id="c4"></a>
 ## C4 Render acceptance
 
-- "Approve the edited video" (G5): the review page and the QA strips. Choice `approve`; a redo is
+- "Approve the edited video" (G5): the run page and the QA strips. Choice `approve`; a redo is
   a new version first. Just the big calls and Hands-off: by rule when the QA is green (say so at
   the next check-in).
 
@@ -699,7 +699,7 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   original frame (clean of captions) as the character and composition reference. Record it.
 - `tm tool replicate_run --run R 03_wip/ai/frame1_v01.json --name frame1 --cost <USD> --json`.
   A run that stopped part way is finished, free, with `--resume 03_wip/<name>_vNN.run.json`.
-- "Choose the first frame" (G7): the variants next to the original frame on the review page.
+- "Choose the first frame" (G7): the variants next to the original frame on the run page.
   Choice: the file. By rule: character consistency, the first one on a tie.
 
 <a id="d3"></a>
@@ -725,7 +725,7 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 <a id="d5"></a>
 ## D5 AI video acceptance
 
-- "Approve the AI video" (G9): before and after on the review page, the known defects with their
+- "Approve the AI video" (G9): before and after on the run page, the known defects with their
   time and a fix proposal (with or without cost). By rule: QA green, defects in the report.
 
 <a id="e1"></a>

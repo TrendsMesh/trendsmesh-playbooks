@@ -116,7 +116,7 @@ or describe a step's work, read its section in `references/flow.md` (the `ref`):
 | action | what you do |
 |---|---|
 | `work` | Read the step's section in `references/flow.md` (`ref`). Do the work. Record every file you create yourself with `tm record` (tools record theirs; section 5). Then `tm done <step> --run R`. |
-| `ask` | Show the check-in as a question card (`references/checkin-cards.md`), wait for the answer, then `tm decide <id> <choice> --run R [--note ...]`. |
+| `ask` | Put the check-in on the run page and show it as a question card (`references/checkin-cards.md`, "The run page"), wait for the answer, then `tm decide <id> <choice> --run R [--note ...]` (a choice clicked on the page: `tm page decision --run R <id> --record`). |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do and that the run continues from the same place. **Then wait.** Do nothing else in the run until they say it is done. |
 | `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). |

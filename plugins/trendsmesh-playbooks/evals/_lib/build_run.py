@@ -12,6 +12,8 @@ Scenarios (every one of them: a run `2026-11-05_ad`, Hands-off unless said, answ
                  (./.plans.json, which ./tm.sh hands to `tm offer`)
   at_a5_hook     the creative brief only, Check every step; ranking, diagnosis (hook) and every step
                  before A5 done, run at A5 (the trends), with nothing recorded about TrendsMesh yet
+  at_g1a_every_step  the creative brief only, Check every step; ranking and diagnosis (hook), G1 decided, A1a
+                 done; at the "Accept the diagnosis" check-in (G1a), asked
   at_e3_hands_off_launch  brief + live test (picked, 150 a day for 7 days), Hands-off; R4's plan from the
                  ranking, the paused ads recorded (made-up ids) and a green R8 check; run at E3, where
                  "Approve the launch" (G11) waits for the user (issue #22: never by rule)
@@ -1634,6 +1636,14 @@ def main(scn: str, ws: Path) -> int:
            "--run", str(run))
         n = tm(ws, "next", "--run", str(run), ok=(0, 2))
         assert n["action"] == "ask" and n["checkin"]["ids"] == ["G11"], n
+    elif scn == "at_g1a_every_step":
+        run = new_run(ws, ["creative_brief"], level="every_step")
+        drive(ws, run, "A1a", scn="hook")                    # stops after the ranking, before the diagnosis
+        ranking = json.loads((run / "01_base" / "winner_ranking_v01.json").read_text(encoding="utf-8"))
+        diagnose(ws, run, next(c for c in ranking["candidates"] if c["ad_id"] == m.AD_A))
+        tm(ws, "done", "A1a", "--run", str(run))
+        n = tm(ws, "next", "--run", str(run), ok=(0, 2))
+        assert n["action"] == "ask" and n["checkin"]["ids"] == ["G1a"], n
     elif scn == "at_a5_hook":
         run = new_run(ws, ["creative_brief"], level="every_step")
         n = drive(ws, run, "A5", scn="hook")

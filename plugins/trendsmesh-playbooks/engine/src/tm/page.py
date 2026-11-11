@@ -6,6 +6,8 @@
     tm page await --run RUN --page PAGE --version V [--clear] [--json]   people decide on the page now
     tm page fetch --run RUN --url URL --name SHORT [--kind landing|voice] [--found-in F] [--json]
                                                           a web page's literal text in 00_raw (tm.page_text)
+    tm page build --run RUN [--ask FILE] [--local] [--json]   the run page from the run state (tm.run_page)
+    tm page decision --run RUN CHECKIN [--record] [--json]    the choice saved on it (tm.run_page)
 
 A page lives in `04_final/<page>_vNN/` (`index.html` and `assets/`), never overwritten: each build
 is a new folder; media file names go through `asset_name` (Windows-safe). Where it was published
@@ -186,6 +188,21 @@ def over_limits(sizes: dict[str, int]) -> str:
     return ""
 
 
+# An artifact's stored file is referenced as `/_blob/<id>`. Git Bash on Windows rewrites such a path given through
+# the shell into `C:/Program Files/Git/_blob/<id>`, and the open page then cannot find it (issue #19).
+_BLOB_REF = re.compile(r"""([^"'()\s,\[\]=<>]*)([/\\])_blob[/\\]([A-Za-z0-9_.-]+)""")
+MANGLED = ("The page refers to an artifact file by a path the shell rewrote ({refs}): every such reference must start "
+           "with /_blob/. Git Bash on Windows rewrites /_blob/<id> into C:/Program Files/Git/_blob/<id>: write the JSON "
+           "with the Write tool, or run the command with MSYS_NO_PATHCONV=1, then build the page again. The run "
+           "continues from the same place.")
+
+
+def mangled_blob_refs(text: str) -> list[str]:
+    """The references to an artifact file (`_blob/<id>`) in `text` that do not start with `/_blob/`."""
+    return [f"{m.group(1)}{m.group(2)}_blob{m.group(2)}{m.group(3)}" for m in _BLOB_REF.finditer(text)
+            if m.group(1) or m.group(2) != "/"]
+
+
 def files(folder: Path) -> list[dict]:
     """The folder's files, `{"as": <served path>, "path": <absolute>}` (as the older `publish_files`
     takes them; `artifact_args` gives the Artifact tool's), `index.html` first, then the rest by
@@ -201,6 +218,9 @@ def files(folder: Path) -> list[dict]:
         if f.is_file() and not any(part.startswith(".") for part in rel.parts):
             out.append({"as": rel.as_posix(), "path": str(f.resolve())})
     out.sort(key=lambda f: (f["as"] != "index.html", f["as"]))
+    bad = mangled_blob_refs((folder / "index.html").read_text(encoding="utf-8", errors="replace"))
+    if bad:
+        raise ValueError(MANGLED.format(refs=", ".join(bad[:3])))
     over = over_limits({f["as"]: Path(f["path"]).stat().st_size for f in out})
     if over:
         raise ValueError(f"{folder.name} is too big to publish as one artifact: {over}. Make the images "
@@ -560,6 +580,15 @@ def _setup(p: argparse.ArgumentParser) -> None:
         sp.add_argument("--run", required=True, help="the run folder")
         sp.add_argument("--page", required=True, help="the page name, e.g. report")
         sp.add_argument("--json", action="store_true")
+    bu = sub.add_parser("build", help="the run page (tm.run_page) from the run state, at a check-in")
+    bu.add_argument("--ask", help="this check-in's words (a JSON file the agent wrote), saved before the build")
+    bu.add_argument("--local", action="store_true", help="no publishing tool: the page says to answer in chat")
+    de = sub.add_parser("decision", help="the choice saved on the published run page for a check-in")
+    de.add_argument("checkin", help="the check-in (or card) id the page asked, e.g. G1a")
+    de.add_argument("--record", action="store_true", help="record it (tm decide, the note marked from the page)")
+    for sp in (bu, de):
+        sp.add_argument("--run", required=True, help="the run folder")
+        sp.add_argument("--json", action="store_true")
     page_text.add_parser(sub)
 
 
@@ -615,11 +644,50 @@ def _await(args: argparse.Namespace, run: RunFolder) -> int:
     return 0
 
 
+def _build(args: argparse.Namespace, run: RunFolder) -> int:
+    from tm import run_page
+
+    got = run_page.build(run, run.given(args.ask) if args.ask else None, local=args.local)
+    now = ", ".join(got["open"]) or "nothing open"
+    if got["local"]:
+        then = (f"No publishing tool: give the user the local page, {got['index']}; its decisions are answered in "
+                "chat.")
+    elif got["published"]:
+        then = (f"Republish it to the same link ({got['published'].get('url') or got['published']['slug']}): list its "
+                f"files first, then the Artifact tool with that url, the artifact arguments and the capabilities; "
+                f"record it with tm page published --page {run_page.PAGE}.")
+    else:
+        then = (f"Publish it with the Artifact tool (the artifact arguments and the capabilities), then record it with "
+                f"tm page published --page {run_page.PAGE}.")
+    if got.get("language_warning"):
+        then = f"{got['language_warning']} {then}"
+    cli.emit(args, {"status": "done", **got, "message": then},
+             f"Built {got['folder']} (now: {now}; {got['settled']} settled). {then}")
+    return 0
+
+
+def _decision(args: argparse.Namespace, run: RunFolder) -> int:
+    from tm import flow, run_page
+
+    try:
+        got = run_page.record(run, args.checkin) if args.record else run_page.decision(run, args.checkin)
+    except flow.Held as exc:
+        raise Stop(str(exc)) from None
+    note = f' Note: "{got["note"]}"' if got["note"] else ""
+    if args.record:
+        text = f"Recorded {args.checkin}: {got['choice']} ({got['label']}), from the page.{note}"
+    else:
+        text = (f"Saved on the page for {args.checkin}: {got['choice']} ({got['label']}) at {got['saved_at']}.{note} "
+                f"Record it with tm page decision --run <run> {args.checkin} --record.")
+    cli.emit(args, {"status": "done", **got, "message": text}, text)
+    return 0
+
+
 def _run(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
-        return {"files": _files, "published": _published, "link": _link, "await": _await,
-                "fetch": page_text.run_fetch}[args.action](args, run)
+        return {"files": _files, "published": _published, "link": _link, "await": _await, "build": _build,
+                "decision": _decision, "fetch": page_text.run_fetch}[args.action](args, run)
     except Stop as exc:   # a Stop is a ValueError: caught first, it exits 2
         cli.emit(args, {"status": "stop", "message": str(exc)}, str(exc))
         return 2

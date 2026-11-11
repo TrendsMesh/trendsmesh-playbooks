@@ -28,7 +28,7 @@ before this key still works: refresh-ad's and creative brief's `account.language
 
 ## Pages in the working language
 
-The engine builds every page (Creative brief, Trend research's report, digest and paid view, Organic AI video's pages)
+The engine builds every page (Creative brief, Trend research's report, digest and paid view, Organic AI video's pages, Refresh an ad's run page)
 from one English table of its fixed words, `data/i18n/en.yaml`. For another working language the table is
 translated once, by you, and kept in the plugin data folder for every later run in that language:
 

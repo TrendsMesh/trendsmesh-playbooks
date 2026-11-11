@@ -31,6 +31,22 @@ What changed in each version of the TrendsMesh playbooks plugin.
   week's report is in the language you work in.
 - **File names keep their letters.** Saved files whose names come from a search phrase or a query now turn
   accented letters into plain ones (é → e, ß → ss, ł → l, ś → s) instead of dropping them.
+- **Refresh an ad shows every check-in on one page, in the TrendsMesh look.** At each check-in you see, the run's
+  page puts what's new on top, with that stage's results (the diagnosis, the audience, the trend cards with their
+  type, strength and what confirms them, the change register, the brief, the budgets, before and after, the test
+  plan, the pre-launch check) and the decision right under them. Earlier stages fold below as "Already settled",
+  each with what was decided. Every number shows its source when you hover over it, and each table downloads as
+  CSV. Claude publishes the page once and updates the same link at every check-in; the engine builds it from the
+  run, so it never has to be rebuilt by hand.
+- **Choose on the page, and the choice is the one recorded.** Clicking an option saves it at once, with your
+  note, and only the question open now can be clicked: an earlier decision is a summary, never a button, so it
+  can't be saved again by mistake. Claude reads your choice from the page and records it as your answer "(from
+  the page)", and refuses a choice made on an earlier version of the question. Answering in chat still works at
+  every check-in. Without a tool to publish pages, the same page opens from your computer and asks you to answer
+  in chat; the old review page (`tm review build`) now builds this page.
+- **A page's file links survive Git Bash on Windows.** A page whose link to a stored file was rewritten by the
+  shell (`C:/Program Files/Git/_blob/...`) is refused before it is published, with the fix, instead of showing
+  "This file isn't stored" when you open it.
 
 - **Organic AI video shows up again.** A colon in its description kept Claude Code from loading the playbook, so
   Claude didn't know it was there. It loads now, and a test checks every playbook and command file the way Claude

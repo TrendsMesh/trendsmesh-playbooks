@@ -13,9 +13,8 @@ label. The text follows the handoff's rules (`FLOWS.md` section H):
    budget, or "free").
 2. Each option carries its data, with the source of every number (R3).
 3. Things are shown in their context: a hook on a frame of the video, the first frame next to the
-   original frame, before and after side by side. Media goes on the local review page
-   (`tm review build --run R`, then give the path of `review/index.html`); the decision stays in
-   the chat card.
+   original frame, before and after side by side. The results and the media go on the run page
+   ("The run page" below); the card stays the second way to answer.
 4. The trail (prompt, model, parameters, cost, the parent file) is one line under "details", not
    the card's body.
 5. In the user's language, plain words: no ids, commands or JSON. "Check-in", never "gate".
@@ -23,6 +22,34 @@ label. The text follows the handoff's rules (`FLOWS.md` section H):
 The user can always answer something else ("change the hook to…", "from now on, just the big
 calls"). Redo the work as a new version and show the card again; record only the final answer.
 A level change is `tm level <id>`; a decision changed later needs `--change`.
+
+## The run page
+
+One page per run, in the TrendsMesh look, that grows at every check-in the user sees: the new stage
+and its decision on top, the earlier stages folded under "Already settled". The engine builds it from
+the run state; never write or patch its HTML.
+
+1. **The ask:** write `03_wip/ask_<id>.json` with the Write tool (never through the shell), in
+   the run's working language: `{"checkin": "<id or card id>", "title": "<what is new, one
+   line>", "lede": "<the key numbers, **bold**>", "question": "...", "context": "<one short
+   paragraph>", "options": [{"choice": "<the choice tm decide records>", "label": "...", "means":
+   "<one line>", "recommended": true}, ...]}`, your recommendation first. Optional: `points` (lines),
+   `media` (`[{"file": "<run-relative>", "caption": "..."}]`: players, frames) and `data`
+   (`[{"file": "<a CSV or JSON in the run>", "title": "..."}]`: a table with its source). The stage's
+   materials (the diagnosis, the audience, the trend cards, the register, the brief, the budgets, the
+   before and after, the test plan, the pre-launch check) come from the run's files by themselves.
+2. **Build:** `tm page build --run R --ask <the file> --json`. It refuses an ask it cannot use and
+   says why: fix the file, build again. The page's own words are in the working language once its
+   table is translated; until then it is built in English and says so (`language_warning`: translate
+   the table as `references/languages.md` says, then build again).
+3. **Publish** it with the Artifact tool, once, then to the same URL at every check-in
+   (`references/pages.md`, "The run page"). Without a publishing tool: `tm page build --run R --ask
+   <file> --local`, give the path of its `index.html`; its decisions are answered in chat.
+4. **In chat:** one or two lines on what is new, the link, and the question card.
+5. **The answer:** when the user says they chose on the page, read it (`references/pages.md`) and
+   `tm page decision --run R <id> --record`, which records it with the note "(from the page)".
+   Quote the user's note back whole, as their words. An answer in chat always counts: `tm decide`
+   as usual, and the next build shows it as settled.
 
 ## A merged card (Just the big calls)
 

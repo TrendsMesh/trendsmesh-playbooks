@@ -569,3 +569,212 @@ organic:
     dl_script: script (.md)
     plan: Posting plan
     none: nothing to post
+
+# --- Refresh an ad's run page: engine/src/tm/run_page/ (issue #19) ---
+# decision.saved_at's {time} and decision.save_error's {error} are filled on the page itself.
+run_page:
+  top:
+    brand: TrendsMesh
+    title: '{playbook}: {run}'
+  footer:
+    built: Built from the run {run} on {when}. Every number shows its source when you hover over it.
+  from_page: (from the page)
+  now:
+    new: New
+    label: Now
+    updated: Updated {when}
+    nothing_open: Nothing to decide right now.
+  settled:
+    heading: Already settled ({n})
+    outcome: '{stage}: {outcome}'
+    saved: saved
+    by_rule: by rule
+  decision:
+    now: Now
+    recommended: recommended
+    note: Your note (optional)
+    save_notes: Save notes
+    connecting: Connecting…
+    ready: Click an option to save it.
+    saving: Saving…
+    saved_at: Saved at {time}. Tell Claude in chat when you have chosen.
+    save_error: Could not save ({error}). Answer in chat.
+    cannot_save: This view can't save; answer in chat.
+    answer_in_chat: This copy of the page can't save choices. Answer in chat.
+  record:
+    picked: Picked
+    by_rule: Decided by rule
+    note: Note
+    saved: Saved
+  data:
+    source: 'Source: {file}'
+    download_csv: Download CSV
+    open: open
+    empty: No data yet.
+    show_text: Show the text
+  media:
+    play_both: Play both
+    pause: Pause
+    seek: Position in both videos
+  stage:
+    G1: Pick the ad
+    G1a: Diagnosis
+    G1b: Audience
+    G2: Trends
+    G3: Hooks
+    G4: Brief
+    G3r: Re-cut variants
+    VB: Voice cost
+    V1c: Voice match
+    GV: Listening test
+    RB: Re-cut cost
+    G5: Edited video
+    G5r: Re-cut videos
+    G6: AI video plan
+    G7: First frame
+    G8: AI clip
+    G9: AI video
+    G10: Test plan
+    E2b: Pre-launch check
+    G11: Launch
+    G12: Results
+    pick_the_ad: Pick the ad
+    approve_changes: The changes
+    approve_spending: Spending
+    approve_launch: Launch
+    act_on_results: Results
+  stage_name:
+    hook: The start (hook)
+    middle: The middle
+    promise_cta: The promise and call to action
+    landing: The landing page
+    account: The whole account
+    fatigue: Ad fatigue
+    auction: The auction (cost of reach)
+    unclear: Unclear
+  metric:
+    hook_rate: Hook rate (25% watched)
+    middle_rate: Middle (ThruPlay of 25%)
+    ctr: Click-through rate
+    conversion: Conversion
+    frequency: Frequency
+    cpm: Cost per 1,000 impressions
+  g1:
+    title: The ads checked
+    checked: Ads checked
+    fading: Fading winners
+  g1a:
+    title: The diagnosis
+    stage: Where it fades
+    target: What the refresh targets
+    cpr_then: Cost per result, best window
+    cpr_now: Cost per result, latest window
+    cpr_change: Change
+    funnel: The funnel, best window against the latest
+    ladder: Who keeps watching (each step among those who reached the previous one)
+    dropped: dropped
+    also_seen: Also seen
+  g1b:
+    hypothesis: The audience as we expected it, written from the video before the data
+    hypothesis_open: Show the hypothesis
+    segments: Results by age and gender
+    pick: The audience picked
+    segment: Segment
+    formats: Formats
+  g3:
+    register: The change register
+    strategy: The strategy brief
+  g4:
+    brief: The creative brief
+  e2b:
+    check: The pre-launch check
+  money:
+    title: Budgets in this run
+  voice:
+    title: Voice files
+  video:
+    pair: Before and after
+    before: Before
+    after: After
+    qa: QA strips and frames
+  test:
+    title: The live test
+    rules: Win and lose rules
+    calculation: How the budget was worked out
+  trend:
+    status: Status
+    confidence: Confidence
+    momentum: Momentum
+    rank: Rising hooks
+    confirmations: What confirms it
+    videos: Example videos
+    placement: Where the hook sits, out of {n} videos read
+    n:
+      videos: Videos with this hook
+      creators: Distinct creators
+      views: Total views
+      reach_per_follower: Median reach per follower
+      new_creators_week: New creators per week
+      hook_texts: Distinct hook texts
+      first_video: First video
+      latest_video: Latest video
+      trend_since: A trend since
+      active_days: Days active
+      platforms: Platforms
+      languages: Languages
+  hook_source:
+    speech: Speech
+    on_screen: On-screen text
+    caption: Caption
+  basis:
+    proof: TrendsMesh answer
+    guess: Data or rule
+  budget:
+    voice_credits: Voice credits
+    ai_usd: AI generation (USD)
+    test: Live test
+  col:
+    rank: Rank
+    ad: Ad
+    verdict: Verdict
+    cpr_then: Cost per result, best
+    cpr_now: Cost per result, latest
+    cost_increase: Cost increase
+    value_to_recover: Value to recover
+    note: Note
+    metric: Measure
+    value: Value
+    best: Best window
+    latest: Latest window
+    step: Step
+    name: Segment
+    age: Age
+    gender: Gender
+    results: Results
+    spend: Spend
+    cost_per_result: Cost per result
+    source: Source
+    stands: Supports or contradicts
+    says: What it says
+    example: Example
+    links: Links
+    hook_text: Hook text
+    hook_source: Where it appears
+    appears_at_s: From second
+    views: Views
+    creator: Creator
+    video: Video
+    change: Change
+    basis: Evidence type
+    evidence: Evidence
+    because: Why
+    budget: Budget
+    planned: Planned
+    approved: Approved
+    spent: Spent
+    rule: Rule
+    budget_total: Test budget
+    per_day: Per day
+    days: Days
+    min_events_per_variant: Events needed per variant
+    variants: Variants
