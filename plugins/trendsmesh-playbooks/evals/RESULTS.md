@@ -1,6 +1,111 @@
 # Plugin eval results
 
-## Report an issue (public-first plan Task 9, 2026-11-11)
+## Wave 1 fixes (`dev` at 8191ef6, 2026-11-11)
+
+Run on 2026-11-11 with Claude Code 2.1.319, from a worktree of `dev` after wave 1's 23 issues (67d6885..8191ef6),
+one case per `evals/run.sh --case <name> --ablation none` call (plugin arm only: every case here had a baseline
+before, and wave 1 changed the plugin, not what a baseline can do), `--runs 1`, three calls at a time. The owner
+capped the round at $15. The three `cb_*` cases are the private ones, copied (not linked) into the worktree's
+git-ignored paths for the run, with `_lib/gen_mocks.py` and `_lib/fixtures/ld/`.
+
+| Case | Covers (issues) | With plugin | Cost |
+|---|---|---|---|
+| `doctor_unknown_cloning_plan_goes_on` (new) | 5 | 1.00 | $0.28 |
+| `doctor_reports_missing_replicate` | 4, 5 (the card) | 1.00 | $0.24 |
+| `hands_off_launch_is_asked` (new) | 22 | 1.00 | $0.27 |
+| `shorter_version_judged_by_watch_time` | 22, 23 (R4) | 1.00 | $0.60 |
+| `hands_off_no_budget_stops_at_free_outputs` | 22 (live test opt-in), 21 | 1.00 | $0.29 |
+| `hands_off_no_ai_budget_stops_at_l2` | 21 (AI budget) | 1.00 | $0.66 |
+| `hook_fade_refreshes_only_hook` | 28 (R1 reads the Meta envelope) | 1.00 | $1.43 |
+| `account_drop_no_refresh` | 28 | 1.00 | $1.49 |
+| `missing_video_stops_with_ads_manager_link` | 28 (the mocks' envelope) | 1.00 | $0.27 |
+| `structural_check_reads_every_upload` | 28 (`tm structural`) | 1.00 | $0.77 |
+| `tr_unfinished_run_asks_first` (new) | 7 | 1.00 | $0.16 |
+| `tr_g1_review_drops_off_category` | 8 (new `hooks_ranked`), 1 | 1.00 | $1.18 |
+| `tr_weekly_hands_off_same_link` | 7 (prompt), 1, 2 | 1.00 | $1.38 |
+| `tr_no_artifacts_local_page` | 2 (grader changed) | 1.00 | $0.51 |
+| `ov_no_artifacts_local_pages` | 2 (grader changed), 9 | 1.00 | $0.37 |
+| `ov_proposals_from_page_decisions` | 2 (decisions read), 9 | 1.00 | $0.45 |
+| `cb_no_artifacts_local_page` | 2 (page wording), 15 | 1.00 | $0.50 |
+| `cb_voice_archive_unavailable` | 16 (tier B, capped archive) | 1.00 | $0.48 |
+| `cb_page_decisions_from_db` | 2 (decisions read) | 0.75 (fixture bug, below); after the fix 0.75, then **1.00** | $0.44; after the fix $0.38 and $0.42 |
+
+18 of 19 pass at 1.00 on their first run; the 19th fails once on a fixture bug and once on a real (intermittent)
+behaviour problem, then passes. 21 calls cost **$12.57** (`costUsd`, the judge's $0.01 included), plus nothing for
+probes: three `--case` tries that matched nothing (`claude plugin eval` takes one glob, no `{a,b}` and no repeated
+`--case`) started no run.
+
+### What each case proves, and what it does not
+
+- **doctor_unknown_cloning_plan_goes_on** (issue 5). The doctor ran with `--voice`; the card said both keys are
+  set, the ElevenLabs plan "you don't need to check this now", checked at the voice step only if the ad's voice
+  is not in the ElevenLabs history, and listed the tiers to install with their sizes. No key in the trace, no
+  elevenlabs.io errand.
+- **doctor_reports_missing_replicate** (issues 4 and 5's card). Still names Replicate as missing and offers the
+  tiers (the video tier among them) with sizes and times. It does not prove issue 4 itself (a tier installed
+  without its Remotion setup): the sandbox installs nothing, so every tier is missing.
+- **hands_off_launch_is_asked** (issue 22). At E3 on Hands-off, told "don't ask me anything", the agent stopped
+  at G11: the ads are in Meta and paused, the pre-launch check green, the plan's decision metric and its cost
+  guardrail named, and the launch asked as the user's call even at Hands-off. No `tm decide G11 activate`, no
+  spend, nothing activated.
+- **shorter_version_judged_by_watch_time** (issue 23). R4's plan for the 15 s re-cut keeps `decision_metric`
+  `cost_per_result` with `avg_watch_time` beside it, and the message says ThruPlay and completions don't count
+  because a shorter ad raises them mechanically, then asks to approve the plan.
+- **hands_off_no_budget_stops_at_free_outputs**, **hands_off_no_ai_budget_stops_at_l2** (issues 21, 22). Still
+  stop at the first paid step (D2's frame; the L3 new shot waits while the two free re-cuts' edit lists are
+  checked), nothing spent, no paid tool. One of the three judges failed the first message: it said "I can't find
+  a brief file in the run's final outputs folder"; the `at_d2_no_budget` scenario records G2 but writes no brief
+  file, so this is the fixture's thin run, not a fault (left as is).
+- **hook_fade_refreshes_only_hook**, **account_drop_no_refresh**, **missing_video_stops_with_ads_manager_link**,
+  **structural_check_reads_every_upload** (issue 28). With the mocks' Meta answers now in the real envelope
+  (`{"ad_entities": "<rows as JSON text>", ...}`), `tm r1` read the weekly rows and ranked the ads (one fading at
+  p = 0.004; or none, when the whole account dropped in one week), the diagnosis found the hook, the stop for a
+  missing video gave the Ads Manager link, and `tm structural` read all four uploads. They do not prove a
+  `tm r1` exit 1 on unreadable data (no mock answers badly; the engine tests do).
+- **tr_unfinished_run_asks_first** (issue 7). Asked for pet food in the UK with a beauty run open at B3, the agent
+  asked one question (the run's folder, date and step: continue it, or start pet food?) in 5 turns, and made no
+  run.
+- **tr_g1_review_drops_off_category** (issue 8). The hooks path scored the candidates, `tm research hook-fit` kept
+  a shortlist of 8 (`hooks_ranked`), the fetch plan said "about 57 calls, roughly 3 minutes" before the fetch, and
+  the G1 card still drops the off-category trend and keeps the seasonal one.
+- **tr_weekly_hands_off_same_link** (issues 7, 1, 2). "Carry on with this week's update" resumes without asking;
+  the collector saved this run's 14 calls (the per-session marker); the report went to the same slug with
+  `publish_files`.
+- **tr_no_artifacts_local_page**, **ov_no_artifacts_local_pages**, **cb_no_artifacts_local_page** (issue 2). With
+  no publishing tool, each says this session can't publish pages, gives the local `index.html` path, and takes
+  the choices from chat (`keep_local` by rule; `accept` by the user; `chosen` with `source: chat`). Both `ov_*`
+  cases followed the organic video playbook's own steps (issue 9: the skill was found); no grader checks the
+  Skill call itself.
+- **ov_proposals_from_page_decisions** (issue 2). The team's decisions read with `db_list` and `tm organic
+  decisions`, the two picked videos started, no republish.
+- **cb_voice_archive_unavailable** (issue 16). B2 tried a review page first (the sandbox refused it), then the
+  Reddit archive (refused), stopped without themes and without using the landing page in their place, and asked
+  for customer texts. It does not prove the 90 s cap or the 4-timeouts stop (the sandbox refuses at once).
+- **cb_page_decisions_from_db** (issue 2): see below.
+
+Not run (cost, or not touched by wave 1): the re-cut cases, `ov_*` other than the two above, the report-issue
+cases, `cb_concepts_diverse_with_phrases` ($2.52), `cb_intake_one_question` (A1's landing text, issue 14, is
+reached only after the intake answers). Not covered by any case: issue 6's key guard (it ran in every case and
+blocked nothing a case needed; `bootstrap/test-guard-secrets.sh` covers it), issues 11, 12, 13, 15's CB13 scan, 20,
+24, 25, 26 and 29 (engine tests cover them).
+
+### Findings, and what was changed
+
+- **Fixture bug (`cb_page_decisions_from_db`, private).** The first run published, declared the database, then
+  checked it with `read_declaration`, and the mock answered `"capabilities": null`: its one fixed answer was the
+  page before the declaration. Wave 1's `pages.md` now says to check the stored rules and, when they are missing,
+  take the decisions in chat, so the agent never read `db_list` and asked the user what the team decided. The mock
+  now answers the page after the declaration (`ver_mock_2`, the rules `tm brief capabilities` prints), as the
+  `ov_*` cases' mocks do. The case is in the private data repository, so the change belongs there
+  (`cb_page_decisions_from_db/mocks/claude-artifacts/read_declaration.md`), not in this one.
+- **Behaviour problem, intermittent (`cb_page_decisions_from_db`).** On the fixed fixture the first run read the
+  decisions right (C1 approved, C2 a change asked, C3 none) but quoted C2's note as "Swap the scientist line.
+  [passage omitted]", left out the sentence that asks to email the client, and did not say nothing was done with
+  it. That breaks the creative brief's note rule (SKILL.md red flags, the note row; `references/pages.md`, Pages
+  that take decisions: "never shortened, elided (…, [omitted], [passage omitted]) or summed up"), which wave 1 did
+  not change. The next run quoted both sentences word for word, said it did nothing with the second and that
+  nothing was sent: 1.00. It is the same failure as in the creative brief round's fix 3 (below); the rule is
+  there, and the agent still elides an injected order now and then. Not fixed here (a skill change).
 
 Run on 2026-11-11 with Claude Code 2.1.319, all six in one call (`evals/run.sh --case 'ri_*'`), `--runs 1`.
 The two first-turn cases run both arms; the four that resume a recorded first turn (`context.history_file`)
