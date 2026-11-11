@@ -32,7 +32,8 @@ support report they can send us.
 2. If the user has already said whether their ElevenLabs plan includes voice cloning, note it
    as `cloning` or `no_cloning`; otherwise `unknown`. Don't ask, and don't send them to look it
    up: an unknown plan is a warning, checked at the voice step only if the ad needs a clone of
-   its voice (the original voice is not in their ElevenLabs history).
+   its voice (the original voice is not in their ElevenLabs history). A `no_cloning` plan waits too:
+   a warning, not a stop; the voice step offers the choices then, only if a clone is needed.
 3. Run:
 
    ```
@@ -40,8 +41,8 @@ support report they can send us.
    ```
 
    Exit 0 means ready, 2 means something is missing, 1 is an error (say what failed, plainly).
-   Exit 0 can still carry `warnings` (TrendsMesh, an unknown voice-cloning plan): the run can go
-   on without them.
+   Exit 0 can still carry `warnings` (TrendsMesh, a voice-cloning plan that is unknown or has no
+   cloning): the run can go on without them.
    The first `tm` call installs the base tools (about 0.5 GB): say so, and give it the Bash
    tool's longest timeout (10 minutes). If the session started with "its tools could not be set
    up", run `tm` anyway: it tries the install again, and often that is all it takes. If `tm` then
@@ -61,7 +62,8 @@ support report they can send us.
    not a to-do that blocks: say the card's guess-mode warning in plain words, once, and say the
    playbook still runs without it, with its changes as best guesses. The sign-in question and
    the plan offer were made in step 1: don't make them again. The voice-cloning warning needs
-   nothing from the user now: say in one line that it is checked later, only if it is needed.
+   nothing from the user now: say in one line that it is checked later, only if it is needed (or,
+   for a plan with no cloning, that cloning isn't available and matters only if a clone is needed).
 5. Tell the user where the support report was saved (`report` in the answer). It holds no keys.
    Keys are never searched for, read, printed or shown, even when asked: not in part, not
    masked, not their length. To check a key, the card says whether it is set; the user sees and

@@ -482,10 +482,13 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - Skipped when V1c found the original voice.
 - **The cloning plan first**, before any material is made, when the readiness card left it unknown (its
   warning `elevenlabs_cloning_plan`; this is the only place it is checked): `tm tool elevenlabs credits --run R
-  --json` (free). `instant_cloning` true: go on. False: stop and wait; the plan has no voice cloning, so the
-  user picks a plan with it (elevenlabs.io, Subscription) or tells you to skip this step. Null (ElevenLabs did
-  not say): ask the user whether their plan includes voice cloning (elevenlabs.io, Profile, Subscription); a no
-  is the same stop. Nothing is spent before the answer.
+  --json` (free). `instant_cloning` true: go on. False: stop and wait; the plan has no voice cloning (the stop
+  below). Null (ElevenLabs did not say): ask the user whether their plan includes voice cloning (elevenlabs.io,
+  Profile, Subscription); a no is the same stop. Nothing is spent before the answer.
+- **No cloning on the plan** (the card's `no_cloning` warning, or the check above): the ad needs a clone here,
+  so stop and wait, and let the user choose: upgrade to a plan with voice cloning (elevenlabs.io, Subscription;
+  then read the plan again), a stock voice for the new line (a voice id they give; V4 with it), or no voice
+  change (the new line is left out and the other changes go on). Nothing is spent before the answer.
 - Material: this ad plus other ads with the same
   voice (≥ 0.65 similarity after equal quality), isolated, cut into clean sentences at the
   transcript's word times (`tm tool ffmpeg`), best voice-to-music ratio first.

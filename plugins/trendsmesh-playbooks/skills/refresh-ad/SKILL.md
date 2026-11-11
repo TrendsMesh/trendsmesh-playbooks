@@ -57,7 +57,9 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    is rising now. The sign-in question and the offer were already made (step 1): don't repeat them.
    **An unknown voice-cloning plan is a warning too.** Pass `elevenlabs_plan=unknown` unless the user
    already said, and don't send them to look it up: a clone is needed only if V1c doesn't find the original
-   voice, and V3 checks the plan then (`references/flow.md#v3`). A plan known to have no cloning still stops.
+   voice, and V3 checks the plan then (`references/flow.md#v3`). **A plan known to have no cloning waits too.**
+   Pass `no_cloning` and say in one line that cloning isn't available on their plan: V3 stops there with the
+   choices, only if a clone is needed.
 4. When the video tier is needed (edited or AI video), say once: Remotion is free for
    individuals and companies of up to 3 people; a company of 4 or more needs its own Remotion
    licence to render on its machines.

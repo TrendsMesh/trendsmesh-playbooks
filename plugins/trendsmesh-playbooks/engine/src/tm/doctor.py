@@ -18,7 +18,8 @@ its env_tier rows whose `when` holds (creative brief's animatic tier only with a
 
 A reported fact marked `unknown_warns` (the ElevenLabs cloning plan) is a warning while unknown,
 not a stop: it matters only if the run needs a clone, and the voice step (refresh-ad's V3) checks
-it then. A value known to fall short still blocks.
+it then. One also marked `short_warns` waits the same way when it is known to fall short (its
+`short_note` on the card): V3 stops there, only if a clone is needed. Both are `later` warnings.
 """
 
 from __future__ import annotations
@@ -70,6 +71,7 @@ class Item:
     unchecked: bool = False
     warn: bool = False  # the run can go on without it (requirements.yaml `warn`)
     note: str = ""  # a warning's line on the card (`warn_note`, else the guess-mode notice)
+    later: bool = False  # a warning that matters only at a later step, if the run gets there (the cloning plan)
 
 
 @dataclass(frozen=True)
@@ -251,9 +253,12 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
             ok, unchecked = value == "cloning", value not in ("cloning", "no_cloning")
         by_state = (e.get("fix_by_state") or {}).get(mcp.get(e.get("mcp", ""))) if "mcp" in e else None
         fix = "" if ok else (e["unchecked"] if unchecked else by_state or _fix_text(e, **vars))
-        warn = bool(e.get("warn")) or (unchecked and kind == "plan" and bool(e.get("unknown_warns")))
+        fact = kind == "plan" and "mcp" not in e
+        later = fact and not ok and bool(e.get("unknown_warns") if unchecked else e.get("short_warns"))
+        warn = bool(e.get("warn")) or later
+        note = e.get("short_note") if later and not unchecked else e.get("warn_note") or evidence.NOTICE_SHORT
         items.append(Item(id_, name, ok, "agent" if unchecked and "mcp" in e else fixer, fix, size if not ok else 0,
-                          unchecked, warn, (e.get("warn_note") or evidence.NOTICE_SHORT) if warn else ""))
+                          unchecked, warn, note if warn else "", later))
     return Readiness(items, all(i.ok or i.warn for i in items))
 
 
@@ -264,8 +269,10 @@ def card(r: Readiness) -> str:
     bad = [i for i in r.items if not i.ok and i not in warned]
     if r.ready and not any(i.warn and not i.ok for i in r.items):
         head = "**Ready to go.** Everything this run needs is in place."
-    elif r.ready and all(i.unchecked for i in warned):  # only checks made later, if the run needs them
+    elif r.ready and all(i.later and i.unchecked for i in warned):  # checked later, if needed
         head = "**Ready to go.** You can start now. One thing is checked later, only if the run needs it."
+    elif r.ready and warned and all(i.later for i in warned):  # known now, matters only at a later step
+        head = "**Ready to go.** You can start now. One thing matters later, only if the run needs it."
     elif r.ready:
         things = "One thing" if len(warned) < 2 else "A few things"
         head = f"**Ready to go.** You can start now. {things} would make the results better."

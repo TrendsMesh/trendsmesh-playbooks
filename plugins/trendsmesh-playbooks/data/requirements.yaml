@@ -103,12 +103,15 @@ checks:
     fact: elevenlabs_plan
     needs_key: elevenlabs_api_key     # skipped while the key is missing: the key row comes first
     fixer: user
-    fix: {any: "Your ElevenLabs plan does not include voice cloning. Open elevenlabs.io, choose Subscription and pick a plan with voice cloning."}
+    fix: {any: "Your ElevenLabs plan does not include voice cloning, so a clone of the ad's voice is not available."}
     # Unknown never blocks the start (#5): a clone is needed only if V1c does not find the original voice, and V3
-    # checks the plan then (`tm tool elevenlabs credits`). A plan known to lack cloning still blocks.
+    # checks the plan then (`tm tool elevenlabs credits`). A plan known to lack cloning waits for V3 too
+    # (short_warns): V3 stops there with the choices, only if a clone is needed.
     unknown_warns: true
+    short_warns: true
     unchecked: "Whether your ElevenLabs plan includes voice cloning is not checked yet, and there is nothing to do now."
     warn_note: "Voice cloning matters only if the new voice line needs a clone of the ad's voice: I check your plan at the voice step, and only if the original voice is not in your ElevenLabs history."
+    short_note: "That matters only if the new voice line needs a clone of the ad's voice: at the voice step, if the original voice is not in your ElevenLabs history, I stop there and you choose a plan with voice cloning, a stock voice, or no voice change."
 
   - id: disk_free
     name: Free disk space

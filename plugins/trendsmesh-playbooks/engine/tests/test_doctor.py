@@ -103,8 +103,9 @@ def test_voice_adds_elevenlabs_checks(world):
     r = doctor.check({"edited_video"}, True, ALL_OK, facts={"elevenlabs_plan": "cloning"})
     assert item(r, "elevenlabs_cloning_plan").ok
     r = doctor.check({"edited_video"}, True, ALL_OK, facts={"elevenlabs_plan": "no_cloning"})
-    assert not item(r, "elevenlabs_cloning_plan").ok and not item(r, "elevenlabs_cloning_plan").warn
-    assert not r.ready
+    it = item(r, "elevenlabs_cloning_plan")
+    assert not it.ok and not it.unchecked and it.warn and it.later   # known no: waits for V3 too (#5 follow-up)
+    assert r.ready
 
 
 def test_unknown_cloning_plan_does_not_block_the_start(world, capsys):
@@ -126,9 +127,27 @@ def test_unknown_cloning_plan_does_not_block_the_start(world, capsys):
                      "--json"])
     out = json.loads(capsys.readouterr().out)
     assert code == 0 and out["ready"] and "elevenlabs_cloning_plan" in out["warnings"]
+
+
+def test_known_no_cloning_plan_waits_for_the_voice_step(world, capsys):
+    """Follow-up to #5: a plan the user says has no cloning blocks nothing at the start either. A clone is
+    needed only if V1c does not find the original voice; V3 stops there with the choices. The card says
+    cloning is not available, without sending the user to elevenlabs.io now."""
+    (world / "secrets.env").write_text("ELEVENLABS_API_KEY=k\nREPLICATE_API_TOKEN=t\n")
+    r = doctor.check({"creative_brief", "edited_video", "ai_video", "live_test"}, True, ALL_OK, caption_removal=True,
+                     facts={"elevenlabs_plan": "no_cloning"})
+    assert r.ready
+    card = doctor.card(r)
+    assert card.startswith("**Ready to go.** You can start now. One thing matters later, only if the run needs it.")
+    assert "Not ready" not in card and "You need to do" not in card and "results better" not in card
+    go_on = card.split("**You can go on without these:**")[1]
+    assert "does not include voice cloning" in go_on
+    assert "voice step" in go_on and "ElevenLabs history" in go_on and "stock" in go_on
+    assert "elevenlabs.io" not in card and "(not checked yet)" not in card and "I check your plan" not in card
     code = cli.main(["doctor", "--outputs", "edited_video", "--voice", "--mcp", "trendsmesh=ok,meta=ok", "--fact",
                      "elevenlabs_plan=no_cloning", "--json"])
-    assert code == 2 and not json.loads(capsys.readouterr().out)["ready"]   # known to be missing: still a stop
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0 and out["ready"] and "elevenlabs_cloning_plan" in out["warnings"]
 
 
 def test_disk_sum_of_tiers_plus_two_gb(monkeypatch):
@@ -621,3 +640,19 @@ def test_the_cloning_plan_is_checked_at_v3_not_at_the_start():
     v3 = " ".join(flow[flow.index('<a id="v3"></a>'):flow.index('<a id="v4"></a>')].split())
     assert v3.index("tm tool elevenlabs credits --run R --json") < v3.index("tm tool elevenlabs clone-ivc")
     assert "`instant_cloning` true: go on. False: stop and wait" in v3
+
+
+def test_v3_stops_with_the_choices_when_the_plan_has_no_cloning():
+    """Follow-up to #5: a plan known to have no cloning waits for V3 as an unknown one does; the playbook says
+    so at the start, and V3 stops with three choices, only when a clone is needed."""
+    plugin = doctor.paths.bundled_data().parent
+    text = lambda rel: " ".join((plugin / rel).read_text(encoding="utf-8").split())  # noqa: E731
+    skill, command, flow = text("skills/refresh-ad/SKILL.md"), text("commands/doctor.md"), text(
+        "skills/refresh-ad/references/flow.md")
+    assert "A plan known to have no cloning still stops" not in skill
+    assert "**A plan known to have no cloning waits too.**" in skill
+    assert "no_cloning" in command and "waits too" in command
+    v3 = flow[flow.index('<a id="v3"></a>'):flow.index('<a id="v4"></a>')]
+    assert "`no_cloning`" in v3
+    for choice in ("a plan with voice cloning", "a stock voice", "no voice change"):
+        assert choice in v3, choice
