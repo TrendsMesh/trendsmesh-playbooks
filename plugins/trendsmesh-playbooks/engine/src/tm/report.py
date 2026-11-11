@@ -385,16 +385,32 @@ def send(body_file: Path, kind: str, title: str, contact: "str | None", url: str
         return _unavailable(f"{type(exc).__name__}: {exc}")
 
 
+def _title_args(parser: argparse.ArgumentParser) -> None:
+    title = parser.add_mutually_exclusive_group(required=True)
+    title.add_argument("--title")
+    title.add_argument("--title-file", help="read the title from this file (one line): no shell quoting")
+
+
+def _title(args: argparse.Namespace) -> str:
+    """The title given, or read from --title-file (ValueError unless it is one line)."""
+    if args.title_file is None:
+        return args.title
+    text = Path(args.title_file).read_text(encoding="utf-8-sig").strip()
+    if "\n" in text:
+        raise ValueError("the title file must hold one line")
+    return text
+
+
 def _send_setup(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("file")
     parser.add_argument("--kind", required=True, choices=["bug", "change"])
-    parser.add_argument("--title", required=True)
+    _title_args(parser)
     parser.add_argument("--contact", default=None)
 
 
 def _send_run(args: argparse.Namespace) -> int:
     try:
-        result = send(Path(args.file), args.kind, args.title, args.contact or None,
+        result = send(Path(args.file), args.kind, _title(args), args.contact or None,
                       os.environ.get("TM_REPORT_URL") or DEFAULT_URL)
     except (OSError, ValueError) as exc:
         print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
@@ -464,12 +480,12 @@ def github(body_file: Path, kind: str, title: str) -> dict:
 def _github_setup(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("file")
     parser.add_argument("--kind", required=True, choices=["bug", "change"])
-    parser.add_argument("--title", required=True)
+    _title_args(parser)
 
 
 def _github_run(args: argparse.Namespace) -> int:
     try:
-        result = github(Path(args.file), args.kind, args.title)
+        result = github(Path(args.file), args.kind, _title(args))
     except (OSError, ValueError) as exc:
         print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
         return 2

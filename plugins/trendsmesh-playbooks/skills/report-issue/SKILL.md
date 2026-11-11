@@ -39,7 +39,9 @@ reported here as its own report, written without the acceptance report's content
    version is `tm --version`; the OS and the Claude app if you can tell, otherwise "not known":
    don't ask for them). Write the body to `<workspace>/trendsmesh-report-<YYYY-MM-DD-HHMM>.md`
    (the folder you work in, the current date and time). The title is separate: short, specific,
-   and free of private data too (`tm report github` and `tm report send` check it as well).
+   and free of private data too (`tm report github` and `tm report send` check it as well). Write
+   it, one line, to the same name ending `-title.txt`, and pass that file (`--title-file`): no
+   shell quoting to get wrong.
 
 3. **Remove private data.** First your own rewrite, with neutral placeholders:
    - ad account, page, client and brand names → `<ad account>`, `<page>`, `<client>`, `<brand>`;
@@ -69,9 +71,11 @@ reported here as its own report, written without the acceptance report's content
    private never covers public.
 
 7. **Send.**
-   - Public: `tm report github <file> --kind bug|change --title "<title>"`.
-   - Private: `tm report send <file> --kind bug|change --title "<title>"`, with
-     `--contact <email>` only when the user typed an email for a reply in this conversation.
+   - Public: `tm report github <file> --kind bug|change --title-file <title file>`.
+   - Private: `tm report send <file> --kind bug|change --title-file <title file>`, with
+     `--contact '<email>'` only when the user typed an email for a reply in this conversation.
+   - Without the title file, `--title '<title>'` in single quotes, each `'` in it written as
+     `'\''` (never double quotes: the shell would expand `$` and backquotes in them).
    - **The user says no to public**: offer the private inbox instead, same text. When their
      answer already asks for private ("not public, send it to TrendsMesh"), that is the yes:
      send it. Otherwise ask, and wait.

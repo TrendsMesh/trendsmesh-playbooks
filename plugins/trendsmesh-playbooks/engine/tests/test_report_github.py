@@ -221,3 +221,13 @@ def test_second_attempt_failure_is_failed(fake_gh, body, monkeypatch):
     out = github(body, "bug", "T")
     assert out == {"outcome": "failed", "reason": "HTTP 502: bad gateway"}
     assert len(creates(fake_gh)) == 2
+
+
+def test_cli_title_file(fake_gh, body, tmp_path, capsys):
+    title = tmp_path / "title.txt"
+    title.write_text("Export can't save\n", encoding="utf-8")
+    assert cli.main(["report", "github", str(body), "--kind", "bug", "--title-file", str(title)]) == 0
+    (args,) = creates(fake_gh)
+    assert args[args.index("--title") + 1] == "Export can't save"
+    assert cli.main(["report", "github", str(body), "--kind", "bug", "--title-file", str(tmp_path / "no")]) == 2
+    assert "Cannot read" in capsys.readouterr().err

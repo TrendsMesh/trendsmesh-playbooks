@@ -186,3 +186,19 @@ def test_cli_exits_nonzero_unless_received(fake, body, monkeypatch, capsys):
     code = cli.main(["report", "send", str(body), "--kind", "change", "--title", "T", "--contact", "a@b.test"])
     assert code == 1
     assert json.loads(capsys.readouterr().out)["outcome"] == "unavailable"
+
+
+def test_cli_title_file(fake, body, tmp_path, monkeypatch, capsys):
+    """The title from a file: no shell quoting to get wrong (a title with ' or ")."""
+    fake.answer(201, {"ok": True, "data": {"reportId": "r1"}})
+    monkeypatch.setenv("TM_REPORT_URL", fake.url)
+    title = tmp_path / "title.txt"
+    title.write_text("Export can't save \"Report\"\n", encoding="utf-8")
+    assert cli.main(["report", "send", str(body), "--kind", "bug", "--title-file", str(title)]) == 0
+    assert json.loads(fake.requests[0][2])["title"] == "Export can't save \"Report\""
+    capsys.readouterr()
+    title.write_text("two\nlines\n", encoding="utf-8")
+    assert cli.main(["report", "send", str(body), "--kind", "bug", "--title-file", str(title)]) == 2
+    assert "one line" in capsys.readouterr().err and len(fake.requests) == 1
+    assert cli.main(["report", "send", str(body), "--kind", "bug", "--title", "T", "--title-file", str(title)]) == 1   # usage error
+    assert "not allowed with" in capsys.readouterr().err and len(fake.requests) == 1
