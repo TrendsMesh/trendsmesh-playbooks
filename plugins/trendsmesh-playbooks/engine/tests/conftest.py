@@ -110,3 +110,11 @@ def _claude_code_session(monkeypatch):
     runs): "s1", the session of the test hook events, never the session that happens to run pytest. A test of
     another session sets it again, or removes it."""
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "s1")
+
+
+@pytest.fixture(autouse=True)
+def _i18n_cache(tmp_path_factory, monkeypatch):
+    """Kept translations (tm i18n import) go to a fresh folder per test, never the machine's plugin data folder."""
+    from tm import i18n
+    folder = tmp_path_factory.mktemp("i18n")
+    monkeypatch.setattr(i18n, "cache_dir", lambda: folder)

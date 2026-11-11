@@ -102,7 +102,7 @@ def test_rule_values_only_change_thresholds(run):
 def test_missing_inputs_are_reported_with_what_to_do(run):
     config.write_from_intake(run, {"level": "big_calls", "outputs": ["live_test", "creative_brief"]})
     problems = {p.field: p for p in config.validate(run)}
-    assert {"account.id", "account.market", "account.language", "product.name",
+    assert {"account.id", "account.market", "languages", "product.name",
             "product.landing_url"} <= set(problems)
     p = problems["product.landing_url"]
     assert p.what and p.todo and "live test" in p.what.lower()

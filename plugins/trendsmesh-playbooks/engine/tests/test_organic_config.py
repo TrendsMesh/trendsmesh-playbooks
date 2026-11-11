@@ -138,37 +138,53 @@ def test_higgsfield_and_publishing_tool_not_supported_yet(run):
     assert p["publishing.tool"].todo == "Set publishing.tool to none."
 
 
-@pytest.mark.parametrize("chat, page, note", [
-    ("de", "en", "Pages are built in English; post text stays in Polish."),
-    ("en", "en", None), ("pl", "pl", None), ("PL", "pl", None), ("en-GB", "en", None),
-])
-def test_page_lang_falls_back_to_english_for_german_chat(run, chat, page, note):
+@pytest.mark.parametrize("chat, working", [("de", "de"), ("en", "en"), ("pl", "pl"), ("PL", "pl"), ("en-GB", "en-GB"),
+                                           ("Polish", "pl")])
+def test_the_chat_language_is_the_working_language(run, chat, working):
+    """Issue #3: any language, not English or Polish alone; the page falls back to English only while the language
+    has no translated table (tm i18n), and says so when it is built."""
     organic_config.write_from_intake(run, {**ANSWERS, "chat_language": chat})
     cfg = config.load(run)
-    assert (cfg["page_lang"], cfg["page_lang_note"]) == (page, note)
+    assert cfg["languages"] == {"working": working, "market": "pl"}
+    assert "page_lang" not in cfg and "page_lang_note" not in cfg
+    assert organic_config.page_lang(cfg) == working
     assert organic_config.validate(run) == []
 
 
-def test_page_lang_note_names_the_audience_language(run):
-    organic_config.write_from_intake(run, {**ANSWERS, "chat_language": "de", "audience_language": "uk"})
-    assert config.load(run)["page_lang_note"] == "Pages are built in English; post text stays in Ukrainian."
-    organic_config.write_from_intake(run, {**ANSWERS, "chat_language": "de", "audience_language": "xx"})
-    assert config.load(run)["page_lang_note"] == "Pages are built in English; post text stays in xx."
-    no_chat = {k: v for k, v in ANSWERS.items() if k != "chat_language"}
-    organic_config.write_from_intake(run, {**no_chat, "page_lang": "de"})     # written by hand, not from the chat
-    p = _problems(run)["page_lang"]
-    assert "not supported yet" in p.what and "en" in p.todo
+def test_languages_are_kept_as_given(run):
+    answers = {k: v for k, v in ANSWERS.items() if k not in ("chat_language", "audience_language")}
+    organic_config.write_from_intake(run, {**answers, "languages": {"working": "en", "market": "de"}})
+    assert config.load(run)["languages"] == {"working": "en", "market": "de"}
+    organic_config.write_from_intake(run, {**answers, "languages": {"working": "Deutsch", "market": None}})
+    assert config.load(run)["languages"] == {"working": "de", "market": "de"}
+    organic_config.write_from_intake(run, {**answers, "languages": {"working": "nonsense!", "market": "pl"}})
+    assert "languages.working" in _problems(run)
 
 
-def test_note_reads_a_two_word_channel_by_its_key(ws, run):
-    """No audience language in the answers: the note takes it from the saved profile of the channel the
+def test_no_language_given_is_english(run):
+    answers = {k: v for k, v in ANSWERS.items() if k not in ("chat_language", "audience_language")}
+    organic_config.write_from_intake(run, answers)
+    assert config.load(run)["languages"] == {"working": "en", "market": "en"}
+
+
+def test_an_older_config_keeps_its_page_language(run):
+    """A config written before issue #3: page_lang is the working language, page_lang_note is accepted."""
+    organic_config.write_from_intake(run, ANSWERS)
+    cfg = {k: v for k, v in config.load(run).items() if k != "languages"}
+    config.save(run, {**cfg, "page_lang": "en", "page_lang_note": "Pages are built in English; post text stays in Polish."})
+    assert organic_config.validate(run) == []
+    assert organic_config.page_lang(config.load(run)) == "en"
+
+
+def test_the_market_language_reads_a_two_word_channel_by_its_key(ws, run):
+    """No audience language in the answers: the market language comes from the saved profile of the channel the
     config names by its key ("Cat Corner" -> cat-corner)."""
     brand.save(ws, {**EXAMPLEEDU, "channel": "Cat Corner", "audience_language": "pl"}, run=None)
     answers = {k: v for k, v in ANSWERS.items() if k != "audience_language"}
     organic_config.write_from_intake(run, {**answers, "channels": ["Cat Corner"], "chat_language": "de"})
     cfg = config.load(run)
     assert cfg["channels"] == ["cat-corner"]
-    assert cfg["page_lang_note"] == "Pages are built in English; post text stays in Polish."
+    assert cfg["languages"] == {"working": "de", "market": "pl"}
 
 
 def test_fx_rate_required_when_not_usd(run):

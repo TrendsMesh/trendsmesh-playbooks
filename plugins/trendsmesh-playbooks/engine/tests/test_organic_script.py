@@ -275,8 +275,8 @@ def test_times_in_minutes_and_a_changed_page_language(tmp_path, capsys):
     s = exampleedu.script()
     s["plugin"] = {}
     assert _check(run, capsys, s)[0] == 0 and script.checked_gap(run) is None
-    config.save(run, {**config.load(run), "page_lang": "pl"})   # the pages moved to Polish since the check
+    config.save(run, {**config.load(run), "languages": {"working": "pl", "market": "pl"}})   # pages now Polish
     gap = script.checked_gap(run)
-    assert gap is not None and "'en'" in gap and "page_lang" in gap
+    assert gap is not None and "'en'" in gap and "languages.working" in gap
     s["plugin"] = {"lang_request": "English version"}
     assert _check(run, capsys, s)[0] == 0 and script.checked_gap(run) is None

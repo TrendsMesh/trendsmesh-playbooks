@@ -52,7 +52,7 @@ from dataclasses import dataclass, fields
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from tm import manifest, research_map, state, trends
+from tm import i18n, manifest, research_map, state, trends
 from tm.config import Problem
 from tm.stops import AGAIN, Stop
 from tm.runfolder import RunFolder
@@ -604,7 +604,7 @@ def compute(run: RunFolder, as_of: date, cfg: dict, *, stem: str = STEM, snapsho
     order = {b: i for i, b in enumerate(BUCKETS)}
     rows.sort(key=lambda r: (order[r["bucket"]], -((r.get("relative") or {}).get("velocity_index") or 0)))
     meta = {"as_of": as_of.isoformat(), "ref": ref.isoformat(), "lag": lag, "window": window, "baseline": baseline,
-            "rule": RULE, "market_lang": cfg.get("market_lang") or cfg.get("language"), "category": ctx}
+            "rule": RULE, "market_lang": i18n.languages_of(cfg).market, "category": ctx}
     # TR8: every run keeps a compact snapshot for the next digest.
     snap = {"params": meta, "trends": {r["id"]: {"name": r["name"], "kind": r.get("kind"), "group": r.get("group"),
                                                  "bucket": r["bucket"], "confidence": r["confidence"],

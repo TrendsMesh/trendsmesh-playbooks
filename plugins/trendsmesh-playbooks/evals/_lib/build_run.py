@@ -92,7 +92,7 @@ proposals page's decisions and renamed `2026-11-07_exampleedu-m5`; its price fil
                  sheet; run at F2
   ov_at_g2_kit   the same with a take that passes, picked by rule, and G1's final, upload copy and cover
                  (`tm.tools.deliver` with the host's ffmpeg on a 2 s test-pattern clip), then the chat English
-                 (config page_lang en: the brief's "English chat"; the pack stays Polish); run at G2
+                 (config languages.working en: the brief's "English chat"; the pack stays Polish); run at G2
 A Replicate record is written as the guard writes it, its manifest rows marked as the fixture's (never "Replicate
 run record", which the cases' graders look for); the spend through `tm budget spend`.
 
@@ -1288,14 +1288,16 @@ def ov_production(ws: Path, pid: str, level: str, output: str) -> Path:
 
 
 def ov_chat(ws: Path, run: Path, lang: str) -> None:
-    """The user talks `lang` from here on: the run's chat language, its config's page_lang (as `tm config write`
-    sets it from the intake's chat_language). The idea run and the pack stay Polish: the proposals are, and
+    """The user talks `lang` from here on: the run's working language, its config's languages.working (as `tm config
+    write` sets it from the intake's working language). The idea run and the pack stay Polish: the proposals are, and
     `tm organic proposals check` and the pack check want the page language."""
     _, _, _, RunFolder = _engine()
     from tm import config  # noqa: E402
     folder = RunFolder.open(run)
     cfg = config.load(folder)
-    cfg.update(page_lang=lang, page_lang_note=None)
+    cfg.pop("page_lang", None)
+    cfg.pop("page_lang_note", None)
+    cfg["languages"] = {**(cfg.get("languages") or {}), "working": lang}
     config.save(folder, cfg)
     tm(ws, "config", "check", "--run", str(run))
 

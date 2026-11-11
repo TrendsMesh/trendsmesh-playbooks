@@ -23,7 +23,7 @@ import json
 from pathlib import Path
 from urllib.parse import urlparse
 
-from tm import brand, config, flow, library, manifest, seeds, state, trend_spool
+from tm import brand, config, flow, i18n, library, manifest, seeds, state, trend_spool
 from tm.config import Problem
 from tm.playbooks import CREATIVE_BRIEF, ORGANIC_VIDEO
 from tm.runfolder import RunFolder
@@ -42,7 +42,8 @@ SEED_PAID = {"none": "none_found", "found": "competitor_found", "crowded": "comp
 SEED_KINDS = tuple(f"{k}_trend" for k in TREND_KINDS)  # the seeds C1 can put in CB2's trend slot
 
 DEFAULTS: dict = {
-    "account": {"id": None, "market": None, "language": None, "currency": None},
+    "account": {"id": None, "market": None, "language": None, "currency": None},   # language: older configs
+    "languages": {"working": None, "market": None},             # tm.i18n: BCP 47 tags (issue #3)
     "product": {"name": None, "landing_url": None, "category_phrase": None},
     "brand": {"profile": None, "guide": None},  # profile: library/brands/<slug>/brand_vNN.json
     "voice": {"links": [], "tiers": list(VOICE_TIERS), "sources": ["reddit_archive", "import"],
@@ -151,7 +152,7 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     _intake_open(s)
     answers = copy.deepcopy(answers)
     level = answers.pop("level", None) or s.level
-    cfg = config._merge(defaults(), answers)
+    cfg = i18n.settle(config._merge(defaults(), answers))
     cfg["outputs"] = _outputs(cfg.get("outputs"))
     if isinstance(cfg.get("brief"), dict):
         cfg["brief"]["recipients"] = _recipients(cfg["brief"].get("recipients"))
@@ -241,6 +242,7 @@ def validate(run: RunFolder) -> list[Problem]:
                                f"Give {path} as a list, or leave it empty."))
 
     _outputs_problems(cfg.get("outputs"), out)
+    out += i18n.language_problems(cfg)    # unset: an older config's account.language, else English
     recipients = config._get(cfg, "brief.recipients")
     if not (isinstance(recipients, list) and recipients):
         out.append(Problem("brief.recipients", "The page needs at least one view (brief.recipients).",

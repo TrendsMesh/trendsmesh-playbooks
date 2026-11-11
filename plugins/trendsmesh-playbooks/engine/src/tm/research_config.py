@@ -15,7 +15,7 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-from tm import config, flow, state
+from tm import config, flow, i18n, state
 from tm.config import Problem
 from tm.playbooks import TREND_RESEARCH
 from tm.runfolder import RunFolder
@@ -31,8 +31,9 @@ DEFAULTS: dict = {
     "mode": "hitl",  # derived from the level: Hands-off is "auto"
     "category": {"inputs": [], "phrase": None, "seeds": []},
     "market": None,
-    "language": None,
-    "market_lang": None,
+    "language": None,       # older configs (issue #3): see languages
+    "market_lang": None,    # older configs (issue #3): see languages
+    "languages": {"working": None, "market": None},   # tm.i18n: BCP 47 tags (issue #3)
     "currency": "USD",
     "fx_rate": None,
     "focus": None,
@@ -105,8 +106,7 @@ NUMBERS = {  # path: (integer?, lowest, highest, lowest allowed?, highest allowe
     **{f"scoring.weights.{c}": (False, 0, None, True, True) for c in CRITERIA},
 }
 TEXT_LISTS = ("category.seeds", "trends.exclude_terms")
-REQUIRED = (("category.phrase", "the category phrase"), ("market", "the market"),
-            ("language", "the language"))
+REQUIRED = (("category.phrase", "the category phrase"), ("market", "the market"))   # and the languages
 # category.inputs: a phrase, a link (a product or landing page), or {kind, value}
 UNSUPPORTED_INPUTS = {  # kind: (VARIANTS.md case, what it is)
     "product": ("V3", "A product or landing-page link"),
@@ -161,7 +161,7 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     _intake_open(s)
     answers = copy.deepcopy(answers)
     level = answers.pop("level", None) or s.level
-    cfg = config._merge(defaults(), answers)
+    cfg = i18n.settle(config._merge(defaults(), answers))
     if "mode" not in answers:
         cfg["mode"] = _mode(level)
     return _write(run, cfg, level)
@@ -270,4 +270,5 @@ def validate(run: RunFolder) -> list[Problem]:
     for path, label in REQUIRED:
         if config._blank(config._get(cfg, path)):
             out.append(Problem(path, f"{label.capitalize()} is missing.", f"Tell Claude {label}."))
+    out += i18n.config_problems(cfg)    # languages, or an older config's language and market_lang
     return out

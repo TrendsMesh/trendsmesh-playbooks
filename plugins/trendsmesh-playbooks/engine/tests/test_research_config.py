@@ -76,8 +76,8 @@ def test_intake_outputs_level_and_mode(run):
 def test_missing_intake_is_reported_with_what_to_do(run):
     research_config.write_from_intake(run, {"level": "every_step"})
     problems = _problems(run)
-    assert set(problems) == {"category.phrase", "market", "language"}
-    assert all(p.todo.startswith("Tell Claude") for p in problems.values())
+    assert set(problems) == {"category.phrase", "market", "languages"}
+    assert all(p.todo.startswith(("Tell Claude", "Confirm both")) for p in problems.values())
 
 
 def test_rules_are_fixed_and_thresholds_checked(run):

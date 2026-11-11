@@ -22,7 +22,7 @@ from pathlib import Path
 
 import yaml
 
-from tm import budget, cli, flow, playbooks, state
+from tm import budget, cli, flow, i18n, playbooks, state
 from tm.playbooks import CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
 from tm.runfolder import RunFolder
 
@@ -32,7 +32,8 @@ MUSIC_SOURCES = ("original_file", "elevenlabs_continuation", "licensed_track", "
 
 DEFAULTS: dict = {
     "mode": "hitl",  # derived from the level: Hands-off is "auto"
-    "account": {"id": None, "market": None, "language": None},
+    "account": {"id": None, "market": None, "language": None},   # language: older configs (issue #3), see languages
+    "languages": {"working": None, "market": None},             # tm.i18n: BCP 47 tags (issue #3)
     "product": {"name": None, "landing_url": None},
     "brand": {"assets_dir": None, "rules": None, "compliance": None},
     # the live test spends ad money and publishes ads: never a default, only when the user picks it
@@ -206,7 +207,7 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     answers = copy.deepcopy(answers)
     level = answers.pop("level", None) or s.level
     flows = answers.pop("flows", None) or []
-    cfg = _merge(defaults(), answers)
+    cfg = i18n.settle(_merge(defaults(), answers))
     if "mode" not in answers:
         cfg["mode"] = "auto" if level == "hands_off" else "hitl"
     if cfg["account"].get("id") is not None:
@@ -355,9 +356,10 @@ def validate(run: RunFolder) -> list[Problem]:
                            "Choose which outputs this run produces."))
         outputs = []
     for path, label in (("account.id", "the ad account"), ("account.market", "the market"),
-                        ("account.language", "the language"), ("product.name", "the product")):
+                        ("product.name", "the product")):
         if _blank(_get(cfg, path)):
             out.append(Problem(path, f"{label.capitalize()} is missing.", f"Tell Claude {label}."))
+    out += i18n.config_problems(cfg)    # languages, or an older config's account.language
     if "live_test" in outputs and _blank(_get(cfg, "product.landing_url")):
         out.append(Problem("product.landing_url", "The live test needs the product's landing page link, "
                            "and it is missing.", "Give Claude the link the ads should point to."))

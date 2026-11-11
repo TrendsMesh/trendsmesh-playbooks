@@ -66,8 +66,8 @@ from datetime import date
 from pathlib import Path
 from typing import Literal
 
-from tm import atlas, brand, config, flow, json_schema, manifest, organic, organic_proposals, organic_research, paths, \
-    playbooks, runfolder, state, stepchecks, trend_spool, trends
+from tm import atlas, brand, config, flow, i18n, json_schema, manifest, organic, organic_config, organic_proposals, \
+    organic_research, paths, playbooks, runfolder, state, stepchecks, trend_spool, trends
 from tm.config import Problem
 from tm.organic_config import ISSUES
 from tm.playbooks import ORGANIC_VIDEO
@@ -264,8 +264,9 @@ def _recipe(run: RunFolder, pack: dict, cfg: dict, out: list[Problem]) -> None:
     if channel and brand.channel_key(pack["channel"]) != channel:
         _bad(out, "channel", f"This run is for the channel {channel}, and the pack names {pack['channel']!r}.",
              f"Set channel to {channel}.")
-    if cfg.get("page_lang") in ("en", "pl") and pack["lang"] != cfg["page_lang"]:
-        _bad(out, "lang", f"The pack is in {pack['lang']!r} and the run's pages are in {cfg['page_lang']!r}.",
+    if i18n.tag(pack["lang"]) != organic_config.page_lang(cfg):
+        _bad(out, "lang", f"The pack is in {pack['lang']!r} and the run's pages are in "
+                          f"{organic_config.page_lang(cfg)!r} (config.yaml languages.working).",
              "Write the pack in the page language.")
     hidden = organic.hidden_types(organic.stack_of(run))
     productions = organic_proposals.PRODUCTIONS

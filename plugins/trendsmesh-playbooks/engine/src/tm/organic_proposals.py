@@ -42,7 +42,7 @@ import shutil
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from tm import atlas, brand, brief_config, checkins, config, flow, json_schema, library, manifest, organic, \
+from tm import atlas, brand, brief_config, checkins, config, flow, i18n, json_schema, library, manifest, organic, \
     organic_config, organic_research, playbooks, runfolder, state, stepchecks, trend_spool
 from tm.config import Problem
 from tm.playbooks import ORGANIC_VIDEO
@@ -345,11 +345,11 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
                                                      "and its files).",
                                "Name it m1, m2, ... or another id of ASCII letters, digits, '_' and '-'."))
         seen.add(p["id"].casefold())
-    page_lang = cfg.get("page_lang")
-    if data.get("lang") != page_lang:
+    page_lang = organic_config.page_lang(cfg)
+    if i18n.tag(data.get("lang")) != page_lang:
         out.append(Problem("lang", f"The proposals are in {data.get('lang')!r}, and this run's pages are in "
-                                   f"{page_lang!r} (config.yaml page_lang).", f"Write them in {page_lang}, with lang "
-                                                                              f"{page_lang}."))
+                                   f"{page_lang!r} (config.yaml languages.working).", f"Write them in {page_lang}, "
+                                                                                      f"with lang {page_lang}."))
     stack = organic_state.get("stack") if isinstance(organic_state.get("stack"), dict) else None
     if stack is None:
         out.append(Problem("stack", "The stack is not recorded in this run, so it is unknown which production "

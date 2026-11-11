@@ -1,0 +1,39 @@
+# The fixed words of the plugin's pages, in English: one keyed table (`<area>.<key>`), read by tm.i18n.
+# Another language's table is the agent's translation of this one (tm i18n export / import), kept in the plugin
+# data folder and reused across runs. Keep {placeholders} and <markup> in every translation; never translate keys.
+# references/languages.md says how to add a string.
+
+common:
+  month_1: Jan
+  month_2: Feb
+  month_3: Mar
+  month_4: Apr
+  month_5: May
+  month_6: Jun
+  month_7: Jul
+  month_8: Aug
+  month_9: Sep
+  month_10: Oct
+  month_11: Nov
+  month_12: Dec
+
+trends:
+  # offered to the user for the weekly run, in their working language
+  weekly_phrase: update my trend report
+
+checks:
+  # CB13 (Creative brief): words the creator view never says. Comma-separated; a translation lists the same
+  # ideas in its language (and may keep the English ones that are used as they are, such as CTR or ROAS).
+  creator_words: cost per, cpa, ctr, roas, spend, checkout, conversion, ad library, competitor, reddit, goodreads, r/
+
+# --- Creative brief page: engine/src/tm/brief_page.py and brief_pack/template.html ---
+brief:
+  view_decision: Decision maker
+
+# --- Trend research page: engine/src/tm/research_report.py (report, digest and paid views) ---
+report:
+  view_report: Category report
+
+# --- Organic AI video pages: engine/src/tm/organic_pages/*, organic_gates.py, organic_week_delivery.py ---
+organic:
+  level_every_step: Check every step

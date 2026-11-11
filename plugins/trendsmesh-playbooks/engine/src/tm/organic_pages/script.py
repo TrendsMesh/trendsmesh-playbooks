@@ -35,7 +35,7 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-from tm import config, json_schema, kit, manifest, organic_proposals, page, state, stepchecks
+from tm import config, i18n, json_schema, kit, manifest, organic_config, organic_proposals, page, state, stepchecks
 from tm.config import Problem
 from tm.organic_pages import lang_of
 from tm.runfolder import RunFolder
@@ -224,12 +224,12 @@ def _kit_context(run: RunFolder, s: dict) -> kit.KitContext:
 
 def _lang_problem(s: dict, cfg: dict) -> Problem | None:
     """The script is in the run's page language, unless the user asked for the other one."""
-    page_lang = cfg.get("page_lang")
+    page_lang = organic_config.page_lang(cfg)
     request = (s.get("plugin") or {}).get("lang_request") if isinstance(s.get("plugin"), dict) else None
-    if s["lang"] == page_lang or _text(request):
+    if i18n.tag(s["lang"]) == page_lang or _text(request):
         return None
     return Problem("lang", f"The script is in {s['lang']!r}, and this run's pages are in {page_lang!r} (config.yaml "
-                           "page_lang).", f"Write it in {page_lang}, or, when the user asked for the other language, put "
+                           "languages.working).", f"Write it in {page_lang}, or, when the user asked for the other language, put "
                                           "their words in plugin.lang_request.")
 
 

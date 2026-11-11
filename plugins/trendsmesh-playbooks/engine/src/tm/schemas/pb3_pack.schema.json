@@ -8,7 +8,7 @@
  "properties": {
   "schema": {"const": "pack/1"},
   "id": {"type": "string"},
-  "lang": {"enum": ["en", "pl"]},
+  "lang": {"type": "string", "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"},
   "title": {"type": "string"},
   "channel": {"type": "string"},
   "production": {"type": "string"},

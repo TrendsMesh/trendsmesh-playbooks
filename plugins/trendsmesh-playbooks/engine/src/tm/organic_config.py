@@ -18,8 +18,11 @@ The intake (A0, preflight P3-F2) also takes intake-only answers that are not kep
   lives in run.json (`level`), and anything that needs it (the pages, Task 7) reads it there;
 - `outputs`, the run kind, `proposals` (an idea run) or `weekly_plan` (a week run), kept in run.json;
   the config's `kind` follows it (`production` runs are started from an idea or a week slot);
-- `chat_language` and `audience_language`, which decide `page_lang`: pages are built in the chat
-  language when it is English or Polish, otherwise in English with `page_lang_note`.
+- `chat_language` and `audience_language`, an older intake's words for `languages.working` and
+  `languages.market` (tm.i18n, issue #3); `languages` itself is kept. The market language defaults to the first
+  channel's saved profile's audience language, else the working language; the working language to English (pages
+  in another language need its translated table, `tm i18n`). A config written before `languages` keeps its
+  `page_lang` (read as the working language) and `page_lang_note` (no longer read).
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-from tm import brand, config, flow, state, trend_spool
+from tm import brand, config, flow, i18n, state, trend_spool
 from tm.config import Problem
 from tm.runfolder import RunFolder
 
@@ -37,9 +40,6 @@ OUTPUT_WORDS = {"script": "A script to film", "ai_video": "An AI video", "weekly
 RUN_KINDS = {"proposals": "proposals", "weekly_plan": "weekly_plan"}  # the intake's outputs -> config kind
 NEEDS_OUTPUT = {"weekly_plan": "weekly_pack"}  # an intake run kind -> the output that must be ready for it
 VARIANT_LEVEL = {"gated": "every_step", "az": "hands_off"}  # PLAYBOOK.md mode.variant -> the plugin's level
-PAGE_LANGS = ("en", "pl")
-LANGUAGE_NAMES = {"en": "English", "pl": "Polish", "de": "German", "fr": "French", "es": "Spanish",
-                  "it": "Italian", "pt": "Portuguese", "nl": "Dutch", "cs": "Czech", "uk": "Ukrainian"}
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 GATES = ("pack", "images", "video", "edit")
 
@@ -54,8 +54,7 @@ DEFAULTS: dict = {
     "mode": {"variant": "gated", "gates": list(GATES)},
     "budget": {"per_run_usd": 5, "per_week_usd": 5},
     "publishing": {"tool": "none"},
-    "page_lang": "en",
-    "page_lang_note": None,
+    "languages": {"working": None, "market": None},   # tm.i18n: BCP 47 tags (issue #3)
     "currency": "USD",
     "fx_rate": None,
     "pricing": {"max_age_days": 7},
@@ -67,6 +66,9 @@ DEFAULTS: dict = {
     "research": {"cards": 12, "recent_days": 7},
     "animation": {"fps": 30},
 }
+
+# What a config written before `languages` (issue #3) holds: accepted; page_lang is read as the working language.
+OLD_KEYS = {"page_lang": None, "page_lang_note": None}
 
 FIXED = {  # rules, not thresholds: path -> (the fixed value, why another value is refused)
     "generation.provider": ("replicate", "{name} is not supported yet: generation uses Replicate (tracked at "
@@ -150,10 +152,8 @@ def _outputs(outputs: object) -> list[str]:
 
 
 def _language(value: object) -> str | None:
-    """`pl`, `PL`, `pl-PL` -> `pl`; None when nothing is given."""
-    if not isinstance(value, str) or not value.strip():
-        return None
-    return value.strip().replace("_", "-").split("-")[0].lower()
+    """`pl`, `PL`, `pl-PL`, `Polish` -> its tag; None when nothing is given."""
+    return i18n.tag(value)
 
 
 def _audience_language(run: RunFolder, given: object, channels: object) -> str | None:
@@ -171,22 +171,32 @@ def _audience_language(run: RunFolder, given: object, channels: object) -> str |
     return None
 
 
-def _page_lang(cfg: dict, chat: str | None, audience: str | None) -> None:
-    if chat is None:
-        return
-    if chat in PAGE_LANGS:
-        cfg["page_lang"], cfg["page_lang_note"] = chat, None
-        return
-    said = LANGUAGE_NAMES.get(audience, audience) if audience else "the audience's language"
-    cfg["page_lang"] = "en"
-    cfg["page_lang_note"] = f"Pages are built in English; post text stays in {said}."
+def page_lang(cfg: dict) -> str:
+    """The language the run's pages and the agent's page files (proposals, week, pack, script) are in: the
+    working language (an older config's page_lang)."""
+    return i18n.languages_of(cfg).working
+
+
+def _languages(run: RunFolder, cfg: dict, chat: object, audience: object) -> None:
+    """`languages` from the answers' (or the older chat_language and audience_language), the market language
+    defaulting to the first channel's profile's audience language, then the working one; the working one to
+    English."""
+    langs = cfg.get("languages") if isinstance(cfg.get("languages"), dict) else {}
+    working, market = langs.get("working"), langs.get("market")
+    working = working if working is not None else _language(chat)
+    if market is None:
+        market = _audience_language(run, audience, cfg.get("channels"))
+    cfg["languages"] = {"working": working, "market": market}
+    i18n.settle(cfg)
+    if cfg["languages"]["working"] is None:
+        cfg["languages"] = {"working": i18n.ENGLISH, "market": cfg["languages"]["market"] or i18n.ENGLISH}
 
 
 def write_from_intake(run: RunFolder, answers: dict) -> Path:
     """Write config.yaml from A0's intake answers and set the level and outputs in run.json.
 
     `answers` has the config's shape (`channels`, `output`, `generation`, `budget`, ...) plus the
-    intake-only `level`, `outputs`, `chat_language` and `audience_language` (module docstring).
+    intake-only `level` and `outputs`, and the older `chat_language` and `audience_language` (module docstring).
     Anything it leaves out gets the default. Channel names are kept as slugs. Problems are not raised
     here: `validate` lists them. Not allowed once A0 is done.
     """
@@ -195,7 +205,7 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     answers = copy.deepcopy(answers)
     level = answers.pop("level", None)
     outputs = _outputs(answers.pop("outputs", ["proposals"]))
-    chat = _language(answers.pop("chat_language", None))
+    chat = answers.pop("chat_language", None)
     audience = answers.pop("audience_language", None)
     answers.pop("kind", None)  # the run kind follows the outputs
     cfg = config._merge(defaults(), answers)
@@ -208,7 +218,7 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     cfg["kind"] = RUN_KINDS[outputs[0]]
     if isinstance(cfg.get("channels"), list):
         cfg["channels"] = [brand.channel_key(c) if isinstance(c, str) and c.strip() else c for c in cfg["channels"]]
-    _page_lang(cfg, chat, _audience_language(run, audience, cfg.get("channels")))
+    _languages(run, cfg, chat, audience)
     if level is not None:
         flow.set_level(run, level)  # refuses an unknown level before anything is written
     s = state.load(run)
@@ -307,7 +317,7 @@ def validate(run: RunFolder) -> list[Problem]:
     except ValueError as exc:
         return [Problem(config.FILE, str(exc), "Answer the intake questions so the config can be written.")]
     out: list[Problem] = []
-    config._unknown_keys(cfg, DEFAULTS, "", out)
+    config._unknown_keys(cfg, config._merge(defaults(), OLD_KEYS), "", out)
     _fixed(out, cfg)
     _choices(out, cfg)
     _numbers(out, cfg)
@@ -316,13 +326,7 @@ def validate(run: RunFolder) -> list[Problem]:
         ready = " or ".join(OUTPUTS_READY)
         out.append(Problem("output", f"{OUTPUT_WORDS[output]} is not built yet: it arrives in a later version of "
                            "the plugin.", f"Set output to {ready} ({OUTPUT_WORDS[OUTPUTS_READY[0]].lower()}) for now."))
-    page_lang = cfg.get("page_lang")
-    if page_lang not in PAGE_LANGS:
-        out.append(Problem("page_lang", f"Pages in {page_lang!r} are not supported yet: pages are built in English or "
-                           f"Polish (tracked at {ISSUES}).", "Set page_lang to en or pl."))
-    note = cfg.get("page_lang_note")
-    if note is not None and not (isinstance(note, str) and note.strip()):
-        out.append(Problem("page_lang_note", "page_lang_note must be a sentence, or null.", "Correct it."))
+    out += i18n.language_problems(cfg)    # unset: an older config's page_lang, else English
     channels = cfg.get("channels")
     if not (isinstance(channels, list) and all(isinstance(c, str) and c and brand.channel_key(c) == c for c in channels)):
         out.append(Problem("channels", f"channels must list the channels' slugs (as in {brand.CHANNEL_DIR.as_posix()}/"

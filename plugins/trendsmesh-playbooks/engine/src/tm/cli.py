@@ -67,6 +67,7 @@ def _load_commands() -> None:
     import tm.evidence  # noqa: F401
     import tm.register  # noqa: F401
     import tm.formats  # noqa: F401
+    import tm.i18n  # noqa: F401
     import tm.kit  # noqa: F401
     import tm.library  # noqa: F401
     import tm.livetest  # noqa: F401

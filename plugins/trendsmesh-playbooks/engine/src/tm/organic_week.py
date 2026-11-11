@@ -56,7 +56,7 @@ import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from tm import (brand, brief_research, checkins, config, json_schema, organic, organic_config,
+from tm import (brand, brief_research, checkins, config, i18n, json_schema, organic, organic_config,
                 organic_proposals, organic_research, playbooks, state, stepchecks, trend_spool)
 from tm.config import Problem
 from tm.playbooks import ORGANIC_VIDEO
@@ -206,10 +206,10 @@ def check(run: RunFolder, week: object, cfg: dict) -> list[Problem]:
     if problems:
         return problems
     out: list[Problem] = []
-    page_lang = cfg.get("page_lang")
-    if week.get("lang") != page_lang:
+    page_lang = organic_config.page_lang(cfg)
+    if i18n.tag(week.get("lang")) != page_lang:
         out.append(Problem("lang", f"The week is in {week.get('lang')!r}, and this run's pages are in {page_lang!r} "
-                                   "(config.yaml page_lang).", f"Write it in {page_lang}, with lang {page_lang}."))
+                                   "(config.yaml languages.working).", f"Write it in {page_lang}, with lang {page_lang}."))
     if dates(week) is None:
         out.append(Problem("week", f"The week is {week['week']!r}.", "Give its seven days as YYYY-MM-DD/YYYY-MM-DD, "
                                                                      "Monday to Sunday or any seven days in a row."))

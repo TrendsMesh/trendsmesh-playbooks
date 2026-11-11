@@ -333,7 +333,7 @@ def test_start_makes_one_run_per_produced_idea(tmp_path, capsys, monkeypatch):
         cfg = config.load(prod)
         assert (cfg["kind"], cfg["output"], cfg["channels"], cfg["platforms"]) == ("production", "script", ["exampleedu"],
                                                                                   platforms)
-        assert cfg["page_lang"] == "pl" and cfg["mode"]["variant"] == ("az" if level == "hands_off" else "gated")
+        assert organic_config.page_lang(cfg) == "pl" and cfg["mode"]["variant"] == ("az" if level == "hands_off" else "gated")
         assert organic_config.validate(prod) == []
         kept = json.loads((path / "00_raw" / "proposal.json").read_text(encoding="utf-8"))
         assert kept["proposal"]["id"] == pid and kept["decision"]["level"] == level and kept["channel"] == "exampleedu"
