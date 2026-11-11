@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: ri_no_gh_goes_to_inbox
+context:
+  scaffold_script: fixture.sh
+  history_file: history.jsonl

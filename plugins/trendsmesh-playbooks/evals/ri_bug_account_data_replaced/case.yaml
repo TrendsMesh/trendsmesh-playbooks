@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: ri_bug_account_data_replaced
+context:
+  scaffold_script: fixture.sh

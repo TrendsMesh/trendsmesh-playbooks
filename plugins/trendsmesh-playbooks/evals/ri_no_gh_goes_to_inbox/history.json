@@ -1,0 +1,55 @@
+[
+ [
+  "user",
+  "I chose Just the big calls in Refresh an ad, but it still stopped and waited for me at every single step. Can you report that to TrendsMesh?"
+ ],
+ [
+  "skill",
+  "toolu_01RiHistSkill",
+  "trendsmesh-playbooks:report-issue"
+ ],
+ [
+  "tool",
+  "toolu_01RiHistVersion",
+  "Bash",
+  {
+   "command": "sh ./tm.sh --version",
+   "description": "Read the plugin version"
+  },
+  "tm 0.9.2"
+ ],
+ [
+  "tool",
+  "toolu_01RiHistDraft",
+  "Bash",
+  {
+   "command": "cat > trendsmesh-report-2026-11-11-0942.md <<'EOF'\n{draft}EOF",
+   "description": "Save the report draft"
+  },
+  "(Bash completed with no output)"
+ ],
+ [
+  "tool",
+  "toolu_01RiHistCheck",
+  "Bash",
+  {
+   "command": "sh ./tm.sh report check trendsmesh-report-2026-11-11-0942.md",
+   "description": "Check the draft for private data"
+  },
+  "clean"
+ ],
+ [
+  "tool",
+  "toolu_01RiHistGhAuth",
+  "Bash",
+  {
+   "command": "sh ./gh.sh auth status --hostname github.com",
+   "description": "See whether GitHub is signed in"
+  },
+  "Exit code 127\nsh: gh: command not found"
+ ],
+ [
+  "text",
+  "Here is the report, written in English, which is how the TrendsMesh team takes reports. Nothing private was in it, so nothing needed replacing. It is saved as trendsmesh-report-2026-11-11-0942.md in this folder.\n\n**Title:** Just the big calls still stops at every check-in in Refresh an ad\n\n**Body:**\n\n{draft}\n**Where it goes:** private, to TrendsMesh: the GitHub tool isn't set up on this computer, so it goes straight to the TrendsMesh team, not to a public page.\n\nShall I send it?"
+ ]
+]

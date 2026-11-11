@@ -34,6 +34,7 @@ cat > "$WS/tm.sh" <<SH
 export PYTHONPATH="$ROOT/engine/src" PYTHONDONTWRITEBYTECODE=1
 export TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$WS/.tmdata" TM_WORKSPACE="$WS"
 [ -f "$WS/.plans.json" ] && export TM_PLANS_FILE="$WS/.plans.json"  # a case's public plans answer
+[ -f "$WS/.tm-env" ] && . "$WS/.tm-env"  # a case's own environment (the report-issue fakes: report_fakes.sh)
 exec "$PY" -m tm "\$@"
 SH
 chmod +x "$WS/tm.sh"
