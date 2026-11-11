@@ -2,6 +2,11 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## Unreleased
+
+- **Developed in the open.** Issues, changes and releases now happen in this repository; release candidates come
+  before each release (RELEASING.md).
+
 ## 0.9.2
 
 - **A failed tools install says why.** When the plugin cannot install its tools at the start of a session, Claude

@@ -1,0 +1,114 @@
+# Releasing
+
+How a change becomes a release of the TrendsMesh playbooks plugin. Claude Code installs from this repository's
+default branch, and users get new files only when `version` changes, so:
+
+- **`main`** is the default branch and holds released versions only. It moves at release time, by a fast-forward to
+  `dev`. Only the repository admins can push to it.
+- **`dev`** is where every pull request goes, with green CI and a bullet under `## Unreleased` in `CHANGELOG.md`.
+- **Every push, tag and release only after the owner's yes.** An agent prepares each step and waits for that yes
+  before it pushes, tags or publishes anything.
+
+The version is in four places, always changed together in one commit:
+
+- `plugins/trendsmesh-playbooks/.claude-plugin/plugin.json` (`"version"`)
+- `plugins/trendsmesh-playbooks/engine/pyproject.toml` (`version`)
+- `plugins/trendsmesh-playbooks/engine/src/tm/__init__.py` (`__version__`)
+- `plugins/trendsmesh-playbooks/engine/tests/test_cli.py` (the expected `tm X.Y.Z`)
+
+Version numbers: the minor version for a batch of fixes and features (0.10.0, 0.11.0); the patch version for a fix
+to a release (0.10.1).
+
+The scan commands below need `private/`, the private data repository, cloned and set up as `CONTRIBUTING.md` says.
+
+## Before every tag
+
+1. Bring the checkout up to date: `git fetch origin`
+2. Scan what will be released: `python3 private/tools/scan.py tree . origin/dev` (for a hotfix,
+   `origin/hotfix/X.Y.Z`). It must print `Scan clean`. Any finding stops the release.
+3. Write `notes.md`, never committed: the changelog section being released (for a release candidate, the
+   `## Unreleased` section; for a release, its `## X.Y.Z` section), without the heading line. Delete it after the
+   release.
+4. Scan the notes: `python3 private/tools/scan.py text notes.md`. It must print `Scan clean`.
+5. Check by hand what the scan prints under "Check by hand".
+
+## Release candidate X.Y.Z-rc.N
+
+1. **Version pull request.** On a branch from `dev`, set the version to `X.Y.Z-rc.N` in the four places, commit
+   "Release X.Y.Z-rc.N", and open it: `gh pr create -B dev --title "Release X.Y.Z-rc.N" --label no-changelog`
+   (the changelog stays under `## Unreleased` until the release). Merge it after a counted green and the owner's
+   yes.
+2. **Check:** the steps under "Before every tag".
+3. **Tag** the merged `dev`:
+   ```
+   git switch dev
+   git pull --ff-only
+   git tag vX.Y.Z-rc.N
+   git push origin vX.Y.Z-rc.N
+   ```
+4. **Pre-release:** `gh release create vX.Y.Z-rc.N --prerelease --notes-file notes.md --target dev`
+5. Ask the tester to check it, with the steps below.
+
+### The tester's check of a release candidate
+
+A user can register only one marketplace by a name, and `main` and the release candidate both call theirs
+`trendsmesh-playbooks`. So the tester swaps the marketplace for the candidate's, in Claude Code:
+
+1. `/plugin marketplace remove trendsmesh-playbooks`
+2. `/plugin marketplace add TrendsMesh/trendsmesh-playbooks#vX.Y.Z-rc.N`
+3. `/plugin install trendsmesh-playbooks@trendsmesh-playbooks`
+4. Start a new session.
+5. Run `/trendsmesh-playbooks:acceptance`, and send the report privately, as it says.
+
+Afterwards, back to the released version:
+
+1. `/plugin marketplace remove trendsmesh-playbooks`
+2. `/plugin marketplace add TrendsMesh/trendsmesh-playbooks`
+
+Adding a marketplace at a tag is the documented `owner/repo#ref` form. That it also takes the plugin's files from
+that tag (the plugin's source is a path inside this repository) is proven at the first release candidate: check
+that `/trendsmesh-playbooks:doctor` shows the candidate's version on its `tm engine` line. If it doesn't take the tag's files, release
+candidates move to an `rc` branch instead of a tag (`#rc` in step 2), and the rest stays the same.
+
+A finding goes into an issue and a fix into `dev`; the next candidate is `X.Y.Z-rc.N+1`.
+
+## Release X.Y.Z
+
+1. **Version pull request.** On a branch from `dev`, set the version to `X.Y.Z` in the four places and turn
+   `## Unreleased` in `CHANGELOG.md` into `## X.Y.Z — YYYY-MM-DD`. Commit "Release X.Y.Z" and open it:
+   `gh pr create -B dev --title "Release X.Y.Z"`. Merge it after a counted green and the owner's yes.
+2. **Check:** the steps under "Before every tag". `notes.md` is the `## X.Y.Z` section.
+3. **Move `main`** to the merged `dev`, as a fast-forward:
+   ```
+   git switch dev
+   git pull --ff-only
+   git push origin dev:main
+   ```
+   Git refuses the push if it isn't a fast-forward: then stop and find out why `main` has moved.
+4. **Tag** it:
+   ```
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+5. **Release:** `gh release create vX.Y.Z --notes-file notes.md`
+6. Add a new `## Unreleased` heading to `CHANGELOG.md` with the next pull request into `dev`.
+
+Users get the release on their next `/plugin marketplace update`, or when Claude Code starts if they switched
+auto-update on.
+
+## Hotfix: a fix to a release
+
+- **`dev` holds no unreleased work:** fix it on `dev` with an ordinary pull request, then release the patch version
+  as above (a release candidate first unless the owner says otherwise).
+- **`dev` already holds unreleased work:**
+  1. Cut a branch from the release being fixed: `git switch -c hotfix/X.Y.Z vX.Y.Z`
+  2. Commit the fix, with the patch version (`X.Y.Z+1`) in the four places and its `## X.Y.Z+1 — YYYY-MM-DD`
+     section in `CHANGELOG.md`. Push the branch, after the owner's yes: `git push origin hotfix/X.Y.Z`
+  3. CI runs on `main` and `dev` only, so run it on the branch by hand, and wait for a counted green:
+     `gh workflow run ci.yml --ref hotfix/X.Y.Z`
+  4. The steps under "Before every tag", scanning `origin/hotfix/X.Y.Z`.
+  5. Move `main`, tag and release as in steps 3 to 5 above, from the hotfix branch:
+     `git push origin hotfix/X.Y.Z:main`, then `git tag vX.Y.Z+1` on it, `git push origin vX.Y.Z+1` and
+     `gh release create vX.Y.Z+1 --notes-file notes.md`.
+  6. Merge the fix back: `gh pr create -B dev --head hotfix/X.Y.Z --title "Hotfix X.Y.Z+1 into dev"`, keeping `dev`'s
+     `## Unreleased` section above the hotfix's section. Delete the branch once it's merged.
