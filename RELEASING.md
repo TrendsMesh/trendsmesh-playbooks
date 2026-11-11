@@ -15,6 +15,12 @@ default branch, and users get new files only when `version` changes, so:
   a fast-forward push of the scanned commit.
 - **Every push, tag and release only after the owner's yes.** An agent prepares each step and waits for that yes
   before it pushes, merges, tags or publishes anything. Each such step below says so again.
+- **Pushing a tag publishes its release.** The `Release` workflow (`.github/workflows/release.yml`) creates the
+  GitHub release for every pushed `vX.Y.Z` or `vX.Y.Z-rc.N` tag, as github-actions[bot], so no person's account
+  is named as its author. Before publishing it checks that the version in the four places below is the tag's,
+  that a release candidate's commit is on `dev` and a release's commit is `main`, and that the tag has no release
+  yet; any failed check stops it with nothing published. Its notes are the changelog section being released, read
+  from `CHANGELOG.md` at the tagged commit. Never run `gh release create` by hand.
 
 The version is in four places, always changed together in one commit:
 
@@ -43,11 +49,15 @@ Run these in the shell you tag from: the tag goes on exactly the commit that was
 1. Bring the checkout up to date: `git fetch origin`
 2. Fix the commit to release: `sha=$(git rev-parse origin/dev)` (for a hotfix, `origin/hotfix/X.Y.Z`).
 3. Scan it: `python3 private/tools/scan.py tree . "$sha"`. It must print `Scan clean`. Any finding stops the release.
-4. Write `notes.md`, never committed: the changelog section being released (for a release candidate, the
-   `## Unreleased` section; for a release, its `## X.Y.Z` section), without the heading line. Delete it after the
-   release.
-5. Scan the notes: `python3 private/tools/scan.py text notes.md`. It must print `Scan clean`.
-6. Check by hand what the scan prints under "Check by hand".
+4. Check what the `Release` workflow will check, on that commit, and read the notes it will publish:
+   ```
+   git switch --detach "$sha"
+   notes=$(mktemp) && python3 .github/scripts/release.py prepare vX.Y.Z-rc.N . "$notes" && cat "$notes"
+   git switch -
+   ```
+   It must print the version, then the section being released (for a release candidate, `## Unreleased`; for a
+   release, `## X.Y.Z`). The scan in step 3 has already read the notes, since they are in `CHANGELOG.md`.
+5. Check by hand what the scan prints under "Check by hand".
 
 ## Release candidate X.Y.Z-rc.N
 
@@ -57,13 +67,16 @@ Run these in the shell you tag from: the tag goes on exactly the commit that was
    `gh pr create -B dev --title "Release X.Y.Z-rc.N" --label no-changelog`. Merge it after a counted green, only
    after the owner's yes, by pushing its head to `dev` (`CONTRIBUTING.md`, "Merging").
 2. **Check:** the steps under "Before every tag", which set `$sha` to the merged `dev`.
-3. **Tag** that commit, and push the tag only after the owner's yes:
+3. **Tag** that commit, and push the tag only after the owner's yes. The push publishes the pre-release:
    ```
    git tag vX.Y.Z-rc.N "$sha"
    git push origin vX.Y.Z-rc.N
    ```
-4. **Pre-release**, only after the owner's yes:
-   `gh release create vX.Y.Z-rc.N --prerelease --notes-file notes.md`
+4. **Watch the release run**: `gh run watch -R TrendsMesh/trendsmesh-playbooks "$(gh run list -R TrendsMesh/trendsmesh-playbooks --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')"`.
+   It must end in success, and `gh release view vX.Y.Z-rc.N -R TrendsMesh/trendsmesh-playbooks` shows the
+   pre-release. If it failed, read why in its log, fix the cause, and run it again only after the owner's yes:
+   `gh workflow run release.yml -R TrendsMesh/trendsmesh-playbooks -f tag=vX.Y.Z-rc.N`. A fix that needs a new
+   commit needs a new tag (the next `rc.N`): never move a pushed tag.
 5. Ask the tester to check it, with the steps below.
 
 ### The tester's check of a release candidate
@@ -99,7 +112,7 @@ A finding goes into an issue and a fix into `dev`; the next candidate is `X.Y.Z-
    `## Unreleased` in `CHANGELOG.md` into `## X.Y.Z`. Commit "Release X.Y.Z". Only after the owner's yes, push the
    branch and open it: `gh pr create -B dev --title "Release X.Y.Z"`. Merge it after a counted green, only after
    the owner's yes, by pushing its head to `dev` (`CONTRIBUTING.md`, "Merging").
-2. **Check:** the steps under "Before every tag", which set `$sha` to the merged `dev`. `notes.md` is the
+2. **Check:** the steps under "Before every tag", which set `$sha` to the merged `dev`. The notes are the
    `## X.Y.Z` section.
 3. **Move `main`** to that commit, as a fast-forward, only after the owner's yes:
    ```
@@ -107,12 +120,12 @@ A finding goes into an issue and a fix into `dev`; the next candidate is `X.Y.Z-
    ```
    Git refuses the push if it isn't a fast-forward: then stop and find out why `main` has moved. Never force it,
    and never move `main` with a merge on GitHub.
-4. **Tag** the same commit, and push the tag only after the owner's yes:
+4. **Tag** the same commit, and push the tag only after the owner's yes. The push publishes the release:
    ```
    git tag vX.Y.Z "$sha"
    git push origin vX.Y.Z
    ```
-5. **Release**, only after the owner's yes: `gh release create vX.Y.Z --notes-file notes.md`
+5. **Watch the release run**, as for a release candidate (step 4 there), with `vX.Y.Z`.
 6. Add a new `## Unreleased` heading to `CHANGELOG.md` with the next pull request into `dev`.
 
 Users get the release on their next `/plugin marketplace update`, or when Claude Code starts if they switched
@@ -130,8 +143,8 @@ auto-update on.
      `gh workflow run ci.yml --ref hotfix/X.Y.Z`
   4. The steps under "Before every tag", with `sha=$(git rev-parse origin/hotfix/X.Y.Z)`.
   5. Move `main`, tag and release that commit as in steps 3 to 5 above, each only after the owner's yes:
-     `git push origin "$sha":main`, `git tag vX.Y.Z+1 "$sha"`, `git push origin vX.Y.Z+1` and
-     `gh release create vX.Y.Z+1 --notes-file notes.md`.
+     `git push origin "$sha":main`, `git tag vX.Y.Z+1 "$sha"` and `git push origin vX.Y.Z+1`, which publishes the
+     release; then watch the release run.
   6. Merge the fix back into `dev`, as a fast-forward of `dev`. On a branch from `dev`, merge the hotfix locally,
      keeping `dev`'s `## Unreleased` section above the hotfix's section (the merge commit is TrendsMesh's own):
      ```

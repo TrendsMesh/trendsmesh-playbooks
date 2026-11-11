@@ -34,6 +34,9 @@ jobs:
           cache: true
       - name: Engine tests
         run: pixi run --frozen --manifest-path plugins/trendsmesh-playbooks/env/pixi.toml -e dev test
+      - name: Release script tests
+        if: runner.os == 'Linux'
+        run: pixi run --frozen --manifest-path plugins/trendsmesh-playbooks/env/pixi.toml -e dev pytest -q "$GITHUB_WORKSPACE/.github/scripts"
       - name: Bootstrap tests (sh)
         if: runner.os != 'Windows'
         run: |

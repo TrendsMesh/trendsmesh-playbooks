@@ -1,0 +1,61 @@
+name: Release
+
+# Publishes the GitHub release for a pushed vX.Y.Z or vX.Y.Z-rc.N tag (RELEASING.md), so the release is
+# published by github-actions[bot], not by the person who pushed the tag. Pushing the tag is the publish step.
+# Run it by hand for a tag that is already pushed but has no release yet.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The pushed tag to release, for example v0.10.0-rc.1"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+      - name: The tag, its versions and its notes
+        id: prepare
+        run: python3 .github/scripts/release.py prepare "$TAG" . "$RUNNER_TEMP/notes.md" >> "$GITHUB_OUTPUT"
+      - name: A release candidate is on dev, a release is main
+        env:
+          PRERELEASE: ${{ steps.prepare.outputs.prerelease }}
+        run: |
+          sha=$(git rev-parse "refs/tags/$TAG^{commit}")
+          if [ "$PRERELEASE" = true ]; then
+            git merge-base --is-ancestor "$sha" origin/dev || { echo "$TAG ($sha) is not on dev" >&2; exit 1; }
+          else
+            main=$(git rev-parse origin/main)
+            [ "$sha" = "$main" ] || { echo "$TAG ($sha) is not main ($main): move main first" >&2; exit 1; }
+          fi
+      - name: No release for this tag yet
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "$TAG already has a release" >&2
+            exit 1
+          fi
+      - name: Publish
+        env:
+          TITLE: ${{ steps.prepare.outputs.title }}
+          PRERELEASE: ${{ steps.prepare.outputs.prerelease }}
+        run: |
+          flag=()
+          [ "$PRERELEASE" = true ] && flag=(--prerelease)
+          gh release create "$TAG" --verify-tag --title "$TITLE" --notes-file "$RUNNER_TEMP/notes.md" "${flag[@]}"
