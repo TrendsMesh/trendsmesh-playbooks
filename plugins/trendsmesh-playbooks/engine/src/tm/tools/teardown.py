@@ -48,6 +48,23 @@ listed as an overlay, only noted when its edges look like a card; a static logo 
 likewise. Thresholds are heuristics tuned on synthetic clips only; Claude checks the frames and can
 override the material with `tm material`.
 
+Text (issue #29; `_text_overlays` has the method): steps 1-6 need an edge to hold still for a
+window, so word-by-word captions, which change every few tenths of a second, never reach them, and
+the lines of one caption that come and go at different moments stay apart. A second pass looks for
+text lines in frames every 0.1 s, joins stacked lines into one block, follows each block over
+time as one track (a caption band whose words change is one overlay with one start and end), and
+compares the moments its text changes with the transcript's word starts. Each overlay then has:
+- `kind`: `word_captions` (text that changes word by word), `text` (a caption or card with text),
+  `full_frame` (a still scene with text: an end card or full-frame title; its box is the text's)
+  or `graphic` (found by edges only, no text line in it: a bar, a shape, or a false find);
+- `methods` (`edges`, `text`), `confidence` (0 to 1) and `check`: why to look at its frames, or
+  null; `spans_s`: when its text is on screen ([start, end] pairs; gaps between words show);
+- `transcript` (text overlays, with a transcript): how many changes land on word starts against
+  chance, and `aligned`, true for word-by-word captioning.
+Text and edge boxes that overlap in space and time are one overlay (the box is their union, so a
+caption's bar or frame is kept). `check_frames` lists bands whose picture changes with the spoken
+words where no text line was found (captions in a font the pass misses, maybe): look there.
+
 speech_on_camera (VARIANTS 1 and 4 V0): OpenCV's bundled Haar frontal-face detector on frames
 sampled in the speech segments; true when a face at least FACE_MIN_W of the frame width is found in
 FACE_SHARE (half) of them or more. Limits: profiles, small or partly covered faces are missed, and
@@ -61,6 +78,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from tm.tools import _common as c
+from tm.tools import _text_overlays as tx
 
 ANALYSIS_W = 270
 MAX_ANALYSIS_BYTES = 1.2e9
@@ -87,6 +105,12 @@ class Overlay:
     bbox: tuple[int, int, int, int]
     touches_edge: bool
     semi_transparent: bool
+    kind: str = "graphic"
+    confidence: float = 0.5
+    methods: tuple[str, ...] = ("edges",)
+    check: str | None = None
+    spans: tuple[tuple[int, int], ...] = ()
+    transcript: dict | None = None
 
 
 # Decoding and scenes -------------------------------------------------------------------------
@@ -593,8 +617,9 @@ def _to_source(clip: _Clip, box) -> tuple[int, int, int, int]:
             min(W, math.ceil(box[2] * clip.sx)), min(H, math.ceil(box[3] * clip.sy)))
 
 
-def _find_overlays(clip: _Clip) -> tuple[list[Overlay], list[dict]]:
-    """(overlays, possible whole-shot overlays as {first_frame, last_frame, bbox})."""
+def _find_overlays(clip: _Clip, transcript: dict | None = None) -> tuple[list[Overlay], list[dict], list[dict]]:
+    """(overlays, possible whole-shot overlays as {first_frame, last_frame, bbox}, check-frames
+    regions as {first_frame, last_frame, bbox})."""
     gray, fps = clip.gray, clip.fps
     scenes_ = clip.scene_frames()
     stable, half = _stable_edges(gray, fps, scenes_)
@@ -612,7 +637,6 @@ def _find_overlays(clip: _Clip) -> tuple[list[Overlay], list[dict]]:
     span = max(1, round(MAX_ANIMATION_S * fps))
     items = _merge_animated(items, tol=half, span=span, w=w, h=h)
     out = []
-    W, H = clip.info["width"], clip.info["height"]
     for item in items:
         box, first, last = _trail(material, best_len < min_frames, item, span, half), item["first"], item["last"]
         lo, hi = max(1, first - span), min(len(gray) - 1, last + span)
@@ -621,18 +645,129 @@ def _find_overlays(clip: _Clip) -> tuple[list[Overlay], list[dict]]:
             first -= 1
         while last + 2 <= hi and _animated(gray, last + 1, box, after) and _animated(gray, last + 2, box, after):
             last += 1
-        sx0, sy0, sx1, sy1 = _to_source(clip, box)
-        touches = sx0 <= EDGE_PX or sy0 <= EDGE_PX or W - sx1 <= EDGE_PX or H - sy1 <= EDGE_PX
-        out.append(Overlay(first, last, (sx0, sy0, sx1, sy1), bool(touches),
-                           _semi_transparent(gray, item["first"], item["last"], item["box"])))
+        out.append(_overlay(clip, first, last, box, _semi_transparent(gray, item["first"], item["last"], item["box"])))
     suspects = [{"first_frame": s["first"], "last_frame": s["last"], "bbox": list(_to_source(clip, s["box"]))}
                 for s in _whole_shot_suspects(backgrounds, close)]
-    return sorted(out, key=lambda o: (o.start_frame, o.bbox[1], o.bbox[0])), suspects
+    text = tx.find(gray, fps, scenes_, backgrounds, _word_starts(transcript))
+    out, suspects = _with_text(clip, out, text, suspects)
+    checks = [{"first_frame": r["first"], "last_frame": r["last"], "bbox": list(_to_source(clip, r["box"]))}
+              for r in text["check"]]
+    return sorted(out, key=lambda o: (o.start_frame, o.bbox[1], o.bbox[0])), suspects, checks
 
 
-def overlays(video: Path | str) -> list[Overlay]:
+def _overlay(clip: _Clip, first: int, last: int, box, semi: bool, **more) -> Overlay:
+    """An overlay in source pixels, from a box in analysis pixels."""
+    W, H = clip.info["width"], clip.info["height"]
+    sx0, sy0, sx1, sy1 = _to_source(clip, box)
+    touches = sx0 <= EDGE_PX or sy0 <= EDGE_PX or W - sx1 <= EDGE_PX or H - sy1 <= EDGE_PX
+    return Overlay(first, last, (sx0, sy0, sx1, sy1), bool(touches), bool(semi), **more)
+
+
+def _word_starts(transcript: dict | None) -> list[float]:
+    out = []
+    for seg in (transcript or {}).get("segments", []):
+        for w in seg.get("words") or []:
+            try:
+                out.append(float(w["start"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+    return sorted(out)
+
+
+GRAPHIC_CHECK = "Found by edges only, with no text line in it: a bar or a shape, or a false find; check the frames."
+FULL_FRAME_CHECK = ("A still scene with text in it: an end card or a full-frame title (or text in the picture "
+                    "itself); check the frames.")
+CAPTIONS_CHECK = "Text that changes, but not in step with the spoken words; check the frames."
+SHORT_CHECK = "Text seen only briefly or faintly; check the frames."
+UNCHECKED_CAPTIONS = "Text that changes, with no spoken words to check it against; check the frames."
+
+
+def _same_overlay(a: Overlay, b: Overlay) -> bool:
+    """Overlapping in space (half the smaller box) and in time (half the shorter life)."""
+    t = min(a.end_frame, b.end_frame) - max(a.start_frame, b.start_frame) + 1
+    shorter = min(a.end_frame - a.start_frame, b.end_frame - b.start_frame) + 1
+    return t >= 0.5 * shorter and _overlap(a.bbox, b.bbox) >= 0.5
+
+
+def _absorb(a: Overlay, b: Overlay, W: int, H: int, reach: int) -> Overlay:
+    """`a` with `b` joined into it: the union of the boxes and both methods. `a`'s life stays,
+    widened by `b` by up to `reach` frames at either end (an entry or exit animation): the edge
+    method can join text that comes and goes at different moments, the text pass keeps it apart."""
+    from dataclasses import replace
+
+    box = _union(a.bbox, b.bbox)
+    touches = box[0] <= EDGE_PX or box[1] <= EDGE_PX or W - box[2] <= EDGE_PX or H - box[3] <= EDGE_PX
+    methods = tuple(m for m in ("edges", "text") if m in a.methods or m in b.methods)
+    first = b.start_frame if a.start_frame - reach <= b.start_frame < a.start_frame else a.start_frame
+    last = b.end_frame if a.end_frame < b.end_frame <= a.end_frame + reach else a.end_frame
+    return replace(a, start_frame=first, end_frame=last, bbox=box, touches_edge=bool(touches),
+                   semi_transparent=a.semi_transparent or b.semi_transparent, methods=methods)
+
+
+def _confidence(kind: str, methods: tuple[str, ...], samples: int, align: dict | None) -> tuple[float, str | None]:
+    if kind == "full_frame":
+        return 0.5, FULL_FRAME_CHECK
+    if kind == "word_captions":
+        if align and align["aligned"]:
+            return 0.9, None
+        return (0.6, CAPTIONS_CHECK) if align else (0.6, UNCHECKED_CAPTIONS)
+    if kind == "text":
+        score = 0.6 + (0.2 if "edges" in methods else 0) + (0.1 if samples >= 10 else 0)
+        return round(min(score, 0.9), 2), (SHORT_CHECK if score < 0.7 else None)
+    return 0.4, GRAPHIC_CHECK
+
+
+def _with_text(clip: _Clip, edges: list[Overlay], text: dict, suspects: list[dict]) -> tuple[list[Overlay], list[dict]]:
+    """The edge method's overlays joined with the text pass (module docstring, "Text")."""
+    from dataclasses import replace
+
+    gray, W, H = clip.gray, clip.info["width"], clip.info["height"]
+    found = []
+    for tr in text["text"]:
+        found.append((_overlay(clip, tr["first"], tr["last"], tr["box"],
+                               _semi_transparent(gray, tr["first"], tr["last"], tr["box"]), kind=tr["kind"],
+                               methods=("text",), spans=tuple(tr["spans"]), transcript=tr["transcript"]),
+                      tr["samples"]))
+    full = [_overlay(clip, f["first"], f["last"], f["box"], False, kind="full_frame", methods=("text",))
+            for f in text["full_frame"]]
+    reach = max(1, round(MAX_ANIMATION_S * clip.fps))
+    rest = []
+    for e in edges:
+        hits = [i for i, (o, _) in enumerate(found) if _same_overlay(o, e)]
+        for i in hits:
+            o = found[i][0]
+            if len(hits) > 1:  # the edge method joined text the text pass keeps apart: it only confirms
+                o = replace(o, methods=("edges", "text"))
+            else:
+                o = _absorb(o, e, W, H, reach)
+            found[i] = (o, found[i][1])
+        if not hits:
+            rest.append(e)
+    out = []
+    for o, samples in found:
+        conf, check = _confidence(o.kind, o.methods, samples, o.transcript)
+        out.append(replace(o, confidence=conf, check=check))
+    for o in rest:
+        conf, check = _confidence("graphic", o.methods, 0, None)
+        out.append(replace(o, confidence=conf, check=check))
+    tol = max(1, round(STABLE_S * clip.fps))
+    for f in full:  # what lies mostly in a full-frame graphic's scene and box is part of it
+        inside = [o for o in out if _overlap(o.bbox, f.bbox) >= 0.5 and
+                  min(o.end_frame, f.end_frame) - max(o.start_frame, f.start_frame) + 1
+                  >= 0.5 * (o.end_frame - o.start_frame + 1)]
+        for o in inside:
+            f = _absorb(f, o, W, H, 0)
+            out.remove(o)
+        conf, check = _confidence("full_frame", f.methods, 0, None)
+        out.append(replace(f, start_frame=max(f.start_frame, 0), confidence=conf, check=check))
+        suspects = [x for x in suspects
+                    if not (x["first_frame"] >= f.start_frame - tol and x["last_frame"] <= f.end_frame + tol)]
+    return out, suspects
+
+
+def overlays(video: Path | str, transcript: dict | None = None) -> list[Overlay]:
     """On-screen overlays (text cards, captions, bars) with their life cycle and box."""
-    return _find_overlays(_Clip(video))[0]
+    return _find_overlays(_Clip(video), transcript)[0]
 
 
 # Speech on camera ----------------------------------------------------------------------------
@@ -698,14 +833,18 @@ def teardown(video: Path | str, transcript: dict | None) -> dict:
                 "has_audio": info.get("has_audio", False), "scenes": [], "overlays": [],
                 "has_speech": _has_speech(transcript), "speech_on_camera": False,
                 "speech_on_camera_evidence": {"method": "not a video", "sampled": 0, "with_face": 0, "share": 0.0},
-                "possible_whole_shot_overlays": [],
+                "possible_whole_shot_overlays": [], "check_frames": [],
                 "notes": ["Not a video (a still image): the material is static."]}
     clip = _Clip(video)
     fps = clip.fps
     on_camera, evidence = speech_on_camera(clip, transcript)
-    found, suspects = _find_overlays(clip)
+    found, suspects, checks = _find_overlays(clip, transcript)
     notes = [f"Possible overlay spanning the whole shot (frames {x['first_frame']}-{x['last_frame']}) at "
              f"{x['bbox']}; check the frames." for x in suspects]
+    for x in checks:
+        x.update(start_s=_seconds(x["first_frame"], fps), end_s=_seconds(x["last_frame"] + 1, fps))
+        notes.append(f"The picture at {x['bbox']} changes with the spoken words from {x['start_s']} s to "
+                     f"{x['end_s']} s, but no text was found there: maybe captions; check the frames.")
     if transcript is None:
         notes.append("Not transcribed: has_speech is false until a transcript is given.")
     elif not _has_speech(transcript):
@@ -716,11 +855,20 @@ def teardown(video: Path | str, transcript: dict | None) -> dict:
         "frame_count": clip.frames, "has_audio": info["has_audio"],
         "scenes": [{"start_s": _seconds(a, fps), "end_s": _seconds(b + 1, fps), "start_frame": a, "end_frame": b}
                    for a, b in clip.scene_frames()],
-        "overlays": [{**asdict(o), "bbox": list(o.bbox), "start_s": _seconds(o.start_frame, fps),
-                      "end_s": _seconds(o.end_frame + 1, fps)} for o in found],
+        "overlays": [_overlay_json(o, fps) for o in found],
         "has_speech": _has_speech(transcript), "speech_on_camera": on_camera,
         "speech_on_camera_evidence": evidence, "notes": notes, "possible_whole_shot_overlays": suspects,
+        "check_frames": checks,
     }
+
+
+def _overlay_json(o: Overlay, fps: float) -> dict:
+    d = asdict(o)
+    spans = d.pop("spans")
+    return {**d, "bbox": list(o.bbox), "methods": list(o.methods), "start_s": _seconds(o.start_frame, fps),
+            "end_s": _seconds(o.end_frame + 1, fps),
+            "spans_s": [[_seconds(a, fps), _seconds(b + 1, fps)] for a, b in spans]
+            or [[_seconds(o.start_frame, fps), _seconds(o.end_frame + 1, fps)]]}
 
 
 def _transcript_ref(run, path: Path | None, transcript: dict | None) -> dict | None:
@@ -773,11 +921,12 @@ def main(argv: list[str] | None = None) -> int:
     outputs.insert(0, c.rel(run, out))
     parent = c.parent_ref(run, a.video)
     c.record(run, out, "tm tool teardown (PySceneDetect, OpenCV, ffmpeg)", parent,
-             params={"every_s": a.every_s, "analysis_width": ANALYSIS_W, "edge_px": EDGE_PX}, cost="0 (local)",
+             params={"every_s": a.every_s, "analysis_width": ANALYSIS_W, "edge_px": EDGE_PX,
+                     "text_step_s": tx.TEXT_STEP_S}, cost="0 (local)",
              request={"video": parent, "transcript": data["transcript"] and data["transcript"]["file"],
                       "every_s": a.every_s},
              response={k: data[k] for k in ("is_video", "has_speech", "speech_on_camera",
-                                            "speech_on_camera_evidence", "scenes", "overlays")})
+                                            "speech_on_camera_evidence", "scenes", "overlays", "check_frames")})
     c.record(run, frames_dir, "tm tool teardown (ffmpeg stills)", parent,
              params={"every_s": a.every_s, "frames": len(stills)}, cost="0 (local)")
     summary = {k: data[k] for k in ("is_video", "has_speech", "speech_on_camera")}

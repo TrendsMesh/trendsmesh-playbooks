@@ -105,8 +105,9 @@ def test_teardown_json_has_material_keys_and_is_recorded(clip, run, tmp_path):
     assert data["speech_on_camera"] is False
     assert (data["width"], data["height"], data["fps"]) == (W, H, FPS)
     assert data["scenes"] == [{"start_s": 0.0, "end_s": 3.0, "start_frame": 0, "end_frame": 74}]
-    assert {"start_frame", "end_frame", "start_s", "end_s", "bbox", "touches_edge",
-            "semi_transparent"} <= set(data["overlays"][0])
+    assert {"start_frame", "end_frame", "start_s", "end_s", "bbox", "touches_edge", "semi_transparent", "kind",
+            "confidence", "methods", "check", "spans_s", "transcript"} <= set(data["overlays"][0])
+    assert data["check_frames"] == []
     assert data["frames"]["files"] and (run.path / data["frames"]["dir"]).is_dir()
     assert changes.classify_material(data) == "text_cards"
     manifest = (run.path / "manifest.md").read_text(encoding="utf-8")
@@ -137,3 +138,114 @@ def test_still_image_is_not_video(tmp_path, run):
     data = teardown.teardown(img, transcript={"segments": []})
     assert data["is_video"] is False
     assert changes.classify_material(data) == "static"
+
+
+# Text overlays (issue #29): a synthetic ad with word-by-word captions, a two-line hook, a second
+# top caption and an end card (_textad.py has the layout and times).
+
+import _textad as ad  # noqa: E402
+from tm.tools import _text_overlays as tx  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def text_ad(tmp_path_factory):
+    return ad.make_ad(tmp_path_factory.mktemp("text ad") / "Reklama z napisami.mp4")
+
+
+@pytest.fixture(scope="module")
+def text_teardown(text_ad):
+    return teardown.teardown(text_ad, ad.transcript())
+
+
+def _find(data, part, kind=None):
+    want = ad.box(part)
+    pool = [o for o in data["overlays"] if kind is None or o["kind"] == kind]
+    best = max(pool, key=lambda o: _iou(o["bbox"], want), default=None)
+    assert best is not None and _iou(best["bbox"], want) > 0.6, \
+        (want, [(o["kind"], o["bbox"], o["start_s"], o["end_s"]) for o in data["overlays"]])
+    return best
+
+
+def test_word_by_word_captions_are_one_overlay_matched_to_the_transcript(text_teardown):
+    cap = _find(text_teardown, "words", "word_captions")
+    assert abs(cap["start_s"] - ad.WORDS[0][1]) <= 0.1 and abs(cap["end_s"] - ad.WORDS[-1][2]) <= 0.1
+    assert cap["transcript"]["aligned"] is True
+    assert cap["transcript"]["on_word_starts"] >= 0.6 * len(ad.WORDS)
+    assert cap["confidence"] >= 0.8 and cap["check"] is None and "text" in cap["methods"]
+    assert len(cap["spans_s"]) >= 3  # the pauses between the words show
+    captions = [o for o in text_teardown["overlays"] if o["kind"] == "word_captions"]
+    assert len(captions) == 1, captions
+
+
+def test_two_line_hook_is_one_box_from_its_first_frame(text_teardown):
+    # Line 2 (on a semi-transparent bar) comes 0.6 s after line 1 and leaves 0.4 s before it.
+    hook = _find(text_teardown, "hook", "text")
+    assert _iou(hook["bbox"], ad.box("hook")) > 0.75
+    assert hook["start_s"] <= 0.1 and abs(hook["end_s"] - ad.HOOK[0][3]) <= 0.1
+    line2 = (0, ad.HOOK[1][1] - 40, ad.W, ad.HOOK[1][1] + 30)
+    others = [o for o in text_teardown["overlays"] if o is not hook and o["start_s"] < ad.HOOK[0][3]
+              and teardown._overlap(o["bbox"], line2) > 0.3 and o["kind"] != "graphic"]
+    assert not others, others
+
+
+def test_second_top_caption_is_its_own_overlay(text_teardown):
+    # The edge method joins it with the hook line in the same band (one box, 0 to 4.6 s).
+    top2 = _find(text_teardown, "top2", "text")
+    assert abs(top2["start_s"] - ad.TOP2[2]) <= 0.1 and ad.TOP2[3] - 0.1 <= top2["end_s"] <= ad.TOP2[3] + 0.25
+    hook = _find(text_teardown, "hook", "text")
+    assert hook is not top2 and hook["end_s"] < ad.TOP2[2]
+
+
+def test_full_frame_end_card_is_an_overlay_to_check(text_teardown):
+    card = _find(text_teardown, "end_card", "full_frame")
+    assert abs(card["start_s"] - ad.END_CARD_S) <= 0.05 and card["end_s"] == ad.SECONDS
+    assert card["check"]
+    assert not text_teardown["possible_whole_shot_overlays"]  # an overlay now, not only a note
+    assert not [o for o in text_teardown["overlays"] if o["kind"] == "full_frame" and o["start_s"] < ad.END_CARD_S]
+
+
+def test_text_over_a_still_picture(tmp_path):
+    video = ad.make_ad(tmp_path / "still.mp4", pan=0.0)
+    data = teardown.teardown(video, ad.transcript())
+    assert _find(data, "words", "word_captions")["transcript"]["aligned"] is True
+    _find(data, "hook", "text")
+    _find(data, "top2", "text")
+    assert [o["start_s"] for o in data["overlays"] if o["kind"] == "full_frame"] == [ad.END_CARD_S]
+
+
+def test_changing_text_without_a_transcript_is_flagged(text_ad):
+    data = teardown.teardown(text_ad, None)
+    cap = _find(data, "words", "word_captions")
+    assert cap["transcript"] is None and cap["check"] == teardown.UNCHECKED_CAPTIONS
+    assert cap["confidence"] < 0.8
+
+
+def test_captions_out_of_step_with_the_speech_are_flagged(text_ad):
+    late = ad.transcript()
+    for w in late["segments"][0]["words"]:  # half way between the caption changes
+        w["start"] += 0.17
+    cap = _find(teardown.teardown(text_ad, late), "words", "word_captions")
+    assert cap["transcript"]["aligned"] is False and cap["check"] == teardown.CAPTIONS_CHECK
+
+
+def test_words_on_screen_without_a_text_line_ask_for_a_frame_check(text_ad, monkeypatch):
+    # Captions in a font the line finder misses: the band still changes with the spoken words.
+    lines = tx._Strokes.lines
+    monkeypatch.setattr(tx._Strokes, "lines",
+                        lambda self, t, raw=False: [b for b in lines(self, t, raw) if b[1] < self.gray.shape[1] * 0.6])
+    data = teardown.teardown(text_ad, ad.transcript())
+    band = ad.box("words")
+    hits = [x for x in data["check_frames"] if x["bbox"][1] < band[3] and x["bbox"][3] > band[1]]
+    assert hits, data["check_frames"]
+    assert hits[0]["start_s"] <= 1.0 and hits[0]["end_s"] >= 4.5
+    assert any("no text was found there" in n for n in data["notes"])
+
+
+def test_alignment_is_measured_against_chance():
+    words = [0.2 + 0.4 * i for i in range(10)]
+    on = tx._alignment([w + 0.04 for w in words], words, 0.2, 4.2)
+    assert on["aligned"] and on["share"] == 1.0 and on["chance"] < 0.7
+    off = tx._alignment([w + 0.2 for w in words], words, 0.2, 4.2)
+    assert not off["aligned"] and off["share"] == 0.0
+    assert tx._alignment([1.0], [], 0.0, 2.0) is None
+    assert tx._chance([1.0], 0.0, 2.0) == pytest.approx(2 * tx.ALIGN_S / 2.0)

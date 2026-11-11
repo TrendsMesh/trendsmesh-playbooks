@@ -170,12 +170,18 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
 - `tm tool teardown --run R 01_base/<ad_id>_original.<ext> --lang <code> --json` →
   `02_research/teardown_vNN.json`, frame sheets in `02_research/teardown_vNN_frames/`, and a
   transcript (no speech is normal for text-card ads, lesson 3).
-- **Look before you trust it.** Overlay detection is tuned on synthetic clips. Read the frame
-  sheets (open several PNGs) and check every overlay box, its start and end, `touches_edge`,
-  `semi_transparent` and every `possible_whole_shot_overlays` note against what you see.
-  Semi-transparent bars and shadows count (lesson 12). Write the corrected list to
-  `03_wip/breakdown/overlays_checked_v01.json` (with what you changed and why) and plan covering
-  cards from it, never from unchecked boxes.
+- **Look before you trust it.** Overlay detection is tuned on synthetic clips. Each overlay has a
+  `kind` (`word_captions`, `text`, `full_frame` for an end card or full-frame title, `graphic` for
+  edges with no text found), a `confidence` and a `check` (why to look at it, or null). Read the
+  frame sheets (open several PNGs) and check every overlay box, its start and end,
+  `touches_edge`, `semi_transparent`, every `possible_whole_shot_overlays` note and every
+  `check_frames` region against what you see, the ones with a `check` first. Word-by-word
+  captions are one `word_captions` overlay: `spans_s` says when words are on screen and
+  `transcript.aligned` whether they follow the speech; open frames inside its spans to confirm
+  the box. Semi-transparent bars and shadows count (lesson 12). Write the corrected list to
+  `03_wip/breakdown/overlays_checked_v01.json` (the teardown's overlay fields, `kind` and
+  `spans_s` included, with what you changed and why) and plan covering cards and caption removal
+  from it, never from unchecked boxes.
 - The ad's copy: `ads_get_creatives` (primary text, headline, call to action, thumbnail) →
   `02_research/creative_copy_v01.json`.
 - Material: `tm material --run R --teardown <file> --json`, or `tm material <text_cards |

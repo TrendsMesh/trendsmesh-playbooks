@@ -22,6 +22,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **The 4:5 version is no longer dropped.** Refresh an ad now reads Meta's results by placement, so a feed that
   brings a quarter of the results or more gets its 4:5 version again. A placement breakdown with no results it can
   read is an error, not "9:16 only", and the answer shows the feed's share of the results.
+- **The teardown finds word-by-word captions and the rest of the text.** In Refresh an ad (A3), `tm tool teardown`
+  now also looks for text in frames every 0.1 s: word-by-word captions come out as one overlay with their start,
+  end and the moments words are on screen, checked against the spoken words; both lines of a two-line caption
+  share one box with its bar; text that comes and goes in the same place stays separate; and an end card or
+  full-frame title is listed as an overlay to check. Each overlay says what kind it is, how sure the tool is and
+  why to look at its frames, and places where the picture changes with the speech but no text was found are
+  listed for a frame check.
 
 ## 0.10.0
 
