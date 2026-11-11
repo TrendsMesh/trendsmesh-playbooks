@@ -3,9 +3,12 @@
 #   --scaffold       each case builds its workspace (the engine shim ./tm.sh and a run folder; _lib/scaffold.sh)
 #   --allow-tools    Bash (the engine, in the OS sandbox), Write and Edit (the agent's own files)
 #   --trust-plugin   no prompt for this plugin directory
-#   WebFetch(domain:127.0.0.1)  lets the sandboxed shell reach 127.0.0.1 through the sandbox's proxy:
-#                    the report-issue cases' fake inbox listens there (_lib/report_fakes.sh). It also
-#                    opens any other local service on this machine to the cases' shell and WebFetch.
+# Only for the report-issue cases (ri_*): WebFetch(domain:127.0.0.1), which lets the sandboxed shell
+# reach 127.0.0.1 through the sandbox's proxy, where their fake inbox listens (_lib/report_fakes.sh). It
+# also opens any other local service on this machine to the cases' shell and WebFetch, so it is added
+# only when a --case value starts with ri_ (evals/run.sh --case 'ri_*'), or with --report-issue (this
+# script's own flag, not passed on), for example to run every case:  evals/run.sh --report-issue
+# Without it, the ri_* cases' inbox graders fail.
 # The real TrendsMesh MCP is never started (--mocks record is passed explicitly; --allow-real-servers and --mocks are refused).
 # The Meta Ads MCP is the user's own connector, not part of the plugin: its mocks sit in each case's mocks/meta.
 # Extra arguments pass through, for example:  evals/run.sh --case doctor_reports_missing_replicate
@@ -22,6 +25,21 @@ for arg in "$@"; do
       echo "evals/run.sh: $arg is not allowed here; the evals always run with --mocks record (no real servers)." >&2
       exit 2 ;;
   esac
+done
+
+# The local-only grant for the report-issue cases (see above); --report-issue is dropped from the arguments.
+LOCAL_GRANT=()
+ARGS=()
+prev=""
+for arg in "$@"; do
+  case "$arg" in
+    --report-issue) LOCAL_GRANT=("WebFetch(domain:127.0.0.1)") ;;
+    --case=ri_*) LOCAL_GRANT=("WebFetch(domain:127.0.0.1)"); ARGS+=("$arg") ;;
+    *)
+      [ "$prev" = "--case" ] && case "$arg" in ri_*) LOCAL_GRANT=("WebFetch(domain:127.0.0.1)") ;; esac
+      ARGS+=("$arg") ;;
+  esac
+  prev="$arg"
 done
 
 PLUGIN="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -58,4 +76,5 @@ if [ -d "$PIXI_DIR" ] && [ ! -L "$PIXI_DIR" ]; then
   mv "$PIXI_DIR" "$ASIDE/.pixi"
 fi
 claude plugin eval plugins/trendsmesh-playbooks --runs 1 --max-cost-usd 15 --no-publish \
-  --mocks record --scaffold --allow-tools Bash Write Edit "WebFetch(domain:127.0.0.1)" --trust-plugin "$@"
+  --mocks record --scaffold --allow-tools Bash Write Edit ${LOCAL_GRANT[@]+"${LOCAL_GRANT[@]}"} --trust-plugin \
+  ${ARGS[@]+"${ARGS[@]}"}

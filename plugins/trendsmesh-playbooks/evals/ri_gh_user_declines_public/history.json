@@ -50,6 +50,6 @@
  ],
  [
   "text",
-  "Here is the report, written in English, which is how the TrendsMesh team takes reports. I replaced the price with <amount>. It is saved as trendsmesh-report-2026-11-11-0942.md in this folder.\n\n**Title:** Creative brief shows the product's price in US dollars instead of the shop's currency\n\n**Body:**\n\n{draft}\n**Where it goes:** public, under your GitHub name: an issue in TrendsMesh/trendsmesh-playbooks that anyone can read.\n\nShall I file it?"
+  "Here is the report, written in English, which is how the TrendsMesh team takes reports. I replaced the price with <amount>. It is saved as trendsmesh-report-2026-11-11-0942.md in this folder.\n\n**Title:** Creative brief shows the product's price in US dollars instead of the shop's currency\n\n**Body:**\n\n{draft}\n**Where it goes:** public, under your GitHub name: an issue in TrendsMesh/trendsmesh-playbooks that anyone can read. If GitHub can't take it, it goes privately to TrendsMesh instead.\n\nShall I file it?"
  ]
 ]

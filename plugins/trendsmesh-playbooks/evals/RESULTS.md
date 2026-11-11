@@ -77,8 +77,11 @@ suggestion after a failed run. The engine tests cover the answers themselves (`t
   `.tm-env` sets `TM_REPORT_URL` to it. The eval's Bash sandbox refuses a direct local connection
   ("Operation not permitted") and its `NO_PROXY` sends 127.0.0.1 direct, so `.tm-env` unsets `NO_PROXY` and
   tm's request goes through the sandbox's proxy, which lets 127.0.0.1 through only with the operator grant
-  `WebFetch(domain:127.0.0.1)`. `run.sh` now passes it for every case (without it the proxy answers 403).
-  It also opens any other service listening on 127.0.0.1 on the operator's machine to the cases' shell.
+  `WebFetch(domain:127.0.0.1)` (without it the proxy answers 403). `run.sh` adds that grant only when a
+  `--case` value starts with `ri_` (`evals/run.sh --case 'ri_*'`) or with its own `--report-issue` flag (to run
+  every case: `evals/run.sh --report-issue`); a run of every case without the flag fails the `ri_*` cases'
+  inbox graders. With the grant, any other service on 127.0.0.1 on the operator's machine is open to that
+  run's shell and WebFetch too.
 - **The first turn**: an eval case has one user turn, so the four sending cases resume a recorded earlier
   turn. `_lib/make_history.py <case>` builds `history.jsonl` from the case's `history.json` and `draft.md`
   (the fixture saves the same `draft.md` as `trendsmesh-report-2026-11-11-0942.md`), with the skill's loading
@@ -96,6 +99,34 @@ suggestion after a failed run. The engine tests cover the answers themselves (`t
   context; the histories now carry its loading and its text. The other three resumed cases had passed without
   it, by following the earlier turn's `./tm.sh` calls.
 - No change to the skill was needed.
+
+### Fix round 1 (the review of 2026-11-11)
+
+- **Skill:**
+  - when the destination is public, the shown text now names the fallback ("if GitHub can't take it, it
+    goes privately to TrendsMesh"), so the yes covers both by name; the line saying a public yes silently
+    covers the inbox is gone;
+  - `invalid`: a fix that only shortens a field is sent again, and any other fix (a bad `contact`) is shown
+    and asked again;
+  - exit 2 from `send` or `github`: write the file again from the approved text and retry once;
+  - `rate_limited` with `retryAfter: null`: say "later".
+  - The four histories were rebuilt with the new skill text, and the two public ones now name the fallback.
+- **`run.sh`** adds the local-only grant only for `--case ri_*` or `--report-issue` (Harness choices, item 5).
+- **`ri_bug_account_data_replaced`:**
+  - The run's saved account file now names the Facebook page "Juniper Lane Studio". The log names it in
+    two lines, as a page the user never mentioned, so only `tm report check` (which reads the saved file)
+    knows it is private.
+  - New graders: it is absent from the last message (`no_page_name_shown`), and the last check before the
+    message printed `clean`, with findings replaced and checked again (`check_ended_clean`, judge on the
+    trace).
+  - In the run, the agent's own rewrite had already replaced the page name: one check, clean. So the case
+    proves the name stays out, but **not** that the check catches it this time. The engine tests prove
+    that `tm report check` finds saved-file values.
+- **`ri_acceptance_report_not_public`:** a grader that the last message names
+  `/trendsmesh-playbooks:acceptance` (`points_to_acceptance`).
+- **One run of the six** (`evals/run.sh --case 'ri_*'`): all **1.00** with the plugin, $1.12. Baselines: 0.45
+  (bug case: showed the id, brand, spend and page name, ran no check) and 0.57 (acceptance case: named no
+  private way and no acceptance command). Nothing failed, so there was no second run.
 
 ## Organic video, PB03 (organic video plan Task 22, 2026-11-08)
 
@@ -976,7 +1007,9 @@ skill's mandatory extras, the 4:5 version and the copy and thumbnail decision, w
 4. Fixed-answer mocks cannot see the request dates, so they return the same weekly and daily
    rows whatever dates are asked. The daily answer covers the last 28 days for both ads (not 91) to
    keep the context small; the weekly answers cover all 13 weeks, which is all R1 reads.
-5. Runs are in the sandbox: no network, writes only in the workspace.
+5. Runs are in the sandbox: no network, writes only in the workspace. The one exception is the report-issue
+   cases (`ri_*`): `run.sh` grants them `WebFetch(domain:127.0.0.1)`, local only, for their fake inbox, when a
+   `--case` value starts with `ri_` or with `--report-issue` (see "Report an issue" above).
 6. `.gitignore` was `evals/results/`, which only matches at the repo root; changed to
    `**/evals/results/`.
 7. Cases reuse the account language: the plugin answers in Polish (account.language), so the

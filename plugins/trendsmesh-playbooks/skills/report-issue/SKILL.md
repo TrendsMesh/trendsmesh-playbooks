@@ -60,13 +60,13 @@ reported here as its own report, written without the acceptance report's content
      installing `gh`, signing in to GitHub or creating an account: the private way is just as good.
 
 5. **Show** the exact final title and body, as they will be sent, and name the destination in
-   those words. Say what kinds of data you replaced (an account id, the brand, an amount), never
-   the values themselves. Ask whether to send it.
+   those words. When it is public, name the fallback too: "if GitHub can't take it, it goes
+   privately to TrendsMesh", so the yes covers both by name. Say what kinds of data you replaced
+   (an account id, the brand, an amount), never the values themselves. Ask whether to send it.
 
 6. **Wait for the explicit yes.** Nothing is sent before it. Any edit the user asks for goes into
    the file, through `tm report check` again, and is shown again before you ask again. A yes to
-   the public issue covers the private inbox too (it shows less); a yes to private never covers
-   public.
+   private never covers public.
 
 7. **Send.**
    - Public: `tm report github <file> --kind bug|change --title "<title>"`.
@@ -81,18 +81,20 @@ reported here as its own report, written without the acceptance report's content
    | Outcome | What to do |
    |---|---|
    | `filed` | Done: give the issue's link (`url`). |
-   | `no_gh` | `gh` is gone or signed out: send it privately (`tm report send`), and say so. |
-   | `failed` | GitHub refused (`reason`): say it in plain words, then send it privately. |
+   | `no_gh` | `gh` is gone or signed out: send it privately (`tm report send`), the fallback you named, and say so. |
+   | `failed` | GitHub refused (`reason`): say it in plain words, then send it privately, the fallback you named. |
    | `received` | Done: give the `reportId`. |
-   | `invalid` | One field was refused (`field`): fix that field once, check again, send again. |
+   | `invalid` | One field was refused (`field`): fix it once and check again. A fix that only shortens it is sent again; any other fix (a bad `contact`, say) is shown and asked again. |
    | `too_large` | Shorten once (the log lines first), check again, send again. |
-   | `rate_limited` | Say when to try again (`retryAfter` seconds, in minutes), or use email now. |
+   | `rate_limited` | Say when to try again (`retryAfter` seconds, in minutes; when it is `null`, say "later"), or use email now. |
    | `unavailable` | The inbox can't be reached (`reason`): email, below. |
    | `not_clean` | Replace the `findings`, check again, show the text again and ask again. |
 
    A second `invalid` or `too_large` after the fix goes to email too. A fix that only shortens
    the text or the title keeps the yes (tell the user what you cut); any other change is shown
-   again and asked again.
+   again and asked again. Exit 2 (from `send` or `github`, as from `check`) means the file could
+   not be read: write it again from the text the user approved, and retry once; if it fails
+   again, email (with the text itself to paste, if the file still can't be read).
 
    **Email**, the last way: the report is already saved. Give its full path, the address
    **contact@trendsmesh.com** and the title as the subject, and ask the user to send the file

@@ -50,6 +50,6 @@
  ],
  [
   "text",
-  "Here is the report, written in English, which is how the TrendsMesh team takes reports. Nothing private was in it, so nothing needed replacing. It is saved as trendsmesh-report-2026-11-11-0942.md in this folder.\n\n**Title:** Weekly trend digest as a CSV file\n\n**Body:**\n\n{draft}\n**Where it goes:** public, under your GitHub name: an issue in TrendsMesh/trendsmesh-playbooks that anyone can read.\n\nShall I file it?"
+  "Here is the report, written in English, which is how the TrendsMesh team takes reports. Nothing private was in it, so nothing needed replacing. It is saved as trendsmesh-report-2026-11-11-0942.md in this folder.\n\n**Title:** Weekly trend digest as a CSV file\n\n**Body:**\n\n{draft}\n**Where it goes:** public, under your GitHub name: an issue in TrendsMesh/trendsmesh-playbooks that anyone can read. If GitHub can't take it, it goes privately to TrendsMesh instead.\n\nShall I file it?"
  ]
 ]
