@@ -44,6 +44,7 @@ class RunState:
     organic: dict | None = None     # organic video: parent, proposal, channel, seed, seed_check, stack, redos, week
     planned: dict[str, float] = field(default_factory=dict)  # a checked pack's totals per budget kind
     planned_at: str | None = None   # when `planned` was last set: a budget's yes counts from then on
+    ad: dict | None = None          # create an ad: the user's redo requests for a video item (`tm ad redo`)
 
 
 BRIEF_PAGE = "brief_pack"   # the creative brief's page (brief_page.PAGE)

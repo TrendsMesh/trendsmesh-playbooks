@@ -60,6 +60,7 @@ def _load_commands() -> None:
     import tm.brand  # noqa: F401
     import tm.brief  # noqa: F401
     import tm.budget  # noqa: F401
+    import tm.create_ad  # noqa: F401
     import tm.config  # noqa: F401
     import tm.doctor  # noqa: F401
     import tm.changes  # noqa: F401

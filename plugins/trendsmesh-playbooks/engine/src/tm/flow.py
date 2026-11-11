@@ -71,6 +71,17 @@ PLANNED_STOP = {
     "voice_credits": ("The pack's voice credits are not approved yet, so nothing was generated or "
                       "paid.", _PACK_TODO),
 }
+# Create an ad: the plan's yes covers the pre-video amount, the storyboard's the video (the owner's decision 2).
+_AD_PLAN_TODO = ("Show the user the planned cost with its prices and dates, and record their yes at \"Confirm the "
+                 "production plan and its cost\" (before any video) or \"Approve the filled storyboard and the paid "
+                 "video\" (the video); then approve the amount with `tm budget approve`. In Hands-off the intake's "
+                 "budget is the yes: a plan above it needs the user's yes to the higher amount.")
+PLANNED_STOP_AD = {
+    "ai_usd": ("The planned generation cost (Replicate, USD) is not approved yet, so nothing was generated or paid.",
+               _AD_PLAN_TODO),
+    "voice_credits": ("The planned ElevenLabs credits are not approved yet, so nothing was generated or paid.",
+                      _AD_PLAN_TODO),
+}
 _KIND = {"own": "ask", "rule": "auto", "stop": "stop"}
 _first = builtins.next  # `next` below is the engine's, not the builtin
 
@@ -429,8 +440,12 @@ def _budget_gap(s: state.RunState, st: Step) -> str | None:
     return None
 
 
-def planned_stop(kind: str) -> tuple[str, str]:
-    """(what, todo) of the stop for a planned amount of `kind` that is not approved yet (`PLANNED_STOP`)."""
+def planned_stop(kind: str, playbook: str | None = None) -> tuple[str, str]:
+    """(what, todo) of the stop for a planned amount of `kind` that is not approved yet (`PLANNED_STOP`; Create an
+    ad's own words, `PLANNED_STOP_AD`, for its run)."""
+    if playbook == CREATE_AD:
+        return PLANNED_STOP_AD.get(kind) or (
+            f"The planned {kind} amount is not approved yet, so nothing was generated or paid.", _AD_PLAN_TODO)
     return PLANNED_STOP.get(kind) or (
         f"The pack's {kind} amount is not approved yet, so nothing was generated or paid.", _PACK_TODO)
 
@@ -648,9 +663,12 @@ def _planned_approval_gap(s: state.RunState, kind: str, note: str | None) -> str
     def name(cid: str) -> str:
         return pic.cat.checkins[cid].name
 
+    if open_ and s.playbook == CREATE_AD:   # its money check-ins come in turn: the storyboard's yes follows the plan's
+        stale = []
     if stale:
         cid = stale[0]
-        return (f"The pack was checked again after the user's yes at \"{name(cid)}\" ({cid}), so "
+        what = "plan" if s.playbook == CREATE_AD else "pack"
+        return (f"The {what} was checked again after the user's yes at \"{name(cid)}\" ({cid}), so "
                 f"that yes no longer counts. Show them the new cost and record it with `tm decide "
                 f"{cid} approve --change`.")
     if open_:
@@ -971,7 +989,7 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
         return finish(_step_view(st, "stop", _stop_message(what, todo)))
     gap = _budget_gap(s, st)
     if gap:
-        what, todo = _BUDGET_STOP[gap] if _pb01(s) else planned_stop(gap)
+        what, todo = _BUDGET_STOP[gap] if _pb01(s) else planned_stop(gap, s.playbook)
         yes = None if _pb01(s) else _first((cid for cid, c in pic.cat.checkins.items()
                                             if gap in c.yes_for and cid in pic.owner), None)
         _hold(s, f"budget_{gap}", what, todo, checkin=yes)
