@@ -47,9 +47,15 @@ sys.exit(2)
 def fake_gh(tmp_path, monkeypatch):
     bindir = tmp_path / "bin"
     bindir.mkdir()
-    gh = bindir / "gh"
-    gh.write_text(FAKE, encoding="utf-8")
-    gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+    if os.name == "nt":
+        # Windows finds only names with a PATHEXT extension, as the real gh.exe: a .cmd shim runs the fake.
+        script = bindir / "fake_gh.py"
+        script.write_text(FAKE, encoding="utf-8")
+        (bindir / "gh.cmd").write_text(f'@"{sys.executable}" "{script}" %*\r\n', encoding="utf-8")
+    else:
+        gh = bindir / "gh"
+        gh.write_text(FAKE, encoding="utf-8")
+        gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
     log = tmp_path / "gh.log"
     monkeypatch.setenv("PATH", str(bindir) + os.pathsep + os.environ["PATH"])
     monkeypatch.setenv("FAKE_GH_LOG", str(log))
