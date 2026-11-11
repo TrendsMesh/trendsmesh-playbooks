@@ -171,6 +171,40 @@ def test_workspace_values_stop_after_the_file_cap(tmp_path, no_secrets, monkeypa
     assert len(workspace_values(tmp_path)) == 3
 
 
+def test_the_cap_leaves_the_oldest_runs_unread(tmp_path, no_secrets, monkeypatch):
+    from tm import report
+    monkeypatch.setattr(report, "_MAX_FILES", 4)
+    _write(tmp_path / "library" / "results.jsonl", json.dumps({"account": "Lib Shop"}))
+    for pb, day in (("01-refresh-ad", "2026-10-01"), ("01-refresh-ad", "2026-10-02"), ("02-new-ad", "2026-10-03")):
+        for i in range(3):
+            _write(tmp_path / "runs" / pb / f"{day}_r" / f"f{i}.json", json.dumps({"brand": f"{day} {i}"}))
+    _write(tmp_path / "a.json", json.dumps({"brand": "Elsewhere"}))
+    _write(tmp_path / "runs" / "01-refresh-ad" / "2026-11-11_new" / "a.json", json.dumps({"brand": "Newest Private"}))
+    found = workspace_values(tmp_path)
+    assert len(found) == 4 and {"Lib Shop", "Newest Private"} <= found
+    assert not any(v.startswith("2026-10-01") or v == "Elsewhere" for v in found)
+
+
+def test_the_cap_message_is_printed_and_check_still_exits_by_findings(tmp_path, capsys, monkeypatch):
+    from tm import report
+    monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "nodata"))
+    monkeypatch.setattr(report, "_MAX_FILES", 2)
+    ws = tmp_path / "ws"
+    for i in range(3):
+        _write(ws / "runs" / "01-refresh-ad" / f"2026-10-0{i + 1}_r" / "s.json", json.dumps({"brand": f"Old {i}"}))
+    _write(ws / "runs" / "01-refresh-ad" / "2026-11-11_new" / "s.json", json.dumps({"brand": "Acme Shoes"}))
+    dirty = tmp_path / "d.md"
+    dirty.write_text("about acme shoes\n", encoding="utf-8")
+    assert cli.main(["report", "check", str(dirty), "--workspace", str(ws)]) == 1
+    captured = capsys.readouterr()
+    assert captured.out.splitlines() == ["1\tworkspace_value\tacme shoes"]
+    assert "stopped reading the workspace after 2 files; values in older runs were not checked" in captured.err
+    clean = tmp_path / "c.md"
+    clean.write_text("nothing\n", encoding="utf-8")
+    assert cli.main(["report", "check", str(clean), "--workspace", str(ws)]) == 0
+    assert "stopped reading" in capsys.readouterr().err
+
+
 def test_workspace_values_stop_after_the_size_cap(tmp_path, no_secrets, monkeypatch):
     from tm import report
     monkeypatch.setattr(report, "_MAX_TOTAL", 100)

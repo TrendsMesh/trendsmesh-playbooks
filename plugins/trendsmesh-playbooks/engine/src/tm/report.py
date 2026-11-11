@@ -209,13 +209,42 @@ def _secret_values() -> set[str]:
     return values
 
 
-def workspace_values(root: Path) -> set[str]:
-    """Names and ids from what the user's workspace `root` saved (any depth): the watched keys in any JSON, JSONL or
-    YAML file, a run's config.yaml (the ad account, the product and its site, the channels, the approver), Meta's
-    answers (every name), brand and channel profiles (the brand, its products, the channel, its store, its narrator)
-    and the results library; plus the plugin's secrets. A file over _MAX_FILE is skipped; the walk stops after
-    _MAX_FILES files or before reading more than _MAX_TOTAL bytes. In the home folder only the plugin's own folders
-    (_PLUGIN_DIRS) are read."""
+def _walk(top: Path):
+    """The saved files under `top` (any depth), folder by folder in name order."""
+    for folder, dirs, files in os.walk(top):
+        dirs[:] = sorted(d for d in dirs if d not in _SKIP_DIRS)
+        for name in sorted(files):
+            path = Path(folder) / name
+            if path.suffix.lower() in _SUFFIXES:
+                yield path
+
+
+def _in_reading_order(root: Path, at_home: bool):
+    """The files to read, most likely private first: the library, then the runs newest first (a run folder is named
+    <date>_<name>, so by name descending, across playbooks), then everything else. A file comes up once."""
+    seen: set[Path] = set()
+
+    def fresh(paths_):
+        for path in paths_:
+            if path not in seen:
+                seen.add(path)
+                yield path
+
+    yield from fresh(_walk(root / "library"))
+    runs = root / "runs"
+    try:
+        found = [run for pb in sorted(runs.iterdir()) if pb.is_dir() and pb.name not in _SKIP_DIRS
+                 for run in sorted(pb.iterdir()) if run.is_dir() and run.name not in _SKIP_DIRS]
+    except OSError:
+        found = []
+    for run in sorted(found, key=lambda r: (r.name, r.parent.name), reverse=True):
+        yield from fresh(_walk(run))
+    for top in [runs] if at_home else [root]:
+        yield from fresh(_walk(top))
+
+
+def _read_workspace(root: Path) -> "tuple[set[str], int | None]":
+    """workspace_values, and the number of files read when a cap stopped the walk (else None)."""
     import yaml
 
     values: set[str] = set()
@@ -224,27 +253,31 @@ def workspace_values(root: Path) -> set[str]:
         at_home = root.resolve() == Path.home().resolve()
     except (OSError, RuntimeError):
         at_home = False
-    tops = [root / d for d in _PLUGIN_DIRS] if at_home else [root]
     count = total = 0
-    for top in tops:
-        for folder, dirs, files in os.walk(top):
-            dirs[:] = sorted(d for d in dirs if d not in _SKIP_DIRS)
-            for name in sorted(files):
-                path = Path(folder) / name
-                if path.suffix.lower() not in _SUFFIXES:
-                    continue
-                try:
-                    size = path.stat().st_size
-                    if size > _MAX_FILE:
-                        continue
-                    if count >= _MAX_FILES or total + size > _MAX_TOTAL:
-                        return values | _secret_values()
-                    count, total = count + 1, total + size
-                    for doc in _read_saved(path):
-                        _collect_saved(path, doc, values)
-                except (OSError, ValueError, RecursionError, yaml.YAMLError):
-                    continue
-    return values | _secret_values()
+    for path in _in_reading_order(root, at_home):
+        try:
+            size = path.stat().st_size
+            if size > _MAX_FILE:
+                continue
+            if count >= _MAX_FILES or total + size > _MAX_TOTAL:
+                return values | _secret_values(), count
+            count, total = count + 1, total + size
+            for doc in _read_saved(path):
+                _collect_saved(path, doc, values)
+        except (OSError, ValueError, RecursionError, yaml.YAMLError):
+            continue
+    return values | _secret_values(), None
+
+
+def workspace_values(root: Path) -> set[str]:
+    """Names and ids from what the user's workspace `root` saved (any depth): the watched keys in any JSON, JSONL or
+    YAML file, a run's config.yaml (the ad account, the product and its site, the channels, the approver), Meta's
+    answers (every name), brand and channel profiles (the brand, its products, the channel, its store, its narrator)
+    and the results library; plus the plugin's secrets. A file over _MAX_FILE is skipped; the walk stops after
+    _MAX_FILES files or before reading more than _MAX_TOTAL bytes, so it reads the library first, then the runs
+    newest first, then the rest: what a cap leaves unread is the oldest. In the home folder only the plugin's own
+    folders (_PLUGIN_DIRS) are read."""
+    return _read_workspace(root)[0]
 
 
 # --- command line ------------------------------------------------------------------------------
@@ -284,7 +317,11 @@ def _check_run(args: argparse.Namespace) -> int:
         print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
         return 2
     root = Path(args.workspace) if args.workspace else paths.workspace()
-    found = findings(text, workspace_values(root))
+    known, stopped = _read_workspace(root)
+    if stopped is not None:
+        print(f"tm report check: stopped reading the workspace after {stopped} files; values in older runs "
+              "were not checked", file=sys.stderr)
+    found = findings(text, known)
     if not found:
         print("clean")
         return 0
