@@ -1,0 +1,30 @@
+name: Changelog
+
+# A pull request that changes the plugin says so in CHANGELOG.md, under ## Unreleased (RELEASING.md), unless it is
+# labelled no-changelog. Its own workflow, so adding or removing the label runs only this check again.
+on:
+  pull_request:
+    branches: [main, dev]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    name: changelog
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-changelog') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: A plugin change has a changelog line
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          changed=$(git diff --name-only "origin/$BASE...HEAD")
+          if printf '%s\n' "$changed" | grep -q '^plugins/' && ! printf '%s\n' "$changed" | grep -qx 'CHANGELOG.md'; then
+            echo "Add a line under ## Unreleased in CHANGELOG.md, or label the pull request no-changelog" >&2
+            exit 1
+          fi
