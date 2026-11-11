@@ -123,3 +123,15 @@ def test_a_paid_step_waits_for_its_planned_amount(tmp_path):
             for cid in nxt.checkin.ids:
                 decide(run, cid, _first(cid), by="user", note=None)
     assert (nxt.step, nxt.action) == ("G1", "stop")   # the plan said yes, the budget is not approved yet
+
+
+def test_every_step_ref_has_its_section():
+    from tm import paths
+    root = paths.bundled_data().parent
+    text = (root / "skills" / "create-ad" / "references" / "flow.md").read_text(encoding="utf-8")
+    for st in flow.steps(CREATE_AD):
+        anchor = st.ref.split("#", 1)[1]
+        assert f'<a id="{anchor}"></a>' in text, st.id
+    skill = (root / "skills" / "create-ad" / "SKILL.md").read_text(encoding="utf-8")
+    for ref in ("references/flow.md", "references/rules.md", "references/pages.md", "PLAN.md"):
+        assert ref in skill and (root / "skills" / "create-ad" / ref).is_file(), ref
