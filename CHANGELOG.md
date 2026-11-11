@@ -48,6 +48,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   page show each concept's title and phone note in the creator view; who each concept is for and its trend line
   stay in the other views. `tm brief check --stage production` now reads the creator view as the page builds it,
   header included, so nothing it shows escapes the CB13 check.
+- **Creative brief: every evidence clip gets its own thumbnail.** `tm brief evidence` names each kept thumbnail
+  after the clip's video (`02_research/evidence/<video id>.jpg`) instead of the end of its URL, which is
+  `thumb.jpg` for every TrendsMesh clip, and writes that path into the new brief version, so `tm brief page`
+  builds without any thumbnail edited by hand. A thumbnail it cannot get is taken out of its clip, and the page
+  shows the clip link without it.
 
 ## 0.10.0
 

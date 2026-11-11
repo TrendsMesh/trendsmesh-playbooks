@@ -317,9 +317,11 @@ the example). One file is the source of the page, the animatics and the hand-off
   a beat, a hook variant, the ad copy or a creator line, with where it is used. A run from a trend
   pick: the kept pick is a candidate here, like any other.
 - **Then, in this order:**
-  1. `tm brief evidence --run R --json`: the clips' thumbnails, saved to `02_research/evidence/`,
-     and each clip's as-of date (the day its video page was saved), in a new brief version. A
-     thumbnail it cannot get is listed: the page shows the clip link without it.
+  1. `tm brief evidence --run R --json`: the clips' thumbnails, saved to
+     `02_research/evidence/<video id>.jpg`, and each clip's as-of date (the day its video page was
+     saved), in a new brief version whose `thumb`s name those files. A thumbnail it cannot get is
+     listed, and a thumbnail URL is taken out of its clip: the page shows the clip link without it.
+     No `thumb` needs editing by hand: the TrendsMesh URL, or none, is fine, and this step sets it.
   2. `tm brief check --run R --file 04_final/brief_pack_vNN.json --stage concepts --json` on the
      latest version. Exit 2 lists each problem: fix it as a new version (`tm brief evidence`
      again if it adds a clip) and check again.

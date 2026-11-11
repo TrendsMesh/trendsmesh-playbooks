@@ -20,10 +20,13 @@ before `ValueError` (exit 1, a bad argument).
 
 `evidence` reads each `copy_from_hook.evidence` clip of the latest brief in the saved video pages
 of its concept's trend (`plugin.trend.trend_id`): the video with the clip's `url` gives the
-`thumbnail_url`, fetched to `02_research/evidence/<asset_name of the thumb's file name>` (where the
-page finds it), and the page that holds it gives the clip's `plugin.as_of`, the day it was saved.
-A thumbnail that cannot be had is listed, never a stop: the page shows the clip link without it.
-New as-of dates go into a new brief version; the brief read is never changed.
+`thumbnail_url`, fetched to `02_research/evidence/<asset_name of the video's asset_id>.jpg` (where
+the page finds it; every TrendsMesh thumbnail URL ends in `/thumb.jpg`, so its name tells clips
+apart nowhere), and the page that holds it gives the clip's `plugin.as_of`, the day it was saved.
+The clip's `thumb` becomes that file's path, `evidence/<name>`, so `tm brief page` never sees a URL.
+A thumbnail that cannot be had is listed, never a stop: the page shows the clip link without it, and
+a thumbnail URL in its `thumb` is taken out. New as-of dates and paths go into a new brief version;
+the brief read is never changed.
 
 `handoff` (E2, the PB1 contract) writes `05_results/handoff_vNN.json` from the latest brief: a JSON
 list, one row per chosen concept, `{brief_id, concept, title, hypothesis, valid_until,
@@ -44,7 +47,8 @@ import argparse
 import copy
 import json
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 
 from tm import (animatic, audience, brief_checks, brief_page, brief_research, cli, library, manifest, page, state,
                 stepchecks, trend_spool, trends)
@@ -317,12 +321,12 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
 
 NO_TREND = "no trend"                              # the concept has no plugin.trend (a guess run)
 NOT_SAVED = "not in the saved video pages"
-NO_THUMB = "no thumb"
-NO_NAME = "no file name in thumb"
+NO_ID = "no asset_id in the saved video"          # the kept file is named by it (issue #11)
 NO_THUMB_URL = "no thumbnail_url"
 NOT_FETCHED = "not fetched"                        # offline, gone, not an image, too big or too slow
 HIDDEN_NAME = "thumb name starts with a dot"       # page.files leaves hidden files out of the publish
 OTHER_CLIP = "thumb name used by another clip"
+IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 EVIDENCE_SOURCE = "tm brief evidence"
 
 
@@ -352,10 +356,16 @@ def _saved_clips(run: RunFolder, trend_id: str) -> dict[str, tuple[dict, str | N
     return out
 
 
-def _thumb_name(thumb: object) -> str | None:
-    """The file name a thumbnail is kept under: the thumb's own, as `page.asset_name` makes it."""
-    base = thumb.replace("\\", "/").rsplit("/", 1)[-1] if isinstance(thumb, str) else ""
-    return None if base in ("", ".", "..") else page.asset_name(base)
+def _thumb_name(video: dict) -> str | None:
+    """The file name a clip's thumbnail is kept under: its video's `asset_id` (every TrendsMesh
+    thumbnail URL ends in `/thumb.jpg`, issue #11), with the URL's image suffix (else `.jpg`), as
+    `page.asset_name` makes it. None for a video without an id."""
+    vid = video.get("asset_id")
+    if not isinstance(vid, (str, int)) or isinstance(vid, bool) or not str(vid).strip():
+        return None
+    url = video.get("thumbnail_url")
+    suffix = PurePosixPath(urlsplit(url).path).suffix.lower() if isinstance(url, str) else ""
+    return page.asset_name(f"{str(vid).strip()}{suffix if suffix in IMAGE_SUFFIXES else '.jpg'}")
 
 
 def _kept_for(run: RunFolder) -> dict[str, str]:
@@ -374,12 +384,13 @@ def _kept_for(run: RunFolder) -> dict[str, str]:
 
 def _keep(run: RunFolder, clip: dict, video: dict, held_in: str, fetched: dict[str, str],
           kept_for: dict[str, str]) -> str | None:
-    """Fetch the clip's thumbnail to 02_research/evidence/ (a manifest row when it is new); None once
-    it is there, else why not. A thumb name already kept for another clip is never reused for this
-    one, and a hidden name (a leading dot) is never published, so it is not fetched."""
-    name = _thumb_name(clip.get("thumb"))
+    """Fetch the clip's thumbnail to 02_research/evidence/<video id> (a manifest row when it is new)
+    and point the clip's `thumb` at it (`evidence/<name>`, the path `tm brief page` serves); None once
+    it is there, else why not. A name already kept for another clip is never reused for this one, and
+    a hidden name (a leading dot) is never published, so it is not fetched."""
+    name = _thumb_name(video)
     if name is None:
-        return NO_THUMB if clip.get("thumb") is None else NO_NAME
+        return NO_ID
     if name.startswith("."):
         return HIDDEN_NAME
     kept = f"{brief_page.EVIDENCE}/{name}"
@@ -387,12 +398,14 @@ def _keep(run: RunFolder, clip: dict, video: dict, held_in: str, fetched: dict[s
     if owner is not None and owner != clip.get("url"):
         return OTHER_CLIP
     if kept in fetched:                                # the same clip in another concept
+        clip["thumb"] = f"evidence/{name}"
         return None
     dest, url = run.path / kept, video.get("thumbnail_url")
     there = dest.is_file()
     if not page.fetch_image(url, dest):                # an existing file is kept without a request
         return NOT_FETCHED if url else NO_THUMB_URL
     fetched[kept] = clip.get("url")
+    clip["thumb"] = f"evidence/{name}"
     if not there:
         manifest.record(run, kept, "02_research", EVIDENCE_SOURCE, parent=held_in,
                         params={"url": url, "clip": clip.get("url")})
@@ -451,9 +464,14 @@ def evidence(run: RunFolder, brief_path: Path | None = None) -> dict:
                 if (clip.get("plugin") or {}).get("as_of") != day:
                     clip["plugin"] = {**(clip.get("plugin") or {}), "as_of": day}
                     changed = True
+            before = clip.get("thumb")
             why = _keep(run, clip, video, held_in, fetched, kept_for)
+            changed = changed or clip.get("thumb") != before
         if why is not None:
             missing.append({"concept": concept.get("id"), "url": url, "thumb": clip.get("thumb"), "why": why})
+            if isinstance(clip.get("thumb"), str) and "://" in clip["thumb"]:   # tm brief page serves files only
+                del clip["thumb"]
+                changed = True
     written = None
     if changed:
         target = run.next_version(brief_checks.FINAL, brief_checks.STEM, "json")
@@ -470,12 +488,13 @@ def _evidence(args: argparse.Namespace, run: RunFolder) -> int:
     if m:
         message += (f"; {m} thumbnail{'' if m == 1 else 's'} missing: "
                     + "; ".join(f"{x['concept']} {x['url']} ({x['why']})" for x in got["missing"])
-                    + ". The page shows their clip links without them.")
+                    + ". The page shows their clip links without them (a thumbnail URL is taken out of the brief: "
+                    "the page serves only files kept in the run).")
     else:
         message += "."
     if got["brief"]:
-        message += (f" Wrote {got['brief']} with each clip's as-of date (the day its video page was saved): build "
-                    "the page from it.")
+        message += (f" Wrote {got['brief']} with each clip's as-of date (the day its video page was saved) and the "
+                    "path of each thumbnail kept: build the page from it.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

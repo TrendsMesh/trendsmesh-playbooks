@@ -416,7 +416,13 @@ def _served(ref: str) -> str:
     `asset_name`. Stop for a path that would leave the folder or is not a file path."""
     text = ref.replace("\\", "/")
     parts = text.split("/")
-    if (PurePosixPath(text).is_absolute() or PureWindowsPath(ref).drive or "://" in ref
+    if "://" in ref:
+        raise Stop(f"brief.json names the media file {ref!r}, a web address: the page serves only files kept in the "
+                   "run. For a clip's thumbnail run `tm brief evidence`: it keeps each thumbnail in "
+                   f"{EVIDENCE} and writes its path (evidence/<video id>.jpg) into a new brief version, or takes the "
+                   "address out when it cannot be had. Then build the page from that version. The run continues "
+                   "from the same place.")
+    if (PurePosixPath(text).is_absolute() or PureWindowsPath(ref).drive
             or any(p in ("", ".", "..") for p in parts)):
         raise Stop(f"brief.json names the media file {ref!r}: a media path is relative, like animatic/C1_9x16_v01.mp4 "
                    "or evidence/<clip>.jpg. Fix it (a new version), then build again. The run continues from the "

@@ -15,7 +15,7 @@ import yaml
 
 import ld
 import private
-from tm import animatic, atlas, brief_page, manifest, state, trends
+from tm import animatic, atlas, brief_page, manifest, page, state, trends
 from tm.cli import main
 from tm.playbooks import CREATIVE_BRIEF
 from tm.runfolder import RunFolder
@@ -376,6 +376,17 @@ def _thumb_urls(run: RunFolder, brief: dict) -> dict[str, str]:
     return out
 
 
+def _kept(run: RunFolder, brief: dict) -> dict[str, str]:
+    """clip url -> the evidence file its thumbnail is kept as: its saved video's asset_id (issue #11)."""
+    out = {}
+    for cc in brief["concepts"]:
+        trend = (cc["plugin"].get("trend") or {}).get("trend_id")
+        videos = {v["url"]: v for v in trends.load_videos(run, trend)} if trend else {}
+        out |= {x["url"]: f"{brief_page.EVIDENCE}/{page.asset_name(videos[x['url']]['asset_id'])}.jpg"
+                for x in cc["copy_from_hook"]["evidence"] if x["url"] in videos}
+    return out
+
+
 class _Image:
     headers = {"Content-Type": "image/jpeg"}
 
@@ -439,9 +450,13 @@ def test_evidence_thumbnails_fetched_or_listed(run, capsys, web):
     _write(run, "04_final/brief_pack_v03.json", brief)
     code, out = _cli(capsys, "brief", "evidence", "--run", str(run.path))
     assert code == 0, out
-    assert out["fetched"] == [f"{brief_page.EVIDENCE}/{Path(x['thumb']).name}" for x in c1]
+    names = _kept(run, brief)
+    assert out["fetched"] == [names[x["url"]] for x in c1]
     for x in c1:
-        assert (run.path / brief_page.EVIDENCE / Path(x["thumb"]).name).read_bytes() == b"\xff\xd8 " + x["url"].encode()
+        assert (run.path / names[x["url"]]).read_bytes() == b"\xff\xd8 " + x["url"].encode()
+    written = json.loads((run.path / out["brief"]).read_text(encoding="utf-8"))   # the paths written back
+    assert [x["thumb"] for x in written["concepts"][0]["copy_from_hook"]["evidence"]] == [
+        names[x["url"]].removeprefix("02_research/") for x in c1]
     why = {m["url"]: m["why"] for m in out["missing"]}
     assert why["https://www.tiktok.com/@gone/video/1"] == "not in the saved video pages"
     assert {why[x["url"]] for x in brief["concepts"][2]["copy_from_hook"]["evidence"]} == {"no trend"}
@@ -459,7 +474,7 @@ def test_evidence_thumbnails_fetched_or_listed(run, capsys, web):
 
     count = len(calls)
     code, out = _cli(capsys, "brief", "evidence", "--run", str(run.path))   # kept in the run: never fetched again
-    assert out["fetched"] == [f"{brief_page.EVIDENCE}/{Path(x['thumb']).name}" for x in c1]
+    assert out["fetched"] == [names[x["url"]] for x in c1]
     assert [u for u in calls[count:] if u in answers] == []
     assert len([r for r in manifest.rows(run) if r["file"].startswith(brief_page.EVIDENCE)]) == 3
 
@@ -470,16 +485,18 @@ def test_evidence_thumbnail_names_are_asset_names(run, capsys, web):
     ld.save_trends(run)
     brief = ld.brief()
     clip = brief["concepts"][0]["copy_from_hook"]["evidence"][0]
-    clip["thumb"] = "evidence/tiktok:7682471028282477854.jpg"
-    for x in brief["concepts"][0]["copy_from_hook"]["evidence"][1:]:
-        x["thumb"] = "evidence/../"                      # no file name: listed, never written outside
+    for x in brief["concepts"][0]["copy_from_hook"]["evidence"]:
+        x["thumb"] = "evidence/../"                      # the thumb's own name is never read: the video's id is
     _write(run, "04_final/brief_pack_v02.json", brief)
     answers[_thumb_urls(run, brief)[clip["url"]]] = b"\xff\xd8"
     code, out = _cli(capsys, "brief", "evidence", "--run", str(run.path))
     assert code == 0, out
-    assert out["fetched"] == [f"{brief_page.EVIDENCE}/tiktok_7682471028282477854.jpg"]
-    assert {m["why"] for m in out["missing"] if m["concept"] == "C1"} == {"no file name in thumb"}
-    assert _files(run.path / brief_page.EVIDENCE) == {"tiktok_7682471028282477854.jpg": b"\xff\xd8"}
+    name = "tiktok_7682471028282477854.jpg"               # the asset id tiktok:<video>, as a file name
+    assert out["fetched"] == [f"{brief_page.EVIDENCE}/{name}"]
+    assert {m["why"] for m in out["missing"] if m["concept"] == "C1"} == {"not fetched"}
+    assert _files(run.path / brief_page.EVIDENCE) == {name: b"\xff\xd8"}
+    written = json.loads((run.path / out["brief"]).read_text(encoding="utf-8"))["concepts"][0]["copy_from_hook"]
+    assert written["evidence"][0]["thumb"] == f"evidence/{name}"
 
 
 def _save_dated(run: RunFolder, trend_id: str, at1: str, at2: str) -> None:
@@ -549,47 +566,34 @@ def test_evidence_as_of_is_the_latest_page_that_holds_the_clip(run, capsys, web)
 
 
 @pytest.mark.private_data
-def test_evidence_thumb_name_of_another_clip_is_not_reused(run, capsys, web):
+def test_evidence_clips_with_one_thumb_name_each_keep_their_own(run, capsys, web):
+    """Every TrendsMesh thumbnail URL ends in /thumb.jpg (issue #11): one file name, each clip its own file."""
     calls, answers = web
     ld.save_trends(run)
     brief = ld.brief()
     thumbs = _thumb_urls(run, brief)
     one, two = brief["concepts"][0]["copy_from_hook"]["evidence"][:2]
-    two["thumb"] = one["thumb"]                          # two videos, one file name
+    one["thumb"] = two["thumb"] = "https://cdn.example.com/thumb.jpg"
     answers[thumbs[one["url"]]] = b"\xff\xd8 one"
     answers[thumbs[two["url"]]] = b"\xff\xd8 two"
     _write(run, "04_final/brief_pack_v02.json", brief)
     code, out = _cli(capsys, "brief", "evidence", "--run", str(run.path))
     assert code == 0, out
-    kept = f"{brief_page.EVIDENCE}/{Path(one['thumb']).name}"
-    assert kept in out["fetched"]
-    assert {m["url"]: m["why"] for m in out["missing"]}[two["url"]] == "thumb name used by another clip"
-    assert (run.path / kept).read_bytes() == b"\xff\xd8 one"
+    kept = _kept(run, brief)
+    assert {kept[one["url"]], kept[two["url"]]} <= set(out["fetched"]) and kept[one["url"]] != kept[two["url"]]
+    assert (run.path / kept[one["url"]]).read_bytes() == b"\xff\xd8 one"
+    assert (run.path / kept[two["url"]]).read_bytes() == b"\xff\xd8 two"
 
-    later = ld.brief()                                   # a later version points that name at another clip
+    later = ld.brief()                                   # a later version swaps the two clips' places
     first = later["concepts"][0]["copy_from_hook"]["evidence"]
     first[0]["url"], first[1]["url"] = first[1]["url"], first[0]["url"]
     _write(run, "04_final/brief_pack_v09.json", later)
     code, out = _cli(capsys, "brief", "evidence", "--run", str(run.path))
     assert code == 0, out
-    why = {m["url"]: m["why"] for m in out["missing"]}
-    assert why[two["url"]] == "thumb name used by another clip"   # never the other clip's image
-    assert (run.path / kept).read_bytes() == b"\xff\xd8 one"
-
-
-@pytest.mark.private_data
-def test_evidence_hidden_thumb_name_is_listed_not_fetched(run, capsys, web):
-    calls, answers = web
-    ld.save_trends(run)
-    brief = ld.brief()
-    clip = brief["concepts"][0]["copy_from_hook"]["evidence"][0]
-    clip["thumb"] = "evidence/.x.jpg"                    # page.files would never publish it
-    answers[_thumb_urls(run, brief)[clip["url"]]] = b"\xff\xd8"
-    _write(run, "04_final/brief_pack_v02.json", brief)
-    code, out = _cli(capsys, "brief", "evidence", "--run", str(run.path))
-    assert code == 0, out
-    assert {m["url"]: m["why"] for m in out["missing"]}[clip["url"]] == "thumb name starts with a dot"
-    assert not (run.path / brief_page.EVIDENCE / ".x.jpg").exists()
+    written = json.loads((run.path / out["brief"]).read_text(encoding="utf-8"))["concepts"][0]["copy_from_hook"]
+    assert [x["thumb"] for x in written["evidence"][:2]] == [kept[two["url"]].removeprefix("02_research/"),
+                                                              kept[one["url"]].removeprefix("02_research/")]
+    assert (run.path / kept[one["url"]]).read_bytes() == b"\xff\xd8 one"   # never the other clip's image
 
 
 @pytest.mark.private_data
