@@ -3,8 +3,9 @@
     tm tool teardown --run RUN VIDEO [--transcript T.json | --no-transcribe] [--every-s 1.0]
                      [--model large-v3-turbo] [--lang pl] [--out PATH] [--json]
 
-Writes 02_research/teardown_vNN.json, its frames to 02_research/teardown_vNN_frames/ and (unless
-a transcript is given) 02_research/transcript_vNN.json. The JSON carries the keys
+Writes 02_research/teardown_vNN.json, its frames to 02_research/teardown_vNN_frames/, the check sheet
+02_research/teardown_vNN_check.png (when anything is to check) and (unless a transcript is given)
+02_research/transcript_vNN.json. The JSON carries the keys
 `changes.classify_material` reads: is_video, has_speech, speech_on_camera, overlays.
 
 Every frame is decoded by ffmpeg into memory (never cv2.VideoCapture), so paths with spaces and
@@ -65,6 +66,17 @@ Text and edge boxes that overlap in space and time are one overlay (the box is t
 caption's bar or frame is kept). `check_frames` lists bands whose picture changes with the spoken
 words where no text line was found (captions in a font the pass misses, maybe): look there.
 
+Limits of the text pass (`TEXT_LIMITS`, in the JSON's `check_sheet.limits`): it finds text lines, it does not read
+them (no OCR), so it cannot compare the words on screen with the transcript, it may miss stylised or thin fonts,
+and a still shot with text in the picture (a product label) can come out as `full_frame`. The edge method's
+leftover false finds are `graphic` with a `check`, flagged, never trusted.
+
+The check sheet (issue 57), where the agent's look starts: one row per item the tool is unsure of, each with its
+box drawn in red on its first, middle and last frame (`check_items`, `check_sheet`): the overlays with a `check`,
+least sure first, then the `check_frames` bands, then the `possible_whole_shot_overlays`. The JSON's
+`check_sheet.rows` says what each row is (row 1 at the top); null when there is nothing to check. At most
+MAX_SHEET_ROWS rows; past them, the rest are listed in `check_sheet.left_out`.
+
 speech_on_camera (VARIANTS 1 and 4 V0): OpenCV's bundled Haar frontal-face detector on frames
 sampled in the speech segments; true when a face at least FACE_MIN_W of the frame width is found in
 FACE_SHARE (half) of them or more. Limits: profiles, small or partly covered faces are missed, and
@@ -96,6 +108,16 @@ STILL_DIFF = 4.0
 FACE_MIN_W = 0.15
 FACE_SHARE = 0.5
 MAX_FACE_SAMPLES = 40
+SHEET_TILE_W = 240     # the check sheet's tile width (three tiles a row)
+MAX_SHEET_ROWS = 12
+TEXT_LIMITS = (
+    "No OCR: the text pass finds text lines but does not read them, so the words on screen are never compared "
+    "with the transcript.",
+    "Stylised or thin fonts may be missed (a band that changes with the spoken words is listed in check_frames).",
+    "A still shot with text in the picture (a product label) can be reported as full_frame.",
+    "The edge method's leftover false finds come out as graphic with confidence 0.4 and a check: flagged, never "
+    "trusted.",
+)
 
 
 @dataclass(frozen=True)
@@ -871,6 +893,48 @@ def _overlay_json(o: Overlay, fps: float) -> dict:
             or [[_seconds(o.start_frame, fps), _seconds(o.end_frame + 1, fps)]]}
 
 
+# The check sheet ------------------------------------------------------------------------------
+
+def _three(first: int, last: int) -> list[int]:
+    return sorted({int(first), (int(first) + int(last)) // 2, int(last)})
+
+
+def check_items(data: dict) -> list[dict]:
+    """What the tool is unsure of, in the sheet's order: the overlays with a `check` (least sure first), the
+    `check_frames` bands, the `possible_whole_shot_overlays`; each with the frames to show (first, middle, last)
+    and its box."""
+    fps = data.get("fps") or 0
+    sure = sorted(((i, o) for i, o in enumerate(data.get("overlays") or []) if o.get("check")),
+                  key=lambda x: (x[1].get("confidence", 0), x[1]["start_frame"]))
+    items = [{"what": "overlay", "overlay": i, "kind": o["kind"], "confidence": o["confidence"], "check": o["check"],
+              "frames": _three(o["start_frame"], o["end_frame"]), "bbox": list(o["bbox"])} for i, o in sure]
+    items += [{"what": "check_frames", "frames": _three(x["first_frame"], x["last_frame"]), "bbox": list(x["bbox"])}
+              for x in data.get("check_frames") or []]
+    items += [{"what": "whole_shot", "frames": _three(x["first_frame"], x["last_frame"]), "bbox": list(x["bbox"])}
+              for x in data.get("possible_whole_shot_overlays") or []]
+    for item in items:
+        item["t_s"] = [_seconds(f, fps) for f in item["frames"]] if fps else None
+    return items
+
+
+def check_sheet(video: Path | str, items: list[dict], out: Path) -> Path | None:
+    """One PNG, a row per item: its box drawn on its frames, three tiles of SHEET_TILE_W a row (ffmpeg; free and
+    local). None, and no file, when there is nothing to check."""
+    if not items:
+        return None
+    rows = [c.frame_row(i["frames"], width=SHEET_TILE_W, columns=3, box=i["bbox"]) for i in items]
+    args = []
+    for _ in rows:
+        args += ["-i", c.media(video)]
+    graph = ";".join(f"[{n}:v]{row}[r{n}]" for n, row in enumerate(rows))
+    if len(rows) > 1:
+        graph += ";" + "".join(f"[r{n}]" for n in range(len(rows))) + f"vstack=inputs={len(rows)}[sheet]"
+    last = "[sheet]" if len(rows) > 1 else "[r0]"
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    c.run_ffmpeg([*args, "-filter_complex", graph, "-map", last, "-frames:v", "1", c.media(out)])
+    return Path(out)
+
+
 def _transcript_ref(run, path: Path | None, transcript: dict | None) -> dict | None:
     if transcript is None:
         return None
@@ -898,8 +962,10 @@ def main(argv: list[str] | None = None) -> int:
     run = c.open_run(a.run)
     out = c.output(run, a.out, "research", "teardown", "json")
     frames_dir = out.with_name(out.stem + "_frames")
-    if frames_dir.exists():
-        raise c.ToolError(f"{c.rel(run, frames_dir)} already exists, and files are never overwritten.")
+    sheet = out.with_name(out.stem + "_check.png")
+    for taken in (frames_dir, sheet):
+        if taken.exists():
+            raise c.ToolError(f"{c.rel(run, taken)} already exists, and files are never overwritten.")
     outputs = []
     transcript_path: Path | None
     if a.transcript:
@@ -913,9 +979,15 @@ def main(argv: list[str] | None = None) -> int:
         outputs.append(c.rel(run, transcript_path))
     data = teardown(a.video, transcript)
     stills = frames(a.video, frames_dir, a.every_s)
+    items = check_items(data)
+    shown = items[:MAX_SHEET_ROWS]
+    made = check_sheet(a.video, [{"frames": i["frames"], "bbox": i["bbox"]} for i in shown], sheet) \
+        if data["is_video"] else None
     data = {"video": c.parent_ref(run, a.video), **data,
             "frames": {"dir": c.rel(run, frames_dir), "every_s": a.every_s,
                        "files": [{"file": pth.name, "t": t} for pth, t in stills]},
+            "check_sheet": {"file": c.rel(run, made), "rows": [{"row": n, **i} for n, i in enumerate(shown, 1)],
+                            "left_out": items[MAX_SHEET_ROWS:], "limits": list(TEXT_LIMITS)} if made else None,
             "transcript": _transcript_ref(run, transcript_path, transcript)}
     c.write_json(out, data)
     outputs.insert(0, c.rel(run, out))
@@ -929,12 +1001,21 @@ def main(argv: list[str] | None = None) -> int:
                                             "speech_on_camera_evidence", "scenes", "overlays", "check_frames")})
     c.record(run, frames_dir, "tm tool teardown (ffmpeg stills)", parent,
              params={"every_s": a.every_s, "frames": len(stills)}, cost="0 (local)")
+    to_check = ""
+    if made:
+        c.record(run, made, "tm tool teardown (ffmpeg check sheet)", parent,
+                 params={"rows": len(shown), "left_out": len(items) - len(shown), "tile_w": SHEET_TILE_W},
+                 cost="0 (local)")
+        outputs.append(c.rel(run, made))
+        to_check = (f"; {len(items)} item(s) to check, from the check sheet {c.rel(run, made)} "
+                    f"(its rows: check_sheet.rows)")
     summary = {k: data[k] for k in ("is_video", "has_speech", "speech_on_camera")}
     return c.finish(a, {"tool": "teardown", "outputs": outputs, **summary, "scenes": len(data["scenes"]),
-                        "overlays": len(data["overlays"])},
+                        "overlays": len(data["overlays"]), "to_check": len(items),
+                        "check_sheet": c.rel(run, made) if made else None},
                     f"Teardown saved to {c.rel(run, out)}: {len(data['scenes'])} shot(s), "
                     f"{len(data['overlays'])} overlay(s), speech: {'yes' if data['has_speech'] else 'no'}"
-                    f"{' (on camera)' if data['speech_on_camera'] else ''}, {len(stills)} frame(s).")
+                    f"{' (on camera)' if data['speech_on_camera'] else ''}, {len(stills)} frame(s){to_check}.")
 
 
 if __name__ == "__main__":

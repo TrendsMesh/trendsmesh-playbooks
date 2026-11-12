@@ -193,17 +193,24 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
 - The first teardown on a computer downloads the speech model (about 1.6 GB, a few minutes): say
   so first, and run it with the 10-minute timeout or in the background.
 - `tm tool teardown --run R 01_base/<ad_id>_original.<ext> --lang <code> --json` →
-  `02_research/teardown_vNN.json`, frame sheets in `02_research/teardown_vNN_frames/`, and a
-  transcript (no speech is normal for text-card ads, lesson 3).
+  `02_research/teardown_vNN.json`, frame sheets in `02_research/teardown_vNN_frames/`, the check
+  sheet `02_research/teardown_vNN_check.png` when anything is to check, and a transcript (no
+  speech is normal for text-card ads, lesson 3).
 - **Look before you trust it.** Overlay detection is tuned on synthetic clips. Each overlay has a
   `kind` (`word_captions`, `text`, `full_frame` for an end card or full-frame title, `graphic` for
-  edges with no text found), a `confidence` and a `check` (why to look at it, or null). Read the
-  frame sheets (open several PNGs) and check every overlay box, its start and end,
+  edges with no text found), a `confidence` and a `check` (why to look at it, or null). **Start
+  from the check sheet**: one row per item the tool is unsure of, its box drawn in red on its
+  first, middle and last frame; `check_sheet.rows` says what each row is (row 1 at the top: an
+  overlay with its `check`, a `check_frames` band or a whole-shot note). Then read the frame
+  sheets (open several PNGs) and check every overlay box, its start and end,
   `touches_edge`, `semi_transparent`, every `possible_whole_shot_overlays` note and every
   `check_frames` region against what you see, the ones with a `check` first. Word-by-word
   captions are one `word_captions` overlay: `spans_s` says when words are on screen and
   `transcript.aligned` whether they follow the speech; open frames inside its spans to confirm
-  the box. Semi-transparent bars and shadows count (lesson 12). Write the corrected list to
+  the box. Semi-transparent bars and shadows count (lesson 12). The text pass does not read the
+  words (`check_sheet.limits`): compare the words you see with the transcript yourself, look for
+  stylised or thin captions it may have missed, and check that a `full_frame` is not a product
+  label in the shot. Write the corrected list to
   `03_wip/breakdown/overlays_checked_v01.json` (the teardown's overlay fields, `kind` and
   `spans_s` included, with what you changed and why) and plan covering cards and caption removal
   from it, never from unchecked boxes.

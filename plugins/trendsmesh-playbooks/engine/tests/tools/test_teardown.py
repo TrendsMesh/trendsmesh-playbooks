@@ -249,3 +249,76 @@ def test_alignment_is_measured_against_chance():
     assert not off["aligned"] and off["share"] == 0.0
     assert tx._alignment([1.0], [], 0.0, 2.0) is None
     assert tx._chance([1.0], 0.0, 2.0) == pytest.approx(2 * tx.ALIGN_S / 2.0)
+
+
+# The contact sheet of what the tool is unsure of (issue 57): one row per item to check, its box drawn on its first,
+# middle and last frame.
+
+def _png(path):
+    import cv2
+    import numpy as np
+
+    return cv2.imdecode(np.fromfile(str(path), np.uint8), cv2.IMREAD_COLOR)
+
+
+def _red(pixel) -> bool:
+    b, g, r = (int(v) for v in pixel)
+    return r > 180 and g < 90 and b < 90
+
+
+def test_check_items_list_the_unsure_first_and_skip_the_sure(text_teardown):
+    items = teardown.check_items(text_teardown)
+    sure = [o for o in text_teardown["overlays"] if o["check"] is None]
+    assert sure and len(items) == len(text_teardown["overlays"]) - len(sure)   # the word captions are sure
+    assert all(i["what"] == "overlay" and i["check"] for i in items)
+    assert [i["confidence"] for i in items] == sorted(i["confidence"] for i in items)
+    end = next(i for i in items if i["kind"] == "full_frame")
+    o = text_teardown["overlays"][end["overlay"]]
+    assert end["frames"] == [o["start_frame"], (o["start_frame"] + o["end_frame"]) // 2, o["end_frame"]]
+    assert end["bbox"] == o["bbox"] and end["t_s"][0] == o["start_s"]
+
+
+def test_check_items_take_the_bands_and_whole_shot_notes_too():
+    data = {"fps": 25, "overlays": [],
+            "check_frames": [{"first_frame": 10, "last_frame": 11, "bbox": [0, 0, 10, 10], "start_s": 0.4}],
+            "possible_whole_shot_overlays": [{"first_frame": 0, "last_frame": 74, "bbox": [5, 5, 50, 50]}]}
+    items = teardown.check_items(data)
+    assert [i["what"] for i in items] == ["check_frames", "whole_shot"]
+    assert items[0]["frames"] == [10, 11] and items[1]["frames"] == [0, 37, 74]
+    assert teardown.check_items({"fps": 25, "overlays": [], "check_frames": [],
+                                 "possible_whole_shot_overlays": []}) == []
+
+
+def test_check_sheet_draws_each_box_on_three_frames(clip, tmp_path):
+    items = [{"frames": [25, 37, 50], "bbox": list(CARD)}, {"frames": [20, 55], "bbox": list(BAR)}]
+    out = tmp_path / "unsure sheet ł.png"
+    teardown.check_sheet(clip, items, out)
+    img = _png(out)
+    tile_w = teardown.SHEET_TILE_W
+    tile_h = round(H * tile_w / W / 2) * 2
+    assert img.shape[:2] == (2 * tile_h, 3 * tile_w)
+    s = tile_w / W
+    for col in range(3):                    # row 1: the card's top edge is red in all three tiles
+        x, y = col * tile_w + round((CARD[0] + CARD[2]) / 2 * s), round(CARD[1] * s) + 1
+        assert _red(img[y, x]), (col, img[y, x])
+    x, y = round((BAR[0] + BAR[2]) / 2 * s), tile_h + round(BAR[1] * s) + 1
+    assert _red(img[y, x])                  # row 2: the bar's box
+    assert img[tile_h + tile_h // 2, 2 * tile_w + tile_w // 2].max() < 30   # its third tile is blank: two frames
+
+
+def test_teardown_writes_the_check_sheet_and_records_it(text_ad, run, tmp_path):
+    transcript = tmp_path / "words.json"
+    transcript.write_text(json.dumps(ad.transcript()), encoding="utf-8")
+    assert teardown.main(["--run", str(run.path), str(text_ad), "--transcript", str(transcript)]) == 0
+    data = json.loads((run.path / "02_research" / "teardown_v01.json").read_text(encoding="utf-8"))
+    sheet = data["check_sheet"]
+    assert sheet["file"] == "02_research/teardown_v01_check.png" and (run.path / sheet["file"]).is_file()
+    assert [r["row"] for r in sheet["rows"]] == list(range(1, len(sheet["rows"]) + 1))
+    assert {r["what"] for r in sheet["rows"]} == {"overlay"} and sheet["limits"] == list(teardown.TEXT_LIMITS)
+    assert _png(run.path / sheet["file"]).shape[0] > len(sheet["rows"]) * 100
+    assert "02_research/teardown_v01_check.png" in (run.path / "manifest.md").read_text(encoding="utf-8")
+
+
+def test_nothing_to_check_writes_no_sheet(tmp_path):
+    out = tmp_path / "none.png"
+    assert teardown.check_sheet(tmp_path / "missing.mp4", [], out) is None and not out.exists()

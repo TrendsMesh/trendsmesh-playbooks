@@ -51,6 +51,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   something else, Claude still asks whether to continue it, and now also says when that run's trend data is past
   its valid-until date, offering a new run with fresh data or to continue on the old data. `tm status` gives it as
   `trend_data`.
+- **The teardown shows what it is unsure of in one picture.** `tm tool teardown` now also writes a check sheet,
+  `teardown_vNN_check.png`: one row per overlay it is unsure of (and each band or whole-shot note to check), with the
+  box drawn on its first, middle and last frame, so Refresh an ad's "look before you trust it" starts from one image.
+  It is free and local. The text pass's limits are listed with it: it does not read the words (no OCR), may miss
+  stylised or thin fonts, and can take a product label in a still shot for a full-frame card.
 
 ## 0.12.0
 

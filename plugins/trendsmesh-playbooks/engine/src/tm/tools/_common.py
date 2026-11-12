@@ -259,6 +259,21 @@ def run_ffmpeg(args: list[str]) -> None:
     subprocess.run([ffmpeg_bin(), "-nostdin", "-v", "error", "-y", *args], check=True, capture_output=True)
 
 
+def frame_row(frames, *, width: int, columns: int, height: int = -2,
+              box: tuple[int, int, int, int] | list[int] | None = None) -> str:
+    """The ffmpeg filter for one row of a contact sheet: the frames numbered `frames` (in the video's order), each
+    scaled to `width` and set side by side in `columns` tiles (a row of fewer frames is padded black). `box`
+    (x0, y0, x1, y1 in source pixels, x1 and y1 exclusive) is drawn in red on each frame. Refresh an ad's joint
+    strips (recut_qa) and the teardown's check sheet share it."""
+    sel = "+".join(rf"eq(n\,{int(f)})" for f in sorted(set(frames)))
+    parts = [f"select='{sel}'"]
+    if box is not None:
+        x0, y0, x1, y1 = (int(v) for v in box)
+        parts.append(f"drawbox=x={x0}:y={y0}:w={max(1, x1 - x0)}:h={max(1, y1 - y0)}:color=red:t=6")
+    parts += [f"scale={width}:{height}", f"tile={columns}x1"]
+    return ",".join(parts)
+
+
 _IMAGE_FORMATS = ("image2", "png_pipe", "jpeg_pipe", "webp_pipe", "bmp_pipe", "tiff_pipe", "gif")
 
 

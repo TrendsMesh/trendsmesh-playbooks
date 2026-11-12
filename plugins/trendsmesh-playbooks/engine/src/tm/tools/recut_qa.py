@@ -266,10 +266,9 @@ def strips(video: Path, joints: list[float], fps: float, folder: Path) -> list[s
     names = []
     for n, j in enumerate(joints, start=1):
         f0 = round(j * fps)
-        sel = "+".join(rf"eq(n\,{f})" for f in range(max(0, f0 - 3), f0 + 4))
         png = folder / f"joint{n}.png"
-        c.run_ffmpeg(["-i", c.media(video), "-vf", f"select='{sel}',scale=160:-1,tile=7x1", "-frames:v", "1",
-                      str(png)])
+        row = c.frame_row(range(max(0, f0 - 3), f0 + 4), width=160, height=-1, columns=7)
+        c.run_ffmpeg(["-i", c.media(video), "-vf", row, "-frames:v", "1", str(png)])
         names.append(png.name)
     return names
 
