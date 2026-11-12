@@ -20,13 +20,14 @@
 # ok_states: for mcp checks, the MCP states that count as ok; absent means connected (ok,
 #        not_enabled, no_plan, free, inactive), so a plan check on the same MCP says the rest.
 # playbooks: the playbooks (data/playbooks.yaml ids) the check is for; absent means
-#        [01-refresh-ad]. A playbook other than refresh-ad needs every tier its env_tier
+#        [01-refresh-ad]. `general` is the doctor's general check, when no playbook is chosen (`tm doctor
+#        --general`). A playbook other than refresh-ad needs every tier its env_tier
 #        checks name, those with a `when` only when it holds for the run's outputs; refresh-ad's
 #        tiers follow its outputs (tm/envtiers.py).
 checks:
   - id: tier_base
     name: Base tools
-    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research, 05-create-ad]
+    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research, 05-create-ad, general]
     outputs: [creative_brief, edited_video, ai_video, live_test]
     kind: env_tier
     tier: base
@@ -115,7 +116,7 @@ checks:
 
   - id: disk_free
     name: Free disk space
-    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research, 05-create-ad]
+    playbooks: [01-refresh-ad, 02-creative-brief, 03-organic-ai-video, 04-trend-research, 05-create-ad, general]
     outputs: []
     kind: disk_gb
     fixer: user
@@ -443,3 +444,58 @@ checks:
     fix:
       linux: "Run this one command in a terminal, then say continue (it needs your password; from Remotion's Linux dependencies page, not verified here): sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev {asound} libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2"
       any: "Not needed on this system."
+
+  # The general check (issue 76): the doctor with no playbook chosen. The base tools and the disk (their rows
+  # above), the two keys' states and the TrendsMesh sign-in, all of them warnings but the tools: what each one
+  # changes depends on the playbook, which its own check says. No Meta Ads row: its tools are slow to load, and
+  # every playbook that uses them checks them itself.
+  - id: replicate_api_token_general
+    name: Replicate token
+    playbooks: [general]
+    outputs: []
+    kind: secret
+    secret: replicate_api_token
+    fixer: user
+    check: replicate       # one free call says works, connected but unusable or missing (#66)
+    warn: true
+    warn_note: "What each of these changes depends on the playbook: check that playbook to see what it needs."
+  - id: elevenlabs_api_key_general
+    name: ElevenLabs key
+    playbooks: [general]
+    outputs: []
+    kind: secret
+    secret: elevenlabs_api_key
+    fixer: user
+    check: elevenlabs       # one free call says works, connected but unusable or missing (#66)
+    warn: true
+    warn_note: "What each of these changes depends on the playbook: check that playbook to see what it needs."
+  - id: mcp_trendsmesh_general
+    name: TrendsMesh connected and signed in
+    playbooks: [general]
+    outputs: []
+    kind: mcp
+    mcp: trendsmesh
+    fixer: user
+    fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find what's rising right now."}
+    fix_by_state:
+      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
+    warn: true
+    warn_note: "What each of these changes depends on the playbook: check that playbook to see what it needs."
+    unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
+  - id: trendsmesh_agent_plan_general
+    name: TrendsMesh Agent plan
+    playbooks: [general]
+    outputs: []
+    kind: plan
+    mcp: trendsmesh
+    plan_of: [no_plan, free, inactive]
+    fixer: user
+    fix: {any: "Trend data needs the TrendsMesh Agent plan: https://trendsmesh.com/plans"}
+    fix_by_state:
+      free: "You're on the free TrendsMesh plan: it has no trend data."
+      no_plan: "You're on the free TrendsMesh plan: it has no trend data."
+      inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
+    warn: true
+    warn_note: "What each of these changes depends on the playbook: check that playbook to see what it needs."
+    unchecked: "Can't be checked until TrendsMesh is connected and signed in."

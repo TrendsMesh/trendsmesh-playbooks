@@ -2,15 +2,17 @@
 description: Check that everything the TrendsMesh playbooks need is ready (tools, Meta and TrendsMesh connections, shared page links, the Replicate and ElevenLabs keys), and show what to do about anything missing. Use it when the user wants to check a key or a connection.
 ---
 
-Show the user the readiness card for one TrendsMesh playbook, for all its outputs, and write a
-support report they can send us.
+Show the user the readiness card for one TrendsMesh playbook, for all its outputs, or, when they
+name none, a short general check; and write a support report they can read and send us privately.
 
 0. **Which playbook.** Take it from the user's words ("trend research", "my trend report" →
    trend research; "creative brief", "concepts for a new ad" → creative brief, but a brief for
-   refreshing an ad they already run → Refresh an ad); otherwise it is "Refresh an ad". Don't ask. A playbook whose skill is not
+   refreshing an ad they already run → Refresh an ad). When they name none ("check the plugin",
+   "is everything set up?", the command alone), follow "General check" at the end instead: don't
+   ask, and don't pick a playbook for them. A playbook whose skill is not
    in this plugin (no `skills/<skill>/SKILL.md`; `tm doctor` then says it "comes in a later
    version") is not offered: tell the user it comes in a later version of the plugin and that
-   they can check the plugin is up to date, and check Refresh an ad instead.
+   they can check the plugin is up to date, and run the general check instead.
    - Refresh an ad: the outputs are creative brief, edited video, AI video and live test; follow
      steps 1 to 6.
    - Creative brief: follow "Creative brief" at the end instead.
@@ -67,7 +69,9 @@ support report they can send us.
    the plan offer were made in step 1: don't make them again. The voice-cloning warning needs
    nothing from the user now: say in one line that it is checked later, only if it is needed (or,
    for a plan with no cloning, that cloning isn't available and matters only if a clone is needed).
-5. Tell the user where the support report was saved (`report` in the answer). It holds no keys.
+5. Tell the user where the support report was saved (`report` in the answer), in the report's own
+   words: it holds no keys, but it can hold details of their runs, so they read it, then send it
+   privately to contact@trendsmesh.com, not to a public issue. Never say it can be sent unread.
    Keys are never searched for, read, printed or shown, even when asked: not in part, not
    masked, not their length. To check a key, the card's key row says its state: the doctor makes
    one free call to the provider with each key that is set, and the row says it **works**, is
@@ -77,6 +81,28 @@ support report they can send us.
    changes a key in `/plugin` → trendsmesh-playbooks → configure.
 6. When the edited or AI video tools are needed, say once: Remotion is free for individuals and
    companies of up to 3 people; a company of 4 or more needs its own Remotion licence.
+
+**General check.** No playbook was chosen: a short check of what every playbook shares (the base
+tools, the Replicate and ElevenLabs keys, the TrendsMesh sign-in). It never looks at Meta Ads: call
+no Meta Ads tool and don't wait for its tools to load. Each playbook's own check does that.
+
+1. TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`; a clear no
+   is `tm signin skip --json` and `skipped`). It gives `ok`, `free`, `no_agents`, `inactive`,
+   `skipped` or `missing`. The keys are read by the doctor itself (one free call each).
+2. Run:
+
+   ```
+   tm doctor --general --mcp trendsmesh=<result> --report --json
+   ```
+
+   Exit codes and the first `tm` call are as in step 3 above.
+3. Show the `card` as in step 4 above, under a heading that names no playbook (for example
+   "TrendsMesh playbooks: general check", never a playbook's readiness check). Only the base tools
+   and the disk block. The keys and TrendsMesh are warnings here: say each key's state in one line
+   (**works**, **connected but unusable**, **missing**, or set but **not checked**, as in step 5
+   above) and TrendsMesh's line once. End with the card's last line, how to check one playbook:
+   they name it, for example `/trendsmesh-playbooks:doctor trend research`.
+4. Tell the user where the support report was saved, as in step 5 above.
 
 **Trend research.** The outputs are the category report, the weekly digest and the paid view.
 

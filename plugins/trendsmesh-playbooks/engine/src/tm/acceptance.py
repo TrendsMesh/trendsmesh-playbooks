@@ -31,14 +31,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import platform
 from datetime import date, datetime, timezone
 from pathlib import Path
 from string import Template
 
 import yaml
 
-from tm import __version__, cli, paths, playbooks, state
+from tm import __version__, cli, doctor, paths, playbooks, state
 from tm.budget import _fmt
 from tm.playbooks import REFRESH_AD
 from tm.runfolder import RunFolder, slug
@@ -429,7 +428,7 @@ def report(folder: Path) -> tuple[Path, dict]:
     # an acceptance.json written before suites named their playbook is a refresh-ad one
     text = _template(data.get("playbook") or REFRESH_AD).substitute(
         suite=data["suite"], created=data["created"], written=f"{_today():%Y-%m-%d}",
-        machine=f"{platform.system()} {platform.release()} ({platform.machine()})",
+        machine=doctor.system_name(),     # Windows 11 by its build (issue 76)
         version=__version__,
         counts=(f"{counts['pass']} pass, {counts['fail']} fail, {counts['blocked']} blocked, "
                 f"{counts['todo']} not run yet, of {len(data['cases'])}"),

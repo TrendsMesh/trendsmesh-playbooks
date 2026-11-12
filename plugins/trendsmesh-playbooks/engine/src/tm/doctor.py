@@ -62,6 +62,10 @@ _CONNECTED = ("ok", "not_enabled", "no_plan", "free", "inactive")
 _NOT_SIGNED_IN = ("skipped", "no_agents")  # the user's no, or a plan that connects no agent
 FACT_VALUES = {"elevenlabs_plan": ("cloning", "no_cloning", "unknown")}
 RESERVE_MB = 2048  # room for runs on top of the tiers
+# The general check (issue 76): no playbook chosen. Its rows (`playbooks: [general]` in requirements.yaml) are the
+# base tools, the disk, the two keys and the TrendsMesh sign-in; Meta Ads is left to each playbook's own check.
+GENERAL = "general"
+WINDOWS_11_BUILD = 22000  # Windows 11 still says release "10"; its build number starts here
 _LIBS = {"libnss3": "nss3", "libgbm": "gbm", "libasound2": "asound", "libcups2": "cups",
          "libpango": "pango-1.0", "libatk-bridge": "atk-bridge-2.0"}
 
@@ -91,7 +95,7 @@ def _read_catalogue(path: Path) -> list[dict]:
     """The checks in `path`, refused when one names a playbook that is not registered or an MCP
     state its MCP never has (`ok_states`): a typo would otherwise drop a check without a word."""
     checks = yaml.safe_load(path.read_text(encoding="utf-8"))["checks"]
-    known = {pb.id for pb in playbooks.all_playbooks()}
+    known = {pb.id for pb in playbooks.all_playbooks()} | {GENERAL}
     for e in checks:
         unknown = [p for p in e.get("playbooks", [REFRESH_AD]) if p not in known]
         if unknown:
@@ -205,10 +209,10 @@ def _for_playbook(playbook: str) -> list[dict]:
 def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
           caption_removal: bool = False, facts: dict[str, str] | None = None,
           playbook: str = REFRESH_AD) -> Readiness:
-    """`playbook` is its id or skill name."""
+    """`playbook` is its id or skill name, or GENERAL for the general check."""
     facts = facts or {}
     outputs = set(outputs)
-    pb = playbooks.get(playbook).id
+    pb = GENERAL if playbook == GENERAL else playbooks.get(playbook).id
     entries = _for_playbook(pb)
     tiers = (envtiers.tiers_for(outputs, voice) if pb == REFRESH_AD
              else [t for t in envtiers.TIERS if any(_tier_wanted(e, t, outputs, voice, caption_removal)
@@ -284,12 +288,16 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
     return Readiness(items, all(i.ok or i.warn for i in items))
 
 
-def card(r: Readiness) -> str:
+def card(r: Readiness, *, general: bool = False) -> str:
+    """The readiness card. `general`: the general check's card (no playbook chosen), which speaks of the plugin, not
+    of a run, and ends with how to check one playbook."""
     # A warning Claude has not checked yet stays on Claude's list: it is checked, not skipped. One
     # the user would check (the cloning plan) is checked later, when it matters: a warning.
     warned = [i for i in r.items if not i.ok and i.warn and not (i.unchecked and i.fixer == "agent")]
     bad = [i for i in r.items if not i.ok and i not in warned]
-    if r.ready and not any(i.warn and not i.ok for i in r.items):
+    if general:
+        head = i18n.t("doctor.general.ready" if r.ready else "doctor.general.not_ready")
+    elif r.ready and not any(i.warn and not i.ok for i in r.items):
         head = "**Ready to go.** Everything this run needs is in place."
     elif r.ready and all(i.later and i.unchecked for i in warned):  # checked later, if needed
         head = "**Ready to go.** You can start now. One thing is checked later, only if the run needs it."
@@ -325,8 +333,24 @@ def card(r: Readiness) -> str:
         lines += ["", "**You need to do these yourself:**"]
         lines += [f"{n}. {i.fix}" for n, i in enumerate(user, 1)]
     if bad:
-        lines += ["", "When they are done, tell me and I check again. The run continues from the same place."]
+        lines += ["", i18n.t("doctor.general.again") if general else
+                  "When they are done, tell me and I check again. The run continues from the same place."]
+    if general:
+        names = ", ".join(pb.name for pb in playbooks.all_playbooks() if playbooks.bundled(pb))
+        lines += ["", i18n.t("doctor.general.one_playbook", playbooks=names)]
     return "\n".join(lines)
+
+
+def system_name() -> str:
+    """The system for a report: Windows 11 by its build number, since its `platform.release()` still says 10."""
+    system, release, machine = platform.system(), platform.release(), platform.machine()
+    if system != "Windows":
+        return f"{system} {release} ({machine})"
+    parts = platform.version().split(".")
+    build = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else None
+    if build is None:
+        return f"Windows {release} ({machine})"
+    return f"Windows {'11' if build >= WINDOWS_11_BUILD else release} (build {build}, {machine})"
 
 
 def _secret_values() -> list[str]:
@@ -354,14 +378,13 @@ def support_report(r: Readiness, log_tail: str) -> Path:
     body = "\n".join([
         "# TrendsMesh playbooks: support report", "",
         f"- Date: {date.today().isoformat()}",
-        f"- System: {platform.system()} {platform.release()} ({platform.machine()})",
+        f"- System: {system_name()}",
         f"- Python: {sys.version.split()[0]}",
         f"- tm engine: {__version__}",
         f"- Ready: {'yes' if r.ready else 'no'}", "",
         "## Checks", "", "| Check | Result | Who fixes | Next step |", "|---|---|---|---|", *rows, "",
         "## Log of the last failed step", "", "```", log_tail.rstrip(), "```", "",
-        "This report holds no keys, but it can hold details of your runs: read it, then send it privately to "
-        "contact@trendsmesh.com, not to a public issue.", "",
+        i18n.t("doctor.report.send"), "",
     ])
     ws = paths.workspace()
     ws.mkdir(parents=True, exist_ok=True)
@@ -391,9 +414,11 @@ def _pairs(text: str | None, allowed: dict[str, tuple[str, ...]] | None, what: s
 
 
 def _setup(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--playbook", default=REFRESH_AD,
-                   help="the playbook to check for, its id or skill (default: refresh-ad)")
-    p.add_argument("--outputs", required=True, help="comma list of the playbook's outputs; "
+    p.add_argument("--general", action="store_true",
+                   help="the general check, when no playbook is chosen: the base tools, the keys and the TrendsMesh "
+                        "sign-in (--mcp trendsmesh=<state> only; no --playbook, no --outputs)")
+    p.add_argument("--playbook", help="the playbook to check for, its id or skill (default: refresh-ad)")
+    p.add_argument("--outputs", help="comma list of the playbook's outputs (needed unless --general); "
                    "refresh-ad: creative_brief,edited_video,ai_video,live_test; creative-brief: "
                    "review_pack,briefs,animatics,page; trend-research: "
                    "category_report,weekly_digest,paid_view; organic-video: proposals,weekly_plan "
@@ -409,17 +434,30 @@ def _setup(p: argparse.ArgumentParser) -> None:
 
 
 def _run(args: argparse.Namespace) -> int:
-    try:
-        playbook = playbooks.offered(args.playbook).id
-    except ValueError as exc:
-        return cli.fail(args, str(exc))
-    known = flow.output_ids(playbook)
-    outputs = {o.strip() for o in args.outputs.split(",") if o.strip()}
-    bad = outputs - set(known)
-    if not outputs or bad:
-        return cli.fail(args, f"Unknown output {', '.join(sorted(bad)) or '(none given)'}. Choose from: {', '.join(known)}.")
+    general = args.general
+    if general:
+        if args.playbook or args.outputs:
+            return cli.fail(args, "--general is the check with no playbook chosen: give it no --playbook and no "
+                                  "--outputs (a playbook's own check takes them without --general).")
+        playbook, outputs = GENERAL, set()
+    else:
+        try:
+            playbook = playbooks.offered(args.playbook or REFRESH_AD).id
+        except ValueError as exc:
+            return cli.fail(args, str(exc))
+        known = flow.output_ids(playbook)
+        if args.outputs is None:
+            return cli.fail(args, f"Give --outputs (choose from: {', '.join(known)}), or --general for the check "
+                                  "with no playbook chosen.")
+        outputs = {o.strip() for o in args.outputs.split(",") if o.strip()}
+        bad = outputs - set(known)
+        if not outputs or bad:
+            return cli.fail(args, f"Unknown output {', '.join(sorted(bad)) or '(none given)'}. Choose from: {', '.join(known)}.")
     try:
         mcp = _pairs(args.mcp, MCP_STATES_OF, "mcp")
+        if general and set(mcp) - {"trendsmesh"}:
+            raise ValueError("The general check takes TrendsMesh only (--mcp trendsmesh=<state>): each playbook's own "
+                             "check looks at Meta Ads and shared page links.")
         facts = _pairs(args.fact, FACT_VALUES, "fact")
         envtiers.clean_stale()  # free the disk an earlier plugin version's tiers still hold
         r = check(outputs, args.voice, mcp, caption_removal=args.caption_removal, facts=facts,
@@ -435,9 +473,11 @@ def _run(args: argparse.Namespace) -> int:
             except OSError:
                 tail = "(the log could not be read)"
         report = support_report(r, tail)
-    text = card(r) + (f"\n\nSupport report written to: {report}" if report else "")
+    shown = card(r, general=general)
+    text = shown + (f"\n\nSupport report written to: {report}\n{i18n.t('doctor.report.send')}" if report else "")
     payload = {"status": "ready" if r.ready else "stop", "ready": r.ready,
-               "items": [asdict(i) for i in r.items], "card": card(r),
+               "playbook": None if general else playbook,
+               "items": [asdict(i) for i in r.items], "card": shown,
                "warnings": [i.id for i in r.items if i.warn and not i.ok],
                "report": str(report) if report else None}
     cli.emit(args, payload, text)

@@ -56,6 +56,17 @@ keys:
     empty: "The ElevenLabs key works, but the account has no credits left this month. Add credits or choose a bigger plan at https://elevenlabs.io/app/subscription, then tell Claude."
     short: "ElevenLabs has {left} credits left, and {what} needs about {need} (the approved estimate). Nothing was sent and nothing was spent. Add credits or choose a bigger plan at https://elevenlabs.io/app/subscription, then tell Claude; or tell Claude to lower the plan for this step. The run continues from the same place."
 
+# --- The doctor (issue 76): engine/src/tm/doctor.py. The general check runs when no playbook is chosen; {playbooks}
+# is the list of the playbooks this plugin version has, by name.
+doctor:
+  general:
+    ready: "**Ready to go.** The base tools are in place."
+    not_ready: "**Not ready yet.** Here is what is in place and what is not."
+    again: "When they are done, tell me and I check again."
+    one_playbook: "This was the general check. Each playbook needs more for some of its work: to check one, name it, for example /trendsmesh-playbooks:doctor trend research. The playbooks: {playbooks}."
+  report:
+    send: "This report holds no keys, but it can hold details of your runs: read it, then send it privately to contact@trendsmesh.com, not to a public issue."
+
 # --- Creative brief page: engine/src/tm/brief_page.py and brief_pack/template.html ---
 brief:
   view_decision: Decision maker
