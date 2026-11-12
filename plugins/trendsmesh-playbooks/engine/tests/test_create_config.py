@@ -184,7 +184,8 @@ def test_every_ad_string_is_read_and_every_key_read_is_in_the_table():
     from tm import create_qa
     read |= {f"ad.qa.check_{k}" for k in create_qa.EDIT_CHECKS} | {f"ad.qa.result_{r}" for r in create_qa.RESULTS}
     read = (read - {"ad.qa.finding_cuts"}) | {"ad.qa.finding_cuts.one", "ad.qa.finding_cuts.other"}   # a count
-    table = {k for k in i18n.english() if k.startswith("ad.")}
+    # ad.page.* are the run page's words, read by tm.run_page.create_ad (test_run_page_create_ad checks them)
+    table = {k for k in i18n.english() if k.startswith("ad.") and not k.startswith("ad.page.")}
     assert sorted(read - table) == [] and sorted(table - read) == []
     for key in table:
         assert i18n.t(key, **{p: "x" for p in i18n.placeholders(i18n.english()[key])}).strip()

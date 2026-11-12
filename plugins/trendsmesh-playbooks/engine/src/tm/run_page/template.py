@@ -16,9 +16,11 @@ question, context, options: [{choice, label, means, recommended}]}`; a record (a
 `{label, choice, note, at, by, rule}`. Blocks are listed in `_BLOCKS`. Every text is escaped here: what the agent
 wrote and what the run's files hold is data, never markup (a lede's `**bold**` is the one mark-up kept).
 
-The decision is saved in the artifact's db as `decisions/<checkin>` = `{checkin, ask, choice, label, note,
-saved_at}`: clicking an option saves it at once, "Save notes" saves only the note. A saved choice is shown again
-only on the same question (`ask`), never on a later version of it.
+The decision is saved in the artifact's db as `decisions/<checkin>` = `{checkin, ask, choice, label, note, detail,
+saved_at}`: clicking an option saves it at once, "Save notes" saves only the note, and a change to any of the open
+stage's inputs (`_LIVE_BLOCKS`: a pick, a choice per item, a note per scene, a pinned note, an edited text) saves it
+as `detail` (tm.run_page.detail). A saved choice is shown again only on the same question (`ask`), never on a later
+version of it.
 """
 
 from __future__ import annotations
@@ -244,9 +246,144 @@ _BLOCKS = {"table": _table, "tiles": _tiles, "compare": _compare, "bars": _bars,
            "text": _text, "list": _list, "trend": _trend}
 
 
-def _block(b: dict, ds: Datasets, lang: str) -> str:
+# --- blocks that can take input (only in an open stage of a page that saves: `live`) -------------
+#
+# An input's `path` (a list of keys) says where its value goes in the stage's `detail` (tm.run_page.detail); its
+# block's `offer` says what the build lets the page save there. Settled stages and local pages show the same
+# materials without any input.
+
+def _path(path: list) -> str:
+    return E(json.dumps([str(p) for p in path], ensure_ascii=False))
+
+
+def _choose(c: dict, live: bool) -> str:
+    """Radios for one value at `path` (a card's pick, an item's accept / redo / drop); nothing when not live."""
+    if not live:
+        return ""
+    name = _path(c["path"])
+    opts = "".join(f'<label class="chip-opt"><input type="radio" name="x{name}" value="{E(o["value"])}" '
+                   f'data-detail="{name}" disabled><span>{E(o["label"])}</span></label>' for o in c["options"])
+    return f'<div class="choose" role="radiogroup" aria-label="{E(c.get("label") or "")}">{opts}</div>'
+
+
+def _note_input(n: dict, live: bool) -> str:
+    if not live:
+        return ""
+    return (f'<label class="small soft note-l">{E(n["label"])}<textarea class="detail-note" data-detail="{_path(n["path"])}" '
+            f'disabled></textarea></label>')
+
+
+def _cards(b: dict, ds: Datasets, lang: str, live: bool) -> str:
+    """Cards side by side: a title, chips, lines, media, a table, and (live) a pick or a choice per card."""
+    out = []
+    for c in b["items"]:
+        parts = [f'<h3>{E(c["title"])}</h3>' if c.get("title") else ""]
+        if c.get("chips"):
+            parts.append(_chips(c["chips"]))
+        parts += [f'<p class="small">{bold(line)}</p>' for line in c.get("lines") or []]
+        if c.get("media"):
+            parts.append(_media({"items": c["media"]}, ds, lang))
+        if c.get("pre"):
+            parts.append(f'<pre class="text">{E(c["pre"])}</pre>')
+        if c.get("table"):
+            parts.append(_table({"data": c["table"]}, ds, lang))
+        if c.get("choose"):
+            parts.append(_choose(c["choose"], live))
+        if c.get("note"):
+            parts.append(_note_input(c["note"], live))
+        out.append(f'<article class="card">{"".join(parts)}</article>')
+    return f'<div class="cards{" wide" if b.get("wide") else ""}">{"".join(out)}</div>'
+
+
+def _notes(b: dict, ds: Datasets, lang: str, live: bool) -> str:
+    """One note field per item (a scene, a line); live only."""
+    if not live or not b.get("items"):
+        return ""
+    fields = "".join(_note_input(n, live) for n in b["items"])
+    return f'<details class="notes"><summary>{E(b.get("summary") or "")}</summary><div class="note-grid">{fields}</div></details>'
+
+
+def _facts(b: dict, ds: Datasets, lang: str, live: bool = False) -> str:
+    rows = "".join(f"<dt>{E(k)}</dt><dd>{bold(v)}</dd>" for k, v in b["rows"] if v not in (None, ""))
+    src = f'<div class="src"><span>{E(t("data.source", lang, file=b["source"]))}</span></div>' if b.get("source") else ""
+    return f'<div class="record facts"><dl>{rows}</dl></div>{src}'
+
+
+def _pager(b: dict, ds: Datasets, lang: str, live: bool) -> str:
+    """One scene at a time: prev / next, the scene numbers and the arrow keys; each scene's frames, its rows and
+    (live) its note."""
+    scenes = []
+    for i, sc in enumerate(b["scenes"]):
+        rows = "".join(f"<dt>{E(k)}</dt><dd>{E(v)}</dd>" for k, v in sc.get("rows") or [] if v not in (None, ""))
+        media = _media({"items": sc["media"]}, ds, lang) if sc.get("media") else ""
+        note = _note_input(sc["note"], live) if sc.get("note") else ""
+        scenes.append(f'<div class="scene"{"" if i == 0 else " hidden"} data-i="{i}"><h3>{E(sc["label"])}</h3>'
+                      f'<div class="scene-body">{media}<div class="record"><dl>{rows}</dl></div></div>{note}</div>')
+    nums = "".join(f'<button type="button" class="pg-n{" on" if i == 0 else ""}" data-i="{i}" '
+                   f'aria-label="{E(sc["label"])}">{i + 1}</button>' for i, sc in enumerate(b["scenes"]))
+    return (f'<div class="pager" tabindex="0" aria-label="{E(b.get("label") or "")}"><div class="pg-bar">'
+            f'<button type="button" class="pg-prev">{E(b["prev"])}</button><span class="pg-nums">{nums}</span>'
+            f'<button type="button" class="pg-next">{E(b["next"])}</button><span class="small soft">{E(b.get("keys") or "")}'
+            f'</span></div>{"".join(scenes)}</div>')
+
+
+def _versions(b: dict, ds: Datasets, lang: str, live: bool) -> str:
+    """1 to 4 versions side by side, each labelled, with (live) a pick and a note box that pins a note at the
+    playing version's time; the pinned notes, a click on one seeks its version."""
+    figs = []
+    for v in b["items"]:
+        pick = (f'<label class="chip-opt"><input type="radio" name="x{_path(b["pick"]["path"])}" value="{E(v["key"])}" '
+                f'data-detail="{_path(b["pick"]["path"])}" disabled><span>{E(b["pick"]["label"])}</span></label>'
+                if live and b.get("pick") else "")
+        figs.append(f'<figure data-version="{E(v["key"])}" data-label="{E(v["label"])}">'
+                    f'<figcaption><b>{E(v["label"])}</b> {E(v.get("caption") or "")}</figcaption>'
+                    f'{media_tag(v["src"], v["label"])}{pick}</figure>')
+    n = max(1, min(4, len(figs)))
+    out = f'<div class="versions" style="--n:{n}">{"".join(figs)}</div>'
+    if live and b.get("pins"):
+        p = b["pins"]
+        out += (f'<div class="pins-box"><label class="small soft">{E(p["label"])}<textarea class="pin-text" disabled>'
+                f'</textarea></label><div class="row"><button type="button" class="pin-btn savebtn" '
+                f'data-words="{E(p["button"])}" disabled>{E(p["button"].replace("{version}", b["items"][0]["label"] if b["items"] else "").replace("{time}", "0:00.0"))}'
+                f'</button></div><h3>{E(p["heading"])}</h3><ol class="pins" data-empty="{E(p["empty"])}"></ol>'
+                f'<textarea class="pins-json" hidden data-json data-detail="{_path(p["path"])}" disabled>[]</textarea></div>')
+    return out
+
+
+def _copy(b: dict, ds: Datasets, lang: str, live: bool) -> str:
+    """Per ad its facts and each text: an editable field with its live count against its limit and a keep tick
+    (live), else the text with its count."""
+    out = []
+    for ad in b["ads"]:
+        facts = "".join(f"<dt>{E(k)}</dt><dd>{E(v)}</dd>" for k, v in ad["facts"] if v not in (None, ""))
+        parts = [f'<h3>{E(ad["title"])}</h3><div class="record facts"><dl>{facts}</dl></div>']
+        for lst in ad["lists"]:
+            items = []
+            for it in lst["items"]:
+                over = it["count"] > lst["limit"]
+                count = (f'<span class="count{" over" if over else ""}" data-ok="{E(b["count"])}" data-over="{E(b["over"])}">'
+                         f'{E((b["over"] if over else b["count"]).replace("{n}", str(it["count"])).replace("{limit}", str(lst["limit"])))}</span>')
+                if live:
+                    items.append(f'<li><textarea class="copy-text" data-limit="{lst["limit"]}" data-detail="{_path(it["path"] + ["text"])}" '
+                                 f'disabled>{E(it["text"])}</textarea><div class="row">{count}<label class="small keep">'
+                                 f'<input type="checkbox" checked data-detail="{_path(it["path"] + ["keep"])}" disabled> '
+                                 f'{E(b["keep"])}</label></div></li>')
+                else:
+                    items.append(f'<li><p>{E(it["text"])}</p>{count}</li>')
+            parts.append(f'<h3 class="small">{E(lst["label"])}</h3><ol class="copy-list">{"".join(items)}</ol>')
+        out.append(f'<article class="card">{"".join(parts)}</article>')
+    src = f'<div class="src"><span>{E(t("data.source", lang, file=b["source"]))}</span></div>' if b.get("source") else ""
+    return f'<div class="cards">{"".join(out)}</div>{src}'
+
+
+_LIVE_BLOCKS = {"cards": _cards, "notes": _notes, "facts": _facts, "pager": _pager, "versions": _versions,
+                "copy": _copy}
+
+
+def _block(b: dict, ds: Datasets, lang: str, live: bool = False) -> str:
     head = f"<h3>{E(b['title'])}</h3>" if b.get("title") else ""
-    return f'<div class="block">{head}{_BLOCKS[b["kind"]](b, ds, lang)}</div>'
+    body = _LIVE_BLOCKS[b["kind"]](b, ds, lang, live) if b["kind"] in _LIVE_BLOCKS else _BLOCKS[b["kind"]](b, ds, lang)
+    return f'<div class="block">{head}{body}</div>' if body else ""
 
 
 # --- the decision -------------------------------------------------------------------------------
@@ -291,8 +428,8 @@ def _record(r: dict, lang: str) -> str:
 
 # --- the page -----------------------------------------------------------------------------------
 
-def _stage_body(s: dict, ds: Datasets, lang: str) -> str:
-    return "".join(_block(b, ds, lang) for b in s.get("blocks") or [])
+def _stage_body(s: dict, ds: Datasets, lang: str, live: bool = False) -> str:
+    return "".join(_block(b, ds, lang, live) for b in s.get("blocks") or [])
 
 
 def _now(s: dict, ds: Datasets, lang: str, local: bool, updated: str) -> str:
@@ -300,7 +437,7 @@ def _now(s: dict, ds: Datasets, lang: str, local: bool, updated: str) -> str:
     return (f'<section class="panel now" id="stage-{E(s["key"])}"><div class="now-head"><span class="pill dark">'
             f'{E(t("now.new", lang))}</span><span class="soft small">{E(t("now.updated", lang, when=updated))}</span>'
             f'<span class="soft small">{E(s["n"])} · {E(s["name"])}</span></div><h1>{E(s["title"])}</h1>{lede}'
-            f'{_stage_body(s, ds, lang)}{_decision(s["decision"], lang, local)}</section>')
+            f'{_stage_body(s, ds, lang, not local)}{_decision(s["decision"], lang, local)}</section>')
 
 
 def _settled(stages: list[dict], ds: Datasets, lang: str) -> str:
@@ -393,6 +530,105 @@ SCRIPT = r"""
     a.addEventListener('ended', () => { b.pause(); play.textContent = play.dataset.play; });
   });
 
+  // one scene at a time: prev / next, the scene numbers, the arrow keys (the pager of the open stage first)
+  const pagers = Array.from(document.querySelectorAll('.pager'));
+  pagers.forEach(pg => {
+    const scenes = Array.from(pg.querySelectorAll('.scene')), nums = Array.from(pg.querySelectorAll('.pg-n'));
+    let at = 0;
+    pg.go = i => {
+      at = (i + scenes.length) % scenes.length;
+      scenes.forEach((s, j) => { s.hidden = j !== at; });
+      nums.forEach((n, j) => { n.classList.toggle('on', j === at); n.setAttribute('aria-current', j === at ? 'true' : 'false'); });
+    };
+    pg.querySelector('.pg-prev').addEventListener('click', () => pg.go(at - 1));
+    pg.querySelector('.pg-next').addEventListener('click', () => pg.go(at + 1));
+    nums.forEach((n, j) => n.addEventListener('click', () => pg.go(j)));
+    pg.step = d => pg.go(at + d);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    const visible = pagers.filter(pg => !pg.closest('details:not([open])'));
+    const pg = visible.find(x => x.closest('section.now')) || visible[0];
+    if (pg) { e.preventDefault(); pg.step(e.key === 'ArrowLeft' ? -1 : 1); }
+  });
+  // the copy's live counts against each limit
+  const counted = t => Array.from(t).length;
+  document.querySelectorAll('textarea.copy-text').forEach(ta => {
+    const c = ta.closest('li').querySelector('.count'), limit = +ta.dataset.limit;
+    const paint = () => { const n = counted(ta.value), over = n > limit;
+      c.textContent = (over ? c.dataset.over : c.dataset.ok).replace('{n}', n).replace('{limit}', limit);
+      c.classList.toggle('over', over); };
+    ta.addEventListener('input', paint); ta.addEventListener('tm-restored', paint);
+  });
+  // versions: the playing one, and the notes pinned at its time (a click on a note seeks its version)
+  const clock = s => { s = Math.max(0, s || 0); const m = Math.floor(s / 60); return m + ':' + (s - m * 60).toFixed(1).padStart(4, '0'); };
+  document.querySelectorAll('.versions').forEach(vs => {
+    const box = vs.parentElement.querySelector('.pins-box');
+    const vids = Array.from(vs.querySelectorAll('video, audio'));
+    let playing = vids[0] || null;
+    if (!box) return;
+    const btn = box.querySelector('.pin-btn'), text = box.querySelector('.pin-text'), list = box.querySelector('.pins');
+    const store = box.querySelector('.pins-json');
+    const fig = v => v.closest('figure');
+    const label = () => { if (playing) btn.textContent = btn.dataset.words.replace('{version}', fig(playing).dataset.label).replace('{time}', clock(playing.currentTime)); };
+    const pins = () => { try { const v = JSON.parse(store.value || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
+    const paint = () => {
+      list.innerHTML = '';
+      const all = pins();
+      if (!all.length) { const li = document.createElement('li'); li.className = 'soft'; li.textContent = list.dataset.empty; list.appendChild(li); }
+      all.forEach(p => {
+        const li = document.createElement('li'), b = document.createElement('button');
+        const f = vs.querySelector('figure[data-version="' + CSS.escape(p.version) + '"]');
+        b.type = 'button'; b.className = 'pin';
+        b.textContent = (f ? f.dataset.label : p.version) + ' · ' + clock(p.t) + ' · ' + p.text;
+        b.addEventListener('click', () => { const v = f && f.querySelector('video, audio'); if (v) { v.currentTime = p.t; playing = v; label(); } });
+        li.appendChild(b); list.appendChild(li);
+      });
+    };
+    vids.forEach(v => { v.addEventListener('play', () => { playing = v; label(); }); v.addEventListener('timeupdate', () => { if (v === playing) label(); }); });
+    btn.addEventListener('click', () => {
+      if (!playing || !text.value.trim()) return;
+      const all = pins(); all.push({version: fig(playing).dataset.version, t: Math.round(playing.currentTime * 100) / 100, text: text.value.trim()});
+      store.value = JSON.stringify(all); text.value = ''; paint();
+      store.dispatchEvent(new Event('change', {bubbles: true}));
+    });
+    store.addEventListener('tm-restored', paint);
+    label(); paint();
+  });
+
+  // what an open stage saves beside the choice: every input with a data-detail path (tm.run_page.detail)
+  const pathOf = el => { try { return JSON.parse(el.dataset.detail); } catch (e) { return null; } };
+  function detailOf(stage) {
+    const out = {};
+    stage.querySelectorAll('[data-detail]').forEach(el => {
+      const path = pathOf(el); if (!path || !path.length) return;
+      let v;
+      if (el.type === 'radio') { if (!el.checked) return; v = el.value; }
+      else if (el.type === 'checkbox') v = el.checked;
+      else if (el.hasAttribute('data-json')) { try { v = JSON.parse(el.value || 'null'); } catch (e) { v = null; } }
+      else v = el.value;
+      let o = out;
+      for (let i = 0; i < path.length - 1; i++) o = (o[path[i]] = (o[path[i]] && typeof o[path[i]] === 'object') ? o[path[i]] : {});
+      o[path[path.length - 1]] = v;
+    });
+    return out;
+  }
+  function restore(stage, detail) {
+    if (!detail || typeof detail !== 'object') return;
+    stage.querySelectorAll('[data-detail]').forEach(el => {
+      const path = pathOf(el); if (!path) return;
+      let v = detail;
+      for (const k of path) { v = v && typeof v === 'object' ? v[k] : undefined; }
+      if (v === undefined) return;
+      if (el.type === 'radio') el.checked = el.value === v;
+      else if (el.type === 'checkbox') el.checked = v === true;
+      else if (el.hasAttribute('data-json')) el.value = JSON.stringify(v);
+      else if (typeof v === 'string') el.value = v;
+      el.dispatchEvent(new Event('tm-restored'));
+    });
+  }
+
   const blocks = Array.from(document.querySelectorAll('section.decision[data-ask]'));
   if (P.local || !blocks.length) return;
   const when = iso => { try { return new Date(iso).toLocaleTimeString(P.lang, {hour: '2-digit', minute: '2-digit'}); } catch (e) { return iso; } };
@@ -409,6 +645,7 @@ SCRIPT = r"""
       const st = {choice: null, label: null, note: ''};
       const radios = Array.from(sec.querySelectorAll('input[type=radio]')), note = sec.querySelector('textarea');
       const btn = sec.querySelector('.savebtn');
+      const stage = sec.closest('section.panel') || sec;
       try {
         const snap = await ref.get();
         const v = snap.exists ? snap.data() : null;
@@ -416,6 +653,7 @@ SCRIPT = r"""
           Object.assign(st, {choice: v.choice || null, label: v.label || null, note: typeof v.note === 'string' ? v.note : ''});
           radios.forEach(r => { r.checked = r.value === st.choice; });
           note.value = st.note;
+          restore(stage, v.detail);
           say(sec, v.saved_at ? W.saved_at.replace('{time}', when(v.saved_at)) : W.ready);
         } else { say(sec, W.ready); }
       } catch (e) { say(sec, W.ready); }
@@ -423,7 +661,7 @@ SCRIPT = r"""
       const save = patch => {
         chain = chain.then(async () => {
           const body = {checkin: checkin, ask: ask, choice: st.choice, label: st.label, note: st.note,
-                        saved_at: new Date().toISOString(), ...patch};
+                        detail: detailOf(stage), saved_at: new Date().toISOString(), ...patch};
           say(sec, W.saving);
           try {
             await ref.set(body); Object.assign(st, patch); say(sec, W.saved_at.replace('{time}', when(body.saved_at)));
@@ -436,7 +674,9 @@ SCRIPT = r"""
       };
       radios.forEach(r => r.addEventListener('change', () => { if (r.checked) save({choice: r.value, label: r.dataset.label}); }));
       btn.addEventListener('click', () => save({note: note.value}));
+      stage.querySelectorAll('[data-detail]').forEach(el => el.addEventListener('change', () => save({})));
       sec.querySelectorAll('input, textarea, button').forEach(x => { x.disabled = false; });
+      stage.querySelectorAll('[data-detail], .pin-btn, .pin-text').forEach(x => { x.disabled = false; });
     }
   })();
 })();

@@ -18,7 +18,9 @@ rule) is a folded stage in "Already settled", its decision a read-only summary f
 holds two versions of one question, and an earlier decision cannot be saved again by a click.
 
 The page saves a choice in the artifact's db (`CAPABILITIES`: the owner reads and writes `decisions`) as the
-document `decisions/<checkin>`, with the ask id it was made on. `decision` reads it only through tm.page's reader
+document `decisions/<checkin>`, with the ask id it was made on and, for a stage that takes more than a choice (a
+pick, a choice per item, notes per scene or pinned at a time, edited copy: tm.run_page.detail), its `detail`, taken
+back only as far as the build offered it (`.build.json` `offer`). `decision` reads it only through tm.page's reader
 (the newest whole ArtifactData list of `decisions`, saved after the page's latest publish), and refuses a choice made
 on an earlier ask, a choice the ask does not offer, and a page published before the question was on it. A note is
 data: it is returned whole, to quote to the user, and never acted on.
@@ -33,7 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from tm import checkins, flow, i18n, manifest, page, playbooks, state
-from tm.run_page import refresh_ad, template, words
+from tm.run_page import create_ad, detail as details, refresh_ad, template, words
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.words import t
 from tm.runfolder import RunFolder
@@ -49,8 +51,12 @@ BUILD_FILE = ".build.json"          # in the page folder; hidden, so never publi
 # are told to answer in chat. `user` tells the page whether this viewer is the owner; `downloads` saves the CSVs.
 CAPABILITIES = {"db": {"rules": [{"path": COLLECTION, "read": "owner", "write": "owner"}]}, "user": {},
                 "downloads": {}}
-COMPONENTS = {playbooks.REFRESH_AD: refresh_ad.materials}
-OUTCOMES = {playbooks.REFRESH_AD: refresh_ad.outcome}     # a decided choice in words, when no ask labels it
+COMPONENTS = {playbooks.REFRESH_AD: refresh_ad.materials, playbooks.CREATE_AD: create_ad.materials}
+OUTCOMES = {playbooks.REFRESH_AD: refresh_ad.outcome,     # a decided choice in words, when no ask labels it
+            playbooks.CREATE_AD: create_ad.outcome}
+# what a stage's detail adds when its choice is recorded: the lines of its note, and the files it writes
+RECORDED = {playbooks.CREATE_AD: (create_ad.note_lines, create_ad.write_files)}
+ANSWER_SOURCE = "tm page decision --record"
 
 _ASK_KEYS = {"checkin", "title", "lede", "question", "context", "options", "points", "media", "data"}
 _OPTION_KEYS = {"choice", "label", "means", "recommended"}
@@ -301,6 +307,7 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
         if record is None:
             stage["decision"] = {"checkin": key, "ask": ask["_id"], "question": ask["question"],
                                  "context": ask.get("context") or "", "options": ask["options"]}
+            stage["offer"] = details.merge([b.get("offer") for b in stage["blocks"]])
             now.append(stage)
         else:
             stage["record"] = record
@@ -314,7 +321,8 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
          "run": run.path.name, "updated": updated, "local": local, "build": folder.name if folder else "",
          "now": now, "settled": settled, "datasets": ctx.ds}
     built = {"page": PAGE, "local": local, "lang": lang, "built_at": _now(),
-             "open": {st["key"]: st["decision"]["ask"] for st in now}}
+             "open": {st["key"]: st["decision"]["ask"] for st in now},
+             "offer": {st["key"]: st["offer"] for st in now if st["offer"] and not local}}
     return m, built
 
 
@@ -406,9 +414,13 @@ def decision(run: RunFolder, checkin: str) -> dict:
     if data["choice"] not in labels:
         raise Stop(f"The choice saved for {checkin} ({data['choice']!r}) is not one the question offers "
                    f"({', '.join(labels)}). {_chat(checkin)}")
+    detail, problems = details.check(((built or {}).get("offer") or {}).get(checkin) or {}, data.get("detail"))
+    if problems:
+        raise Stop(f"The page saved for {checkin} what its question did not offer ({'; '.join(problems[:3])}), so it "
+                   f"is not taken as the user's answer. Ask the user to choose again on the latest page. {_chat(checkin)}")
     note = data.get("note")
     return {"checkin": checkin, "ask": ask["_id"], "choice": data["choice"], "label": labels[data["choice"]],
-            "note": note if isinstance(note, str) else "", "saved_at": data.get("saved_at"),
+            "note": note if isinstance(note, str) else "", "detail": detail, "saved_at": data.get("saved_at"),
             "read": source.relative_to(run.path).as_posix()}
 
 
@@ -422,8 +434,26 @@ def record(run: RunFolder, checkin: str) -> dict:
     page)". A check-in decided before this question was put on the page is changed (`--change`)."""
     got = decision(run, checkin)
     words.reset()
-    note = from_page_note(got["note"], words.page_lang(run).lang)
+    lang = words.page_lang(run).lang
+    lines_of, files_of = RECORDED.get(state.load(run).playbook, (None, None))
+    lines = lines_of(run, checkin, got, lang) if lines_of else []
+    note = from_page_note("\n".join(x for x in [got["note"].strip(), *lines] if x), lang)
     decided = _latest_decisions(run)
     change = any(cid in decided for cid in _members(run, checkin))
     flow.decide(run, checkin, got["choice"], by="user", note=note, change=change)
-    return {**got, "recorded_note": note, "change": change}
+    files = {"answer": _save_answer(run, checkin, got)} if got["detail"] else {}
+    if files_of:
+        files.update(files_of(run, checkin, got))
+    return {**got, "recorded_note": note, "change": change, "files": files}
+
+
+def _save_answer(run: RunFolder, checkin: str, got: dict) -> str:
+    """The whole answer read from the page (choice, note, detail), kept as `03_wip/page/answer_<checkin>_vNN.json`."""
+    target = run.next_version(ASKS, f"answer_{checkin}", "json")
+    run.assert_writable(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    keep = {k: got[k] for k in ("checkin", "ask", "choice", "label", "note", "detail", "saved_at", "read")}
+    target.write_text(json.dumps(keep, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    rel = f"{ASKS}/{target.name}"
+    manifest.record(run, rel, "03_wip", ANSWER_SOURCE)
+    return rel

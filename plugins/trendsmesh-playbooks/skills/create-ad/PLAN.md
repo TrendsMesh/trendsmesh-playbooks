@@ -19,6 +19,8 @@ the paid-tool guard (`tools.PRECHECK`) and refresh-ad's E2 upload knowledge.
 translation mechanism, issue #3, are built in parallel): every gate is answerable in chat, and the data each
 page will show is defined (`references/pages.md`) and, for the copy page and the upload proposal, built by the
 engine. Fixed UI words are the `ad` area of the shared table (`data/i18n/en.yaml`), read through `tm.i18n`.
+The pages have since been built on the shared run page (`engine/src/tm/run_page/create_ad.py`,
+`references/pages.md`); the chat card stays the fallback.
 
 ## Owner decisions (this session)
 

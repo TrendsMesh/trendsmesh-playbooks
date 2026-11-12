@@ -42,8 +42,8 @@ at intake. **A video is never regenerated automatically**: failed QA goes to the
 clone, accept). Money in USD, with the rate when the account currency differs. (`plan`, `storyboard`, the paid
 guard)
 
-**CA8. Staged gates; raw assets are always shown raw.** Every generated batch goes back as a gate (a page, or in
-chat until the pages exist), never only as images in chat without the check-in. Every generated video goes back raw
+**CA8. Staged gates; raw assets are always shown raw.** Every generated batch goes back as a gate (the gate page, or
+its card in chat without one), never only as images in chat without the check-in. Every generated video goes back raw
 with its transcript and QA notes and is accepted before the edit uses it. (`ad_takes_checked`, `ad_takes_accepted`)
 
 **CA9. Generation craft.** One character = one take. Describe people in text; never name real people. Anti-slop

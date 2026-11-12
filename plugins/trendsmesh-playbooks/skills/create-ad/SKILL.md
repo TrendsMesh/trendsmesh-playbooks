@@ -33,8 +33,8 @@ never sees `tm`, a command, a flag, a step or check-in id, JSON, or a file path 
 asset by a bare code** ("the creator's first take", never "T1").
 
 **Where things are:** `references/flow.md` (every step), `references/rules.md` (CA1 to CA15),
-`references/pages.md` (what each page shows; until the pages are built, each check-in is asked in chat with that
-content), the plan behind this build in `PLAN.md`; the shared references two folders up (`../../references/`):
+`references/pages.md` (the run page: how a check-in goes on it, what each page shows and saves, and the chat card
+that is its fallback), the plan behind this build in `PLAN.md`; the shared references two folders up (`../../references/`):
 `model-prompting/` (each model's prompting recipe: read it before any prompt), `trend-collection.md`; Refresh an
 ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign-in,
 `../refresh-ad/references/trendsmesh-sign-in.md`.
@@ -72,7 +72,7 @@ new one. Before you do, plan or describe a step's work, read its section in `ref
 | action | what you do |
 |---|---|
 | `work` | Read the step's section (`ref`). Do the work. Record each file you write with `tm record`. Then `tm done <step> --run R`. |
-| `ask` | Show the check-in as a card, with what `references/pages.md` lists for it, wait for the answer, then `tm decide <id> <choice> --run R [--note "<their words>"]`. A money check-in's yes is followed by `tm budget approve` for each planned amount. |
+| `ask` | Put the check-in on the run page and show it as a question card (`references/pages.md`): the ask, `tm page build`, the publish, the link; wait for the answer, then `tm decide <id> <choice> --run R [--note "<their words>"]` (a choice made on the page: `tm page decision --run R <id> --record`). Without a publishing tool the page is built `--local` and answered in chat; when it can't be built, the card alone. A money check-in's yes is followed by `tm budget approve` for each planned amount. |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do, and that the run continues from the same place. **Then wait.** |
 | `done` | Final report (`references/flow.md#done`). |
@@ -118,6 +118,8 @@ check-in; CA14 the upload is offered, proposed in full and created PAUSED; CA15 
 | "These ads obviously use AI, so OPT_IN" | The AI disclosure is the advertiser's call. Show the facts and ask. |
 | "Paused is boring; I'll activate it so they see results" | Never. This playbook creates PAUSED objects only and never activates anything. |
 | "Ad set 1" | Names stay readable: product, test, audience and concept. |
+| "The page is quicker to patch by hand" | Never. The engine builds it from the run's files; a choice on it is read with `tm page decision`. |
+| "They clicked go ahead on the page, so it's live" | The page only records the go-ahead. The objects are created PAUSED, after it, and nothing switches them on. |
 | "I'll promise launch-day results" | Never a result, a number that is not in the claims, or availability that is not live. |
 | "No TrendsMesh, so these are the trends" | Without TrendsMesh they are your guesses, and you say so. |
 | "Show the key so they can check it" | Never. Keys never appear in chat. |

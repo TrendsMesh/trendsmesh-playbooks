@@ -34,6 +34,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
   product: an ad with a presenter, a site whose pixel fires (an upload proposal with a conversion objective), an ad
   without a presenter, your own voice-over and footage, and the PAUSED upload with every object read back paused. It
   spends at most 8 US dollars on Replicate and 4,000 ElevenLabs credits in all, and nothing on Meta ads.
+- **Create an ad's check-ins are on its run page.** Each check-in you see now goes on one page per run, in the
+  TrendsMesh look, as in Refresh an ad: the concepts with their model ads and trends, the script-board and the
+  production plan with every price and its date, the first visuals, the music and the takes side by side and raw,
+  the storyboard one scene at a time (the arrow keys move between scenes), the edit's versions side by side with
+  notes pinned at the playing version's time, the Meta copy editable with live counts against each limit, and the
+  PAUSED upload proposal. Everything on it comes from the run's files. You choose on the page (the concept, each
+  take, a note per scene, the copy's edits) or in chat: both count the same. Without a way to publish pages, Claude
+  gives you the page as a file and you answer in chat. Nothing on the page spends money or switches anything on:
+  the upload page only records "go ahead" or "skip".
 
 ## 0.12.0
 

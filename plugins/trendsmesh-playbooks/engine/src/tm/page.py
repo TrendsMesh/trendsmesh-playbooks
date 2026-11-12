@@ -681,6 +681,9 @@ def _decision(args: argparse.Namespace, run: RunFolder) -> int:
     note = f' Note: "{got["note"]}"' if got["note"] else ""
     if args.record:
         text = f"Recorded {args.checkin}: {got['choice']} ({got['label']}), from the page.{note}"
+        if (got.get("files") or {}).get("copy_decisions"):
+            text += (f" The copy as the user left it on the page is {got['files']['copy_decisions']}: run tm ad copy "
+                     f"accept --file {got['files']['copy_decisions']}, and show the user the accepted copy.")
     else:
         text = (f"Saved on the page for {args.checkin}: {got['choice']} ({got['label']}) at {got['saved_at']}.{note} "
                 f"Record it with tm page decision --run <run> {args.checkin} --record.")

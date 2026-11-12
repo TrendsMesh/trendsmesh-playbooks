@@ -165,9 +165,10 @@ the publish result says are stored (step 2), and say plainly if they are missing
     HTML file with the videos inside). The decisions are taken in chat: the local page says so
     itself, and never that choices are saved on it.
 
-## The run page (PB01; the other playbooks later)
+## The run page (PB01 and PB05; the other playbooks later)
 
-Refresh an ad's one page per run (`skills/refresh-ad/references/checkin-cards.md`, "The run page"):
+Refresh an ad's and Create an ad's one page per run (`skills/refresh-ad/references/checkin-cards.md`, "The run
+page"; `skills/create-ad/references/pages.md`):
 `tm page build --run R --ask <file> --json` builds `04_final/run_page_vNN/` from the run state, the page
 `run_page`. Its decisions take the rules above, with these calls:
 

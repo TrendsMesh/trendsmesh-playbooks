@@ -2,8 +2,8 @@
 
 Each step's work, the files it writes and the check that holds it. `R` is the run folder. Every file is a new
 version (`_vNN`), never overwritten, and recorded with `tm record` (paid calls record themselves). Each check-in is
-asked with what `pages.md` lists for it; until the pages are built, the card is in chat and a decision in chat
-counts. Rules: `rules.md`.
+put on the run page with what `pages.md` lists for it, and asked with its question card in chat; a decision on the
+page and one in chat count the same. Rules: `rules.md`.
 
 <a id="s0"></a>
 ## S0 Intake and asset inventory (CA1)
@@ -46,14 +46,16 @@ counts. Rules: `rules.md`.
   Sound trends only with a licence for ads (`licence: ads`), otherwise as inspiration. Organic clips are evidence,
   never footage. Save each MCP answer in `02_research/` (`trend_<id>.json` for `get_trend`) and summarise large
   answers with a script, never read them whole.
-- Write `03_wip/concepts_vNN.json`: `{"model_ads": [{"id", "source" (trendsmesh, ad_library, user, guess), "why"
-  (what to take from it), "saved" (the saved answer, for trendsmesh and ad_library), "run_days"}], "trends": [{"id",
-  "type" (hook, format, topic, sound, hashtag, visual), "source" (trendsmesh, guess), "name", "evidence" (2 videos for
-  a TrendsMesh trend), "licence" (a sound)}], "concepts": [{"key", "name", "model_ad", "trends": [ids], "combine",
+- Write `03_wip/concepts_vNN.json`: `{"model_ads": [{"id", "name", "source" (trendsmesh, ad_library, user, guess),
+  "why" (what to take from it), "saved" (the saved answer, for trendsmesh and ad_library), "run_days", "clip" (its
+  first ~15 s saved in the run, for the page)}], "trends": [{"id", "type" (hook, format, topic, sound, hashtag,
+  visual), "source" (trendsmesh, guess), "name", "evidence" (2 videos for a TrendsMesh trend), "thumbs" (2 evidence
+  thumbnails saved in the run, for the page), "licence" (a sound)}], "concepts": [{"key", "name", "model_ad", "trends": [ids], "combine",
   "beats": [{"t", "picture", "line"}], "length_s" (inside the chosen length), "length_why", "cost_usd": [low,
   high]}]}` with 2–3 concepts. The model ad gives the structure of its first seconds, not its length.
-- `tm ad check concepts --run R --file <it>`, then `tm done S1`. On the concept check-in show the concept cards
-  (`pages.md`), with the guess notice `tm next` gives. **Feedback loop:** notes or results are analysed and the
+- `tm ad check concepts --run R --file <it>`, then `tm done S1`. The concept check-in is the concepts page
+  (`pages.md`) and its card, with the guess notice `tm next` gives; a concept picked on the page comes back with
+  `tm page decision`. **Feedback loop:** notes or results are analysed and the
   concepts presented again with the changes worked in (a new version, checked again), asking only what is unclear;
   never jump to production on a note. Record the pick (or the mix note) with `tm decide concept accept --note`.
 
@@ -96,15 +98,16 @@ counts. Rules: `rules.md`.
 
 - What the ad type needs first: presenter casting (2–3 visibly different, non-identifiable people; the CA9 guard in
   the prompt when a model ad's look is reused), stills or slides, or a test frame. Each paid call: `tm tool
-  replicate_run --run R <spec> --name <the plan's item> --cost <its line>`. Show the batch raw, side by side, on the
-  gate (`pages.md` "Gate"); never only as images in chat. `tm done G1`, then the check-in.
+  replicate_run --run R <spec> --name <the plan's item> --cost <its line>` (the gate page finds the outputs by that
+  name). Show the batch raw, side by side, on the gate (`pages.md` "Gate"); never only as images in chat. `tm done
+  G1`, then the check-in.
 
 <a id="g2"></a>
 ## G2 Audio
 
 - Music (the user's, the config's `audio.music_source`, or generated), SFX takes and the transition sound (a small
-  library, swappable). ElevenLabs calls through `tm tool elevenlabs ... --cost <credits>`. The gate shows each take
-  to listen to. `tm done G2`.
+  library, swappable). ElevenLabs calls through `tm tool elevenlabs ... --cost <credits> --out
+  03_wip/audio/<the plan's item>_vNN.mp3`. The gate shows each take to listen to. `tm done G2`.
 
 <a id="g3"></a>
 ## G3 Filled storyboard and the paid video (CA7, CA8)
@@ -181,11 +184,12 @@ counts. Rules: `rules.md`.
   text comes from one of its named claims, and so does any promise of results or availability ("guaranteed", "in
   stock", "results in"): the check reads the market language's promise phrases, and when that language has none
   it says so (`promise_warning`): then read every text for promises yourself.
-- `tm ad copy check` (its answer carries the copy page's data), `tm done S8`. The check-in shows each text with its
-  count and a keep tick, and asks "Do you want to change anything?". Write the user's choices as
-  `03_wip/copy_decisions_vNN.json` (`{"ads": [{"key", "primary_texts": [{"n", "text", "keep"}], ...}], "note"}`) and
-  run `tm ad copy accept`: the accepted copy is `04_final/copy_vNN.json`. Never only a file: the copy goes back to
-  the user.
+- `tm ad copy check` (its answer carries the copy page's data), `tm done S8`. The copy page shows each text editable
+  with its live count and a keep tick, and asks "Do you want to change anything?". Choices made on the page:
+  `tm page decision --run R copy --record` writes them as `03_wip/copy_decisions_vNN.json`; choices given in chat:
+  write that file yourself (`{"ads": [{"key", "primary_texts": [{"n", "text", "keep"}], ...}], "note"}`). Then
+  `tm ad copy accept --run R --file <it>`: the accepted copy is `04_final/copy_vNN.json`. Never only a file: the
+  copy goes back to the user.
 
 <a id="s9"></a>
 ## S9 Deliver
@@ -216,7 +220,8 @@ counts. Rules: `rules.md`.
   "said"}, "status": "PAUSED"}`. Names say product, test, audience and concept.
 - `tm ad upload check` (its answer is the card: the proposal in full, the placement facts, the pixel's cost, the
   paused note), `tm done S10a`. The go-ahead "Go ahead with the PAUSED upload" is asked at every level; `create` is
-  refused without the checked proposal.
+  refused without the checked proposal. The upload page shows the proposal read-only and records only "go ahead" or
+  "skip"; it never creates or activates anything.
 
 <a id="s10b"></a>
 ## S10b Create the PAUSED ad and read it back (CA14)

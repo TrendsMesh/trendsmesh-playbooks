@@ -794,6 +794,7 @@ run_page:
   # The playbook's name on its run page: the page's <title>, which the Artifact tool keeps over its own `title`.
   playbook:
     refresh_ad: Refresh an ad
+    create_ad: Create an ad
   footer:
     built: Built from the run {run} on {when}. Every number shows its source when you hover over it.
   from_page: (from the page)
@@ -861,6 +862,20 @@ run_page:
     approve_spending: Spending
     approve_launch: Launch
     act_on_results: Results
+    # Create an ad's check-ins (skills/create-ad/references/pages.md)
+    intake: Intake
+    concept: Concepts
+    board: Script-board
+    plan: Production plan
+    board_and_plan: Script-board and plan
+    visual: First visual output
+    audio: Music and sounds
+    storyboard: Storyboard
+    takes: Takes
+    review: Review
+    copy: Meta copy
+    upload_offer: Meta upload
+    upload: PAUSED upload
   stage_name:
     hook: The start (hook)
     middle: The middle
@@ -1044,6 +1059,181 @@ ad:
     result_ok: OK
     result_not_applicable: Not in this ad
     result_problem: Problem
+  # Create an ad's run page (engine/src/tm/run_page/create_ad.py; what each page shows: skills/create-ad/references/
+  # pages.md). The ad's own texts are not here: they stay in the market language, as written.
+  page:
+    # concepts
+    model_ads: Model ads
+    trends: Trends
+    concepts: Concepts
+    source:
+      trendsmesh: TrendsMesh
+      ad_library: Meta Ad Library
+      user: Yours
+      guess: My guess
+      generate: generated
+      site: from the site
+      asset: "your file: {file}"
+    run_days: "Running for {n} days"
+    take_from: "What to take from it: {why}"
+    guess: My guess, not TrendsMesh data
+    evidence: "Evidence: {links}"
+    licence:
+      ads: Licensed for ads
+      inspiration: Inspiration only, not the ad's sound
+    type:
+      hook: Hook
+      format: Format
+      topic: Topic
+      sound: Sound
+      hashtag: Hashtag
+      visual: Visual
+      presenter: Presenter
+      hook_scene: Hook scene
+      product_shot: Product shot
+      still: Still
+      slide: Slide
+      animation: Animation
+      music: Music
+      sfx: Sound effect
+      voice: Voice
+      upscale: Upscale
+      transcription: Transcription
+    length: "{n} s"
+    length_why: "Why this length: {why}"
+    cost_range: "{low}–{high} USD"
+    combine: "How it combines them: {text}"
+    uses: "Model ad: {ad} · Trends: {trends}"
+    beats: beats
+    pick_concept: Pick this concept
+    # script-board and plan
+    board: The script-board
+    plan: The production plan
+    scene: "Scene {n}"
+    scene_named: "Scene {n}: {name}"
+    scene_note: Your note on this scene (optional)
+    scene_notes: Add a note to a scene
+    line_notes: Add a note to a line of the plan
+    own_files: What your own files replace
+    replaces: "Your file {file} replaces: {type}"
+    col:
+      time: Time
+      name: Scene
+      picture: Picture
+      on_screen_text: On-screen text
+      line: Line
+      sound: Sound
+      source: Source
+      item: Item
+      type: Asset type
+      stage: When
+      model: Suggested model
+      cost: Price
+      unit: Paid in
+      checked: Price checked
+      alternative: Alternative
+    stage:
+      pre_video: before the video
+      video: the video (priced again on the storyboard)
+    budget:
+      ai_usd: USD
+      voice_credits: ElevenLabs credits
+    route:
+      native: the video model's own voice
+      elevenlabs_voice: an ElevenLabs voice
+      user_vo: your voice-over recording
+      clone_take: a clone of the take's voice
+    tile:
+      length: Length (s)
+      scenes: Scenes
+      words: Words spoken
+      wpm: The model ad's words a minute
+      pre_usd: Before the video (USD)
+      pre_credits: Before the video (credits)
+      video_usd: The video, estimated (USD)
+      voice: Voice
+    # the gates
+    gate:
+      visual: The first visual output, raw
+      audio: The music and sounds, raw
+      takes: The takes, raw
+    option: "{item}, option {n}"
+    item:
+      accept: Accept
+      redo: Redo
+      drop: Drop
+    nothing_yet: Nothing has been made for this check-in yet.
+    qa_title: What the QA measured
+    qa:
+      match: Transcript matches the script
+      wps: Words a second
+      lufs: Loudness (LUFS)
+      peak: True peak (dBFS)
+      cuts: Cuts found
+    transcript: "Transcript: {text}"
+    # storyboard
+    storyboard: The storyboard, scene by scene
+    prev: ← Previous
+    next: Next →
+    arrow_keys: The arrow keys move between scenes.
+    placeholder: The placeholder render
+    videos: The paid video
+    price: "{cost} {unit}, price checked {date}"
+    prompt_rules: "Prompt rules: {file}"
+    no_video: "No paid video: {why}"
+    # review
+    versions: The versions
+    version: "Version {n}"
+    pick_version: Pick this version
+    pin_label: "Your note: play a version, pause where it is, write the note and pin it"
+    pin_button: "Pin to {version} at {time}"
+    pins: Your notes
+    no_pins: No notes yet.
+    checked: What was checked
+    no_version: No version of the edit yet.
+    # copy
+    fact:
+      ad_name: Ad name
+      video_title: Video title
+      cta: Call to action
+      display_link: Display link
+      url: URL
+    # upload
+    upload:
+      files: The video and thumbnail
+      copy: The copy
+      account: Ad account
+      page: Facebook Page
+      campaign: Campaign
+      adset: Ad set
+      ad: "Ad {ad}"
+      objective: Objective
+      event: Optimisation event
+      why: Why
+      budget: Ad budget
+      budget_value: "{amount} {currency} {cadence}"
+      said: "(you said: {said})"
+      countries: Countries
+      audience: Audience
+      placements: Placements
+      ai: AI disclosure
+      status: Status
+      placement_facts: Placement facts
+    cadence:
+      daily: a day
+      lifetime: for the whole run
+    ai:
+      OPT_IN: "Yes: the ads contain media made or edited with generative AI"
+      OPT_OUT: "No"
+    # what a choice saved on the page adds to the recorded note
+    rec:
+      concept: "Concept: {name}"
+      item: "{item}: {choice}"
+      scene: "Scene {n}: {text}"
+      line: "{item}: {text}"
+      version: "Version picked: {name}"
+      pin: "{version} at {time}: {text}"
+      copy: "The copy as edited on the page: {edited} edited, {dropped} dropped"
 
 # --- Refresh an ad: the winning ad moved into the original's campaign, PAUSED, at G12 (issue #64;
 # engine/src/tm/livetest_move.py, skills/refresh-ad/references/flow.md#e4) ---
