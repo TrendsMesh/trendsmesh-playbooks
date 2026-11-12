@@ -348,6 +348,181 @@ def test_the_organic_shortlist_speaks_of_organic_videos(ws, tmp_path, capsys, mo
     assert "fit_candidates" not in json.loads((brief.path / out["json"]).read_text(encoding="utf-8"))
 
 
+# --- issue #85: the channel type sets B3's split --------------------------------------------------------------
+
+def _typed_run(ws, kind, *, cards=None, name="typed"):
+    """An organic run for one channel whose saved profile has `kind` as its type (None: a profile saved before
+    channel types)."""
+    run = _organic_run(ws, name)
+    cfg = {"channels": ["exampleedu"], **({"research": {"cards": cards}} if cards else {})}
+    (run.path / "config.yaml").write_text(json.dumps(cfg), encoding="utf-8")
+    profile = {**exampleedu.PROFILE, "type": kind, "type_note": "Riddles read aloud." if kind == "other" else None}
+    if kind is None:
+        profile = {k: v for k, v in profile.items() if k not in ("type", "type_note")}
+    folder = ws / "library" / "channels" / "exampleedu"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"channel_v{len(list(folder.glob('*.json'))) + 1:02d}.json").write_text(json.dumps(profile),
+                                                                                       encoding="utf-8")
+    return run
+
+
+def _pool(run, *, topics=8, hooks=5, formats=5, sounds=4, fitting_sounds=0):
+    base = {"status": "confirmed", "momentum": "rising"}
+    cards = ([{**base, "id": f"t{i}", "kind": "topic_trend", "name": f"Kids and games {i}",
+               "what_it_is": "Parents ask about games", "reach": {"creators": 20 - i}} for i in range(topics)]
+             + [{**base, "id": f"h{i}", "kind": "hook_trend", "name": f"Hook {i}", "reach": {"creators": 20 - i}}
+                for i in range(hooks)]
+             + [{**base, "id": f"f{i}", "kind": "format_trend", "name": f"Format {i}", "reach": {"creators": 20 - i}}
+                for i in range(formats)]
+             + [{**base, "id": f"s{i}", "kind": "sound_trend", "name": f"Sound {i}", "reach": {"creators": 20 - i},
+                 "what_it_is": "a beat for kids" if i < fitting_sounds else "a stadium chant"} for i in range(sounds)])
+    trends.save_answer(run, "search_trends", {"about": "kids games"}, {"data": cards})
+
+
+def _typed_shortlist(capsys, run, weak=()):
+    """The shortlist with every hook and format scored: 4, or 2 (weak) for the ids in `weak`."""
+    first = _cli(capsys, "trends", "shortlist", "--run", str(run.path), "--terms", "kids,games", "--anchor-terms",
+                 "kids,parents", "--sound-relevance", "--today", TODAY.isoformat())[1]
+    data = json.loads((run.path / first["json"]).read_text(encoding="utf-8"))
+    fit = {c["id"]: _fit(2 if c["id"] in weak else 4, "fits" if c["id"] not in weak else "does not fit")
+           for c in data["fit_candidates"]}
+    (run.path / "03_wip" / "trend_fit_v01.json").write_text(json.dumps(fit), encoding="utf-8")
+    code, out = _cli(capsys, "trends", "shortlist", "--run", str(run.path), "--terms", "kids,games", "--anchor-terms",
+                     "kids,parents", "--sound-relevance", "--today", TODAY.isoformat(), "--fit",
+                     "03_wip/trend_fit_v01.json")
+    assert code == 0, out
+    return out, json.loads((run.path / out["json"]).read_text(encoding="utf-8"))
+
+
+def _kinds(rows):
+    return [r["label"] for r in rows]
+
+
+def test_a_news_channel_pulls_mostly_topics_and_no_unfitting_sound(ws, capsys):
+    """Issue #85: a news channel's 12 are 2 hooks, 6 topics, 3 formats, 1 sound; a sound with no link to the
+    channel never takes its place, which goes to topics."""
+    run = _typed_run(ws, "news_explainers")
+    _pool(run)
+    out, data = _typed_shortlist(capsys, run)
+    assert data["split"]["places"] == {"hooks": 2, "topics": 6, "formats": 3, "sounds": 1}
+    assert data["split"]["types"] == {"exampleedu": "news_explainers"} and out["leading"] == "topics"
+    assert _kinds(data["pulls"]) == ["topic"] * 7 + ["format"] * 3 + ["hook"] * 2
+    assert data["split"]["moved"] == {"sounds": 1}
+    assert [r["id"] for r in organic_research.top_trends(data, 12)] == [r["id"] for r in data["pulls"]]
+    md = (run.path / out["md"]).read_text(encoding="utf-8")
+    assert "Channel type: exampleedu: News and explainers. Out of 12: 2 hooks, 6 topics, 3 formats, 1 sounds" in md
+    assert md.index("## Cards B3 pulls") < md.index("## Best-fitting topics") < md.index("## Best-fitting formats") \
+        < md.index("## Best-fitting hooks") < md.index("## Best-fitting sounds")
+
+
+def test_a_music_channel_pulls_mostly_sounds(ws, capsys):
+    run = _typed_run(ws, "music_dance")
+    _pool(run, sounds=8, fitting_sounds=8)
+    out, data = _typed_shortlist(capsys, run)
+    assert _kinds(data["pulls"]).count("sound") == 6 and out["leading"] == "sounds"
+
+
+def test_weak_hooks_and_formats_take_no_place(ws, capsys):
+    """A hook or format the agent scored under 3 for the channel never fills a place; when the leading kind
+    runs out too, the places stay empty rather than take a weak trend."""
+    run = _typed_run(ws, "shop_product")
+    _pool(run, topics=2, hooks=5, formats=5, sounds=1, fitting_sounds=1)
+    out, data = _typed_shortlist(capsys, run, weak={"f1", "f2", "f3", "f4", "h3", "h4"})
+    pulled = {r["id"] for r in data["pulls"]}
+    assert not pulled & {"f1", "f2", "f3", "f4", "h3", "h4"}
+    assert _kinds(data["pulls"]) == ["format", "hook", "hook", "hook", "topic", "topic", "sound"]
+    assert data["split"]["empty"] == 5 and data["split"]["moved"] == {"hooks": 1, "formats": 4}
+
+
+def test_other_leads_with_the_kind_that_fits_best(ws, capsys):
+    run = _typed_run(ws, "other")
+    _pool(run, topics=10, hooks=1, formats=1, sounds=1)
+    out, data = _typed_shortlist(capsys, run)
+    assert out["leading"] == "topics" and _kinds(data["pulls"]).count("topic") == 10
+
+
+def test_a_profile_without_a_type_pulls_the_even_split(ws, capsys):
+    """A profile saved before channel types: 3 of each kind, as the old turn took them."""
+    run = _typed_run(ws, None)
+    _pool(run, sounds=4, fitting_sounds=4)
+    out, data = _typed_shortlist(capsys, run)
+    assert data["split"]["places"] == {"hooks": 3, "topics": 3, "formats": 3, "sounds": 3}
+    assert data["split"]["types"] == {"exampleedu": None}
+    assert sorted(_kinds(data["pulls"])) == sorted(["hook", "topic", "format", "sound"] * 3)
+    assert "no type in the profile yet" in (run.path / out["md"]).read_text(encoding="utf-8")
+
+
+def test_the_split_follows_research_cards(ws, capsys):
+    run = _typed_run(ws, "news_explainers", cards=6)
+    _pool(run)
+    _, data = _typed_shortlist(capsys, run)
+    assert data["split"]["places"] == {"hooks": 1, "topics": 3, "formats": 2, "sounds": 0}
+    assert len(data["pulls"]) == 6
+
+
+def test_b3_waits_for_the_pulls(ws, capsys):
+    run = _typed_run(ws, "news_explainers")
+    _pool(run, topics=2, hooks=1, formats=1, sounds=0)
+    _, data = _typed_shortlist(capsys, run)
+    gap = organic_research.evidence_gap(run)
+    assert all(f"({r['id'][:8]})" in gap for r in data["pulls"]) and len(data["pulls"]) == 4
+
+
+def _cards(run, data):
+    """Each pulled trend's card, as B3 saves it."""
+    for r in data["pulls"]:
+        kind = {"hook": "hook_trend", "topic": "topic_trend", "format": "format_trend", "sound": "sound_trend"}[r["label"]]
+        trends.save_answer(run, "get_trend", {"trend_id": r["id"]}, {"id": r["id"], "kind": kind, "name": r["name"]})
+
+
+def _proposal(pid, *trend_ids):
+    return {"id": pid, "channel": "exampleedu", "trends": [{"id": t, "role": "r"} for t in trend_ids]}
+
+
+def test_c1_builds_half_of_the_proposals_on_the_leading_kind(ws, capsys):
+    """Issue #85: a news channel's proposals are built mostly on topics: at least half of them hold a topic."""
+    from tm import organic_proposals
+    from tm.config import Problem
+    run = _typed_run(ws, "news_explainers")
+    _pool(run)
+    _, data = _typed_shortlist(capsys, run)
+    _cards(run, data)
+    profiles = {"exampleedu": brand.latest(ws, "exampleedu", kind="channel")}
+    assert organic_proposals.leading_of(run, profiles["exampleedu"]) == ("news_explainers", "topics")
+
+    def problems(props):
+        kinds = {p["id"]: {(organic_research.card(run, t["id"])[0] or {}).get("kind") for t in p["trends"]}
+                 for p in props}
+        out: list[Problem] = []
+        organic_proposals._leading(run, props, {p["id"]: "exampleedu" for p in props}, kinds, profiles, out)
+        return out
+
+    few = [_proposal("m1", "t0"), _proposal("m2", "h0"), _proposal("m3", "f0"), _proposal("m4", "h1", "f1")]
+    said = problems(few)
+    assert len(said) == 1 and "1 of the 4 proposals for exampleedu are built on topics" in said[0].what
+    assert "at least 2" in said[0].todo
+    assert problems([*few[:3], _proposal("m4", "h1", "t1")]) == []
+    assert problems([_proposal("m1", "t0"), _proposal("m2", "h0"), _proposal("m3", "f0")]) != []   # 1 of 3: not half
+    old = {k: v for k, v in profiles["exampleedu"].items() if k != "type"}
+    assert organic_proposals.leading_of(run, old) is None                 # a profile saved before channel types
+
+
+def test_the_proposals_page_says_why_a_kind_leads(ws, capsys):
+    from tm.organic_pages import proposals as page
+    run = _typed_run(ws, "news_explainers")
+    data = {"channels": [{"id": "exampleedu", "name": "ExampleEdu", "niche": "n"}]}
+    assert page.channel_leads(run, data, "en") == ["A news and explainer channel, so topics come first."]
+    assert page.channel_leads(run, data, "pl") == ["Kanał z newsami i wyjaśnieniami, więc najpierw tematy."]
+    other = _typed_run(ws, "other", name="other")
+    assert page.channel_leads(other, data, "en") == []                    # no shortlist split yet
+    _pool(other, topics=10, hooks=1, formats=1, sounds=1)
+    _typed_shortlist(capsys, other)
+    assert page.channel_leads(other, data, "en") == ["Topics fit this channel best in this search, so they come first."]
+    two = {"channels": [*data["channels"], {"id": "cat-corner", "name": "Cat Corner", "niche": "n"}]}
+    assert page.channel_leads(other, two, "en") == [
+        "ExampleEdu: Topics fit this channel best in this search, so they come first."]
+
+
 # --- the channel's used trends, series and history --------------------------------------------------
 
 def test_used_trend_listed_and_series_continue(ws, capsys):

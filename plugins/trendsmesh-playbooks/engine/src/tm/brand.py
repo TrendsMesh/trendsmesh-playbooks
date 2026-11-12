@@ -26,7 +26,13 @@ A channel profile (`channel/1`, organic video's A1, drafted as `03_wip/channel_<
      "audience_language": "pl", "context": {"films": "...", "topic": "...", "audience": "...",
      "style": "...", "performed_links": []}, "product_role": "not_shown|incidental|featured|soft_mention|hero",
      "content_rules": ["..."], "voice": {"narrator_elevenlabs_id", "host_description", "host_image"},
-     "music": {"folder", "index"}, "assumptions": ["..."], "confirmed": "YYYY-MM-DD" | null}
+     "music": {"folder", "index"}, "assumptions": ["..."], "confirmed": "YYYY-MM-DD" | null,
+     "type": "news_explainers|howto_education|entertainment_skits|music_dance|lifestyle_vlog|shop_product|other",
+     "type_note": "<one sentence>" | null}
+
+`type` (issue #85) sets how many cards of each kind B3 pulls (`CHANNEL_TYPES`); "other" needs `type_note`,
+the user's one sentence about the channel, which the trend fit is judged against. A draft must have it; a
+profile saved before it existed has none and still passes the saved-profile checks (the even split is used).
 
 `context.films`, `topic` and `audience` are the bubble the trend search starts from (OV1). A
 channel that sells nothing (`store: null`) never shows a product; a named store must have a saved
@@ -68,6 +74,26 @@ PLATFORMS = ("tiktok", "instagram", "youtube", "facebook")
 ACCOUNT_TYPES = ("creator", "business")
 PRODUCT_ROLES = ("not_shown", "incidental", "featured", "soft_mention", "hero")  # OV5, from none to hero
 BUBBLE = ("films", "topic", "audience")  # OV1: the trend search starts from these
+# Issue #85: a channel's type sets how many of B3's 12 cards each kind of trend gets (hooks, topics, formats,
+# sounds), and its leading kind: the most places, a tie to the first in that order. "other" is described by the
+# user in one sentence (`type_note`), and its leading kind is the one that fits best in the search.
+CHANNEL_TYPES = {
+    "news_explainers": {"hooks": 2, "topics": 6, "formats": 3, "sounds": 1},
+    "howto_education": {"hooks": 3, "topics": 4, "formats": 4, "sounds": 1},
+    "entertainment_skits": {"hooks": 4, "topics": 2, "formats": 4, "sounds": 2},
+    "music_dance": {"hooks": 2, "topics": 1, "formats": 3, "sounds": 6},
+    "lifestyle_vlog": {"hooks": 3, "topics": 2, "formats": 4, "sounds": 3},
+    "shop_product": {"hooks": 4, "topics": 2, "formats": 5, "sounds": 1},
+    "other": {"hooks": 4, "topics": 4, "formats": 3, "sounds": 1},
+}
+OTHER_TYPE = "other"
+
+
+def leading_kind(channel_type: str | None) -> str | None:
+    """The kind a channel type leads with (the most places, a tie to the first of hooks, topics, formats,
+    sounds); None for "other" (the search decides) or no type."""
+    split = CHANNEL_TYPES.get(channel_type) if channel_type != OTHER_TYPE else None
+    return max(split, key=lambda k: (split[k], -list(split).index(k))) if split else None
 CONFIRMED_BY_USER = "A channel's profile is confirmed by the user."
 _SENTENCE_BREAK = re.compile(r"([^\s]*[.!?])\s+[\"'“‘(\[]?[A-Z]")
 _ABBREVIATIONS = ("e.g.", "i.e.", "vs.", "etc.", "no.", "mr.", "ms.", "dr.", "st.")
@@ -149,7 +175,22 @@ def _store_problem(store: str, workspace: Path, bad) -> None:
             "product_role to not_shown.")
 
 
-def _check_channel(profile: dict, workspace: Path | None, bad) -> None:
+def _check_type(profile: dict, bad, *, required: bool) -> None:
+    kind = profile.get("type")
+    if kind is None and not required:
+        return                                        # a profile saved before channel types (issue #85)
+    if kind not in CHANNEL_TYPES:
+        bad("type", f"type must be one of {', '.join(CHANNEL_TYPES)}, not {kind!r}.",
+            "Propose the channel's type from its videos and what performed, and confirm it with the user.")
+    note = profile.get("type_note")
+    if kind == OTHER_TYPE and not (_text(note) and _one_sentence(note)):
+        bad("type_note", "A channel of type other needs type_note: the user's one sentence about the channel.",
+            "Ask the user to describe the channel in one sentence, and write it in type_note.")
+    elif not _text_or_none(note):
+        bad("type_note", "type_note must be a sentence, or null.", "Write it as one sentence, or null.")
+
+
+def _check_channel(profile: dict, workspace: Path | None, bad, *, type_required: bool = True) -> None:
     if profile.get("schema") != CHANNEL_SCHEMA:
         bad("schema", f"The schema is {profile.get('schema')!r}.", f"Set it to {CHANNEL_SCHEMA!r}.")
     if not _text(profile.get("channel")):
@@ -209,12 +250,14 @@ def _check_channel(profile: dict, workspace: Path | None, bad) -> None:
     if _confirmed_problem(profile.get("confirmed")):
         bad("confirmed", f"confirmed is {profile.get('confirmed')!r}.",
             "Use null; tm brand save --confirmed sets the date once the user accepts the profile.")
+    _check_type(profile, bad, required=type_required)
 
 
-def check(profile: object, *, workspace: Path | None = None) -> list[Problem]:
+def check(profile: object, *, workspace: Path | None = None, saved: bool = False) -> list[Problem]:
     """What is wrong with a profile; an empty list when it can be saved. The kind is read first, so a
     channel is checked against channel/1. A channel that names a store is checked against the saved
-    store profile in `workspace`'s library (ValueError when no workspace is given)."""
+    store profile in `workspace`'s library (ValueError when no workspace is given). `saved`: a profile
+    already in the library, which may predate the channel type (issue #85); a draft must have one."""
     if not isinstance(profile, dict):
         return [Problem("profile", "The profile must be one JSON object.", "Write it as one object.")]
     out: list[Problem] = []
@@ -224,7 +267,7 @@ def check(profile: object, *, workspace: Path | None = None) -> list[Problem]:
 
     kind = profile.get("kind")
     if kind == "channel":
-        _check_channel(profile, workspace, bad)
+        _check_channel(profile, workspace, bad, type_required=not saved)
         return out
     if profile.get("schema") != SCHEMA:
         bad("schema", f"The schema is {profile.get('schema')!r}.", f"Set it to {SCHEMA!r}.")
@@ -526,7 +569,7 @@ def _channels_gap(run: RunFolder, *, confirmed: bool) -> str | None:
         skipped: list[str] = []
         try:
             profile = latest(workspace, slug, kind="channel", skipped=skipped)
-            problems = check(profile, workspace=workspace) if profile is not None else []
+            problems = check(profile, workspace=workspace, saved=True) if profile is not None else []
         except ValueError as exc:
             gaps.append(f"the saved profiles of the channel {slug} can be read ({exc})")
             continue

@@ -74,7 +74,7 @@ def _channel(name: str, films: str, topic: str, platforms: list[str], role: str)
         "voice": {"narrator_elevenlabs_id": None, "host_description": None, "host_image": None},
         "music": {"folder": None, "index": None},
         "assumptions": ["fictional channel of the dry-run scenario", "owned by the store, not branded"],
-        "confirmed": None,
+        "confirmed": None, "type": "shop_product", "type_note": None,
     }
 
 

@@ -56,7 +56,8 @@ organic page`, `tm organic decisions`, `tm page await`: OV12).
 
 - C1: 4 to 6 proposals per page (`proposals.min`, `proposals.max`).
 - OV2: four lists, hooks, topics, formats, sounds; search in the audience language and English;
-  the evidence of the top `research.cards` (12) trends; recent within `research.recent_days` (7).
+  the evidence of `research.cards` (12) trends, split by the channel type; recent within
+  `research.recent_days` (7); a hook or format fits the channel at 3 of 5 or more.
 - OV3: Recreate needs at least 2 evidence videos with the same structure; a style spec is read
   from at least 2 evidence videos.
 - OV4: the nine risk items; no percentages.
@@ -101,6 +102,7 @@ The agent may not skip them. The config changes only thresholds and defaults, no
 - A topic's relevance needs an anchor term next to the activity term, to avoid shared-word noise: the subjects the channel covers, from its profile, not only the niche's own words.
 - Hooks and formats get no word filter (they say how a video opens and is told, not what it is about): each gets a fit score for this channel, can it carry what the channel films and how it tells it, shown on the shortlist with one line on why (issue #84).
 - Sounds need a niche-relevance score from their description and the evidence captions.
+- The channel's type (its profile) sets how many trends of each kind are pulled, out of 12 (a news channel 6 topics, a music channel 6 sounds). A trend with a weak fit never takes a place just to keep the split: its places go to the type's leading kind. At least half of the proposals are built on that kind, and the proposals page says why it leads (issue #85).
 - Never write "no trend found"; show the best fit.
 - Transfer across language or subject is a hypothesis. It lowers expected reach, not feasibility, and the proposal says so.
 - Skip trends already used on the channel (used-trends log). Continue running series.

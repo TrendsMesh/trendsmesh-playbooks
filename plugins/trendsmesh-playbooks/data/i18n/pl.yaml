@@ -85,6 +85,16 @@ strings:
       cost: Koszt
       facts: "Fakty do potwierdzenia źródłem:"
       trends_behind: Trendy, na których to stoi
+      lead_news_explainers: Kanał z newsami i wyjaśnieniami, więc najpierw tematy.
+      lead_howto_education: Kanał z poradami i nauką, więc najpierw tematy.
+      lead_entertainment_skits: Kanał rozrywkowy ze skeczami, więc najpierw hooki.
+      lead_music_dance: Kanał z muzyką i tańcem, więc najpierw dźwięki.
+      lead_lifestyle_vlog: Kanał lifestyle'owy i vlog, więc najpierw formaty.
+      lead_shop_product: Kanał sklepu i produktów, więc najpierw formaty.
+      lead_other_hooks: W tym wyszukiwaniu najlepiej pasują do kanału hooki, więc idą pierwsze.
+      lead_other_topics: W tym wyszukiwaniu najlepiej pasują do kanału tematy, więc idą pierwsze.
+      lead_other_formats: W tym wyszukiwaniu najlepiej pasują do kanału formaty, więc idą pierwsze.
+      lead_other_sounds: W tym wyszukiwaniu najlepiej pasują do kanału dźwięki, więc idą pierwsze.
       creators: twórców
       videos: filmów
       views: wyświetleń

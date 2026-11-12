@@ -319,6 +319,46 @@ def _not_found(node: object, where: str, out: list[Problem]) -> None:
             _not_found(v, f"{where}[{i}]", out)
 
 
+LIST_KINDS = {"hooks": "hook_trend", "topics": "topic_trend", "formats": "format_trend", "sounds": "sound_trend"}
+
+
+def leading_of(run: RunFolder, profile: dict | None) -> tuple[str, str] | None:
+    """(the channel's type, the kind of trend its proposals lead with) from its profile (issue #85); for
+    `other`, the kind the latest shortlist's split led with. None for a profile saved before channel types,
+    or an `other` channel whose shortlist has no split yet."""
+    kind = (profile or {}).get("type")
+    if kind not in brand.CHANNEL_TYPES:
+        return None
+    lead = brand.leading_kind(kind)
+    if lead is None:
+        data = organic_research._shortlist(run)[1] or {}
+        lead = (data.get("split") or {}).get("leading") if isinstance(data.get("split"), dict) else None
+    return (kind, lead) if lead in LIST_KINDS else None
+
+
+def _leading(run: RunFolder, proposals: list, by_channel: dict[str, str | None], kinds: dict[str, set],
+             profiles: dict[str, dict | None], out: list[Problem]) -> None:
+    """C1 (issue #85): at least half of a channel's proposals are built on its type's leading kind, when the
+    shortlist's cards (`pulls`) hold a trend of that kind to build on."""
+    data = organic_research._shortlist(run)[1] or {}
+    pulled = {r.get("label") for r in data.get("pulls") or [] if isinstance(r, dict)}
+    for slug, profile in profiles.items():
+        led = leading_of(run, profile)
+        if led is None:
+            continue
+        kind_type, lead = led
+        if lead[:-1] not in pulled:                     # "topics" -> "topic": nothing of that kind fits
+            continue
+        mine = [p for p in proposals if by_channel.get(p["id"]) == slug]
+        built = [p for p in mine if LIST_KINDS[lead] in kinds.get(p["id"], set())]
+        need = (len(mine) + 1) // 2
+        if len(built) < need:
+            out.append(Problem("proposals", f"{len(built)} of the {len(mine)} proposals for {slug} are built on "
+                                            f"{lead}, and its type ({kind_type}) leads with {lead}.",
+                               f"Build at least {need} of them on the shortlist's {lead} (its cards B3 pulled), "
+                               "each with that trend among its trends."))
+
+
 def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
     """Everything wrong in a proposals file (the module docstring and the plan's Task 6); empty when it
     holds. Reads only."""
@@ -365,9 +405,12 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
     profiles: dict[str, dict | None] = {}
     used: dict[str, dict[str, dict]] = {}
     started = organic_state.get("started") if isinstance(organic_state.get("started"), dict) else {}
+    by_channel: dict[str, str | None] = {}
+    kinds: dict[str, set] = {}
     for p in proposals:
         pid = p["id"]
         slug = run_channel(p["channel"], data, channels)
+        by_channel[pid] = slug
         if slug is None:
             out.append(Problem(f"{pid}.channel", f"{_name(p)} is for {p['channel']!r}, which is not one of this run's "
                                                  f"channels ({', '.join(channels) or 'none'}).",
@@ -381,6 +424,7 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
                 out.append(Problem(f"{pid}.channel", f"The channel {slug}'s library cannot be read: {_plain(exc)}.",
                                    "Fix the file it names, then check again."))
         found = _trends(run, p, pid, out)
+        kinds[pid] = {(organic_research.card(run, tid)[0] or {}).get("kind") for tid in found}
         _blank(p, pid, out)
         _approach(p, pid, found, out)
         _risk(p, pid, out)
@@ -391,6 +435,7 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
             own = (started.get(idea_key(p)) or {}).get("run")
             _used(p, pid, found, used.get(slug) or {}, own, out)
         _seed(p, pid, found, seed, out)
+    _leading(run, proposals, by_channel, kinds, profiles, out)
     _not_found(data, "", out)
     return out
 

@@ -750,6 +750,77 @@ def organic_words(scored: dict) -> None:
             r["reason"] = hook_reason(r)
 
 
+# ---------------------------------------------------------------------------- the channel type's split (issue #85)
+#
+# `split` (organic_research.channel_split): `{"types": {channel: type | None}, "places": {hooks, topics,
+# formats, sounds: n}, "leading": kind | None, "cards": n}`. B3 pulls the cards of `pulls`: each kind's best
+# trends up to its places, never a weak one; a kind's empty places go to the leading kind (for "other", the
+# kind with the most fitting trends left), then to the others, most places first. Places nothing fits stay
+# empty. Only when no trend fits at all are the leading kind's best weak ones pulled (never "no trend found").
+
+LISTS = ("hooks", "topics", "formats", "sounds")
+WEAK_FLAGS = ("weak fit (no term match)", WEAK_FIT, WEAK_SOUND)
+
+
+def weak(row: dict) -> bool:
+    """A row that fits the channel weakly: a topic filled in without a term match, a hook or format whose fit
+    is under MIN_FIT, a sound with no niche relevance."""
+    return any(f in WEAK_FLAGS for f in row.get("flags") or [])
+
+
+def pulls(scored: dict, split: dict) -> dict:
+    """`{"places", "leading", "rows": [{id, name, label}], "moved": {kind: n}, "empty": n, "weak_only": bool}`."""
+    places = split["places"]
+    strong = {k: [r for r in scored[k] if not weak(r)] for k in LISTS}
+    take = {k: strong[k][:places[k]] for k in LISTS}
+    spare = sum(places[k] - len(take[k]) for k in LISTS)
+    moved = {k: places[k] - len(take[k]) for k in LISTS if places[k] > len(take[k])}
+    leading = split.get("leading") or max(LISTS, key=lambda k: (len(strong[k]) - len(take[k]), places[k],
+                                                                 -LISTS.index(k)))
+    order = [leading] + sorted((k for k in LISTS if k != leading), key=lambda k: (-places[k], LISTS.index(k)))
+    for k in order:
+        more = strong[k][len(take[k]):len(take[k]) + spare]
+        take[k] += more
+        spare -= len(more)
+    weak_only = not any(take.values())
+    if weak_only:                                      # nothing fits: the leading kind's best, marked weak
+        take[leading] = scored[leading][:sum(places.values())]
+        spare = sum(places.values()) - len(take[leading])
+    rows = [{"id": r["id"], "name": r["name"], "label": r["label"]} for k in order for r in take[k]]
+    return {"places": places, "leading": leading, "rows": rows, "moved": moved, "empty": spare,
+            "weak_only": weak_only}
+
+
+def pulls_md(split: dict, pulled: dict) -> str:
+    """The page's "Cards B3 pulls" section: the channel type, its split, where the empty places went."""
+    words = {"hooks": "hooks", "topics": "topics", "formats": "formats", "sounds": "sounds"}
+    types = ", ".join(f"{c}: {i18n.t(f'trends.shortlist.type_{t}') if t else i18n.t('trends.shortlist.no_type')}"
+                      for c, t in split["types"].items()) or i18n.t("trends.shortlist.no_type")
+    places = ", ".join(f"{pulled['places'][k]} {words[k]}" for k in LISTS)
+    lines = ["## Cards B3 pulls", "", f"Channel type: {types}. Out of {split['cards']}: {places}; "
+             f"{words[pulled['leading']]} lead.", ""]
+    if pulled["moved"]:
+        lines.append("Places with no fitting trend went to the leading kind first: " + ", ".join(
+            f"{n} {words[k]}" for k, n in pulled["moved"].items()) + (
+            f"; {pulled['empty']} stay empty (no fitting trend left)" if pulled["empty"] else "") + ".")
+    if pulled["weak_only"]:
+        lines.append("No trend fits this channel well: the best weak ones are pulled, marked weak.")
+    lines += [""] + [f"{i}. `{r['id'][:8]}` {md_escape(r['name'])} ({r['label']})"
+                     for i, r in enumerate(pulled["rows"], 1)] + [""]
+    return "\n".join(lines)
+
+
+def ordered_md(md: str, order: list[str]) -> str:
+    """The page with its four lists in `order` (the leading kind first), the header and the footer kept."""
+    marks = {k: f"\n## Best-fitting {k}\n" for k in LISTS}
+    starts = sorted((md.index(marks[k]), k) for k in LISTS)
+    foot = md.index("\nScores are 0-100")
+    head, chunks = md[:starts[0][0]], {}
+    for i, (at, k) in enumerate(starts):
+        chunks[k] = md[at:starts[i + 1][0] if i + 1 < len(starts) else foot]
+    return head + "".join(chunks[k] for k in order) + md[foot:]
+
+
 def filters_md(payload: dict, dropped: list[dict], *, anchors: list[str], sound_terms: list[str] | None,
                recent_days: int | None) -> str:
     """The Markdown the plugin's filters add below the original page: one line per filter given."""
@@ -866,7 +937,7 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
               today: date | None = None, top: int = 10, min_topics: int = 3,
               sounds_commercial_only: bool = False, anchors: list[str] = (), sound_fit: bool = False,
               recent_days: int | None = None, organic: bool = False, fit: dict | None = None,
-              fit_file: str | None = None) -> dict:
+              fit_file: str | None = None, split: dict | None = None) -> dict:
     """Score `inputs` and write 03_wip/trend_shortlist_vNN.json and .md (the same NN, never over an
     earlier one). Returns the counts, the two files (run-relative) and the files skipped.
 
@@ -877,7 +948,8 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
     `organic` (an organic video run, issue #84): hooks and formats are ranked by the agent's `fit` for the
     channel (`apply_fit`; `fit_file` names it), every hook and format to score is in the payload's
     `fit_candidates`, and the page speaks of organic videos, not ads. ValueError for fit scores that do not
-    hold (`check_fit`), before anything is written."""
+    hold (`check_fit`), before anything is written. `split` (issue #85, the channel type's): the payload's
+    `split` and `pulls` (the cards B3 pulls, `pulls`), and the page's lists in its order, the leading kind first."""
     today = today or date.today()
     market = market.lower()
     anchors = list(anchors)
@@ -918,6 +990,16 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
     payload, md = build(scored, meta, top, notes)
     if organic:
         payload["fit_candidates"] = fit_candidates(pool)
+    if organic and split:
+        pulled = pulls(scored, split)
+        payload["split"] = {**split, "leading": pulled["leading"], "moved": pulled["moved"], "empty": pulled["empty"],
+                            "weak_only": pulled["weak_only"]}
+        payload["pulls"] = pulled["rows"]
+        order = [pulled["leading"]] + sorted((k for k in LISTS if k != pulled["leading"]),
+                                             key=lambda k: (-split["places"][k], LISTS.index(k)))
+        md = ordered_md(md, order)
+        at = md.index("\n## Best-fitting ")
+        md = md[:at] + "\n" + pulls_md(split, pulled) + md[at:]
     if anchors:
         payload["anchor_dropped"] = [{"id": r["id"], "name": r["name"], "label": r["label"], "reason": r["reason"]}
                                      for r in dropped]
@@ -939,7 +1021,8 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
             "sounds": len(scored["sounds"]), "dropped": scored["dropped"],
             "skipped": [_shown(run, f) for f in skipped],
             **({"anchor_dropped": len(dropped)} if anchors else {}),
-            **({"fit_scored": bool(fit), "fit_candidates": len(payload["fit_candidates"])} if organic else {})}
+            **({"fit_scored": bool(fit), "fit_candidates": len(payload["fit_candidates"])} if organic else {}),
+            **({"pulls": len(payload["pulls"]), "leading": payload["split"]["leading"]} if "pulls" in payload else {})}
 
 
 def _shown(run: RunFolder, path: Path) -> str:
@@ -1021,11 +1104,15 @@ def run_shortlist(args: argparse.Namespace) -> int:
                                  "channel); Trend research ranks its hooks with tm research hook-fit.")
             path = run.given(args.fit)
             fit, fit_file = json.loads(path.read_text(encoding="utf-8")), _shown(run, path)
+        split = None
+        if organic:
+            from tm import organic_research        # it imports this module
+            split = organic_research.channel_split(run)
         out = write(run, inputs, terms, exclude=_terms(args.exclude_terms), market=market,
                         today=today, top=args.top, min_topics=args.min_topics,
                         sounds_commercial_only=args.sounds_commercial_only, anchors=_terms(args.anchor_terms),
                         sound_fit=args.sound_relevance, recent_days=args.recent_days, organic=organic,
-                        fit=fit, fit_file=fit_file)
+                        fit=fit, fit_file=fit_file, split=split)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return cli.fail(args, str(exc))
     skipped = f" Skipped (not readable JSON): {', '.join(out['skipped'])}." if out["skipped"] else ""

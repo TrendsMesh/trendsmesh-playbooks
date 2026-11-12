@@ -122,6 +122,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   ad wording, and a trend whose videos aren't pulled yet says "evidence videos not pulled yet" instead of "no
   evidence in the last 7 days".
 
+- **Organic AI video picks trends by the channel's type.** The channel profile now has a type (news and explainers,
+  how-to and education, entertainment and skits, music and dance, lifestyle and vlog, shop and product, or other in
+  your own sentence), proposed from the channel's videos and confirmed by you. It sets how many trends of each kind
+  are pulled, out of 12: a news channel gets 6 topics, a music channel 6 sounds, instead of 3 of each for every
+  channel. A trend that doesn't fit the channel never takes a place; its place goes to the type's leading kind. At
+  least half of the proposals are built on that kind, and the proposals page says why ("A news and explainer channel,
+  so topics come first."). A profile saved before keeps working, with 3 of each, until you give it a type.
+
 ## 0.12.0
 
 - **Creative brief's PDFs print when the run is given by a relative path.** `tm brief page --run <relative path>`

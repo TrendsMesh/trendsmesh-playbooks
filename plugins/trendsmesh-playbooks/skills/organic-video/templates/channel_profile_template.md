@@ -6,6 +6,7 @@ Source: the user's intake answers (<date>). Assumptions are marked (A) and confi
 - **Account type:** creator / business. Business accounts get a commercial-library alternative instead of trending sounds.
 - **Audience language:** <pl / en / …>, used for captions and speech. Pages follow the chat language.
 - **Topic and bubble:** what the channel films, about what (the search bubble).
+- **Channel type** (A, proposed from the channel's videos and what performed): News and explainers / How-to and education / Entertainment and skits / Music and dance / Lifestyle and vlog / Shop and product / Other (the user's one sentence about the channel). It sets how many trends of each kind are pulled: "A news channel, so topics come first."
 - **Audience:** who watches (A).
 - **Tone and style:** (A).
 - **What performed:** 2–3 links, or "none yet".

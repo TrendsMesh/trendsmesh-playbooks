@@ -69,6 +69,7 @@ PROFILE = {
                     "a children's niche: no real children's faces, sources for claims, "
                     "no medical claims"],
     "confirmed": None,
+    "type": "howto_education", "type_note": None,
 }
 
 

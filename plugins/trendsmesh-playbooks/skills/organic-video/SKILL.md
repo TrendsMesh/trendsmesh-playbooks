@@ -226,7 +226,8 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
 **Read `references/rules.md` before step B1**, and keep it in force to the end. In short: OV1 the
 channel profile first, one per channel, never the same video on two channels; OV2 the search in
 the channel's bubble, audience language and English, four lists (hooks, topics, formats, sounds),
-a niche anchor next to the activity term, sounds scored for relevance, used trends skipped and
+an anchor from the channel's subjects next to a topic's activity term, hooks and formats scored
+for fit, sounds for relevance, the cards split by the channel type, used trends skipped and
 series continued, never "no trend found"; OV3 Recreate (at least 2 evidence videos with the same
 structure, the look copied too) or Inspire (the weaker link said); OV4 the format decides the
 production type, risk named item by item with its mitigation, no percentages; OV5 the product

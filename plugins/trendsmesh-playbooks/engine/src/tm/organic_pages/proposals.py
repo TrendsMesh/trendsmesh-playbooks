@@ -53,8 +53,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import NamedTuple
 
-from tm import (checkins, i18n, manifest, organic_pages, organic_proposals, organic_research, page, state, stepchecks,
-                trends)
+from tm import (brand, checkins, config, i18n, manifest, organic_pages, organic_proposals, organic_research, page,
+                state, stepchecks, trend_spool, trends)
 from tm.organic_pages import CSS, Frag, levels as level_names, value as shown
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
@@ -215,6 +215,16 @@ JS = r"""
 # for the gates row, the "A–Z" mode and the risk words alone matched nothing on the page and are gone). Each is
 # the plugin's English (after `WORDING`) -> the same in the page language.
 _P = "organic.proposals."
+# Issue #85: the line on why a channel's proposals lead with one kind of trend, by its type (`other`: by the kind
+# the shortlist led with), in the page language.
+LEAD_KEYS = {"news_explainers": "organic.proposals.lead_news_explainers",
+             "howto_education": "organic.proposals.lead_howto_education",
+             "entertainment_skits": "organic.proposals.lead_entertainment_skits",
+             "music_dance": "organic.proposals.lead_music_dance", "lifestyle_vlog": "organic.proposals.lead_lifestyle_vlog",
+             "shop_product": "organic.proposals.lead_shop_product", "other_hooks": "organic.proposals.lead_other_hooks",
+             "other_topics": "organic.proposals.lead_other_topics",
+             "other_formats": "organic.proposals.lead_other_formats",
+             "other_sounds": "organic.proposals.lead_other_sounds"}
 FRAGS: list[Frag] = [
     Frag("§", _P + "risk_low"), Frag("§", _P + "risk_medium"), Frag("§", _P + "risk_high"),
     Frag(">§<", _P + "produce"), Frag(">§<", _P + "later"), Frag(">§<", _P + "skip"),
@@ -274,9 +284,10 @@ def localize(text: str, lang) -> str:
     return organic_pages.localize(text, lang, FRAGS + (lede_frags(int(found.group(1))) if found else []))
 
 
-def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = None) -> str:
+def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = None, leads=()) -> str:
     """The page in `lang` (else the language it is built in, `organic_pages.lang_of`): the original's `render`,
-    then `localize`. `trends_of(id)` gives a proposal trend's (card, videos); `thumb_of(video)` its thumbnail's src."""
+    then `localize`. `trends_of(id)` gives a proposal trend's (card, videos); `thumb_of(video)` its thumbnail's src.
+    `leads`: the lines on why each channel's proposals lead with one kind (`channel_leads`), already in `lang`."""
     tr = i18n.translator(lang or organic_pages.lang_of(data))
     levels = level_names(tr)
     chan = {c["id"]: c for c in data["channels"]}
@@ -289,7 +300,7 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
     out.append(f"""<header><div class="eyebrow">Organic AI video · proposals · {esc(data['date'])}</div>
 <h1>{esc(data['title'])}</h1>
 <p class="lede">{len(data['proposals'])} video ideas for {esc(data['store']['name'])} ({esc(data['store']['note'])}), each built on trends rising now, with the evidence videos behind it. Pick the ones to produce; nothing is generated or paid until you approve a pack and its cost.</p>
-<div class="chips"><span class="chip">Already made:</span>{''.join(f'<span class="chip">{esc(x)}</span>' for x in data.get('already_made', []))}</div>
+{''.join(f'<p class="hint">{esc(x)}</p>' for x in leads)}<div class="chips"><span class="chip">Already made:</span>{''.join(f'<span class="chip">{esc(x)}</span>' for x in data.get('already_made', []))}</div>
 </header>""")
 
     out.append("""<div class="bar" role="region" aria-label="Your decisions"><div class="sum" id="sum"></div>
@@ -421,6 +432,30 @@ def _asset(v: dict) -> str | None:
     return page.asset_name(f"{aid}.jpg") if isinstance(aid, str) and aid else None
 
 
+def channel_leads(run: RunFolder, data: dict, lang: str) -> list[str]:
+    """One line per channel of the page whose profile has a type (issue #85): why its proposals lead with one
+    kind, in `lang`; the channel's name before it when the page has several channels."""
+    try:
+        channels = config.load(run).get("channels") or []
+    except ValueError:
+        channels = []
+    tr = i18n.translator(lang)
+    workspace = trend_spool.workspace_of(run)
+    out = []
+    for c in data.get("channels") or []:
+        slug = organic_proposals.run_channel(c.get("id"), data, channels) if isinstance(c, dict) else None
+        try:
+            profile = brand.latest(workspace, slug, kind="channel") if slug else None
+        except ValueError:
+            profile = None
+        led = organic_proposals.leading_of(run, profile)
+        if led is None:
+            continue
+        line = tr(LEAD_KEYS[led[0] if led[0] in LEAD_KEYS else f"other_{led[1]}"])
+        out.append(f"{c.get('name')}: {line}" if len(data["channels"]) > 1 else line)
+    return out
+
+
 def build(run: RunFolder, file: Path | None = None) -> dict:
     """Build the page from the checked proposals into a new `04_final/proposals_vNN/` (index.html,
     assets/<asset_id>.jpg). Nothing is written while people decide on the page (`page.Deciding`),
@@ -446,7 +481,7 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
                 missing.append(str(v.get("asset_id") or v.get("url")))
         try:
             text = render(data, lambda tid: found[tid], lambda v: f"assets/{_asset(v)}" if _asset(v) in thumbs else "",
-                          level=level, lang=built.lang)
+                          level=level, lang=built.lang, leads=channel_leads(run, data, built.lang))
         except (KeyError, ValueError) as exc:   # the file's shape; anything else is the engine's, not the user's file
             raise Stop(f"{rel} is not in the page's shape ({type(exc).__name__}: {exc}); check it again (tm organic "
                        f"proposals check); {AGAIN}.") from None

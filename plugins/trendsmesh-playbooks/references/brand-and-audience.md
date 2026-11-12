@@ -62,13 +62,21 @@ A later run starts from the latest saved version (`tm brand show --name <channel
    "product_role": "not_shown", "content_rules": ["no real children's faces", "a source for every claim"],
    "voice": {"narrator_elevenlabs_id": null, "host_description": null, "host_image": null},
    "music": {"folder": null, "index": null}, "assumptions": ["the audience's age band"],
-   "confirmed": null}
+   "confirmed": null, "type": "howto_education", "type_note": null}
   ```
 
 - `context.films`, `topic` and `audience` are **the bubble** the trend search starts from (OV1):
   not the account type. `account_type` is `creator` or `business` (a business account gets a
   commercial-library alternative to trending sounds in every posting kit). `audience_language` is
   the captions' and the speech's; pages follow the chat language.
+- **The channel type** (`type`, issue #85), one of `news_explainers`, `howto_education`,
+  `entertainment_skits`, `music_dance`, `lifestyle_vlog`, `shop_product`, `other`: you propose it
+  from the channel's videos and what performed, and the user confirms it with the profile. It sets
+  how many trends of each kind organic video's research pulls (out of 12: a news channel 6 topics,
+  a music channel 6 sounds) and which kind the proposals lead with. `other` needs `type_note`, the
+  user's one sentence about the channel, which the trend fit is judged against. A profile saved
+  before the type existed still loads; propose a type at its reuse check-in, saved as a new version
+  on the user's yes (until then the research takes 3 of each kind).
 - **A store with several channels** (a brand's faceless channels): one profile per channel, each
   naming the store in `store`; the store's brand profile (above) holds the one catalogue they
   share, saved first. `product_role` is per channel, from `not_shown` to `hero` (OV5). A channel

@@ -26,6 +26,15 @@ trends:
     formats_note: A format is used only if the video can be made honestly.
     sounds_note: A trending sound is added in the app when you post, for organic videos only.
     not_pulled: Evidence videos not pulled yet (B3 pulls them)
+    # the channel types (issue #85: the channel profile's `type`)
+    type_news_explainers: News and explainers
+    type_howto_education: How-to and education
+    type_entertainment_skits: Entertainment and skits
+    type_music_dance: Music and dance
+    type_lifestyle_vlog: Lifestyle and vlog
+    type_shop_product: Shop and product
+    type_other: Other
+    no_type: no type in the profile yet (an even split)
 
 checks:
   # CB13 (Creative brief): words the creator view never says. Comma-separated; a translation lists the same
@@ -539,6 +548,17 @@ organic:
     cost: Cost
     facts: "Facts to source:"
     trends_behind: Trends behind it
+    # one line per channel on why its proposals lead with one kind of trend (issue #85: the channel profile's type)
+    lead_news_explainers: A news and explainer channel, so topics come first.
+    lead_howto_education: A how-to and education channel, so topics come first.
+    lead_entertainment_skits: An entertainment and skits channel, so hooks come first.
+    lead_music_dance: A music and dance channel, so sounds come first.
+    lead_lifestyle_vlog: A lifestyle and vlog channel, so formats come first.
+    lead_shop_product: A shop and product channel, so formats come first.
+    lead_other_hooks: Hooks fit this channel best in this search, so they come first.
+    lead_other_topics: Topics fit this channel best in this search, so they come first.
+    lead_other_formats: Formats fit this channel best in this search, so they come first.
+    lead_other_sounds: Sounds fit this channel best in this search, so they come first.
     creators: creators
     videos: videos
     views: views

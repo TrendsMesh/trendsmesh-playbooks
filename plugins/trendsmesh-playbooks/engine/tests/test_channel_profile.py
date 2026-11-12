@@ -307,6 +307,48 @@ def test_packshot_saved_once_per_store_never_overwrites(ws, capsys):
     assert sorted(p.name for p in first.parent.iterdir()) == ["cat-fountain_v01.png", "cat-fountain_v02.png"]
 
 
+# --- the channel type (issue #85) ---------------------------------------------------------------
+
+@pytest.mark.parametrize("kind", sorted(brand.CHANNEL_TYPES))
+def test_every_channel_type_is_accepted(kind):
+    note = "A channel of riddles read aloud over pictures." if kind == "other" else None
+    assert brand.check(_channel(type=kind, type_note=note)) == []
+
+
+def test_a_draft_needs_its_type_and_other_needs_one_sentence():
+    old = {k: v for k, v in _channel().items() if k not in ("type", "type_note")}
+    assert _fields(brand.check(old)) == ["type"]
+    assert _fields(brand.check(_channel(type="news"))) == ["type"]
+    assert _fields(brand.check(_channel(type="other", type_note=None))) == ["type_note"]
+    assert _fields(brand.check(_channel(type="other", type_note="Riddles. And songs."))) == ["type_note"]
+    assert _fields(brand.check(_channel(type_note=3))) == ["type_note"]
+    assert brand.check(old, saved=True) == []                    # saved before channel types: it still loads
+    assert _fields(brand.check(_channel(type="news"), saved=True)) == ["type"]
+
+
+def test_a_saved_profile_without_a_type_still_passes_a1_and_b1(ws):
+    """A profile saved before channel types (issue #85) is reused as it is: the step checks pass, and B3 uses
+    the even split until the user sets the type in a new version."""
+    run = _run(ws, channels=("exampleedu",))
+    old = {k: v for k, v in EXAMPLEEDU.items() if k not in ("type", "type_note")}
+    folder = ws / "library" / "channels" / "exampleedu"
+    folder.mkdir(parents=True)
+    (folder / "channel_v01.json").write_text(json.dumps(old), encoding="utf-8")
+    assert brand.channel_gap(run) is None
+    with pytest.raises(ValueError, match="type"):
+        brand.save(ws, old, run=None)                            # a new version needs the type
+
+
+def test_leading_kind():
+    assert brand.leading_kind("news_explainers") == "topics"
+    assert brand.leading_kind("music_dance") == "sounds"
+    assert brand.leading_kind("shop_product") == "formats"
+    assert brand.leading_kind("howto_education") == "topics"     # a tie goes to the first: topics before formats
+    assert brand.leading_kind("entertainment_skits") == "hooks"
+    assert brand.leading_kind("other") is None and brand.leading_kind(None) is None
+    assert all(sum(split.values()) == 12 for split in brand.CHANNEL_TYPES.values())
+
+
 # --- the A1 step check ----------------------------------------------------------------------
 
 def test_profile_written_reads_the_run_channels(ws):

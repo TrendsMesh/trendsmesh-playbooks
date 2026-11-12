@@ -47,7 +47,7 @@ def _used() -> set[str]:
     return (set(organic_pages.LEVELS.values()) | set(organic_pages.GATE_WORDS.values())
             | {k for _, k in organic_pages.WORDING} | {k for _, k in organic_pages.REFERENCE["pl"]}
             | _frag_keys(proposals.FRAGS) | _frag_keys(f for n in (1, 2, 5) for f in proposals.lede_frags(n))
-            | set(proposals._DECISION_KEYS.values()) | set(proposals._FIELD_KEYS.values())
+            | set(proposals._DECISION_KEYS.values()) | set(proposals._FIELD_KEYS.values()) | set(proposals.LEAD_KEYS.values())
             | _frag_keys(gate.FRAGS) | _week_keys(week.LABELS) | {f"organic.week.day_{d}" for d in week.DAYS}
             | {"organic.output"} | set(script.WORDS.values()) | set(organic_week_delivery.WORDS.values())
             | {f"organic.kit_md.{label}" for label in kit.LABELS} | _pack_md_keys() | _qa_keys()
@@ -149,6 +149,15 @@ def _pages(lang):
                for g in ("images", "video", "edit")},
             "week": week.page_html(_week(lang))[0], "script": script.page_html(_script(lang), "M1.md", md)[0],
             "script_md": md}
+
+
+def test_the_proposals_page_shows_the_lead_lines():
+    """Issue #85: the line on why a channel's proposals lead with one kind sits under the page's lede."""
+    text = proposals.render(_proposals("en"), _trends, lambda v: "", level="hands_off",
+                            leads=["A news & explainer channel, so topics come first."])
+    assert '<p class="hint">A news &amp; explainer channel, so topics come first.</p><div class="chips">' in text
+    assert proposals.render(_proposals("en"), _trends, lambda v: "", level="hands_off").count('<p class="hint">') == \
+        text.count('<p class="hint">') - 1
 
 
 # --- the table ------------------------------------------------------------------------------------------

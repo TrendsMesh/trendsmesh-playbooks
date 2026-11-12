@@ -24,7 +24,7 @@ import re
 from datetime import date
 from pathlib import Path
 
-from tm import brand, brief_research, config, library, manifest, organic_config, shortlist, state, trends
+from tm import brand, brief_research, config, library, manifest, organic_config, shortlist, state, trend_spool, trends
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
@@ -139,9 +139,59 @@ def shortlist_gap(run: RunFolder) -> str | None:
     return None
 
 
+EVEN = {"hooks": 3, "topics": 3, "formats": 3, "sounds": 3}   # no channel type yet: the old turn's share
+
+
+def _places(split: dict, n: int) -> dict:
+    """A 12-card split scaled to `n` cards, by the largest remainder (ties to the first kind)."""
+    total = sum(split.values()) or 1
+    exact = {k: split[k] * n / total for k in LISTS}
+    out = {k: int(exact[k]) for k in LISTS}
+    for k in sorted(LISTS, key=lambda k: (-(exact[k] - out[k]), LISTS.index(k)))[:n - sum(out.values())]:
+        out[k] += 1
+    return out
+
+
+def channel_split(run: RunFolder) -> dict:
+    """The run's channel type split for B3 (issue #85): `{"types": {channel: type | None}, "places": {kind: n},
+    "leading": kind | None, "cards": n}` for `research.cards` (12) cards. Several channels share the mean of
+    their types' splits; a profile saved before channel types counts as the even split (EVEN). `leading` is
+    the type's leading kind (`brand.leading_kind`), the one with most places for several, None for other."""
+    try:
+        cfg = config.load(run)
+    except ValueError:
+        cfg = {}
+    channels = [c for c in cfg.get("channels") or [] if isinstance(c, str) and c]
+    workspace = trend_spool.workspace_of(run)
+    types: dict[str, str | None] = {}
+    for slug in channels:
+        try:
+            profile = brand.latest(workspace, slug, kind="channel") or {}
+        except ValueError:
+            profile = {}
+        kind = profile.get("type")
+        types[slug] = kind if kind in brand.CHANNEL_TYPES else None
+    splits = [brand.CHANNEL_TYPES[t] if t else EVEN for t in types.values()] or [EVEN]
+    mean = {k: sum(s[k] for s in splits) / len(splits) for k in LISTS}
+    n = _cards_wanted(run)
+    places = _places(mean, n)
+    known = set(types.values())
+    if len(known) == 1:                  # one type (None: no type yet, other: the search decides, as for other)
+        leading = brand.leading_kind(next(iter(known)))
+    elif known:                          # several channels of different types: the kind with the most places
+        leading = max(LISTS, key=lambda k: (places[k], -LISTS.index(k)))
+    else:
+        leading = None
+    return {"types": types, "places": places, "leading": leading, "cards": n}
+
+
 def top_trends(data: dict, n: int) -> list[dict]:
-    """The shortlist's first `n` distinct trends, its lists taken in turn (hooks, topics, formats,
-    sounds: the first of each, then the second ...), as `{id, name, label}`."""
+    """The trends B3 pulls: the shortlist's `pulls` (issue #85: the channel type's split, no weak trend in a
+    place), else, in a shortlist written before them, its first `n` distinct trends, its lists taken in turn
+    (hooks, topics, formats, sounds: the first of each, then the second ...), as `{id, name, label}`."""
+    if isinstance(data.get("pulls"), list):
+        rows = [r for r in data["pulls"] if isinstance(r, dict) and r.get("id")]
+        return [{"id": r["id"], "name": r.get("name"), "label": r.get("label")} for r in rows][:n]
     lists = [[r for r in data.get(k) or [] if isinstance(r, dict) and r.get("id")] for k in LISTS]
     out: dict[str, dict] = {}
     for i in range(max(map(len, lists), default=0)):

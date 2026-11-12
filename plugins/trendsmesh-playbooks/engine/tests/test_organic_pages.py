@@ -133,6 +133,9 @@ def test_proposals_page_matches_original_after_wording_table(tmp_path, capsys):
     assert [f["as"] for f in out["files"]] == ["index.html"]               # no thumbnail could be had
     assert len(out["missing_thumbnails"]) == 20 and "20 thumbnails could not be had" in out["message"]
     built = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
+    lead = '<p class="hint">Kanał z poradami i nauką, więc najpierw tematy.</p>'   # issue #85: the profile's type
+    assert built.count(lead) == 1
+    built = built.replace(lead, "")
     golden = GOLDEN.read_text(encoding="utf-8").replace("\r", "")
     worded = organic_pages.worded(golden, "pl")
     assert worded != golden                                                # the table changes the original's words

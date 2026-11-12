@@ -89,6 +89,8 @@ proposals page's decisions and renamed `2026-11-07_exampleedu-m5`; its price fil
   ov_at_c2_published  the page v01 built, published as art_mock_3 and awaited; at the proposals check-in
   ov_at_c2_no_artifacts  the stack without artifacts tools; the page v01 built locally; run at C2
   ov_no_replicate  English pages, the stack without Replicate and artifacts tools; run at C1
+  ov_at_profile  English pages, the profile v01 drafted and saved (its type how-to and education); at the
+                 profile check-in
   ov_at_b2       English pages, the walkthrough's 17 searches saved (B1 done); run at B2 (the shortlist and its fit)
   ov_week_at_i2  a week run (Just the big calls, $5 a week): a made-up week plan with the plugin blocks, dated the
                  coming week, the reserve r2 priced $3.26, checked, its page built, published as art_mock_5 and
@@ -1129,7 +1131,7 @@ OV_PROFILE = {
                     "warm, calm, down to earth; never alarmist",
                     "a children's niche that needs care: no identifiable children, a source for every claim, "
                     "no health claims"],
-    "confirmed": None,
+    "confirmed": None, "type": "howto_education", "type_note": None,
 }
 # B2: the bubble's terms and its niche anchors (FLOWS B, lesson 2), in Polish and English
 OV_TERMS = "kids,children,parents,parenting,games,gaming,screen time,school,homework,dzieci,rodzice,gry"
@@ -1638,6 +1640,9 @@ def ov_week_i2(ws: Path, run: Path) -> None:
 def ov_main(scn: str, ws: Path) -> tuple[Path | None, dict | None]:
     if scn == "ov_at_a1":
         return None, None
+    if scn == "ov_at_profile":
+        run = ov_run(ws, "every_step", ["proposals"], chat="en")
+        return run, ov_drive(ws, run, "B1", stop_checkin="profile")
     if scn == "ov_at_b2":
         run = ov_run(ws, "every_step", ["proposals"], chat="en")
         return run, ov_drive(ws, run, "B2")

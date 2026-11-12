@@ -34,9 +34,12 @@ needs `tm decide <id> <choice> --change --run R`.
 latest saved profile (`tm brand show --name <channel> --kind channel --json`): **where it comes
 from first**, the run it was saved from and that run's date (`saved_from`, said in `message`; "saved
 without a run" when there is none), so the user can tell whether it is still theirs and current;
-then the channel, its platforms, account type, audience language, bubble, product role, content
-rules, and the date the user confirmed it. Ask: "Use this profile as it is, or update it?" Choices: `reuse` (A1 is
-skipped) or `new` (A1 drafts a new version). The engine refuses `reuse` unless every channel of
+then the channel, its platforms, account type, audience language, bubble, channel type, product role,
+content rules, and the date the user confirmed it. Ask: "Use this profile as it is, or update it?" Choices: `reuse` (A1 is
+skipped) or `new` (A1 drafts a new version). **A profile saved before channel types has none**: say
+so, propose one from the channel's videos and what performed ("Channel type: none yet; I'd say News
+and explainers"), and ask; a yes is `new` (A1 saves a version with it), and a `reuse` without it
+takes 3 trends of each kind. The engine refuses `reuse` unless every channel of
 the run has a saved profile the user confirmed. **When a channel has no saved profile**, there is
 nothing to reuse: say so in one line ("No saved profile for <channel> yet: I'll draft one from
 your answers") and record `tm decide reuse_profile new --run R --note "no saved profile for
@@ -46,7 +49,9 @@ your answers") and record `tm decide reuse_profile new --run R --note "no saved 
 always the user's). One card per channel, in the template's fields
 (`templates/channel_profile_template.md`): channel and platforms, account type (a business
 account gets a commercial-library alternative to trending sounds), audience language (the run's market language:
-captions and speech; pages follow the working language), the topic and bubble, the audience, tone and style,
+captions and speech; pages follow the working language), the topic and bubble, the channel type (A: proposed
+from the channel's videos and what performed; it sets how many trends of each kind are pulled), the audience,
+tone and style,
 what performed, the products or "nothing sold", the product role, the output, the quality tier and
 resolution, the level, the budget, the tools the stack check found, and the content rules for a
 sensitive niche. **Each assumption is marked** (A), and the question is "Anything to correct?" A

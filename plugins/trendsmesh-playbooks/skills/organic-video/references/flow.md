@@ -159,6 +159,11 @@ The profile (OV1, `channel/1`, `../../references/brand-and-audience.md`, "Channe
    profile per channel sharing one catalogue: the store's brand profile (`brand/1` with
    `catalog.products`) is saved first (`tm brand check`, `tm brand save`), and each channel names
    it in `store`. A channel that sells nothing has `store: null` and its videos show no product.
+   **The channel type** (`type`, issue #85): propose it from the channel's videos and what
+   performed, one of `news_explainers`, `howto_education`, `entertainment_skits`, `music_dance`,
+   `lifestyle_vlog`, `shop_product` or `other` (then `type_note`: the user's one sentence about the
+   channel), marked as an assumption until the user confirms it. It sets B3's split and the kind
+   C1 leads with; changed on the profile (a new version), the next trend search uses the new split.
    In a run of several channels, a channel whose confirmed profile still holds is saved again as it
    is: a new version may carry the date its saved profile already has.
 2. `tm brand check --run R --file 03_wip/channel_<slug>_v01.json --json` (exit 2 lists what to
@@ -256,9 +261,13 @@ at each part and every few calls, which part is running and how many are done ("
 <a id="b3"></a>
 ## B3 Cards and evidence
 
-1. **The top of the shortlist:** for the first `research.cards` (12) trends, the lists taken in
-   turn (the first hook, the first topic, the first format, the first sound, then the second ...):
-   `get_trend` (the card) and `get_trend_videos` (order views, limit 20) for each. The collector
+1. **The cards the shortlist names** (its JSON's `pulls`, the "Cards B3 pulls" section): the
+   channel type's split of `research.cards` (12), for example a news channel 2 hooks, 6 topics,
+   3 formats, 1 sound, a music channel 6 sounds (`brand.CHANNEL_TYPES`). A trend that fits the
+   channel weakly never takes a place: a kind with nothing that fits gives its places to the type's
+   leading kind (for `other`, the kind that fits best in this search), and places nothing fits stay
+   empty. A profile saved before channel types takes 3 of each kind. For each:
+   `get_trend` (the card) and `get_trend_videos` (order views, limit 20). The collector
    saves each. After the first video page, `tm trends check-fields --run R --json`: exit 2 names
    fields the answers lack (a thumbnail, a link); tell the user and the TrendsMesh team, and go on.
 2. **A seeded run:** `get_trend` for the seed's trend too, then `tm organic seed-check --run R
@@ -276,8 +285,10 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    videos (creator, views, date, hook text, caption excerpt), each with its index. A proposal's
    `pick` is that index, never a number you count yourself. Read the hooks: they appear on screen
    from the first frame (lesson 5).
-2. **4 to 6 proposals** (`proposals.min`, `proposals.max`), each with a different production type
-   where possible, written as `03_wip/proposals_v01.json` in the handoff's schema
+2. **4 to 6 proposals** (`proposals.min`, `proposals.max`), **at least half of them built on the
+   channel type's leading kind** (topics for a news channel, sounds for a music one: a trend of
+   that kind among each one's trends; the check asks it when B3 pulled one), each with a different
+   production type where possible, written as `03_wip/proposals_v01.json` in the handoff's schema
    (`engine/src/tm/schemas/pb3_proposals.schema.json` in the plugin), **in the page language** (`lang`:
    the config's `languages.working`), with:
    - the approach: **Recreate** (the whole video type with its look; it needs two evidence videos
@@ -312,7 +323,9 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
 
 1. `tm organic page proposals --run R --json` builds `04_final/proposals_vNN/` (index.html and
    the evidence thumbnails in `assets/`) from the checked proposals, in the page language, with
-   the run's level ticked first. Per idea the page asks produce / maybe later / skip, the output, how
+   the run's level ticked first, and a line under its lede on why the channel's proposals lead
+   with one kind ("A news and explainer channel, so topics come first."; none for a profile
+   without a type). Per idea the page asks produce / maybe later / skip, the output, how
    involved (the three levels), the platforms, the taste answers and a note, with a sticky bar
    and "Copy summary".
 2. **Publish it** (`../../references/pages.md`, "Pages that take decisions"): `tm page files
