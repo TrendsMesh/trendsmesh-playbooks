@@ -893,17 +893,18 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   from the test's post?" On a no: `tm live-test move decline --run R --note "<their words>"`,
   nothing is created. On a yes:
   - Read from Meta and save in `05_results/`: the original ad, its ad set and campaign (ids,
-    names, the ad set's targeting, placements, optimisation and bid strategy, and whether the
-    campaign holds the budget), and the winning test ad with its post
+    names, the ad set's targeting, placements, optimisation event, bid strategy and daily
+    budget, and whether the campaign holds the budget), and the winning test ad with its post
     (`effective_object_story_id`).
   - Write `05_results/move_proposal_vNN.json`: `{"ad_account_id", "original": {"ad_id",
     "ad_name", "adset_id", "adset_name", "campaign_id", "campaign_name", "saved"}, "winner":
     {"key", "ad_id", "post_id", "saved"}, "adset": {"campaign_id" (the original's),
     "settings_from" (the original's ad set: its targeting, placements, optimisation and bid
     strategy are copied), "name", "budget"}, "ad": {"name", "post_id" (the winner's)}, "status":
-    "PAUSED"}`. `budget`: `{"campaign_budget": true}` when the campaign holds the budget;
-    otherwise `{"amount", "cadence", "currency", "said"}` from the user's own answer, never
-    inferred. `tm live-test move check --run R --file <it>`: its answer is the card (the
+    "PAUSED"}`. `budget`: `{"campaign_budget": true}` when the campaign holds the budget (the
+    ad set gets none); otherwise a daily budget the user names at the yes, `{"amount", "cadence":
+    "daily", "currency", "said"}`, never inferred, asked with the original ad set's daily budget
+    shown for reference (`original.adset_budget`). `tm live-test move check --run R --file <it>`: its answer is the card (the
     proposal in full, the post, the own ad set, the paused note). **A new ad set, never the
     original's**: an ad added there would restart its learning.
   - Show the card and ask for the go-ahead (a yes the user already gave to this move, in their own
@@ -918,7 +919,9 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
     that is not paused is a stop (pause it now, then record again).
   - **The user's part** goes at the end of the final report, step by step, from `tm live-test
     move report --run R` (in the run's working language): switch the new ad set and its ad on,
-    move the budget, switch the original off. Nothing in this run does any of the three.
+    move the budget, switch the original off. Under a campaign budget the plan says that switching
+    the new ad set on lets Meta move budget away from the original at once, and suggests ad set
+    spend limits for a gradual move. Nothing in this run does any of the three.
 - R5 closes the run: one row per variant, `tm library add --run R --row <file>`, the row with
   account, product, market, diagnosis, trend {id, type, status_on_test_day}, change {layer,
   method}, decision_metric, result_vs_control, events, decision and a distinct `variant`. In a

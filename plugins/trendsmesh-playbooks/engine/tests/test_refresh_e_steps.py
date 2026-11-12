@@ -165,7 +165,9 @@ def test_g12_moves_the_winner_paused_in_a_new_ad_set_and_never_activates():
                  "`tm live-test move record", "`tm live-test move decline", "A new ad set, never the original's",
                  "restart its learning", "from the post", "Never call `ads_activate_entity`",
                  "never pause, edit or move the original", "`ads_get_ad_preview`", "`tm live-test move report",
-                 "switch the new ad set and its ad on", "move the budget", "switch the original off"):
+                 "switch the new ad set and its ad on", "move the budget", "switch the original off",
+                 "the ad set gets none", "a daily budget the user names at the yes", "never inferred",
+                 "shown for reference", "move budget away from the original at once", "spend limits"):
         assert part in e4, part
     cards = _text(SKILL / "references" / "checkin-cards.md")
     g12 = cards[cards.index("| G12 | Act"):]

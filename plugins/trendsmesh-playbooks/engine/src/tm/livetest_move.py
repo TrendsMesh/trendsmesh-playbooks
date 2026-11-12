@@ -15,7 +15,8 @@ report (`report`).
 
 `check` refuses a proposal that is not after G12 `scale`, that rests on Meta answers it did not save, whose ad set is
 not new or not in the original's campaign, whose ad is not the test ad's post, whose names read like "Ad set 1", whose
-ad set budget has no words from the user, or whose status is not PAUSED. `approve` marks the user's yes on the checked
+ad set budget is not the owner's rule (none under a campaign budget; otherwise a daily budget the user names, never
+inferred, the original ad set's shown for reference), or whose status is not PAUSED. `approve` marks the user's yes on the checked
 proposal; `record` refuses without it. **An object that is not paused is a stop**: pause it now.
 """
 
@@ -34,7 +35,6 @@ PROPOSAL, OBJECTS = "move_proposal", "move_objects"
 KEY_PROPOSAL, KEY_YES, KEY_OBJECTS, KEY_NO = ("live_test_move_proposal", "live_test_move_yes",
                                               "live_test_move_record", "live_test_move_no")
 PAUSED = "PAUSED"
-CADENCES = ("daily", "lifetime")
 AREA = "refresh"
 
 
@@ -106,7 +106,7 @@ def check_proposal(run: RunFolder, data: dict) -> list[Problem]:
         out.append(Problem("adset.settings_from", "The new ad set copies the targeting, placements, optimisation "
                            "and bid strategy of the original's ad set; the proposal does not name it.",
                            "Write the original's ad set id in settings_from."))
-    out.extend(_budget_problems(adset.get("budget")))
+    out.extend(_budget_problems(adset.get("budget"), original))
     if not create_copy.readable(adset.get("name")):
         out.append(Problem("adset.name", f"The ad set name {adset.get('name')!r} does not say what it is.",
                            "Name it by product, the change that won and the test."))
@@ -122,19 +122,27 @@ def check_proposal(run: RunFolder, data: dict) -> list[Problem]:
     return out
 
 
-def _budget_problems(money: object) -> list[Problem]:
-    """The new ad set's budget (pending the owner's rule, issue #64): none when the campaign holds the budget (CBO);
-    otherwise the amount, the cadence, the currency and the user's own words, never inferred."""
+def _budget_problems(money: object, original: dict) -> list[Problem]:
+    """The new ad set's budget (the owner's rule, issue #64): none when the campaign holds the budget (CBO);
+    otherwise a daily budget the user names at the yes (amount, currency, their words), never inferred, with the
+    original ad set's daily budget read from Meta and shown for reference."""
     money = money if isinstance(money, dict) else {}
     if money.get("campaign_budget") is True:
+        if set(money) - {"campaign_budget"}:
+            return [Problem("adset.budget", "Under a campaign budget the new ad set gets no budget of its own.",
+                            "Write only {\"campaign_budget\": true}.")]
         return []
+    out = []
     amount = money.get("amount")
-    if (isinstance(amount, (int, float)) and not isinstance(amount, bool) and amount > 0
-            and money.get("cadence") in CADENCES and _text(money.get("currency")) and _text(money.get("said"))):
-        return []
-    return [Problem("adset.budget", "The new ad set's budget is either the campaign's (campaign_budget: true, when the "
-                    "original's campaign holds the budget) or an amount, a cadence (daily or lifetime), a currency "
-                    "and the user's own words: it is never inferred.", "Ask the user.")]
+    if not (isinstance(amount, (int, float)) and not isinstance(amount, bool) and amount > 0
+            and money.get("cadence") == "daily" and _text(money.get("currency")) and _text(money.get("said"))):
+        out.append(Problem("adset.budget", "Without a campaign budget the new ad set gets a daily budget the user names "
+                           "at the yes: the amount, cadence daily, the currency and their own words. It is never "
+                           "inferred.", "Ask the user, with the original ad set's daily budget shown for reference."))
+    if not _text(str(original.get("adset_budget") or "")):
+        out.append(Problem("original.adset_budget", "The original ad set's daily budget is not read from Meta, so it "
+                           "can't be shown for reference.", "Read it and write it in original.adset_budget."))
+    return out
 
 
 def _path(run: RunFolder, file: str | Path, stem: str) -> tuple[Path, str]:
@@ -167,9 +175,14 @@ def card(run: RunFolder) -> dict:
     tr, built = words(run)
     original = data.get("original") or {}
     campaign = original.get("campaign_name") or original.get("campaign_id") or ""
+    shared = ((data.get("adset") or {}).get("budget") or {}).get("campaign_budget") is True
+    budget = ([tr("refresh.move.budget_campaign", campaign=campaign)] if shared else
+              [tr("refresh.move.budget_question"),
+               tr("refresh.move.budget_reference", budget=original.get("adset_budget") or "")])
     return {"lang": built.lang, "language_warning": built.warning,
             "title": tr("refresh.move.title"), "question": tr("refresh.move.question", campaign=campaign),
-            "notes": [tr("refresh.move.post_note"), tr("refresh.move.own_adset_note"), tr("refresh.move.paused_note")],
+            "notes": [tr("refresh.move.post_note"), tr("refresh.move.own_adset_note"), tr("refresh.move.settings_note"),
+                      *budget, tr("refresh.move.paused_note")],
             "original": original, "winner": data.get("winner"), "adset": data.get("adset"), "ad": data.get("ad"),
             "status": data.get("status")}
 
@@ -281,7 +294,9 @@ def report(run: RunFolder) -> dict:
     values = {"campaign": campaign, "adset": adset, "ad": data["ad"].get("name") or data["ad"]["id"],
               "original_ad": original.get("ad_name") or original.get("ad_id"),
               "original_adset": original.get("adset_name") or original.get("adset_id")}
-    shared = ((plan.get("adset") or {}).get("budget") or {}).get("campaign_budget") is True
+    money = (plan.get("adset") or {}).get("budget") or {}
+    shared = money.get("campaign_budget") is True
+    values["budget"] = "" if shared else f"{money.get('amount'):g} {money.get('currency')}"
     steps = [tr("refresh.move.step_switch_on", **values),
              tr("refresh.move.step_budget_campaign" if shared else "refresh.move.step_budget", **values),
              tr("refresh.move.step_switch_off", **values)]

@@ -96,7 +96,15 @@ def test_nothing_moves_unless_the_variant_won(run):
     ({"adset": {"campaign_id": "camp_orig", "settings_from": "set_orig", "name": "Ad set 1",
                 "budget": {"campaign_budget": True}}}, "adset.name"),
     ({"adset": {"campaign_id": "camp_orig", "settings_from": "set_orig", "name": "Ebook new hook winner PL",
-                "budget": {"amount": 50, "cadence": "daily", "currency": "PLN"}}}, "adset.budget"),
+                "budget": {"amount": 50, "cadence": "daily", "currency": "PLN"}}}, "adset.budget"),     # no words
+    ({"adset": {"campaign_id": "camp_orig", "settings_from": "set_orig", "name": "Ebook new hook winner PL",
+                "budget": {"amount": 500, "cadence": "lifetime", "currency": "PLN", "said": "500 in all"}}},
+     "adset.budget"),                                                                        # daily only
+    ({"adset": {"campaign_id": "camp_orig", "settings_from": "set_orig", "name": "Ebook new hook winner PL",
+                "budget": {"campaign_budget": True, "amount": 50}}}, "adset.budget"),     # none under CBO
+    ({"adset": {"campaign_id": "camp_orig", "settings_from": "set_orig", "name": "Ebook new hook winner PL",
+                "budget": {"amount": 50, "cadence": "daily", "currency": "PLN", "said": "50 a day"}}},
+     "original.adset_budget"),                                                     # the reference is not read
     ({"winner": {"key": "v1", "ad_id": "ad_test_v1", "post_id": "page_1_post_9"}}, "winner"),
 ])
 def test_the_check_refuses(won, change, field):
@@ -104,11 +112,24 @@ def test_the_check_refuses(won, change, field):
     assert field in _fields(problems)
 
 
-def test_an_ad_set_budget_in_the_users_words_passes(won):
+def _own_budget(won):
+    """A campaign without a campaign budget: the user's daily budget, the original ad set's shown for reference."""
     budget = {"amount": 50, "cadence": "daily", "currency": "PLN", "said": "50 zł a day for the new one"}
     adset = {"campaign_id": "camp_orig", "settings_from": "set_orig", "name": "Ebook new hook winner PL",
              "budget": budget}
-    assert mv.check(won, _proposal(won, adset=adset))[1] == []
+    original = {**json.loads(_proposal(won).read_text())["original"], "adset_budget": "120 PLN"}
+    return _proposal(won, adset=adset, original=original)
+
+
+def test_a_daily_ad_set_budget_in_the_users_words_passes_with_the_original_shown(won):
+    assert mv.check(won, _own_budget(won))[1] == []
+    notes = " ".join(mv.card(won)["notes"])
+    assert "120 PLN" in notes and "How much a day" in notes and "targeting, placements" in notes
+
+
+def test_under_a_campaign_budget_the_card_says_the_ad_set_gets_none(won):
+    mv.check(won, _proposal(won))
+    assert "gets none of its own" in " ".join(mv.card(won)["notes"])
 
 
 def test_nothing_is_recorded_without_the_users_yes(won):
@@ -157,20 +178,19 @@ def test_the_final_report_gives_the_users_three_steps(won):
     assert len(out["steps"]) == 3
     on, money, off = out["steps"]
     assert "turn on" in on and "Ebook new hook winner PL" in on
-    assert "budget" in money and "Ebook prospecting" in money and "shares its budget" in money   # CBO
+    # under a campaign budget: Meta can shift budget at once, so spend limits for a gradual move (the owner, #64)
+    assert "Ebook prospecting" in money and "at once" in money and "spend limits" in money
     assert "turn off" in off and "Ebook hook original" in off
     assert out["preview_url"] == "https://example.com/preview"
     assert "Nothing in this run switches anything on" in out["text"]
 
 
 def test_with_ad_set_budgets_the_budget_step_moves_it_between_the_ad_sets(won):
-    budget = {"amount": 50, "cadence": "daily", "currency": "PLN", "said": "50 zł a day for the new one"}
-    mv.check(won, _proposal(won, adset={"campaign_id": "camp_orig", "settings_from": "set_orig",
-                                        "name": "Ebook new hook winner PL", "budget": budget}))
+    mv.check(won, _own_budget(won))
     mv.approve(won, "yes, do it")
     mv.record(won, _objects(won))
     money = mv.report(won)["steps"][1]
-    assert "take the same amount" in money and "Ebook broad PL" in money
+    assert "50 PLN" in money and "same amount" in money and "Ebook broad PL" in money
 
 
 def test_tm_next_offers_the_move_then_reports_the_users_part(won):

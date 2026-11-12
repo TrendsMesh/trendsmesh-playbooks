@@ -41,8 +41,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   people and may slow the test's delivery. When the variant wins and you say yes, the playbook creates a new ad set
   in your original campaign, PAUSED, with the winning ad made from the test ad's post, so its likes, comments and
   shares come along; it never puts it inside your original's ad set, which would restart its learning, and shows
-  you the preview. Nothing is switched on or off: the final report ends with your part, step by step (switch the
-  new ad on, move the budget, switch the original off).
+  you the preview. The new ad set copies your original ad set's targeting, placements, optimisation event and bid
+  strategy; under a campaign budget it gets none of its own, otherwise the daily budget you name, with your
+  original's shown for reference. Nothing is switched on or off: the final report ends with your part, step by step
+  (switch the new ad on, move the budget, switch the original off), and under a campaign budget it says that Meta
+  can move budget away from your original at once and suggests ad set spend limits for a gradual move.
 
 ## 0.11.0
 
