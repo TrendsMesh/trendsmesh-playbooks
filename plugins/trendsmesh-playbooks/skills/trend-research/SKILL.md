@@ -119,7 +119,9 @@ read its section in `references/flow.md` (the `ref`): never from memory.
 
 ## 4. Pages and the schedule
 
-- The page is built by `tm research report` into `04_final/report_vNN/`; publishing follows the
+- The page is built by `tm research report` into `04_final/report_vNN/`, in the TrendsMesh look of
+  the shared run page, with the check-ins already recorded folded read-only under the report (it
+  takes no clicks: answer every check-in in chat); publishing follows the
   plugin's `references/pages.md`: with the `Artifact` tool (or the older `publish_files`), the
   first page a new private artifact, every later one the same link (`tm page link`), recorded with
   `tm page published`; never republished while the user is deciding; without a publishing tool,

@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from tm import checkins, flow, i18n, manifest, page, playbooks, state
-from tm.run_page import create_ad, detail as details, refresh_ad, template, words
+from tm.run_page import create_ad, detail as details, refresh_ad, template, trend_research, words
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.words import t
 from tm.runfolder import RunFolder
@@ -51,9 +51,10 @@ BUILD_FILE = ".build.json"          # in the page folder; hidden, so never publi
 # are told to answer in chat. `user` tells the page whether this viewer is the owner; `downloads` saves the CSVs.
 CAPABILITIES = {"db": {"rules": [{"path": COLLECTION, "read": "owner", "write": "owner"}]}, "user": {},
                 "downloads": {}}
-COMPONENTS = {playbooks.REFRESH_AD: refresh_ad.materials, playbooks.CREATE_AD: create_ad.materials}
+COMPONENTS = {playbooks.REFRESH_AD: refresh_ad.materials, playbooks.CREATE_AD: create_ad.materials,
+              playbooks.TREND_RESEARCH: trend_research.materials}
 OUTCOMES = {playbooks.REFRESH_AD: refresh_ad.outcome,     # a decided choice in words, when no ask labels it
-            playbooks.CREATE_AD: create_ad.outcome}
+            playbooks.CREATE_AD: create_ad.outcome, playbooks.TREND_RESEARCH: trend_research.outcome}
 # what a stage's detail adds when its choice is recorded: the lines of its note, and the files it writes
 RECORDED = {playbooks.CREATE_AD: (create_ad.note_lines, create_ad.write_files)}
 ANSWER_SOURCE = "tm page decision --record"
@@ -279,9 +280,11 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
             out += component(ctx, cid)
         return out + (_ask_blocks(ctx, ask) if ask else [])
 
+    own = playbooks.get(s.playbook).skill.replace("-", "_")     # a playbook's own stage names come first: G1 is
+                                                                 # not the same check-in in every playbook
     def name(key: str) -> str:
         known = cat.cards[key].name if key in cat.cards else cat.checkins[key].name if key in cat.checkins else key
-        return ctx.t_or("stage." + key, known)
+        return ctx.t_or(f"{own}.stage.{key}", ctx.t_or("stage." + key, known))
 
     def worded(cid: str, d: dict) -> str | None:
         return OUTCOMES.get(s.playbook, lambda c, i, x: None)(ctx, cid, d.get("choice"))

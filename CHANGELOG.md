@@ -199,6 +199,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **One click in the chat after a page is saved.** When Claude shows a page with decisions and waits, it ends with a
   reply button "Saved, read my choices" where the app has one, in every playbook. In the terminal you still write
   "done".
+- **The trend report in the TrendsMesh look.** Trend research's page is now built on the same run page as Refresh an
+  ad and Create an ad: the TrendsMesh top bar with "Trend research", the same colours and shapes, and under the
+  report, folded, the check-ins that shaped it (the seed phrases, the category map, the picks, the page, the weekly
+  schedule), each with what was decided, by you or by rule, and your note. They are read only: the report still
+  takes no clicks and is never published while you are deciding. Its three views, the hooks lists, the Ad Library
+  results and the translated words are as before. The page still loads no Google Fonts. For a page in another
+  language, the run page's words need translating too (`tm i18n export` lists them).
 
 ## 0.12.0
 

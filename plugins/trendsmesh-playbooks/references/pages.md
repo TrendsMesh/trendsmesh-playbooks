@@ -51,7 +51,8 @@ The readiness check's Artifacts line is `ok` with either tool, `missing` with ne
 6. Give the user the link (and, the first time, that it is private until they share it).
 
 A read-only page (PB04's report) stores nothing and asks for nothing, so it declares no
-`capabilities`. A page that takes decisions declares them in its publish: "Pages that take
+`capabilities`. PB04's report is built on the shared run page (below) with nothing to save: its
+settled check-ins are read-only summaries under the report, and every check-in is answered in chat. A page that takes decisions declares them in its publish: "Pages that take
 decisions" below.
 
 **Never republish while the user is deciding.** While a check-in about the page is open (the

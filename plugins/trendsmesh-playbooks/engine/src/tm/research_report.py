@@ -27,8 +27,10 @@ from the reference tool, nothing else:
 - a first run (no digest yet) drops "digest" from the views, so the page claims only views it has;
 - with `checked: false` in the Ad Library summary (V22) the paid view and the footer say it was not
   checked;
-- no Google Fonts: every view of a shared page would call Google (GDPR), so the CSS's own Georgia
-  and system-ui fallbacks are used;
+- the page is the shared run page (tm.run_page, issue #60): its top bar and theme, the report as its content
+  (research_report.css styles only `.report`), and the run's settled check-ins read-only under it; it saves
+  nothing. No Google Fonts: every view of a shared page would call Google (GDPR), so the theme's system
+  fallbacks are used;
 - links to videos are http(s) only (else no link), every text is escaped, and the thumbnails stop
   at the Artifact tool's file limit (`page.MAX_FILES`, less index.html and report.json): the ones left
   out count as missing.
@@ -46,7 +48,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from tm import (i18n, json_schema, manifest, page, research_checks, research_config, research_digest,
-                research_growth, research_map, trends)
+                research_growth, research_map, run_page, trends)
 from tm.runfolder import RunFolder
 from tm.stops import Stop
 
@@ -100,8 +102,9 @@ def _en() -> i18n.Translator:
 
 def page_language(run: RunFolder) -> i18n.PageLang:
     """The language to build the page in: the run's working language when its table has every word of the
-    page, else English (with `.warning` for what `tm research report` says)."""
-    return i18n.page_lang(i18n.run_languages(run).working, *AREAS)
+    page (the report's and the shared run page's, issue #60), else English (with `.warning` for what `tm research
+    report` says)."""
+    return i18n.page_lang(i18n.run_languages(run).working, run_page.words.AREA, *AREAS)
 
 SCRIPT = """<script>
 (function(){
@@ -752,9 +755,9 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
                hooks_not_read=len((gj.get("plugin") or {}).get("hooks_not_read") or []), tr=tr)
     prev = prev_snapshot if prev_snapshot is not None else _prev_snapshot(run, digest)
     prev_snap = _json(Path(prev), "the previous snapshot") if digest is not None and prev else {}
-    html_text = _render(pg, picks, report, cmap, gj, by, moved_page, picked, totals, scale, backtest_data, digest,
-                        prev_snap, valid_until_page)
-    (out / "index.html").write_text(html_text, encoding="utf-8")
+    title, css, body = _render(pg, picks, report, cmap, gj, by, moved_page, picked, totals, scale, backtest_data,
+                               digest, prev_snap, valid_until_page)
+    (out / "index.html").write_text(_on_the_run_page(run, out, title, css, body), encoding="utf-8")
     (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     rel = out.relative_to(run.path).as_posix()
     manifest.record(run, rel, page.FINAL, SOURCE,
@@ -763,9 +766,22 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
     return out
 
 
+def _on_the_run_page(run: RunFolder, out: Path, title: str, css: str, body: str) -> str:
+    """The report on the shared run page (issue #60): the TrendsMesh top bar and theme, the report as the page's
+    content, and the run's check-ins under it, settled ones as read-only summaries (an open one, put on the page
+    with `tm page build --ask`, says to answer in chat). The page saves nothing (`local`): the report is read-only,
+    and it is never published while a check-in about it is open. No Google Fonts: every view of a shared page would
+    call Google (GDPR), so the theme's system fallbacks are used."""
+    m, _ = run_page.model(run, out, local=True)
+    m.update(title=title, css=css, body=body, fonts=False,
+             footer=run_page.words.t("footer.built_from", page_language(run).lang, run=run.path.name, when=m["updated"]))
+    return run_page.template.render(m)
+
+
 def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict, moved: dict, picked: set,
             totals: dict, scale: tuple[float, float], backtest_data: list[dict], digest: dict | None,
-            prev_snap: dict, valid_until: str) -> str:
+            prev_snap: dict, valid_until: str) -> tuple[str, str, str]:
+    """The report's title, its CSS and its HTML (the views and their switch): the shared run page's content."""
     category, market, trends_, tr = pg.category, pg.market, pg.trends, pg.tr
     ctx, p = gj["params"]["category"], gj["params"]
     act, rising = picks.get("act_now") or [], picks.get("still_rising") or []
@@ -849,7 +865,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
     css = CSS_FILE.read_text(encoding="utf-8")
     paid_note = (tr("report.paid_note_checked", market=E(market)) if pg.paid_checked else
                  tr("report.paid_note_unchecked"))
-    title = tr("report.page_title", category=E(category[:1].upper() + category[1:]))
+    title = tr("report.page_title", category=category[:1].upper() + category[1:])     # plain text: escaped once, by the template
     topics, hooks = tr.plural("report.meta_topics", n_topics, n=n_topics), tr.plural("report.meta_hooks", n_hooks, n=n_hooks)
     meta = (f"<span>{tr('report.meta_market', market=E(picks['market']))}</span>"
             f"<span>{tr('report.meta_as_of', date=E(day(picks['as_of'], tr)))}</span>"
@@ -862,9 +878,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
                        median=ctx.get('median_new'), hook_pool=hook_pool)
     mapped_note = tr("report.mapped_note", mapped=mapped, min_match=format(cmap['min_match'], "g"), category=cat)
     footer = tr("report.footer", date=E(day(p['as_of'], tr)), paid_note=paid_note, valid_until=E(valid_until))
-    return f"""<!DOCTYPE html><html lang="{E(i18n.html_lang(tr.lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>
-<style>{css}</style></head><body><main>
+    body = f"""<div class="report">
 <nav class="views" aria-label="{E(tr('report.nav_label'))}">{nav}</nav>
 <div class="view" id="view-report">
 <header><h1>{tr('report.h1', category=cat)}</h1>
@@ -885,7 +899,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
 </div>
 {digest_view}
 {paid_view}
-<footer class="small-print">{footer}</footer>
-</main>
-{SCRIPT}
-</body></html>"""
+<p class="small-print report-foot">{footer}</p>
+</div>
+{SCRIPT}"""
+    return title, css, body

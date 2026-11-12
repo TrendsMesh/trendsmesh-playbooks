@@ -1,5 +1,5 @@
 ---
-description: "A weekly digest run, Hands-off. Last week's run (29 Oct, beauty, US) is done and its page was published as artifact art_mock_1; this week's run follows it and has everything before the digest done. The agent runs the digest and the call check (14 of last week's calls written to library/trend_calls.jsonl by this run), the picks and the page, republishes to the same link (publish_files with slug art_mock_1, mocked), records it, sends no message and sets up no schedule without a yes."
+description: "A weekly digest run, Hands-off. Last week's run (29 Oct, beauty, US) is done and its page was published as artifact art_mock_1; this week's run follows it and has everything before the digest done. The agent runs the digest and the call check (14 of last week's calls written to library/trend_calls.jsonl by this run), the picks and the page (on the shared run page, the check-ins decided by rule folded read-only under the report), republishes to the same link (publish_files with slug art_mock_1, mocked), records it, sends no message and sets up no schedule without a yes."
 tags: [trend-research, tr8, tr9, tr10, weekly]
 max_turns: 110
 timeout_seconds: 2700

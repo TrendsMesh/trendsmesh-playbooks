@@ -1025,8 +1025,10 @@ run_page:
   playbook:
     refresh_ad: Refresh an ad
     create_ad: Create an ad
+    trend_research: Trend research
   footer:
     built: Built from the run {run} on {when}. Every number shows its source when you hover over it.
+    built_from: Built from the run {run} on {when}.
   from_page: (from the page)
   now:
     new: New
@@ -1241,6 +1243,42 @@ run_page:
     days: Days
     min_events_per_variant: Events needed per variant
     variants: Variants
+  # Trend research's check-ins on its page (engine/src/tm/run_page/trend_research.py): their names, the choices
+  # in words, and what each settled one shows. The report itself is the `report` area.
+  trend_research:
+    stage:
+      G0: Seed phrases and market
+      G1: The category map
+      G2: The picks
+      G3: The page
+      GS: The weekly report
+      approve_map: The category map
+      approve_report: The picks and the page
+    choice:
+      accept: Accepted
+      changed_a_lot: The map changed a lot
+      publish: Publish it
+      keep_local: Keep it a local file
+      schedule: Every week, scheduled
+      by_hand: By hand
+    fact:
+      category: Category
+      seeds: Seed phrases
+      market: Market
+      languages: Working and market language
+      outputs: Views
+      subcategories: Sub-categories
+      kept: Trends kept
+      dropped: Left out
+      hooks_used: Hooks used in {category}
+      hooks_transfer: Hooks to transfer
+      act_now: Act now
+      still_rising: Still rising
+      moves: Moved by review
+      schedule: Next week's run
+    schedule:
+      desktop_task: a desktop scheduled task
+      by_hand: by hand
 
 # --- Create an ad: the copy card and page (engine/src/tm/create_copy.py), the upload card and its outcome
 # (engine/src/tm/create_upload.py); what each page shows: skills/create-ad/references/pages.md ---

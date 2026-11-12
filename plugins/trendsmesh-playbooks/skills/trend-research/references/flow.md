@@ -484,7 +484,11 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   previous snapshot are found by themselves). It writes `04_final/report_vNN/` with `index.html`,
   `report.json` and the evidence thumbnails in `assets/`, and one view per chosen output
   (`#report`, `#digest`, `#paid`). A first run without a digest says the digest view comes next
-  week.
+  week. The page is the shared run page (`../../references/pages.md`): the TrendsMesh top bar,
+  the report, and under it, folded and read-only, the check-ins already recorded with their
+  choice and note. It takes no clicks: every check-in is answered in chat, as before. Its words
+  are the `report`, `common` and `run_page` keys; when the working language's table lacks any,
+  the page is in English and the answer's `language_warning` says what to translate.
 - Look at the page's text once (the act now cards, the sample line): numbers relative to the
   sample first, raw counts under "Raw counts in the sample".
 - `tm done E1 --run R`. G3 follows: on its own at Check every step (the local path and the views);

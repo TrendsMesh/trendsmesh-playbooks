@@ -13,11 +13,12 @@ from __future__ import annotations
 from functools import lru_cache
 
 from tm import i18n
-from tm.playbooks import CREATE_AD
+from tm.playbooks import CREATE_AD, TREND_RESEARCH
 
 AREA = "run_page"
 PREFIX = AREA + "."
-AREAS = {CREATE_AD: ("ad",)}      # a playbook's own page words, beside run_page's
+AREAS = {CREATE_AD: ("ad",),      # a playbook's own page words, beside run_page's
+         TREND_RESEARCH: ("report", "common")}    # its report, and the month names
 
 
 def page_lang(run) -> i18n.PageLang:

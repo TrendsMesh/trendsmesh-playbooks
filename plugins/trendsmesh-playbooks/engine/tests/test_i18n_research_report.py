@@ -22,7 +22,8 @@ from test_research_report import _cfg, _fake_fetch, _picks_file, _read, _uroda, 
 from tm import i18n, page, research_growth, research_report
 from tm.cli import main
 
-AREAS = ("report", "common")
+BRAND = {"run_page.top.brand"}     # the name in the mark (assets/page/mark.svg), the same in every language
+AREAS = ("report", "common", "run_page")     # issue #60: the report is on the shared run page, whose words are run_page's
 SOURCE = Path(research_report.__file__)
 _PARTS = re.compile(r"(\{[^{}]*\}|<[^>]+>)")
 
@@ -79,7 +80,7 @@ def _english_left(html_text: str) -> list[str]:
     seen = _seen(html_text)
     left = []
     for key, text in i18n.english().items():
-        if key.split(".")[0] not in AREAS:
+        if key.split(".")[0] not in AREAS or key in BRAND:
             continue
         for lit, _, _, _ in string.Formatter().parse(text):
             words = _PARTS.sub(" ", lit or "").strip(" .,:;()·→×%@'\"")

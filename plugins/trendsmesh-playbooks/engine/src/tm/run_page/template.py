@@ -465,9 +465,14 @@ def mark_svg() -> str:
 
 
 def render(model: dict) -> str:
+    """The page. A playbook whose page is a document of its own (Trend research's report) also gives `body`: its
+    HTML, built and escaped by that playbook's own renderer, placed between the "Now" block and "Already settled"
+    (no "nothing to decide" panel then), with `css` after the theme, `footer` for the footer line and `fonts: False`
+    to leave out the Google Fonts link (a shared page that must not call Google)."""
     lang, ds, local = model.get("lang") or "en", model["datasets"], bool(model.get("local"))
+    body = model.get("body") or ""
     now = "".join(_now(s, ds, lang, local, model["updated"]) for s in model["now"])
-    if not model["now"]:
+    if not model["now"] and not body:
         now = (f'<section class="panel now"><div class="now-head"><span class="pill dark">{E(t("now.label", lang))}</span>'
                f'<span class="soft small">{E(t("now.updated", lang, when=model["updated"]))}</span></div>'
                f'<h1>{E(t("now.nothing_open", lang))}</h1></section>')
@@ -476,14 +481,16 @@ def render(model: dict) -> str:
             "datasets": ds.items,
             "words": {k: t("decision." + k, lang) for k in ("saving", "saved_at", "save_error", "cannot_save", "ready")}}
     mark = mark_svg()
+    fonts = (f'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="{E(FONTS)}">'
+             if model.get("fonts", True) else "")
+    footer = model.get("footer") or t("footer.built", lang, run=model["run"], when=model["updated"])
     return (f'<!doctype html><html lang="{E(lang)}"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1"><title>{E(model["title"])}</title>'
-            f'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="{E(FONTS)}">'
-            f'<style>{theme_css()}</style></head><body><div class="wrap">'
+            f'{fonts}<style>{theme_css()}{model.get("css") or ""}</style></head><body><div class="wrap">'
             f'<header class="top"><span class="brand">{mark}<span>{E(t("top.brand", lang))}</span></span>'
-            f'<span class="pill dark">{E(model["playbook"])}</span></header><main>{now}'
+            f'<span class="pill dark">{E(model["playbook"])}</span></header><main>{now}{body}'
             f'{_settled(model["settled"], ds, lang)}</main>'
-            f'<footer>{E(t("footer.built", lang, run=model["run"], when=model["updated"]))}</footer></div>'
+            f'<footer>{E(footer)}</footer></div>'
             f'<script type="application/json" id="tm-page">{_script_json(data)}</script><script>{SCRIPT}</script>'
             f'</body></html>')
 
