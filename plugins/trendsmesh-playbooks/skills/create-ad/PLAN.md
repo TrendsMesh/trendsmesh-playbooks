@@ -175,7 +175,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 
 ### Task 6: Evals, changelog, report
 
-- Evals (not run): `ca_upload_stays_paused` (Hands-off at the go-ahead: nothing activated), and
+- Evals (not run): `ca_upload` (Hands-off at the go-ahead: nothing activated), and
   `ca_plan_cost_needs_yes` (the user says "generate everything": the cost is asked, nothing generated).
 - `CHANGELOG.md` bullet; full test run; commits per task.
 
@@ -183,7 +183,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 
 Built: Tasks 1 to 6 (commits on the branch, one per step). The engine modules are `create_config`, `create_plan`,
 `create_copy`, `create_upload` and the `tm ad` command (`create_ad`). Evals added, not run:
-`ca_upload_stays_paused`, `ca_plan_cost_needs_yes` (scenarios `ca_at_s10b_hands_off`, `ca_at_s5_plan`).
+`ca_upload`, `ca_plan_cost_needs_yes` (scenarios `ca_at_s10b_hands_off`, `ca_at_s5_plan`).
 Calls made while building, beyond the spec: the edit QA (S7) and the takes (G4) have no engine check yet (the
 tools exist; the gate decides); a Create an ad money wait names the plan or the storyboard, not organic video's
 pack; the copy's claim check is numbers only (results and availability promises are the agent's, CA3).

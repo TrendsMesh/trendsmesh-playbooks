@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: doctor_el_plan_read
+# Was doctor_elevenlabs_plan_read_from_key (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

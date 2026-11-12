@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: talking_head_sentence_cuts_in_sync
-context:
-  scaffold_script: fixture.sh

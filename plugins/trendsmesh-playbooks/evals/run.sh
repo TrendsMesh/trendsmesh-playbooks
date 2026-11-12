@@ -11,7 +11,7 @@
 # Without it, the ri_* cases' inbox graders fail.
 # The real TrendsMesh MCP is never started (--mocks record is passed explicitly; --allow-real-servers and --mocks are refused).
 # The Meta Ads MCP is the user's own connector, not part of the plugin: its mocks sit in each case's mocks/meta.
-# Extra arguments pass through, for example:  evals/run.sh --case doctor_reports_missing_replicate
+# Extra arguments pass through, for example:  evals/run.sh --case doctor_r8_missing
 #
 # `claude plugin eval` refuses a plugin folder of more than 20000 entries, and a developer's
 # env/.pixi (the pixi environments, git-ignored) has far more. This script moves it aside for the

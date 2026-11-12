@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: doctor_reports_missing_replicate
-context:
-  scaffold_script: fixture.sh

@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: ri_acceptance_private
+# Was ri_acceptance_report_not_public (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: no_trendsmesh_guess
+# Was no_trendsmesh_goes_on_as_guesses (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

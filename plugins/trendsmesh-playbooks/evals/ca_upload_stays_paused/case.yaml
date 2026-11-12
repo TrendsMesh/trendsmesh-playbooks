@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: ca_upload_stays_paused
-context:
-  scaffold_script: fixture.sh

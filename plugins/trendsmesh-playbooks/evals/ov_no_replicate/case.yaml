@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: ov_no_replicate
+# Was ov_no_replicate_offers_animation_quiz_script (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

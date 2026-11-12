@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: hands_off_no_budget_stops_at_free_outputs
-context:
-  scaffold_script: fixture.sh

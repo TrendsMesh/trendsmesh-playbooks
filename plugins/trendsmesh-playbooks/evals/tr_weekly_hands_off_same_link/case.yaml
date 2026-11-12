@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: tr_weekly_hands_off_same_link
-context:
-  scaffold_script: fixture.sh

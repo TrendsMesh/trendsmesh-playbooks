@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: hook_fade_only_hook
+# Was hook_fade_refreshes_only_hook (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

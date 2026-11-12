@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: ov_props
+# Was ov_proposals_from_page_decisions (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

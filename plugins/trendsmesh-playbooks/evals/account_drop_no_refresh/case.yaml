@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: account_drop_no_refresh
-context:
-  scaffold_script: fixture.sh

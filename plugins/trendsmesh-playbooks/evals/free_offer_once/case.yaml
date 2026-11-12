@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: free_offer_once
+# Was free_plan_hears_the_offer_once (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

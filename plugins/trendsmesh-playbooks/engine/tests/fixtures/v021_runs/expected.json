@@ -8,7 +8,7 @@
       "checkin": null
     },
     {
-      "name": "all_outputs_flow_v_at_v3",
+      "name": "all_flow_v_at_v3",
       "step": "V3",
       "action": "work",
       "checkin": [
@@ -16,13 +16,13 @@
       ]
     },
     {
-      "name": "edited_hands_off_at_c1",
+      "name": "edited_handsoff_c1",
       "step": "C1",
       "action": "work",
       "checkin": null
     },
     {
-      "name": "edited_c4_done_g5_asked",
+      "name": "edited_c4_g5_asked",
       "step": "C4",
       "action": "ask",
       "checkin": [
@@ -38,7 +38,7 @@
       ]
     },
     {
-      "name": "middle_ended_not_supported",
+      "name": "middle_not_supported",
       "step": "A1a",
       "action": "done",
       "checkin": null

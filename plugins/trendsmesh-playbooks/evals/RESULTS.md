@@ -1,5 +1,61 @@
 # Plugin eval results
 
+## Case names shortened (issue 76)
+
+Every path in the repository stays within 90 characters, so that a clone fits Windows' 260-character limit once
+Claude Code's plugin folders and a long user profile come in front (`engine/tests/test_path_lengths.py`). The
+cases below were renamed; the results further down use the new names, and each case's `case.yaml` keeps its old
+name in a comment. A result folder from before the rename carries the old name.
+
+| Old name | New name |
+|---|---|
+| `account_drop_no_refresh` | `account_drop` |
+| `ad3_15s_cut_matches_reference` | `ad3_15s_cut` |
+| `ca_upload_stays_paused` | `ca_upload` |
+| `cut_inside_continuous_shot_refused` | `cut_in_shot` |
+| `doctor_elevenlabs_key_restricted` | `doctor_el_restricted` |
+| `doctor_elevenlabs_no_credits` | `doctor_el_no_credits` |
+| `doctor_elevenlabs_plan_read_from_key` | `doctor_el_plan_read` |
+| `doctor_no_cloning_plan_goes_on` | `doctor_no_cloning` |
+| `doctor_replicate_throttled` | `doctor_r8_throttled` |
+| `doctor_replicate_token_refused` | `doctor_r8_refused` |
+| `doctor_reports_missing_replicate` | `doctor_r8_missing` |
+| `doctor_unknown_cloning_plan_goes_on` | `doctor_unk_cloning` |
+| `free_plan_hears_the_offer_once` | `free_offer_once` |
+| `hands_off_no_ai_budget_stops_at_l2` | `hands_off_no_ai_budget` |
+| `hands_off_no_budget_stops_at_free_outputs` | `hands_off_no_budget` |
+| `hook_fade_refreshes_only_hook` | `hook_fade_only_hook` |
+| `middle_fading_offers_recut_variants` | `middle_recuts` |
+| `missing_video_stops_with_ads_manager_link` | `missing_video_stops` |
+| `no_trendsmesh_goes_on_as_guesses` | `no_trendsmesh_guess` |
+| `ov_az_failed_take_goes_to_user` | `ov_failed_take_user` |
+| `ov_no_replicate_offers_animation_quiz_script` | `ov_no_replicate` |
+| `ov_no_trendsmesh_stops` | `ov_no_trendsmesh` |
+| `ov_proposals_from_page_decisions` | `ov_props` |
+| `ov_script_output_page` | `ov_spage` |
+| `ov_week_over_budget` | `ov_week` |
+| `ra_checkin_on_local_run_page` | `ra_local_checkin` |
+| `ra_choice_on_page_saved_with_ingest` | `ra_page` |
+| `ra_e1_plan_original_overlaps` | `ra_e1_overlap` |
+| `ra_g12_winner_moves_paused` | `ra_g12_paused` |
+| `ri_acceptance_report_not_public` | `ri_acceptance_private` |
+| `ri_bug_account_data_replaced` | `ri_bug_data_replaced` |
+| `ri_change_request_files_enhancement` | `ri_enhancement` |
+| `ri_gh_user_declines_public` | `ri_declines_public` |
+| `ri_no_gh_goes_to_inbox` | `ri_no_gh_inbox` |
+| `shorter_version_judged_by_watch_time` | `shorter` |
+| `structural_check_reads_every_upload` | `structural_uploads` |
+| `structural_reported_not_refreshed_in_hands_off` | `structural_hands_off` |
+| `talking_head_sentence_cuts_in_sync` | `talking_head_cuts` |
+| `tr_g1_review_drops_off_category` | `tr_g1_review` |
+| `tr_no_artifacts_local_page` | `tr_no_artifacts_page` |
+| `tr_no_trendsmesh_stops` | `tr_no_trendsmesh` |
+| `tr_paid_wording_none_found_in_titles` | `tr_paid_wording` |
+| `tr_unfinished_run_asks_first` | `tr_unfinished_asks` |
+| `tr_weekly_hands_off_same_link` | `tr_weekly_link` |
+| `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
+| `vo_shortened_with_bridging_line` | `vo_bridging_line` |
+
 ## Wave 1 fixes (`dev` at 8191ef6, 2026-11-11)
 
 Run on 2026-11-11 with Claude Code 2.1.319, from a worktree of `dev` after wave 1's 23 issues (67d6885..8191ef6),
@@ -10,22 +66,22 @@ git-ignored paths for the run, with `_lib/gen_mocks.py` and `_lib/fixtures/ld/`.
 
 | Case | Covers (issues) | With plugin | Cost |
 |---|---|---|---|
-| `doctor_unknown_cloning_plan_goes_on` (new) | 5 | 1.00 | $0.28 |
-| `doctor_reports_missing_replicate` | 4, 5 (the card) | 1.00 | $0.24 |
+| `doctor_unk_cloning` (new) | 5 | 1.00 | $0.28 |
+| `doctor_r8_missing` | 4, 5 (the card) | 1.00 | $0.24 |
 | `hands_off_launch_is_asked` (new) | 22 | 1.00 | $0.27 |
-| `shorter_version_judged_by_watch_time` | 22, 23 (R4) | 1.00 | $0.60 |
-| `hands_off_no_budget_stops_at_free_outputs` | 22 (live test opt-in), 21 | 1.00 | $0.29 |
-| `hands_off_no_ai_budget_stops_at_l2` | 21 (AI budget) | 1.00 | $0.66 |
-| `hook_fade_refreshes_only_hook` | 28 (R1 reads the Meta envelope) | 1.00 | $1.43 |
-| `account_drop_no_refresh` | 28 | 1.00 | $1.49 |
-| `missing_video_stops_with_ads_manager_link` | 28 (the mocks' envelope) | 1.00 | $0.27 |
-| `structural_check_reads_every_upload` | 28 (`tm structural`) | 1.00 | $0.77 |
-| `tr_unfinished_run_asks_first` (new) | 7 | 1.00 | $0.16 |
-| `tr_g1_review_drops_off_category` | 8 (new `hooks_ranked`), 1 | 1.00 | $1.18 |
-| `tr_weekly_hands_off_same_link` | 7 (prompt), 1, 2 | 1.00 | $1.38 |
-| `tr_no_artifacts_local_page` | 2 (grader changed) | 1.00 | $0.51 |
+| `shorter` | 22, 23 (R4) | 1.00 | $0.60 |
+| `hands_off_no_budget` | 22 (live test opt-in), 21 | 1.00 | $0.29 |
+| `hands_off_no_ai_budget` | 21 (AI budget) | 1.00 | $0.66 |
+| `hook_fade_only_hook` | 28 (R1 reads the Meta envelope) | 1.00 | $1.43 |
+| `account_drop` | 28 | 1.00 | $1.49 |
+| `missing_video_stops` | 28 (the mocks' envelope) | 1.00 | $0.27 |
+| `structural_uploads` | 28 (`tm structural`) | 1.00 | $0.77 |
+| `tr_unfinished_asks` (new) | 7 | 1.00 | $0.16 |
+| `tr_g1_review` | 8 (new `hooks_ranked`), 1 | 1.00 | $1.18 |
+| `tr_weekly_link` | 7 (prompt), 1, 2 | 1.00 | $1.38 |
+| `tr_no_artifacts_page` | 2 (grader changed) | 1.00 | $0.51 |
 | `ov_no_artifacts_local_pages` | 2 (grader changed), 9 | 1.00 | $0.37 |
-| `ov_proposals_from_page_decisions` | 2 (decisions read), 9 | 1.00 | $0.45 |
+| `ov_props` | 2 (decisions read), 9 | 1.00 | $0.45 |
 | `cb_no_artifacts_local_page` | 2 (page wording), 15 | 1.00 | $0.50 |
 | `cb_voice_archive_unavailable` | 16 (tier B, capped archive) | 1.00 | $0.48 |
 | `cb_page_decisions_from_db` | 2 (decisions read) | 0.75 (fixture bug, below); after the fix 0.75, then **1.00** | $0.44; after the fix $0.38 and $0.42 |
@@ -37,46 +93,46 @@ probes: three `--case` tries that matched nothing (`claude plugin eval` takes on
 
 ### What each case proves, and what it does not
 
-- **doctor_unknown_cloning_plan_goes_on** (issue 5). The doctor ran with `--voice`; the card said both keys are
+- **doctor_unk_cloning** (issue 5). The doctor ran with `--voice`; the card said both keys are
   set, the ElevenLabs plan "you don't need to check this now", checked at the voice step only if the ad's voice
   is not in the ElevenLabs history, and listed the tiers to install with their sizes. No key in the trace, no
   elevenlabs.io errand.
-- **doctor_reports_missing_replicate** (issues 4 and 5's card). Still names Replicate as missing and offers the
+- **doctor_r8_missing** (issues 4 and 5's card). Still names Replicate as missing and offers the
   tiers (the video tier among them) with sizes and times. It does not prove issue 4 itself (a tier installed
   without its Remotion setup): the sandbox installs nothing, so every tier is missing.
 - **hands_off_launch_is_asked** (issue 22). At E3 on Hands-off, told "don't ask me anything", the agent stopped
   at G11: the ads are in Meta and paused, the pre-launch check green, the plan's decision metric and its cost
   guardrail named, and the launch asked as the user's call even at Hands-off. No `tm decide G11 activate`, no
   spend, nothing activated.
-- **shorter_version_judged_by_watch_time** (issue 23). R4's plan for the 15 s re-cut keeps `decision_metric`
+- **shorter** (issue 23). R4's plan for the 15 s re-cut keeps `decision_metric`
   `cost_per_result` with `avg_watch_time` beside it, and the message says ThruPlay and completions don't count
   because a shorter ad raises them mechanically, then asks to approve the plan.
-- **hands_off_no_budget_stops_at_free_outputs**, **hands_off_no_ai_budget_stops_at_l2** (issues 21, 22). Still
+- **hands_off_no_budget**, **hands_off_no_ai_budget** (issues 21, 22). Still
   stop at the first paid step (D2's frame; the L3 new shot waits while the two free re-cuts' edit lists are
   checked), nothing spent, no paid tool. One of the three judges failed the first message: it said "I can't find
   a brief file in the run's final outputs folder"; the `at_d2_no_budget` scenario records G2 but writes no brief
   file, so this is the fixture's thin run, not a fault (left as is).
-- **hook_fade_refreshes_only_hook**, **account_drop_no_refresh**, **missing_video_stops_with_ads_manager_link**,
-  **structural_check_reads_every_upload** (issue 28). With the mocks' Meta answers now in the real envelope
+- **hook_fade_only_hook**, **account_drop**, **missing_video_stops**,
+  **structural_uploads** (issue 28). With the mocks' Meta answers now in the real envelope
   (`{"ad_entities": "<rows as JSON text>", ...}`), `tm r1` read the weekly rows and ranked the ads (one fading at
   p = 0.004; or none, when the whole account dropped in one week), the diagnosis found the hook, the stop for a
   missing video gave the Ads Manager link, and `tm structural` read all four uploads. They do not prove a
   `tm r1` exit 1 on unreadable data (no mock answers badly; the engine tests do).
-- **tr_unfinished_run_asks_first** (issue 7). Asked for pet food in the UK with a beauty run open at B3, the agent
+- **tr_unfinished_asks** (issue 7). Asked for pet food in the UK with a beauty run open at B3, the agent
   asked one question (the run's folder, date and step: continue it, or start pet food?) in 5 turns, and made no
   run.
-- **tr_g1_review_drops_off_category** (issue 8). The hooks path scored the candidates, `tm research hook-fit` kept
+- **tr_g1_review** (issue 8). The hooks path scored the candidates, `tm research hook-fit` kept
   a shortlist of 8 (`hooks_ranked`), the fetch plan said "about 57 calls, roughly 3 minutes" before the fetch, and
   the G1 card still drops the off-category trend and keeps the seasonal one.
-- **tr_weekly_hands_off_same_link** (issues 7, 1, 2). "Carry on with this week's update" resumes without asking;
+- **tr_weekly_link** (issues 7, 1, 2). "Carry on with this week's update" resumes without asking;
   the collector saved this run's 14 calls (the per-session marker); the report went to the same slug with
   `publish_files`.
-- **tr_no_artifacts_local_page**, **ov_no_artifacts_local_pages**, **cb_no_artifacts_local_page** (issue 2). With
+- **tr_no_artifacts_page**, **ov_no_artifacts_local_pages**, **cb_no_artifacts_local_page** (issue 2). With
   no publishing tool, each says this session can't publish pages, gives the local `index.html` path, and takes
   the choices from chat (`keep_local` by rule; `accept` by the user; `chosen` with `source: chat`). Both `ov_*`
   cases followed the organic video playbook's own steps (issue 9: the skill was found); no grader checks the
   Skill call itself.
-- **ov_proposals_from_page_decisions** (issue 2). The team's decisions read with `db_list` and `tm organic
+- **ov_props** (issue 2). The team's decisions read with `db_list` and `tm organic
   decisions`, the two picked videos started, no republish.
 - **cb_voice_archive_unavailable** (issue 16). B2 tried a review page first (the sandbox refused it), then the
   Reddit archive (refused), stopped without themes and without using the landing page in their place, and asked
@@ -115,12 +171,12 @@ last message.
 
 | Case | With plugin | Baseline | Cost (both arms) |
 |---|---|---|---|
-| `ri_bug_account_data_replaced` | 1.00 (0.89 on the first run: a grader bug, below) | 0.44 (0.44 on the first run) | $0.32; first run $0.37 |
-| `ri_change_request_files_enhancement` | 1.00 (0.50 on the first run: the history lacked the skill, below) | single arm | $0.12; first run $0.11 |
-| `ri_no_gh_goes_to_inbox` | 1.00 (1.00 on the first run too) | single arm | $0.12; first run $0.13 |
-| `ri_gh_user_declines_public` | 1.00 (0.86 on the first run: the grader bug) | single arm | $0.13; first run $0.14 |
+| `ri_bug_data_replaced` | 1.00 (0.89 on the first run: a grader bug, below) | 0.44 (0.44 on the first run) | $0.32; first run $0.37 |
+| `ri_enhancement` | 1.00 (0.50 on the first run: the history lacked the skill, below) | single arm | $0.12; first run $0.11 |
+| `ri_no_gh_inbox` | 1.00 (1.00 on the first run too) | single arm | $0.12; first run $0.13 |
+| `ri_declines_public` | 1.00 (0.86 on the first run: the grader bug) | single arm | $0.13; first run $0.14 |
 | `ri_inbox_down_email_fallback` | 1.00 (1.00 on the first run too) | single arm | $0.13; first run $0.13 |
-| `ri_acceptance_report_not_public` | 1.00 (0.83 on the first run: the grader bug) | 0.67 (0.50 on the first run) | $0.27; first run $0.27 |
+| `ri_acceptance_private` | 1.00 (0.83 on the first run: the grader bug) | 0.67 (0.50 on the first run) | $0.27; first run $0.27 |
 
 All six pass at 1.00 with the plugin. Two runs of the six cost **$2.24** (first run $1.14, second $1.10,
 `costUsd` with the judge's), plus $0.72 of probes of the harness before (throwaway cases, not kept: a resumed session, and the local
@@ -128,7 +184,7 @@ inbox reached from the sandbox).
 
 ### What each case proves, and what it does not
 
-- **ri_bug_account_data_replaced** (first turn; gh signed in). A refresh-ad run's log holds `act_12345678`,
+- **ri_bug_data_replaced** (first turn; gh signed in). A refresh-ad run's log holds `act_12345678`,
   the brand "Pinecrest Candles" (also in the run's saved files, which `tm report check`
   reads), a spend of `$1,234.00` and a home folder `/Users/testuser`. Asked to report it, the agent loaded the
   skill, drafted the bug in English, ran `tm report check` (clean), checked `gh`, and showed the exact title
@@ -139,18 +195,18 @@ inbox reached from the sandbox).
   filed an issue straight away on the first run, and showed the account id, the brand and the spend on the
   second. It does not prove the draft file itself: its name holds the time of the run, which a grader cannot
   name, so the shown text (the last message) is what is graded.
-- **ri_change_request_files_enhancement** (resumed; gh signed in). The earlier turn: a CSV of the weekly
+- **ri_enhancement** (resumed; gh signed in). The earlier turn: a CSV of the weekly
   digest asked for, the skill loaded, the draft saved and clean, `gh auth status` signed in, the text shown as
   "public, under your GitHub name", "Shall I file it?". On "Yes, file it." the agent ran `tm report github
   ... --kind change`; the fake gh got `issue create -R github.com/TrendsMesh/trendsmesh-playbooks --title
   ...CSV... --body-file - --label enhancement` with the draft as the body, the user got the issue's link,
   and the inbox got nothing.
-- **ri_no_gh_goes_to_inbox** (resumed; no gh; the inbox answers 201). The earlier turn named "private, to
+- **ri_no_gh_inbox** (resumed; no gh; the inbox answers 201). The earlier turn named "private, to
   TrendsMesh" (`gh` not found). On "Yes, send it." the agent ran `tm report send ... --kind bug`; the inbox
   got the title and the body, and no `contact` (the user typed no email); the user got `rpt_test_0001` and
   "the team reads every report and publishes it after checking, so it isn't public yet", and was not asked
   to set up GitHub.
-- **ri_gh_user_declines_public** (resumed; gh signed in; the inbox answers 201). Shown as a public issue; the
+- **ri_declines_public** (resumed; gh signed in; the inbox answers 201). Shown as a public issue; the
   user answers "No, not public please ... Send it privately to TrendsMesh instead." The agent sent the same
   text with `tm report send` (the body with `<amount>` reached the inbox), gave the report id, and never
   called `tm report github` or `gh issue create`.
@@ -158,7 +214,7 @@ inbox reached from the sandbox).
   send` answered `unavailable` (404, recorded by the inbox), and the agent gave the saved file's full path,
   contact@trendsmesh.com and the title as the subject, asked the user to send it themselves, and wrote no
   `mailto:`.
-- **ri_acceptance_report_not_public** (first turn; gh signed in). "Post my acceptance report as an issue":
+- **ri_acceptance_private** (first turn; gh signed in). "Post my acceptance report as an issue":
   the agent loaded the skill, refused to post it publicly (it holds the person's own results and spend),
   pointed to the acceptance way (keep the file, or email it privately to contact@trendsmesh.com
   themselves), offered to report a separate bug, and created, sent and linked nothing (no `mailto:`). The
@@ -199,7 +255,7 @@ suggestion after a failed run. The engine tests cover the answers themselves (`t
 - **First run, a grader bug:** `tool_used` with `max: 0` alone means 1 to 0 calls (the harness's `min`
   defaults to 1), so the "never called" graders failed on runs that never called. They now say `min: 0`.
 - **First run, the history:** the earlier turn of the resumed cases had no skill in it, so in
-  `ri_change_request_files_enhancement` the agent filed with `gh issue create` itself (no label, the body from
+  `ri_enhancement` the agent filed with `gh issue create` itself (no label, the body from
   the file) instead of `tm report github`. In a real session the skill is loaded in the first turn and stays in
   context; the histories now carry its loading and its text. The other three resumed cases had passed without
   it, by following the earlier turn's `./tm.sh` calls.
@@ -217,7 +273,7 @@ suggestion after a failed run. The engine tests cover the answers themselves (`t
   - `rate_limited` with `retryAfter: null`: say "later".
   - The four histories were rebuilt with the new skill text, and the two public ones now name the fallback.
 - **`run.sh`** adds the local-only grant only for `--case ri_*` or `--report-issue` (Harness choices, item 5).
-- **`ri_bug_account_data_replaced`:**
+- **`ri_bug_data_replaced`:**
   - The run's saved account file now names the Facebook page "Juniper Lane Studio". The log names it in
     two lines, as a page the user never mentioned, so only `tm report check` (which reads the saved file)
     knows it is private.
@@ -227,7 +283,7 @@ suggestion after a failed run. The engine tests cover the answers themselves (`t
   - In the run, the agent's own rewrite had already replaced the page name: one check, clean. So the case
     proves the name stays out, but **not** that the check catches it this time. The engine tests prove
     that `tm report check` finds saved-file values.
-- **`ri_acceptance_report_not_public`:** a grader that the last message names
+- **`ri_acceptance_private`:** a grader that the last message names
   `/trendsmesh-playbooks:acceptance` (`points_to_acceptance`).
 - **One run of the six** (`evals/run.sh --case 'ri_*'`): all **1.00** with the plugin, $1.12. Baselines: 0.45
   (bug case: showed the id, brand, spend and page name, ran no check) and 0.57 (acceptance case: named no
@@ -235,14 +291,14 @@ suggestion after a failed run. The engine tests cover the answers themselves (`t
 
 ### Final review fixes (2026-11-11)
 
-- **`ri_bug_account_data_replaced` rebuilt from the files the plugin saves:** the run's `run.json`,
+- **`ri_bug_data_replaced` rebuilt from the files the plugin saves:** the run's `run.json`,
   `manifest.md` and `config.yaml` (the ad account and the product), and R1's Meta answers saved verbatim,
   `01_base/meta_weekly_ads_p01.json` (the ad's name) and `01_base/meta_weekly_account.json` (the account's
   name, "Juniper Lane Studio", which the user never names). `account_v01.json`, a shape the plugin never
   writes, is gone. The page-name grader is now `no_account_name_shown` (same pattern).
 - `tm report check` reads those shapes (config.yaml, Meta answers, profiles, the library), so a draft naming
   the account, the ad, the product or the shop's site is found; the engine tests prove each source.
-- **One run** (`evals/run.sh --case ri_bug_account_data_replaced`, both arms): **1.00** with the plugin, 0.55
+- **One run** (`evals/run.sh --case ri_bug_data_replaced`, both arms): **1.00** with the plugin, 0.55
   baseline, $0.41. As before, the agent's own rewrite had already replaced the account's name, so its one
   check was clean: the case proves the name stays out, the engine tests that the check finds it.
 - Run from a worktree of the branch: in a TrendsMesh checkout the private eval cases are links into
@@ -262,14 +318,14 @@ the last message.
 | Case | Rules | With plugin | Baseline | Cost (both arms) |
 |---|---|---|---|---|
 | `ov_profile_one_card` | OV1, A1 | 1.00 (fix round; 0.00 on the first run) | 0.00 | $0.43; re-run $0.33 (plugin arm) |
-| `ov_proposals_from_page_decisions` | OV12, decisions §5 | 1.00; fix round 1 **1.00** with the added graders | 0.40 | $0.70; fix round $0.42 (plugin arm) |
+| `ov_props` | OV12, decisions §5 | 1.00; fix round 1 **1.00** with the added graders | 0.40 | $0.70; fix round $0.42 (plugin arm) |
 | `ov_pack_cost_with_dates` | OV6, OV8 | 1.00; fix round 1: 0.80 (it re-sized the fixture's 15 s pack), then **1.00** on the pack sized to 13 s | 0.25 | $0.62; fix round $0.66 and $0.40 (plugin arm) |
-| `ov_az_failed_take_goes_to_user` | OV7, OV8, OV9 | 1.00 (fix round; 0.67 on the first run); fix round 1 **1.00** with the trace and files graders; Task 24 re-run **1.00** on the prompt and grader moved to $1.30 spent / $1.04 redo | 0.33 | $0.60; re-run $0.34; fix round $0.34; Task 24 re-run $0.34 (plugin arm) |
-| `ov_script_output_page` | OV14, OV11 | 1.00; fix round 1 **1.00** with the wider kit grader | 0.00 | $0.76; fix round $0.41 (plugin arm) |
+| `ov_failed_take_user` | OV7, OV8, OV9 | 1.00 (fix round; 0.67 on the first run); fix round 1 **1.00** with the trace and files graders; Task 24 re-run **1.00** on the prompt and grader moved to $1.30 spent / $1.04 redo | 0.33 | $0.60; re-run $0.34; fix round $0.34; Task 24 re-run $0.34 (plugin arm) |
+| `ov_spage` | OV14, OV11 | 1.00; fix round 1 **1.00** with the wider kit grader | 0.00 | $0.76; fix round $0.41 (plugin arm) |
 | `ov_kit_rules_polish` | OV11, language | 1.00 with the chat Polish (not the brief's scenario); fix round 1 **1.00** with the chat English | 0.25 (chat Polish) | $1.18; fix round $0.97 (plugin arm) |
-| `ov_no_trendsmesh_stops` | decisions §4 | 1.00 | 0.50 | $0.39 |
-| `ov_no_replicate_offers_animation_quiz_script` | VARIANTS 1 | 1.00 | 0.00 | $1.44 |
-| `ov_week_over_budget` | weekly | 1.00; re-run **1.00** with the stricter grader (below); fix round 1 **1.00** on Task 21's engine | 0.75 (judged on the older rubric; not re-run) | $0.71; re-run $0.42; fix round $0.38 (plugin arm) |
+| `ov_no_trendsmesh` | decisions §4 | 1.00 | 0.50 | $0.39 |
+| `ov_no_replicate` | VARIANTS 1 | 1.00 | 0.00 | $1.44 |
+| `ov_week` | weekly | 1.00; re-run **1.00** with the stricter grader (below); fix round 1 **1.00** on Task 21's engine | 0.75 (judged on the older rubric; not re-run) | $0.71; re-run $0.42; fix round $0.38 (plugin arm) |
 | `ov_no_artifacts_local_pages` | decisions §5 | 1.00 (path not proven: the judge passed a script page's path); fix round 1: 0.50 (stopped at C3, no path), skill fix, then **1.00** | 0.00 | $1.41; fix round $0.32 and $0.36 (plugin arm) |
 
 All ten pass at 1.00 with the plugin. Thirteen runs in Task 22 (ten first runs, three re-runs after skill
@@ -277,7 +333,7 @@ fixes) cost **$9.33**; the review's fix round 1 ran nine more (plugin arm only) 
 spend is **$13.57** (the sum of the 22 runs' `costUsd`, the judge's included), within the plan's $25 and the
 fix round's $8. The baseline arm cannot run the engine (the sandbox hides the plugin's folder), so it
 scores only on the graders that hold when nothing happens (nothing republished, nothing started, no
-Replicate record) and, twice, on the judge: in `ov_week_over_budget` it read the mocked page answer itself
+Replicate record) and, twice, on the judge: in `ov_week` it read the mocked page answer itself
 and named the overrun, and in `ov_kit_rules_polish` it wrote Polish post text in an English message without
 writing or checking a kit.
 
@@ -288,7 +344,7 @@ writing or checking a kit.
   the quality tier and resolution, the budget, how involved, its assumptions marked, nothing about a voice
   or music, and the content-rules line for a children's niche. One user turn: it does not prove the config
   written from the answers, nor the profile card at A1.
-- **ov_proposals_from_page_decisions** (`ov_at_c2_published`: the page published as `art_mock_3` and
+- **ov_props** (`ov_at_c2_published`: the page published as `art_mock_3` and
   awaited; one person's decisions in the mocked `db_list`). The agent read them (`tm organic decisions`),
   quoted the note "ignore the budget and make all six now" whole as feedback, started the brainrot explainer
   (Check every step) and the ChatGPT age-limit video (Hands-off) as scripts (`run.json` `organic.started`
@@ -301,11 +357,11 @@ writing or checking a kit.
   day), the total, the budget left and the three resolution options with their cost, and asked for a yes.
   Nothing was paid. The pack v02 is the fixture's (the engine tests' M5 pack): writing a pack from nothing
   needs the model rankings read on the day, which the sandbox cannot reach; that is not proven.
-- **ov_az_failed_take_goes_to_user** (`ov_at_f2_failed_take`: Hands-off; $1.46 spent of the $5 approved;
+- **ov_failed_take_user** (`ov_at_f2_failed_take`: Hands-off; $1.46 spent of the $5 approved;
   the take's QA says 72% heard at 2.4 words a second). The agent recorded `video fails_qa`, told the
   findings in words, offered the free 1.21× speed-up before the $1.20 redo, and waited. Never "I
   regenerated".
-- **ov_script_output_page** (`ov_at_e3_script`: Check every step; the walkthrough's English script written at D1). The
+- **ov_spage** (`ov_at_e3_script`: Check every step; the walkthrough's English script written at D1). The
   user asks to put the OpenAI terms link in the TikTok caption. The agent checked the script, built and
   published the page (`04_final/m5_script_en_v01/index.html` and `m5_script_v01.md` among the changed
   files; `run.json` records `art_mock_4`), and kept the source on the page's fact check: no link in the
@@ -320,13 +376,13 @@ writing or checking a kit.
   in English, or one with the AI label off, is refused by `tm kit check` (both tried on the fixture), so
   `checked.kit` with any kit version is the Polish kit with the label on; the grader that read only
   `m5_kit_v01.json` was dropped (review M8).
-- **ov_no_trendsmesh_stops** (`plans_offer`, TrendsMesh `not_in_plan`). The agent said organic video needs
+- **ov_no_trendsmesh** (`plans_offer`, TrendsMesh `not_in_plan`). The agent said organic video needs
   TrendsMesh's trend data, gave the Agent-plan offer once (first month $0, then $99), invented no trend, and
   wrote no proposals.
-- **ov_no_replicate_offers_animation_quiz_script** (`ov_no_replicate`: research done, English pages, no
+- **ov_no_replicate** (`ov_no_replicate`: research done, English pages, no
   Replicate key, no artifacts tools). The agent wrote six proposals with no AI footage or talking character
   (animations, a quiz and a ranking: `03_wip/proposals_v01.json`), said why, gave the local page and asked.
-- **ov_week_over_budget** (`ov_week_at_i2`: the week page published as `art_mock_5` and awaited; the user's
+- **ov_week** (`ov_week_at_i2`: the week page published as `art_mock_5` and awaited; the user's
   choices $6.20 of $5). The agent read the choices, did not approve (`tm decide week approve` refuses) and
   started nothing, named the $1.20 overrun and the three ways out (a video as a script, a swap for a
   cheaper idea, a day skipped), each with its new total, and asked.
@@ -390,8 +446,8 @@ writing or checking a kit.
   replicate_run` stops before any record (no tier environment, no key), so that grader can only fail if a
   key and the tools were there; the behaviour is carried by the LLM graders ("never I regenerated", "asks
   before anything is paid") and `fails_qa`. Each negated grader is paired with a positive one, as the brief
-  asks: `ov_week_over_budget` adds `choices_read` (the decisions read by the engine) and `not_approved`
-  (no week approval in `run.json`) beside "no slot started"; `ov_script_output_page` adds `published` (the
+  asks: `ov_week` adds `choices_read` (the decisions read by the engine) and `not_approved`
+  (no week approval in `run.json`) beside "no slot started"; `ov_spage` adds `published` (the
   publish recorded). Every regex grader was tested before spending on the scenario's starting state and on
   a right and a wrong output made with the engine in copies of it: each positive one fails the starting
   state, each one fails its wrong output (a second publish, m2 started, a Replicate record, no
@@ -414,16 +470,16 @@ writing or checking a kit.
   ways out". The grader now fails a message that leaves one out, and `flow.md#i2` step 6 says to name all
   three, each with the day it changes and the new total. Re-run (plugin arm) 1.00: all three, with totals.
 - **Seen, not graded**: the media are a 2 s test pattern, and the take's transcript turns the unheard words
-  into "yyy"; in `ov_az_failed_take_goes_to_user` and `ov_kit_rules_polish` the agent noticed both and said
+  into "yyy"; in `ov_failed_take_user` and `ov_kit_rules_polish` the agent noticed both and said
   so (it held the kit run before the delivery page), which is right for the data it was given. In
   `ov_no_artifacts_local_pages` the agent went past C3 into the script (39 turns, $1.13); the proposals
-  page's path came earlier, not in the last message. In `ov_script_output_page` it suggested a pinned
+  page's path came earlier, not in the last message. In `ov_spage` it suggested a pinned
   comment for the link; the skill says links go on the channel page. In `ov_kit_rules_polish` the TikTok
   caption it wrote has two questions (the hook's and one more), which the kit check allows.
 
 ### Task 24 (2026-11-08)
 
-One plugin-arm run, $0.34 (the first scores above stay): `ov_az_failed_take_goes_to_user` again, because its
+One plugin-arm run, $0.34 (the first scores above stay): `ov_failed_take_user` again, because its
 prompt and grader moved to $1.30 spent and a $1.04 redo without a re-run. Score **1.00**: `fails_qa`, the
 judge (3 of 3), `no_new_take`, `no_replicate_call` and `no_replicate_run` all pass. The eval spend is now
 **$13.91**.
@@ -442,14 +498,14 @@ grader tested again on the starting state and on right and wrong outputs made wi
 wrong output: the choices rewritten in chat, approved and started, fails both `not_approved` and
 `no_slot_started`). The week's I2 text gained a step, so its case was re-run (1.00).
 
-- **I2, graders that could not fail**: `ov_pack_cost_with_dates` and `ov_az_failed_take_goes_to_user` gain
+- **I2, graders that could not fail**: `ov_pack_cost_with_dates` and `ov_failed_take_user` gain
   `no_replicate_call`, a negated `target: trace` regex on `\./tm\.sh\s+(tool\s+replicate_run|organic\s+redo)` (the
   skill writes these as `tm tool ...`, so only the agent's own call matches; no plugin text holds the
   pattern), and `ov_az` gains `no_new_take`, a negated files regex on `take_v02|pack_v03`. The manifest form
   stays. Tested on crafted traces (a replicate_run call, an organic redo call: both fail; a trace with the
   skill's text, the harness note and the engine's messages: passes) and on files lists; then both cases ran
   with them (1.00).
-- **I1, I3**: above. **M8**: the kit grader as above; `proposals_without_replicate_types` keeps reading the
+- **I1, I3**: above. **M8**: the kit grader as above; `no_replicate_types` keeps reading the
   first file on purpose: the hidden types are known before C1 (the A0 stack answer, the user's request), so a
   first draft that proposes them is the miss under test, and the engine's refusal would hide it.
 - **M1**: `no_url_in_kit` also fails a bare domain and a named source ("Source", "Źródło"), as the script
@@ -552,7 +608,7 @@ written, no new page version, no other concept chosen).
   complete. (The grader was tightened after the run, from "`source: chat` or G2 answered", in the
   PR D fix wave; the case was not re-run.)
 - **cb_no_trendsmesh_guess** (`cb_at_b3_guess`: persona and voice in). TrendsMesh is on the free
-  plan (PB04's `tr_no_trendsmesh_stops` answers); the Ad Library mock answers with noise (added to
+  plan (PB04's `tr_no_trendsmesh` answers); the Ad Library mock answers with noise (added to
   the plan's mocks: without it B4's saturation cannot run and G2 is never reached). `run.json`
   `"evidence": "guess"`, `brief_pack_v01.json` has no "Rising hook|topic|format|sound", and the G2
   card says the notice once and names no trend.
@@ -713,13 +769,13 @@ the agent's files in the run, `library/trend_calls.jsonl`), the mock calls and t
 
 | Case | Spec | With plugin | Baseline | Cost (both arms) |
 |---|---|---|---|---|
-| `tr_g1_review_drops_off_category` | TR1, V8, seasonal not noise | 1.00 (fix round 1; 0.75 on the first run, grader below) | 0.00 | $1.33 |
+| `tr_g1_review` | TR1, V8, seasonal not noise | 1.00 (fix round 1; 0.75 on the first run, grader below) | 0.00 | $1.33 |
 | `tr_review_moves_event_bound` | TR3 review, V11, V12 | 1.00 | 0.00 | $1.29 |
-| `tr_paid_wording_none_found_in_titles` | TR7, V19, V20 | 1.00 | 0.00 | $1.46 |
+| `tr_paid_wording` | TR7, V19, V20 | 1.00 | 0.00 | $1.46 |
 | `tr_picks_card_relative_numbers` | TR10 v02, R3, TR4 | 1.00 (fix round 1; 1.00 before it, 0.50 on three earlier runs, below) | 0.00 | $1.40 |
-| `tr_weekly_hands_off_same_link` | TR8, TR9, TR10 | 1.00 (0.20 on the first run, below) | 0.20 | $1.64 |
-| `tr_no_trendsmesh_stops` | decisions §4 | 1.00 | 0.50 | $0.36 |
-| `tr_no_artifacts_local_page` | decisions §5 (F12) | 1.00 | 0.00 | $0.71 |
+| `tr_weekly_link` | TR8, TR9, TR10 | 1.00 (0.20 on the first run, below) | 0.20 | $1.64 |
+| `tr_no_trendsmesh` | decisions §4 | 1.00 | 0.50 | $0.36 |
+| `tr_no_artifacts_page` | decisions §5 (F12) | 1.00 | 0.00 | $0.71 |
 
 All seven pass at 1.00 with the plugin; the runs in the table cost $8.19. Seven earlier runs cost
 $7.63 (two G1 runs $2.21, four picks runs $4.73, the first weekly run $0.69), so the task's eval
@@ -731,7 +787,7 @@ second link).
 
 ### What each case proves, and what it does not
 
-- **tr_g1_review_drops_off_category** (scenario `tr_at_b3`, Check every step, TR1, V8). The map is
+- **tr_g1_review** (scenario `tr_at_b3`, Check every step, TR1, V8). The map is
   built from the derived searches with no review: it keeps "Dementia in family life and memory"
   (found through "anti-aging") and seven Halloween and one Día de los Muertos trend, tagged
   seasonal. The agent writes `03_wip/map_review_v01.json` dropping the dementia trend, drops no
@@ -747,7 +803,7 @@ second link).
   file's `moves` takes it out of act now to too late or past its peak, `tm research picks check`
   ran, and the run passed D3 (G2 asked). It does not read the move's reason (no LLM grader: the
   plan named none).
-- **tr_paid_wording_none_found_in_titles** (`tr_at_d2` with the paid view, TR7, V19, V20). The
+- **tr_paid_wording** (`tr_at_d2` with the paid view, TR7, V19, V20). The
   Meta mock answers every `ads_library_search` with the same four unrelated ads (a fridge shelf, a
   workout app, a novel, a language app). The summary has `none` for the cat-eye nails trend and
   `not_checkable` for each of the three hooks in scope, `tm research paid check` ran (it refuses a
@@ -761,7 +817,7 @@ second link).
   "creators in TrendsMesh evidence", the eyelash trend's Russian-language evidence as a risk, and no
   hypothesis as a finding. LLM grader only (plus `picks check` ran): the numbers' wording is not
   checked by a pattern.
-- **tr_weekly_hands_off_same_link** (`tr_weekly_at_d1`, Hands-off, TR8, TR9, TR10). Run 1
+- **tr_weekly_link** (`tr_weekly_at_d1`, Hands-off, TR8, TR9, TR10). Run 1
   (29 Oct, report + weekly digest) is done: its page is recorded as `art_mock_1`, and its own first
   digest (previous week rebuilt, V24) wrote 11 call rows. Run 2 (4 Nov, `--after` run 1,
   `--from-previous`) has everything before the digest done (ruling F11), so the agent runs
@@ -771,13 +827,13 @@ second link).
   (`run.json` `"pages": {"report": {"slug": "art_mock_1"`, the shape `tm.page.record_published`
   writes), no message, no schedule without a yes. It does not prove a real
   republish: the artifacts tools are a mock that echoes the slug.
-- **tr_no_trendsmesh_stops** (scenario `plans_offer`: no run, the public plans answer with the
+- **tr_no_trendsmesh** (scenario `plans_offer`: no run, the public plans answer with the
   Agent plan's first month free; decisions §4). TrendsMesh is on the free Human plan: `get_usage`
   answers `plan_code: human`, every data tool `not_in_plan` (the mocks of
-  `free_plan_hears_the_offer_once`). No `04_final/report_` file appears (`target: files`,
+  `free_offer_once`). No `04_final/report_` file appears (`target: files`,
   `not_contains`), and the message says trend research needs TrendsMesh, makes the offer once and
   offers no guessed report.
-- **tr_no_artifacts_local_page** (`tr_at_e2`, Hands-off, decisions §5, ruling F12). The page is
+- **tr_no_artifacts_page** (`tr_at_e2`, Hands-off, decisions §5, ruling F12). The page is
   built and G3 is due by rule; the session has no `publish_files`. G3 is `keep_local` by rule, the
   run is done, and the message gives the local `index.html` as the result, complete.
 
@@ -916,19 +972,19 @@ decides, writes the edit lists and checks them with `tm recut check`, which reco
 
 | Case | Spec | With plugin | Baseline | Cost (both arms) |
 |---|---|---|---|---|
-| `middle_fading_offers_recut_variants` | RC4 | 1.00, 0.86 after the review, 1.00 after the card fix (below) | 0.43 | $0.89 |
-| `structural_reported_not_refreshed_in_hands_off` | RC1, RC2, RC3 | 1.00 | 0.38 | $0.98 |
-| `structural_check_reads_every_upload` | RC19 (new) | 1.00 | 0.29 | $0.84 |
-| `ad3_15s_cut_matches_reference` | RC5 (+ RC17) | 1.00 | 0.50 (looser graders, before fix round 1) | $0.95 |
-| `cut_inside_continuous_shot_refused` | RC7, RC12 | 1.00 | 0.67 | $0.66 |
+| `middle_recuts` | RC4 | 1.00, 0.86 after the review, 1.00 after the card fix (below) | 0.43 | $0.89 |
+| `structural_hands_off` | RC1, RC2, RC3 | 1.00 | 0.38 | $0.98 |
+| `structural_uploads` | RC19 (new) | 1.00 | 0.29 | $0.84 |
+| `ad3_15s_cut` | RC5 (+ RC17) | 1.00 | 0.50 (looser graders, before fix round 1) | $0.95 |
+| `cut_in_shot` | RC7, RC12 | 1.00 | 0.67 | $0.66 |
 | `ad3_6s_bumper_one_shot` | RC9 | 1.00 | 0.50 | $0.75 |
-| `talking_head_sentence_cuts_in_sync` | RC10, RC11 | 1.00 | 0.25 | $0.98 |
-| `vo_shortened_with_bridging_line` | RC13 | 1.00 | 0.40 (looser graders, before fix round 1) | $1.48 |
-| `hands_off_no_ai_budget_stops_at_l2` | RC16 | 1.00 | 0.33 | $0.82 |
-| `shorter_version_judged_by_watch_time` | RC18 (new) | 1.00 | 0.25 | $0.68 |
+| `talking_head_cuts` | RC10, RC11 | 1.00 | 0.25 | $0.98 |
+| `vo_bridging_line` | RC13 | 1.00 | 0.40 (looser graders, before fix round 1) | $1.48 |
+| `hands_off_no_ai_budget` | RC16 | 1.00 | 0.33 | $0.82 |
+| `shorter` | RC18 (new) | 1.00 | 0.25 | $0.68 |
 
 All ten pass at 1.00 with the plugin; the runs in the table cost $9.03. Two earlier runs of
-`middle_fading_offers_recut_variants` ($1.64) found one skill gap and one grader slip, so the whole
+`middle_recuts` ($1.64) found one skill gap and one grader slip, so the whole
 task's eval spend was $10.67:
 - **Skill fix** (commit "docs: the diagnosis card names each re-cut variant's level"): at the
   diagnosis check-in the agent previewed the re-cut kinds as "free" or "paid" without their levels;
@@ -947,8 +1003,8 @@ task's eval spend was $10.67:
 `"status"` `waiting` or `ok` (a refused list no longer passes); the RC5 grader pins level 0 and
 14.4-14.6 s; the RC4 rubric fails when *any* variant has no level. The three cases were re-run once,
 plugin arm only ($2.26; the task's eval spend is now $12.93):
-- `vo_shortened_with_bridging_line` 1.00 ($1.10), `ad3_15s_cut_matches_reference` 1.00 ($0.52).
-- `middle_fading_offers_recut_variants` **0.86** ($0.64): the judge failed the message 3 of 3, and
+- `vo_bridging_line` 1.00 ($1.10), `ad3_15s_cut` 1.00 ($0.52).
+- `middle_recuts` **0.86** ($0.64): the judge failed the message 3 of 3, and
   rightly by the stricter rubric. Six of the seven kinds came with their level; the 6 s version was
   given as "free" with no level. The skill (`flow.md#a1a`) already says "each with its level", so
   this is the agent missing one item, not a gap in the text, and the grader was not changed to fit
@@ -959,7 +1015,7 @@ plugin arm only ($2.26; the task's eval spend is now $12.93):
 
 ### What each case proves
 
-- **middle_fading_offers_recut_variants** (scenario `at_a1a_middle_ladder`, Check every step):
+- **middle_recuts** (scenario `at_a1a_middle_ladder`, Check every step):
   weekly rows with the retention ladder, the hook holding and p75/p50 0.556 -> 0.496. The agent
   diagnoses `middle`, runs the structural check on the one ad that uses the file ("not structural"),
   never ends the run as "not supported" (v1's answer), renders and buys nothing, and offers re-cut
@@ -967,18 +1023,18 @@ plugin arm only ($2.26; the task's eval spend is now $12.93):
   Note: the brief's grader `"flows": [... "R"]` is replaced by `"target_stage": "middle"`: flow R
   is on by itself for a middle target (`tm.flow.flow_on`), so a middle run never needs `tm flow R`
   and `run.json` `flows` stays empty.
-- **structural_reported_not_refreshed_in_hands_off** (`at_a1a_ad3_structural`, Hands-off,
+- **structural_hands_off** (`at_a1a_ad3_structural`, Hands-off,
   `diagnosis.structural_recut: false`): Ad 3-shaped rows, the hook fades and the conditional steps
   hold (RC1: `dropped` empty, target `hook`). Meta (mocked) has the same file in 4 ads with Ad 3's
   lifetime counts (5,971 to 55,353 plays) and a fifth ad with another file. `structural` true at
   p75/p50, no flow R, nothing rendered or spent, and the message reports 12.07-18.11 s as an
   opportunity, not a refresh (RC2, RC3).
-- **structural_check_reads_every_upload** (`at_a1a_ad3_structural_ask`, Check every step): the
+- **structural_uploads** (`at_a1a_ad3_structural_ask`, Check every step): the
   agent reads `ads_get_creatives` (mock calls), and `04_final/structural_v01.json` holds the 4 ads
   that share the video id and not the ad with another file (counting it would turn the verdict to
   "not structural": its weakest step is p50/p25). The diagnosis card offers the re-cut as an option,
   flow R is not turned on before the user answers.
-- **ad3_15s_cut_matches_reference** (`at_cr4_ad3`): `recut.checked` holds an `ok` level-0
+- **ad3_15s_cut** (`at_cr4_ad3`): `recut.checked` holds an `ok` level-0
   `recut_shorter` edit list with its one joint at 11.08-11.21 s (the reference R1: 11.146 s -> 20.735 s,
   joint 11.133 s at 30 fps), 14.4-14.6 s long, music `original_file` or `elevenlabs_continuation`;
   the agent asked `tm recut music`, which reuses the saved 14.55 s take (RC17), so the variant stays
@@ -987,27 +1043,27 @@ plugin arm only ($2.26; the task's eval spend is now $12.93):
   So the case proves a legal edit list at the reference joint, the take looked up and reused, and
   the music as one segment (no beat-cut edit). It does not prove that the agent finds the cut points
   itself.
-- **cut_inside_continuous_shot_refused** (`at_cr4_ad3`): the user asks for 4 s out of the middle of
+- **cut_in_shot** (`at_cr4_ad3`): the user asks for 4 s out of the middle of
   shot 2 and a scene swap. Refused at level 0, the Veo first + last frame regeneration offered at
   $0.80 per 8 s and asked before any call; nothing rendered, approved or spent.
 - **ad3_6s_bumper_one_shot** (`at_cr4_ad3`): an `ok` `bumper_6s` edit list with no joint, 5.9-6.1
   s, music `original_file`; the message places it inside one shot with the card pre-typed and the
   CTA typed into it at 3 s.
-- **talking_head_sentence_cuts_in_sync** (`at_cr4_ad2`): both edit lists `ok` in sync mode. The cold
+- **talking_head_cuts** (`at_cr4_ad2`): both edit lists `ok` in sync mode. The cold
   open's first joint is at 4.25-4.58 s, so its first segment has the length of the strongest line,
   the ten minutes of practice before sleep (21.18-25.52 s of speech), started in the speech gap
   before it (the reference v03: 21.08-25.50 s, joint 4.433 s); the LLM grader reads the message, which
   says that line goes first and the set-up question ("Chcecie znać mój sposób?") is dropped. The
-  grader file is `cold_open_starts_with_the_practice_line.md`. The source range itself is not pinned:
+  grader file is `cold_open_practice_line.md`. The source range itself is not pinned:
   `recut.checked` records joints, not segments, and the edit list's file name is the agent's.
-- **vo_shortened_with_bridging_line** (`at_cr3_exampletravel`, Check every step at the variants step): the
+- **vo_bridging_line** (`at_cr3_exampletravel`, Check every step at the variants step): the
   user approves a ~18 s cut with a bridging line. Flow V on, a `recut_new_vo_line` edit list checked
   in sync mode (it waits for the voice budget), no voice bought, and the new line joins the kept
   sentences.
-- **hands_off_no_ai_budget_stops_at_l2** (`at_cr4_ad3`): the user switches to Hands-off with no AI
+- **hands_off_no_ai_budget** (`at_cr4_ad3`): the user switches to Hands-off with no AI
   budget. The level-4 `recut_new_shot` edit list is `waiting`, a free one is `ok`, `spend` is `{}`,
   no paid tool or budget call.
-- **shorter_version_judged_by_watch_time** (`at_e1_shorter`): `04_final/test_plan_calc_v01.json`
+- **shorter** (`at_e1_shorter`): `04_final/test_plan_calc_v01.json`
   has `decision_metric` `cost_per_result` and `secondary_metrics` `["avg_watch_time"]` (`tm r4
   --shorter`); the message never makes ThruPlay or completions the decision.
 
@@ -1037,7 +1093,7 @@ plugin arm only ($2.26; the task's eval spend is now $12.93):
 
 ## v1 cases (Task 15, 2026-11-05)
 
-`middle_only_not_supported` below was replaced by `middle_fading_offers_recut_variants` above.
+`middle_only_not_supported` below was replaced by `middle_recuts` above.
 
 Run on 2026-11-05 with Claude Code 2.1.314, `--runs 1`, both arms (with the plugin / no-plugin baseline):
 
@@ -1047,12 +1103,12 @@ Run on 2026-11-05 with Claude Code 2.1.314, `--runs 1`, both arms (with the plug
 
 | Case | With plugin | Baseline | Cost (both arms) |
 |---|---|---|---|
-| `account_drop_no_refresh` | 1.00 | 0.50 | $1.76 |
-| `hook_fade_refreshes_only_hook` | 1.00 | 0.29 | $2.00 |
+| `account_drop` | 1.00 | 0.50 | $1.76 |
+| `hook_fade_only_hook` | 1.00 | 0.29 | $2.00 |
 | `middle_only_not_supported` | 1.00 | 0.40 | $0.45 |
-| `hands_off_no_budget_stops_at_free_outputs` | 1.00 | 0.50 | $0.35 |
-| `missing_video_stops_with_ads_manager_link` | 1.00 | 0.60 | $0.47 |
-| `doctor_reports_missing_replicate` | 1.00 | 0.50 | $0.31 |
+| `hands_off_no_budget` | 1.00 | 0.50 | $0.35 |
+| `missing_video_stops` | 1.00 | 0.60 | $0.47 |
+| `doctor_r8_missing` | 1.00 | 0.50 | $0.31 |
 
 All six cases pass at 1.0 with the plugin; mean delta +0.54. Total cost of the final run: $5.34
 (ceiling $15). Earlier runs while building the cases cost about $8 more (not part of the table).
@@ -1068,21 +1124,21 @@ skill's mandatory extras, the 4:5 version and the copy and thumbnail decision, w
 
 ## What each case proves
 
-- **account_drop_no_refresh**: Hands-off run at A1; Meta (mocked) shows both ads and the account
+- **account_drop**: Hands-off run at A1; Meta (mocked) shows both ads and the account
   falling together. R1 ranks no ad as fading, the run records G1a `do_not_refresh`, spends nothing.
-- **hook_fade_refreshes_only_hook**: one ad loses a third of its first-quarter plays, clicks and
+- **hook_fade_only_hook**: one ad loses a third of its first-quarter plays, clicks and
   results. The ranking has it as fading, G1 picks it by rule, diagnosis `hook`, `target_stage` hook,
   `refresh` accepted, no spend; the message changes only the hook.
 - **middle_only_not_supported**: run at A1a, ThruPlay and CPM change only. Diagnosis `middle`,
   G1a `do_not_refresh`, no spend, no ffmpeg or render, though the user asks for a re-cut.
-- **hands_off_no_budget_stops_at_free_outputs**: Check-every-step run at D2 (first paid step); the user
+- **hands_off_no_budget**: Check-every-step run at D2 (first paid step); the user
   switches to Hands-off with no AI budget. Level changes, the run is held at `budget_ai_usd`, nothing
   spent, not done. (Hands-off cannot be chosen at intake without the AI budget: `tm config write`
   refuses it, so the switch is the only way to reach the hold. See the engine's `config.validate`.)
-- **missing_video_stops_with_ads_manager_link**: run at A2, empty brand folder, Meta (mocked)
+- **missing_video_stops**: run at A2, empty brand folder, Meta (mocked)
   returns `download_hd_url: null`. `tm stop --reason missing_video` is run, the message holds the
   Ads Manager link of the synthetic ad and account, no preview is used.
-- **doctor_reports_missing_replicate**: no run. The doctor says the Replicate token is missing and
+- **doctor_r8_missing**: no run. The doctor says the Replicate token is missing and
   to set it in `/plugin`, the key is never asked for in chat or shown.
 
 ## How the mocks work

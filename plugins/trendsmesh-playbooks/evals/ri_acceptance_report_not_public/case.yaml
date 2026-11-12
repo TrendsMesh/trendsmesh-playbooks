@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: ri_acceptance_report_not_public
-context:
-  scaffold_script: fixture.sh

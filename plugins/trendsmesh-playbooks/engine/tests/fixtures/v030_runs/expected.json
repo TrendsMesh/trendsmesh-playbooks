@@ -2,7 +2,7 @@
   "saved_by": "tm 0.3.0 (9119b14)",
   "cases": [
     {
-      "name": "middle_every_step_at_cr3_g3r",
+      "name": "middle_every_cr3_g3r",
       "step": "CR3",
       "action": "ask",
       "checkin": [
@@ -10,19 +10,19 @@
       ]
     },
     {
-      "name": "middle_hands_off_at_cr5a",
+      "name": "middle_handsoff_cr5a",
       "step": "CR5a",
       "action": "work",
       "checkin": null
     },
     {
-      "name": "hook_structural_at_c2",
+      "name": "hook_struct_at_c2",
       "step": "C2",
       "action": "work",
       "checkin": null
     },
     {
-      "name": "all_outputs_measuring_at_e4",
+      "name": "all_measuring_at_e4",
       "step": "E4",
       "action": "work",
       "checkin": [

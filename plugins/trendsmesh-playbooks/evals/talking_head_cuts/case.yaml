@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: talking_head_cuts
+# Was talking_head_sentence_cuts_in_sync (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

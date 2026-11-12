@@ -107,15 +107,15 @@ with tempfile.TemporaryDirectory() as tmp:
     run = new(ws / "a", ["edited_video"], "every_step")
     drive_to(run, "CR3", diagnosis=diagnosis("middle"), flows_at_a1a=["R"])
     complete(run, "CR3")
-    cases.append(save(run, "middle_every_step_at_cr3_g3r", flow.next(run)))
+    cases.append(save(run, "middle_every_cr3_g3r", flow.next(run)))
     # 2. a middle run, Hands-off (flow R from the diagnosis alone): RB decided by rule, at CR5a (work)
     run = new(ws / "b", ["edited_video"], "hands_off")
     nxt = drive_to(run, "CR5a", diagnosis=diagnosis("middle"))
     assert any(d["checkin"] == "RB" and d["by"] == "rule" for d in state.load(run).decisions)
-    cases.append(save(run, "middle_hands_off_at_cr5a", nxt))
+    cases.append(save(run, "middle_handsoff_cr5a", nxt))
     # 3. a hook run with a structural weakness, every step: flow R's steps done, at C2 (work)
     run = new(ws / "c", ["edited_video"], "every_step")
-    cases.append(save(run, "hook_structural_at_c2",
+    cases.append(save(run, "hook_struct_at_c2",
                       drive_to(run, "C2", diagnosis=diagnosis("hook", STRUCTURAL), flows_at_a1a=["R"])))
     # 4. every output, every step, the live test activated: one measurement taken, at E4 (work)
     run = new(ws / "d", ALL_OUTPUTS, "every_step")
@@ -123,7 +123,7 @@ with tempfile.TemporaryDirectory() as tmp:
     first = state.load(run).measurements_due[0]
     complete(run, "E4", measured=first, today=date(2026, 11, 5))
     assert state.load(run).measurements_done == [first]
-    cases.append(save(run, "all_outputs_measuring_at_e4", flow.next(run, today=date(2026, 11, 5))))
+    cases.append(save(run, "all_measuring_at_e4", flow.next(run, today=date(2026, 11, 5))))
     # 5. a run on the agent's guess (no TrendsMesh), every step, at A6 (work)
     run = new(ws / "e", ["creative_brief"], "every_step", evidence="guess")
     cases.append(save(run, "guess_run_at_a6", drive_to(run, "A6", diagnosis=diagnosis("hook"))))

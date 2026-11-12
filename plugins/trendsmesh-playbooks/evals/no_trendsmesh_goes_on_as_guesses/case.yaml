@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: no_trendsmesh_goes_on_as_guesses
-context:
-  scaffold_script: fixture.sh

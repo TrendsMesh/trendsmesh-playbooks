@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: missing_video_stops_with_ads_manager_link
-context:
-  scaffold_script: fixture.sh

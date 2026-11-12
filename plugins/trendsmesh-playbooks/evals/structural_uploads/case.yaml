@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: structural_uploads
+# Was structural_check_reads_every_upload (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

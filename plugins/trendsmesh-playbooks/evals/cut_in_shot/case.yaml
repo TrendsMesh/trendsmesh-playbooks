@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: cut_in_shot
+# Was cut_inside_continuous_shot_refused (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: tr_no_artifacts_local_page
-context:
-  scaffold_script: fixture.sh

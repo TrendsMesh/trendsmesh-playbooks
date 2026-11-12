@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: hands_off_no_ai_budget
+# Was hands_off_no_ai_budget_stops_at_l2 (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh

@@ -1,4 +1,0 @@
-schema_version: "1.1"
-name: doctor_elevenlabs_plan_read_from_key
-context:
-  scaffold_script: fixture.sh

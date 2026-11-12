@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: ov_week
+# Was ov_week_over_budget (renamed in issue 76: every path in the repo stays within 90 characters).
+context:
+  scaffold_script: fixture.sh
