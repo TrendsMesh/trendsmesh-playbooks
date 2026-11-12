@@ -483,7 +483,7 @@ def _pack(run: RunFolder, pack: dict, cfg: dict, today: date, out: list[Problem]
              "run's stack has no Replicate key (REPLICATE_API_TOKEN).",
              "Set the key up and record the stack again (tm organic stack); or, for stills with motion graphics, use "
              "the user's own pictures (an images item with no model); or make this idea as a script to film.")
-    video = _models(pack, cfg, today, out)
+    video = _models(pack, cfg, today, out, run=run)
     _speech(run, pack, cfg, out)
     _resolution(pack, video, out)
     _cost(run, pack, cfg, today, video, out)
@@ -513,8 +513,13 @@ def _fixed_model(pack: dict) -> tuple[str, str] | None:
     return None
 
 
-def _models(pack: dict, cfg: dict, today: date, out: list[Problem]) -> set[str]:
-    """OV6. The video models the pack uses (its sections' and its video stage's), checked."""
+def _models(pack: dict, cfg: dict, today: date, out: list[Problem], *, run: RunFolder | None = None) -> set[str]:
+    """OV6. The video models the pack uses (its sections' and its video stage's), checked. The video model is the one
+    chosen on the Models page when the run has a choice (issue #86, `organic_pages.models.chosen`), else the tier's;
+    a recipe is the plugin's or the workspace library's (`library/model-prompting/`, dated with its sources)."""
+    from tm.organic_pages import models as model_page
+
+    picked = model_page.chosen(run) if run is not None else None
     listed = {m["model"]: (i, m) for i, m in enumerate(pack["models"])}
     video: set[str] = set()
     section_models = set()
@@ -545,6 +550,8 @@ def _models(pack: dict, cfg: dict, today: date, out: list[Problem]) -> set[str]:
     tier = cfg.get("generation", {}).get("quality_tier") if isinstance(cfg.get("generation"), dict) else None
     tier = tier if tier in TIERS else "default"
     expected, why = _fixed_model(pack) or (TIERS[tier], f"the {tier} tier's model")
+    if picked and (picked.get("video") or {}).get("model"):
+        expected, why = picked["video"]["model"], "the model chosen on the Models page"
     for model in sorted(video):
         i, entry = listed.get(model, (None, {}))
         field = f"models[{i}]" if i is not None else "models"
@@ -559,14 +566,26 @@ def _models(pack: dict, cfg: dict, today: date, out: list[Problem]) -> set[str]:
         elif model != expected:
             _bad(out, f"{field}.model", f"{model} is not the video model here: {why} is {expected}.",
                  f"Use {expected}, or, when the user names another model, set user_named and answer the six criteria.")
+    image_pick = ((picked or {}).get("images") or {}).get("model")
+    for si, st in enumerate(pack["stages"]):
+        for ii, item in enumerate(st["items"] if st["stage"] == IMAGES_STAGE and image_pick else ()):
+            if _text(item["model"]) and item["model"] != image_pick:
+                _bad(out, f"stages[{si}].items[{ii}].model", f"{item['name']} is made with {item['model']}, and the "
+                     f"image model chosen on the Models page is {image_pick}.",
+                     f"Use {image_pick}, or ask the user and choose again on the Models page.")
     max_age = config.get(cfg, "pricing.max_age_days")
     for model, (i, m) in listed.items():
         recipe = m["recipe"]
-        if not (_text(recipe) and recipe.startswith(RECIPE_PREFIX) and "/" not in recipe[len(RECIPE_PREFIX):]
-                and (RECIPES / recipe[len(RECIPE_PREFIX):]).is_file()):
-            _bad(out, f"models[{i}].recipe", f"{model} has no recipe in {RECIPE_PREFIX}"
-                 + (f" ({recipe} is not there)." if _text(recipe) else "."),
-                 f"Write its recipe first ({RECIPE_PREFIX}<model>.md, from the model's own prompting guide), then name it.")
+        plugin = (_text(recipe) and recipe.startswith(RECIPE_PREFIX) and "/" not in recipe[len(RECIPE_PREFIX):]
+                  and (RECIPES / recipe[len(RECIPE_PREFIX):]).is_file())
+        if not plugin and not (run is not None and _text(recipe) and recipe.startswith(model_page.LIBRARY)
+                               and model_page.recipe_of(run, recipe) is not None):
+            _bad(out, f"models[{i}].recipe", f"{model} has no recipe in {RECIPE_PREFIX} or the library's "
+                 f"{model_page.LIBRARY}" + (f" ({recipe} is not there, or not dated with its sources)." if _text(recipe)
+                                           else "."),
+                 f"Write its recipe first ({model_page.library_recipe(model)}, from the model's official prompting "
+                 "guide: its sources and the day you checked them in the title line, `(checked YYYY-MM-DD)`, and the "
+                 "input fields from Replicate's API), then name it.")
         if not _text(m["ranking"]["source"]):
             _bad(out, f"models[{i}].ranking", f"{model}'s ranking names no source.", "Name the ranking read.")
         late = _dated(_day(m["ranking"]["date"]), today, max_age, f"{model}'s ranking")

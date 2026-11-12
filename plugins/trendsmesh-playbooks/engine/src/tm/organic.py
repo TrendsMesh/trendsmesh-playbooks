@@ -184,6 +184,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     src.add_argument("--file", help="a saved ArtifactData list/query answer (default: the newest on this page)")
     src.add_argument("--text", help="a file in the run holding the user's word in chat (the proposals page's Copy "
                                     "summary, or one line per item of a check-in page)")
+    dc.add_argument("--by-rule", action="store_true",
+                    help="the models page at Hands-off: take its suggested models by rule, without waiting")
     dc.add_argument("--keep-carried", action="store_true",
                     help="check-in pages: the user said in chat that the choices carried from an earlier page stand")
     dc.add_argument("--json", action="store_true")
@@ -487,10 +489,10 @@ def _deliver_week(args: argparse.Namespace) -> int:
     return 0
 
 
-PAGES = ("proposals", "script", "gate", "delivery", "week", "intake", "taste")   # the pages `tm organic page` builds
+PAGES = ("proposals", "script", "gate", "delivery", "week", "intake", "taste", "models")   # `tm organic page` builds
 DECIDED = ("proposals", "gate_images", "gate_video", "delivery", "week", "week_delivery", "intake",
-           "taste")   # the pages `tm organic decisions` reads
-CHOICE_PAGES = ("intake", "taste")   # the pages of choices (tm.organic_pages.choices)
+           "taste", "models")   # the pages `tm organic decisions` reads
+CHOICE_PAGES = ("intake", "taste", "models")   # the pages of choices (tm.organic_pages.choices)
 
 
 def _in_run(run: RunFolder, given: str | None) -> Path | None:
@@ -544,7 +546,7 @@ def _gate_page(args: argparse.Namespace, run: RunFolder) -> int:
 
 
 def _choice_page(args: argparse.Namespace, run: RunFolder) -> int:
-    from tm.organic_pages import intake, taste
+    from tm.organic_pages import intake, models, taste
 
     if args.gate:
         raise ValueError("--gate is for the gate page only.")
@@ -555,7 +557,8 @@ def _choice_page(args: argparse.Namespace, run: RunFolder) -> int:
             raise ValueError("The intake page is made from its questions: it takes no --file.")
         got = intake.build(run, working=args.working, market=args.market, week=args.week)
     else:
-        got = taste.build(run, (_in_run(run, args.file).relative_to(run.path).as_posix() if args.file else None))
+        given = _in_run(run, args.file).relative_to(run.path).as_posix() if args.file else None
+        got = (taste if args.page == "taste" else models).build(run, given)
     name = got["page"]
     message = (f"Built the {name} page in {got['folder']} ({got['sections']} sections, {len(got['files'])} files). "
                f"Publish it: tm page files --run {args.run} --page {name} gives the Artifact tool's file_path and "
@@ -676,12 +679,25 @@ def _gate_decisions(args: argparse.Namespace, run: RunFolder) -> int:
 
 
 def _choice_decisions(args: argparse.Namespace, run: RunFolder) -> int:
-    from tm.organic_pages import intake, taste
+    from tm.organic_pages import intake, models, taste
 
     if args.keep_carried:
         raise ValueError(f"--keep-carried is for the check-in pages, not the {args.page} page.")
+    if args.by_rule and args.page != "models":
+        raise ValueError("--by-rule is the models page's (Hands-off takes its suggested models).")
     file, text = _in_run(run, args.file), _in_run(run, args.text)
-    if args.page == "intake":
+    if args.page == "models":
+        got = models.take(run, file=file, text=text, by_rule=args.by_rule)
+        picked = ", ".join(f"{task} {p['model'] or 'none'}" for task, p in got["models"].items() if p)
+        message = (f"Read the models from {got['from']} ({got['source']}) into {got['file']}: {picked}; "
+                   f"${got['total_usd']:.2f} on Replicate for this video. E1 starts from them (flow.md E1).")
+        if got["recipes_to_write"]:
+            message += (f" No recipe yet for the chosen {', '.join(got['recipes_to_write'])}: write each from the "
+                        "model's official prompting guide (its sources, the day checked, Replicate's input fields) "
+                        "before any prompt.")
+        if args.by_rule:
+            message += " Taken by rule (Hands-off): say which models and why in one line."
+    elif args.page == "intake":
         got = intake.take(run, file=file, text=text)
         a = got["intake"]
         message = (f"Read the intake from {got['from']} ({got['source']}) into {got['answers']} (the config's answers) "
@@ -715,6 +731,8 @@ def _decisions(args: argparse.Namespace) -> int:
     run = RunFolder.open(Path(args.run))
     if args.page in CHOICE_PAGES:
         return _choice_decisions(args, run)
+    if args.by_rule:
+        raise ValueError("--by-rule is the models page's (Hands-off takes its suggested models).")
     if args.page == "week":
         return _week_decisions(args, run)
     if args.page != "proposals":

@@ -302,11 +302,6 @@ strings:
       currency: Waluta konta
       currency_hint: Kwoty pokazujemy w USD, z kursem, gdy konto ma inną walutę.
       currency_label: Kod waluty (np. USD, EUR, PLN)
-      quality: Jakość wideo AI
-      quality_hint: Model wideo. Możesz go zmienić dla każdego filmu.
-      quality_budget: Oszczędna (Seedance 1.5 Pro)
-      quality_default: Domyślna (MiniMax H3)
-      quality_top: Najwyższa (Seedance 2.0)
       level: Jak bardzo chcesz brać udział?
       rules: Zasady treści
       rules_hint: Dla wrażliwej niszy (dzieci, zdrowie, pieniądze, wiadomości).
@@ -330,6 +325,31 @@ strings:
       no_track_means: Film dostajesz tylko z głosem.
       trending: "Popularny dźwięk: {name}"
       trending_means: Dodajesz go w aplikacji przy publikacji.
+    models:
+      title: "{title}: modele"
+      lede: Modele do każdego zadania, według dzisiejszych rankingów i cen na Replicate. Proponowane są zaznaczone; jednym kliknięciem wybierzesz inny. Na tej stronie nic nie powstaje i nic nie jest płatne.
+      task_images: Obrazy (pierwsza klatka)
+      task_video: Wideo (z obrazu)
+      task_upscale: Powiększenie do 1080p
+      task_voice: Model głosu
+      hint_images: Cena za klatki tego filmu.
+      hint_video: Cena za sekundy tego filmu. Na liście są tylko modele, które zaczynają od zatwierdzonej pierwszej klatki.
+      hint_upscale: Cena za sekundy tego filmu.
+      hint_voice: ElevenLabs działa na Twoim kluczu i kredytach. Sam głos wybierasz na stronie stylu, głosu i muzyki.
+      group_budget: Oszczędne
+      group_suggested: Proponowane
+      group_best: Najwyższa jakość
+      no_upscale: Bez powiększenia
+      credits: "≈ {n} kredytów"
+      no_price: Replicate nie pokazuje dziś jego ceny
+      unit_price: "{price} USD za {unit}"
+      audio_variant: lektor zastępuje dźwięk modelu, więc liczymy wariant bez dźwięku
+      face: nie przyjmuje klatki z realistyczną twarzą
+      recipe_to_write: przepis do napisania
+      rank: "#{place} w {source} ({date})"
+      notes: Uwagi
+      notes_label: Co Claude powinien wiedzieć o modelach
+      total: "Ten film na Replicate:"
     # the script to film and its Markdown (organic_pages/script.py)
     script:
       eyebrow: Organiczne wideo AI · skrypt do nagrania

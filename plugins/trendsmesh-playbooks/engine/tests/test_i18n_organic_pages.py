@@ -60,7 +60,7 @@ def _used() -> set[str]:
 def _choice_keys() -> set[str]:
     """The keys of the pages of choices (issue #83): choices' `_C + "<key>"`, the intake's and the taste page's
     `t("<key>")`, and the names they build."""
-    from tm.organic_pages import choices, intake, taste
+    from tm.organic_pages import choices, intake, models, taste
 
     def found(module, pattern: str) -> set[str]:
         return set(re.findall(pattern, Path(module.__file__).read_text(encoding="utf-8")))
@@ -68,7 +68,9 @@ def _choice_keys() -> set[str]:
     keys |= {choices._C + f"page_{p}" for p in choices.PAGES} | {choices._C + k for k in choices.JS_WORDS}
     keys |= {intake._I + k for k in found(intake, r"""\bt\(["']([a-z_]+)["']""")}
     keys |= {intake._I + f"resolution_{r}" for r in intake.RESOLUTIONS}
-    keys |= {intake._I + f"quality_{tier}" for tier in intake.TIERS}
+    keys |= {models._M + k for k in found(models, r"""\bt\(["']([a-z_]+)["']""")}
+    keys |= {models._M + f"{kind}_{task}" for kind in ("task", "hint") for task in models.TASKS}
+    keys |= {models._M + f"group_{g}" for g in models.GROUPS}
     return keys | {taste._T + k for k in found(taste, r"""\bt\(["']([a-z_]+)["']""")}
 
 

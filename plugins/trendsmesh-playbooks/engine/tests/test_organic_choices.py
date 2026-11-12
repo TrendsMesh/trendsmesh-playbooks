@@ -113,7 +113,7 @@ def test_the_intakes_answers_on_the_page_are_written_as_the_configs_answers(tmp_
     answers = json.loads((run.path / out["answers"]).read_text(encoding="utf-8"))
     assert answers == {"level": "big_calls", "outputs": ["proposals"], "languages": {"working": "pl", "market": "pl"},
                        "channels": ["Zorbo"], "output": "ai_video",
-                       "generation": {"resolution": "768p", "upscale": "none", "quality_tier": "default"},
+                       "generation": {"resolution": "768p", "upscale": "none"},
                        "budget": {"per_run_usd": 5.0}, "currency": "USD"}
     profile = json.loads((run.path / out["profile"]).read_text(encoding="utf-8"))["profile"]
     assert profile["bubble"] == "pet care tips for new owners" and profile["product_role"] == "not shown"

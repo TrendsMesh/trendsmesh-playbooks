@@ -189,6 +189,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   again.
 - **The voiceover is on the check-in pages.** The images page plays the recorded voiceover before anything paid is
   made, and the video page plays each take with the voiceover laid under it and the take's own sound turned down.
+- **Choose the models of your video on a page.** After the idea is picked, before the pack, a Models page lists
+  the models for the images, the video, the upscale and the voice, in three groups (budget, suggested, best quality),
+  from today's rankings and Replicate prices read for free. Each shows its price for this video, its place in a
+  ranking with the date, what it is good at and a link to its Replicate page; the total follows every click. A model
+  that can't work for this video is greyed out with the reason (Seedance with a realistic face in the frame), and a
+  model without a prompting recipe gets one written first. The intake no longer asks for a quality tier. At Hands-off
+  the suggested models are taken by rule.
 - **One click in the chat after a page is saved.** When Claude shows a page with decisions and waits, it ends with a
   reply button "Saved, read my choices" where the app has one, in every playbook. In the terminal you still write
   "done".

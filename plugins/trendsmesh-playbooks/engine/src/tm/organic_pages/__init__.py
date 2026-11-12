@@ -62,6 +62,7 @@ CAPABILITIES: dict[str, dict] = {
     # the pages of choices (tm.organic_pages.choices, issue #83 and #86): one collection each, named as the page
     "intake": {"db": _db("intake"), "user": {"scopes": ["profile"]}},
     "taste": {"db": _db("taste"), "user": {"scopes": ["profile"]}},
+    "models": {"db": _db("models"), "user": {"scopes": ["profile"]}},
 }
 
 

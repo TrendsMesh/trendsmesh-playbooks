@@ -782,11 +782,6 @@ organic:
     currency: Account currency
     currency_hint: Money is shown in USD, with the rate when your account uses another currency.
     currency_label: Currency code (e.g. USD, EUR, PLN)
-    quality: Quality of an AI video
-    quality_hint: The video model. You can still change it per video.
-    quality_budget: Budget (Seedance 1.5 Pro)
-    quality_default: Default (MiniMax H3)
-    quality_top: Top (Seedance 2.0)
     level: How involved do you want to be?
     rules: Content rules
     rules_hint: For a sensitive niche (children, health, money, news).
@@ -811,6 +806,32 @@ organic:
     no_track_means: The video is delivered with the voice only.
     trending: "Trending sound: {name}"
     trending_means: You add it in the app when you post.
+  # the Models page (after the idea is picked, before the pack; issue #86)
+  models:
+    title: "{title}: the models"
+    lede: The models for each task, from today's rankings and Replicate prices. The suggested ones are ticked; switch to any other with one click. Nothing is made or paid on this page.
+    task_images: Images (the first frame)
+    task_video: Video (image to video)
+    task_upscale: Upscale to 1080p
+    task_voice: Voice model
+    hint_images: The price is for this video's frames.
+    hint_video: The price is for this video's seconds. Only models that start from the approved first frame are listed.
+    hint_upscale: The price is for this video's seconds.
+    hint_voice: ElevenLabs runs on your own key and credits. The voice itself is picked on the style, voice and music page.
+    group_budget: Budget
+    group_suggested: Suggested
+    group_best: Best quality
+    no_upscale: No upscale
+    credits: "≈ {n} credits"
+    no_price: Replicate shows no price for it today
+    unit_price: "{price} USD per {unit}"
+    audio_variant: the voiceover replaces the model's own sound, so the variant without audio is priced
+    face: doesn't accept a frame with a realistic face
+    recipe_to_write: recipe to write
+    rank: "#{place} on {source} ({date})"
+    notes: Notes
+    notes_label: Anything Claude should know about the models
+    total: "This video on Replicate:"
   # the script to film and its Markdown (organic_pages/script.py)
   script:
     eyebrow: Organic AI video · script to film

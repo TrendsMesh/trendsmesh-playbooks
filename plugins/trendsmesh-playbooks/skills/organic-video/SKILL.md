@@ -99,9 +99,9 @@ level and the outputs before any check-in. **Ask it on the intake page** (`tm or
 intake`, `references/flow.md#a0`), or in chat without a publishing tool; both count the same. Ask
 only what cannot be derived, with defaults, and mark your assumptions: the channel(s) and their platforms, account type, what the channel films,
 about what and for whom, what performed (2 to 3 links), products (or "nothing sold"), the product
-role, the output (a script to film or an AI video; for "plan my week of videos", a week run), the quality
-tier and resolution (kept for the AI video; asked even without a Replicate token, which the user may set
-before a video is made), the budget, and **"How involved do you want to be?"**
+role, the output (a script to film or an AI video; for "plan my week of videos", a week run), the
+resolution (kept for the AI video; asked even without a Replicate token, which the user may set
+before a video is made; the models are chosen per video on the Models page), the budget, and **"How involved do you want to be?"**
 (Check every step, the default; Just the big calls; Hands-off). For a sensitive niche (children,
 health, money), offer the content-rules line (no real children's faces, sources for claims, no
 medical claims). Then `tm level`, `tm config write`, `tm config check`, `tm done A0`. Details:
@@ -201,10 +201,11 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   `read_declaration` again); if the rules are not there, or the publish refused them, say so
   plainly, once, and take the decisions in chat.
 - **The pages of choices** (issue #83): the intake at A0 (`tm organic page intake`) and the style,
-  voice and music at D2 (`tm organic page taste`), one option set per question with the default
-  ticked and one Done button; their collections are `intake` and `taste`, read with `tm organic
-  decisions --page intake|taste` into the same files an answer in chat makes (`flow.md#a0`,
-  `#d2`). Nothing on them spends money.
+  voice and music at D2 (`tm organic page taste`) and the Models page before E1 (`tm organic page
+  models`, issue #86: each task's models from today's rankings and Replicate prices), one option
+  set per question with the default ticked and one Done button; their collections are `intake`,
+  `taste` and `models`, read with `tm organic decisions --page intake|taste|models` into the same
+  files an answer in chat makes (`flow.md#a0`, `#d2`, `#e1`). Nothing on them spends money.
 - **After you show a page with decisions and wait, end your turn with the reply button "Saved,
   read my choices"** where the app has reply buttons (`references/pages.md`, "The reply button");
   a click counts as "done". In the terminal the user writes it.

@@ -52,8 +52,8 @@ account gets a commercial-library alternative to trending sounds), audience lang
 captions and speech; pages follow the working language), the topic and bubble, the channel type (A: proposed
 from the channel's videos and what performed; it sets how many trends of each kind are pulled), the audience,
 tone and style,
-what performed, the products or "nothing sold", the product role, the output, the quality tier and
-resolution, the level, the budget, the tools the stack check found, and the content rules for a
+what performed, the products or "nothing sold", the product role, the output, the resolution,
+the level, the budget, the tools the stack check found, and the content rules for a
 sensitive niche. **Each assumption is marked** (A), and the question is "Anything to correct?" A
 correction is a new version, checked and saved, then the card again. Choice: `accept`, recorded
 with `tm decide profile accept --run R --note "<their words>"`; in a run of several channels one

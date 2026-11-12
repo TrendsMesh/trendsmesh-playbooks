@@ -124,9 +124,9 @@ posts.
      (`weekly.days`, Mon, Wed, Fri, Sat, Sun), the flexible day (`weekly.flexible_day`, Sunday: its
      idea is picked the day before from fresh trends), the run day (`weekly.run_day`) and the week's
      budget (`budget.per_week_usd`, 5 USD; every video's pack fits in what the week has left);
-   - the quality tier (budget Seedance 1.5 Pro, default MiniMax H3, top Seedance 2.0) and the
-     resolution (768P, 1080p, or 768P with an upscale), kept for the AI video, so Hands-off never
-     guesses. **Ask them whatever the stack check found**: a missing Replicate token is a warning,
+   - the resolution (768P, 1080p, or 768P with an upscale), kept for the AI video, so Hands-off
+     never guesses (the models themselves are chosen per video on the Models page, E1: no quality
+     tier is asked). **Ask it whatever the stack check found**: a missing Replicate token is a warning,
      and the user may set it before any video is made (say they apply once it is set);
    - the budget per run (5 USD by default; a hard cap), and the account currency (money is shown in
      USD with the rate when it differs);
@@ -745,15 +745,56 @@ carries a bed. A style is asked only for an animation.
 
 Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` first.
 
+0. **The Models page** (issue #86), before anything is written for a model, at every level. Free
+   reads only, never an account or a paid API:
+   - **today's rankings** of each task, read as their public pages: Arena (text-to-image, image
+     edit, image-to-video) and Artificial Analysis (image-to-video, voice); the links are in
+     `model-prompting/README.md`. Note each model's place, the ranked variant (Arena ranks a named
+     variant, e.g. "Medium") and the day. A difference inside Arena's confidence interval is a tie:
+     the cheaper model, or the one the plugin has tested, wins;
+   - **their prices**: `tm tool replicate_price --run R <owner/model> ... --json` (free, the public
+     model pages) for every candidate;
+   - **the candidates**, as the next `02_research/models/candidates_vNN.json`: `{"price_file", "units":
+     {"images", "video_seconds", "takes", "upscale_seconds"}, "tasks": {"images" | "video" | "upscale":
+     [{"model", "criteria", "group": "budget|suggested|best", "rank": {"source", "place", "date"},
+     "good_at", "selected", "recipe", "start_frame", "cannot"}], "voice": [{"model", "label", "group",
+     "good_at", "credits", "selected"}]}}`: a few per group, one `selected` in the suggested group;
+     `criteria` is the priced variant's tier exactly as the price file holds it (the same variant
+     the ranking named; with a voiceover, the variant without audio where there is one); an upscale
+     row with `"model": null` is "no upscale"; `start_frame` says whether a video model takes the
+     approved first frame (from Replicate's API schema); `cannot` is your reason a model can't work
+     for this video. The voice models: Budget ElevenLabs Eleven v4 Turbo (`eleven_v4_turbo`),
+     Suggested ElevenLabs Eleven v4 (`eleven_v4`), on the user's key and credits (the voice itself
+     is picked at D2);
+   - `tm organic page models --run R --json` builds `04_final/models_vNN/`: per task the three
+     groups, each model with its price for this video (the engine's, from the price file and the
+     units), its ranking with the date, what it is good at and its Replicate link; the total at the
+     bottom follows every click. The engine greys out, with the reason, a model with no price today,
+     Seedance when the frame has a photoreal face (E005), a variant with audio under a voiceover,
+     and your `cannot`; a video model without a start frame is not listed; ranking or prices older
+     than `pricing.max_age_days` are refused.
+   - **Check every step and Just the big calls**: publish it (collection `models`,
+     `organic_pages.CAPABILITIES["models"]`), `tm page await --page models`, end your turn with the
+     reply button; then one unfiltered `ArtifactData` list and `tm organic decisions --run R --page
+     models --json` (an answer in chat: `video: <option id>` per line, read with `--text`).
+     **Hands-off**: `tm organic decisions --run R --page models --by-rule --json` takes the
+     suggested models by rule; say which in one line. Either writes `03_wip/models_vNN.json`, which
+     the pack check holds the video and image models to.
+   - **A chosen model without a recipe** (the message names it): write its recipe before any
+     prompt, from the model's official prompting guide, into the workspace's
+     `library/model-prompting/<owner>-<name>.md`: the title line `# <Model>: prompting recipe (checked
+     YYYY-MM-DD)`, `Sources:` with each link, and the input fields from Replicate's API. The pack
+     names it as `library/model-prompting/<file>`.
 1. **Read the model's recipe first**, before any prompt: `../../references/model-prompting/` holds
    `gpt-image-2.md` (packshot work, character anchors, first frames), `minimax-h3.md` (the default
    video model), `seedance-2.0.md` (the top tier; a person from a description), `seedance-1.5-pro.md`
    (the budget tier), `seedance-2.5.md` (the premium tier), `veo-3.1.md` (image-to-video clips),
    `kling-avatar-v2.md` (the lip-sync alternative) and `p-video-upscale.md` (Pruna's upscale, the
    default upscaler). The pack names each
-   model's recipe as `references/model-prompting/<file>`; a model with no recipe there is refused
-   ("Write its recipe first"): suggest a model that has one, and say why.
-2. **The video model** (OV6): the run's tier (`generation.quality_tier`: budget
+   model's recipe as `references/model-prompting/<file>` (or `library/model-prompting/<file>`, one
+   you wrote); a model with no recipe is refused ("Write its recipe first").
+2. **The video model** (OV6): the one chosen on the Models page. A run from before the page uses
+   its tier (`generation.quality_tier`: budget
    `bytedance/seedance-1.5-pro`, **default `minimax/h3`**, top `bytedance/seedance-2.0`; premium
    `bytedance/seedance-2.5` only when the user asks). A host image goes to MiniMax H3 whatever the
    tier (Seedance refuses a photoreal face, E005); a person described in text goes to Seedance 2.0.

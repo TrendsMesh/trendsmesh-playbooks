@@ -5,7 +5,7 @@ question with its default ticked, a text field only where something has to be ty
     take(run, *, file, text)                   03_wip/intake_answers_vNN.json and 03_wip/intake_profile_vNN.json
 
 The questions are flow.md A0's: the channel and its platforms, the account type, the bubble, what performed, the
-catalogue and the product role, the two languages, the output, the video's quality tier and resolution, the budget
+catalogue and the product role, the two languages, the output, the video's resolution, the budget
 and the currency, the level, the content rules for a sensitive niche; a week run asks the week's own questions in
 place of the output. **A paid output is never the default**: the default is the free script to film, and an AI video
 is chosen only by a click (a week's contents default to scripts).
@@ -34,7 +34,6 @@ PROFILE = "intake_profile"
 _I = "organic.intake."
 PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram", "youtube": "YouTube", "facebook": "Facebook"}
 RESOLUTIONS = {"768p": ("768p", "none"), "1080p": ("1080p", "none"), "768p_pruna": ("768p", "pruna")}
-TIERS = ("budget", "default", "top")
 WEEK_DAYS_DEFAULT = ("mon", "wed", "fri", "sat", "sun")
 
 
@@ -44,7 +43,8 @@ def _opt(oid: str, label: str, means: str = "", *, default: bool = False, badge:
 
 def page_json(run: RunFolder, *, working: str | None = None, market: str | None = None, week: bool = False) -> dict:
     """The intake page's data, in the working language (its table, else English). `working` and `market` are the
-    defaults shown (the language you are talking in, and the audience's); `week` asks a week run's questions."""
+    defaults shown (the language you are talking in, and the audience's); `week` asks a week run's questions. The
+    video's models are chosen on their own page, after the idea is picked (issue #86), so no quality tier is asked."""
     working = i18n.tag(working) or i18n.ENGLISH
     market = i18n.tag(market) or working
     tr = organic_pages.translator(organic_pages.page_lang({"lang": working}).lang)
@@ -93,8 +93,6 @@ def page_json(run: RunFolder, *, working: str | None = None, market: str | None 
             {"id": "output", "kind": "one", "title": t("output"), "hint": t("output_hint"),
              "options": [_opt("script", t("output_script"), t("free"), default=True),
                          _opt("ai_video", t("output_video"), t("output_video_means"), badge=t("paid"))]})
-    sections.append({"id": "quality", "kind": "one", "title": t("quality"), "hint": t("quality_hint"),
-                     "options": [_opt(tier, t(f"quality_{tier}"), default=tier == "default") for tier in TIERS]})
     sections += [
         {"id": "resolution", "kind": "one", "title": t("resolution"), "hint": t("resolution_hint"),
          "options": [_opt(r, t(f"resolution_{r}"), default=r == "768p") for r in RESOLUTIONS]},
@@ -161,7 +159,6 @@ def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None) 
         "budget": {"per_run_usd": _usd(a["budget"]["text"], "budget per run")},
         "currency": (a["currency"]["text"] or "USD").strip().upper(),
     }
-    answers["generation"]["quality_tier"] = a["quality"]["choice"] or "default"
     if week:
         answers["weekly"] = {"contents": a["contents"]["choice"] or "scripts",
                              "per_week": int(a["per_week"]["choice"] or 5),

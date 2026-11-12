@@ -1,6 +1,6 @@
 # Model prompting recipes and model choice
 
-Before writing prompts for a model, the agent reads that model's recipe here (PB3 decision 5: prompts follow the target model's own guide). Each recipe records its sources and the date it was checked. A model without a recipe gets one before its first use.
+Before writing prompts for a model, the agent reads that model's recipe here (PB3 decision 5: prompts follow the target model's own guide). Each recipe records its sources and the date it was checked. A model without a recipe gets one before its first use: in Organic AI video, a model chosen on the Models page gets its recipe written into the workspace's `library/model-prompting/<owner>-<name>.md` (the title line `(checked YYYY-MM-DD)`, its `Sources:`, the input fields from Replicate's API). The recipes here are a head start, not a list of allowed models.
 
 | Model | Recipe | Used for |
 |---|---|---|
