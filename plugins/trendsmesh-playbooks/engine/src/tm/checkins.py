@@ -18,7 +18,7 @@ from tm.playbooks import REFRESH_AD
 LEVEL_IDS = ("every_step", "big_calls", "hands_off")
 ROUTES = ("own", "card", "rule", "stop")
 CARD_ASK = ("first", "last", "before_first_spend")
-EFFECTS = ("end", "stop", "measure_days", "needs", "skips", "requires")
+EFFECTS = ("end", "stop", "measure_days", "needs", "skips", "requires", "back_to")
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,8 @@ class Checkin:
     rule: str
     card: str | None = None
     choices: tuple[str, ...] | None = None  # allowed choices; None means any
-    on_choice: dict[str, dict] = field(default_factory=dict)  # choice -> {EFFECTS}
+    on_choice: dict[str, dict] = field(default_factory=dict)  # choice -> {EFFECTS}; back_to: a step id
+    # (the run goes back to that step and the check-in is asked again; flow._load_steps checks the id)
     stop: dict[str, str] | None = None  # {what, todo} when the route is "stop"
     money: bool = False  # lets money be spent or ads go live: refused while the run is stopped
     rule_guess: str | None = None  # the rule in a run without TrendsMesh data

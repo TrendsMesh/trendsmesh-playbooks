@@ -58,6 +58,7 @@
        "text": {"type": "string"},
        "speaker": {"enum": ["host", "narrator", "none"]},
        "shot": {"type": "string"},
+       "on_screen": {"type": ["string", "null"], "description": "the text shown on screen with this line, if any (an animation's storyboard depends on it and on the shot, never on the spoken text)"},
        "at": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}
       }
      }

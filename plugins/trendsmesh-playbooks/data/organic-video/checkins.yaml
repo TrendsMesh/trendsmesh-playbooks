@@ -21,6 +21,8 @@
 # - video's fails_qa and its stop: a take that fails QA goes to the user, never regenerated
 #   (PLAYBOOK.md OV9);
 # - pack's reject note, and its yes_for (the plan's decision 6);
+# - images, video and final_edit's redo (back_to): the run goes back to the step that makes it again, and the
+#   check-in is asked again there (issue #90);
 # - schedule: trend research's GS (FLOWS.md I1's "scheduled run"; decisions §9), with the weekly
 #   pack's sentence.
 # Publish (FLOWS.md J's last gate) is not a check-in: without a publishing tool the user posts
@@ -108,6 +110,8 @@ checkins:
     route: {every_step: own, big_calls: rule, hands_off: rule}
     rule: "rubric pick (images may be redone once): the rubric's pick, logged; one automatic redo per item"
     choices: [accept, redo, drop]
+    on_choice:
+      redo: {back_to: F1}   # the images stage stays open, and the check-in is asked again
 
   - id: video
     name: Pick the takes
@@ -117,6 +121,7 @@ checkins:
       does not pass QA
     choices: [accept, redo, drop, fails_qa]
     on_choice:
+      redo: {back_to: F2}   # the takes stage stays open, and the check-in is asked again
       fails_qa:
         stop:
           what: "The take did not pass QA, and a video is never regenerated automatically."
@@ -129,3 +134,5 @@ checkins:
     route: {every_step: own, big_calls: own, hands_off: rule}
     rule: "delivered on the delivery page with every step"
     choices: [accept, redo, drop]
+    on_choice:
+      redo: {back_to: G1}   # the edit again: the final, the cover, the kit and the delivery page (issue #90)

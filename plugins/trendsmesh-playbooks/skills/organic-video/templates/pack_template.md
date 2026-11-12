@@ -15,7 +15,7 @@ Channel: <name> (<platforms>). Level: <Check every step / Just the big calls / H
 |---|---|
 | 1 | … |
 
-On-screen text: what appears and when. Everything important stays inside the safe zone. Animations keep it above y 1260.
+On-screen text: what appears and when. Everything important stays inside the safe zone. Animations keep it above y 1260. In the JSON it is each line's `on_screen`, apart from the spoken `text`: an animation's storyboard is accepted on its shots and on-screen text, so a change to the spoken words alone keeps it.
 
 ## Sound
 - Voice: native H3 dialogue in the prompt, or an ElevenLabs narrator <voice>.

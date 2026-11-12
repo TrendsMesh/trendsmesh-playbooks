@@ -12,7 +12,8 @@ Its final is the latest `04_final/<id>_final_vNN.mp4`, and `final_gap` (G1) pass
 - has its upload copy `<final stem>_upload.mp4` under `qa.upload_max_mb` (10^6 bytes a MB), or the over-limit stop
   recorded for this very final (run.json `checked.upload_over`, its path and sha256: the video stays a local file);
 - has its cover JPG, the latest `04_final/kits/cover_<id>_vNN.jpg` when it was made for this final (`cover_of`: the
-  final its `tm tool deliver cover` record names; a cover made by hand counts when it is not older than the final).
+  final its `tm tool deliver cover` record names; a cover made by hand counts when it is not older than the final);
+- after the user's `final_edit redo` (the run went back to G1, issue #90), is made after that redo (`redo_at`).
 
 A video in sections (FLOWS.md F5, `organic_pack`'s sections) has a second G1 check, `sections_covered`
 (`sections_gap`, preflight P3-F7): the edit the latest final was made from (up the manifest's parents to its `tm render
@@ -30,6 +31,7 @@ import functools
 import json
 import re
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 from tm import config, manifest, organic_config, organic_pack, organic_qa, organic_specs, render, state, stepchecks
@@ -146,6 +148,13 @@ def _minus(value: float) -> str:
     return f"{value:g}".replace("-", "−")
 
 
+def redo_at(run: RunFolder) -> datetime | None:
+    """When the user last asked to redo the final edit (`tm decide final_edit redo`), while that is the latest answer
+    at the check-in; else None."""
+    last = next((d for d in reversed(state.load(run).decisions) if d.get("checkin") == "final_edit"), None)
+    return organic_specs.when(last.get("at")) if last is not None and last.get("choice") == "redo" else None
+
+
 def final_gap(run: RunFolder) -> str | None:
     """The `final_checked` step check (G1): the module docstring. Reads only."""
     pid = idea_id(run)
@@ -155,6 +164,10 @@ def final_gap(run: RunFolder) -> str | None:
     if final is None:
         return f"{FINAL}/{pid}_final_vNN.mp4 is made ({FINISH.format(id=pid)})"
     rel = c.rel(run, final)
+    redo = redo_at(run)
+    if redo is not None and datetime.fromtimestamp(int(final.stat().st_mtime), timezone.utc) < redo:
+        return (f"a new final is made after the user asked to redo the final edit ({rel} is older): the next edit "
+                f"with their changes, rendered, then {FINISH.format(id=pid)}")
     try:
         found = _probe(final)
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:

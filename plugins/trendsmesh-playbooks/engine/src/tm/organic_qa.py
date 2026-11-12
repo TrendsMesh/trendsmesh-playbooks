@@ -37,7 +37,8 @@ contact_sheet}. Here:
   (`panel_NN.png`, `sheet.png`); its pick (stage `storyboard`, `name` the item, `file` the sheet) is an accept on the
   images check-in page (`organic_specs.page_image_rows(run, STORYBOARD)`) or `tm organic pick --stage storyboard`
   (by rule or the user's, against `STORYBOARD_RUBRIC`). It counts by the same rule: made after the pack check that
-  last changed the item's storyboard (`organic_pack.storyboard_key`), naming the item's latest storyboard; a later
+  last changed what the storyboard shows (`organic_pack.storyboard_key`: its scenes and on-screen text, its style, its
+  section; never the spoken words alone, issue #90), naming the item's latest storyboard; a later
   drop or redo on the page ends it. `tm organic animate` draws the full animation only from a storyboard whose pick
   counts (`accepted_storyboard`), into `03_wip/<item>/renders/anim_vNN.mp4`, its manifest row naming that sheet and
   that pick (`pick_mark`): F2 takes the animation only while the item's current storyboard pick is that same pick, so
@@ -310,7 +311,8 @@ def _board_counts(run: RunFolder, row: dict, checked_at: datetime | None) -> str
     since = organic_specs.item_checked_at(run, organic_pack.storyboard_key(row["name"]), checked_at)
     made = _when(row.get("at"))
     if since is not None and (made is None or made < since):
-        return f"it was made before the pack was checked again ({file})"
+        return (f"it was made before the pack was checked again with other scenes, on-screen text or style ({file}); "
+                "a change to the spoken words alone keeps it")
     latest = latest_storyboard(run, row["name"])
     if file != latest:
         return f"{file} is not the item's latest storyboard ({latest or 'none drawn'})"

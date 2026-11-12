@@ -148,6 +148,14 @@ def _walk(run, choices=None, until=None):
         nxt = flow.next(run)
         if nxt.action in ("done", "stop") or (nxt.action == "work" and nxt.step == until):
             return seen, timeline, nxt
+        if nxt.action == "work" and FIRST in (nxt.message or ""):   # F1, F2: the check-in, then `tm done`
+            action = "auto" if "--by rule" in nxt.message else "ask"
+            seen.append((nxt.step, action, nxt.checkin.ids, nxt.checkin.card))
+            by, note = ("rule", "test data") if action == "auto" else ("user", None)
+            for cid in nxt.checkin.ids:
+                decide(run, cid, choices.get(cid, cat.checkins[cid].choices[0]), by=by, note=note)
+                timeline.append(cid)
+            continue
         if nxt.action == "work":
             timeline.append(nxt.step)
             complete(run, nxt.step)
@@ -159,6 +167,9 @@ def _walk(run, choices=None, until=None):
             decide(run, cid, choices.get(cid, cat.checkins[cid].choices[0]), by=by, note=note)
             timeline.append(cid)
     raise AssertionError("the run never ended")
+
+
+FIRST = "comes before the step is closed"
 
 
 def _worked(timeline):
@@ -204,7 +215,10 @@ def test_organic_catalogue_routes_the_levels_table():
     assert cat.checkins["pack"].on_choice == {"reject": {
         "skips": "Nothing was generated or paid. The idea can still become a script to film."}}
     assert cat.checkins["video"].on_choice == {
-        "fails_qa": {"stop": {"what": FAILS_QA[0], "todo": FAILS_QA[1]}}}
+        "redo": {"back_to": "F2"}, "fails_qa": {"stop": {"what": FAILS_QA[0], "todo": FAILS_QA[1]}}}
+    assert cat.checkins["images"].on_choice == {"redo": {"back_to": "F1"}}   # a redo is asked again (issue #90)
+    assert cat.checkins["final_edit"].on_choice == {"redo": {"back_to": "G1"}}
+    assert [st.id for st in flow.steps(ORGANIC_VIDEO) if st.checkin_first] == ["F1", "F2"]
     # FLOWS J's A–Z rules, verbatim
     assert "rubric pick (images may be redone once)" in cat.checkins["images"].rule
     assert ("rubric pick; a failed take goes to the user (no automatic video redo)"
@@ -224,7 +238,7 @@ def test_organic_catalogue_routes_the_levels_table():
 def test_every_step_asks_each_checkin_in_order(tmp_path):
     run = _organic(tmp_path, "every_step", ["organic_video"])
     seen, timeline, end = _walk(run)
-    assert timeline == ["D1", "D2", "taste", "E1", "E2", "pack", "F1", "images", "F2", "video",
+    assert timeline == ["D1", "D2", "taste", "E1", "E2", "pack", "images", "F1", "video", "F2",
                         "G1", "G2", "G4", "final_edit", "H1"]
     assert all(action == "ask" and card is None for _, action, _, card in seen)
     assert end.action == "done"
@@ -320,7 +334,7 @@ def test_hands_off_asks_only_the_pack(tmp_path):
 def test_video_fails_qa_stops_with_options(tmp_path, level):
     run = _organic(tmp_path, level, ["organic_video"])
     seen, timeline, nxt = _walk(run, {"video": "fails_qa", "pack": "approve"})
-    assert timeline[-1] == "video" and _worked(timeline)[-1] == "F2"
+    assert timeline[-1] == "video" and _worked(timeline)[-1] == "F1"   # F2 stays open: it closes after the user
     assert (nxt.step, nxt.action) == ("F2", "stop")
     for words in FAILS_QA:
         assert words in nxt.message
@@ -331,8 +345,92 @@ def test_video_fails_qa_stops_with_options(tmp_path, level):
     # the user picks one of the options; the run goes on from the same place
     decide(run, "video", "accept", by="user", note="keep it, speed it up in the edit", change=True)
     seen, timeline, end = _walk(run)
-    assert _worked(timeline) == ["G1", "G2", "G4", "H1"] and end.action == "done"
+    assert _worked(timeline) == ["F2", "G1", "G2", "G4", "H1"] and end.action == "done"
     assert state.load(run).status == "done"
+
+
+# --- issue #90: F1 and F2 close after their check-in; a redo goes back -------------------------
+
+@pytest.mark.parametrize("level, by", [("every_step", "user"), ("big_calls", "rule"), ("hands_off", "rule")])
+def test_f1_and_f2_are_closed_after_their_checkin(tmp_path, level, by):
+    run = _organic(tmp_path, level, ["organic_video"])
+    _walk(run, until="F1")
+    for step, cid in (("F1", "images"), ("F2", "video")):
+        nxt = flow.next(run)
+        assert (nxt.step, nxt.action, nxt.checkin.ids) == (step, "work", [cid])
+        assert FIRST in nxt.message and f"`tm done {step}`" in nxt.message
+        assert ("--by rule" in nxt.message) == (by == "rule")
+        with pytest.raises(ValueError, match=f"closed after its check-in .*{cid}"):
+            complete(run, step)
+        decide(run, cid, "accept", by=by, note="test data")
+        nxt = flow.next(run)
+        assert (nxt.step, nxt.action) == (step, "work") and FIRST not in nxt.message
+        complete(run, step)
+    assert flow.next(run).step == "G1"
+
+
+def test_an_images_redo_keeps_f1_open_and_asks_again(tmp_path):
+    run = _organic(tmp_path, "every_step", ["organic_video"])
+    _walk(run, until="F1")
+    decide(run, "images", "redo", by="user", note="the dog looks wrong")
+    nxt = flow.next(run)
+    assert (nxt.step, nxt.action, nxt.checkin.ids) == ("F1", "work", ["images"])
+    assert "was answered redo" in nxt.message
+    with pytest.raises(ValueError, match="closed after its check-in"):
+        complete(run, "F1")
+    decide(run, "images", "accept", by="user", note="now it is right")   # asked again: no --change needed
+    complete(run, "F1")
+    assert flow.next(run).step == "F2"
+
+
+@pytest.mark.parametrize("level", ["every_step", "big_calls"])
+def test_final_edit_redo_goes_back_to_the_edit(tmp_path, level):
+    """`final_edit redo` takes the run back to G1: the final, the cover, the kit and the delivery page go through
+    their steps again, and the final edit is asked again."""
+    run = _organic(tmp_path, level, ["organic_video"])
+    _walk(run, until="H1")
+    assert [d["checkin"] for d in state.load(run).decisions][-1] == "final_edit"
+    decide(run, "final_edit", "redo", by="user", note="shorter captions", change=True)
+    nxt = flow.next(run)
+    assert (nxt.step, nxt.action) == ("G1", "work")
+    seen, timeline, end = _walk(run)
+    assert timeline == ["G1", "G2", "G4", "final_edit", "H1"] and end.action == "done"
+    assert [d["choice"] for d in state.load(run).decisions if d["checkin"] == "final_edit"] == [
+        "accept", "redo", "accept"]
+
+
+def test_a_run_past_f1_with_its_checkin_open_is_still_asked(tmp_path):
+    """A run the older engine moved past F1 before its check-in (issue #90) is asked it, as before."""
+    run = _organic(tmp_path, "every_step", ["organic_video"])
+    _walk(run, until="F1")
+    s = state.load(run)
+    s.step = "F2"
+    state.save(run, s)
+    nxt = flow.next(run)
+    assert (nxt.step, nxt.action, nxt.checkin.ids) == ("F1", "ask", ["images"])
+
+
+def test_back_to_names_a_step_at_or_before_its_checkin(tmp_path):
+    steps_path, _ = _organic_data(tmp_path)
+    for target in ("H1", "Z9"):
+        def later(c, target=target):
+            c["images"]["on_choice"] = {"redo": {"back_to": target}}
+        _, path = _organic_data(tmp_path, later)
+        with pytest.raises(ValueError, match="back_to"):
+            flow._load_steps(steps_path, path, ("ai_usd", "voice_credits"))
+
+
+def test_the_final_after_a_final_edit_redo_is_a_new_one(tmp_path, monkeypatch):
+    run = _organic(tmp_path, "every_step", ["organic_video"])
+    monkeypatch.undo()   # the real G1 check
+    monkeypatch.setattr(organic_final, "idea_id", lambda run: "m1")
+    final = run.path / "04_final" / "m1_final_v01.mp4"
+    final.parent.mkdir(parents=True, exist_ok=True)
+    final.write_bytes(b"x")
+    s = state.load(run)
+    s.decisions.append({"checkin": "final_edit", "choice": "redo", "by": "user", "at": "2099-01-01T00:00:00+00:00"})
+    state.save(run, s)
+    assert "a new final is made after the user asked to redo the final edit" in organic_final.final_gap(run)
 
 
 # --- the run kinds ------------------------------------------------------------------

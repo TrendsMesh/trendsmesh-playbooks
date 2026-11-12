@@ -886,3 +886,38 @@ def test_the_planned_pace_holds_a_voiceover_over_takes_not_a_drawn_animation(mon
     out = []
     organic_pack._speech(None, {**pack, "production": "animation"}, cfg, out)
     assert out == []
+# --- issue #90: a storyboard's accept rests on what it draws, never on the spoken words ---------------------------
+
+def _animation_pack(**line):
+    lines = [{"n": 1, "text": "Hej, znasz to?", "speaker": "narrator", "shot": "A kid at a desk.", "at": [0, 2]},
+             {"n": 2, "text": "Każdy to zna.", "speaker": "narrator", "shot": "The class laughs.", "at": [2, 4],
+              "on_screen": "KAŻDY"}]
+    lines[1].update(line)
+    return {"id": "m1", "production": "animation", "sections": [], "stages": [], "resolution": None,
+            "taste": {"style": "14"}, "script": {"lines": lines}}
+
+
+def test_a_storyboard_mark_is_its_scenes_and_on_screen_text():
+    key = organic_pack.storyboard_key("m1")
+    base = organic_pack.item_marks(_animation_pack())[key]
+    assert organic_pack.item_marks(_animation_pack(text="Każdy to dobrze zna."))[key] == base      # the voice only
+    assert organic_pack.item_marks(_animation_pack(at=[2, 4.6]))[key] == base                      # its times too
+    for changed in ({"on_screen": "KAŻDY ZNA"}, {"on_screen": None}, {"shot": "The class is silent."}):
+        assert organic_pack.item_marks(_animation_pack(**changed))[key] != base, changed
+    swapped = _animation_pack()
+    swapped["script"]["lines"].reverse()                                                            # the scenes' order
+    assert organic_pack.item_marks(swapped)[key] != base
+
+
+def test_a_storyboard_checked_before_the_change_keeps_its_accept_on_the_same_lines():
+    """A pack checked by the older engine stored the spoken lines as the storyboard's mark: a re-check with those lines
+    unchanged keeps the accept; with a line's words changed it does not (that engine could not tell what is drawn)."""
+    key = organic_pack.storyboard_key("m1")
+    pack = _animation_pack()
+    previous = {"at": "2026-11-10T10:00:00+00:00", "since": {}, "marks": organic_pack._old_marks(pack)}
+    marks = organic_pack.item_marks(pack)
+    assert organic_pack._since(previous, marks, organic_pack._old_marks(pack))[key] == previous["at"]
+    worded = _animation_pack(text="Każdy to dobrze zna.")
+    assert organic_pack._since(previous, organic_pack.item_marks(worded), organic_pack._old_marks(worded))[key] is None
+    now = {"at": "2026-11-11T10:00:00+00:00", "since": {}, "marks": marks}   # checked by this engine: words alone
+    assert organic_pack._since(now, organic_pack.item_marks(worded), organic_pack._old_marks(worded))[key] == now["at"]

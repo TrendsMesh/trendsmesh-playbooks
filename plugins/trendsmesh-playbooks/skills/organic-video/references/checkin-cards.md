@@ -110,29 +110,33 @@ change the user asks for (a resolution, a model, a line, a redo) is a new pack, 
 higher total or other items need a new yes (`tm decide pack approve --change`). A redo is paid
 for this way (`flow.md#paying-for-a-redo`).
 
-**Pick the images** (`images`, after F1; its own card at Check every step). The images page link,
+**Pick the images** (`images`, inside F1, before `tm done F1`; its own card at Check every step). The images page link,
 then in chat each item: what it is for (the host, a first frame, an anchor), the variants and the
 one you would pick and why (realism, consistency, the safe zone, no text), the product against its
 packshot. How to decide: on the page, per item, Accept one, Redo with a note (its cost is said
 first), or Drop; then "ready". Or answer here. Choices: `accept`, `redo`, `drop`. A redo is run
 once, after the user said yes to its cost and the pack was re-planned with its line
-(`flow.md#paying-for-a-redo`), and the page shows the new images.
+(`flow.md#paying-for-a-redo`), and the page shows the new images. F1 stays open after a redo: the
+check-in is asked again with the new images, and F1 is closed after the user's answer.
 
-**Pick the takes** (`video`, after F2; its own card at Check every step). The takes page link, then
+**Pick the takes** (`video`, inside F2, before `tm done F2`; its own card at Check every step). The takes page link, then
 in chat each take with its **QA findings in words**: how much of the script was heard, where the
 cuts fall against the plan, the pace (and the speed-up the edit would use, at most 1.25×), the
 loudness, anything on the contact sheet (a changed face, a deformed product, burned-in text).
 Choices: `accept`, `redo` (its cost first), `drop`, and `fails_qa` for a take that fails: the
 options then are keep it, speed it up in the edit, redo it with a note (its cost), or drop it. A
 video is never regenerated without the user's word, and a redo runs once the pack is re-planned
-with its cost and the user said yes (`flow.md#paying-for-a-redo`).
+with its cost and the user said yes (`flow.md#paying-for-a-redo`). F2 stays open after a redo, as F1
+does.
 
 **Accept the final edit** (`final_edit`, after G4). The delivery page link, then in chat: the
 final video (its length, its loudness), the cover and its words, the posting kit per platform
 (line 1, the hashtags, the AI label, the trending sound or the business alternative), the platform
 ticks and the YouTube-thumbnail tick, and every step that made it, with the picks and what was
 decided by rule. How to decide: Accept, Redo with a note, or Drop per item, the platforms ticked;
-then "ready". Choices: `accept`, `redo`, `drop`.
+then "ready". Choices: `accept`, `redo`, `drop`. A `redo` takes the run back to the edit (G1): a
+new final with the changes, its cover, the kit checked again and a new delivery page, then this
+check-in again.
 
 ## Decisions taken on the page
 

@@ -123,7 +123,7 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
 
 | action | what you do |
 |---|---|
-| `work` | Read the step's section in `references/flow.md` (`ref`). Do the work. Record each file you write yourself with `tm record`. Then `tm done <step> --run R`. |
+| `work` | Read the step's section in `references/flow.md` (`ref`). Do the work. Record each file you write yourself with `tm record`. Then `tm done <step> --run R` (F1 and F2: their check-in first, as the message says; the step closes after the user's decision). |
 | `ask` | Show the check-in as a card (`references/checkin-cards.md`), restating every point in the message, wait for the answer, then record it with the command the message gives: `tm decide <id> <choice> --run R [--note ...]`. **A card whose check-ins share no answer** (at Just the big calls, "Approve the plan for this video": the style, voice and music, then the pack and its cost) is shown once and recorded with each check-in's own command, in the order the message gives (`tm decide taste accept`, then `tm decide pack approve`, then `tm budget approve` for each planned amount). A page decision is read first (section 5). |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do, and that the run continues from the same place. **Then wait.** |

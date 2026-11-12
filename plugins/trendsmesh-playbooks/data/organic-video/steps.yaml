@@ -23,6 +23,9 @@
 # - G2 is FLOWS.md G2 and G3 (the cover, the upload copy and the posting kit), and G4 the final
 #   edit page or the delivery page with every step;
 # - H1 is FLOWS.md H without a publishing tool: the user downloads and posts.
+#
+# checkin_first (flow.py's docstring): F1's and F2's check-ins come before `tm done`, so each stage is closed
+# after the user's decision (issue #90); every other step's check-ins come after its `tm done`.
 
 outputs: [proposals, script_to_film, organic_video, weekly_plan]
 
@@ -51,8 +54,8 @@ steps:
   - {id: E2, title: Generation pack and cost, outputs: [organic_video], checkins: [pack], spends: false, requires: [pack_checked], ref: "skills/organic-video/references/flow.md#e2"}
   - {id: E3, title: Script page, outputs: [script_to_film], checkins: [script], spends: false, requires: [script_checked, script_page_built], ref: "skills/organic-video/references/flow.md#e3"}
   # F. Production (step 6): the two paid stages
-  - {id: F1, title: "First stage: images, character or storyboard", outputs: [organic_video], checkins: [images], spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [images_picked], ref: "skills/organic-video/references/flow.md#f1"}
-  - {id: F2, title: "Second stage: takes, animation or render", outputs: [organic_video], checkins: [video], spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [takes_checked], ref: "skills/organic-video/references/flow.md#f2"}
+  - {id: F1, title: "First stage: images, character or storyboard", outputs: [organic_video], checkins: [images], checkin_first: true, spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [images_picked], ref: "skills/organic-video/references/flow.md#f1"}
+  - {id: F2, title: "Second stage: takes, animation or render", outputs: [organic_video], checkins: [video], checkin_first: true, spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [takes_checked], ref: "skills/organic-video/references/flow.md#f2"}
   # G. Edit, kit, delivery (step 7)
   - {id: G1, title: "Edit, mix, captions", outputs: [organic_video], spends: false, skip_when: {pack: reject}, requires: [final_checked, sections_covered], ref: "skills/organic-video/references/flow.md#g1"}
   - {id: G2, title: "Cover, upload copy and posting kit", outputs: [organic_video], spends: false, skip_when: {pack: reject}, requires: [kit_checked], ref: "skills/organic-video/references/flow.md#g2"}

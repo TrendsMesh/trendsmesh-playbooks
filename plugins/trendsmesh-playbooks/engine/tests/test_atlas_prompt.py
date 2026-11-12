@@ -616,7 +616,8 @@ def test_animate_refused_before_storyboard_accepted(tmp_path, capsys, ready, pop
          "--reason", "the fixes are in")
     assert "its animation is not drawn from its accepted storyboard" in stepchecks.run("takes_checked", run)
 
-    # a pack check that changes the script makes the pick stale; one that leaves the storyboard as it was keeps it
+    # a pack check that changes what the storyboard shows makes the pick stale; one that leaves it as it was keeps
+    # it, a change to the spoken words alone included (issue #90: the voiceover's text is not drawn)
     _backdate_picks(run)
     pack = _m1_pack()
     pack["facts"][0]["claim"] += " "                                      # not the storyboard's
@@ -628,13 +629,24 @@ def test_animate_refused_before_storyboard_accepted(tmp_path, capsys, ready, pop
     pack["cost"]["lines"][0]["units"] = pack["cost"]["lines"][0]["cost"] = pack["cost"]["totals"]["voice_credits"] = 397
     _check(run, capsys, pack, 3)
     code, out = _animate(run, capsys)
+    assert code == 0, out
+    pack["script"]["lines"][2]["on_screen"] = "KOLEGA Z SALI"               # the on-screen text: the storyboard's
+    _check(run, capsys, pack, 4)
+    code, out = _animate(run, capsys)
+    assert code == 2 and "made before the pack was checked again" in out["message"], out
+    _cli(capsys, "organic", "pick", "--run", str(run.path), "--stage", "storyboard", "--name", "M1", "--file", newer,
+         "--reason", "the new caption is drawn")
+    _backdate_picks(run)
+    pack["script"]["lines"][1]["shot"] += " Close-up."                    # a scene drawn otherwise
+    _check(run, capsys, pack, 5)
+    code, out = _animate(run, capsys)
     assert code == 2 and "made before the pack was checked again" in out["message"], out
 
 
 @pytest.mark.private_data
 def test_an_animation_drawn_under_an_old_script_fails_f2_after_a_re_pick(tmp_path, capsys, ready, popen):
-    """Task 19 review I1: the animation's manifest row records the storyboard pick it was drawn from; after a script
-    change, re-picking the same sheet does not make the old animation pass F2: it is drawn again."""
+    """Task 19 review I1: the animation's manifest row records the storyboard pick it was drawn from; after a change to
+    a scene, re-picking the same sheet does not make the old animation pass F2: it is drawn again."""
     run = _m1_run(tmp_path, capsys)
     _page(run, "explainer_v01.html")
     sheet = _drawn_storyboard(run, capsys, popen)
@@ -650,9 +662,7 @@ def test_an_animation_drawn_under_an_old_script_fails_f2_after_a_re_pick(tmp_pat
     assert json.loads(row["params"])["storyboard_pick"] == {"file": sheet, "at": board["at"], "read_at": None}
     assert stepchecks.run("takes_checked", run) is None
     pack = _m1_pack()
-    pack["script"]["lines"][2]["text"] = "Bawi, bo brzmi głupio, a zna go każdy kolega z tej sali."
-    pack["script"]["words"] += 2
-    pack["cost"]["lines"][0]["units"] = pack["cost"]["lines"][0]["cost"] = pack["cost"]["totals"]["voice_credits"] = 397
+    pack["script"]["lines"][2]["shot"] += " Close-up."                    # a scene drawn otherwise
     _check(run, capsys, pack, 2)
     assert "made before the pack was checked again" in stepchecks.run("takes_checked", run)
     assert _cli(capsys, *pick)[0] == 0                                  # the same sheet, picked again
@@ -684,7 +694,7 @@ def test_fps_0_is_refused(tmp_path, capsys, ready, popen):
 @pytest.mark.private_data
 def test_a_storyboard_accepted_on_the_published_page_goes_stale_after_a_replan(tmp_path, capsys, ready, popen):
     """Task 19 review M6: the user's accept saved on the published images page (read with db_list) is the storyboard's
-    pick, dated by the page build; a pack check that changes the script after that build makes it stale."""
+    pick, dated by the page build; a pack check that changes a scene after that build makes it stale."""
     from test_organic_gates import SLUG, _decide, _doc, _ready, _save_db
 
     run = _m1_run(tmp_path, capsys)
@@ -695,9 +705,7 @@ def test_a_storyboard_accepted_on_the_published_page_goes_stale_after_a_replan(t
     assert code == 0 and out["source"] == "page" and out["decisions"]["storyboard-M1"]["file"] == sheet, out
     assert organic_qa.accepted_storyboard(run, "M1")["file"] == sheet and SLUG
     pack = _m1_pack()
-    pack["script"]["lines"][2]["text"] = "Bawi, bo brzmi głupio, a zna go każdy kolega z tej sali."
-    pack["script"]["words"] += 2
-    pack["cost"]["lines"][0]["units"] = pack["cost"]["lines"][0]["cost"] = pack["cost"]["totals"]["voice_credits"] = 397
+    pack["script"]["lines"][2]["shot"] += " Close-up."                    # a scene drawn otherwise
     _check(run, capsys, pack, 2)
     s = state.load(run)                                                # the re-check a minute after the page build
     s.checked["pack"]["at"] = (datetime.now(timezone.utc) + timedelta(minutes=1)).isoformat(timespec="seconds")

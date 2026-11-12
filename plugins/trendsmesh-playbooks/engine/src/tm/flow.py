@@ -18,6 +18,11 @@ same answer. The life of a step:
    it), `auto` (decide by rule, record it with `decide --by rule --note`) or `stop`;
 5. once nothing is pending, `next` returns `work` for the following step, or `done`.
 
+A step marked `checkin_first` (organic video's F1 and F2) turns 3 and 4 round: its check-ins are
+decided while the step is open, after its work, and `complete` refuses the step until they are, so
+it is closed after the user's decision. A choice with `back_to` (a redo) takes the run back to that
+step, if it is behind, and asks the check-in again once the run reaches it.
+
 Stops come in two kinds:
 - raised by Claude through `stop` (a missing file, a sign-in): they hold until `resume`;
 - raised by the engine (a voice check in Hands-off, a red R8 item, a measurement not due yet,
@@ -158,6 +163,7 @@ class Step:
     budget: str | None = None  # the budget kind the step spends from (BUDGET_KINDS)
     skip_when: tuple[tuple[str, str], ...] = ()  # (check-in, choice): the step is skipped on it
     requires: tuple[str, ...] = ()  # engine checks (stepchecks.NAMES) that pass before `tm done`
+    checkin_first: bool = False  # its check-ins are decided before `tm done`, not after it
 
 
 @dataclass
@@ -205,7 +211,8 @@ def _load_steps(steps_path: Path, checkins_path: Path,
                   spends=bool(raw["spends"]), ref=raw["ref"], flow=raw.get("flow"),
                   measures=bool(raw.get("measures", False)), budget=raw.get("budget"),
                   skip_when=tuple((k, v) for k, v in (raw.get("skip_when") or {}).items()),
-                  targets=tuple(raw.get("targets") or ()), requires=tuple(raw.get("requires") or ()))
+                  targets=tuple(raw.get("targets") or ()), requires=tuple(raw.get("requires") or ()),
+                  checkin_first=bool(raw.get("checkin_first", False)))
         unknown = [name for name in st.requires if name not in stepchecks.NAMES]
         if unknown:
             raise ValueError(f"{steps_path.name}: step {st.id} requires an unknown check: "
@@ -228,9 +235,19 @@ def _load_steps(steps_path: Path, checkins_path: Path,
             seen_checkins.add(cid)
         seen_steps.add(st.id)
         out.append(st)
+    if any(st.checkin_first and not st.checkins for st in out):
+        raise ValueError(f"{steps_path.name}: a checkin_first step has no check-ins after its work")
     missing = set(cat.checkins) - seen_checkins
     if missing:
         raise ValueError(f"{steps_path.name}: no step has {', '.join(sorted(missing))}")
+    place = {st.id: i for i, st in enumerate(out)}
+    owner = {cid: i for i, st in enumerate(out) for cid in st.before + st.checkins}
+    for c in cat.checkins.values():
+        for choice, effect in c.on_choice.items():
+            back = effect.get("back_to")
+            if back is not None and (back not in place or place[back] > owner[c.id]):
+                raise ValueError(f"{checkins_path.name}: {c.id}: on_choice {choice!r} goes back_to {back!r}, which is "
+                                 "not a step at or before the check-in's own")
     return outputs, tuple(out)
 
 
@@ -293,6 +310,18 @@ class _Run:
     def route(self, cid: str) -> str:
         return self.cat.route(cid, self.s.level)
 
+    def reopened(self, cid: str) -> bool:
+        """The check-in's latest answer sent the run back (`back_to`, a redo): it is asked again."""
+        last = self.latest.get(cid)
+        return last is not None and "back_to" in self.cat.checkins[cid].on_choice.get(last["choice"], {})
+
+    def open_first(self, i: int) -> list[str]:
+        """The check-ins of a `checkin_first` step `i` still to decide before it is closed (a card's go to the card)."""
+        if i >= len(self.app) or not self.app[i].checkin_first:
+            return []
+        return [cid for cid in self.app[i].checkins if self.owner.get(cid) == (i, False)
+                and self.route(cid) != "card" and (cid not in self.latest or self.reopened(cid))]
+
     def own_place(self, cid: str) -> tuple[int, int]:
         i, before = self.owner[cid]
         return (i if before else i + 1), i
@@ -331,7 +360,8 @@ class _Run:
                     point, step = self.own_place(cid)
                     found.append(_Item("stop", [cid], point, step, order,
                                        stop=effect["stop"], blocking=True))
-                continue
+                if "back_to" not in effect:   # a redo is asked again (`reopened`)
+                    continue
             r = self.route(cid)
             if r == "card":
                 item = cards.get(c.card)
@@ -925,6 +955,34 @@ def _ending_hints(run: _Run, st_index: int) -> str:
     return "".join(hints)
 
 
+def _one_view(run: _Run, cid: str) -> CheckinView:
+    c = run.cat.checkins[cid]
+    return CheckinView(ids=[cid], name=c.name, card=None, rule=c.rule_for(run.s.evidence),
+                       choices=list(c.choices) if c.choices else None)
+
+
+def _first_how(run: _Run, view: CheckinView) -> str:
+    """How a `checkin_first` step's check-in is decided at the run's level."""
+    cid = view.ids[0]
+    choices = f" (choices: {', '.join(view.choices)})" if view.choices else ""
+    if run.route(cid) == "rule":
+        return (f"decide it by the rule \"{view.rule}\" and record it with `tm decide {cid} <choice> --by rule "
+                f"--note <the data behind it>`{choices}")
+    return f"show it to the user and record their answer with `tm decide {cid} <choice> [--note ...]`{choices}"
+
+
+def _first_message(run: _Run, st: Step, view: CheckinView) -> str:
+    """The work of a `checkin_first` step: the check-in comes before `tm done`, which closes the step after it."""
+    cid = view.ids[0]
+    again = ""
+    if run.reopened(cid):
+        again = (f"\"{view.name}\" ({cid}) was answered {run.latest[cid]['choice']}: make again what the user asked "
+                 "for, then ask it again. ")
+    return (f"{again}Do the work of {st.id} ({st.title}) as described at the ref and record every file with `tm "
+            f"record`. Its check-in \"{view.name}\" ({cid}) comes before the step is closed: once the work is ready "
+            f"for it, {_first_how(run, view)}. Then run `tm done {st.id}`: the step closes after that decision.")
+
+
 # --- public API ---------------------------------------------------------------
 
 def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A001 - the plan's name
@@ -995,6 +1053,10 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
         _hold(s, f"budget_{gap}", what, todo, checkin=yes)
         return finish(_step_view(st, "stop", _stop_message(what, todo)))
     _release(s)
+    first = pic.open_first(pic.p)
+    if first:
+        view = _one_view(pic, first[0])
+        return finish(_step_view(st, "work", _first_message(pic, st, view) + _ending_hints(pic, pic.p), view))
     coming = pic.coming()
     view = _view(pic, coming) if coming else None
     if pending:
@@ -1243,7 +1305,7 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
         if by == "rule" and pic.route(checkin_id) != "rule" and not ending:
             raise ValueError(f"{checkin_id} ({cat.checkins[checkin_id].name}) is not decided by rule "
                              f"at {level_name}: ask the user.")
-        if checkin_id in pic.latest and not change:
+        if checkin_id in pic.latest and not change and not pic.reopened(checkin_id):
             raise ValueError(f"{checkin_id} is already decided "
                              f"({pic.latest[checkin_id]['choice']}). Use --change to change it.")
         ids = [checkin_id]
@@ -1311,6 +1373,11 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
             _hold(s, cid, effect["stop"]["what"], effect["stop"]["todo"])
         else:
             _resolve(s, [cid])
+        if "back_to" in effect:   # a redo: the run goes back to that step, and the check-in is asked again
+            position = {st.id: i for i, st in enumerate(steps(s.playbook))}
+            here = len(position) if current == END else position[current]
+            if position[effect["back_to"]] < here:
+                s.step = effect["back_to"]
     state.save(run, s)
 
 
@@ -1393,6 +1460,11 @@ def complete(run: RunFolder, step_id: str, *, measured: str | None = None,
     if due:
         first = _view(pic, due[0])
         raise ValueError(f"Decide {', '.join(first.ids)} ({first.name}) first.")
+    open_first = pic.open_first(pic.p)
+    if open_first:
+        view = _one_view(pic, open_first[0])
+        raise ValueError(f"{st.id} ({st.title}) is closed after its check-in \"{view.name}\" ({view.ids[0]}): "
+                         f"{_first_how(pic, view)}, then run `tm done {st.id}` again.")
     pb01 = _pb01(s)
     if pb01 and st.id == TREND_STEP:
         _need_evidence(run, s, st)

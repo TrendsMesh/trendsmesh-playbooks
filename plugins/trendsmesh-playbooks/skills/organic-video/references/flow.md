@@ -43,7 +43,9 @@ posts.
 - Every number you write has its source next to it (R3). Pages and summaries in the chat
   language; post text and speech in the audience language.
 - After each step's work: `tm done <step> --run R`, then `tm next`. A check-in after a step comes
-  in `tm next` once the step is done: prepare what its card needs while you work. A step that
+  in `tm next` once the step is done: prepare what its card needs while you work. **F1 and F2 are
+  closed after their check-in**: it comes once the stage's work is ready, while the step is open,
+  and `tm done` closes the step after the user's decision (a redo keeps it open). A step that
   names engine checks (`requires` in steps.yaml) is refused until they pass: the stop says what is
   missing.
 - **A `tm` exit 2 is a stop**: tell the user what happened, what to do, and that the run continues
@@ -550,8 +552,11 @@ marker is per run), and again at every resume.
    its one video `model`, `from` and `to` in seconds; see "A video in sections" below), `product` (`level` in the five words,
    `packshots` from the catalogue), `host` (`image` for a specific AI person, with the image
    approved at F1; `description` for a person written in the prompt; `none`), `script` (the lines,
-   each with its speaker `host`, `narrator` or `none`, its shot and its `at` times, the word count
-   and the seconds, sized at 2.8 to 3 words a second with 1.5 s after the last line), `taste`
+   each with its speaker `host`, `narrator` or `none`, its shot and its `at` times, and, apart
+   from its spoken `text` (what the voice says), its `on_screen` text, or `null`; the word count
+   and the seconds, sized at 2.8 to 3 words a second with 1.5 s after the last line. An
+   animation's storyboard rests on the shots, the on-screen text and the style: a word changed in
+   the spoken `text` alone, for the voice to read it right, keeps its accept), `taste`
    (style, voice and music `null` until D2, `by`, `why`) and `style_spec` (see "The copied look"
    below; a Recreate needs one). Then `tm organic pack check --run R --file
    03_wip/pack_v01.json --stage recipe --json`: it checks the idea and channel, the production
@@ -860,11 +865,13 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      (free): the subagent fixes what the note says, you draw it again and show it again.
    - A redo the user asks for in chat: `tm organic redo --run R --name <item> --note "<their
      words>" --json`, then paid for as in [E2](#paying-for-a-redo).
-4. `tm done F1 --run R` (refused until each image item has a pick that counts: made after the
-   pack check that last changed that item, of the item's latest images; and each animation's
-   latest storyboard is accepted after the pack check that last changed its script or style). Then the `images` check-in: `tm decide images
-   accept --run R --note "<their words>"` (Hands-off and Just the big calls: `--by rule --note
-   "<the picks and the rubric>"`).
+4. **The `images` check-in comes before `tm done F1`**: `tm decide images accept --run R --note
+   "<their words>"` (Hands-off and Just the big calls: `--by rule --note "<the picks and the
+   rubric>"`). A `redo` keeps F1 open: make what was asked again, and the check-in is asked again.
+   Then `tm done F1 --run R` closes the step (refused until the images check-in is decided, and
+   each image item has a pick that counts: made after the pack check that last changed that item,
+   of the item's latest images; and each animation's latest storyboard is accepted after the pack
+   check that last changed its on-screen text, its scenes or its style).
 
 <a id="f2"></a>
 ## F2 Second stage: takes, animation or render
@@ -949,12 +956,14 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      drop it. A
      take they keep: `tm organic pick … --by user`, then `tm decide video accept --change --run R
      --note "<their words>"`.
-4. `tm done F2 --run R` (refused until each video item has a pick that counts: its latest take,
-   with that take's latest QA; each animation is drawn from its accepted storyboard; and the latest
-   motion-graphics render of stills shows the cards' current picks, every one of them, and a
-   picture the pack did not make only when it takes the user's own; never one of `03_wip/gates/`). Then the
-   `video` check-in, as the message says (an animation by rule: the stills against the rubric, `tm
-   decide video accept --run R --by rule --note "<what the stills show>"`).
+4. **The `video` check-in comes before `tm done F2`**, as the message says (an animation by
+   rule: the stills against the rubric, `tm decide video accept --run R --by rule --note "<what the
+   stills show>"`). A `redo` keeps F2 open, as in F1. Then `tm done F2 --run R` closes the step
+   (refused until the video check-in is decided, and each video item has a pick that counts: its
+   latest take, with that take's latest QA; each animation is drawn from its accepted storyboard;
+   and the latest motion-graphics render of stills shows the cards' current picks, every one of
+   them, and a picture the pack did not make only when it takes the user's own; never one of
+   `03_wip/gates/`).
 
 <a id="g1"></a>
 ## G1 Edit, mix, captions
@@ -1042,7 +1051,10 @@ Read `rules.md` (OV11) and `../../references/posting-kit.md` first.
    platform writes a new kit version: `tm kit check` and `tm kit md` on it. Carried choices are
    asked about once (`--keep-carried`); an answer in chat is read with `--text` (one line per item,
    `<item id>: accept|redo|drop[; platforms: tiktok, youtube][; thumbnail: yes|no][; note: …]`).
-   Then `tm decide final_edit accept --run R --note "<their words>"` (or `redo`, `drop`). At
+   Then `tm decide final_edit accept --run R --note "<their words>"` (or `redo`, `drop`). **A
+   `redo` takes the run back to G1**: the next edit with the user's changes and a new final (G1
+   refuses a final older than the redo), its cover, the kit checked again (G2) and a new delivery
+   page (G4), each through its step, then this check-in again. At
    Hands-off the rule delivers it on this page: `tm decide final_edit accept --by rule --note
    "<the page version and the final>"`, and the page still takes the user's choices.
 

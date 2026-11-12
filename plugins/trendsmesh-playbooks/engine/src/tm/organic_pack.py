@@ -40,7 +40,9 @@ An animation (the whole video, or a section of it) is drawn in the user's own br
 the recipe check holds it to what drawing needs (drift check 13: no doctor row can say a pack animates): the
 `animatic` tier set up and a browser (`atlas.missing()`, in PB02's words). Its items (`animated`) are the pack's
 id for a whole animation, else each animation section's id; each has a storyboard, whose pick goes stale after a
-pack check that changed its script, style or section (`item_marks`, key `storyboard_key`).
+pack check that changed what it shows: its scenes (each script line's `shot` and its `on_screen` text, in order), its
+style or its section (`item_marks`, key `storyboard_key`). The spoken `text` (what goes to the voice) is not drawn, so a
+change to it alone keeps the storyboard's accept (issue #90).
 
 Stills with motion graphics (FLOWS.md F4, a quiz or a ranking): pictures (GPT Image 2 cards, paid and picked at
 F1, or the user's own pictures, an images item with no model) in a QuizGrid, RankingList or RankingSplit render
@@ -992,27 +994,50 @@ def item_marks(pack: dict) -> dict[str, list]:
     """What a pick of each generated item depends on, by its stem: [stage, name, model, images, seconds, face,
     resolution.choice, its redo lines]. A re-check that leaves an item's mark as it was keeps that item's picks
     (the controller's ruling, PR C fix wave part 3: a redo paid for in a re-plan stales only the redone item).
-    An animated item's storyboard (`storyboard_key`), and a stills item's motion-graphics render (`motion_key`),
-    depends on the style, the script's lines and its section."""
+    An animated item's storyboard (`storyboard_key`) depends on the style, the scenes (`scenes`: what is drawn, never
+    the spoken words) and its section; a stills item's motion-graphics render (`motion_key`) on the style, the script's
+    lines and its section."""
     choice = (pack.get("resolution") or {}).get("choice")
     marks = {runfolder.slug(Path(item["name"]).stem):
              [st["stage"], item["name"], item["model"], item.get("images"), item.get("seconds"), item.get("face"),
               choice, redo_lines(pack, runfolder.slug(Path(item["name"]).stem))]
              for st in pack["stages"] for item in st["items"] if _text(item["model"])}
     lines = [[line["text"], line["at"]] for line in pack["script"]["lines"]]
-    for kind, items, key in (("storyboard", animated(pack), storyboard_key), ("motion", stills(pack), motion_key)):
+    for kind, items, key, shown in (("storyboard", animated(pack), storyboard_key, scenes(pack)),
+                                    ("motion", stills(pack), motion_key, lines)):
         for item in items:
             section = next((sec for sec in pack["sections"] if str(sec["id"]) == item), None)
-            marks[key(item)] = [kind, item, pack["taste"]["style"], lines,
+            marks[key(item)] = [kind, item, pack["taste"]["style"], shown,
                                 [section["from"], section["to"]] if section else None]
     return marks
 
 
-def _since(previous: dict, marks: dict[str, list]) -> dict[str, str | None]:
+def scenes(pack: dict) -> list[list]:
+    """What an animation's storyboard draws, in the scenes' order: each script line's `shot` and its `on_screen` text
+    (None when it shows none). The spoken `text` and its times are the voiceover's, not the storyboard's."""
+    return [[line["shot"], line.get("on_screen")] for line in pack["script"]["lines"]]
+
+
+def _old_marks(pack: dict) -> dict[str, list]:
+    """The storyboard marks as a pack check before issue #90 stored them (the spoken lines and their times): a run
+    checked then keeps its storyboard's accept across a re-check that leaves those as they were."""
+    lines = [[line["text"], line["at"]] for line in pack["script"]["lines"]]
+    out = {}
+    for item in animated(pack):
+        section = next((sec for sec in pack["sections"] if str(sec["id"]) == item), None)
+        out[storyboard_key(item)] = ["storyboard", item, pack["taste"]["style"], lines,
+                                     [section["from"], section["to"]] if section else None]
+    return out
+
+
+def _since(previous: dict, marks: dict[str, list], old: dict[str, list] | None = None) -> dict[str, str | None]:
     """Each item's pick-currency time after this check: the earlier one, kept, when the previous checked pack gave
-    the item the same mark; None (this check's own time) when the item is new or changed."""
+    the item the same mark (or, for a storyboard, the mark of `_old_marks`, as a check before issue #90 stored it);
+    None (this check's own time) when the item is new or changed."""
     old_marks, old_since, old_at = previous.get("marks") or {}, previous.get("since") or {}, previous.get("at")
-    return {stem: (old_since.get(stem) or old_at) if old_at and old_marks.get(stem) == mark else None
+    old = old or {}
+    return {stem: (old_since.get(stem) or old_at)
+            if old_at and old_marks.get(stem) in ([mark] + ([old[stem]] if stem in old else [])) else None
             for stem, mark in marks.items()}
 
 
@@ -1047,7 +1072,8 @@ def record(run: RunFolder, path: Path, pack: dict, *, stage: Literal["recipe", "
         s = state.load(run)
         planned = {k: float(pack["cost"]["totals"][k]) for k in playbooks.get(ORGANIC_VIDEO).budgets}
         marks = item_marks(pack)
-        extra = {"items": items_of(pack), "marks": marks, "since": _since(s.checked.get("pack") or {}, marks)}
+        extra = {"items": items_of(pack), "marks": marks,
+                 "since": _since(s.checked.get("pack") or {}, marks, _old_marks(pack))}
         holds = (s.planned_at is not None and (s.checked.get("pack") or {}).get("items") == extra["items"]
                  and all(planned[k] <= float(s.planned.get(k, 0)) + TOL for k in planned))
         replanned = not holds
