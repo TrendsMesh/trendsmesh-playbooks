@@ -27,6 +27,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   of results or availability ("guaranteed", "in stock", "results in", "gwarantujemy", "od ręki") that none of the
   text's checked claims says. The phrases are read in the ad's market language, English and Polish to start; for
   another language the check says plainly that it read the numbers only.
+- **Create an ad is in the README.** The playbook list now says what Create an ad makes and needs (a product with a
+  website, the Meta Ads connector, Replicate and ElevenLabs for the paid parts, TrendsMesh optional), with an example
+  of what to say.
+- **An acceptance suite for Create an ad.** `/trendsmesh-playbooks:acceptance ads` runs five cases on your own
+  product: an ad with a presenter, a site whose pixel fires (an upload proposal with a conversion objective), an ad
+  without a presenter, your own voice-over and footage, and the PAUSED upload with every object read back paused. It
+  spends at most 8 US dollars on Replicate and 4,000 ElevenLabs credits in all, and nothing on Meta ads.
 
 ## 0.12.0
 

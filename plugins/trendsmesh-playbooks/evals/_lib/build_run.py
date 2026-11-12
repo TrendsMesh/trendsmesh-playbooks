@@ -111,7 +111,12 @@ English; every file written and checked with the engine's own `tm ad` commands, 
   ca_at_s5_plan  Check every step; the concepts, claims, board and production plan checked (casting 0.12 USD before
                  the video, the presenter take 1.50 USD); at "Confirm the production plan and its cost"
   ca_at_s10b_hands_off  Hands-off (5 USD at intake); everything through the accepted copy, the delivered files and
-                 the checked upload proposal (20 USD a day, OPT_IN); the go-ahead given; run at S10b
+                 the checked upload proposal (20 USD a day, OPT_IN); the go-ahead given; run at S10b. The take
+                 (G4) and the edit (S7) are fixture files with their QA as `tm tool take_qa` writes it (a clean
+                 take and a −14 LUFS edit), the edit QA checked with `tm ad check edit`
+  ca_at_g4_take_stutters  Hands-off (5 USD at intake); through the checked storyboard and its yes; the presenter take
+                 made, its QA heard "Nobody told me me briefs" (a stutter at 0.9 s); `tm done G4`; at "Accept the
+                 takes", decided by rule
 """
 from __future__ import annotations
 
@@ -1676,7 +1681,7 @@ def _ca_write(run: Path, rel: str, data) -> str:
 
 
 def _ca_files(ws: Path, run: Path, upto: str) -> None:
-    """Write and check the run's files up to `upto` (plan, copy or proposal)."""
+    """Write and check the run's files up to `upto` (plan, storyboard, copy or proposal)."""
     from datetime import date as _date
     today = _date.today().isoformat()
     price = {"checked": today, "price_file": "02_research/prices_v01.json"}
@@ -1727,6 +1732,8 @@ def _ca_files(ws: Path, run: Path, upto: str) -> None:
                     "handheld, natural light, says the two lines", "prompt_rules": "gemini-omni guide (saved)",
                     "cost": 1.5, "budget": "ai_usd", **price}]})
     tm(ws, "ad", "check", "storyboard", "--run", str(run), "--file", rel)
+    if upto == "storyboard":
+        return
     url = (f"https://planner.example.com/brief?utm_source=meta&utm_medium=paid_social&utm_campaign=planner-launch"
            f"&utm_content={CA_KEY}")
     copy = {"ads": [{"key": CA_KEY, "ad_name": "Planner brief tool, freelancers, nobody told me",
@@ -1769,6 +1776,52 @@ def _ca_files(ws: Path, run: Path, upto: str) -> None:
     tm(ws, "ad", "upload", "check", "--run", str(run), "--file", rel)
 
 
+CA_LINES = "Nobody told me briefs could take three minutes You answer five questions and it writes the brief"
+
+
+def _ca_qa(ws: Path, run: Path, video: str, *, lufs: float, peak: float, heard: str = CA_LINES) -> str:
+    """A video's QA as `tm tool take_qa` writes it: the transcript (`heard`: the board's lines), the measures, the
+    contact sheet; each recorded as the fixture's."""
+    stem, folder = Path(video).stem, f"{Path(video).parent.as_posix()}/qa"
+    words = [{"word": " " + w, "start": round(0.3 * n, 2), "end": round(0.3 * n + 0.25, 2)}
+             for n, w in enumerate(heard.split())]
+    transcript = _ca_write(run, f"{folder}/{stem}_transcript_v01.json", {"language": "en", "segments": [
+        {"start": 0.0, "end": words[-1]["end"], "text": heard, "words": words}]})
+    sheet = _ca_write(run, f"{folder}/{stem}_contact_v01.png", b"png")
+    qa = _ca_write(run, f"{folder}/{stem}_qa_v01.json", {
+        "take": video, "transcript": transcript, "match": 0.97, "words": len(words), "speech_seconds": words[-1]["end"],
+        "wps": 3.2, "tail_silence": 0.6, "cuts": [], "cut_offsets": [], "lufs": lufs, "peak": peak,
+        "contact_sheet": sheet})
+    for rel in (transcript, sheet, qa):
+        tm(ws, "record", "--run", str(run), "--file", rel, "--stage", "03_wip", "--source", "take QA (eval fixture)")
+    return qa
+
+
+def ca_take(ws: Path, run: Path, stutter: bool = False) -> None:
+    """G4: the presenter take, finished on Replicate (its record as the guard's run writes it), and its QA; with
+    `stutter`, the presenter says "me" twice ("Nobody told me me briefs", at 0.9 s), which the lines say once."""
+    _ca_write(run, "03_wip/presenter-take_v01.run.json", {
+        "status": "done", "model": "gemini-omni", "prediction_id": "pred_fixture_0001",
+        "outputs": ["presenter-take_v01_0.mp4"], "cost": 1.5})
+    _ca_write(run, "03_wip/presenter-take_v01_0.mp4", b"mp4")
+    tm(ws, "record", "--run", str(run), "--file", "03_wip/presenter-take_v01_0.mp4", "--stage", "03_wip",
+       "--source", "the presenter take (eval fixture)")
+    heard = CA_LINES.replace("told me", "told me me", 1) if stutter else CA_LINES
+    _ca_qa(ws, run, "03_wip/presenter-take_v01_0.mp4", lufs=-16.0, peak=-2.5, heard=heard)
+
+
+def ca_edit(ws: Path, run: Path) -> None:
+    """S6 and S7: the edit, its QA and what was checked (tm ad check edit)."""
+    _ca_write(run, "03_wip/edit_v01.mp4", b"mp4")
+    tm(ws, "record", "--run", str(run), "--file", "03_wip/edit_v01.mp4", "--stage", "03_wip",
+       "--source", "the edit (eval fixture)")
+    qa = _ca_qa(ws, run, "03_wip/edit_v01.mp4", lufs=-14.1, peak=-1.8)
+    rel = _ca_write(run, "03_wip/edit_qa_v01.json", {"edit": "03_wip/edit_v01.mp4", "qa": qa, "checked": [
+        {"check": k, "result": "ok", "note": "checked on the fixture edit"}
+        for k in ("cuts", "take_scenes", "stills", "captions", "speech", "joins", "overlay_ends", "text")]})
+    tm(ws, "ad", "check", "edit", "--run", str(run), "--file", rel)
+
+
 def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None, hooks: dict | None = None) -> dict:
     """Walk the run: the user's first choice at every ask, the rule at every auto, each step's files before its
     `tm done` (hooks), until `stop_at` (its work, or `stop_checkin` asked there)."""
@@ -1783,7 +1836,7 @@ def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None,
             approved = True
             continue
         if n["step"] == stop_at and (stop_checkin is None and n["action"] == "work"
-                                     or stop_checkin and n["action"] == "ask"
+                                     or stop_checkin and n["action"] in ("ask", "auto")
                                      and stop_checkin in n["checkin"]["ids"]):
             return n
         if n["action"] == "work":
@@ -1800,7 +1853,8 @@ def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None,
 
 
 def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
-    level = {"ca_at_s5_plan": "every_step", "ca_at_s10b_hands_off": "hands_off"}[scn]
+    level = {"ca_at_s5_plan": "every_step", "ca_at_s10b_hands_off": "hands_off",
+             "ca_at_g4_take_stutters": "hands_off"}[scn]
     made = Path(tm(ws, "run", "new", "--playbook", "create-ad", "--name", "planner")["path"])
     run = made.with_name(CA_RUN)
     if made != run:
@@ -1812,8 +1866,12 @@ def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     if scn == "ca_at_s5_plan":
         _ca_files(ws, run, "plan")
         return run, ca_drive(ws, run, "S5", stop_checkin="plan")
+    if scn == "ca_at_g4_take_stutters":
+        _ca_files(ws, run, "storyboard")
+        return run, ca_drive(ws, run, "G4", stop_checkin="takes", hooks={"G4": lambda: ca_take(ws, run, stutter=True)})
     _ca_files(ws, run, "proposal")
-    n = ca_drive(ws, run, "S10a", stop_checkin="upload")
+    n = ca_drive(ws, run, "S10a", stop_checkin="upload",
+                 hooks={"G4": lambda: ca_take(ws, run), "S7": lambda: ca_edit(ws, run)})
     tm(ws, "decide", "upload", "create", "--run", str(run), "--note", "yes, create it")
     return run, tm(ws, "next", "--run", str(run))
 

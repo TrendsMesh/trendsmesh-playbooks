@@ -20,6 +20,11 @@ for your yes at the points you choose.
 - **Organic AI videos.** Give it your channel. It proposes videos from real trends on a page you can share; you
   choose what to make: a script to film yourself, or an AI video. Or say "plan my week of videos" for a weekly pack.
   Each video comes with a posting kit for every platform.
+- **Create an ad.** Give it a product with a website. It makes a new video ad for Meta from zero: a concept built on
+  a proven ad format and rising trends, the script, the paid stills and video, the edit and the Meta copy, with a
+  check-in after each stage. Then it offers to create the campaign, ad set and ad in your account, **paused**; it
+  never switches them on. It needs the Meta Ads connector, and Replicate and ElevenLabs for the paid parts;
+  TrendsMesh is optional (without it, the trends are labelled as guesses).
 - **Report an issue.** Say "report this problem" or "I'd like a change": Claude writes it up without your account
   details, shows you the exact text, and after your yes files it on GitHub or sends it privately to TrendsMesh.
 
@@ -76,6 +81,8 @@ session.
    - **"What is moving in skincare?"** (your own category). Later: **"update my trend report"**.
    - **"Write a creative brief for my product"**, or after a trend report, **"turn my trend pick into a brief"**.
    - **"Video ideas for my channel"**, **"a script I can film"** or **"plan my week of videos"**.
+   - **"Make me a Meta video ad for my product"** (with its website). Claude asks four questions first: who the ad
+     is for, what it sells, how long it runs and where, and which files you already have.
 
 ### Money and safety
 

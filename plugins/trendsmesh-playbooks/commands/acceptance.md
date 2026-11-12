@@ -11,7 +11,8 @@ too (`playbook`): `01-refresh-ad` runs with the "Refresh an ad" skill
 (`skills/refresh-ad/SKILL.md`), `04-trend-research` with the "Trend research" skill
 (`skills/trend-research/SKILL.md`), `02-creative-brief` with the "Creative brief" skill
 (`skills/creative-brief/SKILL.md`), `03-organic-ai-video` with the "Organic video" skill
-(`skills/organic-video/SKILL.md`). The engine `tm` keeps the cases,
+(`skills/organic-video/SKILL.md`), `05-create-ad` with the "Create an ad" skill
+(`skills/create-ad/SKILL.md`). The engine `tm` keeps the cases,
 the results and the spend in `acceptance.json`, so the acceptance continues in a new session from
 the same place. Talk to the user in their language, in plain words: they never see `tm`, a flag,
 a case's JSON or a check-in id.
@@ -24,9 +25,9 @@ big calls** and **Hands-off**. Every stop you tell the user about says what happ
 and that the acceptance continues from the same place.
 
 1. **Readiness.** Run the doctor's checks for the suite's playbook (`commands/doctor.md`: steps
-   1 to 4 for Refresh an ad, its "Trend research" steps 1 to 3 for trend research, its "Creative brief" steps for creative brief, its "Organic video" steps for organic video) with two
+   1 to 4 for Refresh an ad, its "Trend research" steps 1 to 3 for trend research, its "Creative brief" steps for creative brief, its "Organic video" steps for organic video, its "Create an ad" steps for create an ad) with two
    changes: TrendsMesh is checked without a question (its state if its tools answer, otherwise
-   `missing`: for Refresh an ad a warning only, the playbook runs on as guesses; for trend
+   `missing`: for Refresh an ad and Create an ad a warning only, the playbook runs on as guesses; for trend
    research the case that needs it asks for it), and Meta Ads is `missing` when its tools are
    not in this session (a case's `meta` need asks for it); when they are, the doctor's Meta check
    may ask for the ad account, its one question here. Show the card
@@ -37,7 +38,9 @@ and that the acceptance continues from the same place.
    Say in one line where the acceptance stands. When the suite has a budget (`budget` is not
    empty), state it in plain words (for `recuts`: at most 4 US dollars on Replicate and 3,000
    ElevenLabs credits for the whole suite, and nothing on Meta ads; for `organic`: at most 10 US
-   dollars on Replicate and 5,000 ElevenLabs credits, spent on the person's own channel). Its
+   dollars on Replicate and 5,000 ElevenLabs credits, spent on the person's own channel; for `ads`:
+   at most 8 US dollars on Replicate and 4,000 ElevenLabs credits, and nothing on Meta ads, as the
+   upload stays PAUSED). Its
    approval is asked once, at the first case that needs a budget (step 4), before that case's
    first paid call. A suite without a budget spends nothing: say nothing about a budget.
    **For `trends`, `briefs` and `organic`, work from the suite's folder.** Its case runs belong to that folder (`path`,

@@ -701,3 +701,49 @@ def test_every_tm_command_a_case_names_exists(suite):
                     except SystemExit as exc:
                         raise AssertionError(f"{suite} {c['id']}: `{cmd}` does not parse ({exc.code})") from None
     assert named
+
+
+# --- the ads suite (Create an ad, issue #17) ---------------------------------------------------
+
+ADS = ["A1", "A2", "A3", "A4", "A5"]
+
+
+def test_ads_suite_loads_with_the_specs_cases_and_a_modest_budget():
+    suite = acceptance.load_suite("ads")
+    assert suite["playbook"] == "05-create-ad"
+    assert suite["budget"] == {"ai_usd": 8, "voice_credits": 4000}        # generated video costs money
+    assert [c["id"] for c in suite["cases"]] == ADS
+    cases = {c["id"]: c for c in suite["cases"]}
+    for c in suite["cases"]:
+        assert c["title"] and c["proves"] and c["steps"] and c["pass"], c["id"]
+    # the spec's tests: a presenter, a pixel that fires, no presenter, the person's own VO and footage, PAUSED
+    assert "presenter" in cases["A1"]["title"] and "pixel fires" in cases["A2"]["title"]
+    assert "without a presenter" in cases["A3"]["title"] and "voice-over" in cases["A4"]["title"]
+    assert "PAUSED" in cases["A5"]["title"] and "read back PAUSED" in cases["A5"]["pass"]
+    assert cases["A2"]["judge"] is None and "conversion objective" in cases["A2"]["pass"]   # proven by the proposal
+    assert {c["id"] for c in suite["cases"] if "budget" in c["needs"]} == {"A1", "A3", "A4"}
+    assert "meta" in cases["A2"]["needs"] and "meta" in cases["A5"]["needs"]
+    a5 = " ".join(cases["A5"]["steps"])
+    assert "Never call an activation tool" in a5 and "tm ad upload record" in cases["A5"]["pass"]
+    assert "tm ad check edit" in cases["A1"]["pass"] and "tm done G4" in cases["A1"]["pass"]
+    assert "user_vo" in cases["A4"]["pass"]
+    # the command and the report know the suite
+    cmd = (acceptance.Path(__file__).parents[2] / "commands" / "acceptance.md").read_text(encoding="utf-8")
+    assert "`05-create-ad` with the \"Create an ad\" skill" in cmd and "for `ads`:" in cmd
+    assert "\"Create an ad\" steps for create an ad" in cmd
+    assert acceptance._template_path("05-create-ad").is_file()
+
+
+def test_ads_start_makes_runs_under_05_create_ad_and_reports(ws, capsys):
+    code, out = _tm(capsys, "start", "--suite", "ads")
+    assert code == 0 and out["playbook"] == "05-create-ad" and out["budget"]["ai_usd"] == 8
+    folder = ws / "acceptance" / "2026-11-06_ads"
+    data = json.loads((folder / "acceptance.json").read_text(encoding="utf-8"))
+    for c in data["cases"]:
+        assert c["run"] == f"runs/05-create-ad/2026-11-06_{c['id']}"
+        assert state.load(RunFolder.open(folder / c["run"])).playbook == "05-create-ad"
+    code, out = _tm(capsys, "next")
+    assert code == 0 and out["case"]["id"] == "A1" and out["position"] == {"case": 1, "of": 5, "todo": 5}
+    _tm(capsys, "report")
+    text = (folder / "report_v01.md").read_text(encoding="utf-8")
+    assert "Nothing in this suite spends money on Meta ads" in text and "#### A5:" in text

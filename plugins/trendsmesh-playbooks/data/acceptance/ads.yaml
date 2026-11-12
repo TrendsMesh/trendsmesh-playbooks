@@ -1,0 +1,109 @@
+# The Create an ad acceptance (issue #17, its "Tests after the build").
+# A person runs it on their own product, with real money for the generation and their own Meta ad account, and the
+# agent as the operator: /trendsmesh-playbooks:acceptance ads.
+# Spec: issue #17 (flow S0 to S10, gates G1 to G5, rules CA1 to CA15): the walkthrough replayed with a presenter
+# (A1), a product whose pixel fires (A2), an ad without a presenter (A3), the person's own voice-over and footage
+# (A4), and the PAUSED upload read back (A5).
+#
+# Each case: id, title, proves, needs (file | key | budget | meta | trendsmesh | artifacts | human_verdict, asked one
+# at a time), kinds (the budget kinds a case spends, exactly when needs has budget), steps (what the agent does, in
+# the case's run folder unless a step says to go on from another case's), pass (what must hold), judge (what the
+# person looks at; null when recorded results prove the case, and then the agent records the result).
+#
+# The suite budget is shown to the person and approved once, before the first case that needs it
+# (`tm acceptance approve`); each case run's money is approved at the playbook's own money check-ins (the
+# production plan's yes for the stills and audio, the filled storyboard's yes for the video) with `tm budget
+# approve`, never past what is left. A failed take with no output costs nothing. TrendsMesh is optional: without it
+# the concepts are labelled guesses, and the case says so in its note. Nothing in this suite spends on Meta ads: the
+# upload (A5) is created PAUSED and never switched on.
+
+playbook: 05-create-ad
+budget: {ai_usd: 8, voice_credits: 4000}
+
+cases:
+  - id: A1
+    title: "An ad with a presenter, from intake to the copy"
+    proves: "the walkthrough replayed as a new user: every step and check-in in order, nothing paid before its yes, the take shown raw with its QA before the edit uses it, and the edit QA'd before it is shown"
+    needs: [key, budget, artifacts, human_verdict]
+    kinds: [ai_usd, voice_credits]
+    steps:
+      - "Run the doctor's Create an ad checks, then start this case's run at Just the big calls on the person's product with its website: one talking presenter, 15 to 20 s for Reels and Stories. Show the intake card and its four questions, and record their answers."
+      - "Go through the concepts, the claims, the script-board and the production plan (the suggested presenter model, its price file and date). At the plan's check-in, show the pre-video total against the suite's money left (`tm acceptance next`), and on the yes approve it with `tm budget approve`."
+      - "G1 to G3: 2 or 3 visibly different presenters, the music and sounds, then the filled storyboard with the placeholder render. At the storyboard's check-in show the exact prompt and the price of the take, within what is left, and approve it on the yes."
+      - "G4: one take (`tm tool replicate_run`), then `tm tool take_qa --run <run> <take> --lang <market language> --script <its lines>`. Try `tm done G4` once before the QA and note that it is refused. Show the take raw with its transcript and QA notes at the takes check-in. If it fails, show the stop and the options; never make it again without the person's word."
+      - "S6 and S7: the edit, the loudness pass, `tm tool take_qa` on the edit, `03_wip/edit_qa_vNN.json` with every CA11 check, and `tm ad check edit`. Then the review, the Meta copy (`tm ad copy check`, its page or card, `tm ad copy accept`) and the delivery (S9)."
+      - "Stop at the upload offer: A2 goes on from this run."
+    pass: >-
+      Every step's check passed in order and no check-in was skipped; nothing was generated before the plan's yes,
+      and the take only after the storyboard's yes; `tm done G4` was refused before the take's QA; the take was
+      shown raw with its QA notes before the edit used it; `tm ad check edit` exited 0 on the version reviewed, with
+      the loudness within 1 LU of −14 LUFS and a true peak at or below −1.5 dBFS; `tm ad copy check` exited 0 (its
+      `promise_warning`, if any, is in the note); the run's spend is within what was approved.
+    judge: >-
+      Watch the ad and the raw take. Is the hook's text on screen in the first second, are the captions right, do
+      you hear any stutter or see a freeze or a jump, and would you run this ad?
+
+  - id: A2
+    title: "A product whose pixel fires: an upload proposal with a conversion objective"
+    proves: "the pixel is checked before the proposal, and a pixel that fires lets the proposal offer a conversion objective optimised for an event the pixel really sends, with the events per week behind it"
+    needs: [meta]
+    steps:
+      - "Go on from A1's run at the upload offer (`propose`). Check the Pages the ad account can use and the site's pixel: which dataset, whether it fires, which events arrive. Save each answer in `02_research/`."
+      - "When the pixel does not fire or the business event does not arrive, say what that costs, as the proposal would (clicks and the UTM link only), and record the case blocked with the person's words: this case needs a product whose pixel fires, and A5 can still go on with a clicks proposal."
+      - "Write the proposal with one or two objective options and why: one of them a conversion objective (Sales or Leads) optimising for an event the pixel sends, with the expected events a week at the person's budget against the about 50 an ad set needs to leave learning. Ask for the ad budget (amount and cadence) and the AI disclosure in their own words."
+      - "Run `tm ad upload check` on it and show the card in full. Stop before the go-ahead: A5 goes on from here."
+    pass: >-
+      The saved pixel check shows it fires and the business event arrives; the proposal's options include a
+      conversion objective with that event and the reason (events a week); the budget and the AI disclosure carry
+      the person's own words; `tm ad upload check` exits 0; nothing was created in Meta.
+    judge: null
+
+  - id: A3
+    title: "An ad without a presenter: slides or animation"
+    proves: "an ad type without a person: the first visual output is slides or frames, no presenter is cast, and the takes and the edit are checked all the same"
+    needs: [key, budget, human_verdict]
+    kinds: [ai_usd]
+    steps:
+      - "Start this case's run at Check every step, on the same product (offer A1's intake answers as one question; the level and the budget are this case's): an ad with no person on screen, its pictures site screens, product shots or slides that become animations."
+      - "The production plan has no presenter line. G1 shows the slides or frames raw on the gate. The storyboard either lists no paid video (`videos: []` with `no_video_reason`) or an animation item that does not speak (`speaks: false`), within the money left."
+      - "Take every check-in in order to the copy (S8) and the delivery, with the edit's QA (`tm ad check edit`). Stop at the upload offer and skip it."
+    pass: >-
+      No presenter casting was offered; G1 showed slides or frames; `tm ad check storyboard` passed; `tm done G4`
+      passed with no take or with the animation's QA; `tm ad check edit` exited 0 on the version reviewed; the
+      run's spend is within what was approved.
+    judge: >-
+      Does it work as an ad without a person on screen, and does every text on it read at phone size?
+
+  - id: A4
+    title: "The person's own voice-over recording and footage"
+    proves: "existing files remove generation steps: the recording fixes the voice route, the footage replaces generated pictures, and the edit uses both as given"
+    needs: [file, key, budget, human_verdict]
+    kinds: [ai_usd, voice_credits]
+    steps:
+      - "Ask for a voice-over recording of the person (or of someone whose voice they may use) and footage of the product (a clip or B-roll). Put them in `00_raw/`."
+      - "Start this case's run at Just the big calls on the same product (offer A1's intake answers as one question). The intake's inventory lists both files as usable, with what each replaces."
+      - "The production plan: `voice_route` user_vo (the engine refuses another), no generated line for what the files replace, and the plan says what each file replaces. The board puts the scenes around the footage (`source: asset:00_raw/<file>`) and the lines are the recording's own words."
+      - "Go on to the copy and the delivery. On the edit, run `tm tool take_qa` with the recording's words as the script and `tm ad check edit`. Stop at the upload offer and skip it."
+    pass: >-
+      `tm ad check plan` passed with voice_route user_vo and no generated line for a replaced type; no voice was
+      generated or cloned unless the person asked for a changed line; `tm ad check edit` exited 0 with the
+      transcript at the threshold or above; the spend is below A1's.
+    judge: >-
+      Is it your voice, unchanged, and your footage, each where it fits?
+
+  - id: A5
+    title: "The PAUSED upload, every object read back PAUSED"
+    proves: "after the go-ahead the campaign, ad set, creative and ad are created PAUSED (or as drafts) in one upload round, read back and recorded, and nothing is switched on"
+    needs: [meta, human_verdict]
+    steps:
+      - "Go on from A1's run, where A2 proposed the upload (when A2 was blocked, first write and check a clicks proposal there, as A2's steps say, without the conversion objective). Ask the go-ahead (\"Go ahead with the PAUSED upload\") and, before it, tell the person the objects stay in their account until they delete them."
+      - "On the yes: put the video and the thumbnail in the downloads folder and send them to the person, open the upload window (`ads_creative_upload_media`), and create the campaign and the ad set while they upload. Use the video once its status is `ready`."
+      - "Create the creative (with the proposal's AI disclosure) and the ad, every object PAUSED (or as a draft where the account has drafts). Never call an activation tool, and never set another status."
+      - "Read every object back, get each ad's preview, save Meta's answers in `05_results/`, write `meta_objects_vNN.json` and run `tm ad upload record`. Give the person the preview link and the words for switching it on that the record gives."
+    pass: >-
+      `tm ad upload record` exits 0; `meta_objects_vNN.json` lists the campaign, ad set, creative and ad with their
+      ids, each read back PAUSED (or as a draft, and the note says which), every video `ready`, the creative's AI
+      disclosure as proposed and a preview link per ad; no activation tool was called; nothing was spent on Meta.
+    judge: >-
+      In Ads Manager: are the campaign, the ad set and the ad there, all off, with the names, the copy and the video
+      as proposed?
