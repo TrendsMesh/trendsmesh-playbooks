@@ -313,6 +313,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   seconds. `tm render` now names only the pieces the on-screen text needs: a Japanese caption fetches 10 font files
   instead of 244. Greek, Japanese, Arabic and other captions whose script the caption font lacks were drawn
   entirely in Noto Sans; now the caption font draws its own letters and digits, and Noto Sans only the others.
+- **The teardown can read the words it is unsure of.** An optional OCR tier (RapidOCR: free, local, about 350 MB,
+  nothing to install outside the plugin, Windows included) reads the rows of the teardown's check sheet. Text found
+  by edges only becomes a caption or card when words are read in it, and is dropped when none are (the edge method's
+  false finds); captions that say what is spoken are marked sure, a box that cut letters off grows, and missed
+  captions are added. What OCR can't settle stays on the sheet for Claude to check. It isn't installed by default:
+  in Refresh an ad, Claude offers it once, at the winner breakdown, when the ad's on-screen text is to be removed or
+  replaced and the teardown is unsure of it. Say no, and Claude checks the frames by eye as before.
 
 ## 0.12.0
 

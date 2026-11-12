@@ -39,6 +39,9 @@ TIERS: dict[str, Tier] = {
     # The animatic renderer (tm/atlas.py): puppeteer-core in the `video` environment's Node, and the
     # user's own browser. Its outputs are creative brief's, which takes tiers from requirements.yaml.
     "animatic": Tier("animatic", "video", ["base"], 150, {"animatics"}),
+    # Optional (issue 57): RapidOCR reads the teardown's unsure text rows. No output needs it, so no route asks for
+    # it: the teardown says when it would help and the playbook offers it once. About 110 MB to download.
+    "ocr": Tier("ocr", "ocr", ["base"], 350, set()),
 }
 
 

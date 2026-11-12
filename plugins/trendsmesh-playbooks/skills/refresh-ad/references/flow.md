@@ -210,7 +210,20 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
   the box. Semi-transparent bars and shadows count (lesson 12). The text pass does not read the
   words (`check_sheet.limits`): compare the words you see with the transcript yourself, look for
   stylised or thin captions it may have missed, and check that a `full_frame` is not a product
-  label in the shot. Write the corrected list to
+  label in the shot.
+- **Reading the words (OCR, optional).** When the optional `ocr` tier is installed, the teardown
+  reads the unsure rows with RapidOCR before it makes the sheet (`ocr.read`): an edge find with words
+  becomes a `text` overlay and one with none is dropped (`ocr.dropped`: false finds, or a plain bar
+  or shape: look there if the plan covers graphics); changing captions that say what is spoken are
+  sure; a box that cut letters off grows; a `check_frames` band with words becomes an overlay; a
+  `full_frame` gets its words (`ocr_text`) and stays to check. The sheet then holds only the rows
+  still unsure, and you check those as above. When the tier is not installed and rows are unsure,
+  the output's `ocr.offer` says so: **offer it once in this run**, and only when the plan removes or
+  replaces on-screen text (caption removal, covering cards, new captions or text) and the rows are
+  text (word-by-word captions, stylised fonts, the sheet's rows). Say it is free and local, about
+  350 MB, a few minutes; on a yes, `tm env install ocr --yes`, then the teardown again (a new
+  version) and work from it. On a no, check the frames by eye as above, and don't offer it again in
+  this run (later teardowns print the offer too). Write the corrected list to
   `03_wip/breakdown/overlays_checked_v01.json` (the teardown's overlay fields, `kind` and
   `spans_s` included, with what you changed and why) and plan covering cards and caption removal
   from it, never from unchecked boxes.

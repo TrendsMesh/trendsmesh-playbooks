@@ -82,6 +82,13 @@ numpy = "<2"
 [feature.ai.pypi-dependencies]
 replicate = "==1.0.7"
 
+# The optional OCR tier (issue 57): RapidOCR reads the teardown's unsure text rows. Pip only, no system
+# binary. Its models ship in the wheel. onnxruntime 1.23 is the last with wheels for macOS 13 and Intel Macs.
+[feature.ocr.pypi-dependencies]
+rapidocr = "==3.10.0"
+onnxruntime = "==1.23.2"
+numpy = "*"
+
 [environments]
 base = { solve-group = "default" }
 dev = { features = ["dev"], solve-group = "default" }
@@ -89,6 +96,7 @@ breakdown = { features = ["breakdown", "opencv"], solve-group = "breakdown" }
 video = { features = ["video"], solve-group = "video" }
 voice = { features = ["voice"], solve-group = "voice" }
 ai = { features = ["ai"], solve-group = "ai" }
+ocr = { features = ["ocr", "opencv"], solve-group = "default" }
 # Every tool's dependencies at once, for the tool tests. Not a tier: users never install it.
 dev-full = { features = ["dev", "breakdown", "opencv-full", "voice", "ai", "video"], solve-group = "dev-full" }
 

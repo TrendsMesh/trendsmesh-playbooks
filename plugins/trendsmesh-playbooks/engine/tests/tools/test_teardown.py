@@ -322,3 +322,83 @@ def test_teardown_writes_the_check_sheet_and_records_it(text_ad, run, tmp_path):
 def test_nothing_to_check_writes_no_sheet(tmp_path):
     out = tmp_path / "none.png"
     assert teardown.check_sheet(tmp_path / "missing.mp4", [], out) is None and not out.exists()
+
+
+# OCR (issue 57): the optional ocr tier reads the unsure rows before the sheet is made. The conftest says the tier is
+# not installed in every test; these give the teardown a reader.
+
+def _fake_reader(text):
+    """Reads `text` across the middle of every crop it is given, as the worker would answer."""
+    def read(video, crops):
+        lines = {}
+        for cr in crops:
+            x0, y0, x1, y1 = cr["box"]
+            cy = (y0 + y1) // 2
+            lines[cr["id"]] = [{"text": text, "score": 0.97, "box": [x0 + 20, cy - 10, x1 - 20, cy + 10]}]
+        return {"engine": "RapidOCR (fake)", "crops": lines}
+    return read
+
+
+def test_without_the_ocr_tier_the_teardown_says_what_it_would_settle(text_ad, run, tmp_path, capsys):
+    transcript = tmp_path / "words.json"
+    transcript.write_text(json.dumps(ad.transcript()), encoding="utf-8")
+    assert teardown.main(["--run", str(run.path), str(text_ad), "--transcript", str(transcript), "--json"]) == 0
+    said = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    data = json.loads((run.path / "02_research" / "teardown_v01.json").read_text(encoding="utf-8"))
+    assert data["ocr"]["installed"] is False and data["ocr"]["rows"] == len(data["check_sheet"]["rows"])
+    assert "tm env install ocr" in data["ocr"]["offer"] and said["ocr"]["offer"] == data["ocr"]["offer"]
+    assert data["check_sheet"]["limits"] == list(teardown.TEXT_LIMITS)
+
+
+def test_with_the_ocr_tier_the_unsure_rows_are_read_and_the_sheet_keeps_the_rest(text_ad, run, tmp_path, capsys,
+                                                                                  monkeypatch):
+    from tm.tools import _ocr
+
+    monkeypatch.setattr(_ocr, "reader", lambda: _fake_reader("SHOP NOW"))
+    transcript = tmp_path / "words.json"
+    transcript.write_text(json.dumps(ad.transcript()), encoding="utf-8")
+    assert teardown.main(["--run", str(run.path), str(text_ad), "--transcript", str(transcript), "--json"]) == 0
+    said = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    data = json.loads((run.path / "02_research" / "teardown_v01.json").read_text(encoding="utf-8"))
+    ocr = data["ocr"]
+    assert ocr["installed"] is True and ocr["engine"] == "RapidOCR (fake)" and ocr["rows"] == len(ocr["read"])
+    end = _find(data, "end_card", "full_frame")
+    assert end["ocr_text"] == ["SHOP NOW"] and "SHOP NOW" in end["check"] and "ocr" in end["methods"]
+    sheet = data["check_sheet"]   # the end card stays on the sheet: OCR cannot tell a card from a label
+    assert sheet and any(r.get("kind") == "full_frame" for r in sheet["rows"])
+    assert sheet["limits"] == list(_ocr.LIMITS) and said["ocr"]["counts"] == ocr["counts"]
+    assert "ffmpeg, RapidOCR (fake))" in (run.path / "manifest.md").read_text(encoding="utf-8")
+
+
+def _checkout_ocr():
+    """This checkout's own ocr environment and a pixi to run it, or None: the real read runs only where the tier is
+    installed (`pixi install -e ocr` in env/), the way the other heavy tests run only where theirs are."""
+    import os
+    import shutil
+    from pathlib import Path
+
+    env = Path(teardown.__file__).resolve().parents[4] / "env"
+    pixi = os.environ.get("PIXI_EXE") or shutil.which("pixi") or str(Path.home() / ".pixi" / "bin" / "pixi")
+    if not (env / ".pixi" / "envs" / "ocr" / "conda-meta" / "pixi").is_file() or not Path(pixi).is_file():
+        return None
+    return pixi, env / "pixi.toml"
+
+
+def test_real_ocr_reads_the_end_card(text_ad, monkeypatch):
+    found = _checkout_ocr()
+    if found is None:
+        pytest.skip("no ocr environment in this checkout, or no pixi to run it (pixi install -e ocr)")
+    import os
+
+    from tm.tools import _ocr
+
+    pixi, manifest = found
+    monkeypatch.setattr(_ocr, "worker_argv", lambda req, res: [
+        pixi, "run", "--frozen", "--manifest-path", str(manifest), "-e", "ocr", "python", "-m", "tm.tools._ocr",
+        str(req), str(res)])
+    monkeypatch.setattr(_ocr, "worker_env", lambda: dict(os.environ))
+    data = teardown.teardown(text_ad, ad.transcript(), _ocr.read_with_tier)
+    assert data["ocr"]["installed"] is True and data["ocr"]["engine"].startswith("RapidOCR"), data["ocr"]
+    end = _find(data, "end_card", "full_frame")
+    read = " ".join(end.get("ocr_text") or []).upper()
+    assert "SHOP" in read and "NOW" in read, data["ocr"]["read"]

@@ -96,6 +96,7 @@ env:
     voice: voice tools
     ai: AI video tools
     animatic: animatic tools
+    ocr: OCR tools (reading the words on screen)
 doctor:
   general:
     ready: "**Ready to go.** The base tools are in place."

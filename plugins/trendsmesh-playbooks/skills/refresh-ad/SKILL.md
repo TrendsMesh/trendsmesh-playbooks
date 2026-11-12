@@ -53,7 +53,7 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    front what they download and that they take minutes ("this downloads about 2.5 GB"), then run
    them with the 10-minute timeout or in the background (`run_in_background`) and wait for them:
    every `tm env install`, and the first `tm tool teardown`, which downloads the speech model
-   (about 1.6 GB). Sign-ins, plans, keys and the Linux `sudo` line are the user's: say how, then
+   (about 1.6 GB). The optional `ocr` tier is never on the card: A3 offers it once, when it would help. Sign-ins, plans, keys and the Linux `sudo` line are the user's: say how, then
    **stop and wait**, except for the card's warnings.
    **TrendsMesh is a warning, never a stop.** The run can go on without it (no Agent plan, not
    signed in, or the user says no). Say the card's warning once in plain words: without TrendsMesh,
@@ -295,7 +295,7 @@ voice line is regenerated to length first, and checked against the original.
 | "Don't bother them with prices" | Estimate first; approval or an approved budget; then `tm tool ... --cost`. |
 | "No TrendsMesh, so stop and wait for the plan" | Never. Say the warning once (the sign-in question and the offer were made at readiness) and go on in guess mode. |
 | "This hook looks like a trend, call it proof" | Proof is a saved TrendsMesh answer of this run. Anything else is a guess, labelled as one. |
-| "The overlay boxes are probably right" | Look at the teardown's frame sheets before planning covering cards. |
+| "The overlay boxes are probably right" | Look at the teardown's frame sheets before planning covering cards. OCR (the optional `ocr` tier) settles some rows; the rest you still check. |
 
 ## References
 

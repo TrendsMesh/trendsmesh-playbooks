@@ -156,6 +156,14 @@ def _no_real_pdf_print(request, monkeypatch):
     monkeypatch.setattr(brief_pdf, "browser", lambda: None)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_ocr(monkeypatch):
+    """`tm tool teardown` asks pixi whether the optional ocr tier is installed (`_ocr.reader`, issue 57): in the
+    tests it is not, whatever this computer has. A test of the OCR route patches `_ocr.reader` again."""
+    from tm.tools import _ocr
+    monkeypatch.setattr(_ocr, "reader", lambda: None)
+
+
 @pytest.fixture
 def animatic_ready(monkeypatch):
     """The Atlas renderer can draw here: the `animatic` tier set up and a browser found (`atlas.missing()` is None),

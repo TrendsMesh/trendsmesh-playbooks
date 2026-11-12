@@ -67,9 +67,15 @@ caption's bar or frame is kept). `check_frames` lists bands whose picture change
 words where no text line was found (captions in a font the pass misses, maybe): look there.
 
 Limits of the text pass (`TEXT_LIMITS`, in the JSON's `check_sheet.limits`): it finds text lines, it does not read
-them (no OCR), so it cannot compare the words on screen with the transcript, it may miss stylised or thin fonts,
+them, so it cannot compare the words on screen with the transcript, it may miss stylised or thin fonts,
 and a still shot with text in the picture (a product label) can come out as `full_frame`. The edge method's
 leftover false finds are `graphic` with a `check`, flagged, never trusted.
+
+OCR (issue 57, `_ocr` has the rules): when the optional `ocr` tier is installed, the rows the tool is unsure of are
+read with RapidOCR before the check sheet is made, and what is read confirms, corrects or drops them (`ocr.read`,
+`ocr.dropped`; the edge method's false finds with no words in them are dropped); the sheet then shows the rows still
+unsure, and `check_sheet.limits` are OCR's (`_ocr.LIMITS`). When the tier is not installed and rows are unsure,
+`ocr` says so (`installed: false`, `offer`), the rows stay flagged as above, and the playbook offers the tier once.
 
 The check sheet (issue 57), where the agent's look starts: one row per item the tool is unsure of, each with its
 box drawn in red on its first, middle and last frame (`check_items`, `check_sheet`): the overlays with a `check`,
@@ -90,6 +96,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from tm.tools import _common as c
+from tm.tools import _ocr
 from tm.tools import _text_overlays as tx
 
 ANALYSIS_W = 270
@@ -111,8 +118,8 @@ MAX_FACE_SAMPLES = 40
 SHEET_TILE_W = 240     # the check sheet's tile width (three tiles a row)
 MAX_SHEET_ROWS = 12
 TEXT_LIMITS = (
-    "No OCR: the text pass finds text lines but does not read them, so the words on screen are never compared "
-    "with the transcript.",
+    "No OCR (the optional ocr tier is not installed): the text pass finds text lines but does not read them, so the "
+    "words on screen are never compared with the transcript.",
     "Stylised or thin fonts may be missed (a band that changes with the spoken words is listed in check_frames).",
     "A still shot with text in the picture (a product label) can be reported as full_frame.",
     "The edge method's leftover false finds come out as graphic with confidence 0.4 and a check: flagged, never "
@@ -846,8 +853,9 @@ def _has_speech(transcript: dict | None) -> bool:
     return any((s.get("text") or "").strip() or s.get("words") for s in (transcript or {}).get("segments", []))
 
 
-def teardown(video: Path | str, transcript: dict | None) -> dict:
-    """The teardown dict without file references (main() adds frames and the transcript file)."""
+def teardown(video: Path | str, transcript: dict | None, read=None) -> dict:
+    """The teardown dict without file references (main() adds frames and the transcript file). `read` reads crops
+    of the video's frames with OCR (`_ocr.reader()`), or None when the ocr tier is not installed."""
     info = c.probe(video)
     if not info.get("is_video"):
         return {"is_video": False, "width": info.get("width"), "height": info.get("height"), "fps": None,
@@ -855,23 +863,15 @@ def teardown(video: Path | str, transcript: dict | None) -> dict:
                 "has_audio": info.get("has_audio", False), "scenes": [], "overlays": [],
                 "has_speech": _has_speech(transcript), "speech_on_camera": False,
                 "speech_on_camera_evidence": {"method": "not a video", "sampled": 0, "with_face": 0, "share": 0.0},
-                "possible_whole_shot_overlays": [], "check_frames": [],
+                "possible_whole_shot_overlays": [], "check_frames": [], "ocr": None,
                 "notes": ["Not a video (a still image): the material is static."]}
     clip = _Clip(video)
     fps = clip.fps
     on_camera, evidence = speech_on_camera(clip, transcript)
     found, suspects, checks = _find_overlays(clip, transcript)
-    notes = [f"Possible overlay spanning the whole shot (frames {x['first_frame']}-{x['last_frame']}) at "
-             f"{x['bbox']}; check the frames." for x in suspects]
     for x in checks:
         x.update(start_s=_seconds(x["first_frame"], fps), end_s=_seconds(x["last_frame"] + 1, fps))
-        notes.append(f"The picture at {x['bbox']} changes with the spoken words from {x['start_s']} s to "
-                     f"{x['end_s']} s, but no text was found there: maybe captions; check the frames.")
-    if transcript is None:
-        notes.append("Not transcribed: has_speech is false until a transcript is given.")
-    elif not _has_speech(transcript):
-        notes.append("No speech found (lesson 3): the structure comes from captions and shots.")
-    return {
+    data = {
         "is_video": True, "width": info["width"], "height": info["height"],
         "fps": int(fps) if float(fps).is_integer() else fps, "duration_s": info["duration"],
         "frame_count": clip.frames, "has_audio": info["has_audio"],
@@ -879,9 +879,52 @@ def teardown(video: Path | str, transcript: dict | None) -> dict:
                    for a, b in clip.scene_frames()],
         "overlays": [_overlay_json(o, fps) for o in found],
         "has_speech": _has_speech(transcript), "speech_on_camera": on_camera,
-        "speech_on_camera_evidence": evidence, "notes": notes, "possible_whole_shot_overlays": suspects,
+        "speech_on_camera_evidence": evidence, "notes": [], "possible_whole_shot_overlays": suspects,
         "check_frames": checks,
     }
+    data["ocr"] = _read_unsure(video, data, transcript, read)
+    data["notes"] = _notes(data, transcript)
+    return data
+
+
+def _read_unsure(video: Path | str, data: dict, transcript: dict | None, read) -> dict | None:
+    """The JSON's `ocr` section (module docstring, "OCR"): None when nothing is unsure."""
+    items = check_items(data)
+    if not items:
+        return None
+    if read is None:
+        return _ocr.not_installed(len(items))
+    try:
+        answer = read(video, _ocr.crops_for(items, data))
+    except c.ToolError as exc:
+        return {"installed": True, "rows": len(items), "error": str(exc)}
+    out = _ocr.settle(data, items, answer.get("crops") or {}, transcript, edge_px=EDGE_PX)
+    return {"installed": True, "engine": answer.get("engine"), **out}
+
+
+def _notes(data: dict, transcript: dict | None) -> list[str]:
+    notes = [f"Possible overlay spanning the whole shot (frames {x['first_frame']}-{x['last_frame']}) at "
+             f"{x['bbox']}{_read_words(x)}; check the frames." for x in data["possible_whole_shot_overlays"]]
+    for x in data["check_frames"]:
+        notes.append(f"The picture at {x['bbox']} changes with the spoken words from {x['start_s']} s to "
+                     f"{x['end_s']} s, but no text was found there: maybe captions; check the frames.")
+    ocr = data.get("ocr") or {}
+    if ocr.get("installed") and "read" in ocr:
+        n = ocr["counts"]
+        notes.append(f"OCR read the {ocr['rows']} unsure row(s): {n['confirmed']} confirmed, {n['found']} found "
+                     f"where the text pass saw no text, {n['dropped']} dropped as edge finds with no words, "
+                     f"{n['to_check']} still to check (ocr.read, ocr.dropped).")
+    elif ocr.get("installed"):
+        notes.append(f"{ocr['error']} The unsure rows stay to check by eye.")
+    if transcript is None:
+        notes.append("Not transcribed: has_speech is false until a transcript is given.")
+    elif not _has_speech(transcript):
+        notes.append("No speech found (lesson 3): the structure comes from captions and shots.")
+    return notes
+
+
+def _read_words(x: dict) -> str:
+    return f" (OCR read “{' / '.join(x['ocr_text'])}”)" if x.get("ocr_text") else ""
 
 
 def _overlay_json(o: Overlay, fps: float) -> dict:
@@ -908,10 +951,10 @@ def check_items(data: dict) -> list[dict]:
                   key=lambda x: (x[1].get("confidence", 0), x[1]["start_frame"]))
     items = [{"what": "overlay", "overlay": i, "kind": o["kind"], "confidence": o["confidence"], "check": o["check"],
               "frames": _three(o["start_frame"], o["end_frame"]), "bbox": list(o["bbox"])} for i, o in sure]
-    items += [{"what": "check_frames", "frames": _three(x["first_frame"], x["last_frame"]), "bbox": list(x["bbox"])}
-              for x in data.get("check_frames") or []]
-    items += [{"what": "whole_shot", "frames": _three(x["first_frame"], x["last_frame"]), "bbox": list(x["bbox"])}
-              for x in data.get("possible_whole_shot_overlays") or []]
+    items += [{"what": "check_frames", "index": n, "frames": _three(x["first_frame"], x["last_frame"]),
+               "bbox": list(x["bbox"])} for n, x in enumerate(data.get("check_frames") or [])]
+    items += [{"what": "whole_shot", "index": n, "frames": _three(x["first_frame"], x["last_frame"]),
+               "bbox": list(x["bbox"])} for n, x in enumerate(data.get("possible_whole_shot_overlays") or [])]
     for item in items:
         item["t_s"] = [_seconds(f, fps) for f in item["frames"]] if fps else None
     return items
@@ -933,6 +976,14 @@ def check_sheet(video: Path | str, items: list[dict], out: Path) -> Path | None:
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     c.run_ffmpeg([*args, "-filter_complex", graph, "-map", last, "-frames:v", "1", c.media(out)])
     return Path(out)
+
+
+def _ocr_state(ocr: dict) -> str:
+    if not ocr:
+        return "nothing to read"
+    if not ocr.get("installed"):
+        return "not installed"
+    return "read" if "read" in ocr else "failed"
 
 
 def _transcript_ref(run, path: Path | None, transcript: dict | None) -> dict | None:
@@ -978,28 +1029,32 @@ def main(argv: list[str] | None = None) -> int:
         transcript_path = c.output(run, None, "research", "transcript", "json")
         transcript = tr.save(run, a.video, transcript_path, a.model, a.lang)
         outputs.append(c.rel(run, transcript_path))
-    data = teardown(a.video, transcript)
+    data = teardown(a.video, transcript, _ocr.reader())
     stills = frames(a.video, frames_dir, a.every_s)
     items = check_items(data)
     shown = items[:MAX_SHEET_ROWS]
     made = check_sheet(a.video, [{"frames": i["frames"], "bbox": i["bbox"]} for i in shown], sheet) \
         if data["is_video"] else None
+    ocr = data.get("ocr") or {}
+    read_ok = bool(ocr.get("installed")) and "read" in ocr
     data = {"video": c.parent_ref(run, a.video), **data,
             "frames": {"dir": c.rel(run, frames_dir), "every_s": a.every_s,
                        "files": [{"file": pth.name, "t": t} for pth, t in stills]},
             "check_sheet": {"file": c.rel(run, made), "rows": [{"row": n, **i} for n, i in enumerate(shown, 1)],
-                            "left_out": items[MAX_SHEET_ROWS:], "limits": list(TEXT_LIMITS)} if made else None,
+                            "left_out": items[MAX_SHEET_ROWS:],
+                            "limits": list(_ocr.LIMITS if read_ok else TEXT_LIMITS)} if made else None,
             "transcript": _transcript_ref(run, transcript_path, transcript)}
     c.write_json(out, data)
     outputs.insert(0, c.rel(run, out))
     parent = c.parent_ref(run, a.video)
-    c.record(run, out, "tm tool teardown (PySceneDetect, OpenCV, ffmpeg)", parent,
+    c.record(run, out, "tm tool teardown (PySceneDetect, OpenCV, ffmpeg"
+             + (f", {ocr.get('engine') or 'RapidOCR'})" if read_ok else ")"), parent,
              params={"every_s": a.every_s, "analysis_width": ANALYSIS_W, "edge_px": EDGE_PX,
-                     "text_step_s": tx.TEXT_STEP_S}, cost="0 (local)",
+                     "text_step_s": tx.TEXT_STEP_S, "ocr": _ocr_state(ocr)}, cost="0 (local)",
              request={"video": parent, "transcript": data["transcript"] and data["transcript"]["file"],
                       "every_s": a.every_s},
              response={k: data[k] for k in ("is_video", "has_speech", "speech_on_camera",
-                                            "speech_on_camera_evidence", "scenes", "overlays", "check_frames")})
+                                            "speech_on_camera_evidence", "scenes", "overlays", "check_frames", "ocr")})
     c.record(run, frames_dir, "tm tool teardown (ffmpeg stills)", parent,
              params={"every_s": a.every_s, "frames": len(stills)}, cost="0 (local)")
     to_check = ""
@@ -1010,10 +1065,20 @@ def main(argv: list[str] | None = None) -> int:
         outputs.append(c.rel(run, made))
         to_check = (f"; {len(items)} item(s) to check, from the check sheet {c.rel(run, made)} "
                     f"(its rows: check_sheet.rows)")
+    if read_ok:
+        n = ocr["counts"]
+        to_check += (f". OCR read the {ocr['rows']} unsure row(s) first: {n['confirmed']} confirmed, {n['found']} "
+                     f"found, {n['dropped']} dropped, {n['to_check']} still to check (ocr.read)")
+    elif ocr.get("installed"):
+        to_check += f". {ocr['error']}; the rows stay to check by eye"
+    elif ocr:
+        to_check += f". {ocr['offer'].rstrip('.')}"
     summary = {k: data[k] for k in ("is_video", "has_speech", "speech_on_camera")}
     return c.finish(a, {"tool": "teardown", "outputs": outputs, **summary, "scenes": len(data["scenes"]),
                         "overlays": len(data["overlays"]), "to_check": len(items),
-                        "check_sheet": c.rel(run, made) if made else None},
+                        "check_sheet": c.rel(run, made) if made else None,
+                        "ocr": {k: ocr[k] for k in ("installed", "rows", "counts", "error", "offer") if k in ocr}
+                        if ocr else None},
                     f"Teardown saved to {c.rel(run, out)}: {len(data['scenes'])} shot(s), "
                     f"{len(data['overlays'])} overlay(s), speech: {'yes' if data['has_speech'] else 'no'}"
                     f"{' (on camera)' if data['speech_on_camera'] else ''}, {len(stills)} frame(s){to_check}.")

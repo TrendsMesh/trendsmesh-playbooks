@@ -32,6 +32,9 @@ media; the original files are placeholders, the teardown, transcript and segment
                  hold: RC1); run at A1a. The account's Meta answers (mocked per case) hold the same
                  file in 4 ads (RC2, RC3)
   at_a1a_ad3_structural_ask  the same at Check every step (RC19)
+  at_a3_ocr_offer  brief + edited video, Check every step; Ad 3's ranking and diagnosis, run at A3 with its
+                 teardown done and two rows the text pass is unsure of (an edge find, a short caption), the ocr
+                 tier not installed (issue 57: the teardown's `ocr.offer`)
   at_cr4_ad3     edited video, Check every step, Ad 3 (text cards, music only, two continuous shots):
                  hook diagnosis + the structural weakness taken at G1a (flow R), teardown, segment
                  map, middle diagnosis, a saved method-E music take of 14.55 s; G3r chose R1-15s
@@ -440,6 +443,47 @@ def place_ad(ws: Path, run: Path, ad: str) -> None:
               json.loads(Path(spec["transcript"]).read_text(encoding="utf-8")),
               f"tm tool transcribe {video} (eval fixture: {Path(spec['transcript']).name})")
     tm(ws, "material", spec["material"], "--run", str(run))
+
+
+def a3_unsure_teardown(ws: Path, run: Path) -> None:
+    """A3 with the teardown run and the ocr tier not installed (issue 57): Ad 3's file and teardown, as the current
+    teardown writes it, with an edge find and a short-lived caption the text pass is unsure of, the check sheet
+    (a placeholder image) and the `ocr` section that offers the tier."""
+    if f"{ROOT}/engine/src" not in sys.path:
+        sys.path.insert(0, f"{ROOT}/engine/src")
+    from tm.tools import _ocr, teardown as td  # noqa: E402
+
+    spec = ADS["ad3"]
+    video = f"01_base/{spec['video']}"
+    place(ws, run, video, b"placeholder: the eval sandbox has no media; see 02_research/teardown_v01.json\n",
+          "the user's original file from the brand folder (eval placeholder)")
+    data = json.loads(Path(spec["teardown"]).read_text(encoding="utf-8"))
+    data["video"], fps = video, data["fps"]
+    for o in data["overlays"]:
+        o.update(kind="text", confidence=0.9, methods=["edges", "text"], check=None, transcript=None,
+                 spans_s=[[o["start_s"], o["end_s"]]])
+    w, h = data["width"], data["height"]
+    unsure = [("graphic", 0.4, td.GRAPHIC_CHECK, [w // 2 - 60, h // 3, w // 2 + 60, h // 3 + 50], 30, 80),
+              ("text", 0.6, td.SHORT_CHECK, [w // 6, h - 260, w - w // 6, h - 190], 150, 170)]
+    for kind, conf, check, box, first, last in unsure:
+        data["overlays"].append({"start_frame": first, "end_frame": last, "bbox": box, "touches_edge": False,
+                                 "semi_transparent": False, "kind": kind, "confidence": conf,
+                                 "methods": ["edges"] if kind == "graphic" else ["text"], "check": check,
+                                 "transcript": None, "start_s": round(first / fps, 3),
+                                 "end_s": round((last + 1) / fps, 3),
+                                 "spans_s": [[round(first / fps, 3), round((last + 1) / fps, 3)]]})
+    data.setdefault("check_frames", [])
+    items = td.check_items(data)
+    data["ocr"] = _ocr.not_installed(len(items))
+    sheet = "02_research/teardown_v01_check.png"
+    data["check_sheet"] = {"file": sheet, "rows": [{"row": n, **i} for n, i in enumerate(items, 1)], "left_out": [],
+                           "limits": list(td.TEXT_LIMITS)}
+    data["frames"] = {"dir": "02_research/teardown_v01_frames", "every_s": 1.0, "files": []}
+    data["transcript"] = None
+    place(ws, run, sheet, b"placeholder: the eval sandbox has no media; the rows are in teardown_v01.json\n",
+          "tm tool teardown (ffmpeg check sheet; eval placeholder)")
+    place(ws, run, "02_research/teardown_v01.json", data,
+          f"tm tool teardown {video} (eval fixture: ad3_teardown.json, with two unsure rows and no ocr tier)")
 
 
 def segment_map(ws: Path, run: Path, ad: str) -> None:
@@ -2076,6 +2120,10 @@ def main(scn: str, ws: Path) -> int:
         level = "hands_off" if scn == "at_a1a_ad3_structural" else "every_step"
         run = new_run(ws, ["creative_brief", "edited_video"], level=level, extra=RECUT_LIMITS)
         n = drive(ws, run, "A1a", scn="ad3")
+    elif scn == "at_a3_ocr_offer":
+        run = new_run(ws, ["creative_brief", "edited_video"], level="every_step")
+        n = drive(ws, run, "A3", scn="ad3")
+        a3_unsure_teardown(ws, run)
     elif scn == "at_cr4_ad3":
         run, n = recut_run(ws, "ad3", "ad3", "CR4", outputs=["edited_video"], take_structural=True,
                            g3r=G3R_NOTES["ad3"],

@@ -23,7 +23,33 @@ def test_install_without_yes_stops_with_size(capsys):
 
 def test_tier_sizes():
     assert {n: t.approx_mb for n, t in TIERS.items()} == {
-        "base": 500, "breakdown": 2500, "video": 500, "voice": 1000, "ai": 20, "animatic": 150}
+        "base": 500, "breakdown": 2500, "video": 500, "voice": 1000, "ai": 20, "animatic": 150, "ocr": 350}
+
+
+def test_the_ocr_tier_is_never_asked_for_by_a_route():
+    """Issue 57: OCR is optional. No output needs it, so no playbook's route (and no doctor card) asks for it; the
+    teardown says when it would help, and the playbook offers it once."""
+    from tm import doctor, playbooks
+
+    every = {"creative_brief", "edited_video", "ai_video", "live_test", "animatics", "organic_video", "video_ad",
+             "review_pack", "briefs", "page", "proposals", "weekly_plan", "script_to_film", "category_report",
+             "weekly_digest", "paid_view"}
+    assert "ocr" not in tiers_for(every, voice=True)
+    for pb in playbooks.all_playbooks():
+        assert "ocr" not in doctor.route_tiers(pb.id, every, voice=True)
+    assert TIERS["ocr"].env == "ocr" and TIERS["ocr"].needs == ["base"]
+
+
+def test_the_ocr_environment_pins_rapidocr_and_stays_out_of_the_others():
+    import tomllib
+    from pathlib import Path
+
+    manifest = tomllib.loads((Path(__file__).resolve().parents[2] / "env" / "pixi.toml").read_text(encoding="utf-8"))
+    deps = manifest["feature"]["ocr"]["pypi-dependencies"]
+    assert deps["rapidocr"].startswith("==") and deps["onnxruntime"].startswith("==")
+    envs = manifest["environments"]
+    assert "ocr" in envs["ocr"]["features"]
+    assert not any("ocr" in (e.get("features") or []) for name, e in envs.items() if name != "ocr")
 
 
 @pytest.fixture
