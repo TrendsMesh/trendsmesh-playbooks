@@ -153,6 +153,15 @@ def _read_at(run, rel, at):
                     encoding="utf-8")
 
 
+_KIT_BLOCK = re.compile(r'<div class="block" style="display:grid;gap:8px"><h3>.*?(?=\n<div style="display:grid;gap:4px">'
+                        r'<label for="n-)', re.S)
+
+
+def _without_kit(html: str) -> str:
+    """A delivery page without its posting kit block, which the plugin builds its own way (issue #91)."""
+    return _KIT_BLOCK.sub("<KIT>", html)
+
+
 def _visible(html: str) -> str:
     return re.sub(r"<script>.*?</script>|<style>.*?</style>", "", html, flags=re.S)
 
@@ -168,7 +177,12 @@ def test_edit_gate_matches_original_after_wording_table(tmp_path, capsys):
     built = (run.path / got["folder"] / "index.html").read_text(encoding="utf-8")
     golden = GOLDEN.read_text(encoding="utf-8").replace("\r", "")
     worded = organic_pages.worded(golden, "pl")
-    assert worded != golden and built == worded
+    # the page is the original's but for its posting kit (issue #91: one text to paste per platform, then the steps
+    # at posting), which is the plugin's kit_html of the same kit, in Polish
+    assert worded != golden and _without_kit(built) == _without_kit(worded) and "<KIT>" in _without_kit(built)
+    kit_block = _KIT_BLOCK.search(built).group(0)
+    assert kit_block == gate.localize(gate.kit_html("m1", exampleedu.edit_gate()["items"][0]["kit"]), "pl")
+    assert "Opis do wklejenia (z hashtagami)" in kit_block and "Przy publikacji" in kit_block
     assert "punkt kontrolny: finalny montaż" in built and "bramka:" not in _visible(built)
     assert [f["as"] for f in got["files"]] == ["index.html", "media/M1_final_v01_720p.mp4",
                                                "media/M1_final_v01_upload.mp4", "media/cover_M1_v01.jpg"]

@@ -22,7 +22,7 @@ plugins/trendsmesh-playbooks/engine/src/tm/schemas/pb3_*.json text eol=lf
 plugins/trendsmesh-playbooks/engine/tests/fixtures/organic/** text eol=lf
 # The organic pages' stylesheet goes into every page byte for byte (the handoff's, compared with its golden).
 plugins/trendsmesh-playbooks/engine/src/tm/organic_pages/*.css text eol=lf
-# The posting-kit reference is the handoff's best_practices_2026-11.md verbatim (test_organic_skill compares them).
+# The posting-kit reference (the plugin's own version of the handoff's best practices, dated): LF on every system.
 plugins/trendsmesh-playbooks/references/posting-kit.md text eol=lf
 # The model recipes: four are the handoff's resources/model-prompting/ verbatim (test_organic_skill compares them), five
 # the plugin's own beside them.

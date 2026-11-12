@@ -16,7 +16,8 @@ strings:
     # shared by the pages
     decision: Decyzja
     decision_for: Decyzja dla
-    post_to: Publikuj na
+    post_to: Zestaw do publikacji dla
+    post_note: "Film publikujesz samodzielnie: wtyczka niczego nie publikuje. Odznacz platformę, dla której nie chcesz zestawu do publikacji."
     your_decisions: Twoje decyzje
     output: Output
     length: Długość
@@ -43,8 +44,13 @@ strings:
       ai_label: Etykieta AI
       sound: Dźwięk
       product: Wzmianka o produkcie
-      pinned_comment: Przypięty komentarz
-      first_comment: Pierwszy komentarz
+      paste: Opis do wklejenia (z hashtagami)
+      description_hashtags: Opis (z hashtagami)
+      tags: Tagi
+      at_posting: Przy publikacji
+      search_phrase: Fraza wyszukiwania
+      search_check: "Przed publikacją sprawdź ją w Creator Search Insights na TikToku: jeśli ludzie szukają tego innymi słowami, użyj ich w pierwszym wierszu."
+      you_post: "Film publikujesz samodzielnie: skopiuj każdy tekst do aplikacji tak, jak jest. Kroki pod nim mówią, co ustawić przy publikacji."
     # the proposals page (organic_pages/proposals.py); the Copy summary's words (summary_*) are read back too
     proposals:
       risk_low: "Ryzyko: Niskie"
@@ -327,10 +333,12 @@ strings:
       video: Wideo
       cover: Okładka
       product: Produkt
-      caption: Opis posta
-      hashtags: Hashtagi
+      paste: Opis do wklejenia (z hashtagami)
       name: Tytuł
-      description: Opis filmu
+      description: Opis filmu (z hashtagami)
+      tags: Tagi
+      steps: Przy publikacji
+      search: Fraza wyszukiwania
       ai: Etykieta AI
       sound: Dźwięk
       trending: Trendujący dźwięk

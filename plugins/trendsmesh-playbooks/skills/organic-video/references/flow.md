@@ -1063,21 +1063,37 @@ A Remotion render takes about 1 minute.
 <a id="g2"></a>
 ## G2 Cover, upload copy and posting kit
 
-Read `rules.md` (OV11) and `../../references/posting-kit.md` first.
+Read `rules.md` (OV11) and `../../references/posting-kit.md` first, every time, before writing the kit: not an
+earlier kit or the template instead. The kit records the document's date as `rules_read` (the date in its title),
+and `tm kit check` refuses a kit without it.
 
 1. The cover and the upload copy are made in G1. The delivery page makes the final's 720p
    preview itself, as every page does for a video over 15 MB.
-2. **The posting kit**, as `04_final/kits/<id>_kit_v01.json` (the handoff's kit shape,
-   `templates/posting_kit_template.md`), **in the audience language**, per ticked platform: TikTok
-   line 1 = hook + search phrase, 3 to 5 hashtags, the cover frame with 2 to 7 words, the AI label,
-   "Your brand" when the product is shown; Instagram first line at most 125 characters, at most 5
-   hashtags, a cover safe for the 3:4 crop; YouTube title at most 100 characters, 1 to 2 sentences
-   and 2 to 3 hashtags; Facebook 1 to 3 hashtags; no engagement bait, at most one genuine question,
-   no sources in any post text. The `plugin` block: `ai_label`, `trending_sound` (`{name, evidence,
-   replaces_track}`, or null), `business_alternative`, `platforms`, `youtube_thumbnail`.
+2. **The posting kit**, as `04_final/kits/<id>_kit_v01.json` (its fields: `posting-kit.md` section 6;
+   `templates/posting_kit_template.md`), **in the audience language**, with `rules_read` (the
+   document's date) and `search_phrase`: the hook's or the topic's own words from the run's trend data
+   (`00_raw/proposal.json`: the proposal's title and beats), never a guess. Per ticked platform, the
+   texts the user pastes as they are: **TikTok, Instagram, Facebook** a `caption` and its `hashtags`
+   (the page joins them into one description to paste); **YouTube** a `title`, a `description` with 2
+   to 3 hashtags, and `tags` (a few searched phrases, at most 500 characters as YouTube counts them).
+   TikTok line 1 = hook + search phrase, 3 to 5 hashtags; Instagram first line at most 125
+   characters, at most 5 hashtags; YouTube title at most 100 characters; Facebook 1 to 3 hashtags; the
+   cover text 2 to 7 words; no engagement bait, at most one genuine question, no links and no sources
+   in any post text. The rest of a block are **steps at posting, in plain words** (`cover`,
+   `ai_label`, `sound`, `product`): what to do in the app, e.g. "If you add a trending sound in the
+   app, turn it down under the voiceover", never a bare value; "Your brand" in TikTok's `product` when
+   the product is shown. **The AI label by production type**: photoreal scenes (an AI host, people,
+   animals or places that look real) on, with the step on every platform; a clearly animated style
+   off, unless the user asks for it on (their words in `plugin.ai_label_request`). The `plugin` block:
+   `ai_label`, `ai_label_request`, `trending_sound` (`{name, evidence, replaces_track}`, or null),
+   `business_alternative`, `platforms`, `youtube_thumbnail`. Every limit is in
+   `data/organic-video/platform_rules.yaml`, with its source and the day it was checked.
 3. `tm kit check --run R --file 04_final/kits/<id>_kit_v01.json --json` (the language, the account
    type, the product level and the AI label come from the run; exit 2 lists the problems: fix them
-   in the next `_vNN`), then `tm kit md --run R --file 04_final/kits/<id>_kit_vNN.json --json`.
+   in the next `_vNN`). Its `warnings` name a field the kit does not use, a search phrase none of
+   whose words are in the trend data, and rules older than about 3 months: fix the first two in the
+   next `_vNN`; say the third to the user once. Then `tm kit md --run R --file
+   04_final/kits/<id>_kit_vNN.json --json`.
 4. `tm done G2 --run R` (refused until the latest kit passed the check and is unchanged since).
 
 <a id="g4"></a>
@@ -1085,7 +1101,10 @@ Read `rules.md` (OV11) and `../../references/posting-kit.md` first.
 
 1. `tm trends collect on --run R --json` (again at every resume), then `tm organic page delivery
    --run R --json`: `04_final/delivery_vNN/` with the final (its preview and the upload copy to
-   download), the cover JPG to download, the kit with Copy buttons, the platform ticks and the
+   download), the cover JPG to download, the posting kit (per platform the texts to paste, each with
+   its Copy button: one description with its hashtags, YouTube's title, description and tags; then
+   "At posting", the steps with no Copy, and TikTok's search phrase to check in Creator Search
+   Insights), the platform ticks ("Posting kit for": the user posts the video themselves) and the
    YouTube-thumbnail tick, and **every step**: all images with the pick marked, the raw takes with
    their QA findings, the voiceover. Each item has Accept / Redo with a note / Drop.
 2. **Publish it**: `tm page files --run R --page delivery --json`, an `Artifact` publish of its

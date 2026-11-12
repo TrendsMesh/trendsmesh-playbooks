@@ -198,7 +198,8 @@ def test_english_and_polish_pages_say_their_language():
             if name != "script_md":
                 assert f'<html lang="{lang}">' in text, (lang, name)
     assert "Organiczne wideo AI · punkt kontrolny: finalny montaż" in _pages("pl")["gate_edit"]
-    assert "Przypięty komentarz" in _pages("pl")["gate_edit"]          # the kit's pinned comment, English before
+    assert "Opis do wklejenia (z hashtagami)" in _pages("pl")["gate_edit"]   # the kit's text to paste (issue #91)
+    assert "Przy publikacji" in _pages("pl")["gate_edit"] and "Zestaw do publikacji dla" in _pages("pl")["gate_edit"]
 
 
 # --- another language with its table ---------------------------------------------------------------------
@@ -398,8 +399,10 @@ def test_the_kits_markdown_labels_are_in_the_page_language(tmp_path):
                        "youtube": {"title": "tiq", "description": "deq"}},
          "plugin": {"trending_sound": {"name": "snq", "evidence": "evq"}, "business_alternative": "baq"}}
     english, polish = kit.to_md(k, "en"), kit.to_md(k, "pl")
-    assert english.startswith("# Posting kit M1 v01 (Zorbo)") and "**Caption:**" in english
-    assert polish.startswith("# Zestaw do publikacji M1 v01 (Zorbo)") and "**Opis posta:**" in polish
+    assert english.startswith("# Posting kit M1 v01 (Zorbo)") and "**Description to paste (with hashtags):**" in english
+    assert "caq\n\n#a" in english and "**At posting:**" in english and "- **AI label:** alq" in english
+    assert polish.startswith("# Zestaw do publikacji M1 v01 (Zorbo)") and "**Opis do wklejenia (z hashtagami):**" in polish
+    assert "**Przy publikacji:**" in polish and "**Opis filmu (z hashtagami):**" in polish
     assert "okładka: `c.jpg`" in polish and "**Alternatywa dla konta firmowego:** baq" in polish
     assert _md_left(polish, "organic.kit_md.") == []
     _german(tmp_path)

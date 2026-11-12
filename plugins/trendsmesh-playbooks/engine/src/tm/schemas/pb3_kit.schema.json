@@ -49,6 +49,14 @@
   "ai_label": {
    "type": "string"
   },
+  "rules_read": {
+   "type": "string",
+   "description": "the date of references/posting-kit.md (data/organic-video/platform_rules.yaml as_of) its writer read; tm kit check refuses a kit without it"
+  },
+  "search_phrase": {
+   "type": "string",
+   "description": "the hook's or the topic's own words from the run's trend data; TikTok's first line leads with it"
+  },
   "platforms": {
    "type": "object",
    "properties": {
@@ -145,6 +153,12 @@
        "items": {
         "type": "string"
        }
+      },
+      "tags": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       }
       }
      }
     },
@@ -184,5 +198,5 @@
    "additionalProperties": false
   }
  },
- "description": "Checks: TikTok 3-5 hashtags, Instagram <=5 and first caption line <=125 chars, YouTube title <=100 and 2-3 hashtags, Facebook 1-3; no sources in any text."
+ "description": "Checks (tm kit check, the limits of data/organic-video/platform_rules.yaml): on each platform the text as pasted (the caption with its hashtags; YouTube's title, description and tags): TikTok 3-5 hashtags and 2,200 UTF-16 characters, Instagram <=5 hashtags, <=2,200 characters and first line <=125, YouTube title <=100, description <=5,000 bytes with 2-3 hashtags, tags <=500, Facebook 1-3 hashtags; rules_read and search_phrase; no sources in any text."
 }

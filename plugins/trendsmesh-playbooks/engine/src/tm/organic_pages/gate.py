@@ -34,7 +34,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import i18n, json_schema, manifest, organic_pages, page as pages, stepchecks
+from tm import i18n, json_schema, kit as kits, manifest, organic_pages, page as pages, stepchecks
 from tm.organic_pages import Frag
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
@@ -204,26 +204,46 @@ def dl_button(put, d) -> str:
     return f'<button class="dl" type="button" hidden data-href="{esc(rel)}" data-name="{esc(d.get("filename") or Path(rel).name)}">⬇ Download {esc(d.get("label",""))}</button>'
 
 
+PASTE_LABELS = {"description": "Description to paste (with hashtags)"}       # TikTok, Instagram, Facebook
+YOUTUBE_LABELS = {"title": "Title", "description": "Description (with hashtags)", "tags": "Tags"}
+STEP_LABELS = {"cover": "Cover", "ai_label": "AI label", "sound": "Sound", "product": "Product mention"}
+SEARCH_CHECK = ("Look it up in TikTok’s Creator Search Insights before you post: if people search for it in other "
+                "words, use theirs in the first line.")
+YOU_POST = "You post the video yourself: copy each text into the app as it is. The steps under it are what to set when you post."
+
+
 def kit_html(it_id: str, kit: dict) -> str:
-    out = ['<div class="block" style="display:grid;gap:8px"><h3>Posting kit</h3><div class="kit">']
+    """The posting kit on the page (issue #91): per platform the texts the user pastes as they are, each with its
+    Copy (`kit.paste`: one description with its hashtags; YouTube's title, description and tags), then "At posting",
+    the steps that are not pasted (`kit.steps`, and TikTok's search phrase to check), with no Copy."""
+    out = [f'<div class="block" style="display:grid;gap:8px"><h3>Posting kit</h3><p class="note">{YOU_POST}</p>'
+           '<div class="kit">']
     for key, name in PLATFORMS:
         pf = kit.get("platforms", {}).get(key)
         if not pf:
             continue
         rows = []
-        for fk, label in (("title", "Title"), ("caption", "Caption"), ("description", "Description"), ("hashtags", "Hashtags"),
-                          ("cover", "Cover"), ("ai_label", "AI label"), ("sound", "Sound"), ("product", "Product mention"),
-                          ("pinned_comment", "Pinned comment"), ("first_comment", "First comment")):
-            v = pf.get(fk)
-            if not v:
-                continue
-            if isinstance(v, list):
-                v = " ".join(v)
+        for fk, v in kits.paste(key, pf):
+            label = (YOUTUBE_LABELS if key == "youtube" else PASTE_LABELS)[fk]
             fid = f"k-{it_id}-{key}-{fk}"
             rows.append(f'<div class="fld"><span class="k">{label} <button class="copy" type="button" data-src="{fid}">Copy</button></span><pre id="{fid}">{esc(v)}</pre></div>')
+        todo = [f"<li><b>{STEP_LABELS[fk]}:</b> {esc(v)}</li>" for fk, v in kits.steps(key, pf)]
+        phrase = kit.get("search_phrase")
+        if key == "tiktok" and isinstance(phrase, str) and phrase.strip():
+            todo.append(f"<li><b>Search phrase:</b> “{esc(phrase.strip())}”. {SEARCH_CHECK}</li>")
+        if todo:
+            rows.append(f'<div class="fld"><span class="k">At posting</span><ul class="steps">{"".join(todo)}</ul></div>')
         out.append(f'<div class="pf" id="pf-{esc(it_id)}-{key}"><h4>{esc(name)}</h4>{"".join(rows)}</div>')
     out.append("</div></div>")
     return "".join(out)
+
+
+def platform_row(iid: str) -> str:
+    """The platform ticks (issue #91: which platforms get a posting kit, never where the plugin posts) and the
+    YouTube-thumbnail tick, `iid` escaped."""
+    return ('<div class="row"><span class="lbl">Posting kit for</span>' + "".join(f'<label class="chk"><input type="checkbox" data-pf="{k}" checked>{esc(n)}</label>' for k, n in PLATFORMS) +
+            f'<label class="chk"><input type="checkbox" id="th-{iid}">Make a YouTube thumbnail</label>'
+            f'<p class="note" style="flex-basis:100%">{organic_pages.POST_NOTE}</p></div>')
 
 
 # The page's fixed fragments in another language (the original's Polish table, keyed, in its order), each the
@@ -240,9 +260,11 @@ FRAGS: list[Frag] = [
     Frag('<span class="lbl">§</span>', "organic.post_to"), Frag(">§<", _G + "make_thumbnail"),
     Frag("<h3>§</h3>", "organic.kit.posting_kit"), Frag(">§</button>", "organic.copy"),
     Frag("§", _G + "note_label"), Frag(">§ ", "organic.run_folder"),
-    *(Frag('<span class="k">§ ', f"organic.kit.{k}") for k in (
-        "title", "caption", "description", "hashtags", "cover", "ai_label", "sound", "product", "pinned_comment",
-        "first_comment")),
+    Frag('<p class="note">§</p>', "organic.kit.you_post"), Frag("§", "organic.post_note"),
+    *(Frag('<span class="k">§ <button', f"organic.kit.{k}") for k in ("paste", "title", "description_hashtags", "tags")),
+    Frag('<span class="k">§</span>', "organic.kit.at_posting"),
+    *(Frag("<li><b>§:</b> ", f"organic.kit.{k}") for k in ("cover", "ai_label", "sound", "product", "search_phrase")),
+    Frag("”. §</li>", "organic.kit.search_check"),
     Frag("`<span><b>${n.accept}</b> §0</span><span>${n.redo} §1 · ${n.drop} §2 · ${open} §3</span>`",
          (_G + "sum_accepted", _G + "sum_redo", _G + "sum_dropped", _G + "sum_open"), "tpl"),
     Frag("'§'", "organic.not_saved", "js"), Frag("'§'", "organic.saving", "js"), Frag("'§'", "organic.saved", "js"),
@@ -293,8 +315,7 @@ def render(data: dict, put) -> str:
         kit = it.get("kit")
         pf_row = ""
         if kit:
-            pf_row = ('<div class="row"><span class="lbl">Post to</span>' + "".join(f'<label class="chk"><input type="checkbox" data-pf="{k}" checked>{esc(n)}</label>' for k, n in PLATFORMS) +
-                      f'<label class="chk"><input type="checkbox" id="th-{iid}">Make a YouTube thumbnail</label></div>')
+            pf_row = platform_row(iid)
         question = f'<p class="lede">{esc(it["question"])}</p>' if it.get('question') else ''
         kit_block = kit_html(it['id'], kit) if kit else ''
         out.append(f"""<section class="it" id="it-{iid}"><div style="display:grid;gap:4px"><div class="eyebrow">{esc(it.get('proposal',''))}</div><h2>{esc(it['label'])}</h2>{question}</div>

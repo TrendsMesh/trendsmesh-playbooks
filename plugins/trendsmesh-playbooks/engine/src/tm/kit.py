@@ -6,9 +6,23 @@ block, which the agent writes with it:
     plugin = {"ai_label": bool, "trending_sound": {"name", "evidence", "replaces_track": bool} | null,
               "business_alternative": str | null, "platforms": [...], "youtube_thumbnail": bool}
 
-`check(kit, ctx)` holds the 2026-11 platform rules (`resources/posting-kit/best_practices_2026-11.md`,
-PLAYBOOK OV11) that a program can read. What it cannot read stays with the skill: that line 1 is a
-natural search phrase, that an emoji means something, that the product is a soft line.
+`check(kit, ctx)` holds the platform rules a program can read (PLAYBOOK OV11): the limits of
+`data/organic-video/platform_rules.yaml` (`RULES`), each with its source and the day it was checked there, and
+`references/posting-kit.md` (the rules in words, written to the same date, `RULES["as_of"]`). What it cannot read
+stays with the skill: that line 1 is a natural search phrase, that an emoji means something, that the product is a
+soft line. `posting_problems` adds what `tm kit check` asks of a kit written at G2 (and not of a script's, E3):
+`rules_read`, the rules' date its writer read, and `search_phrase`, which leads TikTok's first line.
+
+What the user pastes (`paste`): on TikTok, Instagram and Facebook one description with the hashtags in it (the
+caption, then the hashtags it does not hold yet); on YouTube the title, the description with its hashtags, and the
+tags. The rest of a platform's block (`steps`: cover, AI label, sound, product) is what to do at posting, in plain
+words. The limits are checked on the text as pasted. A field the kit does not use is a warning (`unused`), and so are
+rules older than `RULES["max_age_days"]` (`stale_rules`) and a search phrase none of whose words are in the run's
+trend data (`search_warning`).
+
+The AI label by production type: photoreal (`ai_label` `required` or `on`): on, with its in-app step on every
+platform; a clearly animated style (`not_required`): off, unless the user asked for it on (their words in
+`plugin.ai_label_request`, or `--ai-label on`).
 
 Where the context comes from (`context_of`), each flag winning over the run:
 - language, platforms and account type: the run's config (`platforms`, else the channel profile's)
@@ -26,7 +40,8 @@ Three readings of the rules that the reference run's approved kits fix (the cont
   first sentence ends at the first `?`, `.`, `!` or line break that is not a decimal point or an ellipsis;
 - the cover text takes 2 to 7 words (the brief's 2 to 4 contradicts M1 v02 at 6 and the pet store at 7);
 - characters are counted as code points (`len`), the conservative reading: a ZWJ or flag emoji counts
-  more than the platform may count it.
+  more than the platform may count it; a limit the platform counts otherwise says so in the rules file (`unit`:
+  TikTok's UTF-16 runes, YouTube's description in bytes).
 A filmed script (`filmed_by_person`) needs no AI label, whatever `ai_label` says.
 """
 
@@ -37,26 +52,58 @@ import functools
 import json
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
-from tm import (brand, cli, config, i18n, json_schema, manifest, organic_final, organic_proposals, state, stepchecks,
-                trend_spool)
+import yaml
+
+from tm import (brand, cli, config, i18n, json_schema, manifest, organic_final, organic_proposals, paths, state,
+                stepchecks, trend_spool)
 from tm.config import Problem
 from tm.runfolder import ReadOnlyError, RunFolder
 from tm.stops import AGAIN, Stop
 
 SCHEMA = Path(__file__).parent / "schemas" / "pb3_kit.schema.json"
+RULES_FILE = paths.bundled_data() / "organic-video" / "platform_rules.yaml"
+DOCUMENT = "references/posting-kit.md"         # at the plugin root: the rules in words, of RULES["as_of"]
 KEY = "kit"                                    # run.json checked[kit]: the latest kit file that passed
 PLATFORMS = ("tiktok", "instagram", "youtube", "facebook")
 PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram Reels", "youtube": "YouTube Shorts",
                   "facebook": "Facebook Reels"}
 BRAND_LEVELS = ("incidental", "featured", "hero")   # the product levels that need "Your brand"
 AI_LABELS = ("required", "on", "not_required")
-HASHTAGS = {"tiktok": (3, 5), "instagram": (0, 5), "facebook": (1, 3)}   # YouTube's are in its description
-YOUTUBE_HASHTAGS = (2, 3)
-YOUTUBE_TITLE_MAX = 100
-INSTAGRAM_LINE_MAX = 125
+
+
+def _load_rules() -> dict:
+    data = yaml.safe_load(RULES_FILE.read_text(encoding="utf-8"))
+    data["as_of"] = str(data["as_of"])
+    return data
+
+
+RULES = _load_rules()                          # data/organic-video/platform_rules.yaml, dated
+
+
+def _limit(platform: str, name: str) -> dict:
+    return RULES["platforms"].get(platform, {}).get(name) or {}
+
+
+HASHTAGS = {p: (_limit(p, "hashtags")["min"], _limit(p, "hashtags")["max"])
+            for p in ("tiktok", "instagram", "facebook")}   # YouTube's are in its description
+YOUTUBE_HASHTAGS = (_limit("youtube", "hashtags")["min"], _limit("youtube", "hashtags")["max"])
+YOUTUBE_TITLE_MAX = _limit("youtube", "title_max")["value"]
+INSTAGRAM_LINE_MAX = _limit("instagram", "first_line_max")["value"]
+# The fields a kit is read by (the page, the .md, the checks); any other is a warning (`unused`).
+USED = {"id", "version", "date", "channel", "language", "video", "cover", "product", "platforms", "plugin",
+        "rules_read", "search_phrase"}
+USED_COVER = {"file", "frame_sec", "text"}
+USED_PLUGIN = {"ai_label", "ai_label_request", "trending_sound", "business_alternative", "platforms",
+               "youtube_thumbnail"}
+STEPS = ("cover", "ai_label", "sound", "product")   # a platform's posting steps: instructions, never pasted
+USED_BLOCK = {"youtube": ("title", "description", "hashtags", "tags", *STEPS),
+              **{p: ("caption", "hashtags", *STEPS) for p in ("tiktok", "instagram", "facebook")}}
+NO_ANGLES = re.compile(r"[<>]")                     # YouTube's title and description refuse < and >
+MENTION = re.compile(r"(?<![\w@])@[\w.]+")
 # The brief's bait phrases; BAIT_FORMS says what else each one catches.
 BAIT = {"en": ("comment", "tag a friend", "tag someone", "share this with", "follow for more", "like if"),
         "pl": ("skomentuj", "oznacz", "udostępnij", "obserwuj po więcej", "daj lajka")}
@@ -109,8 +156,97 @@ def _texts(block: dict) -> list[tuple[str, str]]:
     text, with its field."""
     out = [(k, block[k]) for k in ("caption", "title", "description", "cover", "product", "sound")
            if isinstance(block.get(k), str)]
-    tags = block.get("hashtags")
-    return out + [("hashtags", t) for t in tags if isinstance(t, str)] if isinstance(tags, list) else out
+    for field in ("hashtags", "tags"):
+        tags = block.get(field)
+        out += [(field, t) for t in tags if isinstance(t, str)] if isinstance(tags, list) else []
+    return out
+
+
+# --- what the user pastes, and what they do at posting -----------------------------------------------------
+
+def _strings(value: object) -> list[str]:
+    return [v.strip() for v in value if isinstance(v, str) and v.strip()] if isinstance(value, list) else []
+
+
+def hashtags_in(text: str) -> list[str]:
+    """The different hashtags of `text`, in order (case does not make another one)."""
+    seen: dict[str, str] = {}
+    for tag in HASHTAG.findall(text):
+        seen.setdefault(tag.casefold(), tag)
+    return list(seen.values())
+
+
+def _with_hashtags(text: str, hashtags: list[str]) -> str:
+    """`text` with the hashtags it does not hold yet after a blank line: what the user pastes."""
+    base = text.rstrip()
+    held = {t.casefold() for t in hashtags_in(base)}
+    more = [t for t in dict.fromkeys(hashtags) if t.casefold() not in held]
+    return (base + ("\n\n" if base else "") + " ".join(more)) if more else base
+
+
+def _main_text(name: str, block: dict) -> tuple[str, str]:
+    """(its field, its text): a platform's own text, its caption (YouTube: its description), else the other one."""
+    first, second = ("description", "caption") if name == "youtube" else ("caption", "description")
+    for field in (first, second):
+        if _text(block.get(field)):
+            return field, block[field]
+    return first, ""
+
+
+def paste(name: str, block: dict) -> list[tuple[str, str]]:
+    """The texts the user pastes on platform `name`, each (what it is, the text): TikTok, Instagram and Facebook one
+    `description` with its hashtags; YouTube its `title`, its `description` with its hashtags and its `tags` (as
+    YouTube Studio takes them, separated by commas). A text that is empty is left out."""
+    _, text = _main_text(name, block)
+    out = [("description", _with_hashtags(str(text), _strings(block.get("hashtags"))))]
+    if name == "youtube":
+        out = [("title", str(block.get("title") or "").strip()), *out, ("tags", ", ".join(_strings(block.get("tags"))))]
+    return [(what, t) for what, t in out if t]
+
+
+def steps(name: str, block: dict) -> list[tuple[str, str]]:   # noqa: ARG001 - the same fields on every platform
+    """What to do at posting on a platform, never pasted: its cover, AI label, sound and product steps, in that
+    order, as the kit writes them (in plain words)."""
+    return [(field, block[field].strip()) for field in STEPS if _text(block.get(field))]
+
+
+def tags_length(tags: list[str]) -> int:
+    """YouTube's count of a tag list (the videos resource): every tag, a comma between two, and the quotes it puts
+    around a tag with a space ("Foo-Baz" is 7, "Foo Baz" 9)."""
+    tags = _strings(tags)
+    return sum(len(t) + (2 if " " in t else 0) for t in tags) + max(len(tags) - 1, 0)
+
+
+def _length(text: str, unit: str) -> int:
+    if unit == "utf16":
+        return len(text.encode("utf-16-le")) // 2
+    if unit == "bytes":
+        return len(text.encode("utf-8"))
+    return len(text)
+
+
+_UNIT_WORD = {"utf16": "characters (UTF-16)", "bytes": "bytes", "characters": "characters"}
+
+
+def _too_long(bad, field: str, platform: str, what: str, text: str, limit: str) -> None:
+    spec = _limit(platform, limit)
+    if not spec:
+        return
+    unit = spec.get("unit", "characters")
+    n, most = _length(text, unit), spec["value"]
+    if n > most:
+        bad(field, f"{PLATFORM_NAMES[platform]}'s {what} is {n} {_UNIT_WORD[unit]} as pasted; it takes at most {most}.",
+            f"Shorten it to {most} {_UNIT_WORD[unit]}, hashtags included.")
+
+
+def _hashtag_count(bad, field: str, platform: str, text: str) -> None:
+    low, high = HASHTAGS[platform] if platform in HASHTAGS else YOUTUBE_HASHTAGS
+    n = len(hashtags_in(text))
+    if not low <= n <= high:
+        where = "description" if platform == "youtube" else "text"
+        bad(field, f"{PLATFORM_NAMES[platform]} has {n} hashtags in its {where} to paste; it takes "
+            + (f"{low} to {high}." if low else f"at most {high}."), f"Give {PLATFORM_NAMES[platform]} "
+            + (f"{low} to {high}" if low else f"{high} or fewer") + " specific hashtags.")
 
 
 _STOP = re.compile(r"\.{2,}|…|[?.!\n]")
@@ -163,6 +299,27 @@ def _plugin(kit: dict, ctx: KitContext, bad) -> dict:
     return plugin
 
 
+def _ai_label(kit: dict, plugin: dict, ctx: KitContext, bad) -> None:
+    """The AI label by production type (the module docstring); a filmed script needs none."""
+    if ctx.filmed_by_person:
+        return
+    label, request = plugin.get("ai_label"), plugin.get("ai_label_request")
+    if request is not None and not isinstance(request, str):
+        bad("plugin.ai_label_request", "plugin.ai_label_request is not text.", "Put the user's words in it, or leave it out.")
+    if label is False and ctx.ai_label in ("required", "on"):
+        bad("plugin.ai_label", f"The AI label must be on here (it is {ctx.ai_label.replace('_', ' ')}): the video "
+            "shows photoreal AI.", "Set plugin.ai_label to true and give the in-app step on each platform.")
+    if label is True and ctx.ai_label == "not_required" and not _text(request):
+        bad("plugin.ai_label", "The video is a clearly animated style, so the AI label is off by default.",
+            "Set plugin.ai_label to false, or, when the user asked for it on, put their words in "
+            "plugin.ai_label_request.")
+    if label is True:
+        for name, block in kit["platforms"].items():
+            if isinstance(block, dict) and not _text(block.get("ai_label")):
+                bad(f"platforms.{name}.ai_label", f"The AI label is on, and {PLATFORM_NAMES[name]} has no step for it.",
+                    f"Write where to switch it on in {PLATFORM_NAMES[name]}, in plain words.")
+
+
 def check(kit: dict, ctx: KitContext) -> list[Problem]:
     """What in a posting kit breaks the shape or the platform rules; empty when it holds."""
     out: list[Problem] = []
@@ -200,27 +357,37 @@ def check(kit: dict, ctx: KitContext) -> list[Problem]:
     for name in have:
         block = kit["platforms"][name]
         where = f"platforms.{name}"
-        low, high = HASHTAGS.get(name, (0, 99))
-        tags = block.get("hashtags") if isinstance(block.get("hashtags"), list) else []
-        if name in HASHTAGS and not low <= len(tags) <= high:
-            bad(f"{where}.hashtags", f"{PLATFORM_NAMES[name]} has {len(tags)} hashtags; it takes "
-                + (f"{low} to {high}." if low else f"at most {high}."), f"Give {PLATFORM_NAMES[name]} "
-                + (f"{low} to {high}" if low else f"{high} or fewer") + " specific hashtags.")
-        if name == "instagram":
-            lines = str(block.get("caption") or "").splitlines()
-            line = lines[0] if lines else ""
-            if len(line) > INSTAGRAM_LINE_MAX:
-                bad(f"{where}.caption", f"The first line is {len(line)} characters; Instagram shows {INSTAGRAM_LINE_MAX}.",
-                    f"Shorten line 1 to {INSTAGRAM_LINE_MAX} characters, hook and search phrase first.")
+        field, _ = _main_text(name, block)
+        pasted = dict(paste(name, block))
+        text = pasted.get("description", "")
+        _hashtag_count(bad, f"{where}.{'description' if name == 'youtube' else 'hashtags'}", name, text)
         if name == "youtube":
             title = str(block.get("title") or "")
             if not title.strip() or len(title) > YOUTUBE_TITLE_MAX:
                 bad(f"{where}.title", f"The title is {len(title)} characters; it takes 1 to {YOUTUBE_TITLE_MAX}.",
                     f"Write a title of at most {YOUTUBE_TITLE_MAX} characters.")
-            n = len(HASHTAG.findall(str(block.get("description") or "")))
-            if not YOUTUBE_HASHTAGS[0] <= n <= YOUTUBE_HASHTAGS[1]:
-                bad(f"{where}.description", f"The description has {n} hashtags; it takes {YOUTUBE_HASHTAGS[0]} to "
-                    f"{YOUTUBE_HASHTAGS[1]}.", "Put 2 or 3 hashtags in the description.")
+            _too_long(bad, f"{where}.{field}", name, "description", text, "description_max")
+            for what, value in (("title", title), (field, text)):
+                if NO_ANGLES.search(value):
+                    bad(f"{where}.{what}", f"YouTube's {what} holds < or >, which YouTube refuses.",
+                        "Take the < and > out.")
+            n = tags_length(block.get("tags") or [])
+            most = _limit("youtube", "tags_max")["value"]
+            if n > most:
+                bad(f"{where}.tags", f"YouTube's tags are {n} characters as YouTube counts them (a comma between two, "
+                    f"quotes around a tag with a space); they take at most {most}.", f"Drop tags until they fit {most}.")
+        else:
+            _too_long(bad, f"{where}.{field}", name, "text", text, "text_max")
+        if name == "instagram":
+            lines = text.splitlines()
+            line = lines[0] if lines else ""
+            if len(line) > INSTAGRAM_LINE_MAX:
+                bad(f"{where}.caption", f"The first line is {len(line)} characters; Instagram shows {INSTAGRAM_LINE_MAX}.",
+                    f"Shorten line 1 to {INSTAGRAM_LINE_MAX} characters, hook and search phrase first.")
+            mentions, most = len(MENTION.findall(text)), _limit("instagram", "mentions_max").get("value")
+            if most is not None and mentions > most:
+                bad(f"{where}.caption", f"The text tags {mentions} accounts; Instagram takes at most {most}.",
+                    f"Keep to {most} @ tags.")
         if name == "tiktok" and ctx.product_level in BRAND_LEVELS and not _text(block.get("product")):
             bad(f"{where}.product", f"The product is {ctx.product_level}, so TikTok needs the “Your brand” disclosure.",
                 "Fill product with the disclosure step.")
@@ -229,9 +396,7 @@ def check(kit: dict, ctx: KitContext) -> list[Problem]:
         caption = block.get("caption")
         if isinstance(caption, str) and _questions(caption) > 1:
             bad(f"{where}.caption", "The caption asks more than one question.", "Keep one genuine question.")
-    if plugin.get("ai_label") is False and ctx.ai_label in ("required", "on") and not ctx.filmed_by_person:
-        bad("plugin.ai_label", f"The AI label must be on here (it is {ctx.ai_label.replace('_', ' ')}).",
-            "Set plugin.ai_label to true and give the in-app step on each platform.")
+    _ai_label(kit, plugin, ctx, bad)
     sound = plugin.get("trending_sound")
     if isinstance(sound, dict):
         if ctx.account_type == "business" and not _text(plugin.get("business_alternative")):
@@ -243,17 +408,118 @@ def check(kit: dict, ctx: KitContext) -> list[Problem]:
     return out
 
 
+def posting_problems(kit: dict, ctx: KitContext) -> list[Problem]:
+    """`check`, and what `tm kit check` asks of a kit written at G2: `rules_read`, the date of the rules its writer
+    read (`RULES["as_of"]`, posting-kit.md's), and, with TikTok, the `search_phrase` leading TikTok's first line."""
+    out = check(kit, ctx)
+    if not isinstance(kit, dict) or json_schema.problems(kit, _schema(), name="kit"):   # not in the shape
+        return out
+
+    def bad(field: str, what: str, todo: str) -> None:
+        out.append(Problem(field, what, todo))
+
+    read, as_of = kit.get("rules_read"), RULES["as_of"]
+    if not _text(read):
+        bad("rules_read", "The kit does not say which platform rules it was written to.",
+            f"Read {DOCUMENT} at the plugin root (the rules as of {as_of}) before writing the kit, then record "
+            f"rules_read: \"{as_of}\".")
+    elif str(read).strip() != as_of:
+        bad("rules_read", f"The kit was written to the rules of {read}, and the plugin's are of {as_of}.",
+            f"Read {DOCUMENT} again, write the kit to it and record rules_read: \"{as_of}\".")
+    blocks = kit.get("platforms") if isinstance(kit.get("platforms"), dict) else {}
+    tiktok = blocks.get("tiktok")
+    if isinstance(tiktok, dict):
+        phrase = kit.get("search_phrase")
+        if not _text(phrase):
+            bad("search_phrase", "The kit has no search phrase, which TikTok's first line leads with.",
+                "Take it from the run's trend data (the hook's or the topic's own words) and record it in "
+                "search_phrase.")
+        else:
+            field, caption = _main_text("tiktok", tiktok)
+            first = (str(caption).splitlines() or [""])[0]
+            if phrase.strip().casefold() not in first.casefold():
+                bad(f"platforms.tiktok.{field}", f"TikTok's first line does not hold the search phrase "
+                    f"“{phrase.strip()}”.", "Lead line 1 with the hook and the search phrase, word for word.")
+    return out
+
+
+def unused(kit: dict) -> list[str]:
+    """The fields of `kit` nothing reads (not shown, not checked), in the kit's order: a warning, never a refusal."""
+    if not isinstance(kit, dict):
+        return []
+    out = [k for k in kit if k not in USED]
+    cover = kit.get("cover")
+    out += [f"cover.{k}" for k in cover if k not in USED_COVER] if isinstance(cover, dict) else []
+    blocks = kit.get("platforms") if isinstance(kit.get("platforms"), dict) else {}
+    for name, block in blocks.items():
+        if not isinstance(block, dict) or name not in USED_BLOCK:
+            continue
+        used = set(USED_BLOCK[name]) | {_main_text(name, block)[0]}
+        out += [f"platforms.{name}.{k}" for k in block if k not in used]
+    plugin = kit.get("plugin")
+    out += [f"plugin.{k}" for k in plugin if k not in USED_PLUGIN] if isinstance(plugin, dict) else []
+    return out
+
+
+def stale_rules(today: date | None = None) -> str | None:
+    """A warning when the rules are older than `RULES["max_age_days"]`: they still apply, and may have changed."""
+    as_of = date.fromisoformat(RULES["as_of"])
+    age = ((today or date.today()) - as_of).days
+    if age <= RULES["max_age_days"]:
+        return None
+    return (f"The platform rules were checked against the platforms' pages on {as_of} ({age} days ago): limits may "
+            f"have changed since. Tell the user to check the text in each app's own preview before posting; a newer "
+            f"plugin version may have newer rules.")
+
+
+_STEM = 5     # a word of the search phrase is found in the trend data by its first letters (Polish inflects)
+
+
+def _stems(text: str) -> set[str]:
+    return {w.casefold()[:_STEM] for w in WORD.findall(text) if len(w) >= 4 and not w.isdigit()}
+
+
+def search_warning(kit: dict, trend_text: str | None) -> str | None:
+    """A warning when none of the search phrase's words is in the run's trend data (`trend_text`, the proposal's
+    topic and hook): a guessed phrase, which the user should check in Creator Search Insights."""
+    phrase = kit.get("search_phrase") if isinstance(kit, dict) else None
+    if not (_text(phrase) and _text(trend_text)):
+        return None
+    words = _stems(str(phrase))
+    if not words or words & _stems(str(trend_text)):
+        return None
+    return (f"The search phrase “{phrase.strip()}” has none of the run's trend words (the proposal's topic and hook): "
+            "take it from them, and tell the user to check it in TikTok's Creator Search Insights before posting.")
+
+
+def trend_text(run: RunFolder) -> str | None:
+    """The run's trend data a search phrase comes from: the started proposal's title, beats (the hook first), why
+    and type, from `00_raw/proposal.json`; None without them."""
+    path = run.path / organic_proposals.PROPOSAL_FILE
+    try:
+        proposal = json.loads(path.read_text(encoding="utf-8-sig")).get("proposal") if path.is_file() else None
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(proposal, dict):
+        return None
+    parts = [proposal.get(k) for k in ("title", "why", "video_type")] + list(proposal.get("beats") or [])
+    text = " ".join(p for p in parts if isinstance(p, str))
+    return text or None
+
+
 # --- the .md beside the JSON ------------------------------------------------------------------------
 
-LABELS = ("title", "video", "cover", "product", "caption", "hashtags", "name", "description", "ai", "sound", "trending",
-          "alternative")             # the string table's organic.kit_md.<label>
+LABELS = ("title", "video", "cover", "product", "paste", "name", "description", "tags", "steps", "search", "ai",
+          "sound", "trending", "alternative")             # the string table's organic.kit_md.<label>
+PASTE_LABELS = {("youtube", "title"): "name", ("youtube", "description"): "description", ("youtube", "tags"): "tags"}
+STEP_LABELS = {"cover": "cover", "ai_label": "ai", "sound": "sound", "product": "product"}
 
 
 def labels(lang: str | None) -> dict[str, str]:
     """The .md's labels in `lang` (the run's working language) when its table has every organic string, else in
-    English (`i18n.page_lang`)."""
+    English (`i18n.page_lang`); `search_check` is the search phrase's step, shared with the delivery page."""
     tr = i18n.translator(i18n.page_lang(lang, "organic").lang)
-    return {label: tr(f"organic.kit_md.{label}") for label in LABELS}
+    return {label: tr(f"organic.kit_md.{label}") for label in LABELS} | {"search_check": tr("organic.kit.search_check")}
 
 
 def _fence(text: str) -> list[str]:
@@ -262,7 +528,9 @@ def _fence(text: str) -> list[str]:
 
 def to_md(kit: dict, lang: str) -> str:
     """templates/posting_kit_template.md's sections (its `## ` headings are `PLATFORM_NAMES`, which a test
-    compares to the template), filled: one per platform in the kit, its labels in `lang` (`labels`)."""
+    compares to the template), filled: one per platform in the kit, its labels in `lang` (`labels`). Each holds
+    the texts to paste as they are (`paste`), then what to do at posting (`steps`, and on TikTok the search
+    phrase to check)."""
     t = labels(lang)
     plugin = kit.get("plugin") or {}
     cover = (kit.get("cover") or {}).get("file")
@@ -272,16 +540,14 @@ def to_md(kit: dict, lang: str) -> str:
     lines = head + [" · ".join(meta), ""]
     for name, block in (kit.get("platforms") or {}).items():
         lines += [f"## {PLATFORM_NAMES.get(name, name)}"]
-        if block.get("title"):
-            lines += [f"**{t['name']}:**"] + _fence(block["title"])
-        for field, key in (("caption", "caption"), ("description", "description")):
-            if block.get(field):
-                lines += [f"**{t[key]}:**"] + _fence(block[field])
-        if block.get("hashtags"):
-            lines += [f"**{t['hashtags']}:**"] + _fence(" ".join(block["hashtags"]))
-        for field, key in (("cover", "cover"), ("ai_label", "ai"), ("sound", "sound"), ("product", "product")):
-            if block.get(field):
-                lines.append(f"**{t[key]}:** {block[field]}")
+        block = block if isinstance(block, dict) else {}
+        for what, text in paste(name, block):
+            lines += [f"**{t[PASTE_LABELS.get((name, what), 'paste')]}:**"] + _fence(text)
+        todo = [f"- **{t[STEP_LABELS[field]]}:** {text}" for field, text in steps(name, block)]
+        if name == "tiktok" and _text(kit.get("search_phrase")):
+            todo.append(f"- **{t['search']}:** “{kit['search_phrase'].strip()}”. {t['search_check']}")
+        if todo:
+            lines += [f"**{t['steps']}:**", *todo]
         lines.append("")
     sound = plugin.get("trending_sound")
     if isinstance(sound, dict):
@@ -371,7 +637,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     c.add_argument("--account-type", choices=brand.ACCOUNT_TYPES, help="default: the channel profile's")
     c.add_argument("--product-level", choices=tuple(organic_proposals.PRODUCT_LEVELS),
                    help="default: the proposal's, in 00_raw/proposal.json")
-    c.add_argument("--ai-label", choices=AI_LABELS, help="default: not_required for a script")
+    c.add_argument("--ai-label", choices=AI_LABELS, help="default: the checked pack's (not_required for a clearly "
+                   "animated style), not_required for a script; on when the user asked for the label")
 
 
 def _load(run: RunFolder, given: str) -> tuple[Path, str, dict]:
@@ -394,13 +661,18 @@ def _check(args: argparse.Namespace) -> int:
     path, rel, data = _load(run, args.file)
     ctx = context_of(run, language=args.audience_language, account_type=args.account_type,
                      product_level=args.product_level, ai_label=args.ai_label)
-    problems = check(data, ctx)
+    problems = posting_problems(data, ctx)
     if problems:
         return cli.refuse_problems(args, rel, problems)
     stepchecks.mark(run, KEY, path)
-    message = (f"{rel} holds the platform rules for {', '.join(PLATFORM_NAMES[p] for p in data['platforms'])} "
-               f"({ctx.language}). Write its .md with tm kit md.")
-    cli.emit(args, {"status": "done", "file": rel, "platforms": list(data["platforms"]), "message": message}, message)
+    warnings = [f"{field} is not a field the posting kit uses: nothing shows or checks it. Take it out, or put its "
+                "text in a field that is used (references/posting-kit.md, the kit's fields)." for field in unused(data)]
+    warnings += [w for w in (stale_rules(), search_warning(data, trend_text(run))) if w]
+    message = (f"{rel} holds the platform rules of {RULES['as_of']} for "
+               f"{', '.join(PLATFORM_NAMES[p] for p in data['platforms'])} ({ctx.language}). Write its .md with tm kit md."
+               + "".join(f"\nWarning: {w}" for w in warnings))
+    cli.emit(args, {"status": "done", "file": rel, "platforms": list(data["platforms"]), "rules": RULES["as_of"],
+                    "warnings": warnings, "message": message}, message)
     return 0
 
 

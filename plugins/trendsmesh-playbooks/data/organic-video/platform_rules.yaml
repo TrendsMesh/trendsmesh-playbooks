@@ -1,0 +1,88 @@
+# The platform rules a posting kit is held to (`tm kit check`, tm.kit.RULES): each platform's limits on the text
+# the user pastes, each with the page it comes from and the day it was checked there. The rules in words (how to
+# write each text, the AI label, the sound, the cover) are references/posting-kit.md, written to the same date.
+#
+# - `as_of` is the day these limits and posting-kit.md were last checked against the platforms' own pages. A kit
+#   names it in `rules_read` (the rules its writer read); posting-kit.md's title carries the same date (a test holds
+#   them equal). Move both together.
+# - Older than `max_age_days`, `tm kit check` still checks, and warns that the rules may have changed: check every
+#   limit below against its source again, then move `as_of`.
+# - `unit` is how a length is counted: `characters` (code points: an emoji of several code points counts more than
+#   the platform may count it, the safe reading), `utf16` (TikTok's "UTF-16 runes": an emoji outside the basic
+#   plane counts 2) or `bytes` (UTF-8: a Polish letter counts 2).
+# - `tier: T2` marks a limit only second-tier sources give (no page of the platform states it); the rest are the
+#   platforms' own pages. `house` marks a count the plugin keeps to when the platform gives none.
+as_of: 2026-11-12
+max_age_days: 92
+platforms:
+  tiktok:
+    text_max:
+      value: 2200
+      unit: utf16
+      source: https://developers.tiktok.com/doc/content-posting-api-reference-direct-post
+      checked: 2026-11-12
+      note: the video caption through the Content Posting API (post_info.title); the app takes 4,000 (T2), the kit keeps to 2,200
+    hashtags:
+      min: 3
+      max: 5
+      source: https://www.socialmediatoday.com/news/tiktok-implements-five-hashtag-limit-per-post/757857/
+      checked: 2026-11-12
+      tier: T2
+      note: the in-app cap of 5 (2025-08) is not confirmed by TikTok; at least 3 specific ones is the Creator Academy's advice on search
+  instagram:
+    text_max:
+      value: 2200
+      unit: characters
+      source: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
+      checked: 2026-11-12
+    first_line_max:
+      value: 125
+      unit: characters
+      source: https://www.socialmediatoday.com/news/instagram-certain-ctas-impact-post-reach/717732/
+      checked: 2026-11-12
+      tier: T2
+      note: about 125 characters show before "more"
+    hashtags:
+      min: 0
+      max: 5
+      source: https://help.instagram.com/351460621611097
+      checked: 2026-11-12
+      note: the Help Center's cap of 5 per post or reel (announced 2025-12-18); the Graph API page still says 30
+    mentions_max:
+      value: 20
+      source: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media
+      checked: 2026-11-12
+  youtube:
+    title_max:
+      value: 100
+      unit: characters
+      source: https://developers.google.com/youtube/v3/docs/videos
+      checked: 2026-11-12
+      note: no < or > (the API refuses them)
+    description_max:
+      value: 5000
+      unit: bytes
+      source: https://developers.google.com/youtube/v3/docs/videos
+      checked: 2026-11-12
+      note: Studio's help says 5,000 characters; the API counts bytes, so the kit keeps to 5,000 bytes; no < or >
+    tags_max:
+      value: 500
+      unit: characters
+      source: https://developers.google.com/youtube/v3/docs/videos
+      checked: 2026-11-12
+      note: the whole list, the commas between tags counted, and a tag with a space counted with the quotes around it
+    hashtags:
+      min: 2
+      max: 3
+      source: https://support.google.com/youtube/answer/6390658
+      checked: 2026-11-12
+      house: true
+      note: the first 3 show by the title, more than 60 and all are ignored; 2 to 3 relevant ones in the description
+  facebook:
+    hashtags:
+      min: 1
+      max: 3
+      source: https://www.facebook.com/help/587836257914341
+      checked: 2026-11-12
+      house: true
+      note: Facebook gives no count and no caption length for Reels; 1 to 3, one word each

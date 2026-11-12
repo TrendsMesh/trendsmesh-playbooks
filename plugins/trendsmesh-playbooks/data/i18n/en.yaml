@@ -479,7 +479,8 @@ organic:
   # shared by the pages
   decision: Decision
   decision_for: Decision for
-  post_to: Post to
+  post_to: Posting kit for
+  post_note: "You post the video yourself: the plugin posts nothing. Untick a platform you do not want a posting kit for."
   your_decisions: Your decisions
   output: Output
   length: Length
@@ -506,8 +507,14 @@ organic:
     ai_label: AI label
     sound: Sound
     product: Product mention
-    pinned_comment: Pinned comment
-    first_comment: First comment
+    # the delivery page's kit (issue #91): the texts to paste, then the steps at posting
+    paste: Description to paste (with hashtags)
+    description_hashtags: Description (with hashtags)
+    tags: Tags
+    at_posting: At posting
+    search_phrase: Search phrase
+    search_check: "Look it up in TikTok’s Creator Search Insights before you post: if people search for it in other words, use theirs in the first line."
+    you_post: "You post the video yourself: copy each text into the app as it is. The steps under it are what to set when you post."
   # the proposals page (organic_pages/proposals.py); the Copy summary's words (summary_*) are read back too
   proposals:
     risk_low: "Risk: Low"
@@ -794,10 +801,12 @@ organic:
     video: Video
     cover: Cover
     product: Product
-    caption: Caption
-    hashtags: Hashtags
+    paste: Description to paste (with hashtags)
     name: Title
-    description: Description
+    description: Description (with hashtags)
+    tags: Tags
+    steps: At posting
+    search: Search phrase
     ai: AI label
     sound: Sound
     trending: Trending sound

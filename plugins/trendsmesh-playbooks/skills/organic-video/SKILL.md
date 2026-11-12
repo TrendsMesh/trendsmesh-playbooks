@@ -54,8 +54,8 @@ the pack, the script to film, the posting kit, `intake_answers_example.json`); t
 references in the plugin's own `references/` folder, two folders up from this skill
 (`../../references/`): `pages.md` (publishing a page and reading the decisions on it),
 `trend-collection.md` (how answers are saved), `brand-and-audience.md` (the channel profile),
-`posting-kit.md` (the 2026-11 platform rules, 34 dated sources), `model-prompting/` (each model's
-prompting recipe, with its sources and dates: read it before any prompt).
+`posting-kit.md` (the platform rules as of 2026-11-12, for every niche, with dated sources),
+`model-prompting/` (each model's prompting recipe, with its sources and dates: read it before any prompt).
 
 ## 1. Readiness first (also `/trendsmesh-playbooks:doctor`)
 

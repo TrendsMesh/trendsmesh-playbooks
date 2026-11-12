@@ -30,6 +30,8 @@ Shared here:
 - `worded(page, lang)`: a page of the reference tool (`tools/pb3/`) as the plugin builds it: `WORDING`, then the
   reference tool's own Polish words (`REFERENCE`) -> the plugin's Polish, and the stored values it shows in the
   plugin's words (`value`). Only the equality tests use it, on the goldens the reference tool made.
+- `POST_NOTE`: under the platform ticks of the proposals and delivery pages, labelled "Posting kit for" (issue #91:
+  the original's "Post to" read as if the plugin posts the video). `worded` puts both in a reference page's row.
 - `CSS` (pages.css): the reference pages' stylesheet, verbatim.
 """
 
@@ -45,6 +47,7 @@ from tm import i18n
 CSS = (Path(__file__).parent / "pages.css").read_text(encoding="utf-8")
 AREA = "organic"                      # the pages' keys in the string table: organic.<key>
 SLOT = "§"                            # where a Frag's text sits (§0, §1 … for several)
+POST_NOTE = "You post the video yourself: the plugin posts nothing. Untick a platform you do not want a posting kit for."
 
 
 def _db(*collections: str) -> dict:
@@ -229,6 +232,7 @@ def worded(page: str, lang: str) -> str:
     en = i18n.translator(i18n.ENGLISH)
     for old, key in WORDING:
         page = page.replace(old, en(key))
+    page = _platform_rows(page, en if lang not in REFERENCE else i18n.translator(lang))
     if lang not in REFERENCE:
         return page
     tr = i18n.translator(lang)
@@ -238,6 +242,23 @@ def worded(page: str, lang: str) -> str:
     for old, new in pairs:
         page = page.replace(old, new)
     return _stored_values(page, tr)
+
+
+# A reference page's platform row: its label (the original's "Post to", its Polish "Publikuj na") and ticks.
+_PLATFORM_ROW = re.compile(r'(<div class="row"( id="pfs-[^"]*")?><span class="lbl">)(Post to|Publikuj na)(</span>.*?)'
+                           r'(</div>)', re.S)
+
+
+def _platform_rows(page: str, tr: i18n.Translator) -> str:
+    """A reference page's platform rows as the plugin builds them: "Posting kit for" and `POST_NOTE` (a proposal's
+    row a `hint`, the delivery page's a `note`), in `tr`'s language."""
+    label, note = escape(tr("organic.post_to"), "html"), escape(tr("organic.post_note"), "html")
+
+    def row(m: re.Match) -> str:
+        shown = f'<p class="hint">{note}</p>' if m.group(2) else f'<p class="note" style="flex-basis:100%">{note}</p>'
+        return m.group(1) + label + m.group(4) + shown + m.group(5)
+
+    return _PLATFORM_ROW.sub(row, page)
 
 
 _CHIP = re.compile(r'(<span class="chip">[^<]*<b>)([^<]*)(</b></span>)')

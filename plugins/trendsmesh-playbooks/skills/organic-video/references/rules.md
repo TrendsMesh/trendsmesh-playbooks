@@ -75,10 +75,13 @@ organic page`, `tm organic decisions`, `tm page await`: OV12).
 - OV11: TikTok line 1 = hook + search phrase, 3 to 5 hashtags, a cover frame with words (the
   engine takes 2 to 7: the handoff's approved kits have 6 and 7), the AI label,
   "Your brand" when the product is shown; Instagram first line at most 125 characters, at most 5
-  hashtags; YouTube title at most 100 characters, 1 to 2 sentences and 2 to 3 hashtags; Facebook
-  1 to 3 hashtags; at most one genuine question (the caption's opening hook question is not
-  counted: still to be confirmed); no sources in any post text; the sound split original 100 %, added 10
-  to 15 %; re-check `posting-kit.md` when it is older than about 3 months.
+  hashtags; YouTube title at most 100 characters, 1 to 2 sentences and 2 to 3 hashtags, tags at most
+  500 characters; Facebook 1 to 3 hashtags; at most one genuine question (the caption's opening hook
+  question is not counted: still to be confirmed); no sources in any post text; the sound split original
+  100 %, added 10 to 15 %. The AI label by production type: photoreal on, on every platform; a clearly
+  animated style off unless the user asks for it. Each limit is in `data/organic-video/platform_rules.yaml`
+  with its source and the day it was checked; a kit names the rules' date it was written to
+  (`rules_read`); re-check `posting-kit.md` when it is older than about 3 months (`tm kit check` warns).
 - OV12: the video as a 1080p upload copy under 15 MB, the cover as JPG, the script as `.md`;
   previews 720p, CRF about 27.
 - Config defaults (PLAYBOOK §7): `budget.per_run_usd` 5, `budget.per_week_usd` 5; `generation`

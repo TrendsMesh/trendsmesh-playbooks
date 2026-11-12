@@ -119,7 +119,7 @@ def decision_panel(p: dict, levels: dict[str, str], level: str) -> str:
 <div class="row"><span class="lbl">Decision</span><span class="seg" role="radiogroup" aria-label="Decision for {pid.upper()}">{seg}</span></div>
 <div class="row"><span class="lbl">Output</span><span class="seg" role="radiogroup" aria-label="Output for {pid.upper()}">{outs}</span></div>
 <div class="row"><span class="lbl">How</span><span class="seg" role="radiogroup" aria-label="Production mode for {pid.upper()}">{how}</span></div>
-<div class="row" id="pfs-{pid}"><span class="lbl">Post to</span>{pfs}</div>
+<div class="row" id="pfs-{pid}"><span class="lbl">Posting kit for</span>{pfs}<p class="hint">{organic_pages.POST_NOTE}</p></div>
 <p class="hint" id="auto-{pid}" hidden>A–Z: Claude produces the whole video without stopping. While we test, the exact cost is still confirmed once before anything is paid.</p>
 {qs}
 <div class="q"><label for="n-{pid}">Notes for Claude (optional)</label><textarea id="n-{pid}" rows="1" placeholder="e.g. use a golden retriever instead of the husky"></textarea></div>
@@ -230,7 +230,7 @@ FRAGS: list[Frag] = [
     Frag(">§<", _P + "produce"), Frag(">§<", _P + "later"), Frag(">§<", _P + "skip"),
     Frag('placeholder="§"', _P + "taste_placeholder"),
     Frag('<span class="lbl">§</span>', "organic.decision"), Frag('<span class="lbl">§</span>', _P + "how"),
-    Frag('<span class="lbl">§</span>', "organic.post_to"),
+    Frag('<span class="lbl">§</span>', "organic.post_to"), Frag("§", "organic.post_note"),
     Frag("§", _P + "hands_off_hint"),
     Frag("§", _P + "notes_label"), Frag('placeholder="§"', _P + "notes_placeholder"),
     Frag("{produce:'§0', later:'§1', skip:'§2'}[s.decision] || '§3'",

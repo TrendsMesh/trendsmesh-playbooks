@@ -501,13 +501,15 @@ def test_rules_hold_ov1_to_ov14_verbatim():
         assert f"### OV{n}." in rules
 
 
-@pytest.mark.private_data
-def test_posting_kit_reference_is_the_handoffs_verbatim_and_lf():
-    source = REPO / "handoff" / "organic-video_v02" / "resources" / "posting-kit" / "best_practices_2026-11.md"
+def test_posting_kit_reference_is_dated_and_lf():
+    """The plugin's own version of the handoff's best practices (issue #91: for every niche, its limits checked
+    again): every source numbered in order, each with its date, and the file pinned LF."""
     kit = PLUGIN / "references" / "posting-kit.md"
-    assert _text(kit) == _text(source)
     sources = _text(kit).split("## Sources", 1)[1]
-    assert re.findall(r"^- S(\d+) ", sources, re.M) == [str(n) for n in range(1, 35)]   # 34 dated sources
+    numbered = re.findall(r"^- S(\d+) (.*)$", sources, re.M)
+    assert [int(n) for n, _ in numbered] == list(range(1, len(numbered) + 1)) and len(numbered) >= 34
+    undated = [n for n, line in numbered if not re.search(r"\b20\d\d\b", line)]
+    assert undated == ["33", "34"]          # the handoff's, without a date: Instagram's audio help and a T2 blog
     assert _pinned_lf("plugins/trendsmesh-playbooks/references/posting-kit.md")
 
 

@@ -129,6 +129,22 @@ What changed in each version of the TrendsMesh playbooks plugin.
   channel. A trend that doesn't fit the channel never takes a place; its place goes to the type's leading kind. At
   least half of the proposals are built on that kind, and the proposals page says why ("A news and explainer channel,
   so topics come first."). A profile saved before keeps working, with 3 of each, until you give it a type.
+- **Organic AI video's delivery page gives one text to paste per platform.** On TikTok, Instagram and Facebook
+  you copy one description with the hashtags already in it; on YouTube the title, the description (with its
+  hashtags) and, new, the tags, each with its own Copy. The cover, the AI label, the sound and the product are an
+  "At posting" list of plain steps with no Copy button, and TikTok's search phrase comes with a reminder to check it
+  in Creator Search Insights. The platform ticks on the proposals and delivery pages now read "Posting kit for",
+  with a note that you post the video yourself. The kit's Markdown follows the same layout.
+- **Organic AI video's posting kit follows platform rules written for every niche, and checks them.** The posting
+  rules are rewritten for creators, education channels and shops (they were about one pet store), and their limits
+  were checked again against each platform's own pages on 2026-11-12. They are dated: Instagram's cap is now 5
+  hashtags per its Help Center, YouTube's tags take 500 characters counted as YouTube counts them, and the
+  description 5,000 bytes. Every kit records the date of the rules it was written to, and `tm kit check` refuses a
+  kit without it; it checks the limits on the text as you paste it, the TikTok search phrase in the first line, and
+  the AI label against what the video is: on everywhere for photoreal scenes, off for a clearly animated style
+  unless you ask for it. It warns about a field it does not use, a search phrase that is not from the trends, and
+  rules more than 3 months old. Kits saved before still load, show and pass the earlier checks; checking one again
+  asks for the two new fields.
 
 ## 0.12.0
 

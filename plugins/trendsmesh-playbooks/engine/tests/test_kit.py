@@ -27,6 +27,19 @@ def _m1():
     return exampleedu.kit("M1_kit_v02")
 
 
+def _g2(k: dict, phrase: str | None = None) -> dict:
+    """A reference kit as G2 writes it now (issue #91): the rules' date its writer read and its search phrase.
+    Without a phrase, the kit's own TikTok first line is its search phrase, read from the (private) reference
+    kit when the test runs, so none of its text is written here."""
+    if phrase is None:
+        _, caption = kit._main_text("tiktok", k["platforms"]["tiktok"])
+        phrase = (str(caption).splitlines() or [""])[0]
+    return k | {"rules_read": kit.RULES["as_of"], "search_phrase": phrase}
+
+
+M5_PHRASE = "ChatGPT jest od 13 lat"
+
+
 @pytest.mark.private_data
 def test_m1_kit_v02_passes():
     assert kit.check(_m1(), _ctx()) == []
@@ -236,11 +249,14 @@ def _write(run, data, name="M1_kit_v02.json"):
 @pytest.mark.private_data
 def test_cli_check_reads_the_context_and_marks_the_file(tmp_path, capsys):
     run = _run(tmp_path)
-    rel = _write(run, _m1())
+    rel = _write(run, _g2(_m1()))
     code, out = _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel)
     assert (code, out["status"], out["platforms"]) == (0, "done", ["tiktok", "instagram", "youtube", "facebook"])
+    assert out["rules"] == kit.RULES["as_of"] and [w.split(" ", 1)[0] for w in out["warnings"]] == [
+        "ai_label", "rules"]                                      # the handoff's two fields nothing reads
+    assert all("not a field the posting kit uses" in w for w in out["warnings"])
     assert stepchecks.fresh(RunFolder.open(run.path), "kit", "04_final/kits", "M1_kit", "json") is None
-    k = _m1()
+    k = _g2(_m1())
     k["language"] = "en"
     rel = _write(run, k, "M1_kit_v03.json")
     code, out = _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel)
@@ -251,10 +267,10 @@ def test_cli_check_reads_the_context_and_marks_the_file(tmp_path, capsys):
 @pytest.mark.private_data
 def test_cli_flags_win_over_the_run(tmp_path, capsys):
     run = _run(tmp_path)
-    rel = _write(run, exampleedu.kit("M5_pl_kit_v01") | {"id": "M5"}, "M5_kit_v01.json")
+    rel = _write(run, _g2(exampleedu.kit("M5_pl_kit_v01"), M5_PHRASE) | {"id": "M5"}, "M5_kit_v01.json")
     code, out = _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel, "--ai-label", "required")
     assert code == 0
-    k = exampleedu.kit("M5_pl_kit_v01")
+    k = _g2(exampleedu.kit("M5_pl_kit_v01"), M5_PHRASE)
     k["plugin"]["ai_label"] = False
     rel = _write(run, k, "M5_pl_kit_v02.json")
     code, out = _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel, "--ai-label", "required")
@@ -268,7 +284,7 @@ def test_cli_flags_win_over_the_run(tmp_path, capsys):
 def test_cli_product_level_from_the_proposal(tmp_path, capsys):
     run = _run(tmp_path)
     (run.path / "00_raw" / "proposal.json").write_text(json.dumps({"product_level": "featured"}), encoding="utf-8")
-    rel = _write(run, _m1())
+    rel = _write(run, _g2(_m1()))
     code, out = _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel)
     assert code == 2 and out["problems"][0]["field"] == "platforms.tiktok.product"
 
@@ -276,13 +292,13 @@ def test_cli_product_level_from_the_proposal(tmp_path, capsys):
 @pytest.mark.private_data
 def test_cli_stops_without_context(tmp_path, capsys):
     run = _run(tmp_path, proposal=False)
-    rel = _write(run, _m1())
+    rel = _write(run, _g2(_m1()))
     code, out = _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel)
     assert code == 2 and "product level" in out["message"]
     code, out = _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel, "--product-level", "not shown")
     assert code == 0
     video = _run(tmp_path / "v", output="ai_video")
-    rel = _write(video, _m1())
+    rel = _write(video, _g2(_m1()))
     code, out = _cli(capsys, "kit", "check", "--run", str(video.path), "--file", rel)
     assert code == 2 and "--ai-label" in out["message"]
 
@@ -304,7 +320,7 @@ def test_cli_bad_file_is_a_stop_or_an_error(tmp_path, capsys):
 @pytest.mark.private_data
 def test_cli_md_writes_beside_the_json(tmp_path, capsys):
     run = _run(tmp_path)
-    rel = _write(run, _m1())
+    rel = _write(run, _g2(_m1()))
     assert _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel)[0] == 0
     code, out = _cli(capsys, "kit", "md", "--run", str(run.path), "--file", rel)
     assert (code, out["file"]) == (0, "04_final/kits/M1_kit_v02.md")
@@ -405,9 +421,10 @@ def test_md_headings_are_the_templates():
 def test_polish_labels_are_capitalised_and_distinct():
     pl = kit.labels("pl")
     assert all(v[0].isupper() for v in pl.values())
-    assert pl["caption"] != pl["description"]
+    assert pl["paste"] != pl["description"]
     text = kit.to_md(_m1(), "pl")
-    assert "**Okładka:**" in text and "**Opis posta:**" in text and "**Opis filmu:**" in text
+    assert "- **Okładka:**" in text and "**Opis do wklejenia (z hashtagami):**" in text
+    assert "**Opis filmu (z hashtagami):**" in text and "**Przy publikacji:**" in text
     assert "okładka: `" in text and "produkt: brak" in text
 
 
@@ -416,7 +433,7 @@ def test_cli_md_records_its_row_and_never_writes_over(tmp_path, capsys):
     """PR B review Minor 2: the .md gets a manifest row with the kit as its parent (OV13), and a
     second tm kit md leaves the first .md as it is."""
     run = _run(tmp_path)
-    rel = _write(run, _m1())
+    rel = _write(run, _g2(_m1()))
     assert _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel)[0] == 0
     code, out = _cli(capsys, "kit", "md", "--run", str(run.path), "--file", rel)
     assert code == 0
@@ -434,11 +451,11 @@ def test_cli_md_records_its_row_and_never_writes_over(tmp_path, capsys):
 @pytest.mark.private_data
 def test_cli_md_refuses_an_unchecked_or_changed_kit(tmp_path, capsys):
     run = _run(tmp_path)
-    rel = _write(run, _m1())
+    rel = _write(run, _g2(_m1()))
     code, out = _cli(capsys, "kit", "md", "--run", str(run.path), "--file", rel)
     assert code == 2 and "has not passed tm kit check" in out["message"]
     assert _cli(capsys, "kit", "check", "--run", str(run.path), "--file", rel)[0] == 0
-    changed = _m1()
+    changed = _g2(_m1())
     changed["platforms"]["facebook"]["caption"] = "Inny opis."
     _write(run, changed)
     assert _cli(capsys, "kit", "md", "--run", str(run.path), "--file", rel)[0] == 2
