@@ -67,6 +67,25 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Stored values in your language.** Words the run keeps as data, such as "top 10%" or "medium" on the trend
   report and "soft mention", "confirmed" or "long_takes" on Organic AI video's pages and pack, are shown in your
   working language. The run's files keep them as they are, so earlier runs open and check as before.
+- **Setting up the Replicate and ElevenLabs keys says where to get them.** The plugin settings and the readiness
+  card now name the page where each key is made, with a direct link, and what it is for. For ElevenLabs they also
+  list the permissions a restricted key needs.
+- **The readiness card checks each key.** Each key that is set gets one free call to its provider, so a bad paste
+  shows up before the run, not halfway through it. Replicate and ElevenLabs now show the same three states: works,
+  connected but unusable (with why and what to do), or missing (with where to make one). When the ElevenLabs answer
+  says whether the plan includes voice cloning, the card uses that instead of leaving it unknown. Keys are still
+  never shown, not even in part.
+- **A refused paid step says why.** When Replicate or ElevenLabs refuses a step, the message now names the cause:
+  a wrong or revoked key (where to make a new one, where to put it), a restricted key (which permissions to allow),
+  no credit or credits used up (the billing page, and how much the step needed), a plan without the feature (which
+  plan has it), or too many requests (wait, or add a payment method on Replicate). Nothing is spent, and the run
+  continues from the same place after the fix. An answer the plugin doesn't recognise keeps the old message.
+- **ElevenLabs credits are checked before a paid step.** Before a voice, music or isolation call, the plugin compares
+  the credits left (counting usage-based billing) with the approved estimate. When they fall short it stops and
+  says so, before anything is sent. Replicate has no balance to read, so its runs are not checked this way.
+- **Reading the ElevenLabs credits no longer needs the voice tools.** This free check used to wait for the voice
+  tools (about 1 GB). It now works as soon as the key is set. The tools also no longer print "ignoring
+  SSL_CERT_DIR: no certificates found" on Windows.
 
 ## 0.11.0
 

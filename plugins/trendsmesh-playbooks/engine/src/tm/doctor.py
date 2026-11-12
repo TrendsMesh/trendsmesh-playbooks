@@ -1,6 +1,6 @@
 """Readiness checks and the doctor. The checks are data (data/requirements.yaml).
 
-The doctor cannot see MCP servers or the ElevenLabs plan. Claude checks each MCP with one cheap
+The doctor cannot see MCP servers. Claude checks each MCP with one cheap
 call and passes the result in (`--mcp trendsmesh=ok,meta=not_enabled`); the ElevenLabs plan is a
 reported fact (`--fact elevenlabs_plan=cloning|no_cloning|unknown`). Anything not passed is
 "not checked yet", which counts as not ready. A check marked `warn` (TrendsMesh for refresh-ad;
@@ -15,6 +15,12 @@ picks them: trend research has no guess mode, so there TrendsMesh and its Agent 
 Meta Ads blocks refresh-ad and creative brief. A playbook other than refresh-ad needs the tiers of
 its env_tier rows whose `when` holds (creative brief's animatic tier only with animatics), and a
 `browser` row asks `tm.atlas` for the user's own Chrome or Edge.
+
+A key row with `check` (the Replicate token, the ElevenLabs key) asks the provider with one free call
+(`tm.providers.check`, #66) and shows three states: works, connected but unusable (refused, or no credits left: the
+fix for that cause), missing (where to make the key, with the link). A provider that can't be reached leaves a key
+that is set as "set, not checked", which blocks nothing. The ElevenLabs answer also says whether the plan includes
+voice cloning: that fills the cloning fact when Claude passed none (`unknown`).
 
 A reported fact marked `unknown_warns` (the ElevenLabs cloning plan) is a warning while unknown,
 not a stop: it matters only if the run needs a clone, and the voice step (refresh-ad's V3) checks
@@ -38,7 +44,7 @@ from typing import Literal
 
 import yaml
 
-from tm import __version__, atlas, cli, envtiers, evidence, flow, paths, playbooks, secrets
+from tm import __version__, atlas, cli, envtiers, evidence, flow, i18n, paths, playbooks, providers, secrets
 from tm.playbooks import REFRESH_AD
 
 # ok, missing (not connected or not signed in), not_enabled (Meta refuses the ad account), no_plan
@@ -72,6 +78,7 @@ class Item:
     warn: bool = False  # the run can go on without it (requirements.yaml `warn`)
     note: str = ""  # a warning's line on the card (`warn_note`, else the guess-mode notice)
     later: bool = False  # a warning that matters only at a later step, if the run gets there (the cloning plan)
+    state: str = ""  # a key row: works, unusable (connected but unusable), missing, unchecked (#66)
 
 
 @dataclass(frozen=True)
@@ -209,15 +216,27 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
     present = {t: envtiers.installed(t) for t in tiers}
     items: list[Item] = []
     skipped_key: set[str] = set()
+    checked: dict[str, providers.Check] = {}   # one free call per provider, however many rows name it
     for e in entries:
         if not _applies(e, outputs, voice, caption_removal, tiers):
             continue
         kind, id_, name, fixer = e["kind"], e["id"], e["name"], e["fixer"]
-        ok, unchecked, size, vars = False, False, 0, {}
+        ok, unchecked, size, vars, key_state, key_fix = False, False, 0, {}, "", ""
         if kind == "env_tier":
             t = envtiers.TIERS[e["tier"]]
             ok, size = present[e["tier"]], t.approx_mb
             vars = {"tier": e["tier"], "size": _size(t.approx_mb), "minutes": _minutes(t.approx_mb)}
+        elif kind == "secret" and e.get("check"):
+            provider = e["check"]
+            if provider not in checked:
+                checked[provider] = providers.check(provider)
+            got = checked[provider]
+            key_state, ok = got.state, got.state in ("works", "unchecked")
+            name = f"{name}: {i18n.t('keys.states.' + key_state)}"
+            key_fix = got.fix if key_state == "unusable" else i18n.t(f"keys.{provider}.get",
+                                                                     permissions=i18n.t("keys.elevenlabs.permissions"))
+            if key_state == "missing":
+                skipped_key.add(id_)
         elif kind == "secret":
             ok = bool(secrets.get(e["secret"]))
             if not ok:
@@ -250,15 +269,18 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
             if e.get("needs_key") in skipped_key:
                 continue
             value = facts.get(e["fact"], "unknown")
+            said = checked.get("elevenlabs")
+            if value == "unknown" and e["fact"] == "elevenlabs_plan" and said and said.cloning is not None:
+                value = "cloning" if said.cloning else "no_cloning"   # the key check's own answer (#66)
             ok, unchecked = value == "cloning", value not in ("cloning", "no_cloning")
         by_state = (e.get("fix_by_state") or {}).get(mcp.get(e.get("mcp", ""))) if "mcp" in e else None
-        fix = "" if ok else (e["unchecked"] if unchecked else by_state or _fix_text(e, **vars))
+        fix = "" if ok else (e["unchecked"] if unchecked else by_state or key_fix or _fix_text(e, **vars))
         fact = kind == "plan" and "mcp" not in e
         later = fact and not ok and bool(e.get("unknown_warns") if unchecked else e.get("short_warns"))
         warn = bool(e.get("warn")) or later
         note = e.get("short_note") if later and not unchecked else e.get("warn_note") or evidence.NOTICE_SHORT
         items.append(Item(id_, name, ok, "agent" if unchecked and "mcp" in e else fixer, fix, size if not ok else 0,
-                          unchecked, warn, note if warn else "", later))
+                          unchecked, warn, note if warn else "", later, key_state))
     return Readiness(items, all(i.ok or i.warn for i in items))
 
 

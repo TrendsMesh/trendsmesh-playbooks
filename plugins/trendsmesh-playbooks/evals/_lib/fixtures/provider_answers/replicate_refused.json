@@ -1,0 +1,21 @@
+{
+ "replicate": {
+  "status": 401,
+  "body": {
+   "title": "Unauthenticated",
+   "detail": "You did not pass a valid authentication token",
+   "status": 401
+  }
+ },
+ "elevenlabs": {
+  "status": 200,
+  "body": {
+   "tier": "creator",
+   "character_count": 12000,
+   "character_limit": 100000,
+   "can_extend_character_limit": false,
+   "max_credit_limit_extension": 0,
+   "status": "active"
+  }
+ }
+}

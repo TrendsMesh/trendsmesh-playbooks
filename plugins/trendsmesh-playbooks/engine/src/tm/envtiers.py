@@ -55,7 +55,7 @@ def _manifest() -> Path:
 
 
 def _pixi_env() -> dict[str, str]:
-    return {**os.environ, **paths.pixi_env()}
+    return {**paths.child_environ(dict(os.environ)), **paths.pixi_env()}
 
 
 def installed(tier: str) -> bool:

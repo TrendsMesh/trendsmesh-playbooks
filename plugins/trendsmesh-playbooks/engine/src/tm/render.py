@@ -108,7 +108,7 @@ def _prefix() -> list[str]:
 
 
 def _env() -> dict[str, str]:
-    return {**os.environ, **paths.pixi_env()}
+    return {**paths.child_environ(dict(os.environ)), **paths.pixi_env()}
 
 
 def _sh(argv: list[str], cwd: Path, what: str) -> None:

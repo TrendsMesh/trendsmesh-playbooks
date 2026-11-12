@@ -1,0 +1,22 @@
+{
+ "replicate": {
+  "status": 200,
+  "body": {
+   "type": "user",
+   "username": "eval-user",
+   "name": "Eval User"
+  }
+ },
+ "elevenlabs": {
+  "status": 200,
+  "body": {
+   "tier": "free",
+   "character_count": 200,
+   "character_limit": 10000,
+   "can_extend_character_limit": false,
+   "max_credit_limit_extension": 0,
+   "status": "free",
+   "can_use_instant_voice_cloning": false
+  }
+ }
+}

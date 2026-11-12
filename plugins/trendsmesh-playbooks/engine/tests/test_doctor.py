@@ -46,7 +46,8 @@ def test_missing_replicate_for_ai_video_tells_user_where():
     r = doctor.check({"ai_video"}, False, ALL_OK)
     it = item(r, "replicate_api_token")
     assert not it.ok and it.fixer == "user" and not r.ready
-    assert it.fix == "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"
+    assert it.fix.startswith("Make a token at https://replicate.com/account/api-tokens")   # #66: where, and the link
+    assert "open /plugin, choose trendsmesh-playbooks, choose configure" in it.fix
 
 
 def test_replicate_set_is_ok(world):
@@ -490,8 +491,8 @@ REFRESH_AD_CARD_030 = """**Not ready yet.** Here is what is in place and what is
 - ✅ TrendsMesh connected and signed in
 - ⚠️ TrendsMesh Agent plan
 - ❌ Video editing tools (Remotion)
-- ❌ Replicate token set
-- ❌ ElevenLabs key set
+- ❌ Replicate token: missing
+- ❌ ElevenLabs key: missing
 - ❌ Meta Ads connected and signed in (not checked yet)
 - ❌ Meta Ads enabled for your ad account (not checked yet)
 
@@ -508,14 +509,15 @@ REFRESH_AD_CARD_030 = """**Not ready yet.** Here is what is in place and what is
 - Can't be checked until Meta Ads is connected and signed in.
 
 **You need to do these yourself:**
-1. Open /plugin, choose trendsmesh-playbooks, set the Replicate token
-2. Open /plugin, choose trendsmesh-playbooks, set the ElevenLabs key
+1. Make a token at https://replicate.com/account/api-tokens (sign in, then Create token, and copy it). Then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the Replicate API token, and start a new session. It makes the AI images and video; each run is paid from your Replicate account (https://replicate.com/account/billing).
+2. Make a key at https://elevenlabs.io/app/settings/api-keys (Developers, then API Keys, then Create key). If you restrict it, allow: Text to Speech, Voices (read and write), Audio Isolation, Music Generation, History (read) and User (read). Then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the ElevenLabs API key, and start a new session. It makes the voices and the music, from your ElevenLabs credits.
 
 When they are done, tell me and I check again. The run continues from the same place."""
 
 
 def test_refresh_ad_card_unchanged(monkeypatch):
-    """The card plugin 0.3.0 printed for this input, word for word."""
+    """The card plugin 0.3.0 printed for this input, word for word, but for the key rows: since #66 they say the
+    key's state (missing here) and where to make it."""
     monkeypatch.setattr(doctor.envtiers, "installed", lambda tier: tier != "video")
     args = ({"creative_brief", "edited_video"}, True, {"trendsmesh": "free"})
     r = doctor.check(*args, caption_removal=True)
@@ -656,3 +658,86 @@ def test_v3_stops_with_the_choices_when_the_plan_has_no_cloning():
     assert "`no_cloning`" in v3
     for choice in ("a plan with voice cloning", "a stock voice", "no voice change"):
         assert choice in v3, choice
+
+
+# --- issue #66: the key rows in three states, from one free call per provider --------------------------------------
+
+def _answers(monkeypatch, tmp_path, **by_provider):
+    path = tmp_path / "answers.json"
+    path.write_text(json.dumps({k: {"status": s, "body": b} for k, (s, b) in by_provider.items()}))
+    monkeypatch.setenv("TM_PROVIDER_ANSWERS", str(path))
+
+
+def test_a_missing_replicate_token_says_where_to_make_one():
+    it = item(doctor.check({"ai_video"}, False, ALL_OK), "replicate_api_token")
+    assert not it.ok and it.state == "missing" and it.name == "Replicate token: missing"
+    assert "https://replicate.com/account/api-tokens" in it.fix and "/plugin" in it.fix
+
+
+def test_a_working_replicate_token(world, monkeypatch, tmp_path):
+    (world / "secrets.env").write_text("REPLICATE_API_TOKEN=r8_x\n")
+    _answers(monkeypatch, tmp_path, replicate=(200, {"type": "user", "username": "someone"}))
+    it = item(doctor.check({"ai_video"}, False, ALL_OK), "replicate_api_token")
+    assert it.ok and it.state == "works" and it.name == "Replicate token: works"
+
+
+def test_a_refused_replicate_token_is_connected_but_unusable(world, monkeypatch, tmp_path, capsys):
+    """The eval case for #66: a key that is set but refused blocks AI video, with the fix for that cause."""
+    (world / "secrets.env").write_text("REPLICATE_API_TOKEN=r8_x\n")
+    _answers(monkeypatch, tmp_path, replicate=(401, {"detail": "Invalid token."}))
+    r = doctor.check({"ai_video"}, False, ALL_OK)
+    it = item(r, "replicate_api_token")
+    assert not it.ok and not r.ready and it.state == "unusable" and it.fixer == "user"
+    assert it.name == "Replicate token: connected but unusable"
+    assert "it is wrong, or it was revoked" in it.fix and "https://replicate.com/account/api-tokens" in it.fix
+    card = doctor.card(r)
+    assert "❌ Replicate token: connected but unusable" in card and "r8_x" not in card
+    code = cli.main(["doctor", "--outputs", "ai_video", "--mcp", "trendsmesh=ok,meta=ok", "--json"])
+    out = json.loads(capsys.readouterr().out)
+    assert code == 2 and next(i for i in out["items"] if i["id"] == "replicate_api_token")["state"] == "unusable"
+
+
+def test_an_unreachable_provider_does_not_block(world):
+    (world / "secrets.env").write_text("REPLICATE_API_TOKEN=r8_x\n")
+    it = item(doctor.check({"ai_video"}, False, ALL_OK), "replicate_api_token")   # the tests have no network
+    assert it.ok and it.state == "unchecked" and "not checked" in it.name
+
+
+def test_elevenlabs_with_no_credits_left_is_unusable_and_its_plan_is_read(world, monkeypatch, tmp_path):
+    (world / "secrets.env").write_text("ELEVENLABS_API_KEY=k\n")
+    _answers(monkeypatch, tmp_path, elevenlabs=(200, {"tier": "free", "character_count": 10000,
+                                                      "character_limit": 10000,
+                                                      "can_use_instant_voice_cloning": False}))
+    r = doctor.check({"edited_video"}, True, ALL_OK)
+    key = item(r, "elevenlabs_api_key")
+    assert not key.ok and key.state == "unusable" and "https://elevenlabs.io/app/subscription" in key.fix
+    plan = item(r, "elevenlabs_cloning_plan")   # read from the same answer, not left unknown
+    assert not plan.ok and not plan.unchecked and plan.later
+
+
+def test_a_cloning_plan_the_user_named_wins_over_the_answer(world, monkeypatch, tmp_path):
+    (world / "secrets.env").write_text("ELEVENLABS_API_KEY=k\n")
+    _answers(monkeypatch, tmp_path, elevenlabs=(200, {"character_count": 0, "character_limit": 30000,
+                                                      "can_use_instant_voice_cloning": True}))
+    r = doctor.check({"edited_video"}, True, ALL_OK)
+    assert item(r, "elevenlabs_api_key").state == "works" and item(r, "elevenlabs_cloning_plan").ok
+    r = doctor.check({"edited_video"}, True, ALL_OK, facts={"elevenlabs_plan": "no_cloning"})
+    assert not item(r, "elevenlabs_cloning_plan").ok
+
+
+def test_an_unusable_key_is_a_warning_where_the_playbook_goes_on_without_it(world, monkeypatch, tmp_path):
+    """Create an ad and organic video run without the keys: a refused key is a warning there, with its fix."""
+    (world / "secrets.env").write_text("REPLICATE_API_TOKEN=r8_x\nELEVENLABS_API_KEY=k\n")
+    _answers(monkeypatch, tmp_path, replicate=(429, {"detail": "Request was throttled."}),
+             elevenlabs=(401, {"detail": {"code": "invalid_api_key"}}))
+    r = doctor.check({"video_ad"}, False, {"trendsmesh": "ok", "meta": "ok", "artifacts": "ok"}, playbook="create-ad")
+    rep, el = item(r, "replicate_api_token_create"), item(r, "elevenlabs_api_key_create")
+    assert r.ready and rep.warn and el.warn and rep.state == el.state == "unusable"
+    go_on = doctor.card(r).split("**You can go on without these:**")[1]
+    assert "6 runs a minute" in go_on and "https://elevenlabs.io/app/settings/api-keys" in go_on
+
+
+def test_every_key_row_checks_its_key():
+    rows = [e for e in doctor._catalogue() if e["kind"] == "secret"]
+    assert rows and all(e.get("check") in ("replicate", "elevenlabs") for e in rows)
+    assert all(e["check"] == e["secret"].split("_")[0] for e in rows)

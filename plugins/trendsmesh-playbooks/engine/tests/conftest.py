@@ -60,6 +60,19 @@ def _no_real_layout_check(request, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_key_check(monkeypatch):
+    """The doctor checks each key that is set with one call to the provider (`tm.providers`, #66): in the tests that
+    call never reaches the network, so a key that is set reads as "set, not checked". A test of the check patches
+    `providers._get` again."""
+    from tm import providers
+
+    def offline(url, headers=None, timeout=None):
+        raise ConnectionError("no network in the tests")
+    monkeypatch.setattr(providers, "_get", offline)
+    monkeypatch.delenv("TM_PROVIDER_ANSWERS", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _no_real_pdf_print(request, monkeypatch):
     """`tm brief page` prints its PDFs with a real browser (`brief_pdf`): outside the `video` tests no browser is
     found, so a page builds without PDFs. A test of the PDFs patches `brief_pdf.browser` and `print_pdf` again."""

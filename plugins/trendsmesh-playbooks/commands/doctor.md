@@ -32,7 +32,8 @@ support report they can send us.
      It refuses this ad account → `not_enabled`.
    Never guess a result: a call you could not make is `missing`.
 2. If the user has already said whether their ElevenLabs plan includes voice cloning, note it
-   as `cloning` or `no_cloning`; otherwise `unknown`. Don't ask, and don't send them to look it
+   as `cloning` or `no_cloning`; otherwise `unknown` (the doctor then reads the plan from the key's
+   own free check when ElevenLabs says it). Don't ask, and don't send them to look it
    up: an unknown plan is a warning, checked at the voice step only if the ad needs a clone of
    its voice (the original voice is not in their ElevenLabs history). A `no_cloning` plan waits too:
    a warning, not a stop; the voice step offers the choices then, only if a clone is needed.
@@ -68,8 +69,12 @@ support report they can send us.
    for a plan with no cloning, that cloning isn't available and matters only if a clone is needed).
 5. Tell the user where the support report was saved (`report` in the answer). It holds no keys.
    Keys are never searched for, read, printed or shown, even when asked: not in part, not
-   masked, not their length. To check a key, the card says whether it is set; the user sees and
-   changes it in `/plugin` → trendsmesh-playbooks → configure.
+   masked, not their length. To check a key, the card's key row says its state: the doctor makes
+   one free call to the provider with each key that is set, and the row says it **works**, is
+   **connected but unusable** (refused, or no credits left: the row's step says why and what to
+   do, with the link), is **missing** (the step says where to make one, with the link), or is set
+   but **not checked** (the provider could not be reached; nothing blocks). The user sees and
+   changes a key in `/plugin` → trendsmesh-playbooks → configure.
 6. When the edited or AI video tools are needed, say once: Remotion is free for individuals and
    companies of up to 3 people; a company of 4 or more needs its own Remotion licence.
 
@@ -180,18 +185,22 @@ check, and what it passes decides what is installed:
    token, the ElevenLabs key, the browser and shared page links are warnings, never blockers:
    say each one's line once, in plain words, as what it takes away (AI footage and talking
    characters; the narrator; animations; the pages as files).
-4. **Once the voice tools are installed** (D1), read the ElevenLabs credits when the key is set:
-   `tm tool elevenlabs credits --run <the run folder> --json` (free; it prints the plan, the
-   credits used, the limit and `left`). A key that is set and has credits is "works". A key that
-   is set but `left` is 0, or the account refuses it, is "connected but unusable". No key is
-   "missing". Show these three words per service on the card (Replicate, ElevenLabs, shared page
-   links, the browser), and never print a key or any part of it.
+4. The card's Replicate and ElevenLabs rows already say **works**, **connected but unusable** or
+   **missing** (one free call per key, see step 5 of Refresh an ad). At D1, read the ElevenLabs
+   credits for the run's record when the key is set: `tm tool elevenlabs credits --run <the run
+   folder> --json` (free; it prints the plan, the credits used, the limit and `left`, and needs
+   only the base tools). A key that is set and has credits is "works". A key that is set but
+   `left` is 0, or the account refuses it, is "connected but unusable". No key is "missing". Show
+   these three words per service on the card (Replicate, ElevenLabs, shared page links, the
+   browser), and never print a key or any part of it.
 5. Record what you found, so the run and its pages know what is available:
 
    ```
    tm organic stack --run <the run folder> --replicate <ok|missing> --elevenlabs <ok|missing|no_credits|unchecked> --artifacts <ok|missing> --browser <ok|missing> --json
    ```
 
+   `--replicate ok` only when the card's Replicate row says it works (or is set but not checked);
+   a token that is connected but unusable is `missing` for the run until it is fixed.
    At A0 pass `--elevenlabs ok` or `missing` from the card's key row (the credits are not read
    yet, and the heavy voice tools are not installed). At D1 run it again with the credits read:
    `no_credits` when the account has none left. Its answer names the production types this stack

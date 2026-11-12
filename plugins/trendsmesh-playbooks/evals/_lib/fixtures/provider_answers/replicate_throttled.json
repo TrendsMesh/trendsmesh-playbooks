@@ -1,0 +1,21 @@
+{
+ "replicate": {
+  "status": 429,
+  "body": {
+   "title": "Request was throttled",
+   "detail": "Request was throttled. Your rate limit resets in ~30s.",
+   "status": 429
+  }
+ },
+ "elevenlabs": {
+  "status": 200,
+  "body": {
+   "tier": "creator",
+   "character_count": 12000,
+   "character_limit": 100000,
+   "can_extend_character_limit": false,
+   "max_credit_limit_extension": 0,
+   "status": "active"
+  }
+ }
+}

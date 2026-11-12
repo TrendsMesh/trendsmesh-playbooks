@@ -10,14 +10,14 @@
     "replicate_api_token": {
       "type": "string",
       "title": "Replicate API token",
-      "description": "Used for AI video and image generation. Optional; stored in your system credential store.",
+      "description": "Makes the AI images and video; each run is paid from your Replicate account. Make a token at https://replicate.com/account/api-tokens (Create token, then copy it). Credit and payment method: https://replicate.com/account/billing. Optional; stored in your system credential store.",
       "sensitive": true,
       "required": false
     },
     "elevenlabs_api_key": {
       "type": "string",
       "title": "ElevenLabs API key",
-      "description": "Used for voice generation. Optional; stored in your system credential store.",
+      "description": "Makes the voices and the music, from your ElevenLabs credits. Make a key at https://elevenlabs.io/app/settings/api-keys (Developers, API Keys, Create key). If you restrict it, allow Text to Speech, Voices (read and write), Audio Isolation, Music Generation, History (read) and User (read). Optional; stored in your system credential store.",
       "sensitive": true,
       "required": false
     }

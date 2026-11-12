@@ -78,7 +78,7 @@ checks:
     fix: {any: "I install the animatic tools (about {size}, about {minutes} min). Say yes and I start."}
 
   - id: replicate_api_token
-    name: Replicate token set
+    name: Replicate token
     outputs: [ai_video, edited_video]
     when:
       - {outputs: [ai_video]}
@@ -86,15 +86,15 @@ checks:
     kind: secret
     secret: replicate_api_token
     fixer: user
-    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"}
+    check: replicate       # one free call says works, connected but unusable or missing (#66)
   - id: elevenlabs_api_key
-    name: ElevenLabs key set
+    name: ElevenLabs key
     outputs: [edited_video]
     when: [{voice: true}]
     kind: secret
     secret: elevenlabs_api_key
     fixer: user
-    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the ElevenLabs key"}
+    check: elevenlabs       # one free call says works, connected but unusable or missing (#66)
   - id: elevenlabs_cloning_plan
     name: ElevenLabs plan includes voice cloning
     outputs: [edited_video]
@@ -103,7 +103,7 @@ checks:
     fact: elevenlabs_plan
     needs_key: elevenlabs_api_key     # skipped while the key is missing: the key row comes first
     fixer: user
-    fix: {any: "Your ElevenLabs plan does not include voice cloning, so a clone of the ad's voice is not available."}
+    fix: {any: "Your ElevenLabs plan does not include voice cloning (it comes with the Starter plan and above), so a clone of the ad's voice is not available."}
     # Unknown never blocks the start (#5): a clone is needed only if V1c does not find the original voice, and V3
     # checks the plan then (`tm tool elevenlabs credits`). A plan known to lack cloning waits for V3 too
     # (short_warns): V3 stops there with the choices, only if a clone is needed.
@@ -322,23 +322,23 @@ checks:
     warn_note: "Without shared page links you get each page as a local file, and choices are taken here in chat."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
   - id: replicate_api_token_organic
-    name: Replicate token set
+    name: Replicate token
     playbooks: [03-organic-ai-video]
     outputs: []
     kind: secret
     secret: replicate_api_token
     fixer: user
-    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"}
+    check: replicate       # one free call says works, connected but unusable or missing (#66)
     warn: true
     warn_note: "Without a Replicate token, AI footage and talking characters are hidden; animations, quizzes and scripts to film stay available."
   - id: elevenlabs_api_key_organic
-    name: ElevenLabs key set
+    name: ElevenLabs key
     playbooks: [03-organic-ai-video]
     outputs: []
     kind: secret
     secret: elevenlabs_api_key
     fixer: user
-    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the ElevenLabs key"}
+    check: elevenlabs       # one free call says works, connected but unusable or missing (#66)
     warn: true
     warn_note: "Without an ElevenLabs key, a narrator comes from the video model's prompt, or the lines stay in the script."
   - id: browser_for_organic_animation
@@ -414,23 +414,23 @@ checks:
     warn_note: "Without shared page links, each step is shown here in chat and decided here."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
   - id: replicate_api_token_create
-    name: Replicate token set
+    name: Replicate token
     playbooks: [05-create-ad]
     outputs: []
     kind: secret
     secret: replicate_api_token
     fixer: user
-    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"}
+    check: replicate       # one free call says works, connected but unusable or missing (#66)
     warn: true
     warn_note: "Without a Replicate token I can't generate stills or video: the ad is built from your own footage, product shots and slides."
   - id: elevenlabs_api_key_create
-    name: ElevenLabs key set
+    name: ElevenLabs key
     playbooks: [05-create-ad]
     outputs: []
     kind: secret
     secret: elevenlabs_api_key
     fixer: user
-    fix: {any: "Open /plugin, choose trendsmesh-playbooks, set the ElevenLabs key"}
+    check: elevenlabs       # one free call says works, connected but unusable or missing (#66)
     warn: true
     warn_note: "Without an ElevenLabs key the voice is the video model's own, the music is yours, and speech is checked with a fallback transcription, which can miss a repeated word."
 

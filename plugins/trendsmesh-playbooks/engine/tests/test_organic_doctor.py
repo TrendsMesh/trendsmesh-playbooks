@@ -46,7 +46,7 @@ def test_missing_replicate_is_a_warning_with_its_note():
     assert r.ready and not it.ok and it.warn
     assert it.note == ("Without a Replicate token, AI footage and talking characters are hidden; animations, "
                        "quizzes and scripts to film stay available.")
-    assert it.fix == "Open /plugin, choose trendsmesh-playbooks, set the Replicate token"
+    assert it.fix.startswith("Make a token at https://replicate.com/account/api-tokens") and it.state == "missing"
     card = doctor.card(r)
     assert it.note in card and evidence.NOTICE_SHORT not in card
     assert item(r, "elevenlabs_api_key_organic").note == (

@@ -22,6 +22,11 @@ wait) fails, the record keeps the paid prediction, and `--resume <record>` fetch
 prediction (free) and downloads what is missing, never paying again. Outputs that are not file
 URLs (text) are kept in the record and refused.
 
+A refusal at creation stops (exit 2) with one message per cause (tm.providers, #66): a wrong or revoked token (401),
+no credit (402, with this step's approved estimate), a rate limit (429: an account with no payment method can start
+6 runs a minute). 401 and 402 are read from HTTP's meaning, not yet from a live Replicate answer; a 403 or anything
+else we don't recognise keeps the old words. Replicate has no balance read, so nothing is checked before a run.
+
 A prediction that ends failed or canceled with no output reports $0 spent, and its record gets a
 `cost_note` to confirm that on the Replicate dashboard; so does a run Replicate refuses at creation
 (which already reports nothing spent). A connection failure while starting keeps the estimate spent.
@@ -45,6 +50,7 @@ import os
 import time
 from pathlib import Path
 
+from tm import providers
 from tm.tools import _common as c
 
 
@@ -185,11 +191,13 @@ def run(spec_path: Path | str, out_dir: Path | str, name: str) -> dict:
     except ReplicateError as exc:
         record.update({"status": "refused", "cost_note": COST_NOTE})   # report_cost(False) already said so
         _save(record_path, record)
-        message = c.scrub(f"Replicate refused the run of {model} ({exc.status}): {exc.detail or exc.title}")
-        if exc.status in (401, 402, 403):
-            raise c.ToolStop(f"{message}. Check the token and the account's credit. Nothing was spent; the "
-                             "run continues from the same place.") from None
-        raise c.ToolError(message + ". Nothing was spent.") from None
+        said = c.scrub(str(exc.detail or exc.title or ""))
+        why = providers.cause("replicate", exc.status, {"title": exc.title, "detail": exc.detail})
+        if why or exc.status in (401, 402, 403):   # one message per cause (#66); an unknown one keeps today's words
+            raise c.ToolStop(c.scrub(providers.refusal("replicate", why, status=exc.status, detail=said,
+                                                       what=f"the run of {model}",
+                                                       need=providers.need("replicate")))) from None
+        raise c.ToolError(f"Replicate refused the run of {model} ({exc.status}): {said}. Nothing was spent.") from None
     except httpx.HTTPError as exc:
         c.report_cost(True)  # unknown whether Replicate started it: keep the estimate spent
         record["status"] = "unknown"

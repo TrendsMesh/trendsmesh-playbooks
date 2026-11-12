@@ -276,3 +276,37 @@ def test_a_run_relative_spec_is_read_from_the_workspace(run, tmp_path, monkeypat
                                "--cost", "0.04"]) == 0
     record = json.loads((run.path / "03_wip" / "hook_v01.run.json").read_text(encoding="utf-8"))
     assert record["model"] == "openai/gpt-image-2" and record["outputs"] == ["hook_v01_0.png"]
+
+
+# --- issue #66: one message per refusal cause, with its fix and link ---------------------------------------------
+
+@pytest.mark.parametrize("status,body,says", [
+    (401, {"title": "Unauthenticated", "detail": "You did not pass a valid authentication token", "status": 401},
+     ["it is wrong, or it was revoked", "https://replicate.com/account/api-tokens", "/plugin"]),
+    (402, {"title": "Insufficient credit", "detail": "You have insufficient credit to run this model.", "status": 402},
+     ["no credit left", "This step needed about $1.20", "https://replicate.com/account/billing"]),
+    (429, {"title": "Request was throttled", "detail": "Request was throttled. Your rate limit resets in ~30s.",
+           "status": 429}, ["Wait a minute", "6 runs a minute", "payment method"]),
+    (403, {"title": "Forbidden", "detail": "You do not have permission", "status": 403},
+     ["Check the token and the account's credit"]),     # not recognised: today's words
+])
+def test_each_refusal_cause_has_its_own_message(run, tmp_path, monkeypatch, capsys, status, body, says):
+    monkeypatch.setenv("REPLICATE_API_TOKEN", TOKEN)
+    monkeypatch.setenv("TM_COST_ESTIMATE", "1.2")
+    report = tmp_path / "cost.json"
+    monkeypatch.setenv("TM_COST_REPORT", str(report))
+
+    def handle(self, request):
+        if request.method == "POST" and str(request.url).endswith("/predictions"):
+            return httpx.Response(status, json=body, request=request)
+        return httpx.Response(201, json=FILE, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", handle)
+    assert replicate_run.main(["--run", str(run.path), str(_spec(run, tmp_path)), "--cost", "1.2", "--json"]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "stop" and "Nothing was spent" in out["message"] and "same place" in out["message"]
+    for words in says:
+        assert words in out["message"]
+    assert TOKEN not in out["message"]
+    assert json.loads(report.read_text()) == {"spent": False, "actual": None}
+    assert _record_of(run)["status"] == "refused"

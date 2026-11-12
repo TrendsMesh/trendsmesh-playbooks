@@ -13,12 +13,19 @@ inherited from the shell are dropped, so a tool only ever sees the plugin's own 
 downloads without a yes; a tier that is not installed stops here (exit 2), and one that is out
 of date (a part missing) stops in the tool with the same todo.
 
+A light action runs in the base tier instead of the tool's own (`Tool.light`): `elevenlabs credits`, one free read,
+needs no voice tier (#54). SSL_CERT_DIR naming a folder with no certificates (what conda-forge's openssl activation
+sets on Windows) is left out of the child's environment, so the nested pixi does not say "ignoring SSL_CERT_DIR"
+(`paths.child_environ`).
+
 Paid tools are guarded here, deterministically, before the child starts: they need `--run` and a
 numeric `--cost` (the estimate the user approved: USD for Replicate, credits for ElevenLabs), and
 `budget.spend(run, kind, cost, what)` records it or stops (exit 2, nothing runs). The child tells
 the engine, through the file named in TM_COST_REPORT, whether money was spent and the actual cost
 when known; the engine then reconciles the estimate with `budget.reconcile` (an overrun is
-recorded and stops the run). With no report (the child crashed) the estimate stays spent.
+recorded and stops the run). With no report (the child crashed) the estimate stays spent. The child is also
+told the approved estimate (TM_COST_ESTIMATE, never inherited from the shell): ElevenLabs compares what is left with
+it before paying, and a refusal for no credit names it (#66).
 
 A playbook may hold a paid tool to its own rules first: `PRECHECK[playbook][tool]` names a function
 `(run, args) -> str | None` that runs after the tier and key checks and before `budget.spend`; a message
@@ -47,7 +54,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from tm import budget, cli, envtiers, flow, paths, secrets, state
+from tm import budget, cli, envtiers, flow, i18n, paths, secrets, state
 from tm.playbooks import CREATE_AD, ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 from tm.stops import Stop
@@ -60,6 +67,11 @@ class Tool:
     summary: str = ""
     budget: dict[str, str | None] | None = None  # action (first argument, "*" = any) -> budget kind;
     # "--resume" or "<action>:--resume" -> the kind of a resumed call (None = free)
+    light: tuple[str, ...] = ()  # actions that need only the base tier (elevenlabs credits: one free read, #54)
+
+    def tier_for(self, args: list[str]) -> str:
+        """The tier this call runs in: the tool's own, or base for a light action."""
+        return "base" if self.light and args and args[0] in self.light else self.tier
 
     def kind_for(self, args: list[str]) -> str | None:
         """The budget kind this call spends from, or None when it is free. Decided from the parsed
@@ -96,7 +108,7 @@ TOOLS: dict[str, Tool] = {
                        {"isolate": "voice_credits", "clone-ivc": "voice_credits", "tts": "voice_credits",
                         "history-search": None, "music-upload": "voice_credits",
                         "music-compose": "voice_credits", "music-compose:--resume": None,
-                        "credits": None, "voices": None}),
+                        "credits": None, "voices": None}, light=("credits",)),
     "music_index": Tool("breakdown", (), "index a music folder: length, loudness, tempo estimate, mood"),
     "take_qa": Tool("breakdown", (), "QA of a generated take: cuts, transcript, pace, loudness, contact sheet"),
     "replicate_price": Tool("base", (), "live prices from Replicate's public model pages (billingConfig)"),
@@ -111,12 +123,13 @@ PRECHECK: dict[str, dict[str, str]] = {ORGANIC_VIDEO: {"replicate_run": "tm.orga
 
 ENV_VARS = {"replicate_api_token": "REPLICATE_API_TOKEN", "elevenlabs_api_key": "ELEVENLABS_API_KEY"}
 _KEY_NAMES = {"replicate_api_token": "Replicate token", "elevenlabs_api_key": "ElevenLabs key"}
+_PROVIDERS = {"replicate_api_token": "replicate", "elevenlabs_api_key": "elevenlabs"}
 
 
 def child_argv(name: str, args: list[str]) -> list[str]:
     tool = TOOLS[name]
     return [str(paths.pixi_bin()), "run", "--as-is", "--manifest-path",
-            str(paths.plugin_root() / "env" / "pixi.toml"), "-e", envtiers.TIERS[tool.tier].env,
+            str(paths.plugin_root() / "env" / "pixi.toml"), "-e", envtiers.TIERS[tool.tier_for(args)].env,
             "python", "-m", f"tm.tools.{name}", *args]
 
 
@@ -206,18 +219,20 @@ def _settle(run, kind: str, estimate: float, report: Path, what: str) -> str | N
 def run_tool(name: str, args: list[str]) -> int:
     tool = TOOLS[name]
     as_json = "--json" in args
-    if not envtiers.installed(tool.tier):
-        return _say(as_json, "stop", f"The {name} tool needs the '{tool.tier}' tools, which are not installed "
-                    f"yet. Nothing was run. Install them with: tm env install {tool.tier} (it asks before "
+    tier = tool.tier_for(args)
+    if not envtiers.installed(tier):
+        return _say(as_json, "stop", f"The {name} tool needs the '{tier}' tools, which are not installed "
+                    f"yet. Nothing was run. Install them with: tm env install {tier} (it asks before "
                     "downloading). The run continues from the same place.", 2)
-    env = {k: v for k, v in os.environ.items() if k not in ENV_VARS.values()}
+    env = paths.child_environ({k: v for k, v in os.environ.items()
+                               if k not in ENV_VARS.values() and k != "TM_COST_ESTIMATE"})
     env.update(paths.pixi_env())
     for key in tool.keys:
         value = secrets.get(key)  # type: ignore[arg-type]
         if not value:
+            get = i18n.t(f"keys.{_PROVIDERS[key]}.get", permissions=i18n.t("keys.elevenlabs.permissions"))
             return _say(as_json, "stop", f"The {_KEY_NAMES[key]} is not set, so the {name} tool did not run "
-                        f"and nothing was spent. Open /plugin, choose trendsmesh-playbooks, set the "
-                        f"{_KEY_NAMES[key]}, then start a new session. The run continues from the same place.", 2)
+                        f"and nothing was spent. {get} The run continues from the same place.", 2)
         env[ENV_VARS[key]] = value
     kind = tool.kind_for(args)
     run = estimate = None
@@ -239,6 +254,7 @@ def run_tool(name: str, args: list[str]) -> int:
             return _say(as_json, "stop", str(exc), 2)
         except (OSError, ValueError) as exc:
             return _say(as_json, "error", str(exc), 1)
+        env["TM_COST_ESTIMATE"] = f"{estimate:g}"   # the tool checks what is left against it, and names it (#66)
     fd, report_name = tempfile.mkstemp(prefix="tm-cost-", suffix=".json")
     os.close(fd)
     report = Path(report_name)

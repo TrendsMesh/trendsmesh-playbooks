@@ -286,3 +286,51 @@ def test_every_tool_has_a_tier():
         "take_qa": "breakdown",
         "reframe": "base", "ffmpeg": "base", "replicate_price": "base", "deliver": "base", "speaker_sim": "voice", "vo_qa": "voice", "elevenlabs": "voice",
         "replicate_run": "ai"}
+
+
+# --- issue #66 and #54: the estimate in the child, the credits read on the base tier, the empty cert dir --------
+
+def test_a_paid_call_tells_the_tool_its_approved_estimate(engine, run):
+    """#66 point 4: the tool compares what is left with the estimate before paying, and names it in a refusal."""
+    _budget(run, "voice_credits", 2000)
+    assert main(["tool", "elevenlabs", "tts", "--run", str(run.path), "--voice-id", "v", "--text", "t",
+                 "--cost", "1200"]) == 0
+    (argv, kw), = engine["calls"]
+    assert kw["env"]["TM_COST_ESTIMATE"] == "1200"
+
+
+def test_a_free_call_has_no_estimate(engine, monkeypatch, run):
+    monkeypatch.setenv("TM_COST_ESTIMATE", "999")   # never inherited from the shell
+    assert main(["tool", "elevenlabs", "credits", "--run", str(run.path)]) == 0
+    (argv, kw), = engine["calls"]
+    assert "TM_COST_ESTIMATE" not in kw["env"]
+
+
+def test_the_credits_read_runs_without_the_voice_tier(engine, run):
+    """#54: one free read of the subscription does not need the ~1 GB voice tier: it runs in the base tier."""
+    engine["installed"].discard("voice")
+    assert main(["tool", "elevenlabs", "credits", "--run", str(run.path), "--json"]) == 0
+    (argv, kw), = engine["calls"]
+    assert argv[argv.index("-e") + 1] == "base"
+    assert kw["env"]["ELEVENLABS_API_KEY"] == XI
+
+
+def test_a_paid_elevenlabs_call_still_needs_the_voice_tier(engine, run, capsys):
+    engine["installed"].discard("voice")
+    _budget(run, "voice_credits", 2000)
+    assert main(["tool", "elevenlabs", "tts", "--run", str(run.path), "--voice-id", "v", "--text", "t",
+                 "--cost", "100"]) == 2
+    assert engine["calls"] == [] and "tm env install voice" in capsys.readouterr().out
+
+
+def test_an_empty_cert_dir_is_not_handed_to_pixi(engine, tmp_path, monkeypatch):
+    """#54: the activated environment's SSL_CERT_DIR names a folder with no certificates (conda-forge's openssl on
+    Windows), and the nested pixi says "ignoring SSL_CERT_DIR" on stderr. A folder with certificates is kept."""
+    empty = tmp_path / "certs"
+    empty.mkdir()
+    monkeypatch.setenv("SSL_CERT_DIR", str(empty))
+    assert main(["tool", "teardown", "--run", "r", "a.mp4"]) == 0
+    assert "SSL_CERT_DIR" not in engine["calls"][-1][1]["env"]
+    (empty / "ca.pem").write_text("-----BEGIN CERTIFICATE-----\n")
+    assert main(["tool", "teardown", "--run", "r", "a.mp4"]) == 0
+    assert engine["calls"][-1][1]["env"]["SSL_CERT_DIR"] == str(empty)

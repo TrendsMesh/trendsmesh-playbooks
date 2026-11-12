@@ -54,15 +54,22 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
   and `--resume <record>` fetches it from the account's history (free) and completes the record.
   A compose onto a name whose record is still pending sends nothing and names that `--resume`.
   `--out` must be inside 03_wip/audio/, where `tm recut music` looks for takes.
-- On the music endpoints a 401, 402 or 403 stops with one message (MUSIC_STOP): the plan or key
-  cannot use Music. Nothing is spent.
+- On the music endpoints a plan refusal, or a 401, 402 or 403 we don't recognise, stops with one message
+  (MUSIC_STOP): the plan or key cannot use Music. A wrong key, a missing permission, no credits and a rate limit
+  get their own message, as everywhere. Nothing is spent.
 - credits reads `GET /v1/user/subscription` and prints {tier, character_count, character_limit,
   next_character_count_reset_unix, instant_cloning}; it is free and writes nothing. `instant_cloning`
   is the plan's `can_use_instant_voice_cloning` (None when ElevenLabs does not say): refresh-ad's V3
   reads it before preparing a clone, when the readiness check left the plan unknown. Organic video's
   D1 reads it before the speech route is chosen (a key that works but has no credits left is "connected but
   unusable"); a key the account refuses (401, 403) stops like any other call.
-- 401, 402, 403 and quota answers stop (exit 2): the user must fix the key, credits or plan.
+- Refusals stop (exit 2) with one message per cause (tm.providers, #66): a wrong or revoked key, a restricted key
+  without the permission, no credits (with this step's estimate), a plan without the feature (and which plan has it),
+  a rate limit. A 401 or 402 we don't recognise keeps the old message; the mapping is read from ElevenLabs' docs and
+  not yet checked against live answers.
+- Before a paid call the subscription is read (free) and what is left, counting usage-based billing, is compared
+  with the approved estimate (TM_COST_ESTIMATE, from `tm tool`): when it falls short, the call stops before anything
+  is sent (#66 point 4). A subscription the key may not read skips that check.
 - Paid calls (isolate, clone-ivc, tts, music-upload, music-compose) need `--cost` (the approved estimate in credits): the
   engine records it against the voice_credits budget before this runs and reconciles it with
   `credits_used`, which is reported to it as soon as ElevenLabs answers (before saving the file).
@@ -82,7 +89,7 @@ from pathlib import Path
 
 import requests
 
-from tm import cli, organic_audio
+from tm import cli, i18n, organic_audio, providers
 from tm.runfolder import slug
 from tm.tools import _common as c
 
@@ -149,26 +156,64 @@ def _detail(resp: requests.Response) -> str:
     return str(detail)[:300]
 
 
-def _check(resp: requests.Response, what: str) -> None:
+def _body(resp: requests.Response) -> object:
+    try:
+        return resp.json()
+    except ValueError:
+        return resp.text[:300]
+
+
+def _refused(resp: requests.Response, what: str, feature: str | None = None) -> str | None:
+    """The message for a refusal whose cause we recognise (tm.providers, #66), else None."""
+    why = providers.cause("elevenlabs", resp.status_code, _body(resp))
+    if why is None:
+        return None
+    return providers.refusal("elevenlabs", why, status=resp.status_code, detail=c.scrub(_detail(resp)), what=what,
+                             need=providers.need("elevenlabs"), feature=feature)
+
+
+def _check(resp: requests.Response, what: str, feature: str | None = None) -> None:
+    """A refusal stops (exit 2) with one message per cause: the key, its permissions, the credits, the plan, a rate
+    limit (tm.providers). A 401 or 402 we don't recognise keeps the old message (keys.elevenlabs.other)."""
     if resp.status_code < 400:
         return
+    message = _refused(resp, what, feature)
+    if message:
+        raise c.ToolStop(c.scrub(message))
     detail = c.scrub(_detail(resp))
-    if resp.status_code == 403:
-        raise c.ToolStop(f"ElevenLabs says your plan doesn't include {what} ({detail}). Nothing was spent. "
-                         "To do: upgrade the ElevenLabs plan (voice cloning needs a plan with cloning), "
-                         "or tell Claude to skip this step. The run continues from the same place.")
     if resp.status_code in (401, 402) or "quota" in detail.lower():
-        raise c.ToolStop(f"ElevenLabs refused {what} ({resp.status_code}: {detail}). Check the key, the "
-                         "credits and that the plan includes this feature. Nothing was saved; the run "
-                         "continues from the same place.")
+        raise c.ToolStop(c.scrub(providers.refusal("elevenlabs", None, status=resp.status_code, detail=detail,
+                                                   what=what)))
     raise c.ToolError(f"ElevenLabs answered {resp.status_code} to {what}: {detail}")
 
 
 def _check_music(resp: requests.Response, what: str) -> None:
-    """Like _check, but a refused key or plan on a Music endpoint is one message."""
+    """Like _check, but a plan refusal (or a 401, 402 or 403 we don't recognise) on a Music endpoint is MUSIC_STOP."""
     if resp.status_code in (401, 402, 403):
-        raise c.ToolStop(MUSIC_STOP)
-    _check(resp, what)
+        why = providers.cause("elevenlabs", resp.status_code, _body(resp))
+        if why in (None, "plan"):
+            raise c.ToolStop(MUSIC_STOP)
+    _check(resp, what, "music")
+
+
+def _before_paid(what: str) -> int | None:
+    """The character count before a paid call (for its cost), once what is left covers the approved estimate (#66
+    point 4): when it doesn't, stop before anything is sent. An unreadable subscription (a key without the User
+    permission, a network hiccup) skips the check, as before."""
+    try:
+        resp = _call("GET", "/v1/user/subscription")
+        body = resp.json() if resp.status_code == 200 else None
+    except (requests.RequestException, ValueError):
+        body = None
+    if not isinstance(body, dict):
+        return None
+    remaining, need = providers.left(body), providers.estimate()
+    if remaining is not None and need is not None and remaining < need:
+        raise c.ToolStop(i18n.t("keys.elevenlabs.short", left=remaining, what=what, need=providers.need("elevenlabs")))
+    try:
+        return int(body["character_count"])
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def _used_characters() -> int | None:
@@ -221,7 +266,7 @@ def _response_record(resp: requests.Response) -> dict:
 def isolate(in_audio: Path | str, out: Path | str) -> dict:
     """Voice Isolator: the voice from `in_audio` without music and noise, saved to `out`."""
     in_audio, out = Path(in_audio), Path(out)
-    before = _used_characters()
+    before = _before_paid("the voice isolation")
     with in_audio.open("rb") as fh:
         resp = _paid("/v1/audio-isolation", "the voice isolation", files={"audio": (in_audio.name, fh)})
     _check(resp, "the voice isolation")
@@ -244,7 +289,7 @@ def clone_ivc(name: str, files: list[Path | str], description: str | None = None
     paths = [Path(f) for f in files]
     if not paths:
         raise ValueError("An instant clone needs at least one recording.")
-    before = _used_characters()
+    before = _before_paid("the instant voice clone")
     handles = [p.open("rb") for p in paths]
     try:
         data = {"name": name, **({"description": description} if description else {})}
@@ -253,7 +298,7 @@ def clone_ivc(name: str, files: list[Path | str], description: str | None = None
     finally:
         for h in handles:
             h.close()
-    _check(resp, "the instant voice clone")
+    _check(resp, "the instant voice clone", "clone")
     credits = _credits(resp, before)
     c.report_cost(True, credits)
     body = resp.json()
@@ -272,7 +317,7 @@ def tts(voice_id: str, text: str, out: Path | str, speed: float = 1.0, model: st
     wav = out.suffix.lower() == ".wav"
     fmt = "pcm_44100" if wav else "mp3_44100_128"
     body = {"text": text, "model_id": model, "voice_settings": {**(settings or {}), "speed": speed}}
-    before = _used_characters()
+    before = _before_paid("the text to speech")
     path = f"/v1/text-to-speech/{voice_id}" + ("/with-timestamps" if timestamps else "")
     resp = _paid(path, "the text to speech", params={"output_format": fmt}, json=body)
     _check(resp, "the text to speech")
@@ -309,7 +354,7 @@ def tts(voice_id: str, text: str, out: Path | str, speed: float = 1.0, model: st
 def music_upload(audio: Path | str, out: Path | str) -> dict:
     """Upload the ad's track for inpainting and extract its composition plan; saved to `out` (JSON)."""
     audio, out = Path(audio), Path(out)
-    before = _used_characters()
+    before = _before_paid("the music upload")
     with audio.open("rb") as fh:
         resp = _paid("/v1/music/upload", "the music upload", data={"extract_composition_plan": MUSIC_UPLOAD_PLAN},
                      files={"file": (audio.name, fh)})
@@ -349,7 +394,7 @@ def music_compose(plan: dict, out: Path | str, model: str = MUSIC_MODEL, fmt: st
     rec_path = _record_path(out)
     if rec_path.exists():
         raise c.ToolError(f"{rec_path.name} already exists, and files are never overwritten. Nothing was sent.")
-    before = _used_characters()
+    before = _before_paid("the music take")
     resp = _paid("/v1/music", "the music take", params={"output_format": fmt},
                  json={"composition_plan": plan, "model_id": model})
     _check_music(resp, "the music take")

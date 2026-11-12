@@ -58,6 +58,21 @@ def pixi_bin() -> Path:
     return data_dir() / "pixi" / "bin" / ("pixi.exe" if os.name == "nt" else "pixi")
 
 
+def child_environ(env: dict[str, str]) -> dict[str, str]:
+    """`env` for a nested pixi call, without an SSL_CERT_DIR that names a folder with no files in it. The engine runs
+    inside an activated pixi environment, and conda-forge's openssl activation (on Windows) points SSL_CERT_DIR at
+    its own empty certs folder; pixi, started from here, then says "ignoring SSL_CERT_DIR: no certificates found"
+    on stderr (#54). A folder that holds certificates (a proxy's own, set by the user) is kept."""
+    cert_dir = env.get("SSL_CERT_DIR")
+    if cert_dir is None:
+        return env
+    try:
+        holds = any(p.is_file() for p in Path(cert_dir).iterdir())
+    except OSError:
+        holds = False
+    return env if holds else {k: v for k, v in env.items() if k != "SSL_CERT_DIR"}
+
+
 def pixi_env() -> dict[str, str]:
     """Environment variables to pass to every pixi call.
 

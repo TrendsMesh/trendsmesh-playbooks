@@ -509,8 +509,8 @@ marker is per run), and again at every resume.
    - **An AI video**: `tm doctor --playbook organic-video --outputs organic_video --mcp
      trendsmesh=<s>,artifacts=<s> --json`, before any media step. It adds the video breakdown,
      video editing, voice and AI video tools: say their size and time from the card, and install
-     them only after the user's yes. Once the voice tools are in and the ElevenLabs key is set,
-     read the credits: `tm tool elevenlabs credits --run R --json` (free; the plan, the credits
+     them only after the user's yes. Once the ElevenLabs key is set (the voice tools are not needed
+     for this read), read the credits: `tm tool elevenlabs credits --run R --json` (free; the plan, the credits
      used, the limit and `left`). Then **record this run's own stack** (the idea run's is not
      copied): `tm organic stack --run R --replicate <ok|missing> --elevenlabs <ok|no_credits|missing>
      --artifacts <ok|missing> --browser <ok|missing> --json`. ElevenLabs is `ok` with credits left,

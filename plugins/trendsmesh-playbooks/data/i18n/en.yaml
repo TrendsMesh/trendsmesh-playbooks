@@ -26,6 +26,36 @@ checks:
   # ideas in its language (and may keep the English ones that are used as they are, such as CTR or ROAS).
   creator_words: cost per, cpa, ctr, roas, spend, checkout, conversion, ad library, competitor, reddit, goodreads, r/
 
+# --- The Replicate and ElevenLabs keys (issue #66): engine/src/tm/providers.py, tools/replicate_run.py, tools/elevenlabs.py,
+# doctor.py. {said} is the provider's status and words in brackets (or nothing), {need} the sentence keys.need (or nothing).
+keys:
+  need: "This step needed about {need}."
+  what_check: a free test call
+  states:
+    works: works
+    unusable: connected but unusable
+    missing: missing
+    unchecked: "set, not checked: the service could not be reached"
+  replicate:
+    get: "Make a token at https://replicate.com/account/api-tokens (sign in, then Create token, and copy it). Then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the Replicate API token, and start a new session. It makes the AI images and video; each run is paid from your Replicate account (https://replicate.com/account/billing)."
+    key: "Replicate refused the token for {what} {said}: it is wrong, or it was revoked. Nothing was spent. Make a new token at https://replicate.com/account/api-tokens, then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the Replicate API token, and start a new session. The run continues from the same place."
+    credit: "Replicate says the account has no credit left for {what} {said}. Nothing was spent. {need} Add credit or a payment method at https://replicate.com/account/billing, then tell Claude. The run continues from the same place."
+    rate: "Replicate is holding back the account's requests for {what} {said}. Nothing was spent. Wait a minute, then tell Claude to try again. An account with no payment method can start only 6 runs a minute: adding one at https://replicate.com/account/billing lifts that. The run continues from the same place."
+    other: "Replicate refused {what} {said}. Check the token and the account's credit (https://replicate.com/account/billing). Nothing was spent; the run continues from the same place."
+  elevenlabs:
+    permissions: Text to Speech, Voices (read and write), Audio Isolation, Music Generation, History (read) and User (read)
+    get: "Make a key at https://elevenlabs.io/app/settings/api-keys (Developers, then API Keys, then Create key). If you restrict it, allow: {permissions}. Then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the ElevenLabs API key, and start a new session. It makes the voices and the music, from your ElevenLabs credits."
+    key: "ElevenLabs refused the key for {what} {said}: it is wrong, or it was revoked or has expired. Nothing was spent. Make a new key at https://elevenlabs.io/app/settings/api-keys, then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the ElevenLabs API key, and start a new session. The run continues from the same place."
+    permission: "The ElevenLabs key may not be used for {what} {said}: it is restricted. Nothing was spent. At https://elevenlabs.io/app/settings/api-keys, edit the key (or make a new one) and allow: {permissions}. A new key goes in /plugin, trendsmesh-playbooks, configure, then a new session. The run continues from the same place."
+    credit: "ElevenLabs says there are not enough credits for {what} {said}. Nothing was spent. {need} Add credits or choose a bigger plan at https://elevenlabs.io/app/subscription (a key with its own credit limit is raised at https://elevenlabs.io/app/settings/api-keys), then tell Claude. The run continues from the same place."
+    plan: "ElevenLabs says your plan doesn't include {what} {said}. Nothing was spent. {which} Choose a plan at https://elevenlabs.io/app/subscription, or tell Claude to skip this step. The run continues from the same place."
+    plan_clone: Instant voice cloning comes with the Starter plan and above.
+    plan_music: Music for an ad (commercial use) comes with the Starter plan and above.
+    rate: "ElevenLabs is busy, or the account sent too many requests at once, for {what} {said}. Nothing was spent. Wait a minute, then tell Claude to try again. The run continues from the same place."
+    other: "ElevenLabs refused {what} {said}. Check the key, the credits and that the plan includes this feature. Nothing was saved; the run continues from the same place."
+    empty: "The ElevenLabs key works, but the account has no credits left this month. Add credits or choose a bigger plan at https://elevenlabs.io/app/subscription, then tell Claude."
+    short: "ElevenLabs has {left} credits left, and {what} needs about {need} (the approved estimate). Nothing was sent and nothing was spent. Add credits or choose a bigger plan at https://elevenlabs.io/app/subscription, then tell Claude; or tell Claude to lower the plan for this step. The run continues from the same place."
+
 # --- Creative brief page: engine/src/tm/brief_page.py and brief_pack/template.html ---
 brief:
   view_decision: Decision maker

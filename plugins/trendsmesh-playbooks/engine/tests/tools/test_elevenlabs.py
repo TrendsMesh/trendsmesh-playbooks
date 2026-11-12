@@ -172,14 +172,96 @@ def test_api_error_never_shows_the_key(api, run, tmp_path, capsys):
     assert "quota_exceeded" in out and KEY not in out
 
 
-def test_plan_without_the_feature_stops_with_a_todo(api, run, tmp_path, capsys):
-    api.routes[("POST", "/v1/voices/add")] = lambda p: Api._json(
-        p, {"detail": {"status": "missing_permissions", "message": "upgrade"}}, 403)
+@pytest.mark.parametrize("body", [{"detail": {"type": "authorization_error", "code": "feature_not_available",
+                                               "message": "This feature is not available on your current plan."}},
+                                   {"detail": "no"}])
+def test_plan_without_the_feature_stops_with_a_todo(api, run, tmp_path, capsys, body):
+    """#66: a plan refusal (or a 403 we don't recognise, as before) says which plan has the feature."""
+    api.routes[("POST", "/v1/voices/add")] = lambda p: Api._json(p, body, 403)
     (tmp_path / "a.mp3").write_bytes(b"x")
     assert elevenlabs.main(["clone-ivc", "--run", str(run.path), "--name", "PL1", str(tmp_path / "a.mp3"),
                             "--json"]) == 2
     out = json.loads(capsys.readouterr().out)
-    assert out["status"] == "stop" and "your plan doesn't include" in out["message"]
+    assert out["status"] == "stop" and "your plan doesn't include the instant voice clone" in out["message"]
+    assert "Starter plan" in out["message"] and "https://elevenlabs.io/app/subscription" in out["message"]
+    assert "continues from the same place" in out["message"]
+
+
+# --- issue #66: one message per cause, and what is left before a paid step ---------------------------------------
+
+def _paid_tts(run, *extra):
+    return elevenlabs.main(["tts", "--run", str(run.path), "--voice-id", "v1", "--text", "Cześć", "--cost", "1200",
+                            "--json", *extra])
+
+
+@pytest.mark.parametrize("status,body,says", [
+    (401, {"detail": {"type": "authentication_error", "code": "invalid_api_key",
+                      "message": "The provided API key is invalid."}},
+     ["it is wrong, or it was revoked", "https://elevenlabs.io/app/settings/api-keys", "/plugin"]),
+    (401, {"detail": {"status": "missing_permissions",
+                      "message": "The API key you used is missing the permission text_to_speech"}},
+     ["it is restricted", "Text to Speech", "User (read)"]),
+    (403, {"detail": {"code": "insufficient_permissions"}}, ["it is restricted", "Text to Speech"]),
+    (402, {"detail": {"type": "payment_required", "code": "insufficient_credits"}},
+     ["not enough credits", "This step needed about 1200 credits", "https://elevenlabs.io/app/subscription"]),
+    (401, {"detail": {"status": "quota_exceeded",
+                      "message": "This request exceeds your quota. You have 3 credits remaining."}},
+     ["not enough credits", "1200 credits"]),
+    (429, {"detail": {"type": "rate_limit_error", "code": "concurrent_limit_exceeded"}},
+     ["too many requests at once", "Wait a minute"]),
+    (401, {"detail": "invalid key"}, ["Check the key, the credits and that the plan includes this feature"]),
+])
+def test_each_refusal_cause_has_its_own_message(api, run, monkeypatch, capsys, status, body, says):
+    monkeypatch.setenv("TM_COST_ESTIMATE", "1200")
+    api.routes[("POST", "/v1/text-to-speech/v1")] = lambda p: Api._json(p, body, status)
+    assert _paid_tts(run) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "stop" and "Nothing was" in out["message"] and "same place" in out["message"]
+    for words in says:
+        assert words in out["message"]
+    assert not list((run.path / "03_wip").glob("*.mp3"))
+    _no_key_anywhere(run, capsys)
+
+
+@pytest.mark.parametrize("sub,stops", [
+    ({"character_count": 9500, "character_limit": 10000}, True),             # 500 left, 1200 needed
+    ({"character_count": 9500, "character_limit": 10000, "can_extend_character_limit": True,
+      "max_credit_limit_extension": 5000}, False),                            # usage-based billing covers it
+    ({"character_count": 9500, "character_limit": 10000, "can_extend_character_limit": True,
+      "max_credit_limit_extension": "unlimited"}, False),
+    ({"character_count": 1000, "character_limit": 10000}, False),
+])
+def test_what_is_left_is_checked_before_paying(api, run, monkeypatch, capsys, sub, stops):
+    monkeypatch.setenv("TM_COST_ESTIMATE", "1200")
+    report = run.path.parent / "cost.json"
+    monkeypatch.setenv("TM_COST_REPORT", str(report))
+    api.routes[("GET", "/v1/user/subscription")] = lambda p: Api._json(p, sub)
+    api.routes[("POST", "/v1/text-to-speech/v1")] = lambda p: Api._raw(p, MP3, headers={"character-cost": "6"})
+    code = _paid_tts(run)
+    out = json.loads(capsys.readouterr().out)
+    posts = [c for c in api.calls if c.method == "POST"]
+    if stops:
+        assert code == 2 and posts == []
+        assert out["message"].startswith("ElevenLabs has 500 credits left, and the text to speech needs about "
+                                         "1200 credits")
+        assert "Nothing was sent and nothing was spent" in out["message"]
+        assert json.loads(report.read_text()) == {"spent": False, "actual": None}
+    else:
+        assert code == 0 and len(posts) == 1
+
+
+def test_no_balance_check_without_an_estimate_or_a_readable_subscription(api, run, monkeypatch, capsys):
+    """Called on its own (no `tm tool`, so no estimate), or with a key that may not read the subscription: the call
+    goes on as before."""
+    api.routes[("POST", "/v1/text-to-speech/v1")] = lambda p: Api._raw(p, MP3, headers={"character-cost": "6"})
+    api.routes[("GET", "/v1/user/subscription")] = lambda p: Api._json(p, {"character_count": 10,
+                                                                          "character_limit": 10})
+    assert _paid_tts(run) == 0
+    monkeypatch.setenv("TM_COST_ESTIMATE", "1200")
+    api.routes[("GET", "/v1/user/subscription")] = lambda p: Api._json(
+        p, {"detail": {"status": "missing_permissions"}}, 401)
+    assert _paid_tts(run) == 0
+    capsys.readouterr()
 
 
 def test_spend_is_reported_even_when_saving_fails(api, tmp_path, monkeypatch):
@@ -307,15 +389,29 @@ def test_music_compose_writes_take_and_length(api, run, mp3_bytes, capsys):
     _no_key_anywhere(run, capsys)
 
 
-@pytest.mark.parametrize("status", [401, 402, 403])
-def test_music_402_stops_with_plan_message(api, run, status, capsys):
-    api.routes[("POST", "/v1/music")] = lambda p: Api._json(p, {"detail": {"status": "payment_required"}}, status)
+@pytest.mark.parametrize("status,body", [(401, {"detail": "no"}), (403, {"detail": "no"}),
+                                         (403, {"detail": {"code": "feature_not_available"}})])
+def test_music_402_stops_with_plan_message(api, run, status, body, capsys):
+    """A plan refusal, or a 401 or 403 we don't recognise, on Music is the plan message, as before."""
+    api.routes[("POST", "/v1/music")] = lambda p: Api._json(p, body, status)
     plan = _plan_file(run)
     assert elevenlabs.main(["music-compose", "--run", str(run.path), "--plan", str(plan), "--cost", "5000",
                             "--json"]) == 2
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "stop" and out["message"] == PLAN_MESSAGE
     assert not list((run.path / "03_wip" / "audio").glob("music_take*"))
+
+
+def test_music_without_credits_says_credits_not_plan(api, run, monkeypatch, capsys):
+    """#66: no credits on a Music call is the credits message with this take's estimate, not "pick a plan"."""
+    monkeypatch.setenv("TM_COST_ESTIMATE", "5000")
+    api.routes[("POST", "/v1/music")] = lambda p: Api._json(
+        p, {"detail": {"type": "payment_required", "code": "insufficient_credits"}}, 402)
+    plan = _plan_file(run)
+    assert elevenlabs.main(["music-compose", "--run", str(run.path), "--plan", str(plan), "--cost", "5000",
+                            "--json"]) == 2
+    message = json.loads(capsys.readouterr().out)["message"]
+    assert "not enough credits for the music take" in message and "5000 credits" in message
 
 
 def test_music_upload_403_stops_with_plan_message(api, run, tmp_path, capsys):
