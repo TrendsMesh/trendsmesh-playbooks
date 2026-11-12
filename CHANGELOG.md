@@ -2,7 +2,7 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
-## Unreleased
+## 0.12.0
 
 - **Creative brief's PDFs print when the run is given by a relative path.** `tm brief page --run <relative path>`
   printed no PDFs on Windows (the browser could not write to the relative path), so the page was built without
