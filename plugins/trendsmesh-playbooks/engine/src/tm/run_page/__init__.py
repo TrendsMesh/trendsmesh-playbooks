@@ -284,7 +284,8 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
                                                                  # not the same check-in in every playbook
     def name(key: str) -> str:
         known = cat.cards[key].name if key in cat.cards else cat.checkins[key].name if key in cat.checkins else key
-        return ctx.t_or(f"{own}.stage.{key}", ctx.t_or("stage." + key, known))
+        mine = f"{own}.stage.{key}"
+        return ctx.t(mine) if words.has(mine, lang) else ctx.t_or("stage." + key, known)
 
     def worded(cid: str, d: dict) -> str | None:
         return OUTCOMES.get(s.playbook, lambda c, i, x: None)(ctx, cid, d.get("choice"))
