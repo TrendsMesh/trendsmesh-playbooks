@@ -1,6 +1,11 @@
 """Shared test helpers."""
 
+import hashlib
 import json
+import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -31,6 +36,75 @@ def video_asked_for(config) -> bool:
     `-m` expression selects the video mark (`-m video`, `-m "video and not slow"`), never without one."""
     expr = config.getoption("markexpr") or ""
     return bool(expr) and Expression.compile(expr).evaluate(lambda name, **kw: name == "video")
+
+
+PLUGIN_ROOT = Path(__file__).resolve().parents[2]
+REMOTION_CACHE = "tm-remotion-cache"
+
+
+def remotion_cache(tmp_path_factory, name: str = REMOTION_CACHE) -> Path:
+    """The data folder the video tests set Remotion (and the animatic renderer) up in: TM_TEST_REMOTION_CACHE when
+    set, else this checkout's own (`remotion_cache_for`) beside pytest's temp folders."""
+    if os.environ.get("TM_TEST_REMOTION_CACHE"):
+        return Path(os.environ["TM_TEST_REMOTION_CACHE"])
+    lock = hashlib.sha256()
+    for part in ("package.json", "package-lock.json"):   # render.lock_hash, read from this checkout
+        lock.update((PLUGIN_ROOT / "remotion" / part).read_bytes())
+    return remotion_cache_for(tmp_path_factory.getbasetemp().parent, PLUGIN_ROOT, lock.hexdigest(), name)
+
+
+def remotion_cache_for(base: Path, plugin: Path, lock: str, name: str = REMOTION_CACHE) -> Path:
+    """`<base>/<name>-<key>`, the key a hash of the checkout's plugin folder (issue 63): every pytest run on a
+    computer shares `base`, and a render swaps the cache's `src` for its own sources, so two checkouts testing at
+    once must not share a cache. A new one starts as a copy (an APFS clone on a Mac) of a set-up cache with the
+    same package lock, without its `src`, so nothing is downloaded again; caches whose checkout is gone are removed
+    (a cache without `.checkout`, an older version's, is never touched)."""
+    base, plugin = Path(base), Path(plugin)
+    cache = base / f"{name}-{hashlib.sha256(str(plugin).encode()).hexdigest()[:10]}"
+    for other in base.glob(f"{REMOTION_CACHE}*"):
+        try:
+            owner = json.loads((other / ".checkout").read_text(encoding="utf-8"))["plugin"]
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        if other != cache and not Path(owner).exists():
+            shutil.rmtree(other, ignore_errors=True)
+    if cache.is_dir():
+        return cache
+    tmp = base / f".{cache.name}.{os.getpid()}"
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    seed = next((d for d in sorted(base.glob(f"{REMOTION_CACHE}*"))
+                 if _marker(d / "remotion") == lock and (d / "remotion" / "node_modules").is_dir()), None)
+    if seed is not None:
+        for part in seed.iterdir():
+            if part.name != ".checkout":
+                _clone(part, tmp / part.name)
+        for left in [tmp / "remotion" / "src", *(tmp / "remotion").glob(".src*")]:
+            shutil.rmtree(left, ignore_errors=True)
+    (tmp / ".checkout").write_text(json.dumps({"plugin": str(plugin)}), encoding="utf-8")
+    try:
+        os.rename(tmp, cache)
+    except OSError:          # another run of this checkout made it first
+        shutil.rmtree(tmp, ignore_errors=True)
+    return cache
+
+
+def _marker(work: Path) -> str | None:
+    try:
+        return (work / ".setup-done").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+
+
+def _clone(src: Path, dest: Path) -> None:
+    """A copy of a file or folder, symlinks kept; on a Mac an APFS clone (instant, no extra disk)."""
+    if sys.platform == "darwin" and subprocess.run(["cp", "-cR", str(src), str(dest)], capture_output=True).returncode == 0:
+        return
+    shutil.rmtree(dest, ignore_errors=True)
+    if src.is_dir():
+        shutil.copytree(src, dest, symlinks=True)
+    else:
+        shutil.copy2(src, dest)
 
 
 def trend_steps_ready(run, evidence="trendsmesh"):

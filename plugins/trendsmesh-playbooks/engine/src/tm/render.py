@@ -117,9 +117,39 @@ def _sh(argv: list[str], cwd: Path, what: str) -> None:
                               encoding="utf-8", errors="replace")
     except OSError as exc:
         raise c.ToolError(f"Could not start {what}: {exc}") from None
+    finally:
+        _close_orphaned_chrome()
     if proc.returncode != 0:
         tail = " | ".join((proc.stderr or proc.stdout or "").strip().splitlines()[-4:])
         raise c.ToolError(f"{what} failed: {tail}")
+
+
+def _close_orphaned_chrome() -> None:
+    """Kill a Chrome of this Remotion setup that nothing owns any more (issue 63). Remotion starts Chrome as the
+    leader of a process group of its own (on Linux under `setpriv --pdeathsig`, not here) and kills that group
+    on exit only once Chrome has answered, so a render that fails before (a connection timeout) leaves Chrome
+    running. Such a Chrome is a group leader whose parent is gone (reparented to init) and runs from this
+    setup's `node_modules/.remotion/`; a Chrome whose render still runs, in this session or another, keeps its
+    parent and is left alone. POSIX only: on Windows Remotion's Chrome is in its tree, which taskkill takes."""
+    if _is_windows():
+        return
+    roots = {str(work_dir() / "node_modules" / ".remotion"), str(work_dir().resolve() / "node_modules" / ".remotion")}
+    try:   # Popen, not run: the listing is no step of the render (the tests' fakes of run never see it)
+        with subprocess.Popen(["ps", "-axo", "pid=,ppid=,pgid=,command="], stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace") as ps:
+            listing = ps.communicate(timeout=10)[0]
+    except (OSError, subprocess.SubprocessError):
+        return
+    for line in listing.splitlines():
+        parts = line.split(None, 3)
+        if len(parts) < 4 or not all(p.isdigit() for p in parts[:3]):
+            continue
+        pid, ppid, pgid, command = int(parts[0]), int(parts[1]), int(parts[2]), parts[3]
+        if pid == pgid and ppid == 1 and any(root in command for root in roots):
+            try:
+                os.killpg(pgid, 9)
+            except OSError:
+                pass
 
 
 def _tree_hash(folder: Path) -> str:
@@ -132,13 +162,16 @@ def _tree_hash(folder: Path) -> str:
 
 def _sync_src() -> None:
     """Make <data>/remotion/src equal the plugin's src: skipped when unchanged, otherwise copied to
-    a temp folder and swapped in, so a render never sees a half-copied tree."""
+    a temp folder and swapped in, so a render never sees a half-copied tree. A render started meanwhile from
+    other sources (another checkout sharing the folder) would see the swap: the video tests give every checkout
+    its own folder (tests/conftest.py, `remotion_cache`)."""
     src = project_dir() / "src"
     dest = work_dir() / "src"
     if dest.is_dir() and _tree_hash(dest) == _tree_hash(src):
         return
-    tmp, old = work_dir() / ".src.new", work_dir() / ".src.old"
-    for leftover in (tmp, old):
+    # temp folders of this process's own, so two syncs at once never delete each other's copy (issue 63)
+    tmp, old = work_dir() / f".src.new-{os.getpid()}", work_dir() / f".src.old-{os.getpid()}"
+    for leftover in (tmp, old, work_dir() / ".src.new", work_dir() / ".src.old"):   # the last two: before 0.13
         shutil.rmtree(leftover, ignore_errors=True)
     shutil.copytree(src, tmp)
     if dest.exists():

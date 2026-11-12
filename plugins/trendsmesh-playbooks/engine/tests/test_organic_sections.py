@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 import re
 import shutil
 import subprocess
@@ -20,7 +19,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
-from conftest import video_asked_for
+from conftest import remotion_cache, video_asked_for
 
 import exampleedu
 import petstore
@@ -796,8 +795,7 @@ def test_real_render_quiz_grid(request, tmp_path, tmp_path_factory, monkeypatch)
     sys.path.insert(0, str(Path(__file__).parent / "tools"))
     from _media import ffmpeg
 
-    cache = Path(os.environ.get("TM_TEST_REMOTION_CACHE")
-                 or tmp_path_factory.getbasetemp().parent / "tm-remotion-cache")
+    cache = remotion_cache(tmp_path_factory)
     monkeypatch.setenv("TM_PLUGIN_ROOT", str(PLUGIN))
     monkeypatch.setattr(render.paths, "data_dir", lambda: cache)
     monkeypatch.setattr(render, "_prefix", lambda: [])  # already inside an environment with Node

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import exampleedu
 import pytest
-from conftest import video_asked_for
+from conftest import remotion_cache, video_asked_for
 
 from tm import config, flow, kit, organic_config, organic_final, render, state, stepchecks
 from tm.playbooks import ORGANIC_VIDEO
@@ -270,8 +270,7 @@ def test_real_render_organic_captions(request, tmp_path, tmp_path_factory, monke
     sys.path.insert(0, str(Path(__file__).parent / "tools"))
     from _media import ffmpeg, make_clip
 
-    cache = Path(os.environ.get("TM_TEST_REMOTION_CACHE")
-                 or tmp_path_factory.getbasetemp().parent / "tm-remotion-cache")
+    cache = remotion_cache(tmp_path_factory)
     monkeypatch.setenv("TM_PLUGIN_ROOT", str(PLUGIN))
     monkeypatch.setattr(render.paths, "data_dir", lambda: cache)
     monkeypatch.setattr(render, "_prefix", lambda: [])  # already inside an environment with Node

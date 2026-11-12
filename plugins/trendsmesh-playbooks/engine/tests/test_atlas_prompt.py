@@ -19,7 +19,7 @@ import pytest
 
 import exampleedu
 import private
-from conftest import video_asked_for
+from conftest import remotion_cache, video_asked_for
 from test_atlas import FakePopen, light, popen, ready  # noqa: F401  (fixtures)
 from test_organic_pack import _production
 from test_organic_proposals import _checked, _decided, _doc, _idea_run, _production_runs, _start
@@ -800,8 +800,7 @@ def _real(request, tmp_path_factory, monkeypatch):
         pytest.skip("the real drawings run with -m video (pixi run -e dev-full test-video)")
     if not shutil.which("node"):
         pytest.skip("Node is not on PATH (run: pixi run -e dev-full test-video)")
-    cache = Path(__import__("os").environ.get("TM_TEST_REMOTION_CACHE")
-                 or tmp_path_factory.getbasetemp().parent / "tm-remotion-cache")
+    cache = remotion_cache(tmp_path_factory)
     monkeypatch.setenv("TM_PLUGIN_ROOT", str(PLUGIN))
     monkeypatch.setattr(atlas.paths, "data_dir", lambda: cache)
     monkeypatch.setattr(atlas.remotion, "_prefix", lambda: [])  # already inside an environment with Node

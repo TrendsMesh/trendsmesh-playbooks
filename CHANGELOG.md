@@ -56,6 +56,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   box drawn on its first, middle and last frame, so Refresh an ad's "look before you trust it" starts from one image.
   It is free and local. The text pass's limits are listed with it: it does not read the words (no OCR), may miss
   stylised or thin fonts, and can take a product label in a still shot for a full-frame card.
+- **A failed video render no longer leaves Chrome running.** When a render stopped before Remotion's headless Chrome
+  answered (a connection timeout), that Chrome kept running in the background. `tm render` now closes it after the
+  render, and leaves alone a Chrome whose render is still going. Two renders that update the copied sources at the
+  same moment no longer delete each other's copy.
 
 ## 0.12.0
 

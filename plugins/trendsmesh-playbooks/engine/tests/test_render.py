@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from conftest import remotion_cache
 from tm import render
 from tm.runfolder import RunFolder
 from tm.tools import _common as common
@@ -31,7 +32,7 @@ def real(tmp_path_factory, monkeypatch):
     """A real Remotion setup in a throw-away data folder, run in this (dev-full) environment."""
     if not shutil.which("node"):
         pytest.skip("Node is not on PATH (run: pixi run -e dev-full test-video)")
-    cache = Path(__import__("os").environ.get("TM_TEST_REMOTION_CACHE") or tmp_path_factory.getbasetemp().parent / "tm-remotion-cache")
+    cache = remotion_cache(tmp_path_factory)
     monkeypatch.setenv("TM_PLUGIN_ROOT", str(Path(__file__).resolve().parents[2]))
     monkeypatch.setattr(render.paths, "data_dir", lambda: cache)
     monkeypatch.setattr(render, "_prefix", lambda: [])  # already inside an environment with Node
@@ -58,7 +59,7 @@ def test_real_pixi_wrapper_with_awkward_paths(tmp_path_factory, tmp_path, monkey
     # pixi's default home and the environment next to env/pixi.toml, not a throw-away one
     subprocess.run([str(pixi), "install", "-e", "video", "--manifest-path", str(plugin / "env" / "pixi.toml")],
                    check=True, capture_output=True)
-    cache = Path(os.environ.get("TM_TEST_REMOTION_CACHE") or tmp_path_factory.getbasetemp().parent / "tm-remotion-cache-wrapper")
+    cache = remotion_cache(tmp_path_factory, "tm-remotion-cache-wrapper")
     monkeypatch.setenv("TM_PLUGIN_ROOT", str(plugin))
     monkeypatch.setattr(render.paths, "data_dir", lambda: cache)
     monkeypatch.setattr(render.paths, "pixi_bin", lambda: pixi)
@@ -373,3 +374,57 @@ def test_sync_src_skips_when_unchanged(light):
     (root / "remotion" / "src" / "index.ts").write_text("// new")
     render._sync_src()
     assert (render.work_dir() / "src" / "index.ts").read_text() == "// new"
+
+
+def test_sync_src_from_two_processes_never_shares_a_temp_folder(light):
+    """Issue 63: each process swaps src through temp folders of its own, so two syncs at once never delete each
+    other's copy; a leftover of an older version is cleared."""
+    _, _, root = light
+    render.work_dir().mkdir(parents=True)
+    (render.work_dir() / ".src.new").mkdir()          # the fixed names an older version used
+    (render.work_dir() / f".src.new-{os.getpid() + 1}").mkdir()   # another process's copy in progress
+    render._sync_src()
+    assert (render.work_dir() / "src" / "index.ts").is_file()
+    assert not (render.work_dir() / ".src.new").exists()
+    assert (render.work_dir() / f".src.new-{os.getpid() + 1}").is_dir()   # never touched
+    assert not list(render.work_dir().glob(f".src.*-{os.getpid()}"))
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Remotion starts Chrome in a process group of its own on POSIX only")
+def test_a_failed_render_closes_its_chrome(light, monkeypatch):
+    """Issue 63: Remotion starts Chrome in a process group of its own and kills it only once Chrome has answered;
+    a render that fails before (a connection timeout) left it running. After the command, a Chrome of this
+    cache that nothing owns any more (its parent gone) is killed with its group; one whose render still runs is
+    left alone."""
+    import time
+
+    shell = render.work_dir() / "node_modules" / ".remotion" / "chrome-headless-shell" / "mac" / "chrome-headless-shell"
+    shell.parent.mkdir(parents=True)
+    shell.write_text("#!/bin/sh\nsleep 60\n")
+    shell.chmod(0o755)
+    pid_file = render.work_dir() / "chrome.pid"
+    spawn = (f"import subprocess, sys; p = subprocess.Popen([{str(shell)!r}], start_new_session=True, "
+             f"stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); "
+             f"open({str(pid_file)!r}, 'w').write(str(p.pid)); sys.exit(1)")
+    monkeypatch.setattr(render, "_prefix", lambda: [])
+    owned = subprocess.Popen([str(shell)], start_new_session=True)   # a render of this cache still running
+    try:
+        with pytest.raises(common.ToolError, match="remotion still failed"):
+            render._sh([sys.executable, "-c", spawn], render.work_dir(), "remotion still")
+        chrome = int(pid_file.read_text())
+        deadline = time.monotonic() + 5
+        while _alive(chrome) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert not _alive(chrome)
+        assert owned.poll() is None                  # its parent (this test) is alive: not ours to kill
+    finally:
+        os.killpg(owned.pid, 9)
+        owned.wait()

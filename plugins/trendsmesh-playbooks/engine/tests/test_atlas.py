@@ -18,7 +18,7 @@ from types import SimpleNamespace
 import pytest
 
 import ld
-from conftest import video_asked_for
+from conftest import remotion_cache, video_asked_for
 from tm import atlas, doctor, envtiers, render
 from tm.tools import _common as common
 
@@ -497,8 +497,7 @@ def test_real_render_of_ld_c1_9x16(request, tmp_path, tmp_path_factory, monkeypa
         pytest.skip("the real render runs with -m video (pixi run -e dev-full test-video)")
     if not shutil.which("node"):
         pytest.skip("Node is not on PATH (run: pixi run -e dev-full test-video)")
-    cache = Path(os.environ.get("TM_TEST_REMOTION_CACHE")
-                 or tmp_path_factory.getbasetemp().parent / "tm-remotion-cache")
+    cache = remotion_cache(tmp_path_factory)
     monkeypatch.setenv("TM_PLUGIN_ROOT", str(PLUGIN))
     monkeypatch.setattr(atlas.paths, "data_dir", lambda: cache)
     monkeypatch.setattr(atlas.remotion, "_prefix", lambda: [])  # already inside an environment with Node
