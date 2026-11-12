@@ -9,7 +9,7 @@ requires-python = ">=3.11"
 dependencies = []
 
 [tool.setuptools.package-data]
-tm = ["*.html", "*.css", "schemas/*.json", "animatic_js/*.js", "brief_pack/*.html", "organic_pages/*.css"]
+tm = ["*.html", "*.css", "schemas/*.json", "animatic_js/*.js", "brief_pack/*.html", "brief_pack/*.css", "organic_pages/*.css"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

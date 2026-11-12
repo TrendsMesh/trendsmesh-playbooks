@@ -169,7 +169,9 @@ the category.
 
 - The page is built by `tm brief page` from brief.json (`04_final/brief_pack_vNN.json`) into
   `04_final/brief_pack_vNN/`, after `tm brief evidence` (the clips' thumbnails and as-of dates) at
-  C1 and D3. It is published per the plugin's `references/pages.md`, "Pages that take decisions":
+  C1 and D3. It is in the TrendsMesh look of every playbook page: the brief sits under the check-in
+  it is up for, and the check-ins already settled are folded below it, read-only (never in the
+  creator's view). Who decides stays the same: the team, each person their own. It is published per the plugin's `references/pages.md`, "Pages that take decisions":
   the first time an `Artifact` publish with `tm brief capabilities` as its `capabilities` (the
   older tools: `publish_files`, then `read_declaration` and `declare_capabilities`), the stored
   declaration checked in its result, then `tm page published` with the version it returns; later

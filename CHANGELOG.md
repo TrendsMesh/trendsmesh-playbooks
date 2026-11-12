@@ -4,6 +4,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Creative brief's page has the TrendsMesh look of every playbook page.** The brief page now has the TrendsMesh
+  top bar with the playbook's name, the theme, and the run page's layout. The brief sits under the check-in it is
+  up for. The check-ins already decided are folded below it, read-only, with what was chosen, the team's verdicts
+  and every note in full. Nothing in them can be clicked, and the creator's view never shows them. Every view, the
+  PDF downloads and the team's own decisions (each person saves theirs) work as before. A page in another language
+  now also needs the run page's words translated, else it is built in English and says so.
 - **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
   longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
   against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.

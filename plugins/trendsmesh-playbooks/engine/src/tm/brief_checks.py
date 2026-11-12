@@ -77,6 +77,8 @@ COPIED_KEYS = ("url", "landing_url", "thumb", "quote", "phrase", "adapted_from",
 MEDIA_ROWS = ("Decision metric", "Baseline", "Target", "Minimum before a decision", "Setup", "Placements",
               "Audience")
 EDITOR_ROWS = ("Length", "Captions", "Formats", "Versions", "Files")
+# the areas of the string table the brief's page is built from (its own, and the shared run page's: issue #60)
+PAGE_AREAS = ("brief", "run_page")
 CREATOR_WORDS = ("cost per", "cpa", "ctr", "roas", "spend", "checkout", "conversion", "ad library", "competitor",
                  "reddit", "goodreads", "r/")
 INTAKE_FIELDS = (("decision_facts", "budget", "budget"), ("decision_facts", "deadline", "deadline"),
@@ -860,7 +862,7 @@ def _production_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
                     out.append(_creator_word(whose, prefix, where, word))
     if "creator" in meta["recipients"]:
         out += _creator_view_words(brief, words, found,
-                                   i18n.page_lang(i18n.languages_of(cfg).working, "brief").lang)   # as built
+                                   i18n.page_lang(i18n.languages_of(cfg).working, *PAGE_AREAS).lang)   # as built
         out += _creator_pdf_words(run, brief, words, out)
     return out
 

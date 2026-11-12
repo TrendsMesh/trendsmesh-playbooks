@@ -11,11 +11,15 @@ the decisions taken on it.
     take_decisions / await_decisions / choose    `tm brief decisions`, `await`, `choose`
     built_gap / chosen_gap         the step checks `page_built` and `concepts_chosen`
 
-The port keeps the original's HTML byte for byte (the LD dry run's `brief_pack_v05/index.html` is
-rebuilt exactly). Its changes: no backslash inside an f-string expression (Python 3.11); the title
-in the decisions script is a JSON string with `'` and `</` escaped; the template is filled in one
-pass, so a title holding a placeholder stays text; concept ids are letters, digits, `_` and `-`
-(they sit in the page's attributes and selectors); a link that is not http(s) is left out; media
+The port keeps the original's body and script byte for byte (the LD dry run's `brief_pack_v05/index.html`
+body is rebuilt exactly). On the shared run page (issue #60) the head is the run page's (its theme and font, then
+`brief_pack/page.css`, the brief's parts in that look), and the body sits in its frame (`_shell`: the top bar, the
+"Now" panel with the check-in the page is up for, the check-ins already settled, read-only, from the run, and the
+footer; tm.run_page.creative_brief.frame). The team's decisions stay the brief's own: each person saves theirs
+(`decisions/{self}`), never the run page's owner-only block. Its other changes: no backslash inside an
+f-string expression (Python 3.11); the title in the decisions script is a JSON string with `'` and `</` escaped;
+the template is filled in one pass, so a title holding a placeholder stays text; concept ids are letters,
+digits, `_` and `-` (they sit in the page's attributes and selectors); a link that is not http(s) is left out; media
 paths are served under `page.asset_name` names and never leave the page folder. `plugin` keys are
 never read.
 
@@ -36,7 +40,8 @@ from the page's print mode (`render(..., stills=...)`: one view or all, no view 
 forms, each animatic as its stills, a banner), and the page's view bar gets two buttons that save them (the
 `downloads` capability on claude.ai) or open them (a local file). A computer without a browser builds the
 page without them. The print mode and the buttons are the plugin's, over the handoff's template, which stays
-verbatim (as `WORDING`); the page without PDFs keeps the reference HTML but for the view bar's hint.
+verbatim but for its head (as `WORDING`); the page without PDFs keeps the reference body but for the view bar's
+hint.
 """
 
 from __future__ import annotations
@@ -53,12 +58,14 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from urllib.parse import urlsplit
 
 from tm import animatic, brief_checks, brief_pdf, i18n, manifest, page, state, stepchecks, trends
+from tm.run_page import creative_brief, template as run_page_template, words as run_page_words
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
 FINAL, STEM = brief_checks.FINAL, brief_checks.STEM
 PAGE = STEM                                   # the page's name for tm page: 04_final/brief_pack_vNN/
 TEMPLATE = Path(__file__).parent / "brief_pack" / "template.html"
+STYLE = Path(__file__).parent / "brief_pack" / "page.css"     # the brief's parts in the run page's look
 SOURCE = "tm brief page"
 DECISIONS_SOURCE = "tm brief decisions"
 PDF_SOURCE = "tm brief page (PDF)"           # a PDF's manifest row: not a page build, which `SOURCE` rows are
@@ -91,10 +98,10 @@ VIEW_LABEL = {view: i18n.english()[key] for view, key in VIEW_KEY.items()}   # t
 HEADER_FACTS_VIEWS = [x for x in ALL_VIEWS if x != 'creator']
 TODO = '<span class="todo">{}</span>'               # with brief.to_set
 _ID = re.compile(r"[A-Za-z0-9_-]+")
-_FILL = re.compile(r"\{\{(TITLE|TITLE_JS|RECIPIENTS|CONCEPT_IDS)\}\}|<!--BODY-->")
-# The handoff's template stays verbatim (TEMPLATE); the plugin's own wording goes over it here, as organic video's
-# pages do theirs (organic_pages.WORDING). A page that cannot save (opened as a local file, or not signed in) says to
-# decide in chat, never that the decisions are kept on it (issue #2).
+_FILL = re.compile(r"\{\{(TITLE|TITLE_JS|RECIPIENTS|CONCEPT_IDS|FONTS|STYLE)\}\}|<!--BODY-->")
+# The handoff's template stays verbatim from <body> on (TEMPLATE); the plugin's own wording goes over it here, as
+# organic video's pages do theirs (organic_pages.WORDING). A page that cannot save (opened as a local file, or not
+# signed in) says to decide in chat, never that the decisions are kept on it (issue #2).
 WORDING: list[tuple[str, str]] = [
     ("'Kept on this page only. Open the page from its claude.ai link to save it for the team, or use "
      "\"Copy my decisions\".'",
@@ -123,7 +130,8 @@ PRINT_CSS = """
   @page{size:A4;margin:12mm}
   html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body.print{font-size:14px}
-  body.print .viewbar,body.print aside,body.print .decide,body.print .decisions,body.print .toggle,body.print .toast{display:none !important}
+  body.print .viewbar,body.print aside,body.print .decide,body.print .decisions,body.print .toggle,body.print .toast,body.print .settled,body.print .now-head,body.print footer.built{display:none !important}
+  body.print .brief{border:0;box-shadow:none;margin:0}
   body.print .night{padding:28px 16px 32px}
   body.print .page{display:block;padding:28px 0 0}
   body.print .phones{grid-template-columns:repeat(3,minmax(0,1fr));max-width:none;gap:18px;margin-top:24px}
@@ -134,8 +142,8 @@ PRINT_CSS = """
   .stills{margin:6px 0 0}
   .stills-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
   .stills img{width:100%;border-radius:8px;display:block;background:#000}
-  .stills figcaption{color:var(--muted);font-size:13px;margin-top:6px}
-  .print-banner{background:var(--note);color:var(--note-ink);font-weight:700;padding:10px 16px}
+  .stills figcaption{color:var(--ink-soft);font-size:13px;margin-top:6px}
+  .print-banner{background:var(--yellow);color:var(--ink);font-weight:700;padding:10px 16px}
   .print-banner[hidden]{display:none}
   body.print tr,body.print .fact,body.print .glance .g,body.print blockquote,body.print .findings li,body.print .evidence a,body.print .phone,body.print .stills,body.print .hookline,body.print .note-box,body.print .copy{break-inside:avoid}
   body.print h2,body.print h3{break-after:avoid}
@@ -536,13 +544,35 @@ def _required(brief: object) -> list[str]:
     return miss
 
 
+def _shell(body: str, frame: dict | None, lang: str) -> str:
+    """The brief in the shared run page's frame (issue #60): the top bar (the mark, a dark pill with the playbook's
+    name), the "Now" panel that holds it, with the check-in the page is up for (`frame["stage"]`, shown to the
+    views that decide), then the check-ins already settled, read-only and kept from the creator's view, and the
+    footer. Without a `frame` (the brief alone, as `view_text` reads it) the panel has no head and nothing settles."""
+    rp = run_page_words.t
+    top = (f'<header class="top"><span class="brand">{run_page_template.mark_svg()}<span>{E(rp("top.brand", lang))}'
+           f'</span></span><span class="pill dark">{E(rp("playbook.creative_brief", lang))}</span></header>')
+    if frame is None:
+        return f'<div class="wrap">{top}<section class="panel now brief">{body}</section></div>'
+    stage = frame.get("stage")
+    deciding = v(*creative_brief.DECIDING)
+    head = (f'<div class="now-head"><span class="pill dark">{E(rp("now.new", lang))}</span>'
+            f'<span class="soft small">{E(rp("now.updated", lang, when=frame["updated"]))}</span>'
+            + (f'<span class="soft small"{deciding}>{E(stage["n"])} · {E(stage["name"])}</span>' if stage else "")
+            + '</div>')
+    sid = f' id="stage-{E(stage["key"])}"' if stage else ""
+    settled = f'<div class="settled-group"{deciding}>{frame["settled"]}</div>' if frame.get("settled") else ""
+    built = f'<footer class="built">{E(i18n.t("brief.footer_built", lang, run=frame["run"], when=frame["updated"]))}</footer>'
+    return f'<div class="wrap">{top}<section class="panel now brief"{sid}>{head}{body}</section>{settled}{built}</div>'
+
+
 def render(brief: dict, lang: str = i18n.ENGLISH, *, pdfs: dict[str, str] | None = None,
-           stills: dict[str, list[str]] | None = None) -> tuple[str, list[str]]:
+           stills: dict[str, list[str]] | None = None, frame: dict | None = None) -> tuple[str, list[str]]:
     """The page's HTML in `lang` and the views it shows (`meta.recipients` in the page's order). Stop for a
     brief the page cannot be built from; i18n.Missing when `lang` has no translation of a word of the page
     (`build` picks the language with `i18n.page_lang`). `pdfs` ({"full" | view: served path}) adds the buttons
     that download them; `stills` ({animatic path: its stills' paths}) makes the print mode the PDFs are printed
-    from."""
+    from; `frame` (tm.run_page.creative_brief.frame: the run's check-ins) puts it on the shared run page."""
     tr = i18n.translator(lang)
     miss = _required(brief)
     if miss:
@@ -557,7 +587,9 @@ def render(brief: dict, lang: str = i18n.ENGLISH, *, pdfs: dict[str, str] | None
                    "from the same place.") from None
     title = brief['meta']['title']
     fills = {"{{TITLE}}": E(title), "{{TITLE_JS}}": title_js(str(title)), "{{RECIPIENTS}}": _script(views),
-             "{{CONCEPT_IDS}}": _script([c['id'] for c in brief['concepts']]), "<!--BODY-->": body}
+             "{{CONCEPT_IDS}}": _script([c['id'] for c in brief['concepts']]), "<!--BODY-->": _shell(body, frame, lang),
+             "{{FONTS}}": E(run_page_template.FONTS),
+             "{{STYLE}}": run_page_template.theme_css() + STYLE.read_text(encoding="utf-8")}
     tpl = translated(_with_parts(worded(TEMPLATE.read_text(encoding="utf-8")), pdfs=bool(pdfs),
                                  printing=stills is not None), tr)
     return _FILL.sub(lambda mt: fills[mt.group(0)], tpl), views
@@ -759,8 +791,9 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     if page.awaiting(run, PAGE) is not None:
         raise page.Deciding(PAGE, AWAITING)
     path, rel, brief = load_brief(run, brief_path)
-    pl = i18n.page_lang(i18n.run_languages(run).working, "brief")
+    pl = i18n.page_lang(i18n.run_languages(run).working, *brief_checks.PAGE_AREAS)
     render(brief, pl.lang)                                # the brief can make a page: Stop before anything is written
+    frame = creative_brief.frame(run, pl.lang)            # the run's check-ins around it (issue #60)
     undated = _undated_clips(brief)
     if undated:
         raise Stop(f"{rel} cites {len(undated)} TrendsMesh clip{'' if len(undated) == 1 else 's'} with no as-of date "
@@ -782,13 +815,13 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     if single_file:
         # a standalone file cannot reach a thumbnail that is not there: its <img> is left out
         inline = {ref: _data_uri(f) for ref, f in present.items()} | {ref: "" for ref in missing}
-        html_text, views = render(_swap(brief, inline), pl.lang)
+        html_text, views = render(_swap(brief, inline), pl.lang, frame=frame)
         out = run.next_version(FINAL, STEM, "html")
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, "x", encoding="utf-8", newline="\n") as fh:    # never over an earlier file
             fh.write(html_text)
     else:
-        html_text, views = render(_swap(brief, served), pl.lang)
+        html_text, views = render(_swap(brief, served), pl.lang, frame=frame)
         planned = {"index.html": len(html_text.encode("utf-8"))}
         planned |= {served[ref]: f.stat().st_size for ref, f in present.items()}
         over = page.over_limits(planned)
@@ -809,7 +842,7 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
             brief_pdf.remove(out)
             pdfs, pdf_note = {}, f"printing them failed: {exc}"
         if pdfs:
-            html_text = render(_swap(brief, served), pl.lang, pdfs=pdfs)[0]
+            html_text = render(_swap(brief, served), pl.lang, pdfs=pdfs, frame=frame)[0]
         with open(out / "index.html", "x", encoding="utf-8", newline="\n") as fh:
             fh.write(html_text)
     out_rel = out.relative_to(run.path).as_posix()
@@ -1064,7 +1097,7 @@ def take_decisions(run: RunFolder, stage: str, *, file: Path | None = None, text
     rel = _rel(run, source)
     carried = mark_carried(docs, _earlier_docs(run, decided["page"]))
     got = verdicts(docs, decided["ids"])
-    notes, quote = quote_notes(docs, decided["ids"], i18n.page_lang(i18n.run_languages(run).working, "brief").lang)
+    notes, quote = quote_notes(docs, decided["ids"], i18n.page_lang(i18n.run_languages(run).working, *brief_checks.PAGE_AREAS).lang)
     latest = run.latest(FINAL, STEM, "json")
     latest_rel = _rel(run, latest) if latest else None
     same = latest is not None and latest_rel == decided["brief"] and stepchecks.sha256(latest) == decided["brief_sha256"]

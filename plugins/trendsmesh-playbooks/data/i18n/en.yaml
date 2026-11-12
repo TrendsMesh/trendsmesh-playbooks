@@ -224,6 +224,23 @@ brief:
   shared_with_link: Decisions you save are shared with everyone who has this link.
   read_only: You can read decisions; your access does not allow saving.
   load_failed: 'Shared decisions could not be loaded. Use "Copy my decisions".'
+  # the shared run page's frame (issue #60): the card the page is up for, the check-ins already settled (read only,
+  # from the run), and the footer; the check-ins' names are run_page.creative_brief.stage
+  card_approve_setup: Approve the setup
+  card_approve_briefs: Approve the briefs
+  outcome_accepted: Accepted
+  outcome_chosen: "{concepts} chosen"
+  chosen_page: from the page
+  chosen_chat: in chat
+  chosen_rule: by rule
+  settled_chosen: "Chosen: {concepts}, {source}."
+  settled_read: "The team's decisions, as read from the page ({file}):"
+  verdict_approved: "**{id}**: approved ({approve})"
+  verdict_changes: "**{id}**: changes requested ({change})"
+  verdict_split: "**{id}**: split, {approve} approved and {change} asked for changes"
+  verdict_none: "**{id}**: no decision"
+  settled_note: '{id}, {who}, {choice}: "{note}"'
+  footer_built: Built from the run {run} on {when}.
 
 # --- Trend research page: engine/src/tm/research_report.py (report, digest and paid views) ---
 report:
@@ -1043,6 +1060,7 @@ run_page:
     create_ad: Create an ad
     trend_research: Trend research
     organic_video: Organic AI video
+    creative_brief: Creative brief
   # Organic AI video's stages: their names on its run page (issue #60), read before `stage` below
   organic_video:
     stage:
@@ -1140,6 +1158,14 @@ run_page:
     copy: Meta copy
     upload_offer: Meta upload
     upload: PAUSED upload
+  # a playbook's own check-in names, where its ids are another playbook's in `stage` (issue #60)
+  creative_brief:
+    stage:
+      G0: Confirm the intake card
+      G1: Accept the persona and target segment
+      G2: Choose the concepts
+      G3: Accept the briefs and animatics
+      G4: Accept the production views
   stage_name:
     hook: The start (hook)
     middle: The middle

@@ -16,11 +16,13 @@ import pytest
 import yaml
 
 from tm import brief_page, config, i18n
+from tm.run_page import creative_brief
 from tm.cli import main
 from tm.playbooks import CREATIVE_BRIEF
 from tm.runfolder import RunFolder
 
-SOURCE = Path(brief_page.__file__)
+# the page's words are used here, and in its frame on the shared run page (issue #60)
+SOURCES = (Path(brief_page.__file__), Path(creative_brief.__file__))
 
 
 def _concept(cid: str) -> dict:
@@ -66,6 +68,11 @@ def _brief_keys() -> dict[str, str]:
     return {k: v for k, v in i18n.english().items() if k.startswith("brief.")}
 
 
+def _run_page_keys() -> dict[str, str]:
+    """The shared run page's words, which the brief's page shows too (issue #60): its top bar, "Now", the settled."""
+    return {k: v for k, v in i18n.english().items() if k.startswith("run_page.")}
+
+
 def _pseudo(text: str) -> str:
     """The string upper case, "PL·" before it; its {placeholders} as they are."""
     return "PL·" + "".join(p if p.startswith("{") else p.upper() for p in re.split(r"(\{[^}]*\})", text))
@@ -79,8 +86,8 @@ def _import(tmp_path: Path, strings: dict[str, str]) -> None:
 
 @pytest.fixture
 def polish(tmp_path):
-    """Every brief string in pseudo-Polish, kept as an imported translation."""
-    _import(tmp_path, {k: _pseudo(v) for k, v in _brief_keys().items()})
+    """Every brief string, and the shared run page's, in pseudo-Polish, kept as an imported translation."""
+    _import(tmp_path, {k: _pseudo(v) for k, v in {**_brief_keys(), **_run_page_keys()}.items()})
 
 
 class _Shown(HTMLParser):
@@ -147,7 +154,7 @@ def test_a_translated_customer_phrase_names_its_original():
 # --- the keys -------------------------------------------------------------------------------------------
 
 def test_every_brief_key_is_used_and_every_key_used_exists():
-    used = set(re.findall(r"""["'](brief\.[a-z0-9_]+)["']""", SOURCE.read_text(encoding="utf-8")))
+    used = {k for source in SOURCES for k in re.findall(r"""["'](brief\.[a-z0-9_]+)["']""", source.read_text(encoding="utf-8"))}
     assert used == set(_brief_keys())
 
 
@@ -178,7 +185,8 @@ def test_a_page_in_polish_has_no_english_word_of_the_table(polish):
             left = [t for t in everything if fragment in t]
             assert not left, f"{key}: {fragment!r} is still on the page ({left[:3]})"
     # the brief's own texts are upper case: a lower-case word in a text or label is English the table lacks
-    lower = [t for t in shown.texts if re.search(r"[a-z]{3,}", t)]
+    # (the mark's label, assets/page/mark.svg, is the brand's name in every language)
+    lower = [t for t in shown.texts if re.search(r"[a-z]{3,}", t) and t != "TrendsMesh"]
     assert not lower, lower
     assert "PL·CONCEPT 1 OF 2" in text and "PL·KEY MESSAGE:" in text
     assert "PL·BUDGET: <span class=\"todo\">PL·TO SET</span>" in text
@@ -238,10 +246,10 @@ def test_a_polish_run_builds_its_page_in_polish(run, polish, capsys):
 
 
 def test_an_incomplete_table_builds_in_english_and_says_so(run, tmp_path, capsys):
-    strings = {k: _pseudo(v) for k, v in _brief_keys().items()}
+    strings = {k: _pseudo(v) for k, v in {**_brief_keys(), **_run_page_keys()}.items()}
     del strings["brief.save_decision"]
     _import(tmp_path, strings)
-    got = i18n.page_lang("pl", "brief")
+    got = i18n.page_lang("pl", "brief", "run_page")
     assert got.lang == "en" and got.missing == ("brief.save_decision",) and got.warning
     out, text = _page(run, capsys)
     assert out["lang"] == "en" and out["language_warning"] == got.warning

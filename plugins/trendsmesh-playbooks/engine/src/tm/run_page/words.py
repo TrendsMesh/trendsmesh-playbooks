@@ -13,12 +13,13 @@ from __future__ import annotations
 from functools import lru_cache
 
 from tm import i18n
-from tm.playbooks import CREATE_AD, ORGANIC_VIDEO, TREND_RESEARCH
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, TREND_RESEARCH
 
 AREA = "run_page"
 PREFIX = AREA + "."
 AREAS = {CREATE_AD: ("ad",), ORGANIC_VIDEO: ("organic",),     # a playbook's own page words, beside run_page's
-         TREND_RESEARCH: ("report", "common")}    # its report, and the month names
+         TREND_RESEARCH: ("report", "common"),    # its report, and the month names
+         CREATIVE_BRIEF: ("brief",)}
 # A playbook whose stages are worded in its own area (Organic AI video: `organic.*`, which the plugin ships in Polish)
 # and named under `run_page.<its skill>.stage.*` needs of `run_page` only the template's own words, its own name and
 # its own stage names, not the other playbooks' stages.

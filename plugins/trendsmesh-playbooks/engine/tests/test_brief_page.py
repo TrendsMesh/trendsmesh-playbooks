@@ -2,7 +2,8 @@
 
 The LD dry run's `04_final/brief_pack_v01.json`, with the plugin blocks of
 `fixtures/creative_brief/ld_plugin_blocks.json` merged in (the page never reads them), must rebuild
-the reference `04_final/brief_pack_v05/index.html` byte for byte, but for the header per view (#15). The animatics are placeholder files under
+the body of the reference `04_final/brief_pack_v05/index.html` byte for byte, but for the header per view (#15), inside
+the shared run page's frame (#60). The animatics are placeholder files under
 the names the brief gives them; the evidence thumbnails are left out unless a test adds them.
 """
 
@@ -23,6 +24,7 @@ import private
 from tm import brief_page, manifest, mcp_saves, page, state, stepchecks
 from tm.cli import main
 from tm.playbooks import CREATIVE_BRIEF
+from tm.run_page import template as run_page_template
 from tm.runfolder import RunFolder
 
 FIXTURES = Path(__file__).parent / "fixtures" / "creative_brief"
@@ -107,18 +109,35 @@ def _per_view_header(reference: str) -> str:
     return re.sub(r'<div class="(who|trendline)">', lambda m: f'<div class="{m.group(1)}"{facts}>', reference)
 
 
+def _body_and_script(page_html: str) -> tuple[str, str]:
+    """A page's body as the template fills it (from `<body>` to its script) and the script after it."""
+    head, _, rest = page_html.partition("<body>\n")
+    body, _, script = rest.partition("\n<script>\n  // recipient views")
+    return body, script
+
+
 @pytest.mark.private_data
 def test_page_rebuilds_ld_v05_exactly(run, capsys):
+    """Since the page moved onto the shared run page (issue #60), its head (the theme, the font) and the frame around
+    the brief (the top bar, the "Now" panel, the settled check-ins, the footer) are the run page's: what stays the
+    reference's byte for byte is the brief itself (the body the handoff's build wrote) and the template's script."""
     template = (HANDOFF / "tools" / "pb2" / "brief_pack" / "template.html").read_text(encoding="utf-8")
-    assert brief_page.TEMPLATE.read_text(encoding="utf-8") == template.replace("\r", "")   # the handoff's, LF
+    ours = brief_page.TEMPLATE.read_text(encoding="utf-8")
+    assert _body_and_script(ours)[1] == _body_and_script(template.replace("\r", ""))[1]  # the handoff's script, LF
+    assert ours.split("<body>")[1] == template.replace("\r", "").split("<body>")[1]
 
     code, out = _cli(capsys, "brief", "page", "--run", str(run.path))
     assert code == 0, out
     assert out["folder"] == "04_final/brief_pack_v01"
     built = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
     # the reference page, under the alias, with the header per view (#15) and the plugin's wording
-    reference = _per_view_header(private.alias(V05.read_text(encoding="utf-8").replace("\r", "")))
-    assert built == brief_page.worded(reference)
+    reference = brief_page.worded(_per_view_header(private.alias(V05.read_text(encoding="utf-8").replace("\r", ""))))
+    body, script = _body_and_script(reference)
+    assert body and script
+    assert '<section class="panel now brief"' in built                           # the run page's "Now" panel
+    assert f"</div>{body}</section>" in built                                  # the brief inside it, as it was
+    assert _body_and_script(built)[1] == script
+    assert run_page_template.theme_css() in built and "Instrument Sans" not in built
     assert out["views"] == ["decision", "strategy", "creator", "editor", "media-buyer"]
     # the six animatics copied where the page links them; the nine thumbnails are not in the run
     assert out["media_copied"] == 6 and sorted(out["media_missing"]) == sorted(_thumbs(_ld_brief()))
