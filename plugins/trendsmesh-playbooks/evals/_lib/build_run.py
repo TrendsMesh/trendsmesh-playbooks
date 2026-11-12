@@ -1527,7 +1527,7 @@ PNG_1PX = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlE
 def ov_record(ws: Path, run: Path, stem: str, model: str, outputs: dict[str, bytes], cost: float) -> None:
     """A paid item run as the guard leaves it (tm tool replicate_run: the record, its outputs, the spend); the
     sandbox has no Replicate key, so the record is written here, its manifest rows marked as the fixture's."""
-    record = {"model": model, "input": {}, "file_encoding": "url", "status": "succeeded",
+    record = {"model": model, "input": {}, "file_encoding": "url", "status": "done",
               "prediction_id": f"pred_mock_{stem}", "outputs": list(outputs)}
     place(ws, run, f"03_wip/{stem}.run.json", record, f"eval fixture: the record the guard wrote for {stem}")
     for name, data in outputs.items():
@@ -1995,12 +1995,13 @@ def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None,
     hooks = hooks or {}
     cat = __import__("yaml").safe_load((Path(ROOT) / "data" / "create-ad" / "checkins.yaml").read_text())
     first = {c["id"]: c["choices"][0] for c in cat["checkins"]}
-    approved = False
+    # the plan's money, once its yes is given: the pre-video lines (the casting, 0.12), then at Check every step the
+    # paid video too (G3's yes, 1.5 more); Hands-off has the intake's budget as its yes and never stops here
+    amounts = ["0.12", "1.62"]
     for _ in range(80):
         n = tm(ws, "next", "--run", str(run), ok=(0, 2))
-        if n.get("action") == "stop" and not approved:      # the plan's money: the yes was given, approve its amount
-            tm(ws, "budget", "approve", "ai_usd", "0.12", "--run", str(run))
-            approved = True
+        if n.get("action") == "stop" and amounts:
+            tm(ws, "budget", "approve", "ai_usd", amounts.pop(0), "--run", str(run))
             continue
         if n["step"] == stop_at and (stop_checkin is None and n["action"] == "work"
                                      or stop_checkin and n["action"] in ("ask", "auto")
