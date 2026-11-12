@@ -59,6 +59,9 @@ CAPABILITIES: dict[str, dict] = {
     "gate": {"db": _db("gate_images", "gate_video", "gate_edit"), "user": {"scopes": ["profile"]}, "downloads": {}},
     "script": {"downloads": {}},
     "week": {"db": _db("week"), "user": {"scopes": ["profile"]}},
+    # the pages of choices (tm.organic_pages.choices, issue #83 and #86): one collection each, named as the page
+    "intake": {"db": _db("intake"), "user": {"scopes": ["profile"]}},
+    "taste": {"db": _db("taste"), "user": {"scopes": ["profile"]}},
 }
 
 
@@ -94,7 +97,10 @@ GATE_WORDS = {name: f"organic.gate.{name}" for name in (
     "q_final", "label_images", "q_images", "label_takes", "q_takes", "label_voiceover", "q_voiceover",
     "label_storyboard", "q_storyboard", "label_animation", "q_animation", "label_motion", "q_motion", "cap_final",
     "cap_cover", "cap_packshot", "cap_host", "cap_evidence", "cap_still", "cap_text_style", "cap_contact", "dl_video",
-    "dl_cover", "cover_file", "qa_pass", "qa_fails", "qa_findings", "qa_none")}
+    "dl_cover", "cover_file", "qa_pass", "qa_fails", "qa_findings", "qa_none",
+    # issue #83: the storyboard's frames and the voiceover on the check-in pages
+    "frames", "frame", "frame_time", "frame_line", "frame_overlay", "frame_scene", "frame_note", "frame_open",
+    "q_storyboard_frames", "q_voiceover_images", "q_takes_voiceover", "q_animation_voiceover", "cap_with_voiceover")}
 
 
 def gate_words(lang: str | i18n.Translator) -> dict[str, str]:

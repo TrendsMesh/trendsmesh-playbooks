@@ -52,7 +52,24 @@ def _used() -> set[str]:
             | {"organic.output"} | set(script.WORDS.values()) | set(organic_week_delivery.WORDS.values())
             | {f"organic.kit_md.{label}" for label in kit.LABELS} | _pack_md_keys() | _qa_keys()
             | {k for kind in ("product", "risk", "status", "production")
-               for k in organic_pages.value_keys(kind).values()})
+               for k in organic_pages.value_keys(kind).values()}
+            | _choice_keys())
+
+
+
+def _choice_keys() -> set[str]:
+    """The keys of the pages of choices (issue #83): choices' `_C + "<key>"`, the intake's and the taste page's
+    `t("<key>")`, and the names they build."""
+    from tm.organic_pages import choices, intake, taste
+
+    def found(module, pattern: str) -> set[str]:
+        return set(re.findall(pattern, Path(module.__file__).read_text(encoding="utf-8")))
+    keys = {choices._C + k for k in found(choices, r"""_C \+ ["']([a-z_]+)["']""") if not k.endswith("_")}
+    keys |= {choices._C + f"page_{p}" for p in choices.PAGES} | {choices._C + k for k in choices.JS_WORDS}
+    keys |= {intake._I + k for k in found(intake, r"""\bt\(["']([a-z_]+)["']""")}
+    keys |= {intake._I + f"resolution_{r}" for r in intake.RESOLUTIONS}
+    keys |= {intake._I + f"quality_{tier}" for tier in intake.TIERS}
+    return keys | {taste._T + k for k in found(taste, r"""\bt\(["']([a-z_]+)["']""")}
 
 
 def _qa_keys() -> set[str]:

@@ -277,6 +277,61 @@ FRAGS: list[Frag] = [
 ]
 
 
+# Issue #83 point 3: a storyboard as a list of frames, each with a note. Added only to a page with frames, so every
+# other page is the original's byte for byte. A frame's note is its own document, `<item id>~<panel id>`, in the
+# page's collection (`tm.organic_gates.frame_notes`).
+FRAMES_CSS = """
+.frames{display:grid;gap:14px;margin:0;padding:0;list-style:none}
+.frame{display:grid;grid-template-columns:minmax(0,260px) 1fr;gap:12px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg)}
+.frame img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:6px;background:#000;display:block;cursor:zoom-in}
+.frame dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:14px}.frame dt{color:var(--muted);font-weight:600}.frame dd{margin:0}
+.frame .k{font:700 15px/1.2 var(--display)}.lightbox{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px}
+.lightbox[hidden]{display:none}.lightbox img{max-width:100%;max-height:100%;object-fit:contain}
+@media (max-width:700px){.frame{grid-template-columns:1fr}}
+"""
+
+FRAMES_JS = r"""
+(function(){
+  const COL = 'gate_' + window.__GATE__, box = document.getElementById('lightbox'), big = box.querySelector('img');
+  document.querySelectorAll('.frame a[data-full]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); big.src = a.getAttribute('href'); big.alt = a.dataset.full; box.hidden = false; }));
+  box.addEventListener('click', () => { box.hidden = true; big.removeAttribute('src'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') box.hidden = true; });
+  const notes = Array.from(document.querySelectorAll('textarea[data-frame]')); let db = null; const timers = {};
+  const key = t => t.dataset.item + '~' + t.dataset.frame, LS = 'pb3-frames-' + window.__RUN_ID__ + '-' + window.__GATE__;
+  let kept = {}; try { kept = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) {}
+  notes.forEach(t => { if (kept[key(t)]) t.value = kept[key(t)]; });
+  const save = async t => { kept[key(t)] = t.value; try { localStorage.setItem(LS, JSON.stringify(kept)); } catch (e) {}
+    if (!db) return; try { await db.doc(COL + '/' + key(t)).set({item: t.dataset.item, frame: t.dataset.frame, note: t.value, updated_at: new Date().toISOString()}); } catch (e) {} };
+  notes.forEach(t => t.addEventListener('input', () => { clearTimeout(timers[key(t)]); timers[key(t)] = setTimeout(() => save(t), 600); }));
+  (async () => {
+    for (let i = 0; i < 50 && !(window.claude && window.claude.use); i++) await new Promise(r => setTimeout(r, 200));
+    try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
+    if (!db) return;
+    try { const snap = await db.collection(COL).get(); const got = {}; snap.docs.forEach(d => { got[d.id] = d.data(); });
+      notes.forEach(t => { const v = got[key(t)]; if (v && typeof v.note === 'string' && document.activeElement !== t) t.value = v.note; }); } catch (e) {}
+  })();
+})();
+"""
+
+
+def frames_html(it: dict, put) -> str:
+    """A storyboard's frames, one under another: the panel (full size on a click), its time, the voiceover line, the
+    scene, what is on screen, and a note field."""
+    w = it.get("frame_words") or {}
+    out = []
+    for f in it["frames"]:
+        rel = put(f["src"])
+        rows = "".join(f"<dt>{esc(w.get(key, key))}</dt><dd>{esc(f[field])}</dd>" for field, key in (
+            ("line", "frame_line"), ("scene", "frame_scene"), ("overlay", "frame_overlay")) if f.get(field))
+        out.append(f'<li class="frame"><a href="{esc(rel)}" data-full="{esc(f["label"])}" title="{esc(w.get("frame_open", ""))}">'
+                   f'<img src="{esc(rel)}" alt="{esc(f["label"])}" loading="lazy"></a><div style="display:grid;gap:8px">'
+                   f'<div class="k">{esc(f["label"])}{(" · " + esc(f["time"])) if f.get("time") else ""}</div><dl>{rows}</dl>'
+                   f'<label style="display:grid;gap:4px;font-size:14px">{esc(w.get("frame_note", ""))}'
+                   f'<textarea rows="1" data-item="{esc(it["id"])}" data-frame="{esc(f["id"])}"></textarea></label></div></li>')
+    return (f'<div style="display:grid;gap:8px"><h3>{esc(w.get("frames", ""))}</h3><ol class="frames">{"".join(out)}</ol>'
+            '</div>')
+
+
 def localize(page: str, lang) -> str:
     """The page in `lang` (`organic_pages.localize`)."""
     return organic_pages.localize(page, lang, FRAGS)
@@ -320,13 +375,18 @@ def render(data: dict, put) -> str:
         kit_block = kit_html(it['id'], kit) if kit else ''
         out.append(f"""<section class="it" id="it-{iid}"><div style="display:grid;gap:4px"><div class="eyebrow">{esc(it.get('proposal',''))}</div><h2>{esc(it['label'])}</h2>{question}</div>
 <div class="opts" role="radiogroup" aria-label="{esc(it['label'])}">{''.join(opts)}{refs}</div>
-<div class="row"><span class="lbl">Decision</span><span class="seg" role="radiogroup" aria-label="Decision for {iid}">{acts}</span></div>
+{frames_html(it, put) if it.get("frames") else ""}<div class="row"><span class="lbl">Decision</span><span class="seg" role="radiogroup" aria-label="Decision for {iid}">{acts}</span></div>
 {pf_row}{kit_block}
 <div style="display:grid;gap:4px"><label for="n-{iid}" style="font-size:14px">Note for Claude (what to change on Redo)</label><textarea id="n-{iid}" rows="1"></textarea></div></section>""")
     out.append(f"""<footer class="note">Run folder: {esc(data['run'])}</footer></div>
 <script>window.__ITEMS__ = {_script(meta)}; window.__GATE__ = {_script(gate)}; window.__RUN_ID__ = {_script(Path(data['run']).name)};</script>
 <script>{JS}</script></body></html>""")
-    return "".join(out)
+    page = "".join(out)
+    if any(it.get("frames") for it in data["items"]):   # only a page with a storyboard's frames changes
+        page = page.replace("</style></head>", FRAMES_CSS + "</style></head>", 1).replace(
+            "</body></html>", '<div class="lightbox" id="lightbox" hidden><img alt=""></div>'
+            f"<script>{FRAMES_JS}</script></body></html>")
+    return page
 
 
 def page_html(data: dict, put) -> tuple[str, i18n.PageLang]:
@@ -360,6 +420,7 @@ def _sources(data: dict) -> list[str]:
             out.append(entry["src"])
             if entry.get("download"):
                 out.append(entry["download"]["src"])
+        out += [f["src"] for f in it.get("frames") or []]
     return out
 
 

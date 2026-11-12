@@ -177,6 +177,21 @@ What changed in each version of the TrendsMesh playbooks plugin.
   music folder only after your yes, indexed with every field filled in. The tracks offered to you are copied into
   the run, where the page plays them and the edit uses the one you pick: you never download or copy a music file by
   hand.
+- **Organic AI video asks its start questions on a page.** The intake is one page with an option set per question,
+  the default already ticked, a text field only where something has to be typed, and one Done button. The free script
+  to film is the default; an AI video is chosen only by a click. An answer in chat still counts the same.
+- **Pick the style, voice and music after hearing them.** A new page shows the voiceover script with its times and a
+  note on each line, the styles, a few voices with a player (your own ElevenLabs voices too) and the music: "No track,
+  I'll add a sound in the app" first, then the trending sound when one fits, then 2 to 3 tracks you can play. Your
+  picks go into the pack by themselves.
+- **The storyboard is a list of frames.** The images page shows each frame large (full size on a click), with its
+  time, the voiceover line and what is on screen, and a note under each, so only the frames with a note are drawn
+  again.
+- **The voiceover is on the check-in pages.** The images page plays the recorded voiceover before anything paid is
+  made, and the video page plays each take with the voiceover laid under it and the take's own sound turned down.
+- **One click in the chat after a page is saved.** When Claude shows a page with decisions and waits, it ends with a
+  reply button "Saved, read my choices" where the app has one, in every playbook. In the terminal you still write
+  "done".
 
 ## 0.12.0
 

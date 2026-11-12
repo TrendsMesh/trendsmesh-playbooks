@@ -91,8 +91,19 @@ posts.
    types and speech routes the stack hides: say them in one line, so the user knows what stays
    available. Without a Replicate token, AI footage and talking characters are hidden for an AI
    video; without Chrome or Edge, animations are. A script to film may use any production type.
-4. **The intake, in one batch** (FLOWS A1; `tm next` says so). Ask only what cannot be derived,
-   each with its default, and mark what you assume:
+4. **The intake, on a page** (FLOWS A1, issue #83; `tm next` says so): `tm organic page intake
+   --run R --working <the language you are talking in> --market <the audience's> --json` (a week
+   run: `--week`) builds `04_final/intake_vNN/`: one option set per question, the default
+   ticked, a text field only where something is typed (the channel, the bubble, the links, the
+   catalogue), and one Done button. **A paid output is never the default**: the free script to
+   film is ticked, and an AI video is chosen only by a click. Publish it as the other pages
+   (`tm page files --page intake`, the `Artifact` publish with `capabilities` =
+   `organic_pages.CAPABILITIES["intake"]`, `tm page published` and `tm page await --page intake`),
+   then end your turn with the reply button ("The reply button", `../../../references/pages.md`).
+   `tm trends collect on --run R --json` right before the publish, so the page's read is saved.
+   Without a publishing tool, or when the user answers in chat, ask the same questions in the chat,
+   one batch, each with its default; both ways count the same. The questions (ask only what cannot
+   be derived, and mark what you assume):
    - the channel(s): name, platforms (TikTok, Instagram, YouTube, Facebook; all by default),
      account type (creator or business; business accounts get a commercial-library alternative
      to trending sounds);
@@ -126,7 +137,15 @@ posts.
 
    Never ask for the voice or the music folder here: they are asked when first needed.
 5. **Write it down**, after the reply:
-   - `tm level <every_step|big_calls|hands_off> --run R`;
+   - **from the page** (the reply button, or "done"): one unfiltered `ArtifactData` list (the
+     page's `url`, collection `intake`, `query.limit` 1000), then `tm organic decisions --run R
+     --page intake --json`. It writes `03_wip/intake_answers_vNN.json` (the shape below, the level
+     in it) and `03_wip/intake_profile_vNN.json` (the profile's answers, for A1); a section the user
+     did not touch keeps its default. **From chat**: write their answer one line per question
+     (`channel: <name>`, `output: ai_video`, `level: big_calls`, `budget: 8` …; the ids are the
+     page's) to a file in the run and read it with `--text`, or write the answers file yourself as
+     below. Then go on with `tm config write` (the level is set from the answers);
+   - `tm level <every_step|big_calls|hands_off> --run R` when you wrote the answers yourself;
    - the answers as `03_wip/intake_answers_v01.json` (shape: `templates/intake_answers_example.json`:
      `level`, `outputs: ["proposals"]` (a week run: `["weekly_plan"]` with `weekly`), `languages: {working, market}` (tags), `channels` by name,
      `output`, `generation`, `budget`, `currency` and `fx_rate`). **Never send a `mode` key**: the
@@ -669,7 +688,8 @@ carries a bed. A style is asked only for an animation.
    language, free previews: `tm tool elevenlabs voices --run R --query "<the voice wanted>"
    --language <audience language> --use-case social_media --json`, plus the user's own voices:
    `tm tool elevenlabs voices --run R --mine --json` lists the voices on their account (their clones
-   and the voices they saved, with previews; free). Send the previews; ask in the chat language.
+   and the voices they saved, with previews; free). Each voice is offered with its preview clip
+   saved in the run (each row's `preview_file`), `source: "mine"` for the user's own.
 3. **Music**: from the channel's music folder (the profile's `music.folder`, else
    `library/channels/<channel>/music/`), indexed with `tm tool music_index --run R <the folder>
    --json` (length, loudness, tempo, mood, licence, source, author), or a Mixkit track (the Mixkit
@@ -684,19 +704,39 @@ carries a bed. A style is asked only for an animation.
    run's own files, and it cannot play a sound from another site). A trending sound is added in the
    app per the kit, never in the edit.
 4. **A style**, for an animation only: the one picked on the proposals page (`00_raw/proposal.json`
-   `decision.style`) is offered first, selected; else 2 to 3 of our styles by number, name and
+   `decision.style`) is offered first, selected (on the page: `recommended`); else 2 to 3 of our styles by number, name and
    description (`tm organic atlas-styles --json`: each says what it suits), each with a one-line
    why, your pick first; no posters (`../../references/animation-styles.md`, "The taste card"). The
    pick goes into `taste.style` as `<number> <name>`. **The channel's own style** (`channel`, from
    the profile's `video_style`) is drawn on the catalogue style closest to it: `taste.style` is that
    style as `<number> <name>` (say which and why), and the pack's `aesthetic` holds the channel's
    own words, which the build prompt puts first.
-5. **The picks go into the profile**: write a new version of the channel profile with the voice
+5. **The page** (issue #83): write what you offer as the next `03_wip/taste_options_vNN.json`:
+   `{"styles": [{"id", "label", "why", "preview", "recommended"}], "voices": [{"voice_id", "name",
+   "why", "preview", "source": "library|mine", "recommended"}], "music": {"trending": {"name",
+   "link", "why"} | null, "tracks": [{"file", "title", "why", "licence", "recommended"}]}}`, every
+   file a run file (a track's `file` is the path `tm tool music_fetch --copy` printed, or the music index row's name, which the page finds there; styles only for an animation, voices only when someone speaks off screen). A
+   voice may be a row of `tm tool elevenlabs voices --json` (the library's, or `--mine`) copied as
+   it is, with your `why` and `recommended` added: its `preview_file` is its preview, and a `--mine`
+   row is the user's own. `trending` is the trending sound trend research found that fits this video, or null. Then
+   `tm organic page taste --run R --json` builds `04_final/taste_vNN/`: the voiceover script with
+   its times and a note on each line, the styles, the voices with a player, and the music with
+   "No track, I'll add a sound in the app" first (the default: the fitting trending sound, else
+   your recommended track). Publish it (collection `taste`, `organic_pages.CAPABILITIES["taste"]`),
+   `tm page await --page taste`, and end your turn with the reply button. On the click (or
+   "done"): one unfiltered `ArtifactData` list (collection `taste`), then `tm organic decisions
+   --run R --page taste --json`: it writes `03_wip/taste_vNN.json` (the picks, with the voice's
+   ID for F1's take) and the pack's next `_vNN` with `taste` filled in (`by: user`); check it
+   with `--stage recipe`. A note on a line means: rewrite that line first. An answer in chat (or
+   at Hands-off, by rule) is written one line per section (`voice: <voice id>`, `music: none`) and
+   read with `--text`, the same. Without a publishing tool, send the previews and ask in chat.
+6. **The picks go into the profile**: write a new version of the channel profile with the voice
    and the music, `tm brand check --run R --file 03_wip/channel_<slug>_vNN.json --json`, then `tm brand
    save --run R --file 03_wip/channel_<slug>_vNN.json --json` (it carries the date the user
    confirmed the profile). Then the pack's next `_vNN` with `taste` filled in (`by: user`, or
-   `profile` for a saved pick), checked again with `--stage recipe`.
-6. `tm done D2 --run R`. **The `taste` check-in** comes next: at Check every step its own card; at
+   `profile` for a saved pick), checked again with `--stage recipe` (from the page, `tm organic
+   decisions --page taste` has written that version).
+7. `tm done D2 --run R`. **The `taste` check-in** comes next: at Check every step its own card; at
    Just the big calls it is part of the plan card after E2; at Hands-off the rule (the profile's
    saved picks, else your pick with its reason in `taste.why`).
 
@@ -899,7 +939,10 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      computer): the voiceover first, timed as for a narrator (its word SRT, `<stem>.words.srt`);
      then the content file `03_wip/<item>/content_v01.txt` (the beats on the SRT's times, the
      setting replaced by the topic's and the style's rendering kept, text and key action above y
-     1260, the only on-screen text allowed); then the prompt, `tm organic atlas-prompt --run R
+     1260, the only on-screen text allowed) and, beside it, **the frames list**
+     `03_wip/<item>/frames_vNN.json`: one `{"panel", "from", "to", "line", "scene", "overlay"}` per
+     panel of the storyboard (its times, the voiceover line, what is seen, the only text on screen),
+     which the images page shows under each frame; then the prompt, `tm organic atlas-prompt --run R
      --item <item> --style <the picked number> --voiceover --storyboard --aspect 9:16 --content
      03_wip/<item>/content_v01.txt --srt <the word SRT> --json` (`<item>` is the pack's id). A
      subagent writes the storyboard's style module from it, `03_wip/<item>/storyboard_v01.js` (5 to 6
@@ -960,8 +1003,16 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      text): `tm organic pick --run R --stage images --name <item> --file 03_wip/<the image> --reason
      "<against the rubric>" --json`. One automatic redo per image item is allowed while the
      approved budget covers it ([E2](#paying-for-a-redo)); a second needs the user.
-   - **An animation's storyboard** is this check-in: the images page shows its latest sheet with
-     the voiceover beside it, and an accept there is its pick; by rule, `tm organic pick --run R
+   - **The voiceover** (a narrator or an animation, issue #83): the images page has the recorded
+     voiceover with a player and a note, so the voice is heard before any paid take; accepting the
+     page accepts the images and the voice. A redo with a note on it is a new voiceover take (the
+     cost of its credits is asked first).
+   - **An animation's storyboard** is this check-in: the images page shows its latest sheet and
+     its frames one under another (each panel full size on a click, its time, the voiceover line,
+     what is on screen, and a note), with the voiceover beside it, and an accept there is its pick.
+     A note on a frame is saved per frame: `tm organic decisions` returns them as the row's
+     `frame_notes` (in chat: `storyboard-<item>: redo; frame 2: <their words>`), and only the frames
+     with a note are drawn again; by rule, `tm organic pick --run R
      --stage storyboard --name <item> --file 03_wip/<item>/storyboard_vNN/sheet.png --reason
      "<against the storyboard rubric>" --json`. A redo with a note is a new storyboard version
      (free): the subagent fixes what the note says, you draw it again and show it again.
@@ -1033,7 +1084,9 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
 3. **The video check-in**:
    - **Check every step**: the takes page, as F1 with `--gate video` and the page `gate_video`
      (`tm organic page gate --gate video --run R --json`; collection `gate_video`), each take with
-     its QA findings, each animation's renders and each stills item's motion-graphics renders,
+     its QA findings and, for a narrator or an animation, **played with the voiceover laid under it**
+     at the pack's times and the take's own sound turned down (a mux on this computer, free, into
+     `showcase/<take>__<voiceover>_vo.mp4`; no edit, the music comes in G1), each animation's renders and each stills item's motion-graphics renders,
      the latest marked (a redo with a note is a new animation or render version, free). The
      user's accept of a motion-graphics render, its choice, is the one F2 checks and the edit
      cuts, until a newer render is made. The user's pick: `tm organic pick --run R --stage takes --name <item> --file

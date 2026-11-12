@@ -76,8 +76,8 @@ import unicodedata
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from tm import (flow, i18n, kit, manifest, organic_final, organic_pack, organic_qa, organic_specs, page, render,
-                runfolder, state, stepchecks, trend_spool, trends)
+from tm import (flow, i18n, kit, manifest, organic_final, organic_pack, organic_qa, organic_specs, organic_voiced, page,
+                render, runfolder, state, stepchecks, trend_spool, trends)
 from tm.organic_pages import gate_words, lang_of
 from tm.organic_pages import gate as gate_page
 from tm.r2 import run_config
@@ -270,9 +270,11 @@ def _text_look(run: RunFolder, t: dict) -> dict | None:
     return None
 
 
-def _stage_items(run: RunFolder, pack: dict, t: dict, *, video: bool, refs: list[dict]) -> tuple[list, dict]:
+def _stage_items(run: RunFolder, pack: dict, t: dict, *, video: bool, refs: list[dict],
+                 voiced: str | None = None) -> tuple[list, dict]:
     """The items of one stage (the images or the takes): (page items, their plugin entries). An item with nothing
-    made is left out."""
+    made is left out. With `voiced` (the voiceover take), each take is shown with it laid under (issue #83)."""
+    starts = organic_voiced.offsets(pack) if voiced else {}
     stage = organic_qa.TAKES if video else organic_qa.IMAGES
     kind = "takes" if video else "images"
     picks = _current(run, stage)
@@ -292,6 +294,10 @@ def _stage_items(run: RunFolder, pack: dict, t: dict, *, video: bool, refs: list
             if video:
                 words, sheets[f] = _qa(run, f, pack, t)
                 option = {**option, "src": _preview(run, f), "caption": f"{Path(f).stem} · {words}"}
+                laid = organic_voiced.laid_under(run, option["src"], voiced, starts.get(item["name"], 0.0)) \
+                    if voiced else None
+                if laid:
+                    option |= {"src": laid, "caption": f"{t['cap_with_voiceover'].format(take=Path(f).stem)} · {words}"}
             if picks.get(stem) == f:
                 option["pick"] = True
             options.append(option)
@@ -301,9 +307,10 @@ def _stage_items(run: RunFolder, pack: dict, t: dict, *, video: bool, refs: list
             if sheets.get(take):
                 shown.append({"src": sheets[take], "caption": t["cap_contact"].format(take=Path(take).stem)})
         iid = item_id(f"{kind}-{stem}", taken)
+        question = t["q_takes_voiceover" if video and voiced else f"q_{kind}"].format(name=item["name"])
         items.append({"id": iid, "proposal": t["proposal"].format(id=pack["id"], channel=pack["channel"]),
                       "label": t[f"label_{kind}"].format(name=item["name"]),
-                      "question": t[f"q_{kind}"].format(name=item["name"]), "options": options, "refs": shown})
+                      "question": question, "options": options, "refs": shown})
         plugin[iid] = {"kind": kind, "name": item["name"], "stem": stem, "files": ids}
     return items, plugin
 
@@ -317,8 +324,10 @@ def _data(run: RunFolder, pack: dict, gate: str, items: list, plugin: dict) -> d
             "plugin": plugin}
 
 
-def _animations(run: RunFolder, pack: dict, t: dict) -> tuple[list, dict]:
-    """Each animated item's renders, `03_wip/<item>/renders/anim_vNN.mp4`, the latest marked."""
+def _animations(run: RunFolder, pack: dict, t: dict, voiced: str | None = None) -> tuple[list, dict]:
+    """Each animated item's renders, `03_wip/<item>/renders/anim_vNN.mp4`, the latest marked; with `voiced`, each
+    shown with the voiceover laid under it (issue #83)."""
+    starts = organic_voiced.offsets(pack) if voiced else {}
     items, plugin = [], {}
     taken: set[str] = set()
     for item in organic_pack.animated(pack):
@@ -335,12 +344,15 @@ def _animations(run: RunFolder, pack: dict, t: dict) -> tuple[list, dict]:
             rel = _rel(run, f)
             oid = _option_id(rel, ids)
             ids[oid] = rel
-            options.append({"id": oid, "src": _preview(run, rel), "caption": f"{item}/{f.stem}",
+            src = _preview(run, rel)
+            laid = organic_voiced.laid_under(run, src, voiced, starts.get(item, 0.0)) if voiced else None
+            options.append({"id": oid, "src": laid or src,
+                            "caption": t["cap_with_voiceover"].format(take=f"{item}/{f.stem}") if laid else f"{item}/{f.stem}",
                             **({"pick": True} if f == latest else {})})
         iid = item_id(f"animation-{item}", taken)
         items.append({"id": iid, "proposal": t["proposal"].format(id=pack["id"], channel=pack["channel"]),
-                      "label": t["label_animation"].format(name=item), "question": t["q_animation"],
-                      "options": options})
+                      "label": t["label_animation"].format(name=item),
+                      "question": t["q_animation_voiceover" if voiced else "q_animation"], "options": options})
         plugin[iid] = {"kind": "animation", "name": item, "stem": f"{item}_animation", "files": ids}
     return items, plugin
 
@@ -379,22 +391,22 @@ def gate_json(run: RunFolder, gate: str) -> dict:
     refs, missing = _refs(run, pack, t)
     still = _still(run, pack, t) if gate == "images" and pack.get("style_spec") else None
     look = _text_look(run, t) if gate == "images" else None
-    items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + [r for r in (still, look) if r])
+    voiced = organic_voiced.voiceover(run) if organic_voiced.narrated(pack) else None   # issue #83 point 4
+    items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + [r for r in (still, look) if r],
+                                 voiced=voiced if gate == "video" else None)
     if gate == "video" and organic_pack.stills(pack):
         extra, entries = _motions(run, pack, t)
         items += extra
         plugin.update(entries)
     animated = organic_pack.animated(pack)
+    more = []
     if animated:
-        if gate == "video":
-            more = [_animations(run, pack, t)]
-        else:
-            more = [_storyboards(run, pack, t, only=animated)]
-            if more[0][0]:
-                more.append(_voiceover(run, pack, t))
-        for extra, entries in more:
-            items += extra
-            plugin.update(entries)
+        more.append(_animations(run, pack, t, voiced) if gate == "video" else _storyboards(run, pack, t, only=animated))
+    if gate == "images" and voiced:   # the voice is heard and accepted before anything paid is made (issue #83)
+        more.append(_voiceover(run, pack, t, question=t["q_voiceover_images"]))
+    for extra, entries in more:
+        items += extra
+        plugin.update(entries)
     if not items:
         what = "take" if gate == "video" else "image"
         raise Stop(f"No {what} of the pack is made yet, so there is nothing to show on the {GATES[gate]} page. Make "
@@ -404,7 +416,7 @@ def gate_json(run: RunFolder, gate: str) -> dict:
                                           "missing_thumbnails": missing})
 
 
-def _voiceover(run: RunFolder, pack: dict, t: dict) -> tuple[list, dict]:
+def _voiceover(run: RunFolder, pack: dict, t: dict, question: str | None = None) -> tuple[list, dict]:
     files = list(dict.fromkeys(r["file"] for r in manifest.rows(run)
                                if r["source"] == TTS and (run.path / r["file"]).is_file()))
     if not files:
@@ -416,7 +428,7 @@ def _voiceover(run: RunFolder, pack: dict, t: dict) -> tuple[list, dict]:
         ids[oid] = f
         options.append({"id": oid, "src": f, "caption": Path(f).name})
     item = {"id": "voiceover", "proposal": t["proposal"].format(id=pack["id"], channel=pack["channel"]),
-            "label": t["label_voiceover"], "question": t["q_voiceover"], "options": options}
+            "label": t["label_voiceover"], "question": question or t["q_voiceover"], "options": options}
     return [item], {"voiceover": {"kind": "voiceover", "name": None, "stem": "voiceover", "files": ids}}
 
 
@@ -436,12 +448,56 @@ def _storyboards(run: RunFolder, pack: dict, t: dict, only: list[str] | None = N
         latest = found[-1][1]
         sheet = _rel(run, latest / "sheet.png")
         iid = item_id(f"storyboard-{folder.name}", taken)
-        items.append({"id": iid, "proposal": t["proposal"].format(id=pack["id"], channel=pack["channel"]),
-                      "label": t["label_storyboard"].format(name=folder.name), "question": t["q_storyboard"],
-                      "options": [{"id": latest.name, "src": sheet, "caption": f"{folder.name}/{latest.name}"}]})
+        frames = storyboard_frames(run, folder.name, latest, t)
+        item = {"id": iid, "proposal": t["proposal"].format(id=pack["id"], channel=pack["channel"]),
+                "label": t["label_storyboard"].format(name=folder.name),
+                "question": t["q_storyboard_frames" if frames else "q_storyboard"],
+                "options": [{"id": latest.name, "src": sheet, "caption": f"{folder.name}/{latest.name}"}]}
+        if frames:
+            item["frames"] = frames
+            item["frame_words"] = {k: t[k] for k in FRAME_WORDS}
+        items.append(item)
         plugin[iid] = {"kind": "storyboard", "name": folder.name, "stem": f"{folder.name}_storyboard",
-                       "files": {latest.name: sheet}}
+                       "files": {latest.name: sheet}, **({"frames": [f["id"] for f in frames]} if frames else {})}
     return items, plugin
+
+
+FRAMES = "frames"                      # 03_wip/<item>/frames_vNN.json: each panel's time, line, scene and overlay
+FRAME_WORDS = ("frames", "frame_line", "frame_overlay", "frame_scene", "frame_note", "frame_open")
+_PANEL = re.compile(r"^panel_(\d+)\.png$", re.IGNORECASE)
+
+
+def _seconds(value: object) -> str:
+    return f"{value:g}" if isinstance(value, (int, float)) and not isinstance(value, bool) else "?"
+
+
+def storyboard_frames(run: RunFolder, item: str, board: Path, t: dict) -> list[dict]:
+    """The storyboard as a list of frames (issue #83 point 3): each `panel_NN.png` of the drawn `board`, with what
+    the item's latest frames file says of it (`03_wip/<item>/frames_vNN.json`, a list of `{panel, from, to, line,
+    scene, overlay}` the agent writes from the content file: its times, the voiceover line, the scene and the only
+    text allowed on screen). Without a frames file, each panel by its number alone; no panels, no frames."""
+    panels = sorted((int(m.group(1)), p) for p in board.iterdir() if p.is_file() and (m := _PANEL.match(p.name)))
+    if not panels:
+        return []
+    said: dict[int, dict] = {}
+    found = run.latest(f"{WIP}/{item}", FRAMES, "json")
+    if found is not None:
+        try:
+            rows = json.loads(found.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            rows = []
+        for row in rows if isinstance(rows, list) else []:
+            if isinstance(row, dict) and isinstance(row.get("panel"), int) and not isinstance(row["panel"], bool):
+                said[row["panel"]] = row
+    out = []
+    for n, path in panels:
+        row = said.get(n, {})
+        start, end = row.get("from"), row.get("to")
+        out.append({"id": f"panel_{n:02d}", "n": n, "src": _rel(run, path),
+                    "label": t["frame"].format(n=n),
+                    "time": t["frame_time"].format(start=_seconds(start), end=_seconds(end)) if start is not None else "",
+                    **{k: str(row[k]) for k in ("line", "scene", "overlay") if isinstance(row.get(k), str) and row[k]}})
+    return out
 
 
 def delivery_json(run: RunFolder) -> dict:
@@ -564,6 +620,28 @@ _ACTION_WORDS = {"accept": "accept", "redo": "redo", "drop": "drop", "not decide
 _FIELDS = {"choice": "choice", "wybór": "choice", "platforms": "platforms", "platformy": "platforms",
            "thumbnail": "thumbnail", "miniatura": "thumbnail", "note": "note", "uwaga": "note"}
 _YES = {"yes": True, "tak": True, "no": False, "nie": False}
+_FRAME = re.compile(r"^(?:frame|klatka|panel)\s*(\d+)$", re.IGNORECASE)
+FRAME_SEP = "~"                 # a frame's note is its own document, `<item id>~panel_NN` (issue #83 point 3)
+
+
+def frame_notes(docs: list[tuple[str, dict]], data: dict) -> dict[str, dict[str, str]]:
+    """The notes saved on a storyboard's frames: {item id: {panel id: note}}, the newest per frame; only the frames
+    the page showed, and only notes with words."""
+    shown = {it["id"]: {f["id"] for f in it.get("frames") or []} for it in data["items"] if it.get("frames")}
+    newest: dict[str, dict] = {}
+    for did, doc in docs:
+        iid, sep, frame = str(did).partition(FRAME_SEP)
+        if not sep or frame not in shown.get(iid, ()) or not isinstance(doc, dict):
+            continue
+        if did not in newest or str(doc.get("updated_at") or "") >= str(newest[did].get("updated_at") or ""):
+            newest[did] = doc
+    out: dict[str, dict[str, str]] = {}
+    for did, doc in sorted(newest.items()):
+        iid, _, frame = did.partition(FRAME_SEP)
+        note = doc.get("note")
+        if isinstance(note, str) and note.strip():
+            out.setdefault(iid, {})[frame] = note.strip()
+    return out
 
 
 def parse_chat(text: str, data: dict) -> list[tuple[str, dict]]:
@@ -589,9 +667,13 @@ def parse_chat(text: str, data: dict) -> list[tuple[str, dict]]:
         for i, part in enumerate(parts[1:], 1):
             head, sep, value = part.partition(": ")
             field = _FIELDS.get(head.strip().lower()) if sep else None
-            if field is None:
+            if field is None and not (sep and _FRAME.match(head.strip())):
                 raise Stop(f"The line {line!r} has a part it cannot read ({part!r}). Write it as `<item>: <decision>"
                            f"[; choice: <option>][; platforms: …][; thumbnail: yes|no][; note: …]`; {AGAIN}.")
+            frame = _FRAME.match(head.strip()) if sep and field is None else None
+            if frame is not None:                   # `frame 2: <words>`: a note on one frame of a storyboard
+                doc.setdefault("frames", {})[f"panel_{int(frame.group(1)):02d}"] = value.strip()
+                continue
             if field == "note":                     # the last part: a note may hold "; "
                 doc["note"] = "; ".join([value, *parts[i + 1:]])
                 break
@@ -791,6 +873,17 @@ def take_decisions(run: RunFolder, page_name: str, *, file: Path | None = None, 
     newest = _newest(docs, ids)
     rows = _rows(data, newest)
     read = {iid: {k: v for k, v in doc.items() if k != "updated_at"} for iid, doc in newest.items()}
+    framed = frame_notes(docs, data) if text is None else {
+        iid: {k: v.strip() for k, v in (doc.get("frames") or {}).items()
+              if v.strip() and k in {f["id"] for f in it.get("frames") or []}}
+        for iid, doc in newest.items() for it in data["items"] if it["id"] == iid and it.get("frames")}
+    for iid, notes in framed.items():
+        if notes and iid in rows:
+            rows[iid]["frame_notes"] = notes
+            read.setdefault(iid, {})["frames"] = notes
+            if rows[iid]["action"] == "redo":   # the agent redraws only the frames with a note
+                rows[iid]["note"] = "\n".join([x for x in [rows[iid]["note"]] if x]
+                                              + [f"{k}: {v}" for k, v in notes.items()])
     carried: list[str] = []
     if text is None:
         earlier = page.earlier_decisions(run, _decisions_files(run, page_name), decided["folder"], built="folder",

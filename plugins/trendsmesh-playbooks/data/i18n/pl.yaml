@@ -4,6 +4,9 @@
 # translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
 
 strings:
+  common:
+    # the reply button after a page with decisions is shown (issue #83 point 5)
+    reply_saved: Zapisane, odczytaj moje wybory
   checks:
     # CA3 (Create an ad): the promises Polish ad copy makes only when a checked claim says them too
     promise_results: "gwarant*, efekty po, efekt po, rezultaty po, wyniki po, zobaczysz efekty, zobaczysz efekt, zobaczysz wyniki, natychmiastow* efekt*, natychmiastow* rezultat*, murowan* efekt*, bez ryzyka, zwrot pieniędzy, zwrot kasy, zawsze działa, podwoisz, potroisz, pewny efekt, pewne efekty"
@@ -209,6 +212,124 @@ strings:
       qa_fails: "kontrola jakości nie przeszła: {fails}"
       qa_findings: "uwagi: {findings}"
       qa_none: jeszcze bez kontroli jakości
+      frames: Klatki
+      frame: "Klatka {n}"
+      frame_time: "{start}–{end} s"
+      frame_line: Lektor
+      frame_overlay: Na ekranie
+      frame_scene: Scena
+      frame_note: Uwaga do tej klatki (rysujemy od nowa tylko klatki z uwagą)
+      frame_open: Otwórz w pełnym rozmiarze
+      q_storyboard_frames: Czy wygląd i kolejność pasują? Napisz uwagę pod klatką, żeby ją zmienić; Akceptuj przyjmuje cały storyboard.
+      q_voiceover_images: Posłuchaj głosu, zanim cokolwiek płatnego powstanie. Akceptacja strony przyjmuje obrazy i głos.
+      q_takes_voiceover: "Które ujęcie {name}? Obejrzyj je z podłożonym lektorem. Muzyka dochodzi w montażu. Wyniki kontroli jakości są pod każdym ujęciem."
+      q_animation_voiceover: "Obejrzyj ją z podłożonym lektorem. Muzyka dochodzi w montażu. Przy Popraw napisz, który moment zmienić i jak."
+      cap_with_voiceover: "{take} z lektorem"
+    choices:
+      eyebrow: "Organiczne wideo AI · {page}"
+      page_intake: pytania na start
+      page_taste: styl, głos i muzyka
+      page_models: modele
+      how: "Domyślne odpowiedzi są już zaznaczone. Zmień, co chcesz: każda zmiana zapisuje się na stronie pod linkiem claude.ai. Potem naciśnij Gotowe i wróć do czatu. Kopia otwarta jako plik nie zapisuje: napisz Claude odpowiedzi w czacie."
+      your_choices: Twoje wybory
+      recommended: Proponowane
+      cannot: "Nie do użycia w tym filmie: {reason}"
+      open_page: otwórz jego stronę
+      line_note: Uwaga do tej kwestii
+      total: "Razem za ten film:"
+      done_button: Gotowe
+      done: Zapisane · wróć do czatu i naciśnij „Zapisane, odczytaj moje wybory” (albo napisz gotowe)
+      not_saved: "Niezapisane dla Claude: napisz Claude swoje wybory w czacie"
+      saving: Zapisuję…
+      saved: Zapisane · Claude widzi Twoje wybory
+      save_failed: Nie udało się zapisać na stronie; wybory zostają w tej przeglądarce
+      connecting: Wybory zostają w tej przeglądarce, dopóki strona się nie połączy…
+      ready: Gotowe · wybory zapisują się automatycznie
+      storage_unreachable: "Brak dostępu do zapisu strony, więc wybory nie trafiają do Claude: napisz je w czacie"
+    intake:
+      title: Nowy plan wideo
+      lede: Kilka pytań przed wyszukiwaniem trendów. Wszystko, czego nie zmienisz, zostaje domyślne.
+      free: bezpłatnie
+      paid: płatne
+      channel: Kanał
+      channel_hint: Nazwa kanału (kilka kanałów rozdziel przecinkami).
+      channel_label: Nazwa kanału
+      platforms: Platformy
+      platforms_hint: Gdzie publikujesz filmy.
+      account: Typ konta
+      account_creator: Konto twórcy
+      account_business: Konto firmowe
+      account_business_means: Dostaje dźwięk z biblioteki komercyjnej obok popularnego dźwięku.
+      bubble: Bańka kanału
+      bubble_hint: Co kanał nagrywa, o czym, dla kogo i w jakim stylu.
+      bubble_label: W kilku zdaniach
+      links: Co się sprawdziło
+      links_hint: 2–3 linki do filmów, które dobrze poszły, albo „jeszcze nic”.
+      links_label: Linki
+      links_none: jeszcze nic
+      catalogue: Firma i oferta
+      catalogue_hint: Produkty i problemy, które rozwiązują, albo „nic nie sprzedajemy”.
+      catalogue_label: Produkty
+      catalogue_none: nic nie sprzedajemy
+      product_role: Produkt w filmach
+      product_role_hint: Od niewidocznego po bohatera filmu.
+      languages: Języki
+      languages_hint: Język pracy (strony i czat), potem język odbiorców.
+      languages_label: Praca, odbiorcy (kody języków, np. pl, pl)
+      output: Co robimy
+      output_hint: Wybierasz to jeszcze raz dla każdego pomysłu na stronie propozycji.
+      output_script: Scenariusz do nagrania
+      output_video: Gotowe wideo AI
+      output_video_means: Płatne; każdy koszt widzisz i zatwierdzasz najpierw.
+      contents: Co ma być w tygodniu
+      contents_scripts: Scenariusze do nagrania
+      contents_videos: Wideo AI
+      contents_mix: Mieszanka
+      per_week: Filmów w tygodniu
+      days: Dni publikacji
+      flexible_day: Elastyczny dzień
+      flexible_day_hint: Jego pomysł wybieramy dzień wcześniej, ze świeżych trendów.
+      run_day: Dzień planowania tygodnia
+      week_budget: Budżet tygodnia
+      resolution: Rozdzielczość wideo AI
+      resolution_hint: Koszt każdej opcji zobaczysz w pakiecie.
+      resolution_768p: 768p
+      resolution_1080p: 1080p
+      resolution_768p_pruna: 768p z powiększeniem do 1080p
+      budget: Budżet na film
+      budget_hint: Twardy limit. Nic nie zostanie wydane ponad niego.
+      usd_label: USD
+      currency: Waluta konta
+      currency_hint: Kwoty pokazujemy w USD, z kursem, gdy konto ma inną walutę.
+      currency_label: Kod waluty (np. USD, EUR, PLN)
+      quality: Jakość wideo AI
+      quality_hint: Model wideo. Możesz go zmienić dla każdego filmu.
+      quality_budget: Oszczędna (Seedance 1.5 Pro)
+      quality_default: Domyślna (MiniMax H3)
+      quality_top: Najwyższa (Seedance 2.0)
+      level: Jak bardzo chcesz brać udział?
+      rules: Zasady treści
+      rules_hint: Dla wrażliwej niszy (dzieci, zdrowie, pieniądze, wiadomości).
+      rules_none: Bez dodatkowych zasad
+      rules_sensitive: Bez prawdziwych twarzy dzieci, źródło przy każdym twierdzeniu, bez twierdzeń medycznych
+    taste:
+      title: "{title}: styl, głos i muzyka"
+      lede: Posłuchaj i obejrzyj, zanim wybierzesz. Na tej stronie nic nie powstaje i nic nie jest płatne.
+      script: Tekst lektora
+      script_hint: Każda kwestia z czasem. Napisz uwagę pod kwestią, żeby ją zmienić.
+      script_note: Uwaga do całego tekstu
+      note: Uwaga
+      style: Styl
+      style_hint: Nasze style animacji, które pasują do tego filmu.
+      voice: Głos
+      voice_hint: Odtwórz każdy głos. Twoje własne głosy z ElevenLabs też są na liście.
+      voice_mine: Twój głos
+      music: Muzyka
+      music_hint: Popularny dźwięk dodajesz w aplikacji przy publikacji; wtyczka nie może go wstawić do pliku.
+      no_track: Bez muzyki, dodam dźwięk w aplikacji
+      no_track_means: Film dostajesz tylko z głosem.
+      trending: "Popularny dźwięk: {name}"
+      trending_means: Dodajesz go w aplikacji przy publikacji.
     # the script to film and its Markdown (organic_pages/script.py)
     script:
       eyebrow: Organiczne wideo AI · skrypt do nagrania

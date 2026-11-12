@@ -261,8 +261,9 @@ def _await(args: argparse.Namespace, run: RunFolder) -> int:
         message = "Not waiting for decisions on the page any more: a new page version can be built."
     else:
         message = (f"Waiting for decisions on the page ({got['stage']}, version {got['version']}): tm brief page "
-                   "refuses a new version until they are read with tm brief decisions.")
-    cli.emit(args, {"status": "done", "awaiting": got, "message": message}, message)
+                   f"refuses a new version until they are read with tm brief decisions. {page.reply_line(run)}")
+    cli.emit(args, {"status": "done", "awaiting": got, "message": message,
+                    **({"reply_button": page.reply_button(run)} if got else {})}, message)
     return 0
 
 

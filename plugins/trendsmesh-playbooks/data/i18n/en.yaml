@@ -16,6 +16,8 @@ common:
   month_10: Oct
   month_11: Nov
   month_12: Dec
+  # the reply button the agent ends its turn with after a page with decisions is shown (issue #83 point 5)
+  reply_saved: Saved, read my choices
 
 trends:
   # offered to the user for the weekly run, in their working language
@@ -687,6 +689,128 @@ organic:
     qa_fails: "QA fails: {fails}"
     qa_findings: "findings: {findings}"
     qa_none: no QA yet
+    # issue #83: the storyboard as a list of frames, and the voiceover on the check-in pages
+    frames: Frames
+    frame: "Frame {n}"
+    frame_time: "{start}–{end} s"
+    frame_line: Voiceover
+    frame_overlay: On screen
+    frame_scene: Scene
+    frame_note: Note on this frame (only frames with a note are drawn again)
+    frame_open: Open full size
+    q_storyboard_frames: Do the look and the order fit? Write a note under a frame to change it; Accept takes the whole storyboard.
+    q_voiceover_images: Listen to the voice before anything paid is made. Accepting the page accepts the images and the voice.
+    q_takes_voiceover: "Which take of {name}? Watch it with the voiceover laid under it. The music comes in the edit. The QA findings are under each take."
+    q_animation_voiceover: "Watch it with the voiceover laid under it. The music comes in the edit. On Redo, say which moment to change and how."
+    cap_with_voiceover: "{take} with the voiceover"
+  # the pages of choices (organic_pages/choices.py): the intake, the style, voice and music, the models (#83, #86)
+  choices:
+    eyebrow: "Organic AI video · {page}"
+    page_intake: start questions
+    page_taste: style, voice and music
+    page_models: models
+    how: "The defaults are already ticked. Change what you want: each change saves on the page’s claude.ai link. Then press Done and go back to the chat. A copy opened as a file can’t save: tell Claude your answers in chat."
+    your_choices: Your choices
+    recommended: Suggested
+    cannot: "Can’t be used for this video: {reason}"
+    open_page: open its page
+    line_note: Note on this line
+    total: "Total for this video:"
+    done_button: Done
+    done: Saved · go back to the chat and press “Saved, read my choices” (or write done)
+    not_saved: "Not saved for Claude: tell Claude your choices in chat"
+    saving: Saving…
+    saved: Saved · Claude can read your choices
+    save_failed: Could not save to the page; kept in this browser
+    connecting: Choices are kept in this browser until the page connects…
+    ready: Ready · your choices save automatically
+    storage_unreachable: "Page storage not reachable, so choices are not saved for Claude: tell Claude your choices in chat"
+  # the intake page (A0)
+  intake:
+    title: Start a new video plan
+    lede: A few questions before the trend search. Everything you leave as it is keeps the default.
+    free: free
+    paid: paid
+    channel: Channel
+    channel_hint: The channel’s name (several channels, separated by commas).
+    channel_label: Channel name
+    platforms: Platforms
+    platforms_hint: Where the videos are posted.
+    account: Account type
+    account_creator: Creator account
+    account_business: Business account
+    account_business_means: Gets a commercial-library sound beside a trending one.
+    bubble: The channel’s bubble
+    bubble_hint: What the channel films, about what, for whom, and in what style.
+    bubble_label: In a few sentences
+    links: What performed
+    links_hint: 2 to 3 links to videos that did well, or “none yet”.
+    links_label: Links
+    links_none: none yet
+    catalogue: Company and catalogue
+    catalogue_hint: The products and the problems they solve, or “nothing sold”.
+    catalogue_label: Products
+    catalogue_none: nothing sold
+    product_role: The product in the videos
+    product_role_hint: From not shown to the hero of the video.
+    languages: Languages
+    languages_hint: The working language (the pages and the chat), then the audience’s language.
+    languages_label: Working, audience (language tags, e.g. en, en)
+    output: What to make
+    output_hint: It is chosen again for each idea on the proposals page.
+    output_script: A script to film
+    output_video: A ready AI video
+    output_video_means: Paid; every cost is shown and approved first.
+    contents: What the week holds
+    contents_scripts: Scripts to film
+    contents_videos: AI videos
+    contents_mix: A mix
+    per_week: Videos a week
+    days: Posting days
+    flexible_day: The flexible day
+    flexible_day_hint: Its idea is picked the day before, from fresh trends.
+    run_day: The day the week is planned
+    week_budget: The week’s budget
+    resolution: Resolution of an AI video
+    resolution_hint: The cost of each is shown with the pack.
+    resolution_768p: 768p
+    resolution_1080p: 1080p
+    resolution_768p_pruna: 768p with an upscale to 1080p
+    budget: Budget per video
+    budget_hint: A hard cap. Nothing is spent beyond it.
+    usd_label: USD
+    currency: Account currency
+    currency_hint: Money is shown in USD, with the rate when your account uses another currency.
+    currency_label: Currency code (e.g. USD, EUR, PLN)
+    quality: Quality of an AI video
+    quality_hint: The video model. You can still change it per video.
+    quality_budget: Budget (Seedance 1.5 Pro)
+    quality_default: Default (MiniMax H3)
+    quality_top: Top (Seedance 2.0)
+    level: How involved do you want to be?
+    rules: Content rules
+    rules_hint: For a sensitive niche (children, health, money, news).
+    rules_none: No extra rules
+    rules_sensitive: No real children’s faces, a source for every claim, no medical claims
+  # the style, voice and music page (D2)
+  taste:
+    title: "{title}: style, voice and music"
+    lede: Listen and look before you choose. Nothing is made or paid on this page.
+    script: The voiceover script
+    script_hint: Each line with its time. Write a note under a line to change it.
+    script_note: A note on the whole script
+    note: Note
+    style: Style
+    style_hint: Our animation styles that suit this video.
+    voice: Voice
+    voice_hint: Play each voice. Your own ElevenLabs voices are listed too.
+    voice_mine: your voice
+    music: Music
+    music_hint: A trending sound is added in the app when you post; the plugin can’t put it into the file.
+    no_track: No track, I’ll add a sound in the app
+    no_track_means: The video is delivered with the voice only.
+    trending: "Trending sound: {name}"
+    trending_means: You add it in the app when you post.
   # the script to film and its Markdown (organic_pages/script.py)
   script:
     eyebrow: Organic AI video · script to film

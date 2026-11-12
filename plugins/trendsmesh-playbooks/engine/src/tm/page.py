@@ -318,6 +318,25 @@ _COUNT_LINE = re.compile(r'^(\d+) documents? from collection "', re.M)
 _CURSOR_LINE = re.compile(r'^next_cursor: "([^"]+)"', re.M)
 
 
+REPLY_KEY = "common.reply_saved"
+REPLY = ("When you have shown the page and wait, end your turn with a reply button {words!r} where the app has reply "
+         "buttons (references/pages.md, \"The reply button\"): a click counts as the user's \"done\". Without them "
+         "(the terminal), the user types done.")
+
+
+def reply_button(run: RunFolder) -> str:
+    """The reply button's words after a page with decisions is saved (issue #83 point 5): `common.reply_saved` in the
+    run's working language when its table has it, else the English (the agent says it in the chat language)."""
+    from tm import i18n
+    lang = i18n.run_languages(run).working
+    have = i18n.table(lang) if lang else i18n.english()
+    return have.get(REPLY_KEY) or i18n.english()[REPLY_KEY]
+
+
+def reply_line(run: RunFolder) -> str:
+    return REPLY.format(words=reply_button(run))
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -700,8 +719,8 @@ def _await(args: argparse.Namespace, run: RunFolder) -> int:
         return 0
     got = await_(run, args.page, args.version)
     message = (f"Waiting for decisions on the {args.page} page (version {got['version']}): a new version of it is "
-               "refused until they are read." + (f" {got['note']}" if got.get("note") else ""))
-    cli.emit(args, {"status": "done", "awaiting": got, "message": message}, message)
+               "refused until they are read." + (f" {got['note']}" if got.get("note") else "") + f" {reply_line(run)}")
+    cli.emit(args, {"status": "done", "awaiting": got, "reply_button": reply_button(run), "message": message}, message)
     return 0
 
 
@@ -722,7 +741,9 @@ def _build(args: argparse.Namespace, run: RunFolder) -> int:
                 f"tm page published --page {run_page.PAGE}.")
     if got.get("language_warning"):
         then = f"{got['language_warning']} {then}"
-    cli.emit(args, {"status": "done", **got, "message": then},
+    if got["open"] and not got["local"]:
+        then = f"{then} {reply_line(run)}"
+    cli.emit(args, {"status": "done", **got, "reply_button": reply_button(run), "message": then},
              f"Built {got['folder']} (now: {now}; {got['settled']} settled). {then}")
     return 0
 

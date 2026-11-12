@@ -95,8 +95,9 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
 <seed_id>` when starting from a trend pick of the user's trend report: `references/flow.md#a0`).
 **Its answer lists `unfinished_runs`**: this playbook's runs of the same name or channel that were started and are not done (`folder`, `created`, `step`). When it lists any, always ask first, in one short question, whether to continue one of them (then `tm next` on it; the new folder stays unused) or start this new one.
 Then the readiness above, then **FLOWS A1's intake in one batch**, at A0: the engine needs the
-level and the outputs before any check-in. Ask only what cannot be derived, with defaults, and
-mark your assumptions: the channel(s) and their platforms, account type, what the channel films,
+level and the outputs before any check-in. **Ask it on the intake page** (`tm organic page
+intake`, `references/flow.md#a0`), or in chat without a publishing tool; both count the same. Ask
+only what cannot be derived, with defaults, and mark your assumptions: the channel(s) and their platforms, account type, what the channel films,
 about what and for whom, what performed (2 to 3 links), products (or "nothing sold"), the product
 role, the output (a script to film or an AI video; for "plan my week of videos", a week run), the quality
 tier and resolution (kept for the AI video; asked even without a Replicate token, which the user may set
@@ -199,8 +200,16 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   yet:** check the declaration the publish result says is stored (with the older tools,
   `read_declaration` again); if the rules are not there, or the publish refused them, say so
   plainly, once, and take the decisions in chat.
+- **The pages of choices** (issue #83): the intake at A0 (`tm organic page intake`) and the style,
+  voice and music at D2 (`tm organic page taste`), one option set per question with the default
+  ticked and one Done button; their collections are `intake` and `taste`, read with `tm organic
+  decisions --page intake|taste` into the same files an answer in chat makes (`flow.md#a0`,
+  `#d2`). Nothing on them spends money.
+- **After you show a page with decisions and wait, end your turn with the reply button "Saved,
+  read my choices"** where the app has reply buttons (`references/pages.md`, "The reply button");
+  a click counts as "done". In the terminal the user writes it.
 - **Deciding on the proposals page:** `tm page await --page proposals` before the card. When the
-  user says they are done ("ready", "gotowe"): one unfiltered `ArtifactData` list (the page's
+  user says they are done ("ready", "gotowe", or the reply button): one unfiltered `ArtifactData` list (the page's
   `url`, collection `decisions`, `query.limit` 1000, no cursor; the older tools: `db_list` on the
   slug), then `tm organic decisions --page proposals`.
   The check-in pages work the same way, each with its own collection (`gate_images`,

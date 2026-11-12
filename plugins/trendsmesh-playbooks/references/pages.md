@@ -60,6 +60,17 @@ version of it: wait for the answer, then publish.
 
 **A decision written in chat always counts**, whether or not there is a page.
 
+### The reply button
+
+When you have published a page that takes decisions and you wait for them (every playbook), **end
+your turn with a reply button "Saved, read my choices"**, in the chat language, where the app has
+reply buttons (the Claude desktop app's next-step box: one question, that one button): the page
+cannot wake you, so the user's click is how they tell you they are done, and it counts as "done"
+(or "ready"). The words come with `tm page await`, `tm brief await` and `tm page build` as
+`reply_button`, in the run's working language when its table has them. Where the app has no reply
+buttons (the terminal), ask the user to write "done" in the chat, as before. The page itself is
+the same either way. After the click, read the decisions as the page's own steps say.
+
 ### With the older artifacts tools (`publish_files`)
 
 The same steps, with these calls. Files: the `files` list of `tm page files` (one `{as, path}`
