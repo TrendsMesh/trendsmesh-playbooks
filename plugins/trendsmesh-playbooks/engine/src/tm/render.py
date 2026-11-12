@@ -32,10 +32,11 @@ free version in `03_wip` (never overwritten), with a manifest row whose params a
 whose source is the props file. Rendering is free: no budget.
 The ending card is a HookSwap card whose from/to lie in the last seconds; there is no extra composition.
 Fonts follow the market language (`video_fonts`, issue 3): every composition takes a `language` prop (BCP 47) and
-loads the Google Fonts subsets its script needs, or a Noto Sans fallback for the whole composition when its own font
-lacks them. When the props give no `language`, the run's market language is filled in (Remotion reads a filled-in
-copy of the props; the file stays as written), and the render stops before Remotion starts when a letter on screen
-is outside the chosen font's subsets.
+loads the Google Fonts subsets its script needs; when its own font lacks some, the font draws the letters it has
+and a Noto Sans fallback the others. When the props give no `language`, the run's market language is filled in, and
+a CJK fallback gets only the chunks the text needs (`fontSubsets`; Remotion reads a filled-in copy of the props;
+the file stays as written). The render stops before Remotion starts when a letter on screen is outside the fonts'
+subsets.
 Every subprocess gets an argv list, never a shell string. Exit codes: 0 done, 2 stop, 1 error.
 """
 
@@ -237,6 +238,11 @@ def _check_props(run: RunFolder, comp: str, props: Path) -> dict:
     if "language" in data and not video_fonts.language_tag(data["language"]):
         raise c.ToolError(f"The props' language must be a language tag such as pl, uk or zh-Hant (or left out: "
                           f"the run's market language is used), not {data['language']!r}.")
+    given = data.get("fontSubsets")
+    if "fontSubsets" in data and not (isinstance(given, dict) and all(
+            isinstance(v, list) and all(isinstance(x, str) for x in v) for v in given.values())):
+        raise c.ToolError("The props' fontSubsets must be {family: [subset, ...]} (or left out: tm render names the "
+                          f"chunks of a CJK font the text needs), not {given!r}.")
     if comp == "HookSwap":
         for card in data.get("cards") or []:
             style = card.get("style") if isinstance(card, dict) else None
@@ -316,19 +322,25 @@ def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra:
 def _with_language(run: RunFolder, comp: str, data: dict, props: Path) -> tuple[dict, Path]:
     """(the props with their `language`, the props file Remotion reads). The language is the props' own, else
     the run's market language (`video_fonts.market_language`); the fonts are checked to cover the on-screen text
-    for it (a Stop otherwise). When the language is filled in, Remotion reads a copy of the props in the data
-    folder, removed after the render; the props file stays as written."""
+    for it (a Stop otherwise). A font split in numbered chunks (CJK) gets the chunks the text needs as
+    `fontSubsets` (`video_fonts.font_subsets`), unless the props name them. When anything is filled in, Remotion
+    reads a copy of the props in the data folder, removed after the render; the props file stays as written, and
+    the props recorded carry the language only."""
     if "language" in data:
         language, source = video_fonts.language_tag(data["language"]), "the props"
     else:
         language, source = video_fonts.market_language(run)
     video_fonts.check(comp, data, language, fonts_dir(), source)
-    if not language or data.get("language") == language:
-        return data, props
-    data = {**data, "language": language}
-    filled = work_dir() / f".props-{os.getpid()}-{props.stem}.json"
-    filled.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    return data, filled
+    filled_in = bool(language) and data.get("language") != language
+    if filled_in:
+        data = {**data, "language": language}
+    chunks = {} if "fontSubsets" in data else video_fonts.font_subsets(comp, data, language, fonts_dir())
+    if filled_in or chunks:
+        filled = work_dir() / f".props-{os.getpid()}-{props.stem}.json"
+        filled.write_text(json.dumps({**data, **({"fontSubsets": chunks} if chunks else {})}, ensure_ascii=False),
+                          encoding="utf-8")
+        return data, filled
+    return data, props
 
 
 def draft_still(run: RunFolder, comp: Comp, data: dict, frame: int, dest: Path) -> Path:

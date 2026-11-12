@@ -308,6 +308,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   its date, when it reviews the map, so the seasonal guard puts a trend past its peak after Wszystkich Świętych or
   ハロウィン too, not only after the English holidays it knew. Runs made before keep their lists and still build
   their report.
+- **Videos in Japanese, Korean and Chinese render faster, and other scripts keep the caption font.** For these
+  languages Remotion fetched every piece of the fallback font, about 120 per weight, so a single frame took
+  seconds. `tm render` now names only the pieces the on-screen text needs: a Japanese caption fetches 10 font files
+  instead of 244. Greek, Japanese, Arabic and other captions whose script the caption font lacks were drawn
+  entirely in Noto Sans; now the caption font draws its own letters and digits, and Noto Sans only the others.
 
 ## 0.12.0
 

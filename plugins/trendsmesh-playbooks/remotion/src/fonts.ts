@@ -1,7 +1,10 @@
 // The Google Fonts a composition loads for the market language (its `language` prop, BCP 47), from fonts.json:
 // the subsets the language's script needs (always latin and latin-ext), in the composition's own font when it has
-// them all, else in the script's fallback family for the whole composition. engine/src/tm/video_fonts.py applies
-// the same rule to check, before a render, that the font covers every letter on screen. Keep the two in step.
+// them all; else the composition's font draws the letters it has and the script's fallback family the others, one
+// CSS font-family stack. A font split in numbered chunks (CJK) loads only the chunks `tm render` names in the props'
+// `fontSubsets`. engine/src/tm/video_fonts.py applies the same rule to check, before a render, that the fonts cover
+// every letter on screen, and picks the chunks. Keep the two in step.
+import { getInputProps } from "remotion";
 import { loadFont as BebasNeue } from "@remotion/google-fonts/BebasNeue";
 import { loadFont as Nunito } from "@remotion/google-fonts/Nunito";
 import { loadFont as Baloo2 } from "@remotion/google-fonts/Baloo2";
@@ -42,12 +45,17 @@ export const scriptOf = (language?: string): string => {
   return "latin";
 };
 
-// The family and subsets a composition whose own font is `primary` uses for the language.
-export const pickFamily = (primary: string, language?: string): { family: string; subsets: string[] } => {
+// The families a composition whose own font is `primary` draws with, in CSS order, each with the subsets it loads:
+// the font alone when it has every subset the script needs; else the font with those of them it has (latin and
+// latin-ext at least), then the script's fallback with the rest, so the composition's font draws every letter it
+// has and the fallback only the others (issue 3).
+export const stackFor = (primary: string, language?: string): { family: string; subsets: string[] }[] => {
   const spec = T.scripts[scriptOf(language)];
   const own = T.families[primary].subsets;
-  const family = spec.subsets.every((s) => own.includes(s)) ? primary : spec.fallback;
-  return { family, subsets: spec.subsets };
+  const have = spec.subsets.filter((s) => own.includes(s));
+  const rest = spec.subsets.filter((s) => !own.includes(s));
+  if (rest.length === 0) return [{ family: primary, subsets: spec.subsets }];
+  return [{ family: primary, subsets: have }, { family: spec.fallback, subsets: rest }];
 };
 
 // The composition's own font family in fonts.json (`key` picks one of WordCaptions' caption fonts).
@@ -57,10 +65,22 @@ export const compFont = (comp: string, key?: string): string => {
   return (key !== undefined ? named[key] : undefined) ?? Object.values(named)[0];
 };
 
-// Loads the weights of the picked family and returns its CSS font-family. Loading is cached per font file, so
-// calling this on every frame is cheap. An italic the picked family lacks is drawn from its normal face.
+// The subsets `tm render` names for a family (the props' `fontSubsets`): for a font split in numbered chunks (CJK),
+// only the chunks the on-screen text needs, so a still does not fetch every chunk of every weight.
+const named = (family: string): string[] | undefined => {
+  const given = (getInputProps() as { fontSubsets?: Record<string, unknown> }).fontSubsets?.[family];
+  return Array.isArray(given) ? (given as string[]) : undefined;
+};
+
+// Loads the weights of the families drawn with and returns their CSS font-family stack. Loading is cached per font
+// file, so calling this on every frame is cheap. An italic a family lacks is drawn from its normal face.
 export const loadFor = (primary: string, language: string | undefined, weights: string[], style: "normal" | "italic" = "normal"): string => {
-  const { family, subsets } = pickFamily(primary, language);
-  const face = style === "italic" && !T.families[family].italic ? "normal" : style;
-  return LOADERS[family](face, { weights, subsets }).fontFamily;
+  const out: string[] = [];
+  for (const { family, subsets } of stackFor(primary, language)) {
+    const load = named(family) ?? subsets;
+    if (load.length === 0) continue;                     // the text needs none of its letters
+    const face = style === "italic" && !T.families[family].italic ? "normal" : style;
+    out.push(JSON.stringify(LOADERS[family](face, { weights, subsets: load }).fontFamily));
+  }
+  return out.join(", ");
 };

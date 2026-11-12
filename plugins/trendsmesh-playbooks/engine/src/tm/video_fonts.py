@@ -7,7 +7,11 @@ The rules live in one table, `remotion/src/fonts.json`, which the compositions (
 - a language (BCP 47) maps to a script by its longest known prefix (`zh-hant-tw`, `zh-hant`, `zh`); an unknown
   language, or none, is `latin`;
 - a script lists the subsets to load (always `latin` and `latin-ext`, plus its own); a composition's font that has
-  them all is used as it is, otherwise the whole composition uses the script's fallback (a Noto Sans family);
+  them all is used as it is; otherwise the composition's font draws the letters of the subsets it has and the
+  script's fallback (a Noto Sans family) the rest, one CSS font-family stack (`stack`);
+- a fallback split in numbered chunks (Noto Sans JP, KR, SC, TC: about 120 per weight) loads only the chunks the
+  on-screen text needs: `tm render` names them in the props' `fontSubsets` (`font_subsets`), so a still does not
+  fetch every chunk of every weight;
 - the composition gets the language as its `language` prop. `tm render` fills it in from the run config when the
   props do not give one: the market language the config states (`i18n.stated_market`: `languages.market`, else an
   older config's `account.language`, a tag or an English or native language name), else an organic run's audience
@@ -36,6 +40,7 @@ TABLE = Path(__file__).resolve().parents[3] / "remotion" / "src" / "fonts.json"
 PACKAGE = Path("node_modules") / "@remotion" / "google-fonts" / "dist" / "esm"
 DEFAULT_SCRIPT = "latin"
 CHECKED = ("L", "M", "N", "P", "Sc", "Sm")   # Unicode categories that must come from the font
+CHUNK = re.compile(r"\[\d+\]")              # a numbered chunk of a CJK family, "[57]"
 NOT_LETTERS = {0x20E3, 0x200D} | set(range(0xFE00, 0xFE10)) | set(range(0xE0100, 0xE01F0))  # keycap, ZWJ, selectors
 
 # account.language is often written as a name ("Polish"): English and native names of the languages the table
@@ -92,13 +97,18 @@ def script_of(language: str | None) -> str:
     return DEFAULT_SCRIPT
 
 
-def pick(primary: str, language: str | None) -> tuple[str, list[str]]:
-    """(the family a composition whose font is `primary` uses, the subsets it loads) for the language. Same rule
-    as fonts.ts: the font when it has every subset the script needs, else the script's fallback."""
+def stack(primary: str, language: str | None) -> list[tuple[str, list[str]]]:
+    """The families a composition whose font is `primary` draws with, in CSS order, each with the subsets it
+    loads. Same rule as fonts.ts: the font alone when it has every subset the script needs; else the font with
+    the ones it has (latin and latin-ext at least), then the script's fallback with the rest, so the composition's
+    font draws every letter it has and the fallback (a Noto Sans family) only the others."""
     t = table()
     spec = t["scripts"][script_of(language)]
-    family = primary if set(spec["subsets"]) <= set(t["families"][primary]["subsets"]) else spec["fallback"]
-    return family, list(spec["subsets"])
+    own = t["families"][primary]["subsets"]
+    have = [s for s in spec["subsets"] if s in own]
+    rest = [s for s in spec["subsets"] if s not in own]
+    return [(primary, list(spec["subsets"]))] if not rest else [(primary, have), (spec["fallback"], rest)]
+
 
 
 # --- the market language --------------------------------------------------------------------
@@ -227,7 +237,7 @@ def font_info(esm: Path, family: str) -> FontInfo:
 def coverage(info: FontInfo, subsets: list[str]) -> tuple[tuple[int, int], ...]:
     """The code points the subsets load, as @remotion/google-fonts resolves them: a subset with its own ranges,
     or, for a family split in numbered chunks (CJK), every chunk."""
-    chunks = [k for k in info.ranges if re.fullmatch(r"\[\d+\]", k)]
+    chunks = [k for k in info.ranges if CHUNK.fullmatch(k)]
     out: list[tuple[int, int]] = []
     for s in subsets:
         if s in info.ranges:
@@ -248,25 +258,26 @@ def _checked(ch: str) -> bool:
 
 # --- the check ------------------------------------------------------------------------------
 
-def check(comp: str, data: dict, language: str | None, esm: Path, source: str | None = None) -> tuple[str, list[str]]:
-    """Stop (ToolStop) when an on-screen text has a letter the composition's font, as picked for the language,
-    does not cover. Returns (the family, its subsets) of the composition's main font."""
+def check(comp: str, data: dict, language: str | None, esm: Path,
+          source: str | None = None) -> list[tuple[str, list[str]]]:
+    """Stop (ToolStop) when an on-screen text has a letter that no font of the composition's stack, as `stack`
+    picks it for the language, covers. Returns the stack of the composition's main font."""
     found = texts(comp, data)
     primary = _primary(comp, _dict(data.get("style")).get("font") if comp == "WordCaptions" else None)
-    chosen = pick(primary, language)
+    chosen = stack(primary, language)
     infos: dict[str, tuple[tuple[int, int], ...]] = {}
     missing: dict[str, list[str]] = {}
     families: dict[str, tuple[str, list[str]]] = {}
     for where, text, own in found:
-        family, subsets = pick(own, language)
-        families[family] = (family, subsets)
+        drawn = stack(own, language)
+        families.update({f: (f, subs) for f, subs in drawn})
         letters = [ch for ch in text if _checked(ch)]
         if not letters:
             continue
-        if family not in infos:
-            infos[family] = coverage(font_info(esm, family), subsets)
+        if own not in infos:
+            infos[own] = tuple(r for f, subs in drawn for r in coverage(font_info(esm, f), subs))
         for ch in letters:
-            if not _covered(ord(ch), infos[family]) and ch not in missing.setdefault(where, []):
+            if not _covered(ord(ch), infos[own]) and ch not in missing.setdefault(where, []):
                 missing[where].append(ch)
     missing = {w: chars for w, chars in missing.items() if chars}
     if missing:
@@ -281,3 +292,21 @@ def check(comp: str, data: dict, language: str | None, esm: Path, source: str | 
             "(languages.market, a BCP 47 tag such as uk or el) or give `language` in the props; otherwise change "
             "the text.")
     return chosen
+
+
+def font_subsets(comp: str, data: dict, language: str | None, esm: Path) -> dict[str, list[str]]:
+    """The subsets to load of each family split in numbered chunks that the composition draws with (Noto Sans JP,
+    KR, SC, TC: about 120 chunks per weight), as `tm render` names them in the props' `fontSubsets`: the family's
+    subsets that have ranges of their own, then only the chunks holding a character of an on-screen text, in
+    number order. Empty when no chunked family is drawn; fonts.ts loads the table's subsets for every other one."""
+    out: dict[str, list[str]] = {}
+    for _, text, own in texts(comp, data):
+        for family, subsets in stack(own, language)[1:]:  # only a fallback is ever chunked, not a composition's font
+            info = font_info(esm, family)
+            chunks = [k for k in info.ranges if CHUNK.fullmatch(k)]
+            if not chunks or all(s in info.ranges for s in subsets):
+                continue                                  # loaded as the table names it
+            keep = out.setdefault(family, [s for s in subsets if s in info.ranges])
+            keep += [k for k in chunks if k not in keep and any(_covered(ord(ch), info.ranges[k]) for ch in text)]
+    return {f: [s for s in subs if not CHUNK.fullmatch(s)]
+            + sorted((s for s in subs if CHUNK.fullmatch(s)), key=lambda k: int(k[1:-1])) for f, subs in out.items()}

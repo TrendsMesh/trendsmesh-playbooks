@@ -104,12 +104,13 @@ def test_ending_card_renders_in_last_second(real, tmp_path):
 CW, CH = 540, 960   # caption stills: half of 1080x1920, so a glyph is large enough to compare
 
 
-def _caption_still(run: RunFolder, name: str, text: str, language: str, comp: str = "OrganicCaptions") -> bytes:
-    """One frame of a single hook caption on black, as gray pixels."""
+def _caption_still(run: RunFolder, name: str, text: str, language: str, comp: str = "OrganicCaptions",
+                   **extra) -> bytes:
+    """One frame of a single hook caption on black, as gray pixels (`extra`: more props)."""
     props = run.path / "03_wip" / f"{name}.props.json"
     props.write_text(json.dumps({"width": CW, "height": CH, "fps": 24, "segments": [], "language": language,
-                                 "captions": [{"from": 0, "to": 1, "text": text, "place": "middle", "fontSize": 200}]},
-                                ensure_ascii=False), encoding="utf-8")
+                                 "captions": [{"from": 0, "to": 1, "text": text, "place": "middle", "fontSize": 200}],
+                                 **extra}, ensure_ascii=False), encoding="utf-8")
     return gray(render.still(run, comp, props, 0, run.path / "03_wip" / f"{name}.png"))
 
 
@@ -149,6 +150,33 @@ def test_cyrillic_letters_come_from_the_caption_font(real, tmp_path):
     cyr = _caption_still(run, "o_cyr", "о", "uk")
     assert _glyph_diff(latin, cyr, _glyph_box(latin)) < 0.02
     _caption_still(run, "pryvit", "Привіт, ґанок! Їжак", "uk")
+
+
+@pytest.mark.video
+def test_japanese_letters_come_from_only_the_chunks_they_need(real, tmp_path):
+    """Issue 3, item 6: a Japanese caption loads only the chunks of Noto Sans JP its letters are in, not the
+    font's ~120 chunks per weight, and draws the same as with every chunk loaded."""
+    from tm import video_fonts
+
+    run = RunFolder.create(tmp_path / "日本", "napisy", date(2026, 11, 5))
+    text = "朝のメイク"
+    picked = video_fonts.font_subsets("OrganicCaptions", {"captions": [{"text": text}]}, "ja", render.fonts_dir())
+    every = [k for k in video_fonts.font_info(render.fonts_dir(), "NotoSansJP").ranges if video_fonts.CHUNK.fullmatch(k)]
+    assert 0 < len(picked["NotoSansJP"]) <= len(text) < len(every) / 10
+    few = _caption_still(run, "ja_few", text, "ja")
+    full = _caption_still(run, "ja_full", text, "ja", fontSubsets={"NotoSansJP": every})
+    assert _glyph_diff(few, full, _glyph_box(full)) < 0.02
+
+
+@pytest.mark.video
+@pytest.mark.parametrize("language", ["ja", "el", "ar"])
+def test_latin_letters_keep_the_caption_font_in_another_script(real, tmp_path, language):
+    """Issue 3, item 6: in a Japanese, Greek or Arabic run the caption's font still draws its Latin letters and
+    digits; only the script's letters come from the Noto fallback (before, the whole caption was Noto)."""
+    run = RunFolder.create(tmp_path / "run", "napisy", date(2026, 11, 5))
+    latin = _caption_still(run, "o_pl", "o5", "pl")
+    other = _caption_still(run, f"o_{language}", "o5", language)
+    assert _glyph_diff(latin, other, _glyph_box(latin)) < 0.02
 
 
 @pytest.mark.video

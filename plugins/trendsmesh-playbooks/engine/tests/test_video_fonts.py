@@ -63,23 +63,27 @@ def test_script_of_a_language_tag(tag, script):
     assert vf.script_of(tag) == script
 
 
-@pytest.mark.parametrize("primary, tag, family, subsets", [
-    ("Montserrat", "pl", "Montserrat", ["latin", "latin-ext"]),
-    ("Montserrat", None, "Montserrat", ["latin", "latin-ext"]),   # latin-ext always, not latin alone
-    ("Montserrat", "uk", "Montserrat", ["latin", "latin-ext", "cyrillic", "cyrillic-ext"]),
-    ("Montserrat", "vi", "Montserrat", ["latin", "latin-ext", "vietnamese"]),
-    ("Poppins", "ru", "NotoSans", ["latin", "latin-ext", "cyrillic", "cyrillic-ext"]),
-    ("BebasNeue", "bg", "NotoSans", ["latin", "latin-ext", "cyrillic", "cyrillic-ext"]),
-    ("Montserrat", "el", "NotoSans", ["latin", "latin-ext", "greek"]),
-    ("Poppins", "hi", "Poppins", ["latin", "latin-ext", "devanagari"]),
-    ("Montserrat", "ar", "NotoSansArabic", ["latin", "latin-ext", "arabic"]),
-    ("Fredoka", "he", "Fredoka", ["latin", "latin-ext", "hebrew"]),
-    ("Montserrat", "he", "NotoSansHebrew", ["latin", "latin-ext", "hebrew"]),
-    ("Montserrat", "ja", "NotoSansJP", ["latin", "latin-ext", "japanese"]),
-    ("Poppins", "zh-TW", "NotoSansTC", ["latin", "latin-ext", "chinese-traditional"]),
+L = ["latin", "latin-ext"]
+
+
+@pytest.mark.parametrize("primary, tag, drawn", [
+    ("Montserrat", "pl", [("Montserrat", L)]),
+    ("Montserrat", None, [("Montserrat", L)]),   # latin-ext always, not latin alone
+    ("Montserrat", "uk", [("Montserrat", [*L, "cyrillic", "cyrillic-ext"])]),
+    ("Montserrat", "vi", [("Montserrat", [*L, "vietnamese"])]),
+    ("Poppins", "hi", [("Poppins", [*L, "devanagari"])]),
+    ("Fredoka", "he", [("Fredoka", [*L, "hebrew"])]),
+    # issue 3, item 6: the composition's font keeps the letters it has, the script's fallback draws the others
+    ("Poppins", "ru", [("Poppins", L), ("NotoSans", ["cyrillic", "cyrillic-ext"])]),
+    ("BebasNeue", "bg", [("BebasNeue", L), ("NotoSans", ["cyrillic", "cyrillic-ext"])]),
+    ("Montserrat", "el", [("Montserrat", L), ("NotoSans", ["greek"])]),
+    ("Montserrat", "ar", [("Montserrat", L), ("NotoSansArabic", ["arabic"])]),
+    ("Montserrat", "he", [("Montserrat", L), ("NotoSansHebrew", ["hebrew"])]),
+    ("Montserrat", "ja", [("Montserrat", L), ("NotoSansJP", ["japanese"])]),
+    ("Poppins", "zh-TW", [("Poppins", L), ("NotoSansTC", ["chinese-traditional"])]),
 ])
-def test_pick_keeps_the_font_when_it_has_the_subsets_else_falls_back(primary, tag, family, subsets):
-    assert vf.pick(primary, tag) == (family, subsets)
+def test_stack_keeps_the_font_for_its_letters_and_falls_back_for_the_rest(primary, tag, drawn):
+    assert vf.stack(primary, tag) == drawn
 
 
 def test_table_is_consistent():
@@ -175,7 +179,7 @@ def test_texts_of_each_composition():
 
 def test_polish_text_is_covered_in_latin_runs(fonts):
     data = {"captions": [{"text": "Zażółć gęślą jaźń „cytat” – 5 zł €"}]}
-    assert vf.check("OrganicCaptions", data, "pl", fonts) == ("Montserrat", ["latin", "latin-ext"])
+    assert vf.check("OrganicCaptions", data, "pl", fonts) == [("Montserrat", ["latin", "latin-ext"])]
     vf.check("OrganicCaptions", data, None, fonts)   # latin-ext is loaded for any Latin-script run
 
 
@@ -190,13 +194,14 @@ def test_cyrillic_text_in_a_polish_run_stops_and_names_the_letters(fonts):
 
 def test_cyrillic_text_in_a_ukrainian_run_is_covered(fonts):
     data = {"captions": [{"text": "Привіт, ґанок! Їжак"}]}
-    assert vf.check("OrganicCaptions", data, "uk", fonts)[0] == "Montserrat"
+    assert [f for f, _ in vf.check("OrganicCaptions", data, "uk", fonts)] == ["Montserrat"]
 
 
 def test_a_font_without_the_script_is_checked_against_its_fallback(fonts):
     data = {"items": [{"label": "Привет"}], "title": [[{"text": "Топ 5"}]]}
-    assert vf.check("RankingSplit", data, "ru", fonts) == ("NotoSans", ["latin", "latin-ext", "cyrillic", "cyrillic-ext"])
-    assert vf.check("HookSwap", {"cards": [{"lines": [{"text": "Γειά"}]}]}, "el", fonts)[0] == "NotoSans"
+    assert vf.check("RankingSplit", data, "ru", fonts) == [("Poppins", L), ("NotoSans", ["cyrillic", "cyrillic-ext"])]
+    drawn = vf.check("HookSwap", {"cards": [{"lines": [{"text": "Γειά, OK 5"}]}]}, "el", fonts)
+    assert [f for f, _ in drawn] == ["BebasNeue", "NotoSans"]
 
 
 def test_emoji_and_their_joiners_are_not_font_letters(fonts):
@@ -209,6 +214,22 @@ def test_a_chunked_family_covers_every_chunk(fonts):
     with pytest.raises(common.ToolStop) as stop:
         vf.check("OrganicCaptions", {"captions": [{"text": "日本語 鮨"}]}, "ja", fonts)
     assert "鮨" in str(stop.value) and "NotoSansJP" in str(stop.value)
+
+
+def test_a_chunked_fallback_loads_only_the_chunks_the_text_needs(fonts):
+    """Issue 3, item 6: Remotion loads every numbered chunk of a CJK font for each weight (about 120), so a still
+    took seconds; `tm render` names only the chunks holding a letter on screen."""
+    def chunks(text, language="ja", comp="OrganicCaptions"):
+        return vf.font_subsets(comp, {"captions": [{"text": text}]}, language, fonts)
+
+    assert chunks("日本 OK") == {"NotoSansJP": ["[0]"]}
+    assert chunks("語、あ 日") == {"NotoSansJP": ["[0]", "[1]"]}             # in number order
+    assert chunks("OK 5") == {"NotoSansJP": []}                          # no Japanese letter: no chunk
+    assert chunks("Zażółć", "pl") == {} and chunks("Привет", "uk") == {}  # nothing chunked is drawn
+    two = vf.font_subsets("QuizGrid", {"title": "日本", "options": [{"label": "あ"}]}, "ja", fonts)
+    assert two == {"NotoSansJP": ["[0]", "[1]"]}                          # every text of the composition
+    (fonts / "Montserrat.mjs").unlink()                    # a composition's own font is never read for its chunks
+    assert chunks("Zażółć", "pl") == {} and chunks("日本", "ja") == {"NotoSansJP": ["[0]"]}
 
 
 def test_missing_font_data_is_an_error_not_a_pass(fonts):
@@ -287,6 +308,27 @@ def test_render_stops_before_remotion_when_the_font_lacks_a_letter(light_run, mo
         render.still(run, "HookSwap", props, 0, run.path / "03_wip" / "e_v01.png")
     assert calls == [] and "account.language in config.yaml" in str(stop.value)
     assert not (run.path / "03_wip" / "e_v01.png").exists()
+
+
+def test_render_names_the_cjk_chunks_the_text_needs_and_records_only_the_language(light_run, monkeypatch):
+    run = light_run
+    seen = _fake_remotion(monkeypatch)
+    props = run.path / "03_wip" / "edit.props.json"
+    props.write_text(json.dumps({"base": "01_base/a.mp4", "language": "ja",
+                                 "cards": [{"lines": [{"at": 0, "text": "日本 OK"}]}]}))
+    render.still(run, "HookSwap", props, 0, run.path / "03_wip" / "e_v01.png")
+    assert seen[-1]["fontSubsets"] == {"NotoSansJP": ["[0]"]} and seen[-1]["language"] == "ja"
+    assert "fontSubsets" not in json.loads(props.read_text())
+    assert not list(render.work_dir().glob(".props*"))
+    assert "fontSubsets" not in (run.path / "manifest.md").read_text(encoding="utf-8").splitlines()[-1]
+    # chunks the props name are kept as they are
+    given = {"NotoSansJP": ["[0]", "[1]"]}
+    props.write_text(json.dumps({**json.loads(props.read_text()), "fontSubsets": given}))
+    render.still(run, "HookSwap", props, 0, run.path / "03_wip" / "e_v02.png")
+    assert seen[-1]["fontSubsets"] == given
+    props.write_text(json.dumps({**json.loads(props.read_text()), "fontSubsets": ["[0]"]}))
+    with pytest.raises(common.ToolError, match="fontSubsets"):
+        render.still(run, "HookSwap", props, 0, run.path / "03_wip" / "e_v03.png")
 
 
 def test_render_rejects_a_language_prop_that_is_not_text(light_run):
