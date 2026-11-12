@@ -98,8 +98,8 @@ page and one in chat count the same. Rules: `rules.md`.
 
 - What the ad type needs first: presenter casting (2–3 visibly different, non-identifiable people; the CA9 guard in
   the prompt when a model ad's look is reused), stills or slides, or a test frame. Each paid call: `tm tool
-  replicate_run --run R <spec> --name <the plan's item> --cost <its line>` (the gate page finds the outputs by that
-  name). Show the batch raw, side by side, on the gate (`pages.md` "Gate"); never only as images in chat. `tm done
+  replicate_run --run R <spec> --name <the plan's item> --cost <its line>` (the gate page shows the outputs of the
+  item's latest run). Show the batch raw, side by side, on the gate (`pages.md` "Gate"); never only as images in chat. `tm done
   G1`, then the check-in.
 
 <a id="g2"></a>

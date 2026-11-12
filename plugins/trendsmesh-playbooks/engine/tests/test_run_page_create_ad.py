@@ -15,6 +15,7 @@ from tm.stops import Stop
 
 from test_create_copy import KEY, _choices, ad
 from test_create_plan import CLAIMS, _check, _new, _write, board, concepts, plan, storyboard
+from test_create_qa import _edit_qa, _qa as _take_qa
 from test_create_upload import _propose, proposal
 from test_run_page import _artifact_list, _publish, _read
 
@@ -132,13 +133,15 @@ def test_board_and_plan_on_one_card_at_just_the_big_calls(tmp_path):
 
 
 @pytest.mark.parametrize("checkin,files,shown", [
-    ("visual", ["03_wip/casting_v01_1.png", "03_wip/casting_v01_2.png"], ["Casting, option 1", "Casting, option 2"]),
+    ("visual", ["03_wip/casting_v01_0.png", "03_wip/casting_v01_1.png"], ["Casting, option 1", "Casting, option 2"]),
     ("audio", ["03_wip/audio/music_v01.mp3"], ["Music", "900 ElevenLabs credits"]),
 ])
 def test_the_visual_and_audio_gates_show_the_batch_raw_with_a_choice_each(run, checkin, files, shown):
     _checked_through(run, "production_plan")
     for f in files:
         _media(run, f)
+    if checkin == "visual":                                           # the outputs of the item's latest Replicate run
+        _write(run, "03_wip/casting_v01.run.json", {"status": "done", "outputs": [f.rsplit("/", 1)[1] for f in files]})
     _media(run, "03_wip/unrelated_v01_1.png")                         # not an item of this gate
     built = run_page.build(run, _ask(run, checkin))
     now = _now(_html(run, built))
@@ -149,22 +152,24 @@ def test_the_visual_and_audio_gates_show_the_batch_raw_with_a_choice_each(run, c
     assert offer["keys"] == [f.rsplit("/", 1)[1].rsplit(".", 1)[0] for f in files]
 
 
-def test_the_takes_gate_shows_each_take_with_its_transcript_and_qa(run):
+def test_the_takes_gate_shows_each_take_with_its_transcript_qa_and_what_fails(run):
     _checked_through(run, "storyboard")
-    _media(run, "03_wip/presenter_take_v01_1.mp4")
-    _write(run, "03_wip/qa/presenter_take_v01_1_transcript_v01.json",
-           {"segments": [{"text": " Nobody told me briefs"}, {"text": "could take three minutes."}]})
-    _media(run, "03_wip/qa/presenter_take_v01_1_contact_v01.png")
-    _write(run, "03_wip/qa/presenter_take_v01_1_qa_v01.json", {
-        "take": "03_wip/presenter_take_v01_1.mp4", "transcript": "03_wip/qa/presenter_take_v01_1_transcript_v01.json",
-        "match": 0.96, "wps": 2.6, "cuts": [], "lufs": -14.2, "peak": -1.8,
-        "contact_sheet": "03_wip/qa/presenter_take_v01_1_contact_v01.png"})
+    videos = storyboard()["videos"]
+    videos[0]["speaks"] = True                                         # this take says the board's lines
+    assert _check(run, "storyboard", storyboard(videos=videos)) == []
+    take = "03_wip/presenter-take_v01_0.mp4"                          # replicate_run's name for presenter_take
+    _write(run, "03_wip/presenter-take_v01.run.json", {"status": "done", "outputs": ["presenter-take_v01_0.mp4"]})
+    _media(run, take)
+    words = [{"word": " " + w, "start": n * 0.3, "end": n * 0.3 + 0.25}
+             for n, w in enumerate("Nobody told told me briefs could take three minutes".split())]
+    _take_qa(run, take, words=words, lufs=-14.2, peak=-1.8)
+    _media(run, "03_wip/qa/presenter-take_v01_0_contact_v01.png")
     built = run_page.build(run, _ask(run, "takes"))
     now = _now(_html(run, built))
-    assert "Transcript: Nobody told me briefs could take three minutes." in now
+    assert "Fails QA" in now and "the word “told” is heard twice in a row" in now        # create_qa's words
     assert "Transcript matches the script" in now and "Loudness (LUFS)" in now and "Cuts found" in now
-    assert "presenter_take_v01_1_contact_v01.png" in now and "gemini-omni" in now
-    assert _built(run, built)["offer"]["takes"]["items"]["keys"] == ["presenter_take_v01_1"]
+    assert "presenter-take_v01_0_contact_v01.png" in now and "gemini-omni" in now
+    assert _built(run, built)["offer"]["takes"]["items"]["keys"] == ["presenter-take_v01_0"]
 
 
 def test_the_storyboard_page_shows_one_scene_at_a_time_with_the_exact_prompt_and_price(run):
@@ -183,12 +188,14 @@ def test_the_storyboard_page_shows_one_scene_at_a_time_with_the_exact_prompt_and
 def test_the_review_page_shows_up_to_four_versions_with_a_pick_and_pinned_notes(run):
     for n in range(1, 6):
         _media(run, f"03_wip/edit_v{n:02d}.mp4")
-    _write(run, "03_wip/qa/edit_v05_qa_v01.json", {"lufs": -14.0, "peak": -1.6, "cuts": [3.0, 9.5]})
+    _take_qa(run, "03_wip/edit_v05.mp4", lufs=-14.2, peak=-1.8)
+    assert _edit_qa(run, edit="03_wip/edit_v05.mp4", qa="03_wip/qa/edit_v05_qa_v01.json") == []
     built = run_page.build(run, _ask(run, "review"))
     now = _now(_html(run, built))
     assert "Version 1" not in now and all(f"Version {n}" in now for n in (2, 3, 4, 5))
     assert 'style="--n:4"' in now and "Pin to {version} at {time}" in now and "Your notes" in now
-    assert "What was checked" in now and "True peak (dBFS)" in now
+    assert "What was checked: Version 5" in now and "True peak (dBFS)" in now       # create_qa.edit_report
+    assert "Motion at every cut" in now and "looked at cuts" in now and "Source: 03_wip/edit_qa_v01.json" in now
     assert _paths(now) == {"version", "pins"}
     offer = _built(run, built)["offer"]["review"]
     assert offer["pins"]["versions"] == ["edit_v02", "edit_v03", "edit_v04", "edit_v05"]

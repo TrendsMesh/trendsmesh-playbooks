@@ -1132,6 +1132,9 @@ ad:
       unit: Paid in
       checked: Price checked
       alternative: Alternative
+      check: Check
+      result: Result
+      note: Note
     stage:
       pre_video: before the video
       video: the video (priced again on the storyboard)
@@ -1171,6 +1174,10 @@ ad:
       peak: True peak (dBFS)
       cuts: Cuts found
     transcript: "Transcript: {text}"
+    qa_fails: Fails QA
+    qa_fail: "Fails QA: {text}"
+    qa_finding: "To check: {text}"
+    qa_missing: No QA yet.
     # storyboard
     storyboard: The storyboard, scene by scene
     prev: ← Previous
@@ -1189,7 +1196,6 @@ ad:
     pin_button: "Pin to {version} at {time}"
     pins: Your notes
     no_pins: No notes yet.
-    checked: What was checked
     no_version: No version of the edit yet.
     # copy
     fact:

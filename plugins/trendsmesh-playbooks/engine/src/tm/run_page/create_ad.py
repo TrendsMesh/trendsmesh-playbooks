@@ -15,14 +15,15 @@ The pages and where their data comes from (never typed into the page by hand):
                   scene (`scene_notes`)
     plan          production_plan_vNN.json: per line the model, its price with the check date, the alternative;
                   what the user's own files replace; the pre-video totals and the video estimate; a note per line
-    visual, audio, takes   the gate's batch, raw: each output of the plan's (or the storyboard's) items, named after
-                  it (`03_wip/<item>_vNN_<i>.<ext>` from replicate_run, `03_wip/audio/<item>_vNN.<ext>`), with a
-                  take's transcript and QA (tm tool take_qa); accept, redo or drop each (`items`)
+    visual, audio the gate's batch, raw: each output of the plan's items (its latest Replicate record, as for the takes,
+                  and its ElevenLabs takes `03_wip/audio/<item>_vNN.<ext>`); accept, redo or drop each (`items`)
+    takes         create_qa.take_rows: each take of the storyboard's videos raw, with its transcript, QA numbers,
+                  contact sheet, and the QA's fails and findings; accept, redo or drop each (`items`)
     storyboard    storyboard_vNN.json with the board's scenes: one scene at a time (frames, time, picture, on-screen
                   text, line, sound), the placeholder render, each paid video's exact prompt and price; a note per
                   scene
-    review        the edit's versions (03_wip/edit_vNN.mp4, the latest 4) side by side with their QA; a pick
-                  (`version`) and notes pinned at the playing version's time (`pins`)
+    review        the edit's versions (03_wip/edit_vNN.mp4, the latest 4) side by side; a pick (`version`) and notes
+                  pinned at the playing version's time (`pins`); what was checked (create_qa.edit_report)
     copy          `tm ad copy check`'s page (create_copy.page_data): per ad its facts and each text editable with its
                   live count against its limit and a keep tick (`copy`)
     upload_offer  the files an upload would send, and the paused note
@@ -41,12 +42,14 @@ import json
 import re
 from pathlib import Path
 
-from tm import create_config, create_copy, create_plan, create_upload, manifest, organic_qa, state
+from tm import (create_config, create_copy, create_plan, create_qa, create_upload, i18n, manifest, organic_qa,
+                organic_specs, state)
 from tm.run_page import refresh_ad
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.template import fmt
 from tm.run_page.words import has_key, tx
 from tm.runfolder import RunFolder
+from tm.tools import _common as tools_common
 
 VISUAL_TYPES = ("presenter", "hook_scene", "product_shot", "still", "slide", "animation")
 AUDIO_TYPES = ("music", "sfx", "voice")
@@ -265,15 +268,17 @@ def _plan(ctx: Context) -> list[dict]:
 # --- the gates: visual, audio, takes --------------------------------------------------------------
 
 def _outputs(ctx: Context, item: str) -> list[Path]:
-    """The run's media files named after a plan or storyboard item: `03_wip/<item>_vNN[_<i>].<ext>` (replicate_run)
-    and `03_wip/audio/<item>_vNN.<ext>` (elevenlabs --out)."""
-    pattern = re.compile(rf"^{re.escape(item)}_v\d+(?:_\d+)?$")
-    found = []
-    for folder in (ctx.run.path / WIP, ctx.run.path / WIP / "audio"):
-        if folder.is_dir():
-            found += [p for p in folder.iterdir() if p.is_file() and p.suffix.lower() in MEDIA_EXT
-                      and pattern.match(p.stem)]
-    return sorted(found, key=lambda p: p.name)
+    """A plan item's outputs: the media of its latest Replicate record (`03_wip/<item>_vNN.run.json`, the item's name
+    as replicate_run's `--name` makes it), and its ElevenLabs takes `03_wip/audio/<item>_vNN.<ext>` (`--out`)."""
+    stem = tools_common.stem_of(item)
+    latest, _ = organic_specs.outputs(ctx.run, stem)
+    found = [ctx.run.path / rel for rel in latest if Path(rel).suffix.lower() in MEDIA_EXT]
+    audio = ctx.run.path / WIP / "audio"
+    names = {re.escape(item), re.escape(stem)}
+    pattern = re.compile(rf"^(?:{'|'.join(names)})_v\d+$")
+    if audio.is_dir():
+        found += [p for p in audio.iterdir() if p.is_file() and p.suffix.lower() in MEDIA_EXT and pattern.match(p.stem)]
+    return sorted({p for p in found if p.is_file()}, key=lambda p: p.name)
 
 
 def _transcript(ctx: Context, rel: object) -> str | None:
@@ -286,9 +291,10 @@ def _transcript(ctx: Context, rel: object) -> str | None:
     return text.strip() or None
 
 
-def _qa(ctx: Context, take: Path) -> tuple[list[str], str | None, list[dict]]:
-    """A take's (or a version's) QA from tm tool take_qa: lines, a dataset, and its contact sheet."""
-    path = organic_qa.qa_file(ctx.run, take)
+def _qa(ctx: Context, rel: object) -> tuple[list[str], str | None, list[dict]]:
+    """A take's QA file from tm tool take_qa (run-relative): its transcript line, its numbers as a dataset, and its
+    contact sheet."""
+    path = ctx.inside(rel) if isinstance(rel, str) else None
     qa = ctx.json(path)
     if not isinstance(qa, dict):
         return [], None, []
@@ -304,17 +310,20 @@ def _qa(ctx: Context, take: Path) -> tuple[list[str], str | None, list[dict]]:
     return lines, did, _media(ctx, qa.get("contact_sheet"))
 
 
+def _qa_words(ctx: Context) -> i18n.Translator:
+    """The translator create_qa writes the takes' fails and findings with: the page's language (its organic.qa words
+    too), else English."""
+    tr = i18n.translator(ctx.lang)
+    return tr if not i18n.missing(ctx.lang, ("organic", "ad")) else i18n.translator(i18n.ENGLISH)
+
+
 def _gate_items(ctx: Context, checkin: str) -> list[tuple[str, dict]]:
-    """The items of a gate, each with its plan or storyboard line."""
-    if checkin == "takes":
-        data, _ = _checked(ctx, create_plan.STORYBOARD)
-        lines = (data or {}).get("videos") or []
-    else:
-        data, _ = _checked(ctx, create_plan.PLAN)
-        types = VISUAL_TYPES if checkin == "visual" else AUDIO_TYPES
-        lines = [ln for ln in (data or {}).get("lines") or [] if isinstance(ln, dict) and ln.get("type") in types
-                 and (checkin == "audio" or (ln.get("stage") or "pre_video") == "pre_video")]
-    return [(str(ln["item"]), ln) for ln in lines if isinstance(ln, dict) and ln.get("item")]
+    """The items of the visual or audio gate, each with its plan line (the takes come from create_qa)."""
+    data, _ = _checked(ctx, create_plan.PLAN)
+    types = VISUAL_TYPES if checkin == "visual" else AUDIO_TYPES
+    lines = [ln for ln in (data or {}).get("lines") or [] if isinstance(ln, dict) and ln.get("type") in types
+             and (checkin == "audio" or (ln.get("stage") or "pre_video") == "pre_video")]
+    return [(str(ln["item"]), ln) for ln in lines if ln.get("item")]
 
 
 def _gate(checkin: str):
@@ -333,7 +342,8 @@ def _gate(checkin: str):
                 chips = [{"text": line.get("model")}] if line.get("model") else []
                 if _num(line.get("cost")):
                     chips.append({"text": f"{fmt(line['cost'])} {_unit(ctx, line.get('budget'))}"})
-                lines, qa, sheet = _qa(ctx, f) if f.suffix.lower() in (".mp4", ".mov", ".webm", ".m4v") else ([], None, [])
+                lines, qa, sheet = _qa(ctx, ctx.rel(organic_qa.qa_file(ctx.run, f))) \
+                    if organic_qa.qa_file(ctx.run, f) else ([], None, [])
                 cards.append({"title": title, "chips": chips, "lines": lines,
                               "media": [{"src": served, "caption": f.name}] + sheet, "table": qa,
                               "choose": {"path": ["items", key], "label": title, "options": options}})
@@ -342,6 +352,44 @@ def _gate(checkin: str):
         return [{"kind": "cards", "title": _w(ctx, "gate." + checkin), "items": cards,
                  "offer": {"items": {"type": "each", "keys": keys, "values": list(ITEM_CHOICES)}}}]
     return component
+
+
+def _takes(ctx: Context) -> list[dict]:
+    """The takes gate from create_qa.take_rows (the storyboard's videos, each take of its latest Replicate record):
+    each take raw, its transcript, QA numbers and contact sheet, and the QA's fails and findings in the page's
+    words."""
+    lines_of = {str(v.get("item")): v for v in (_checked(ctx, create_plan.STORYBOARD)[0] or {}).get("videos") or []
+                if isinstance(v, dict)}
+    rows = [r for r in create_qa.take_rows(ctx.run, _qa_words(ctx)) if r.get("take")]
+    per_item: dict[str, int] = {}
+    for r in rows:
+        per_item[r["item"]] = per_item.get(r["item"], 0) + 1
+    cards, keys, seen = [], [], {}
+    options = [{"value": c, "label": _w(ctx, "item." + c)} for c in ITEM_CHOICES]
+    for r in rows:
+        served = ctx.put(r["take"])
+        if not served:
+            continue
+        key = Path(r["take"]).stem
+        keys.append(key)
+        seen[r["item"]] = seen.get(r["item"], 0) + 1
+        title = _w(ctx, "option", item=_readable(r["item"]), n=seen[r["item"]]) if per_item[r["item"]] > 1 \
+            else _readable(r["item"])
+        line = lines_of.get(r["item"]) or {}
+        chips = [{"text": line.get("model")}] if line.get("model") else []
+        if _num(line.get("cost")):
+            chips.append({"text": f"{fmt(line['cost'])} {_unit(ctx, line.get('budget'))}"})
+        chips += [{"text": _w(ctx, "qa_fails"), "style": "warn"}] if r.get("fails") else []
+        lines, qa, sheet = _qa(ctx, r.get("qa")) if r.get("qa") else ([_w(ctx, "qa_missing")], None, [])
+        lines += [_w(ctx, "qa_fail", text=f) for f in r.get("fails") or []]
+        lines += [_w(ctx, "qa_finding", text=f) for f in r.get("findings") or []]
+        cards.append({"title": title, "chips": chips, "lines": lines,
+                      "media": [{"src": served, "caption": Path(r["take"]).name}] + sheet, "table": qa,
+                      "choose": {"path": ["items", key], "label": title, "options": options}})
+    if not cards:
+        return [{"kind": "text", "text": _w(ctx, "nothing_yet")}]
+    return [{"kind": "cards", "title": _w(ctx, "gate.takes"), "items": cards,
+             "offer": {"items": {"type": "each", "keys": keys, "values": list(ITEM_CHOICES)}}}]
 
 
 # --- storyboard -----------------------------------------------------------------------------------
@@ -402,7 +450,7 @@ def _versions(ctx: Context) -> list[Path]:
 
 
 def _review(ctx: Context) -> list[dict]:
-    items, keys, checked = [], [], []
+    items, keys = [], []
     for f in _versions(ctx):
         served = ctx.put(ctx.rel(f))
         if not served:
@@ -411,9 +459,6 @@ def _review(ctx: Context) -> list[dict]:
         label = _w(ctx, "version", n=n)
         keys.append(f.stem)
         items.append({"key": f.stem, "label": label, "src": served, "caption": ""})
-        lines, qa, sheet = _qa(ctx, f)
-        if lines or qa or sheet:
-            checked.append({"title": label, "lines": lines, "table": qa, "media": sheet})
     if not items:
         return [{"kind": "text", "text": _w(ctx, "no_version")}]
     blocks = [{"kind": "versions", "title": _w(ctx, "versions"), "items": items,
@@ -421,8 +466,29 @@ def _review(ctx: Context) -> list[dict]:
                "pins": {"path": ["pins"], "label": _w(ctx, "pin_label"), "button": _w(ctx, "pin_button"),
                         "heading": _w(ctx, "pins"), "empty": _w(ctx, "no_pins")},
                "offer": {"version": {"type": "pick", "values": keys}, "pins": {"type": "pins", "versions": keys}}}]
-    if checked:
-        blocks.append({"kind": "cards", "title": _w(ctx, "checked"), "items": checked})
+    return blocks + _checked_edit(ctx)
+
+
+def _checked_edit(ctx: Context) -> list[dict]:
+    """What was checked (S7), from create_qa.edit_report: the checked edit's loudness, true peak and transcript match,
+    and each CA11 check with its result and note."""
+    report = create_qa.edit_report(ctx.run, i18n.translator(ctx.lang))
+    if not report:
+        return []
+    src = ctx.rel(create_plan.checked_file(ctx.run, create_plan.EDIT_QA))
+    edit = str(report.get("edit") or "")
+    version = _w(ctx, "version", n=int(Path(edit).stem.split("_v")[1])) if "_v" in edit else edit
+    tiles = [{"label": _w(ctx, "qa." + k), "value": report.get(k)} for k in ("lufs", "peak", "match")
+             if _num(report.get(k))]
+    rows = [{"check": r["label"], "result": r["result_label"], "note": r.get("note")} for r in report["checked"]]
+    blocks = [{"kind": "text", "text": f"**{report['title']}: {version}**"}]
+    if tiles:
+        blocks.append({"kind": "tiles", "data": ctx.ds.add(report["title"], report.get("qa") or src,
+                                                           ctx.tile_columns(), tiles)})
+    if rows:
+        blocks.append({"kind": "table", "data": ctx.ds.add(report["title"], src, [
+            ("check", _w(ctx, "col.check"), "text"), ("result", _w(ctx, "col.result"), "text"),
+            ("note", _w(ctx, "col.note"), "text")], rows)})
     return blocks
 
 
@@ -550,7 +616,7 @@ def _upload(ctx: Context) -> list[dict]:
 # --- the check-ins --------------------------------------------------------------------------------
 
 COMPONENTS = {"concept": (_concept,), "board": (_board,), "plan": (_plan,), "visual": (_gate("visual"),),
-              "audio": (_gate("audio"),), "takes": (_gate("takes"),), "storyboard": (_storyboard,),
+              "audio": (_gate("audio"),), "takes": (_takes,), "storyboard": (_storyboard,),
               "review": (_review,), "copy": (_copy,), "upload_offer": (_upload_offer,), "upload": (_upload,)}
 
 
