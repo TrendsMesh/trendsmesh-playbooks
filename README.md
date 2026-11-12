@@ -25,7 +25,13 @@ for your yes at the points you choose.
 
 ## What you need
 
-- **Claude Code**, in the terminal or the Claude desktop app.
+- **Claude Code**, in the terminal or the Claude desktop app. It needs a paid Claude plan (Pro, Max, Ultra, Team or
+  Enterprise) or an Anthropic Console account: the free Claude plan does not include Claude Code.
+- **On Windows: Git for Windows**, installed before the plugin. Claude Code fetches the plugin from GitHub with Git,
+  so without it the install fails. In PowerShell or a terminal: `winget install --id Git.Git -e` (or download it from
+  https://git-scm.com/downloads/win), then restart Claude Code. With Git installed you also no longer see the notice
+  at the start of each session that Git Bash wasn't found and a hook ran in PowerShell. That notice is harmless:
+  the plugin's hooks work in PowerShell too.
 - A **TrendsMesh** account on the **Agent** or **Swarm** plan, so Claude can read the trends. The plugin brings the
   TrendsMesh connector; sign in once with `/mcp` → trendsmesh → Authenticate (the doctor walks you through it).
   Trend research and organic video need it. Refresh an ad and creative briefs run without it, and label their trend
@@ -51,8 +57,12 @@ Or type the two commands yourself:
 /plugin install trendsmesh-playbooks@trendsmesh-playbooks
 ```
 
-Claude Code asks for the Replicate token and the ElevenLabs key during the install. Leave them empty if you do not
-want AI video or voices; you can add them later in `/plugin` → trendsmesh-playbooks → configure.
+When you install with `/plugin install` in a Claude Code session, it asks for the Replicate token and the
+ElevenLabs key. Leave them empty if you do not want AI video or voices. It does not ask when the plugin was installed
+another way, for example with `claude plugin install` in a terminal (which says the options are "not yet set"). To
+add or change them later, in a Claude Code session: `/plugin` → **Installed** → trendsmesh-playbooks →
+**Configure options** (or type `/plugin configure trendsmesh-playbooks@trendsmesh-playbooks`), then start a new
+session.
 
 ## Use it
 

@@ -2,6 +2,22 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## Unreleased
+
+- **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
+  longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
+  against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.
+  Some eval cases have shorter names (`evals/RESULTS.md` lists the old and new ones).
+- **The doctor with no playbook named is a quick general check.** `/trendsmesh-playbooks:doctor` on its own, or
+  "check the plugin", used to check Refresh an ad and wait minutes for the Meta Ads tools. It now checks only what
+  every playbook shares: the base tools, whether your Replicate token and ElevenLabs key work, and your TrendsMesh
+  sign-in, without Meta Ads. Name a playbook ("check trend research") for its full check.
+- **The README says what a first install needs.** On Windows, install Git for Windows first; Claude Code needs a
+  paid Claude plan; and where to add the Replicate token and the ElevenLabs key when the install didn't ask.
+- **The support report names Windows 11.** It said "Windows 10" on Windows 11; it now reads the build number.
+- **One way to send the support report.** The doctor now says what the report itself says: read it, then send it
+  privately to contact@trendsmesh.com, not to a public issue.
+
 ## 0.12.0
 
 - **Creative brief's PDFs print when the run is given by a relative path.** `tm brief page --run <relative path>`
