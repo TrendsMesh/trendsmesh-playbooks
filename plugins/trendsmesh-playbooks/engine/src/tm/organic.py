@@ -265,6 +265,13 @@ def _setup(p: argparse.ArgumentParser) -> None:
                                                  "p1 to pN, window.makeSheet)")
     a.add_argument("--panels", type=int, default=6, help="how many panels the page draws (default 6)")
     a.add_argument("--json", action="store_true")
+    vs = sub.add_parser("vo-sync", help="the recorded voiceover's line times against the pack's and the take's cuts, "
+                                        "with proposed times and the pace (free, reads only)")
+    vs.add_argument("--run", required=True, help="the run folder")
+    vs.add_argument("--words", required=True, help="the voiceover's <stem>.words.json (tts --timestamps)")
+    vs.add_argument("--spec", help="the take's spec, whose input.prompt holds the timed shot list")
+    vs.add_argument("--offset", type=float, default=0.0, help="the take's start in the video, in seconds (default 0)")
+    vs.add_argument("--json", action="store_true")
     a = sub.add_parser("animate", help="draw the full animation page into 03_wip/<item>/renders/anim_vNN.mp4 "
                                        "once its storyboard is accepted (free, local)")
     a.add_argument("--run", required=True, help="the run folder")
@@ -1004,6 +1011,12 @@ def _animate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _vo_sync(args: argparse.Namespace) -> int:
+    from tm import organic_vo   # it reads the pack (organic_pack imports this module)
+
+    return organic_vo.run_cli(args)
+
+
 def _stack(args: argparse.Namespace) -> int:
     stack = record_stack(RunFolder.open(Path(args.run)), **{k: getattr(args, k) for k in STACK_VALUES})
     hidden = sorted(hidden_types(stack))
@@ -1022,7 +1035,7 @@ _ACTIONS = {"stack": _stack, "videos": _videos, "used": _used, "history": _histo
             "pack": _pack, "redo": _redo, "pick": _pick,
             "dashboard-checked": _dashboard_checked, "atlas-styles": _atlas_styles, "atlas-prompt": _atlas_prompt,
             "atlas-page": _atlas_page,
-            "storyboard": _storyboard, "animate": _animate}
+            "storyboard": _storyboard, "animate": _animate, "vo-sync": _vo_sync}
 
 
 def _run(args: argparse.Namespace) -> int:

@@ -86,7 +86,11 @@ page and one in chat count the same. Rules: `rules.md`.
   [{"item", "type" (an asset type: presenter, hook_scene, product_shot, still, slide, animation, music, sfx, voice,
   upscale, transcription), "stage" (pre_video, or video for the takes, priced again at G3), "model", "alternative",
   "cost", "budget" (ai_usd for Replicate, voice_credits for ElevenLabs), "price_file", "checked" (the price's
-  date)}]}`. A type the user's own file replaces has no line: say what the file replaces.
+  date)}]}`. A type the user's own file replaces has no line: say what the file replaces. A `voice` line is the
+  ElevenLabs model (`eleven_v4` unless the user picks another, `../../references/model-prompting/eleven-v4.md`)
+  and its cost the lines' characters at that model's rate (0.5 credits a character for v4, 1 for
+  `eleven_multilingual_v2`); the lines write numbers, dates and percentages out as words in the market's
+  language, which the take is recorded in (`language_code`).
 - `tm ad check plan` re-plans the money: its pre-video lines. `tm done S5`. The check-in is "Confirm the
   production plan and its cost" (at Just the big calls on one card with the script-board): the user confirms once
   per asset type; a new type or a model change later is a new plan version and asks again. After the yes, `tm

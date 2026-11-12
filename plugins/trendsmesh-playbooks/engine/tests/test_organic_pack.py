@@ -173,10 +173,10 @@ def test_price_or_ranking_dated_after_today_refused(tmp_path):
 def test_voice_credits_are_the_said_characters(tmp_path, animatic_ready):
     run = _pet_run(tmp_path, "p3")
     pack = _pack("p3_sections_pack.json")
-    pack["cost"]["lines"][2].update({"units": 300, "cost": 300})
-    pack["cost"]["totals"]["voice_credits"] = 300
+    pack["cost"]["lines"][2].update({"units": 300, "cost": 150})
+    pack["cost"]["totals"]["voice_credits"] = 150
     problems = _check(run, pack)
-    assert _fields(problems) == ["cost.lines"] and "price 300 characters, and the lines said hold 311" in problems[0].what
+    assert _fields(problems) == ["cost.lines"] and "price 300 characters, and the lines said hold 316" in problems[0].what
     pack = _pack("p3_sections_pack.json")
     pack["speech"]["route"] = "h3_narrator"
     assert _fields(_check(run, pack)) == ["cost.lines[2].kind"]   # no ElevenLabs, no credits
@@ -803,3 +803,86 @@ def test_a_requested_redo_is_a_priced_line(tmp_path, capsys):
     _pack_cli(capsys, run, _write(run, _pack("m5_pl_pack.json")))
     out = _pack_cli(capsys, run, _write(run, redo, 2))
     assert out["replanned"] is True and abs(state.load(run).planned["ai_usd"] - 2.34) < 1e-9
+
+
+# --- #88: the voiceover's credits at the model's rate, its pace, and numbers in words -------------------
+
+def _voiced(route="elevenlabs_narrator", model="eleven_v4", texts=("Trzy psy kręcą się w kółko.",), seconds=4.0,
+            unit_price=0.5):
+    lines = [{"n": i + 1, "text": t, "speaker": "narrator", "shot": "s", "at": [0, seconds]} for i, t in enumerate(texts)]
+    chars = sum(len(t) for t in texts)
+    line = {"what": "voiceover", "item": None, "model": model, "criteria": None, "unit_price": unit_price,
+            "unit": "character", "units": chars, "cost": round(unit_price * chars, 2), "kind": "voice_credits",
+            "price_file": None, "checked": None}
+    return {"production": "ai_footage", "sections": [], "speech": {"route": route}, "script": {"lines": lines, "words": sum(len(t.split()) for t in texts),
+                                                   "seconds": seconds},
+            "cost": {"lines": [line]}}, line
+
+
+def _voice_problems(pack):
+    out = []
+    line = pack["cost"]["lines"][0]
+    organic_pack._voice(pack, line["units"], [0], out)
+    return out
+
+
+def test_voice_credits_are_priced_at_the_models_rate():
+    """Point 3: the pack priced the voiceover at 1 credit a character, twice what v4 used (214 against 105)."""
+    pack, _ = _voiced()
+    assert _voice_problems(pack) == []
+    pack, _ = _voiced(unit_price=1)
+    (p,) = _voice_problems(pack)
+    assert p.field == "cost.lines[0].unit_price" and "0.5" in p.todo and "eleven_v4" in p.what
+    pack, _ = _voiced(model="eleven_multilingual_v2", unit_price=1)
+    assert _voice_problems(pack) == []
+    pack, _ = _voiced(model="elevenlabs", unit_price=1)            # an older pack's name: the general rate
+    assert _voice_problems(pack) == []
+    pack, _ = _voiced(model="elevenlabs", unit_price=0.5)
+    assert [p.field for p in _voice_problems(pack)] == ["cost.lines[0].unit_price"]
+    pack, _ = _voiced(model="eleven_v3", unit_price=1)             # a model the table does not list: the general rate
+    assert _voice_problems(pack) == []
+
+
+def test_the_voiceover_says_numbers_in_words():
+    """Point 2: a number in digits ("in 2026") was read in the wrong case; on an ElevenLabs route the said lines
+    write numbers, dates and percentages out as words."""
+    out = []
+    pack, _ = _voiced(texts=("W 2026 roku 3 na 4 psy, czyli 75%, kręcą się w kółko.",))
+    organic_pack._numbers(pack, out)
+    assert [p.field for p in out] == ["script.lines[0].text"] and "2026, 3, 4, 75%" in out[0].what
+    out = []
+    organic_pack._numbers(_voiced()[0], out)
+    assert out == []
+    native, _ = _voiced(route="h3_native", texts=("W 2026 roku.",))
+    organic_pack._numbers(native, out)
+    assert out == []                                               # the video model's own speech: not this rule
+
+
+def test_the_pace_check_covers_an_elevenlabs_voiceover():
+    """Point 4: `qa.wps_min` held only the video model's speech; a 2.79 words a second voiceover passed."""
+    cfg = {"qa": {"wps_min": 2.8, "wps_max": 3.0, "tail_s": 1.5}}
+    words = " ".join(["słowo"] * 57)
+    for route in ("elevenlabs_narrator", "elevenlabs_lipsync"):
+        pack, _ = _voiced(route=route, texts=(words,), seconds=22.0)
+        out = []
+        organic_pack._slow(pack, cfg, 57, out)                     # 57 words over 20.5 s: 2.78
+        assert [p.field for p in out] == ["script.words"] and "2.78 words a second" in out[0].what
+        out = []
+        organic_pack._slow(pack, cfg, 58, out)
+        assert out == []
+
+
+def test_the_planned_pace_holds_a_voiceover_over_takes_not_a_drawn_animation(monkeypatch):
+    """An animation is drawn on the recorded voice's own times, so only a voiceover over model takes is held to the
+    planned pace; `tm organic vo-sync` measures every recorded voiceover."""
+    monkeypatch.setattr(organic, "unavailable_routes", lambda stack: set())
+    monkeypatch.setattr(organic, "stack_of", lambda run: {})
+    cfg = {"qa": {"wps_min": 2.8, "wps_max": 3.0, "tail_s": 1.5, "take_max_s": 15}}
+    pack, _ = _voiced(texts=(" ".join(["słowo"] * 57),), seconds=22.0)
+    pack["speech"].update({"alternative_reason": None, "voice_reference": None})
+    out = []
+    organic_pack._speech(None, pack, cfg, out)
+    assert [p.field for p in out] == ["script.words"]
+    out = []
+    organic_pack._speech(None, {**pack, "production": "animation"}, cfg, out)
+    assert out == []

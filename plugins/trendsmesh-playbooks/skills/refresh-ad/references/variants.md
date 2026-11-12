@@ -227,7 +227,7 @@ Findings:
 - eleven_multilingual_v2 keeps the pace of the original;
 - eleven_v4 has a similar timbre but speaks more slowly (+10–43%).
 
-Defaults in flow V: IVC clone from all available speech, model eleven_multilingual_v2, check of the sentence length against the slot.
+Defaults in flow V: IVC clone from all available speech, model eleven_multilingual_v2 for a line pasted in among the original's sentences (it keeps their pace), check of the sentence length against the slot. The tool's default is now Eleven v4 (`eleven_v4`, issue #88); flow V4 says when to pick v2.
 
 Untested: pasting a new line (not a sentence from the original) into the full ad, and the new captions.
 

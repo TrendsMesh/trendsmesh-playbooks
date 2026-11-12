@@ -217,3 +217,44 @@ def test_a_naive_plan_time_is_read_as_utc(tmp_path, capsys, planned_at, approves
     assert code == (0 if approves else 1), text
     if not approves:
         assert "tm decide pack approve --change" in text
+
+
+# --- #88 point 3: an approval of 0, and a re-record that asks for the difference -------------------
+
+def test_an_animations_ai_usd_of_0_is_approved(tmp_path, capsys):
+    """E2 approves each planned amount, and an animation's ai_usd is 0: `tm budget approve ai_usd 0` was refused
+    ("The amount must be above zero")."""
+    run = _run(tmp_path, planned={"ai_usd": 0, "voice_credits": 107})
+    _to_pack(run)
+    decide(run, "pack", "approve", by="user", note=None)
+    assert _approve(run, "ai_usd", 0, capsys)[0] == 0
+    assert _approve(run, "voice_credits", 107, capsys)[0] == 0
+    assert state.load(run).budgets == {"ai_usd": 0, "voice_credits": 107}
+    code, text = _approve(run, "ai_usd", -1, capsys)
+    assert code == 1 and "negative" in text
+
+
+def test_a_re_record_asks_for_spent_plus_its_estimate_and_the_run_goes_on(tmp_path, capsys):
+    run = _run(tmp_path, planned={"ai_usd": 0, "voice_credits": 107})
+    _to_pack(run)
+    decide(run, "pack", "approve", by="user", note=None)
+    assert _approve(run, "voice_credits", 107, capsys)[0] == 0
+    assert budget.spend(run, "voice_credits", 105, "the voiceover") == 0           # the first take
+    said = budget.shortfall(run, "voice_credits", 107, "tm tool elevenlabs tts")
+    assert "212" in said and "105 ElevenLabs credits of the approved 107" in said
+    assert "only 2 ElevenLabs credits is left" in said and "105 ElevenLabs credits more" in said
+    assert state.load(run).status != "stopped" and state.load(run).spend["voice_credits"] == 105
+    capsys.readouterr()
+    code = main(["budget", "spend", "voice_credits", "107", "--what", "re-record", "--run", str(run.path), "--json"])
+    assert code == 2 and "212" in json.loads(capsys.readouterr().out)["message"]
+    assert not flow.open_stop(run)
+    assert main(["budget", "approve", "voice_credits", "212", "--run", str(run.path), "--note", "yes, re-record"]) == 0
+    assert budget.spend(run, "voice_credits", 107, "re-record") == 0
+    assert budget.shortfall(run, "ai_usd", 5, "x") is None                          # other kinds keep their stop
+
+
+def test_hands_off_keeps_the_voice_stop(tmp_path):
+    run = _run(tmp_path, level="hands_off")
+    budget.approve_from_intake(run, "voice_credits", 100)
+    assert budget.shortfall(run, "voice_credits", 150, "x") is None
+    assert budget.spend(run, "voice_credits", 150, "x") == 2 and flow.open_stop(run)

@@ -586,8 +586,9 @@ carries a bed. A style is asked only for an animation.
 2. **Voices** for an off-screen narrator or a lip-sync line (an on-screen talking character's
    voice is described in the H3 prompt): 2 to 3 from the ElevenLabs library in the audience
    language, free previews: `tm tool elevenlabs voices --run R --query "<the voice wanted>"
-   --language <audience language> --use-case social_media --json`, plus the user's own voices.
-   Send the previews; ask in the chat language.
+   --language <audience language> --use-case social_media --json`, plus the user's own voices:
+   `tm tool elevenlabs voices --run R --mine --json` lists the voices on their account (their clones
+   and the voices they saved, with previews; free). Send the previews; ask in the chat language.
 3. **Music**: from the user's folder, indexed with `tm tool music_index --run R <the folder>
    --json` (length, loudness, tempo, mood), or a Mixkit track with a free commercial licence
    (give the user the link; they download the track they pick into the folder, then index it). A
@@ -656,7 +657,10 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
    and the three `options`), `cost` (one line per paid item: the model, the tier's criteria as the
    price file holds them, the unit price, the units, the cost, the kind, the price file and its
    date; `totals` per kind, `ai_usd` in USD, `voice_credits` the characters the ElevenLabs lines
-   read; `currency_note` `1 USD = <rate> <CODE>` for an account in another currency), `facts` (each
+   read at the text-to-speech model's credit rate: the voice line's `model` is that model
+   (`eleven_v4` unless the user picks another, `../../references/model-prompting/eleven-v4.md`),
+   `unit_price` its credits a character (0.5 for `eleven_v4`, 1 for `eleven_multilingual_v2` and for
+   a model not named), `unit` `character`; `currency_note` `1 USD = <rate> <CODE>` for an account in another currency), `facts` (each
    claim with its source, OV14), `risk` (the OV4 items hit, each with its mitigation, no
    percentages) and `sound` (the track, the trending sound).
    **An animation is drawn, not generated**: a whole animation has no video model, no stage items
@@ -683,9 +687,9 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
 4. `tm done E2 --run R`. **The `pack` check-in** ("Approve the generation pack and its cost") comes
    next, at every level (at Just the big calls inside the plan card). On the user's yes: `tm
    decide pack approve --run R --note "<their words>"`, then approve each planned amount: `tm
-   budget approve ai_usd <the pack's ai_usd total> --run R --json` and, when the pack reads
-   ElevenLabs lines, `tm budget approve voice_credits <its voice_credits total> --run R --json`.
-   Nothing is generated or paid before both.
+   budget approve ai_usd <the pack's ai_usd total> --run R --json` (0 for an animation, which is
+   drawn for free) and, when the pack reads ElevenLabs lines, `tm budget approve voice_credits <its
+   voice_credits total> --run R --json`. Nothing is generated or paid before both.
    - **A re-planned pack** (a new resolution, another model, a redo's cost line): write the next
      `_vNN` and check it again. The same items for no more keep the yes. A higher total or any
      change to the items needs a new yes: show the new cost, then `tm decide pack approve --change
@@ -778,9 +782,25 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      approved image is the host the take is made from;
    - **a narrator**: first the ElevenLabs voiceover, timed: `tm tool elevenlabs tts --run R
      --voice-id <the picked voice> --text "<the lines>" --timestamps --cost <its credits> --json`
-     writes the line with its word times (`<stem>.words.json`, `.words.srt`, `.phrases.srt`). **The
-     speech is timed before the takes are sized** (real voices run 2.5 to 3.8 words a second): when
-     the voice runs longer than the pack's takes, re-plan the pack (E2) before any take.
+     writes the line with its word times (`<stem>.words.json`, `.words.srt`, `.phrases.srt`). It
+     records with Eleven v4 in the run's market language (`language_code`). **In the voiceover
+     text, numbers, dates and percentages are written out as words**, in the case the sentence
+     needs, in the market's language ("w dwa tysiące dwudziestym szóstym roku", not "w 2026"): the
+     voice reads digits in a form of its own. On screen (captions, cards) they may stay digits; the
+     pack check refuses digits in an ElevenLabs line. **The speech is timed before the takes are
+     sized** (real voices run 2.5 to 3.8 words a second): `tm organic vo-sync --run R --words
+     <stem>.words.json --json` (free, reads only) compares the recorded lines with the pack's
+     `script.lines[].at`, gives each line's pace against `qa.wps_min`, and says when the voice runs
+     longer than the pack's takes. A line more than about 0.3 s from its planned time gets a
+     proposed `at` from the word times: write the new times into the next pack and check it again
+     (E2), before any take. When the voice runs longer than the takes, re-plan the pack (E2). A slow
+     line gets more words, or is recorded again.
+     **A re-record** (new text, another voice) is a new paid call: its `--cost` is the new text's
+     characters at the model's rate. When the approved voice budget no longer covers it, the call is
+     refused before anything is sent, and the run is not stopped: the message names the total to
+     approve, what the run has already spent plus this estimate. Ask the user for the difference in
+     the chat, and on their yes `tm budget approve voice_credits <that total> --run R --note "<their
+     words>" --json`, then run the call again.
    - **an animation** (FLOWS F3, `../../references/animation-styles.md`; free, drawn on this
      computer): the voiceover first, timed as for a narrator (its word SRT, `<stem>.words.srt`);
      then the content file `03_wip/<item>/content_v01.txt` (the beats on the SRT's times, the
@@ -862,6 +882,12 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      (`768P`, or `2K` for 1080p);
    - **Seedance 2.0** (`seedance-2.0.md`) for a person from a description: the person in words, the
      product and a pet as `reference_images`, no photo of a person;
+   - **a narrator's take** follows the recorded voice: before it, `tm organic vo-sync --run R
+     --words <stem>.words.json --spec 03_wip/<item>_vNN.json --json` compares the prompt's bracket
+     cuts with the word times and proposes, for each cut more than about 0.3 s from the line it
+     opens, a new time in the pause before that line (free). Write the proposed cuts into the
+     prompt; the guard refuses a narrator's single take whose cuts are off the latest recorded
+     voiceover (nothing is run or spent). A take of a later section gives `--offset <its start>`.
    - **the lip-sync alternative**, only on request or for exact wording or a brand voice: the
      ElevenLabs line (`tm tool elevenlabs tts … --timestamps --cost <credits>`), then
      `kwaivgi/kling-avatar-v2` (`kling-avatar-v2.md`) on the close-up frame; its contact sheet is

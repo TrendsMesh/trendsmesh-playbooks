@@ -30,6 +30,7 @@ HANDOFF_RECIPES = REPO / "handoff" / "organic-video_v02" / "resources" / "model-
 VERBATIM_RECIPES = ("README.md", "minimax-h3.md", "gpt-image-2.md", "veo-3.1.md")   # the handoff's, as they are
 OWN_RECIPES = ("seedance-2.0.md", "kling-avatar-v2.md",   # the plugin's, from the handoff's pet-store research
                "seedance-1.5-pro.md", "seedance-2.5.md", "p-video-upscale.md")
+VOICE_RECIPES = ("eleven-v4.md",)   # the plugin's, from ElevenLabs' docs and the owner's live run (#88)
 ROUTED_RECIPES = {   # every model the engine itself sends a take to (a tier, a host image, a described person,
     "bytedance/seedance-1.5-pro": "seedance-1.5-pro.md",   # the upscaler) -> its recipe
     "minimax/h3": "minimax-h3.md",
@@ -456,7 +457,7 @@ def test_model_recipes_are_the_handoffs_and_the_plugins_own_lf():
     Seedance 1.5 Pro, Seedance 2.5 and Pruna's upscaler written from the handoff's pet-store research, each with its sources
     and dated; pinned LF. The pack check reads this folder (`organic_pack.RECIPES`)."""
     assert organic_pack.RECIPES == RECIPES
-    assert sorted(p.name for p in RECIPES.iterdir()) == sorted(VERBATIM_RECIPES + OWN_RECIPES)
+    assert sorted(p.name for p in RECIPES.iterdir()) == sorted(VERBATIM_RECIPES + OWN_RECIPES + VOICE_RECIPES)
     for name in VERBATIM_RECIPES:   # the handoff's, but for the client's line quoted in MiniMax's: a made-up one in ours
         assert _unquoted(_text(RECIPES / name)) == _unquoted(_text(HANDOFF_RECIPES / name)), name
     assert sorted(p.name for p in HANDOFF_RECIPES.iterdir()) == sorted(VERBATIM_RECIPES)
@@ -465,6 +466,10 @@ def test_model_recipes_are_the_handoffs_and_the_plugins_own_lf():
         assert re.search(r"^# .+: prompting recipe \(checked \d{4}-\d{2}-\d{2}\)$", text, re.M), name
         assert "\nSources:\n" in text and "pet-store-proposals/02_research/models/" in text, name
         assert len(re.findall(r"\b2026-11-0\d\b", text)) >= 3, name
+    for name in VOICE_RECIPES:
+        text = _text(RECIPES / name)
+        assert re.search(r"^# .+: prompting recipe \(checked \d{4}-\d{2}-\d{2}\)$", text, re.M), name
+        assert "\nSources:\n" in text and "https://elevenlabs.io/docs/" in text, name
     assert _pinned_lf("plugins/trendsmesh-playbooks/references/model-prompting/*.md")
 
 

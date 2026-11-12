@@ -4,9 +4,10 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
     tm tool elevenlabs isolate --run RUN AUDIO --cost CREDITS [--out PATH] [--json]
     tm tool elevenlabs clone-ivc --run RUN --name NAME FILE [FILE ...] --cost CREDITS [--description TEXT] [--json]
     tm tool elevenlabs tts --run RUN --voice-id ID --text TEXT --cost CREDITS [--speed 1.0]
-                           [--model eleven_multilingual_v2] [--settings JSON] [--timestamps] [--out PATH] [--json]
+                           [--model eleven_v4] [--language L] [--settings JSON] [--timestamps] [--out PATH] [--json]
     tm tool elevenlabs voices --run RUN --query Q --language L [--gender G] [--age A] [--accent X]
                            [--use-case U] [--limit 10] [--json]     (free)
+    tm tool elevenlabs voices --run RUN --mine [--query Q] [--limit 100] [--json]     (free)
     tm tool elevenlabs history-search --run RUN TEXT [--json]
     tm tool elevenlabs music-upload --run RUN AUDIO --cost CREDITS [--out PATH] [--json]
     tm tool elevenlabs music-compose --run RUN --plan PLAN.json --cost CREDITS [--model music_v2_5]
@@ -27,6 +28,9 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
   `<stem>.words.srt` (one word per cue: what `atlas-prompt --srt` takes) and `<stem>.phrases.srt` (cues closed at
   `, . ? ! …` and at five words). Without it `tts` is as before. The sidecars are never overwritten: if one
   exists the call stops before anything is sent.
+- voices --mine lists the voices on the user's own account (`GET /v2/voices`, `voice_type=non-default`: their
+  clones, the library voices they saved and their workspace's, without ElevenLabs' premade ones; `search` from
+  --query), saved as `02_research/voices/mine/search_vNN.json` with the previews beside it. Free, as the search is.
 - voices searches the shared voice library (`GET /v1/shared-voices`, `language` from --language) and saves
   `02_research/voices/<slug(query)>/search_vNN.json` with the free preview clips
   `preview_<name>_<id8>.mp3` beside it. It is free and spends nothing. The key goes only to ElevenLabs,
@@ -34,8 +38,12 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
 - tts: `speed` must be 0.7 to 1.2 (ElevenLabs' range; R9: a line that must fit a slot is first
   regenerated shorter or faster, stretching is the last resort). A `.wav` output asks for
   `pcm_44100` (V4: PCM 44.1 kHz takes) and wraps it in a WAV header; other extensions get MP3.
-  The model defaults to eleven_multilingual_v2 (keeps the original's pace). `--settings` overrides
-  the voice's stored settings for this request; with a clone keep similarity_boost at 0.75 or less.
+  The model defaults to Eleven v4, `eleven_v4`, in every playbook (#88; `tm.tts_models`); Refresh an ad picks
+  `eleven_multilingual_v2` for a line among the original's sentences (it keeps the original's pace). v4 has no
+  speed setting: its request sends no `speed`, and a speed other than 1.0 is refused before anything is sent.
+  `language_code` is the run's market language (`video_fonts.market_language`, its region left out: `pt-BR` ->
+  `pt`), or --language; it is sent to every model but multilingual_v2, which does not support it. `--settings`
+  overrides the voice's stored settings for this request; with a clone keep similarity_boost at 0.75 or less.
 - history-search finds earlier generations whose text contains the given text (case, spacing and
   punctuation ignored), to reuse the original voice and settings (V1a) instead of cloning.
 - Music endpoints, read from the ElevenLabs Python SDK 2.77.0 (`elevenlabs/music/raw_client.py`,
@@ -89,12 +97,12 @@ from pathlib import Path
 
 import requests
 
-from tm import cli, i18n, organic_audio, providers
+from tm import cli, i18n, organic_audio, providers, tts_models
 from tm.runfolder import slug
 from tm.tools import _common as c
 
 API = "https://api.elevenlabs.io"
-DEFAULT_MODEL = "eleven_multilingual_v2"
+DEFAULT_MODEL = tts_models.DEFAULT   # Eleven v4 in every playbook (#88)
 SPEED_RANGE = (0.7, 1.2)
 VOICES_LIMIT = (1, 100)   # voices a shared-library search gives (its page_size)
 WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(1, 10)), *(f"LPT{n}" for n in range(1, 10))}
@@ -308,15 +316,22 @@ def clone_ivc(name: str, files: list[Path | str], description: str | None = None
 
 
 def tts(voice_id: str, text: str, out: Path | str, speed: float = 1.0, model: str = DEFAULT_MODEL,
-        settings: dict | None = None, timestamps: bool = False) -> dict:
+        settings: dict | None = None, timestamps: bool = False, language: str | None = None) -> dict:
     """One take of `text` in `voice_id` at `speed`, saved to `out` (.wav = PCM 44.1 kHz). With
-    `timestamps` the answer also carries the character alignment (returned as "alignment")."""
+    `timestamps` the answer also carries the character alignment (returned as "alignment"). `language` (ISO 639-1)
+    goes as `language_code` to a model that takes it."""
     if not SPEED_RANGE[0] <= speed <= SPEED_RANGE[1]:
         raise ValueError(f"speed must be between {SPEED_RANGE[0]} and {SPEED_RANGE[1]}, got {speed}.")
+    if not tts_models.takes_speed(model) and abs(speed - 1.0) > 1e-9:
+        raise ValueError(f"{model} has no speed setting, so --speed {speed:g} would not change the take. Nothing was "
+                         f"sent. Record it at the model's own pace, or with {tts_models.KEEPS_PACE}, which takes a "
+                         "speed.")
     out = Path(out)
     wav = out.suffix.lower() == ".wav"
     fmt = "pcm_44100" if wav else "mp3_44100_128"
-    body = {"text": text, "model_id": model, "voice_settings": {**(settings or {}), "speed": speed}}
+    voice_settings = {**(settings or {}), **({"speed": speed} if tts_models.takes_speed(model) else {})}
+    body = {"text": text, "model_id": model, "voice_settings": voice_settings,
+            **({"language_code": language} if language and tts_models.takes_language(model) else {})}
     before = _before_paid("the text to speech")
     path = f"/v1/text-to-speech/{voice_id}" + ("/with-timestamps" if timestamps else "")
     resp = _paid(path, "the text to speech", params={"output_format": fmt}, json=body)
@@ -490,6 +505,27 @@ def credits() -> dict:
                           "credits are not checked. Nothing was spent.") from None
 
 
+def my_voices(query: str | None = None, limit: int = 100) -> dict:
+    """The voices on the user's own account -> {voices: [...], answer, request}. Free: one read."""
+    params = {"voice_type": "non-default", "page_size": limit, "sort": "name", **({"search": query} if query else {})}
+    try:
+        resp = _call("GET", "/v2/voices", params=params)
+    except requests.RequestException as exc:
+        raise c.ToolError(c.scrub(f"Could not reach ElevenLabs to list your voices: {exc}. "
+                                  "Nothing was spent.")) from None
+    _check(resp, "listing your voices")
+    try:
+        answer = resp.json()
+        found = answer["voices"]
+        if not isinstance(found, list):
+            raise TypeError
+    except (ValueError, KeyError, TypeError):
+        raise c.ToolError("ElevenLabs answered the list of your voices in a form this plugin does not know. "
+                          "Nothing was spent.") from None
+    return {"voices": found, "answer": answer, "request": {"method": "GET", "url": f"{API}/v2/voices",
+                                                           "params": params}}
+
+
 def voices(query: str, language: str, *, gender: str | None = None, age: str | None = None,
            accent: str | None = None, use_case: str | None = None, limit: int = 10) -> dict:
     """Search the shared voice library -> {voices: [...], answer, request}. Free."""
@@ -567,9 +603,12 @@ def _cmd_tts(a: argparse.Namespace, run) -> int:
         if taken:
             raise c.ToolError(f"{', '.join(taken)} already exists, and files are never overwritten. Use another "
                               "--out, or leave it out to get the next version. Nothing was sent.")
-    res = tts(a.voice_id, a.text, out, speed=a.speed, model=a.model, settings=settings, timestamps=a.timestamps)
+    language = _language(run, a.language) if tts_models.takes_language(a.model) else None
+    res = tts(a.voice_id, a.text, out, speed=a.speed, model=a.model, settings=settings, timestamps=a.timestamps,
+              language=language)
     c.record(run, out, "ElevenLabs text to speech", a.voice_id, prompt=a.text,
              params={"voice_id": a.voice_id, "speed": a.speed, "settings": settings,
+                     **({"language_code": language} if language else {}),
                      **({"timestamps": True} if a.timestamps else {})},   # a plain take's row as before
              model=a.model, cost=_cost(res), request=res["request"], response=res["response"])
     outputs = [c.rel(run, out)]
@@ -590,6 +629,17 @@ def _cmd_tts(a: argparse.Namespace, run) -> int:
                     + (f" Word and phrase times beside it ({len(words)} words)." if a.timestamps else ""))
 
 
+def _language(run, given: str | None) -> str | None:
+    """The `language_code` of a take: --language, else the run's market language; its primary subtag (`pt-BR` ->
+    `pt`), as ElevenLabs takes ISO 639-1 (and 639-3 for a few). None when the run names no market language."""
+    if given and given.strip():
+        return i18n.primary(given.strip())
+    from tm import video_fonts   # the one reading of a run's market language, the channel profile's too
+
+    tag, _ = video_fonts.market_language(run)
+    return i18n.primary(tag) if tag else None
+
+
 def _search_folder(query: str) -> str:
     """The search's folder name, `slug(query)`, never a name Windows reserves (`con`, `nul`, `com1`…)."""
     name = slug(query)
@@ -598,16 +648,25 @@ def _search_folder(query: str) -> str:
 
 def _cmd_voices(a: argparse.Namespace, run) -> int:
     low, high = VOICES_LIMIT
-    if not low <= a.limit <= high:
-        raise c.ToolError(f"--limit is {a.limit}, and the shared voice library gives {low} to {high} voices a "
-                          "search. Nothing was searched.")
-    res = voices(a.query, a.language, gender=a.gender, age=a.age, accent=a.accent, use_case=a.use_case,
-                 limit=a.limit)
-    stage = f"02_research/voices/{_search_folder(a.query)}"
+    limit = a.limit if a.limit is not None else (high if a.mine else 10)
+    if not low <= limit <= high:
+        raise c.ToolError(f"--limit is {limit}, and ElevenLabs gives {low} to {high} voices a search. "
+                          "Nothing was searched.")
+    if a.mine:
+        res = my_voices(a.query, limit)
+        stage, source, params = "02_research/voices/mine", "ElevenLabs voices on the account", {"query": a.query}
+    else:
+        missing = [flag for flag, value in (("--query", a.query), ("--language", a.language)) if not value]
+        if missing:
+            raise c.ToolError(f"The library search needs {' and '.join(missing)} (or --mine for the voices on your "
+                              "own account). Nothing was searched.")
+        res = voices(a.query, a.language, gender=a.gender, age=a.age, accent=a.accent, use_case=a.use_case,
+                     limit=limit)
+        stage, source = f"02_research/voices/{_search_folder(a.query)}", "ElevenLabs shared voices"
+        params = {"query": a.query, "language": a.language}
     out = c.output(run, a.out, stage, "search", "json")
     c.write_json(out, res["answer"])
-    c.record(run, out, "ElevenLabs shared voices", None, params={"query": a.query, "language": a.language},
-             cost="free", request=res["request"], response={"status": 200})
+    c.record(run, out, source, None, params=params, cost="free", request=res["request"], response={"status": 200})
     rows = []
     for v in res["voices"]:
         vid = str(v.get("voice_id") or "")
@@ -616,8 +675,10 @@ def _cmd_voices(a: argparse.Namespace, run) -> int:
         saved = bool(vid) and _preview(v.get("preview_url"), target)
         if saved:
             c.record(run, target, "ElevenLabs voice preview", c.rel(run, out), cost="free")
-        rows.append({"voice_id": vid, "name": v.get("name"), "gender": v.get("gender"), "age": v.get("age"),
-                     "accent": v.get("accent"), "use_case": v.get("use_case"),
+        labels = v.get("labels") if isinstance(v.get("labels"), dict) else {}   # an own voice's are in its labels
+        rows.append({"voice_id": vid, "name": v.get("name"),
+                     **{k: v.get(k) or labels.get(k) for k in ("gender", "age", "accent", "use_case")},
+                     **({"category": v.get("category")} if a.mine else {}),
                      "description": v.get("description"), "preview_file": c.rel(run, target) if saved else None})
     lines = [f"{r['voice_id']} | {r['name']} | {r['gender']} {r['age']} {r['accent']} | {r['use_case']} | "
              f"{(r['description'] or '')[:110]}" for r in rows]
@@ -751,22 +812,27 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--voice-id", required=True)
     s.add_argument("--text", required=True)
     s.add_argument("--speed", type=float, default=1.0)
-    s.add_argument("--model", default=DEFAULT_MODEL)
+    s.add_argument("--model", default=DEFAULT_MODEL,
+                   help=f"default {DEFAULT_MODEL}; {tts_models.KEEPS_PACE} keeps an original's pace (Refresh an ad)")
+    s.add_argument("--language", default=None,
+                   help="the language_code, e.g. pl (default: the run's market language)")
     s.add_argument("--settings", default=None, help="voice settings: a JSON file (or inline JSON), e.g. {\"stability\": 0.5}")
     s.add_argument("--timestamps", action="store_true",
                    help="use with-timestamps and write <stem>.words.json, .words.srt and .phrases.srt")
     s = sub.add_parser("history-search", allow_abbrev=False, help="earlier generations with this text")
     c.add_common(s)
     s.add_argument("text")
-    s = sub.add_parser("voices", allow_abbrev=False, help="search the shared voice library with previews (free)")
+    s = sub.add_parser("voices", allow_abbrev=False,
+                       help="search the shared voice library, or list your own voices (--mine), with previews (free)")
     c.add_common(s)
-    s.add_argument("--query", required=True)
-    s.add_argument("--language", required=True, help="the voice's language code, e.g. pl or en")
+    s.add_argument("--mine", action="store_true", help="the voices on your own account, not the library")
+    s.add_argument("--query", default=None, help="what to search for (needed for the library)")
+    s.add_argument("--language", default=None, help="the voice's language code, e.g. pl or en (the library)")
     s.add_argument("--gender", default=None)
     s.add_argument("--age", default=None)
     s.add_argument("--accent", default=None)
     s.add_argument("--use-case", default=None, help="e.g. social_media, narrative_story, conversational")
-    s.add_argument("--limit", type=int, default=10, help="voices to list, 1 to 100")
+    s.add_argument("--limit", type=int, default=None, help="voices to list, 1 to 100 (default 10, or 100 with --mine)")
     s = sub.add_parser("credits", allow_abbrev=False, help="the plan and the credits left (free)")
     c.add_common(s)
     s = sub.add_parser("music-upload", allow_abbrev=False, help="upload the ad's track and extract its plan")

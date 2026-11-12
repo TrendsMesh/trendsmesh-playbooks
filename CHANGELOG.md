@@ -60,6 +60,27 @@ What changed in each version of the TrendsMesh playbooks plugin.
   answered (a connection timeout), that Chrome kept running in the background. `tm render` now closes it after the
   render, and leaves alone a Chrome whose render is still going. Two renders that update the copied sources at the
   same moment no longer delete each other's copy.
+- **Every voiceover is recorded with Eleven v4.** Refresh an ad, Organic AI video and Create an ad now record with
+  ElevenLabs' Eleven v4 unless you pick another model. Refresh an ad still uses Multilingual v2 for a line pasted in
+  among the original ad's sentences, since it keeps their pace. A new recipe says how to write for v4.
+- **Numbers are read right in your market's language.** The voiceover is recorded in the run's market language, and
+  its numbers, dates and percentages are written out as words in the right grammatical form (in Polish a year or a
+  count changes with its case). Captions and on-screen cards can keep the digits. Organic AI video's pack check
+  refuses digits in an ElevenLabs line.
+- **The voice budget matches what the recording uses.** The estimate is the text's characters at the chosen model's
+  credit rate: about half a credit a character on v4, where it used to count one, so it asked about twice what the
+  recording used. A re-record that the approved voice budget no longer covers no longer stops the run: Claude asks
+  you to approve the difference (what the run already spent plus the new recording), then records it.
+- **A budget of 0 can be approved.** An animation costs $0 on Replicate, and `tm budget approve ai_usd 0` was
+  refused.
+- **The video's cuts follow the recorded voice.** After the voiceover is recorded, `tm organic vo-sync` compares its
+  word times with the pack's line times and the take prompt's cuts, and proposes new times for anything more than
+  about 0.3 s off. It is free and runs before anything paid. A narrator's take whose cuts are off the recorded voice
+  is not run. The pace check (`qa.wps_min`) now covers an ElevenLabs voiceover too.
+- **Your own ElevenLabs voices.** `tm tool elevenlabs voices --mine` lists the voices on your account, your clones
+  and the voices you saved, with previews. It is free.
+- **`--help` works on every tool.** `tm tool elevenlabs --help` said it costs money and needed a run and a cost.
+  The help of every tool, paid or not, now shows with no run, no cost and no key.
 
 ## 0.12.0
 

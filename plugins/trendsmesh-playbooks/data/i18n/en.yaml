@@ -61,6 +61,12 @@ keys:
     empty: "The ElevenLabs key works, but the account has no credits left this month. Add credits or choose a bigger plan at https://elevenlabs.io/app/subscription, then tell Claude."
     short: "ElevenLabs has {left} credits left, and {what} needs about {need} (the approved estimate). Nothing was sent and nothing was spent. Add credits or choose a bigger plan at https://elevenlabs.io/app/subscription, then tell Claude; or tell Claude to lower the plan for this step. The run continues from the same place."
 
+# --- Budgets (issue 88): engine/src/tm/budget.py. A voice call the approved total no longer covers (a re-record)
+# asks the user for the difference, and the run is not stopped. {cost}, {spent}, {approved}, {left} and {more} come
+# with their unit; {total} is the bare number for the command.
+budget:
+  voice_short: "{what} would cost about {cost}, and {spent} of the approved {approved} is already spent, so only {left} is left. Nothing was run or spent, and the run is not stopped. Ask the user to approve {more} more, {total} in total (what is spent plus this estimate); on their yes, record it with `tm budget approve {kind} {total} --run R --note \"<their words>\"`, then run the same call again."
+
 # --- The doctor (issue 76): engine/src/tm/doctor.py. The general check runs when no playbook is chosen; {playbooks}
 # is the list of the playbooks this plugin version has, by name.
 doctor:
@@ -1262,3 +1268,19 @@ refresh:
     step_switch_off: "Switch the original off: once the new ad delivers, turn off your original ad {original_ad}."
     never_on: "Nothing in this run switches anything on or off: these steps are yours."
     active_found: "{what} is not paused in Meta ({status}). Nothing should run from this playbook: pause it now in Ads Manager (or with the Meta Ads connector), then record the objects again."
+
+# --- The recorded voiceover against the plan (issue 88): engine/src/tm/organic_vo.py, `tm organic vo-sync` and the
+# paid take's guard. Agent-facing: what to change before the take is paid for.
+vo_sync:
+  no_pack: "There is no checked pack to compare the voiceover with. Check the pack first (tm organic pack check --stage pack)."
+  bad_words: "{file} could not be read as word times ({why}). Give the <stem>.words.json that tm tool elevenlabs tts --timestamps wrote."
+  bad_spec: "The take spec {file} could not be read ({why}). Nothing was compared."
+  no_brackets: "The take spec {file} has no timed shot list in input.prompt ([0 to 3 seconds] …), so there are no cuts to compare. Leave out --spec to compare the line times only."
+  unmatched: "{file} holds {recorded} recorded words, and the pack's said lines hold {said}: the take was not recorded from the pack's lines, so nothing was compared. Record the pack's lines as they are written (numbers in words), or write the lines that were recorded into the next pack."
+  in_sync: "The recorded voiceover follows the pack: every line within 0.3 s of its planned time and every cut on its line, at {pace} words a second."
+  lines_moved: "The recorded lines are more than 0.3 s from the pack's times; proposed `at` from the word times: {lines}."
+  cuts_moved: "The take's cuts do not follow the voice; proposed cuts from the word times: {cuts}."
+  longer: "The voice runs {voice} s, longer than the pack's {seconds} s: re-plan the pack (E2) before any take."
+  slow: "Under qa.wps_min (words a second): {lines}. Add words to those lines, or record them again at a brisker read, before the take."
+  todo: "Write the new times into the next pack (`script.lines[].at`) and the take's prompt (its brackets), check the pack again, then make the take. This is free, and nothing paid has run."
+  take_refused: "The take is not run: its prompt cuts away from the recorded voiceover ({words}), so a line would start over the wrong scene. Move the cuts to the word times: {cuts}. Write them into the take's prompt (and the pack's `script.lines[].at`, then check the pack again)."

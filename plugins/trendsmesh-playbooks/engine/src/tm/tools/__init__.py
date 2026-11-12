@@ -27,6 +27,11 @@ recorded and stops the run). With no report (the child crashed) the estimate sta
 told the approved estimate (TM_COST_ESTIMATE, never inherited from the shell): ElevenLabs compares what is left with
 it before paying, and a refusal for no credit names it (#66).
 
+The help (`-h` or `--help` anywhere in the arguments) is free for every tool, paid or not: it needs no run, no cost
+and no key, and runs in the base tier, where every tool module imports (#88: `tm tool elevenlabs --help` used to say
+it costs money). A voice call the approved budget no longer covers (a re-record) is refused with `budget.shortfall`'s
+words, which ask the user for the difference; the run is not stopped (#88).
+
 A playbook may hold a paid tool to its own rules first: `PRECHECK[playbook][tool]` names a function
 `(run, args) -> str | None` that runs after the tier and key checks and before `budget.spend`; a message
 back is a stop (exit 2), and nothing runs or is spent. Organic video's is `organic_specs.guard` (model
@@ -70,13 +75,16 @@ class Tool:
     light: tuple[str, ...] = ()  # actions that need only the base tier (elevenlabs credits: one free read, #54)
 
     def tier_for(self, args: list[str]) -> str:
-        """The tier this call runs in: the tool's own, or base for a light action."""
+        """The tier this call runs in: the tool's own, or base for a light action or the help (every tool module
+        imports in the base tier, #88)."""
+        if wants_help(args):
+            return "base"
         return "base" if self.light and args and args[0] in self.light else self.tier
 
     def kind_for(self, args: list[str]) -> str | None:
         """The budget kind this call spends from, or None when it is free. Decided from the parsed
-        value, as the tool parses it: only a non-empty --resume is the free path."""
-        if not self.budget:
+        value, as the tool parses it: only a non-empty --resume is the free path. The help is free (#88)."""
+        if not self.budget or wants_help(args):
             return None
         if "--resume" in self.budget and (_parsed(args).resume or "").strip():
             return self.budget["--resume"]  # finishing a run that is already paid: free
@@ -90,6 +98,11 @@ class Tool:
             return actions["*"]
         # an unknown or missing action is paid (the tool will refuse it, but the guard holds alone)
         return next((v for v in actions.values() if v), None)
+
+
+def wants_help(args: list[str]) -> bool:
+    """A bare -h or --help: the tool's parser prints its help and exits before anything is read, sent or spent."""
+    return any(a in ("-h", "--help") for a in args)
 
 
 TOOLS: dict[str, Tool] = {
@@ -227,7 +240,7 @@ def run_tool(name: str, args: list[str]) -> int:
     env = paths.child_environ({k: v for k, v in os.environ.items()
                                if k not in ENV_VARS.values() and k != "TM_COST_ESTIMATE"})
     env.update(paths.pixi_env())
-    for key in tool.keys:
+    for key in () if wants_help(args) else tool.keys:   # the help needs no key (#88)
         value = secrets.get(key)  # type: ignore[arg-type]
         if not value:
             get = i18n.t(f"keys.{_PROVIDERS[key]}.get", permissions=i18n.t("keys.elevenlabs.permissions"))
@@ -245,8 +258,8 @@ def run_tool(name: str, args: list[str]) -> int:
                         f"approved estimate in {unit}, above 0>. Nothing was run.", 1)
         try:
             run = RunFolder.open(Path(run_path))
-            refused = _precheck(run, name, args)
-            if refused:
+            refused = _precheck(run, name, args) or budget.shortfall(run, kind, estimate, what)
+            if refused:   # nothing spent; a voice shortfall asks the user and leaves the run going (#88)
                 return _say(as_json, "stop", refused, 2)
             if budget.spend(run, kind, estimate, what):
                 return _say(as_json, "stop", flow.open_stop(run, [f"over_budget_{kind}"]) or "Over budget.", 2)

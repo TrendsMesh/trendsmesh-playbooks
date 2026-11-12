@@ -23,10 +23,10 @@
        "at": [6.5, 11.5]},
       {"n": 3, "text": "Researchers found dogs circled nearly three times as often on a bumpy rug.",
        "speaker": "narrator", "shot": "S2: the study as a chart, a flat rug beside a bumpy rug, \"~3×\"", "at": [11.5, 15.5]},
-      {"n": 4, "text": "That spin before the nap? Bed-making, wolf style.",
+      {"n": 4, "text": "That spin before the nap? Just bed-making, wolf style.",
        "speaker": "narrator", "shot": "S3: the husky drops onto the cushion, tucks his nose under his tail, eyes shut", "at": [15.5, 19]}
     ],
-    "words": 57,
+    "words": 58,
     "seconds": 22
   },
   "speech": {
@@ -72,11 +72,11 @@
       {"what": "footage 13 s (S1 + S3), 768P", "item": "take", "model": "minimax/h3", "criteria": "target resolution=768P",
        "unit_price": 0.08, "unit": "second of output video", "units": 13, "cost": 1.04, "kind": "ai_usd",
        "price_file": "02_research/models/prices_2026-11-06_v01.json", "checked": "2026-11-06"},
-      {"what": "voiceover, 311 characters", "item": null, "model": "elevenlabs", "criteria": null,
-       "unit_price": 1, "unit": "character", "units": 311, "cost": 311, "kind": "voice_credits",
+      {"what": "voiceover, 316 characters", "item": null, "model": "eleven_v4", "criteria": null,
+       "unit_price": 0.5, "unit": "character", "units": 316, "cost": 158, "kind": "voice_credits",
        "price_file": null, "checked": null}
     ],
-    "totals": {"ai_usd": 1.13, "voice_credits": 311},
+    "totals": {"ai_usd": 1.13, "voice_credits": 158},
     "currency_note": null
   },
   "facts": [

@@ -297,6 +297,21 @@ Written for every final video and script, per the rules in `resources/posting-ki
 - Sources live in the pack, the script page's fact check and the manifest; never in the post text (OV11).
 - Claims stay soft ("often"); there are no medical or diagnostic claims.
 
+## OV7, added after the spec (issue #88)
+
+The verbatim OV7 above stands; these follow from the owner's live run on 0.11.0, and the pack check holds them:
+- **Numbers in the voiceover are words.** In an ElevenLabs voiceover's text, numbers, dates and percentages are
+  written out as words, in the grammatical case the sentence needs, in the market's language (a year or a count in
+  digits was read in the wrong form). On screen they may stay digits. The take is recorded with the run's market
+  language as its `language_code`.
+- **Eleven v4 is the voice model** unless the user picks another (`../../references/model-prompting/eleven-v4.md`),
+  and the voice credits are its characters at that model's rate (0.5 a character for v4).
+- **The cuts follow the recorded voice.** After the recording, `tm organic vo-sync` compares the lines' word times
+  with `script.lines[].at` and with the take prompt's cuts; a difference of more than about 0.3 s is moved to the
+  word times before the paid take. An ElevenLabs voiceover is held to the same pace, `qa.wps_min`.
+- **A re-record never stops the run.** Its estimate adds what the run has already spent; when the approved voice
+  budget no longer covers it, the user is asked to approve the difference.
+
 ## Rules from PB1 that apply here (handoff `refresh-ad_v03`, PLAYBOOK.md, verbatim)
 
 ### R3. Every number in the outputs has a source

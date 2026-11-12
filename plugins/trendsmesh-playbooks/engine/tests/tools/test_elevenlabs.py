@@ -122,11 +122,11 @@ def test_tts_sends_speed_and_writes_wav(api, tmp_path):
 
     api.routes[("POST", "/v1/text-to-speech/v123")] = tts
     out = tmp_path / "take 1.wav"
-    res = elevenlabs.tts("v123", "Zimowa wyprzedaż już jest", out, speed=1.08)
+    res = elevenlabs.tts("v123", "Zimowa wyprzedaż już jest", out, speed=1.08, model="eleven_multilingual_v2")
     post = next(c for c in api.calls if c.method == "POST")
     body = json.loads(post.body)
     assert body["voice_settings"]["speed"] == 1.08
-    assert body["model_id"] == "eleven_multilingual_v2"
+    assert body["model_id"] == "eleven_multilingual_v2" and "language_code" not in body
     assert "output_format=pcm_44100" in post.url
     with wave.open(io.BytesIO(out.read_bytes())) as w:
         assert (w.getframerate(), w.getnchannels(), w.getnframes()) == (44100, 1, 4410)
@@ -863,3 +863,123 @@ def test_voices_limit_is_1_to_100(api, run, capsys, limit):
                             "--json"]) == 1
     assert "--limit" in json.loads(capsys.readouterr().out.strip().splitlines()[-1])["message"]
     assert not any("shared-voices" in c.url for c in api.calls)
+
+
+# --- #88: Eleven v4 by default, the market language, the user's own voices --------------------------
+
+def _market(run, lang="pl"):
+    (run.path / "config.yaml").write_text(f"languages:\n  working: en\n  market: {lang}\n", encoding="utf-8")
+
+
+def _plain(api, voice="v9"):
+    api.routes[("POST", f"/v1/text-to-speech/{voice}")] = lambda p: Api._raw(p, MP3, headers={"character-cost": "5"})
+
+
+def _body(api):
+    return json.loads(next(c for c in api.calls if c.method == "POST").body)
+
+
+def test_tts_default_is_v4_in_the_market_language_without_a_speed(api, run, capsys):
+    """Point 1: v4 is the default in every playbook. Point 2: the run's market language goes as `language_code`
+    (a year or a count read in the wrong case otherwise). v4 has no speed setting, so none is sent."""
+    from tm import tts_models
+
+    assert elevenlabs.DEFAULT_MODEL == tts_models.DEFAULT == "eleven_v4"
+    _market(run)
+    _plain(api)
+    assert elevenlabs.main(["tts", "--run", str(run.path), "--voice-id", "v9", "--text", LINE, "--cost", "5",
+                            "--json"]) == 0
+    body = _body(api)
+    assert body["model_id"] == "eleven_v4" and body["language_code"] == "pl"
+    assert "speed" not in body["voice_settings"]
+    row = next(r for r in manifest.rows(run) if r["file"] == "03_wip/vo_take_v01.wav")
+    assert json.loads(row["params"])["language_code"] == "pl" and row["model"] == "eleven_v4"
+
+
+def test_tts_language_is_the_region_free_code_and_can_be_given(api, run, capsys):
+    _market(run, "pt-BR")
+    _plain(api)
+    assert elevenlabs.main(["tts", "--run", str(run.path), "--voice-id", "v9", "--text", LINE, "--cost", "5"]) == 0
+    assert _body(api)["language_code"] == "pt"
+    api.calls.clear()
+    assert elevenlabs.main(["tts", "--run", str(run.path), "--voice-id", "v9", "--text", LINE, "--cost", "5",
+                            "--language", "de"]) == 0
+    assert _body(api)["language_code"] == "de"
+
+
+def test_tts_without_a_market_language_sends_none(api, run, capsys):
+    _plain(api)
+    assert elevenlabs.main(["tts", "--run", str(run.path), "--voice-id", "v9", "--text", LINE, "--cost", "5"]) == 0
+    assert "language_code" not in _body(api)
+
+
+def test_multilingual_v2_keeps_the_pace_and_takes_no_language_code(api, run, capsys):
+    """Refresh an ad picks v2 to keep the original's pace: it takes a speed, and ElevenLabs does not support
+    `language_code` on multilingual_v2, so none is sent."""
+    _market(run)
+    _plain(api)
+    assert elevenlabs.main(["tts", "--run", str(run.path), "--voice-id", "v9", "--text", LINE, "--cost", "5",
+                            "--model", "eleven_multilingual_v2", "--speed", "1.1"]) == 0
+    body = _body(api)
+    assert body["model_id"] == "eleven_multilingual_v2" and "language_code" not in body
+    assert body["voice_settings"]["speed"] == 1.1
+
+
+def test_a_speed_on_v4_is_refused_before_anything_is_sent(api, run, capsys):
+    _plain(api)
+    assert elevenlabs.main(["tts", "--run", str(run.path), "--voice-id", "v9", "--text", LINE, "--cost", "5",
+                            "--speed", "1.1", "--json"]) == 1
+    message = json.loads(capsys.readouterr().out.strip().splitlines()[-1])["message"]
+    assert "eleven_v4" in message and "eleven_multilingual_v2" in message
+    assert not any(c.method == "POST" for c in api.calls)
+
+
+def _mine(api, seen=None):
+    def own(prepared):
+        if seen is not None:
+            seen.append(prepared.url)
+        return Api._json(prepared, {"voices": [
+            {"voice_id": "mine12345678", "name": "Mój lektor", "category": "cloned",
+             "labels": {"gender": "male", "age": "middle_aged", "accent": "polish", "use_case": "narration"},
+             "description": "the brand voice", "preview_url": "https://storage.example.com/previews/mine.mp3"},
+            {"voice_id": "saved9999", "name": "Saved from the library", "category": "professional",
+             "labels": {}, "preview_url": None}], "has_more": False, "total_count": 2})
+
+    api.routes[("GET", "/v2/voices")] = own
+    api.routes[("GET", "/previews/mine.mp3")] = lambda p: Api._raw(p, MP3, headers={"content-type": "audio/mpeg"})
+
+
+def test_voices_mine_lists_the_accounts_own_voices_free(api, run, capsys):
+    """Point 5: `voices --mine` reads the account's own voices (GET /v2/voices, the premade ones left out), free,
+    with no query and no language; the key goes only in the header."""
+    seen = []
+    _mine(api, seen)
+    assert TOOLS["elevenlabs"].kind_for(["voices", "--mine"]) is None
+    assert elevenlabs.main(["voices", "--run", str(run.path), "--mine", "--json"]) == 0
+    assert "voice_type=non-default" in seen[0] and "page_size=100" in seen[0]
+    folder = run.path / "02_research" / "voices" / "mine"
+    assert [v["voice_id"] for v in json.loads((folder / "search_v01.json").read_text(encoding="utf-8"))["voices"]] \
+        == ["mine12345678", "saved9999"]
+    assert (folder / "preview_Mój_lektor_mine1234.mp3").read_bytes() == MP3
+    result = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert result["voices"][0] == {"voice_id": "mine12345678", "name": "Mój lektor", "gender": "male",
+                                   "age": "middle_aged", "accent": "polish", "use_case": "narration",
+                                   "category": "cloned", "description": "the brand voice",
+                                   "preview_file": "02_research/voices/mine/preview_Mój_lektor_mine1234.mp3"}
+    assert not any(c.method == "POST" for c in api.calls)
+    assert "xi-api-key" not in next(c for c in api.calls if c.path_url == "/previews/mine.mp3").headers
+    _no_key_anywhere(run, capsys)
+
+
+def test_voices_mine_takes_a_query(api, run, capsys):
+    seen = []
+    _mine(api, seen)
+    assert elevenlabs.main(["voices", "--run", str(run.path), "--mine", "--query", "lektor", "--limit", "5"]) == 0
+    assert "search=lektor" in seen[0] and "page_size=5" in seen[0]
+
+
+def test_the_library_search_still_needs_a_query_and_a_language(api, run, capsys):
+    _voices(api)
+    assert elevenlabs.main(["voices", "--run", str(run.path), "--language", "pl", "--json"]) == 1
+    assert "--query" in json.loads(capsys.readouterr().out.strip().splitlines()[-1])["message"]
+    assert not api.calls

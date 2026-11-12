@@ -28,6 +28,8 @@ the upscaler, or an item's outside the images stage), whatever stage it sits in;
   model is one of the pack's, and the item's own; a video item's input images are picked images or packshots;
   with a featured or hero product, an item names a packshot among its inputs (a video item may carry
   the product through a picked frame instead).
+- an ElevenLabs narrator over one take (#88): the take's timed shot list cuts on the lines of the latest recorded
+  voiceover, each cut within 0.3 s of the line it opens (`organic_vo.take_gap`, the proposed cuts in the refusal).
 
 A picked image is the current pick of its image item (`picked`). The picks of an item are its images-stage rows
 of `03_wip/az_log.jsonl` (the A–Z log), each one JSON object, `AZ_FIELDS`:
@@ -81,7 +83,8 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import checkins, flow, library, manifest, organic_pack, organic_proposals, state, tools, trend_spool
+from tm import checkins, flow, library, manifest, organic_pack, organic_proposals, organic_vo, state, tools, \
+    trend_spool
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, AGAIN_SENTENCE, Stop
@@ -601,6 +604,9 @@ def guard(run: RunFolder, args: list[str]) -> str | None:
     if held:
         return _stop(held)
     pack = organic_pack.checked_pack(run)
+    drift = organic_vo.take_gap(run, pack, spec, stem)   # #88: the take's cuts follow the recorded voice
+    if drift:
+        return _stop(drift)
     refused, entry = _redo_rule(run, s, pack, stem, records)
     if refused:
         if entry:

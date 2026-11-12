@@ -334,3 +334,49 @@ def test_an_empty_cert_dir_is_not_handed_to_pixi(engine, tmp_path, monkeypatch):
     (empty / "ca.pem").write_text("-----BEGIN CERTIFICATE-----\n")
     assert main(["tool", "teardown", "--run", "r", "a.mp4"]) == 0
     assert engine["calls"][-1][1]["env"]["SSL_CERT_DIR"] == str(empty)
+
+
+# --- #88: help is free, and a voice refusal asks instead of stopping -----------------------------
+
+@pytest.mark.parametrize("name,args", [("elevenlabs", ["--help"]), ("elevenlabs", ["tts", "--help"]),
+                                       ("elevenlabs", ["-h"]), ("replicate_run", ["--help"]),
+                                       ("replicate_run", ["spec.json", "-h"])])
+def test_help_is_free_needs_no_run_cost_key_or_tier(engine, capsys, name, args):
+    """#88 point 5: `tm tool elevenlabs --help` showed "costs money, so it needs --run … and --cost …"; the help
+    of any tool, paid or not, runs with no run, no cost and no key, in the base tier (every tool module imports
+    there), and nothing is spent."""
+    (engine["data"] / "secrets.env").write_text("")          # no key at all
+    engine["installed"].discard("voice")
+    engine["installed"].discard("ai")
+    assert tools.TOOLS[name].kind_for(args) is None
+    assert main(["tool", name, *args]) == 0
+    (argv, kw), = engine["calls"]
+    assert argv[argv.index("-e") + 1] == "base" and argv[-len(args):] == args
+    assert "ELEVENLABS_API_KEY" not in kw["env"] and "REPLICATE_API_TOKEN" not in kw["env"]
+    assert "TM_COST_ESTIMATE" not in kw["env"]
+    assert "costs money" not in capsys.readouterr().out
+
+
+def test_a_help_word_as_an_option_value_is_still_paid():
+    """Only a bare -h/--help is the help: `--text=--help` is a line to say."""
+    assert tools.TOOLS["elevenlabs"].kind_for(["tts", "--text=--help"]) == "voice_credits"
+
+
+def test_a_voice_refusal_asks_for_the_difference_and_never_stops_the_run(engine, run, capsys):
+    """#88 point 3: a re-record the approved voice budget no longer covers is refused before anything runs, and the
+    run is not stopped: the message names the total to approve (what is spent plus this estimate) and the
+    command; once approved, the same call runs."""
+    _budget(run, "voice_credits", 107)
+    s = state.load(run)
+    s.spend["voice_credits"] = 105                             # the first take
+    state.save(run, s)
+    tts = ["tts", "--run", str(run.path), "--voice-id", "v", "--text", "t", "--cost", "107", "--json"]
+    assert main(["tool", "elevenlabs", *tts]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "stop" and engine["calls"] == []
+    assert "212" in out["message"] and "105" in out["message"] and "tm budget approve voice_credits 212" in out["message"]
+    s = state.load(run)
+    assert s.status != "stopped" and not flow.open_stop(run) and s.spend["voice_credits"] == 105
+    _budget(run, "voice_credits", 212)
+    assert main(["tool", "elevenlabs", *tts]) == 0
+    assert len(engine["calls"]) == 1 and state.load(run).spend["voice_credits"] == 212

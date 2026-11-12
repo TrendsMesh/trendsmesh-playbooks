@@ -12,7 +12,9 @@ spending check-in's answer, a stop that asked them for the budget, or their own 
 check-in asks for it, or for the caption removal at VC before G6 (`for_step`, issue #21). Hands-off's
 intake budgets are approved by the intake (`approve_from_intake`).
 `spend` records money as it is spent and refuses what would go over. Both refuse while the run is
-stopped for another reason (`flow.Held`, exit 2): nothing is spent or approved then.
+stopped for another reason (`flow.Held`, exit 2): nothing is spent or approved then. A voice call the approved
+total no longer covers (a re-record) is refused by `shortfall` without a stop: it asks the user to approve the
+difference, the new total being what is spent plus the estimate (#88). `approve` takes 0 (an animation's ai_usd).
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Literal
 
-from tm import cli, flow, state
+from tm import cli, flow, i18n, state
 from tm.runfolder import RunFolder
 
 Kind = Literal["ai_usd", "voice_credits", "test"]
@@ -94,7 +96,7 @@ def approve(run: RunFolder, kind: Kind, amount: float, note: str | None = None,
     below what is spent. Raises flow.Held while the run is stopped for anything but this budget.
     `for_step` "VC": the caption removal's own yes, recorded with the step it is for."""
     _kind(kind)
-    value = _amount(amount)
+    value = _amount(amount, allow_zero=True)   # an animation's ai_usd is 0, and E2 approves each planned amount (#88)
     s = state.load(run)
     flow.refuse_if_held(s, "nothing was approved", kind=kind)
     gap = flow.approval_gap(s, kind, note, for_step)
@@ -170,6 +172,28 @@ def _set(run: RunFolder, s: state.RunState, kind: str, value: float, note: str |
         entry["for"] = for_step
     s.approvals.append(entry)
     state.save(run, s)
+
+
+ASKS = ("voice_credits",)   # a shortfall of these asks the user for the difference; the run goes on (#88)
+
+
+def shortfall(run: RunFolder, kind: str, amount: float, what: str) -> str | None:
+    """#88 point 3: a voice call (a re-record) that the approved total no longer covers, while some of it is
+    approved and the user is there to ask (not Hands-off): the words asking them to approve the difference, the new
+    total being what is spent plus this estimate. Records nothing and opens no stop, so the run goes on once they
+    answer. None when it fits, or when `spend` keeps its stop (another kind, nothing approved yet, Hands-off, a
+    stopped run)."""
+    if kind not in ASKS:
+        return None
+    value = _amount(amount)
+    s = state.load(run)
+    approved, spent = s.budgets.get(kind, 0.0), s.spend.get(kind, 0.0)
+    if not approved or spent + value <= approved + 1e-9 or s.level == "hands_off" or flow._open_stops(s):
+        return None
+    total = round(spent + value, 6)
+    return i18n.t("budget.voice_short", what=what, cost=_fmt(kind, value), spent=_fmt(kind, spent),
+                  approved=_fmt(kind, approved), left=_fmt(kind, max(approved - spent, 0.0)),
+                  more=_fmt(kind, round(total - approved, 6)), total=f"{total:g}", kind=kind)
 
 
 def spend(run: RunFolder, kind: Kind, amount: float, what: str) -> int:
@@ -258,6 +282,10 @@ def _run(args: argparse.Namespace) -> int:
                 text += " The run is stopped for this budget: once the user agrees, run `tm resume`."
             cli.emit(args, {"status": "done", "kind": args.kind, "approved": float(args.amount)}, text)
             return 0
+        short = shortfall(run, args.kind, args.amount, args.what)
+        if short:
+            cli.emit(args, {"status": "stop", "message": short}, short)
+            return 2
         code = spend(run, args.kind, args.amount, args.what)
         if code:
             message = flow.open_stop(run, [f"over_budget_{args.kind}"]) or "Over budget."

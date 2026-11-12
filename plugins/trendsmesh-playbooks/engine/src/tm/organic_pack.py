@@ -18,7 +18,9 @@ What the pack stage holds the pack to, beyond the recipe:
   ranking no older than `pricing.max_age_days`;
 - speech (OV7): a talking character speaks natively on H3 unless a reason is given; native speech fits one
   take (`qa.wps_max` words a second, `qa.tail_s` after the last line, `qa.take_max_s` long); a voice
-  reference only on the user's words, its sample at most 14 s; no ElevenLabs route the stack lacks;
+  reference only on the user's words, its sample at most 14 s; no ElevenLabs route the stack lacks; an ElevenLabs
+  voiceover over takes is held to the same `qa.wps_min` over the whole video, and every one says its numbers in
+  words (#88);
 - resolution (OV8): 768p (or 720p), 1080p and the base with Pruna's upscale, each with its cost;
 - redos (PR C review I4): a line marked `"redo": true` prices one redo the user asked for (`tm organic redo`, a
   page's redo, or the automatic image redo that did not fit), priced like its item's own line; at most one per
@@ -27,7 +29,8 @@ What the pack stage holds the pack to, beyond the recipe:
   or an upscale priced at the chosen resolution, and the chosen option's cost is the takes' lines; each line
   is priced from a saved price file (`price_of`) checked no more than `pricing.max_age_days` ago, with units,
   price and cost above 0 and the cost unit price × units; voice credits are the said lines' characters, on
-  an ElevenLabs route; the totals are the sums and within `budget.per_run_usd`, and a week slot's `ai_usd`
+  an ElevenLabs route, at the line's text-to-speech model's credit rate (`tts_models.rate`, #88); the totals are
+  the sums and within `budget.per_run_usd`, and a week slot's `ai_usd`
   within the week's remainder too (`organic_week.week_left`: the week run's `budget.per_week_usd` minus what the week's other
   slot runs planned, approved or spent); money is in USD, with
   `1 USD = <rate> <CODE>` for an account in another currency;
@@ -67,7 +70,7 @@ from pathlib import Path
 from typing import Literal
 
 from tm import atlas, brand, config, flow, i18n, json_schema, manifest, organic, organic_config, organic_proposals, \
-    organic_research, paths, playbooks, runfolder, state, stepchecks, trend_spool, trends
+    organic_research, paths, playbooks, runfolder, state, stepchecks, trend_spool, trends, tts_models
 from tm.config import Problem
 from tm.organic_config import ISSUES
 from tm.playbooks import ORGANIC_VIDEO
@@ -597,6 +600,10 @@ def _speech(run: RunFolder, pack: dict, cfg: dict, out: list[Problem]) -> None:
         take = config.get(cfg, "qa.take_max_s")
         if take is not None and script["seconds"] <= take + TOL:     # r3: one narrator take, measured by the QA too
             _slow(pack, cfg, said, out)
+    elif route in organic.ELEVENLABS_ROUTES and _types(pack) & set(VIDEO_TYPES):
+        _slow(pack, cfg, said, out)   # #88: one recording over the takes, held to their pace (an animation is drawn on
+        # the voice's own times; `tm organic vo-sync` measures every recorded voiceover)
+    _numbers(pack, out)
     ref = speech["voice_reference"]
     if ref is not None:
         if not _text(ref["user_words"]):
@@ -610,6 +617,25 @@ def _speech(run: RunFolder, pack: dict, cfg: dict, out: list[Problem]) -> None:
              "or not checked yet).", "Use h3_native or h3_narrator, or check ElevenLabs again (tm organic stack).")
 
 
+_DIGITS = re.compile(r"\d+(?:[.,:]\d+)*\s?%?")
+
+
+def _numbers(pack: dict, out: list[Problem]) -> None:
+    """OV7 (#88 point 2): an ElevenLabs voiceover writes numbers, dates and percentages out as words, in the case the
+    sentence needs, in the market's language (a year or a count in digits was read in the wrong form). The captions
+    and the picture may keep digits."""
+    if pack["speech"]["route"] not in organic.ELEVENLABS_ROUTES:
+        return
+    for i, line in enumerate(pack["script"]["lines"]):
+        if line["speaker"] == "none":
+            continue
+        found = [m.group(0).replace(" ", "") for m in _DIGITS.finditer(line["text"])]
+        if found:
+            _bad(out, f"script.lines[{i}].text", f"Line {line['n']} says {', '.join(found)} in digits, and the voice "
+                 "reads digits in a form of its own.", "Write each number, date and percentage out as words, in the "
+                 "case the sentence needs, in the market's language; the captions may keep the digits.")
+
+
 def _slow(pack: dict, cfg: dict, said: int, out: list[Problem]) -> None:
     """A take that speaks its lines (route h3_native, one take, the route the `qa.wps_max` fit is checked on; or one
     h3_narrator take, PR E r3: the take QA measures the pace of both, `organic_qa.SPEECH_IN_TAKE`) is planned at no
@@ -619,7 +645,8 @@ def _slow(pack: dict, cfg: dict, said: int, out: list[Problem]) -> None:
     pace checks pass (r2), and the whole-second takes among them."""
     script = pack["script"]
     least, most, tail = (config.get(cfg, k) for k in ("qa.wps_min", "qa.wps_max", "qa.tail_s"))
-    if pack["speech"]["route"] not in ("h3_native", "h3_narrator") or least is None or tail is None or not said:
+    if pack["speech"]["route"] not in ("h3_native", "h3_narrator", *organic.ELEVENLABS_ROUTES) or least is None \
+            or tail is None or not said:
         return
     span = script["seconds"] - tail
     if span > TOL and said < least * span - TOL:
@@ -849,13 +876,22 @@ def _redos(run: RunFolder, pack: dict, items: dict, found: list[tuple[str, dict]
 
 
 def _voice(pack: dict, units: float, lines: list[int], out: list[Problem]) -> None:
-    """Voice credits are ElevenLabs characters: the lines said, on an ElevenLabs route only."""
+    """Voice credits are ElevenLabs characters: the lines said, on an ElevenLabs route only, each line priced at its
+    text-to-speech model's credit rate (`tts_models`, #88: v4 is half a credit a character, not one)."""
     route = pack["speech"]["route"]
     chars = sum(len(text) for text in _said(pack))
     if route in organic.ELEVENLABS_ROUTES and chars:
         if abs(units - chars) > TOL:
             _bad(out, "cost.lines", f"The voice credits price {units:g} characters, and the lines said hold {chars}.",
                  f"Price {chars} characters of ElevenLabs credits (kind voice_credits).")
+        for i in lines:
+            line, field = pack["cost"]["lines"][i], f"cost.lines[{i}]"
+            model = str(line.get("model"))   # a model the table does not list (an older pack's "elevenlabs" too) is
+            rate = tts_models.rate(model)    # priced at the general 1 a character, the higher rate
+            if abs(line["unit_price"] - rate) > TOL or line["unit"] != "character":
+                _bad(out, f"{field}.unit_price", f"{line['what']}: {model} costs {rate:g} credits a character, not "
+                     f"{line['unit_price']:g} per {line['unit']}.",
+                     f"Set unit_price to {rate:g} and unit to character, and the cost to {rate:g} × the characters.")
     elif lines:
         _bad(out, f"cost.lines[{lines[0]}].kind", f"Voice credits are priced, and the route is {route}.",
              "Voice credits are for an ElevenLabs route; remove the line.")

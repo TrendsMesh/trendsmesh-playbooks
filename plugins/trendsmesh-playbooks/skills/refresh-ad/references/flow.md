@@ -512,10 +512,18 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 <a id="v4"></a>
 ## V4 Generate the new line (R9)
 
-- `tm tool elevenlabs tts --run R --voice-id <id> --text "<line>" [--speed 0.7-1.2] --cost
-  <credits> --json`, several takes (PCM 44.1 kHz). Fit the slot by **regenerating** (shorter
-  text, speed) before any time stretching (R9). With a clone, `similarity_boost` ≤ 0.75
-  (`--settings <a JSON file in 03_wip>`).
+- `tm tool elevenlabs tts --run R --voice-id <id> --text "<line>" [--model eleven_multilingual_v2]
+  [--speed 0.7-1.2] --cost <credits> --json`, several takes (PCM 44.1 kHz). Fit the slot by
+  **regenerating** (shorter text, speed) before any time stretching (R9). With a clone,
+  `similarity_boost` ≤ 0.75 (`--settings <a JSON file in 03_wip>`).
+- **The model.** Eleven v4 (`eleven_v4`, the default) for a whole new voiceover or a line that stands on its
+  own. **`--model eleven_multilingual_v2` when the new line sits among the original's own sentences**: it keeps
+  the original's pace, and v4 spoke 10 to 43% slower in the clone test (`variants.md` section 3). Only v2 takes
+  `--speed` (v4 has no speed setting), so a line that must fit a slot is made on v2. The take is recorded in the
+  ad's market language (`language_code`, which v2 does not take), and numbers, dates and percentages in the line
+  are written out as words, in the case the sentence needs. `--cost` is the line's characters at the model's rate
+  (1 credit a character on v2, 0.5 on v4); a take the approved voice budget no longer covers is refused before
+  anything is sent, and its message names the total to ask the user for.
 - Pick in two steps: the quality gate (noise between words ≤ −55 dB, brightness ≥ −10 dB, the
   length fits), then the highest similarity among those that pass.
 
