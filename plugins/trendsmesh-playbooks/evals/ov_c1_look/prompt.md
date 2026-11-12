@@ -1,1 +1,17 @@
+---
+description: "Check-every-step idea run at C1 (research done: the walkthrough's searches, shortlist, cards and videos), English pages, no artifacts tools. The agent writes the proposals: each says how the video will look (plugin.aesthetic), an animation idea suggests 2 to 3 of our styles with a why each (plugin.styles), and the risk level is the highest weight of the named risks, which tm organic proposals check confirms (issue 87)."
+tags: [organic-video, ov4, proposals]
+max_turns: 80
+timeout_seconds: 2400
+allowed_tools: [Read, Glob, Grep, Skill]
+env:
+  EVAL_TM_SOURCE_ENGINE: "1"   # the collector hook runs the plugin's engine source with python3 (bootstrap/collect-mcp.sh)
+append_system_prompt: |
+  Test harness notes, not from the user. If you are following the organic-video playbook: the
+  engine command `tm` is not on PATH in this sandbox, so wherever the playbook says `tm ...`, run
+  `sh ./tm.sh ...` from the working directory instead (same arguments, add --json as usual). If
+  `tm doctor` says the base tools are not installed, that is only because the engine runs from
+  source here: count them as installed. Write final answers for the user in plain words.
+---
+
 Carry on with my ExampleEdu ideas run in runs/03-organic-ai-video/. I'd like at least one of the ideas to be an animation.
