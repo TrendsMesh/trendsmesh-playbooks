@@ -171,7 +171,7 @@ def _run_material(args: argparse.Namespace) -> int:
         if args.material:
             material = args.material
         elif args.teardown:
-            material = classify_material(json.loads(Path(args.teardown).read_text(encoding="utf-8")))
+            material = classify_material(json.loads(run.given(args.teardown).read_text(encoding="utf-8")))
         else:
             return cli.fail(args, "Give the material or --teardown <file>.")
         record_material(run, material)

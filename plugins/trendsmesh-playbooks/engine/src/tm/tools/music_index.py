@@ -76,6 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--moods", default=None, help="a JSON file {\"file.mp3\": {mood, licence, source}}")
     a = p.parse_args(argv)
     run = c.open_run(a.run)
+    c.inputs(run, a, "music_dir")   # a run-relative input, whatever the working folder
     folder = Path(a.music_dir)
     if not folder.is_dir():
         raise c.ToolError(f"The music folder {c.name_of(folder)} does not exist. Nothing was written.")

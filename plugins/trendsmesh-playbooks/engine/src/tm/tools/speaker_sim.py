@@ -78,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     if len(a.files) < 2:
         raise c.ToolError("Give at least two recordings to compare.")
     run = c.open_run(a.run)
+    c.inputs(run, a, "files")   # a run-relative input, whatever the working folder
     out = c.output(run, a.out, "wip", "speaker_sim", "json")
     names = [c.parent_ref(run, f) for f in a.files]
     sims = matrix(a.files, band=not a.no_band)

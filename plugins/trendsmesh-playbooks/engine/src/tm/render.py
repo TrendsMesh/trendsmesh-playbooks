@@ -270,7 +270,7 @@ def _organic(run: RunFolder) -> bool:
 
 
 def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra: list[str], params: dict) -> Path:
-    props, out = Path(props).resolve(), Path(out)
+    props, out = run.given(props).resolve(), Path(out)   # a run-relative props file, whatever the working folder
     data = _check_props(run, comp, props)
     run.assert_writable(out)
     if out.exists():

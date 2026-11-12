@@ -180,7 +180,10 @@ def _run(args: argparse.Namespace) -> int:
             args.json = bool(args.json)
             if not source:
                 return cli.fail(args, "Give the row: tm library add --run <run folder> --row <file>.")
-            row = json.loads(Path(source).read_text(encoding="utf-8"))
+            from tm.runfolder import RunFolder
+
+            path = RunFolder.open(Path(args.run)).given(source) if args.run else Path(source)   # run-relative
+            row = json.loads(path.read_text(encoding="utf-8"))
             if args.run:
                 ws = add_to_run(Path(args.run), row)
             else:

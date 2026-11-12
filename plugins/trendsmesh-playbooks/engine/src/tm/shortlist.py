@@ -819,8 +819,9 @@ def input_files(run: RunFolder, patterns: list[str] | None) -> list[Path]:
         research = run.path / trends.RESEARCH
         return [f for pat in DEFAULT_INPUTS for f in sorted(research.glob(pat)) if f.is_file()]
     files: list[Path] = []
-    for pat in patterns:
-        matched = sorted(glob.glob(pat)) or ([pat] if Path(pat).exists() else [])
+    for pat in patterns:   # a relative one in the run first, whatever the working folder (issue #90)
+        inside = [] if Path(pat).is_absolute() else sorted(glob.glob(str(run.path / pat)))
+        matched = inside or sorted(glob.glob(pat)) or ([str(run.given(pat))] if run.given(pat).exists() else [])
         files += [Path(p) for p in matched]
     return files
 

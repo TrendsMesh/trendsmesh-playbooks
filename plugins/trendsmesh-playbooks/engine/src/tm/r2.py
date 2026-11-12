@@ -228,9 +228,10 @@ def record(run: RunFolder, d: Diagnosis) -> Path:
     return target
 
 
-def _window_arg(value: str) -> Window:
+def _window_arg(value: str, run: RunFolder | None = None) -> Window:
     text = value.strip()
-    raw = text if text.startswith("{") else Path(text).read_text(encoding="utf-8")
+    path = run.given(text) if run is not None and not text.startswith("{") else Path(text)
+    raw = text if text.startswith("{") else path.read_text(encoding="utf-8")
     return window_from_json(json.loads(raw))
 
 
@@ -250,7 +251,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
 def _run(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
-        d = diagnose(_window_arg(args.peak), _window_arg(args.latest), args.account_ratio, run_config(run))
+        d = diagnose(_window_arg(args.peak, run), _window_arg(args.latest, run), args.account_ratio, run_config(run))
         target = record(run, d)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return cli.fail(args, str(exc))

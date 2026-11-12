@@ -86,7 +86,8 @@ def check(run: RunFolder, data: object) -> dict:
 
 
 def record(run: RunFolder, file: Path) -> dict:
-    data = json.loads(Path(file).read_text(encoding="utf-8"))
+    file = run.given(file)
+    data = json.loads(file.read_text(encoding="utf-8"))
     counts = check(run, data)
     s = state.load(run)
     try:

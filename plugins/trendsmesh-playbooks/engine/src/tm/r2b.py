@@ -139,7 +139,7 @@ def _run(args: argparse.Namespace) -> int:
             return 2
         if not args.length_s > 0:
             raise ValueError("The video length must be more than 0 seconds.")
-        s = check(uploads_from_json(cli.json_arg(args.uploads)), args.length_s)
+        s = check(uploads_from_json(cli.json_arg(args.uploads, run)), args.length_s)
         target = record(run, s)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return cli.fail(args, str(exc))

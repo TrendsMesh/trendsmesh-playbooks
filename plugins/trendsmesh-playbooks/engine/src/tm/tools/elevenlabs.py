@@ -849,6 +849,7 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     c.report_cost(False)
     run = c.open_run(a.run)
+    c.inputs(run, a, "audio", "files", "settings")   # a run-relative input, whatever the working folder
     _key()  # stop before writing anything when the key is missing
     return {"isolate": _cmd_isolate, "clone-ivc": _cmd_clone, "tts": _cmd_tts,
             "history-search": _cmd_history, "music-upload": _cmd_music_upload,

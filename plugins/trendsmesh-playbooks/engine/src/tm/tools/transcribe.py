@@ -75,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--lang", default=None, help="language code, e.g. pl (default: detect)")
     a = p.parse_args(argv)
     run = c.open_run(a.run)
+    c.inputs(run, a, "media")   # a run-relative input, whatever the working folder
     out = c.output(run, a.out, "research", "transcript", "json")
     result = save(run, a.media, out, a.model, a.lang)
     words = sum(len(s["words"]) for s in result["segments"])

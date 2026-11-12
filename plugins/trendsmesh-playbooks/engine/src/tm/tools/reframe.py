@@ -86,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--teardown", required=True, help="teardown JSON of this video (for its overlays)")
     a = p.parse_args(argv)
     run = c.open_run(a.run)
+    c.inputs(run, a, "video", "teardown")   # a run-relative input, whatever the working folder
     td = json.loads(Path(a.teardown).read_text(encoding="utf-8"))
     info = c.probe(a.video)
     if (td.get("width"), td.get("height")) != (info.get("width"), info.get("height")):

@@ -24,14 +24,17 @@ def emit(args: argparse.Namespace, payload: dict, text: str) -> None:
     print(json.dumps(payload, ensure_ascii=False) if getattr(args, "json", False) else text)
 
 
-def json_arg(text: str):
+def json_arg(text: str, run=None):
     """A JSON argument given inline or, as the skill passes it, as the path of a JSON file (on
-    Windows inline JSON loses its quotes on the way through cmd and PowerShell)."""
+    Windows inline JSON loses its quotes on the way through cmd and PowerShell). With the command's
+    run (a RunFolder), a relative path is found as `RunFolder.given` finds it: in the run first."""
     from pathlib import Path
 
     text = text.strip()
-    raw = text if text[:1] in ("{", "[") else Path(text).read_text(encoding="utf-8-sig")   # a BOM from PowerShell
-    return json.loads(raw)
+    if text[:1] in ("{", "["):
+        return json.loads(text)
+    path = run.given(text) if run is not None else Path(text)
+    return json.loads(path.read_text(encoding="utf-8-sig"))   # a BOM from PowerShell
 
 
 def fail(args: argparse.Namespace, message: str) -> int:

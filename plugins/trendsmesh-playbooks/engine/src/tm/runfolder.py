@@ -126,11 +126,16 @@ class RunFolder:
         return plain if plain.is_file() else None
 
     def given(self, path: Path | str) -> Path:
-        """A file named on the command line: as given, from the current folder, when it is there; else
-        inside the run (a run-relative name such as 03_wip/brand_v02.json, written from the workspace).
-        The PR B ruling for every --file the skills write (`map --split`, `tm record`)."""
+        """A file or folder named on the command line of a command with `--run`: an absolute path as it is; a
+        relative one inside the run when it is there (a run-relative name such as 03_wip/edit_v01.props.json,
+        whatever the working folder, issue #90); else from the current folder when it is there (a path written
+        from the workspace, runs/.../03_wip/x.json); else inside the run, so a message names where it was looked
+        for. Every `tm` command that takes a run resolves its input paths here."""
         path = Path(path)
-        return path if path.is_absolute() or path.exists() else self.path / path
+        if path.is_absolute():
+            return path
+        inside = self.path / path
+        return inside if inside.exists() or not path.exists() else path
 
     def unique_path(self, path: Path | str) -> Path:
         """Never overwrite (the handoff's trend_shortlist.py): x.json while it is free, else x_v02.json,

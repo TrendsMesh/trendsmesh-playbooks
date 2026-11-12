@@ -135,10 +135,10 @@ def _setup_record(p: argparse.ArgumentParser) -> None:
 def _run_record(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
-        params = cli.json_arg(args.params) if args.params else None
+        params = cli.json_arg(args.params, run) if args.params else None
         if params is not None and not isinstance(params, dict):
             raise ValueError("--params must be a JSON object, for example '{\"seconds\": 8}'.")
-        raw = Path(args.raw_response_file).read_text(encoding="utf-8") if args.raw_response_file else None
+        raw = run.given(args.raw_response_file).read_text(encoding="utf-8") if args.raw_response_file else None
         manifest.record(run, args.file, args.stage, args.source, args.parent, args.prompt, params,
                         args.model, args.cost, args.before_after, raw_response=raw)
     except (OSError, ValueError, ReadOnlyError) as exc:

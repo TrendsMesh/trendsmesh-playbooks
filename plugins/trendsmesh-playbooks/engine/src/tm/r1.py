@@ -446,6 +446,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
 def _run(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
+        args.ads = [str(run.given(f)) for f in args.ads or []]          # a run-relative answer, whatever the cwd
+        args.account = [str(run.given(f)) for f in args.account or []]
         today = date.fromisoformat(args.today) if args.today else date.today()
         from tm import config
         config_file = run.path / config.FILE

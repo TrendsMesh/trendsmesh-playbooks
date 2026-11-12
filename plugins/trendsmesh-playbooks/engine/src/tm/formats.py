@@ -73,7 +73,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
 
 def _run(args: argparse.Namespace) -> int:
     try:
-        rows = meta_rows.answer_rows(cli.json_arg(args.breakdown))
+        rows = meta_rows.answer_rows(cli.json_arg(args.breakdown, RunFolder.open(Path(args.run)) if args.run else None))
         if rows is None:
             raise ValueError("The breakdown is not a Meta answer with rows (under data, rows or ad_entities): "
                              "give the saved answer of the publisher_platform × platform_position read as it came.")

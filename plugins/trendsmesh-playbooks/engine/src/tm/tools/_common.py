@@ -193,11 +193,22 @@ def name_of(path: Path | str) -> str:
 
 
 def resolve(run: RunFolder, text: Path | str) -> Path:
-    """An input path as given, else relative to the run folder when only that exists."""
-    path = Path(text)
-    if not path.is_absolute() and not path.exists() and (run.path / path).exists():
-        return run.path / path
-    return path
+    """An input path of a tool (`RunFolder.given`): inside the run when it is there, else from the current folder."""
+    return run.given(text)
+
+
+def inputs(run: RunFolder, args: argparse.Namespace, *names: str) -> None:
+    """Each named input path among a tool's arguments (a text, or a list of them), found as `RunFolder.given` finds
+    it: a relative path in the run first, whatever the working folder (issue #90). Inline JSON is left as it is."""
+    def found(text: str) -> str:
+        return text if text.strip()[:1] in ("{", "[") else str(run.given(text))
+
+    for name in names:
+        value = getattr(args, name, None)
+        if isinstance(value, str):
+            setattr(args, name, found(value))
+        elif isinstance(value, list):
+            setattr(args, name, [found(v) if isinstance(v, str) else v for v in value])
 
 
 def read_json(run: RunFolder, text: Path | str | None, what: str, after: str = "") -> dict | None:

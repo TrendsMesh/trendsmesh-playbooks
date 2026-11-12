@@ -960,6 +960,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--lang", default=None)
     a = p.parse_args(argv)
     run = c.open_run(a.run)
+    c.inputs(run, a, "video", "transcript")   # a run-relative input, whatever the working folder
     out = c.output(run, a.out, "research", "teardown", "json")
     frames_dir = out.with_name(out.stem + "_frames")
     sheet = out.with_name(out.stem + "_check.png")

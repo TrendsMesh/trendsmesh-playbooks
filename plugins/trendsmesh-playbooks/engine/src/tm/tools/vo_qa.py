@@ -94,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("original")
     a = p.parse_args(argv)
     run = c.open_run(a.run)
+    c.inputs(run, a, "processed", "original")   # a run-relative input, whatever the working folder
     cfg = config.load(run) if (run.path / config.FILE).is_file() else None
     tolerance = float(config.value(cfg, "vo.qa_tolerance"))
     out = c.output(run, a.out, "wip", "vo_qa", "json")

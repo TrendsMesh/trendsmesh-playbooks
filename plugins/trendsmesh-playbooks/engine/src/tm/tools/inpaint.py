@@ -284,6 +284,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--mask", choices=["text", "box"], default="text", help="the text's pixels, or the whole box")
     a = p.parse_args(argv)
     run = c.open_run(a.run)
+    c.inputs(run, a, "video", "teardown")   # a run-relative input, whatever the working folder
     teardown = c.read_json(run, a.teardown, "teardown")
     if a.start is not None and a.end is not None and a.end <= a.start:
         raise c.ToolError("--to must come after --from.")

@@ -1,5 +1,5 @@
 """A file the skill names run-relative (`03_wip/brand_v02.json`) is found from the workspace, where
-Claude works (the collector needs it there): cwd first, then the run, for tm brand check and save,
+Claude works (the collector needs it there): the run first, then the cwd (issue #90), for tm brand check and save,
 tm config write, tm voice import and tm trends ingest. The commands are the ones flow.md#a1 and
 references/trend-collection.md write."""
 
@@ -75,12 +75,17 @@ def test_a1_brand_and_config_files_named_run_relative_from_the_workspace(ws, cap
     assert (run.path / "config.yaml").is_file()
 
 
-def test_a_file_in_the_current_folder_is_taken_first(ws, capsys):
+def test_the_runs_file_is_taken_first(ws, capsys):
+    """Issue #90: a relative path is the run's whatever the working folder; one only in the working folder is still
+    found there."""
     folder, run, r = ws
     (folder / "brand_draft.json").write_text(json.dumps({**PROFILE, "tone": ["one"]}), encoding="utf-8")
     _put(run, "brand_draft.json", PROFILE)
     code, out = _cli(capsys, "brand", "check", "--run", r, "--file", "brand_draft.json")
-    assert code == 2 and "tone" in out["message"]                       # the workspace's draft, not the run's
+    assert code == 0, out                                                # the run's draft, not the workspace's
+    (run.path / "brand_draft.json").unlink()
+    code, out = _cli(capsys, "brand", "check", "--run", r, "--file", "brand_draft.json")
+    assert code == 2 and "tone" in out["message"]                       # only the workspace has it
 
 
 def test_voice_import_and_trends_ingest_from_the_workspace(ws, capsys):

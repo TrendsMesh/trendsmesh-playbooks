@@ -90,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--min-pixels", type=int, default=2000, help="residue below this per frame is ignored")
     a = p.parse_args(argv)
     run = c.open_run(a.run)
+    c.inputs(run, a, "mask", "composite")   # a run-relative input, whatever the working folder
     out = c.output(run, a.out, "wip", "inpaint_mode", "json")
     res = choose(decide(a.mask, a.composite, tuple(a.crop), tuple(a.band) if a.band else None,
                         a.max_share, a.max_seconds, a.min_pixels), ai_usd_left(run))

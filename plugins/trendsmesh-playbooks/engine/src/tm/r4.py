@@ -327,16 +327,16 @@ def _setup(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true")
 
 
-def _control(args: argparse.Namespace) -> Window:
+def _control(args: argparse.Namespace, run: RunFolder) -> Window:
     if args.account:
-        return account_window(args.account)
+        return account_window([str(run.given(f)) for f in args.account])   # run-relative, whatever the cwd
     text = args.control.strip()
-    raw = text if text.startswith("{") else Path(text).read_text(encoding="utf-8")
+    raw = text if text.startswith("{") else run.given(text).read_text(encoding="utf-8")
     return window_from_json(json.loads(raw))
 
 
 def _run_estimate(args: argparse.Namespace, run: RunFolder) -> int:
-    est = estimate(run, _control(args), args.variants or 1, run_config(run), args.stage, args.per_day,
+    est = estimate(run, _control(args, run), args.variants or 1, run_config(run), args.stage, args.per_day,
                    args.max_days, recut_step=args.recut_step, shorter=args.shorter)
     s = state.load(run)
     held = any(x["reason_id"] == flow.ESTIMATE_STOP and "resumed_at" not in x for x in s.stops)
@@ -369,7 +369,7 @@ def _run(args: argparse.Namespace) -> int:
         if not args.stage or args.control is None or args.variants is None:
             raise ValueError("The test plan needs --stage, --control and --variants (only --estimate works "
                              "from the account's rows).")
-        p = plan(args.stage, _control(args), args.variants, run_config(run),
+        p = plan(args.stage, _control(args, run), args.variants, run_config(run),
                  args.per_day, args.max_days, recut_step=args.recut_step, shorter=args.shorter)
         target = record(run, p)
     except (OSError, ValueError, ReadOnlyError) as exc:
