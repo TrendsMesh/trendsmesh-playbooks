@@ -54,10 +54,18 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
   mp3_44100_192), JSON body {"composition_plan": {...}, "model_id": "music_v2_5"}; the answer is
   the audio bytes. A plan chunk that points into the upload is {"song_id", "range": {"start_ms",
   "end_ms"}} (the original kept) or carries a `conditioning_ref` (the continuation).
+- The plan's shape is the model's (`tm.music_models`, #93): `music_v2` and `music_v2_5` take chunks,
+  {"chunks": [{"text": "[Intro] warm, bright", "duration_ms": 10000, "positive_styles": ["upbeat pop", "no vocals",
+  ...]}, {"song_id": "...", "range": {"start_ms": 0, "end_ms": 10000}}]} (`negative_styles`, `conditioning_ref`
+  optional); `music_v1` takes positive_global_styles, negative_global_styles and sections. A plan of the other shape
+  (ElevenLabs answers 422 "Invalid type of composition_plan") is refused before anything is sent.
 - music-upload writes 03_wip/audio/music_upload_vNN.json = {song_id, composition_plan, credits_used}.
   music-compose writes 03_wip/audio/music_take_vNN.mp3 and its record `<take>.json` (ruling R2):
   {"kind": "music_take", "file", "length_s" (measured from the saved file with ffprobe), "model",
-  "plan", "credits_used"}, which `tm recut music` reads. The record is written as "music_pending"
+  "plan", "credits_used", "credits_source"}, which `tm recut music` reads. A take whose answer has no
+  `character-cost` and whose subscription count has not moved yet is read again after the take is saved (the count
+  lags, LAG_WAITS); still unknown, it is booked at its measured length times the model's rate (`credits_source`
+  "rate", `tm.music_models`), so a take that costs more than its estimate is never hidden (#93). The record is written as "music_pending"
   (with the answer's history-item-id) before the audio is saved: if saving fails, the take is paid
   and `--resume <record>` fetches it from the account's history (free) and completes the record.
   A compose onto a name whose record is still pending sends nothing and names that `--resume`.
@@ -92,12 +100,13 @@ import json
 import os
 import re
 import tempfile
+import time
 import wave
 from pathlib import Path
 
 import requests
 
-from tm import cli, i18n, organic_audio, providers, tts_models
+from tm import cli, i18n, music_models, organic_audio, providers, tts_models
 from tm.runfolder import slug
 from tm.tools import _common as c
 
@@ -108,7 +117,8 @@ VOICES_LIMIT = (1, 100)   # voices a shared-library search gives (its page_size)
 WINDOWS_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(1, 10)), *(f"LPT{n}" for n in range(1, 10))}
 _TIMEOUT = 300
 _MAX_HISTORY_PAGES = 20
-MUSIC_MODEL = "music_v2_5"
+MUSIC_MODEL = music_models.DEFAULT
+LAG_WAITS = (2, 4)   # seconds between the late reads of the subscription after a music take with no reported cost
 MUSIC_FORMAT = "mp3_44100_192"
 MUSIC_UPLOAD_PLAN = "music_v2"
 MUSIC_STOP = ("Your ElevenLabs plan or key cannot use Music, so nothing was generated and nothing was spent. "
@@ -391,14 +401,31 @@ def _record_path(take: Path) -> Path:
     return take.with_name(take.name + ".json")
 
 
-def _complete_take(take: Path, record: dict) -> dict:
-    """The take is on disk: measure it and write the record `tm recut music` reads."""
+def _late_credits(before: int | None, length: float, model: str) -> tuple[int, str]:
+    """A take with no reported cost (#93): the subscription read again, as its count lags behind the call; else its
+    measured length at the model's rate. (credits, where they come from)."""
+    if before is not None:
+        for wait in LAG_WAITS:
+            time.sleep(wait)
+            after = _used_characters()
+            if after is not None and after > before:
+                return after - before, "subscription"
+    return music_models.credits(length, model), "rate"
+
+
+def _complete_take(take: Path, record: dict, before: int | None = None, price: bool = False) -> dict:
+    """The take is on disk: measure it and write the record `tm recut music` reads. With `price`, a take whose cost
+    is not known yet gets it now and reports it to the engine (`_late_credits`)."""
     length = float(c.probe(take)["duration"])
     if length <= 0:
         raise c.ToolError(f"{take.name} was saved but has no audio length (is it a music file?). The take is "
                           "paid; its record stays pending.")
+    credits, source = record.get("credits_used"), record.get("credits_source")
+    if price and credits is None:
+        credits, source = _late_credits(before, length, record["model"])
+        c.report_cost(True, credits)
     done = {"kind": "music_take", "file": take.name, "length_s": round(length, 3), "model": record["model"],
-            "plan": record["plan"], "credits_used": record.get("credits_used")}
+            "plan": record["plan"], "credits_used": credits, **({"credits_source": source} if source else {})}
     c.write_json(_record_path(take), done)
     return done
 
@@ -409,20 +436,28 @@ def music_compose(plan: dict, out: Path | str, model: str = MUSIC_MODEL, fmt: st
     rec_path = _record_path(out)
     if rec_path.exists():
         raise c.ToolError(f"{rec_path.name} already exists, and files are never overwritten. Nothing was sent.")
+    shape = music_models.plan_problems(plan, model)
+    if shape:
+        example = f" An example for {model}: {json.dumps(music_models.V2_EXAMPLE)}" if model.startswith("music_v2") \
+            else ""
+        raise c.ToolError(" ".join(shape) + " Nothing was sent." + example)
     before = _before_paid("the music take")
     resp = _paid("/v1/music", "the music take", params={"output_format": fmt},
                  json={"composition_plan": plan, "model_id": model})
     _check_music(resp, "the music take")
     credits = _music_credits(resp, before)
     c.report_cost(True, credits)  # spent, whatever happens to the file next
+    source = None if credits is None else (
+        "header" if resp.headers.get("character-cost", "").strip().isdigit() else "subscription")
     pending = {"kind": "music_pending", "file": out.name, "history_item_id": resp.headers.get("history-item-id"),
-               "model": model, "plan": plan, "format": fmt, "credits_used": credits}
+               "model": model, "plan": plan, "format": fmt, "credits_used": credits,
+               **({"credits_source": source} if source else {})}
     c.write_json(rec_path, pending)
     _write_whole(out, resp.content)
     request = {"method": "POST", "url": API + "/v1/music", "params": {"output_format": fmt},
                "json": {"composition_plan": plan, "model_id": model}}
-    return {**_complete_take(out, pending), "out": str(out), "credits_used": credits, "request": request,
-            "response": _response_record(resp)}
+    done = _complete_take(out, pending, before, price=True)
+    return {**done, "out": str(out), "request": request, "response": _response_record(resp)}
 
 
 def music_resume(record_path: Path | str) -> dict:

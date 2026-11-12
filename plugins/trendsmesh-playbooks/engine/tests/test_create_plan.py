@@ -78,7 +78,7 @@ def plan(**over):
         {"item": "casting", "type": "still", "stage": "pre_video", "model": "gpt-image-2", "alternative": "flux",
          "cost": 0.4, "budget": "ai_usd", **line},
         {"item": "music", "type": "music", "stage": "pre_video", "model": "elevenlabs-music", "alternative": "user's",
-         "cost": 900, "budget": "voice_credits", **line},
+         "seconds": 10, "cost": 900, "budget": "voice_credits", **line},
         {"item": "presenter_take", "type": "presenter", "stage": "video", "model": "gemini-omni",
          "alternative": "seedance-2.0", "cost": 1.5, "budget": "ai_usd", **line}]}
     base.update(over)

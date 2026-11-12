@@ -83,7 +83,10 @@ Before you do, plan or describe a step's work, read its section in `references/f
   intake). Every paid Replicate call is `tm tool replicate_run --run R <spec> --name <item> --cost <its plan line>`;
   the engine refuses a call that is not a line of the checked plan or storyboard, a video before the storyboard's
   yes, and a second take of a video item unless the user asked for it (`tm ad redo`). **A video is never regenerated
-  automatically.** Every price comes from a saved price file with its date, never from memory.
+  automatically.** Every price comes from a saved price file with its date, never from memory (ElevenLabs' music
+  by the second: `tm ad prices`). A line may cover several calls (`calls`), and an ElevenLabs music or voice take
+  runs only as a plan line too (`--out 03_wip/audio/<item>_vNN.mp3`). Spend on rejected takes is kept apart
+  (`tm ad redo`, `tm ad reject`; `tm ad costs`).
 - **Long steps show progress**: a task list with time estimates and a one-line status at each stage change.
 - A run spans days and sessions: everything lives in the run folder; `tm next` picks it up.
 

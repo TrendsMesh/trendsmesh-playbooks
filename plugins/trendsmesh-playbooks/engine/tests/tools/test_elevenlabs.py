@@ -53,6 +53,7 @@ def api(monkeypatch):
     fake = Api()
     monkeypatch.setattr(requests.Session, "send", lambda self, prepared, **kw: fake.send(self, prepared, **kw))
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setattr(elevenlabs, "LAG_WAITS", (0, 0))   # the late reads of a music take's cost, without waiting
     return fake
 
 
@@ -414,6 +415,64 @@ def test_music_without_credits_says_credits_not_plan(api, run, monkeypatch, caps
     assert "not enough credits for the music take" in message and "5000 credits" in message
 
 
+V1_PLAN = {"positive_global_styles": ["pop"], "negative_global_styles": [],
+           "sections": [{"section_name": "Intro", "positive_local_styles": ["warm"], "negative_local_styles": [],
+                         "duration_ms": 10000, "lines": []}]}
+
+
+def test_a_v1_plan_for_v2_5_is_refused_before_anything_is_sent(api, run, capsys):
+    """#93 point 2: ElevenLabs refuses music_v1's shape for music_v2_5 (422); the tool says so first, for free."""
+    path = run.path / "03_wip" / "audio" / "v1.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(V1_PLAN), encoding="utf-8")
+    assert elevenlabs.main(["music-compose", "--run", str(run.path), "--plan", str(path), "--cost", "1550",
+                            "--json"]) == 1
+    message = json.loads(capsys.readouterr().out)["message"]
+    assert "chunks" in message and "Nothing was sent" in message
+    assert not [c for c in api.calls if c.method == "POST"]
+
+
+def _take_without_a_cost(api, mp3_bytes):
+    api.routes[("POST", "/v1/music")] = lambda p: Api._raw(p, mp3_bytes, headers={"content-type": "audio/mpeg",
+                                                                                  "history-item-id": "h9"})
+
+
+def test_a_take_with_no_reported_cost_is_booked_at_its_length(api, run, mp3_bytes, monkeypatch, tmp_path):
+    """#93 point 1: no `character-cost` and no change in the subscription: the take is booked at its measured
+    length times the rate, so an overrun reaches the budget guard instead of the approved estimate staying."""
+    from tm import music_models
+    report = tmp_path / "cost.json"
+    monkeypatch.setenv("TM_COST_REPORT", str(report))
+    monkeypatch.setattr(elevenlabs, "LAG_WAITS", (0, 0))
+    _take_without_a_cost(api, mp3_bytes)
+    plan = _plan_file(run)
+    assert elevenlabs.main(["music-compose", "--run", str(run.path), "--plan", str(plan), "--cost", "220"]) == 0
+    rec = json.loads((run.path / "03_wip" / "audio" / "music_take_v01.mp3.json").read_text(encoding="utf-8"))
+    expected = music_models.credits(rec["length_s"], "music_v2_5")
+    assert rec["credits_used"] == expected and rec["credits_source"] == "rate" and expected > 100
+    assert json.loads(report.read_text(encoding="utf-8")) == {"spent": True, "actual": expected}
+
+
+def test_a_subscription_that_counts_late_is_read_again(api, run, mp3_bytes, monkeypatch, tmp_path):
+    report = tmp_path / "cost.json"
+    monkeypatch.setenv("TM_COST_REPORT", str(report))
+    monkeypatch.setattr(elevenlabs, "LAG_WAITS", (0, 0))
+    reads = []
+
+    def subscription(prepared):
+        reads.append(1)
+        return Api._json(prepared, {"character_count": 1000 if len(reads) <= 2 else 2550,
+                                    "character_limit": 500000})
+
+    api.routes[("GET", "/v1/user/subscription")] = subscription
+    _take_without_a_cost(api, mp3_bytes)
+    plan = _plan_file(run)
+    assert elevenlabs.main(["music-compose", "--run", str(run.path), "--plan", str(plan), "--cost", "220"]) == 0
+    rec = json.loads((run.path / "03_wip" / "audio" / "music_take_v01.mp3.json").read_text(encoding="utf-8"))
+    assert rec["credits_used"] == 1550 and rec["credits_source"] == "subscription"
+    assert json.loads(report.read_text(encoding="utf-8"))["actual"] == 1550
+
+
 def test_music_upload_403_stops_with_plan_message(api, run, tmp_path, capsys):
     api.routes[("POST", "/v1/music/upload")] = lambda p: Api._json(p, {"detail": "no"}, 403)
     src = tmp_path / "a.mp3"
@@ -510,9 +569,12 @@ def test_no_header_and_a_zero_delta_is_unknown_not_free(api, run, mp3_bytes, tmp
     monkeypatch.setenv("TM_COST_REPORT", str(report))
     assert elevenlabs.main(["music-compose", "--run", str(run.path), "--plan", str(_plan_file(run)),
                             "--cost", "5000"]) == 0
-    assert json.loads(report.read_text()) == {"spent": True, "actual": None}
     rec = json.loads((run.path / "03_wip" / "audio" / "music_take_v01.mp3.json").read_text())
-    assert rec["credits_used"] is None
+    # never 0 (free): since #93 the take is booked at its measured length times the rate
+    from tm import music_models
+    assert rec["credits_used"] == music_models.credits(rec["length_s"], "music_v2_5") > 0
+    assert rec["credits_source"] == "rate"
+    assert json.loads(report.read_text()) == {"spent": True, "actual": rec["credits_used"]}
 
 
 def test_upload_zero_delta_is_unknown_too(api, run, tmp_path):

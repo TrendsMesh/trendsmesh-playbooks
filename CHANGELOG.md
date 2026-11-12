@@ -20,6 +20,20 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **The model ads play on the concepts page.** Create an ad saves each model ad's thumbnail and its first 15 seconds
   from the Ad Library answer into the run, and the concepts page plays them, instead of linking out to the Ad
   Library. An image ad shows its picture.
+- **Create an ad prices ElevenLabs music by the second, at what ElevenLabs bills.** A music take was planned at
+  about 220 credits, a price from Refresh an ad, and one 20 s take cost about 1,550 without the run noticing. The
+  plan now prices music by the second for the model used, from a dated price table (`tm ad prices`), and the engine
+  refuses a music take whose plan costs more than its approved line before anything is sent. When ElevenLabs doesn't
+  report a take's cost, the subscription is read again after the take, then the take is booked at its length at the
+  rate, so a take that costs more than approved stops the run and asks you.
+- **ElevenLabs music plans have the right shape for music_v2_5.** The tool now checks the composition plan before
+  the paid call: `music_v2_5` and `music_v2` take chunks, not music_v1's styles and sections, and the docs show an
+  example. Before, ElevenLabs refused the plan with a 422.
+- **One approved plan line can cover several calls.** A line can say `calls: 3` with a cost a call, so casting
+  makes three different people from three prompts under one yes, and no fourth call runs.
+- **The spend on rejected takes is kept apart.** Asking for a new take, or turning a take down for a new line,
+  books what that take cost as rejected spend in the run, and `tm ad costs` shows it on its own line under each
+  budget.
 - **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
   longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
   against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.

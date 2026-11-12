@@ -89,7 +89,15 @@ page and one in chat count the same. Rules: `rules.md`.
   [{"item", "type" (an asset type: presenter, hook_scene, product_shot, still, slide, animation, music, sfx, voice,
   upscale, transcription), "stage" (pre_video, or video for the takes, priced again at G3), "model", "alternative",
   "cost", "budget" (ai_usd for Replicate, voice_credits for ElevenLabs), "price_file", "checked" (the price's
-  date)}]}`. A type the user's own file replaces has no line: say what the file replaces. A `voice` line is the
+  date), "calls" and "cost_per_call" (a line of several paid calls), "seconds" (a music take's length)}]}`. A type
+  the user's own file replaces has no line: say what the file replaces.
+- **A line of several calls:** `"calls": N, "cost_per_call"` runs N calls under the line's one yes, each with its
+  own prompt (casting: one prompt per person), and `cost` is their total; each call runs at `--cost <cost_per_call>`,
+  and the engine refuses call N + 1. Without `calls` a line is one call.
+- **Music from ElevenLabs is priced by the second:** `tm ad prices --run R` saves ElevenLabs' dated price table as
+  the line's price file; the line gives `seconds` (one take's length) and costs at least the seconds at the model's
+  rate (`music_v2_5` was billed about 77.5 credits a second, five times the docs' "900 a minute"), a take a call.
+  Never take Refresh an ad's 220 credits a take: that was a different job. A `voice` line is the
   ElevenLabs model (`eleven_v4` unless the user picks another, `../../references/model-prompting/eleven-v4.md`)
   and its cost the lines' characters at that model's rate (0.5 credits a character for v4, 1 for
   `eleven_multilingual_v2`); the lines write numbers, dates and percentages out as words in the market's
@@ -103,9 +111,10 @@ page and one in chat count the same. Rules: `rules.md`.
 <a id="g1"></a>
 ## G1 First visual output (CA8, CA9)
 
-- What the ad type needs first: presenter casting (2–3 visibly different, non-identifiable people; the CA9 guard in
-  the prompt when a model ad's look is reused), stills or slides, or a test frame. Each paid call: `tm tool
-  replicate_run --run R <spec> --name <the plan's item> --cost <its line>` (the gate page shows the outputs of the
+- What the ad type needs first: presenter casting (2–3 visibly different, non-identifiable people, one prompt each
+  under one line of `calls`; the CA9 guard in the prompt when a model ad's look is reused), stills or slides, or a
+  test frame. Each paid call: `tm tool replicate_run --run R <spec> --name <the plan's item> --cost <its line's cost
+  a call>` (the gate page shows the outputs of the
   item's latest run). Show the batch raw, side by side, on the gate (`pages.md` "Gate"); never only as images in chat. `tm done
   G1`, then the check-in.
 
@@ -114,7 +123,12 @@ page and one in chat count the same. Rules: `rules.md`.
 
 - Music (the user's, the config's `audio.music_source`, or generated), SFX takes and the transition sound (a small
   library, swappable). ElevenLabs calls through `tm tool elevenlabs ... --cost <credits> --out
-  03_wip/audio/<the plan's item>_vNN.mp3`. The gate shows each take to listen to. `tm done G2`.
+  03_wip/audio/<the plan's item>_vNN.mp3`: the engine runs a music or voice take only as a line of the checked
+  plan, at its cost a call. A `music_v2_5` (or `music_v2`) plan is chunks, `{"chunks": [{"text": "[Intro] warm,
+  bright", "duration_ms": 10000, "positive_styles": ["upbeat pop", "no vocals", ...]}]}`, never music_v1's
+  `positive_global_styles` and `sections`; its seconds at the rate must fit the line, or nothing is sent. A take
+  whose cost ElevenLabs does not report is booked at its length at the rate, and a take over the approved amount
+  stops the run for the user. The gate shows each take to listen to. `tm done G2`.
 
 <a id="g3"></a>
 ## G3 Filled storyboard and the paid video (CA7, CA8)
@@ -150,6 +164,9 @@ page and one in chat count the same. Rules: `rules.md`.
   (Scribe times), a voice clone of the line (only when it must change), a new take (its cost first; on their yes
   `tm ad redo --run R --item <item> --note "<their words>"`), or accept it as is (`tm decide takes accept --change`
   on their word).
+- **Rejected spend is kept apart:** `tm ad redo` books the take it replaces as rejected; a take the user turns down
+  that is not made again under its item (a new line replaces it, or it is dropped) is booked with `tm ad reject --run
+  R --item <item> --note "<their words>"`.
 
 <a id="s6"></a>
 ## S6 Edit (CA10)
@@ -250,7 +267,8 @@ page and one in chat count the same. Rules: `rules.md`.
 <a id="done"></a>
 ## Final report
 
-- The ad and its cuts, the thumbnail and the copy (where they are), what was spent against what was approved, every
+- The ad and its cuts, the thumbnail and the copy (where they are), what was spent against what was approved (`tm ad
+  costs`: per budget, and the spend on rejected takes on its own line), every
   decision taken by rule with its data, what was not checked, and the guess notice in a run without TrendsMesh.
 - After an upload: how it was created (PAUSED or draft), every id, the preview links, and **how to switch it on in
   Ads Manager** (`tm ad upload record` gives the words). Nothing in this playbook switches it on.

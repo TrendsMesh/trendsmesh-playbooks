@@ -4,6 +4,9 @@
     tm ad check edit --run R --file F                                     check the edit's QA (S7, tm.create_qa)
     tm ad clips --run R --file F                                          the model ads' clips for the concepts page (S1)
     tm ad redo --run R --item ITEM --note "<the user's words>"           the user's request for a new video take
+    tm ad reject --run R --item ITEM --note "<the user's words>"         book an item's turned-down takes as rejected
+    tm ad costs --run R                                                   approved, planned, spent, and rejected apart
+    tm ad prices --run R                                                  save ElevenLabs' dated prices (a price file)
     tm ad copy check --run R --file F                                     check the Meta copy draft (S8)
     tm ad copy accept --run R --file F                                    write the accepted copy (S8, after the check-in)
     tm ad upload check --run R --file F                                   check the upload proposal (S10a)
@@ -17,7 +20,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from tm import cli, create_plan
+from tm import cli, create_plan, i18n
 from tm.runfolder import RunFolder
 from tm.stops import Stop
 
@@ -35,13 +38,18 @@ def _setup(p: argparse.ArgumentParser) -> None:
     r = sub.add_parser("redo", help="record the user's request for a new take of a video item")
     r.add_argument("--item", required=True)
     r.add_argument("--note", required=True, help="the user's own words")
+    rj = sub.add_parser("reject", help="book the takes of an item the user turned down as rejected spend")
+    rj.add_argument("--item", required=True)
+    rj.add_argument("--note", required=True, help="the user's own words")
+    co = sub.add_parser("costs", help="what each budget approved, planned and spent, rejected takes apart")
+    pr = sub.add_parser("prices", help="save ElevenLabs' dated price table in 02_research (free)")
     cp = sub.add_parser("copy", help="the Meta copy (S8)")
     cp.add_argument("copy_action", choices=["check", "accept"])
     cp.add_argument("--file", required=True)
     up = sub.add_parser("upload", help="the PAUSED Meta upload (S10)")
     up.add_argument("upload_action", choices=["check", "record"])
     up.add_argument("--file", required=True)
-    for sp in (c, cl, r, cp, up):
+    for sp in (c, cl, r, rj, co, pr, cp, up):
         sp.add_argument("--run", required=True, help="the run folder")
         sp.add_argument("--json", action="store_true")
 
@@ -63,7 +71,25 @@ def _run(args: argparse.Namespace) -> int:
         if args.action == "redo":
             entry = create_plan.redo(run, args.item, args.note)
             cli.emit(args, {"status": "done", "redo": entry},
-                     f"Recorded the user's request for a new take of {entry['item']}.")
+                     f"Recorded the user's request for a new take of {entry['item']}."
+                     + (f" {entry['rejected']:g} spent on the take it replaces is booked as rejected (tm ad costs)."
+                        if entry["rejected"] else ""))
+            return 0
+        if args.action == "reject":
+            booked = create_plan.reject(run, args.item, args.note)
+            cli.emit(args, {"status": "done", "rejected": booked},
+                     i18n.t("ad.costs.booked", n=len(booked), item=args.item,
+                            amount=f"{sum(b['amount'] for b in booked):g}"))
+            return 0
+        if args.action == "costs":
+            data = create_plan.costs(run)
+            cli.emit(args, {"status": "done", **data}, create_plan.costs_text(data))
+            return 0
+        if args.action == "prices":
+            rel, today = create_plan.prices(run)
+            from tm import music_models
+            cli.emit(args, {"status": "done", "file": rel, "checked": today},
+                     i18n.t("ad.costs.prices", file=rel, checked=today, rates=music_models.CHECKED))
             return 0
         if args.action == "copy":
             from tm import create_copy

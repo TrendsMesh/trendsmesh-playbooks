@@ -14,6 +14,16 @@ The guard (`tools.PRECHECK[CREATE_AD]["replicate_run"]`) runs before `budget.spe
 (`--name`) is a line of the checked plan (a pre-video item) or of the checked storyboard (a video) at that line's cost;
 a video waits for the storyboard's yes recorded after the storyboard was checked; and a video item that already has a
 take runs again only after the user asked for it (`tm ad redo`): **a video is never regenerated automatically**.
+
+Costs (#93): a line may cover several calls (`"calls": N, "cost_per_call"`, N different prompts inside its approved
+total); each call runs at the cost of one call, and no more than N run. A music line from ElevenLabs gives the seconds
+of a take (`seconds`) and costs at least those seconds at the model's rate (`tm.music_models`, the dated table that
+`tm ad prices` saves in the run as the line's price file). ElevenLabs' music takes and voice takes have their own
+guard (`tools.PRECHECK[CREATE_AD]["elevenlabs"]`, `voice_guard`): the item is the line named by `--out
+03_wip/audio/<item>_vNN.mp3`, the call runs at that line's cost, and a music plan whose seconds cost more than that at
+the rate is refused before anything is sent. The spend on takes the user turned down is kept apart in run.json
+(`ad.rejected`: per take, its item, budget kind and amount), booked by `tm ad redo` (the take it replaces) and `tm ad
+reject` (a take not made again under its item, e.g. replaced by a new line); `tm ad costs` shows it on its own line.
 """
 
 from __future__ import annotations
@@ -23,10 +33,10 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 
-from tm import config, create_config, flow, playbooks, state, stepchecks
+from tm import config, create_config, flow, i18n, music_models, playbooks, state, stepchecks, tts_models
 from tm.config import Problem
 from tm.playbooks import CREATE_AD
-from tm.runfolder import RunFolder
+from tm.runfolder import RunFolder, slug
 
 WIP = create_config.WIP
 RESEARCH = "02_research"
@@ -42,6 +52,9 @@ CLAIM_SOURCES = ("site", "user", "trend")
 STAGES = ("pre_video", "video")
 VOICE_ROUTES = ("native", "elevenlabs_voice", "user_vo", "clone_take")
 FAILED = ("failed", "canceled", "refused")    # a take that ended without a result costs nothing and may run again
+AUDIO = f"{WIP}/audio"                         # ElevenLabs' takes: <item>_vNN.mp3 (or .wav), a music take's record beside
+VOICE_HELD = ("music-compose", "tts")          # the ElevenLabs calls that make a plan line's take (voice_guard)
+_AUDIO_TAKE = re.compile(r"^(?P<base>.+)_v(?P<n>\d+)\.(?:mp3|wav)(?P<record>\.json)?$")
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 TOL = 1e-6
 NEVER = ("A video is never regenerated automatically. Show the user the take and its QA notes; if they want it made "
@@ -300,6 +313,18 @@ def _line_problems(run: RunFolder, cfg: dict, line: object, n: int, where: str, 
     out, item = [], line["item"]
     if not _number(line.get("cost")):
         out.append(Problem(f"{where}[{n}].cost", f"{item} has no cost in USD (or credits).", "Price it."))
+    if "calls" in line:
+        calls, each = line["calls"], line.get("cost_per_call")
+        if not (isinstance(calls, int) and not isinstance(calls, bool) and calls >= 1):
+            out.append(Problem(f"{where}[{n}].calls", f"{item}'s calls must be a whole number of paid calls, 1 or "
+                               "more.", "Set calls, or leave it out for one call."))
+        elif not (_number(each) and each > 0):
+            out.append(Problem(f"{where}[{n}].cost_per_call", f"{item} covers {calls} calls but gives no cost a call.",
+                               "Set cost_per_call: what one call costs."))
+        elif _number(line.get("cost")) and calls * each > line["cost"] + TOL:
+            out.append(Problem(f"{where}[{n}].cost", f"{item}'s {calls} calls at {each:g} cost "
+                               f"{round(calls * each, 6):g}, more than the line's {line['cost']:g}.",
+                               "Make the line's cost the calls' total."))
     if line.get("budget") not in kinds:
         out.append(Problem(f"{where}[{n}].budget", f"{item} must say which budget it spends ({', '.join(kinds)}).",
                            "Set budget."))
@@ -349,7 +374,32 @@ def check_plan(run: RunFolder, data: dict, *, today: date | None = None) -> list
         if line.get("type") in replaced:
             out.append(Problem(f"lines[{n}]", f"The user's own file replaces {line.get('type')}, so {item} is not "
                                "generated.", "Drop the line, and say in the plan what the file replaces."))
+        out.extend(_music_problems(line, n))
     return out
+
+
+def _music_problems(line: dict, n: int) -> list[Problem]:
+    """#93: an ElevenLabs music line gives a take's seconds and costs at least those seconds at the model's rate."""
+    if line.get("type") != "music" or line.get("budget") != "voice_credits":
+        return []
+    item, model, seconds = line.get("item"), str(line.get("model")), line.get("seconds")
+    if not (_number(seconds) and seconds > 0):
+        return [Problem(f"lines[{n}].seconds", f"{item} gives no length: ElevenLabs prices music by the second.",
+                        "Set seconds: how long one take is.")]
+    need = music_models.credits(seconds, model)
+    if _number(line.get("cost")) and _per_call(line) + TOL < need:
+        return [Problem(f"lines[{n}].cost", f"{item} is priced at {_per_call(line):g} credits a take, but {seconds:g} s "
+                        f"of {model} costs about {need} credits ({music_models.rate(model):g} a second, ElevenLabs' "
+                        f"prices checked {music_models.CHECKED}).",
+                        f"Price each take at {need} credits or more (tm ad prices saves the price file), and show the "
+                        "user the new cost.")]
+    return []
+
+
+def _per_call(line: dict) -> float:
+    """What one paid call of a line costs: its cost a call when it covers several (`calls`), else its cost."""
+    each = line.get("cost_per_call")
+    return float(each) if "calls" in line and _number(each) else float(line.get("cost") or 0)
 
 
 def plan_lines(data: dict | None, stage: str) -> list[dict]:
@@ -528,23 +578,239 @@ def guard(run: RunFolder, args: list[str]) -> str | None:
                 "a new plan version, checked and shown to the user. Nothing was spent.")
     if line.get("budget") != "ai_usd":
         return f"{a.name} spends {line.get('budget')}, not Replicate's USD: it is not a Replicate call."
-    if abs(cost - float(line["cost"])) > TOL:
-        return (f"--cost {cost:g} is not {a.name}'s line ({float(line['cost']):g} USD, price checked "
-                f"{line.get('checked')}). Run it with its line's cost; another cost is a new version, checked and "
-                "shown to the user.")
+    if abs(cost - _per_call(line)) > TOL:
+        return _wrong_cost(a.name, cost, line, "USD")
     s = state.load(run)
+    made = [r for r in _records(run, stem) if r.get("status") not in FAILED]
+    if stem not in videos and "calls" in line and len(made) >= line["calls"]:
+        return i18n.t("ad.guard.calls_made", item=a.name, calls=line["calls"], made=len(made))
     if stem in videos:
         yes = _latest_decision(s, "storyboard")
         since = (s.checked.get(KEY[STORYBOARD]) or {}).get("at")
         if not (yes and yes.get("choice") == "approve" and _after(yes.get("at"), since)):
             return ("The paid video waits for the yes at \"Approve the filled storyboard and the paid video\", given "
                     "after the storyboard was last checked. Nothing was run or spent.")
-        made = [r for r in _records(run, stem) if r.get("status") not in FAILED]
         if made:
             asks = [r for r in ((s.ad or {}).get("redos") or []) if r.get("item") == stem]
-            if len(asks) < len(made):
+            if len(made) >= (line.get("calls") if "calls" in line else 1) + len(asks):
                 return NEVER.format(item=stem)
     return None
+
+
+def _wrong_cost(name: str, cost: float, line: dict, unit: str) -> str:
+    calls = f", {_per_call(line):g} a call for {line['calls']} calls" if "calls" in line else ""
+    return (f"--cost {cost:g} is not {name}'s line ({_per_call(line):g} {unit}{calls}, price checked "
+            f"{line.get('checked')}). Run it with its line's cost; another cost is a new version, checked and "
+            "shown to the user.")
+
+
+def _voice_args(args: list[str]):
+    import argparse
+    p = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    p.add_argument("action", nargs="?")
+    for flag in ("--run", "--cost", "--out", "--model", "--plan"):
+        p.add_argument(flag)
+    try:
+        return p.parse_known_args(args)[0]
+    except SystemExit:
+        return argparse.Namespace(action=None, run=None, cost=None, out=None, model=None, plan=None)
+
+
+def _item_of_take(name: str) -> str:
+    """The plan item a take's file is named after: `music_v02.mp3` -> `music`."""
+    base = Path(name).name
+    base = base[: -len(".json")] if base.endswith(".json") else base
+    base = Path(base).stem
+    m = re.match(r"^(.*)_v\d+$", base)
+    return slug(m.group(1) if m else base)
+
+
+def _music_plan(run: RunFolder, value: str | None) -> object:
+    if not value:
+        return None
+    text = value.strip()
+    try:
+        if text[:1] in ("{", "["):
+            return json.loads(text)
+        return json.loads(run.given(text).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def voice_guard(run: RunFolder, args: list[str]) -> str | None:
+    """`tools.PRECHECK[CREATE_AD]["elevenlabs"]` (#93): a music take or a voice take is a line of the checked production
+    plan (named by `--out 03_wip/audio/<item>_vNN.mp3`), runs at that line's cost while its calls last, and a music
+    plan whose seconds cost more than the line at the model's rate is refused before anything is sent. Other
+    ElevenLabs calls (isolation, a clone, an upload) are not held here. None to let the call run, else the stop."""
+    a = _voice_args(args)
+    if a.action not in VOICE_HELD:
+        return None
+    if not _text(a.out):
+        return i18n.t("ad.guard.voice_out")
+    stem = _item_of_take(a.out)
+    try:
+        cost = float(a.cost)
+    except (TypeError, ValueError):
+        return "Give the line's cost with --cost."
+    lines = {_stem(ln["item"]): ln for ln in plan_lines(checked(run, PLAN), "pre_video") if _text(ln.get("item"))}
+    line = lines.get(stem)
+    if line is None:
+        return i18n.t("ad.guard.voice_not_line", item=stem)
+    if line.get("budget") != "voice_credits":
+        return f"{stem} spends {line.get('budget')}, not ElevenLabs credits: it is not an ElevenLabs call."
+    if abs(cost - _per_call(line)) > TOL:
+        return _wrong_cost(stem, cost, line, "credits")
+    made = _audio_takes(run, stem)
+    if "calls" in line and len(made) >= line["calls"]:
+        return i18n.t("ad.guard.calls_made", item=stem, calls=line["calls"], made=len(made))
+    if a.action == "music-compose":
+        model = a.model or music_models.DEFAULT
+        plan = _music_plan(run, a.plan)
+        if plan is None:
+            return f"The music plan ({a.plan}) cannot be read, so nothing was sent or spent."
+        shape = music_models.plan_problems(plan, model)
+        if shape:
+            return " ".join(shape) + " Nothing was sent or spent."
+        seconds = music_models.plan_seconds(plan)
+        need = music_models.credits(seconds, model)
+        if need > cost + TOL:
+            return i18n.t("ad.guard.music_rate", seconds=f"{seconds:g}", rate=f"{music_models.rate(model):g}",
+                          model=model, checked=music_models.CHECKED, need=need, item=stem, cost=f"{cost:g}")
+    return None
+
+
+# --- takes, the spend on rejected ones, and the costs ------------------------------
+
+def _audio_takes(run: RunFolder, stem: str) -> list[tuple[str, float | None]]:
+    """The ElevenLabs takes of an item, oldest first: (the take, run-relative; what it cost when its record says)."""
+    folder = run.path / AUDIO
+    if not folder.is_dir():
+        return []
+    names = {p.name for p in folder.iterdir() if p.is_file()}
+    found = []
+    for name in names:
+        m = _AUDIO_TAKE.match(name)
+        if not m or slug(m.group("base")) != stem:
+            continue
+        if m.group("record"):    # a music take's record (pending or done): the take is paid
+            try:
+                data = json.loads((folder / name).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                data = {}
+            used = data.get("credits_used") if isinstance(data, dict) else None
+            found.append((int(m.group("n")), f"{AUDIO}/{name[: -len('.json')]}", float(used) if _number(used) else None))
+        elif name + ".json" not in names:   # a voice take (it has no record)
+            found.append((int(m.group("n")), f"{AUDIO}/{name}", None))
+    return [(take, used) for _, take, used in sorted(found)]
+
+
+def _runs(run: RunFolder, stem: str) -> list[tuple[str, float | None]]:
+    """An item's Replicate runs that did not end without a result (each is paid), oldest first."""
+    from tm import organic_specs   # the shared reader of 03_wip/<stem>_vNN.run.json
+    return [(f"{WIP}/{path.name}", None) for path, r in organic_specs.records(run, stem) if r.get("status") not in FAILED]
+
+
+def _takes(run: RunFolder, stem: str) -> list[tuple[str, float | None]]:
+    """Every paid take of an item: its Replicate runs and its ElevenLabs takes."""
+    return _runs(run, stem) + _audio_takes(run, stem)
+
+
+def _line_for(run: RunFolder, stem: str) -> dict | None:
+    """The item's line: in the checked storyboard or plan, else in the newest earlier version that has it (a line a
+    new plan dropped keeps its price)."""
+    for data in (checked(run, STORYBOARD), checked(run, PLAN)):
+        for ln in [*((data or {}).get("videos") or []), *((data or {}).get("lines") or [])]:
+            if isinstance(ln, dict) and _text(ln.get("item")) and _stem(ln["item"]) == stem:
+                return ln
+    folder, versions = run.path / WIP, []
+    for path in folder.glob("*.json") if folder.is_dir() else []:
+        m = re.match(rf"^({STORYBOARD}|{PLAN})_v(\d+)\.json$", path.name)
+        if m:
+            versions.append((m.group(1) == STORYBOARD, int(m.group(2)), path))
+    for _, _, path in sorted(versions, reverse=True):   # the storyboards, then the plans, newest first
+        data = _read(path)[0] or {}
+        for ln in [*(data.get("videos") or []), *(data.get("lines") or [])]:
+            if isinstance(ln, dict) and _text(ln.get("item")) and _stem(ln["item"]) == stem:
+                return ln
+    return None
+
+
+def _book(s: state.RunState, stem: str, takes: list[tuple[str, float | None]], line: dict, note: str) -> list[dict]:
+    """Book each take not booked yet as rejected spend, at what it cost (its record) or its line's cost a call."""
+    rejected = list((s.ad or {}).get("rejected") or [])
+    booked = {r.get("take") for r in rejected}
+    new = [{"item": stem, "take": take, "kind": line.get("budget"),
+            "amount": round(used if used is not None else _per_call(line), 6), "note": note.strip(), "by": "user",
+            "at": flow._now()} for take, used in takes if take not in booked]
+    s.ad = {**(s.ad or {}), "rejected": [*rejected, *new]}
+    return new
+
+
+def reject(run: RunFolder, item: str, note: str) -> list[dict]:
+    """`tm ad reject`: the user turned down an item's takes (and it is not made again under that item, e.g. a new line
+    replaces it). Each paid take not booked yet goes to the rejected spend; returns what was booked."""
+    s = state.load(run)
+    if s.playbook != CREATE_AD:
+        raise ValueError("tm ad reject is for Create an ad runs.")
+    if not _text(note):
+        raise ValueError("--note holds the user's own words turning the take down.")
+    stem = _stem(item)
+    takes = _takes(run, stem)
+    if not takes:
+        raise ValueError(f"{item} has no paid take, so nothing is booked.")
+    line = _line_for(run, stem)
+    if line is None:
+        raise ValueError(f"{item} is not a line of any production plan or storyboard of the run, so its cost is unknown.")
+    new = _book(s, stem, takes, line, note)
+    state.save(run, s)
+    return new
+
+
+def rejected_totals(s: state.RunState) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for r in (s.ad or {}).get("rejected") or []:
+        if isinstance(r, dict) and _number(r.get("amount")) and r.get("kind"):
+            out[r["kind"]] = round(out.get(r["kind"], 0.0) + float(r["amount"]), 6)
+    return out
+
+
+def costs(run: RunFolder) -> dict:
+    """What each budget kind has approved, planned and spent, and the part of the spend that went to rejected takes."""
+    s = state.load(run)
+    rejected = rejected_totals(s)
+    kinds = {k: {"approved": float(s.budgets.get(k, 0.0)), "planned": float(s.planned.get(k, 0.0)),
+                 "spent": float(s.spend.get(k, 0.0)), "rejected": rejected.get(k, 0.0)}
+             for k in playbooks.get(CREATE_AD).budgets}
+    return {"kinds": kinds, "rejected": list((s.ad or {}).get("rejected") or [])}
+
+
+def costs_text(data: dict) -> str:
+    out = []
+    for kind, v in data["kinds"].items():
+        out.append(i18n.t("ad.costs.kind", service=i18n.t(f"ad.costs.service.{kind}"), spent=f"{v['spent']:g}",
+                          approved=f"{v['approved']:g}", planned=f"{v['planned']:g}"))
+        takes = [r for r in data["rejected"] if r.get("kind") == kind]
+        out.append(i18n.t("ad.costs.rejected", amount=f"{v['rejected']:g}", n=len(takes),
+                          items=", ".join(sorted({str(r.get("item")) for r in takes})) or "-"))
+    return "\n".join(out)
+
+
+def prices(run: RunFolder, today: date | None = None) -> tuple[str, str]:
+    """`tm ad prices`: save ElevenLabs' dated price table (music by the second, voice by the character) as
+    02_research/elevenlabs_prices_vNN.json, the price file of a plan's ElevenLabs lines. (its path, today)."""
+    from tm import manifest
+    when = (today or date.today()).isoformat()
+    target = run.next_version(RESEARCH, "elevenlabs_prices", "json")
+    data = {"checked": when, "music": music_models.table(),
+            "tts": {"checked": tts_models.CHECKED, "unit": "credits a character", "default": tts_models.DEFAULT,
+                    "models": {m: {"credits_per_char": v.credits_per_char, "source": v.source}
+                               for m, v in tts_models.MODELS.items()},
+                    "other_models": tts_models.GENERAL_RATE}}
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    rel = target.relative_to(run.path).as_posix()
+    manifest.record(run, rel, "research", "ElevenLabs prices (the plugin's dated table)", cost="free")
+    return rel, when
 
 
 def redo(run: RunFolder, item: str, note: str) -> dict:
@@ -559,9 +825,11 @@ def redo(run: RunFolder, item: str, note: str) -> dict:
               if isinstance(v, dict) and _text(v.get("item"))}
     if stem not in videos:
         raise ValueError(f"{item} is not a video of the checked storyboard.")
-    if not [r for r in _records(run, stem) if r.get("status") not in FAILED]:
+    made = _runs(run, stem)
+    if not made:
         raise ValueError(f"{item} has no take yet, so its first run needs no request.")
     entry = {"item": stem, "note": note.strip(), "by": "user", "at": flow._now()}
     s.ad = {**(s.ad or {}), "redos": [*((s.ad or {}).get("redos") or []), entry]}
+    booked = _book(s, stem, made[-1:], _line_for(run, stem) or {}, note)   # the take this one replaces (#93)
     state.save(run, s)
-    return entry
+    return {**entry, "rejected": sum(b["amount"] for b in booked)}
