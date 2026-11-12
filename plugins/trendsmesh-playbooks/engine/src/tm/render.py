@@ -126,30 +126,44 @@ def _sh(argv: list[str], cwd: Path, what: str) -> None:
 
 def _close_orphaned_chrome() -> None:
     """Kill a Chrome of this Remotion setup that nothing owns any more (issue 63). Remotion starts Chrome as the
-    leader of a process group of its own (on Linux under `setpriv --pdeathsig`, not here) and kills that group
-    on exit only once Chrome has answered, so a render that fails before (a connection timeout) leaves Chrome
-    running. Such a Chrome is a group leader whose parent is gone (reparented to init) and runs from this
-    setup's `node_modules/.remotion/`; a Chrome whose render still runs, in this session or another, keeps its
-    parent and is left alone. POSIX only: on Windows Remotion's Chrome is in its tree, which taskkill takes."""
+    leader of a process group of its own (on Linux under `setpriv --pdeathsig` when there is one) and kills that
+    group on exit only once Chrome has answered, so a render that fails before (a connection timeout) leaves
+    Chrome running. Such a Chrome runs from this setup's `node_modules/.remotion/`, and its parent is gone: the
+    system gave it to PID 1 or, on Linux, to the nearest "subreaper" above that parent (`systemd --user` on a
+    desktop, a CI runner's agent), which is then an ancestor of this process. A Chrome whose render still runs,
+    in this session or another, keeps that render as its parent and is left alone. POSIX only: on Windows
+    Remotion's Chrome is in its tree, which taskkill takes."""
     if _is_windows():
         return
     roots = {str(work_dir() / "node_modules" / ".remotion"), str(work_dir().resolve() / "node_modules" / ".remotion")}
     try:   # Popen, not run: the listing is no step of the render (the tests' fakes of run never see it)
-        with subprocess.Popen(["ps", "-axo", "pid=,ppid=,pgid=,command="], stdout=subprocess.PIPE,
+        with subprocess.Popen(["ps", "-A", "-o", "pid=,ppid=,pgid=,command="], stdout=subprocess.PIPE,
                               stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace") as ps:
             listing = ps.communicate(timeout=10)[0]
     except (OSError, subprocess.SubprocessError):
         return
+    for pgid in _orphaned_chrome(listing, roots, os.getppid()):
+        try:
+            os.killpg(pgid, 9)
+        except OSError:
+            pass
+
+
+def _orphaned_chrome(listing: str, roots: set[str], parent: int) -> list[int]:
+    """The process groups to kill in a `ps` listing of `pid ppid pgid command` lines: the group leaders running
+    from one of `roots` whose parent took them in as orphans, that is PID 1 (0 outside this PID namespace) or
+    `parent` (this process's parent) or one of its ancestors. This process itself is no adopter."""
+    procs: dict[int, tuple[int, int, str]] = {}
     for line in listing.splitlines():
         parts = line.split(None, 3)
-        if len(parts) < 4 or not all(p.isdigit() for p in parts[:3]):
-            continue
-        pid, ppid, pgid, command = int(parts[0]), int(parts[1]), int(parts[2]), parts[3]
-        if pid == pgid and ppid == 1 and any(root in command for root in roots):
-            try:
-                os.killpg(pgid, 9)
-            except OSError:
-                pass
+        if len(parts) == 4 and all(p.isdigit() for p in parts[:3]):
+            procs[int(parts[0])] = (int(parts[1]), int(parts[2]), parts[3])
+    adopters = {0, 1}
+    while parent not in adopters:
+        adopters.add(parent)
+        parent = procs.get(parent, (0,))[0]
+    return [pid for pid, (ppid, pgid, command) in procs.items()
+            if pid == pgid and ppid in adopters and any(root in command for root in roots)]
 
 
 def _tree_hash(folder: Path) -> str:

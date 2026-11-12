@@ -428,3 +428,26 @@ def test_a_failed_render_closes_its_chrome(light, monkeypatch):
     finally:
         os.killpg(owned.pid, 9)
         owned.wait()
+
+
+def test_an_orphaned_chrome_given_to_a_subreaper_is_found():
+    """Issue 63 on Linux: an orphan goes to the nearest subreaper above its dead parent (`systemd --user`, a CI
+    runner's agent), not always to PID 1. That adopter is an ancestor of this process; a render still running
+    is not, and its Chrome is left alone."""
+    root = "/data/remotion/node_modules/.remotion"
+    chrome = f"{root}/chrome-headless-shell/linux64/chrome-headless-shell --headless"
+    listing = "\n".join([
+        "    1     0     1 /sbin/init",
+        "  100     1   100 /usr/lib/systemd/systemd --user",       # a subreaper
+        "  200   100   200 -bash",
+        "  300   200   300 tm render",                             # this process (its parent: 200)
+        f"  400   100   400 {chrome}",                            # orphan, given to the subreaper
+        f"  401     1   401 {chrome}",                            # orphan, given to init
+        "  500   200   500 node remotion render",                  # a render still running
+        f"  501   500   501 {chrome}",                            # ... and its Chrome
+        f"  402   400   400 {chrome} --type=renderer",            # a member, not the group leader
+        "  403   100   403 /other/node_modules/.remotion/chrome-headless-shell",   # another setup's
+        f"  404   300   404 {chrome}",                            # this process's own child: no orphan
+        "garbage line",
+    ])
+    assert sorted(render._orphaned_chrome(listing, {root}, 200)) == [400, 401]
