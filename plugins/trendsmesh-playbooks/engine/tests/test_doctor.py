@@ -741,3 +741,23 @@ def test_every_key_row_checks_its_key():
     rows = [e for e in doctor._catalogue() if e["kind"] == "secret"]
     assert rows and all(e.get("check") in ("replicate", "elevenlabs") for e in rows)
     assert all(e["check"] == e["secret"].split("_")[0] for e in rows)
+
+
+def test_create_ad_asks_for_no_remotion(monkeypatch):
+    """Issue 96: Create an ad's edit is built with the plugin's ffmpeg, so its doctor never asks for the video
+    editing tools (Remotion, about 0.5 GB); organic video still does."""
+    monkeypatch.setattr(doctor.envtiers, "installed", lambda tier: tier != "video")
+    r = doctor.check({"video_ad"}, False, {"trendsmesh": "ok", "meta": "ok", "artifacts": "ok"}, playbook="create-ad")
+    assert "tier_video" not in ids(r) and "linux_chrome_libs" not in ids(r)
+    assert {"tier_base", "tier_breakdown", "tier_voice", "tier_ai"} <= ids(r)
+    assert r.ready
+
+
+def test_create_ad_without_a_browser_is_a_warning(monkeypatch):
+    """Issue 96: the site's captures, logo and font are read in the user's own Chrome or Edge; without one the run
+    goes on and the user gives them as files."""
+    monkeypatch.setattr(doctor.atlas, "find_browser", lambda: None)
+    r = doctor.check({"video_ad"}, False, {"trendsmesh": "ok", "meta": "ok", "artifacts": "ok"}, playbook="create-ad")
+    it = item(r, "browser_for_create")
+    assert r.ready and not it.ok and it.warn
+    assert "logo" in doctor.card(r)

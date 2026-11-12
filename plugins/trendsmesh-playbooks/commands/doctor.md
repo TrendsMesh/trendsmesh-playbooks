@@ -251,6 +251,8 @@ its PAUSED upload.
 3. Show the `card` as in step 4 above. Nothing but the tools and the disk blocks: TrendsMesh is a warning (the
    run goes on as labelled guesses, and the concepts say so), and so are Meta Ads (no Ad Library search and no
    upload: the ad and its copy are delivered as files), the Replicate token (no generated stills or video), the
-   ElevenLabs key (the video model's own voice, a fallback transcription) and shared page links (each step in
-   chat). Say each one's line once, in plain words, as what it takes away. Never print a key or any part of it.
+   ElevenLabs key (the video model's own voice, a fallback transcription), shared page links (each step in
+   chat) and Chrome or Edge (no captures of the product's site, and its logo and font come from the user as files).
+   Say each one's line once, in plain words, as what it takes away. Never print a key or any part of it. The edit
+   is built with the base tools, so this check never asks for the video editing tools (Remotion).
 4. Tell the user where the support report was saved, as in step 5 above.

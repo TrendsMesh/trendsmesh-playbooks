@@ -47,8 +47,9 @@ checks:
     fix: {any: "I install the video breakdown tools (about {size}, about {minutes} min). Say yes and I start."}
   - id: tier_video
     name: Video editing tools (Remotion)
-    playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
-    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
+    # Create an ad's edit is built with the plugin's ffmpeg (base tier), never Remotion (issue 96)
+    playbooks: [01-refresh-ad, 03-organic-ai-video]
+    when: [{outputs: [organic_video]}]
     outputs: [edited_video]
     kind: env_tier
     tier: video
@@ -437,6 +438,18 @@ checks:
     check: elevenlabs       # one free call says works, connected but unusable or missing (#66)
     warn: true
     warn_note: "Without an ElevenLabs key the voice is the video model's own, the music is yours, and speech is checked with a fallback transcription, which can miss a repeated word."
+  - id: browser_for_create
+    name: A browser for the product's site (Chrome or Edge)
+    playbooks: [05-create-ad]
+    outputs: []
+    kind: browser
+    fixer: user
+    fix:
+      windows: "Install Microsoft Edge or Google Chrome (both free), then say continue. I read the product's site in it, on your computer: sharp captures, its logo and its font."
+      macos: "Install Google Chrome (free), then say continue. I read the product's site in it, on your computer: sharp captures, its logo and its font."
+      linux: "Install Google Chrome (free), then say continue. I read the product's site in it, on your computer: sharp captures, its logo and its font."
+    warn: true
+    warn_note: "Without Chrome or Edge I can't capture the product's site or take its logo and font from it: you give them to me as files."
 
   - id: linux_chrome_libs
     name: Linux libraries for the video renderer

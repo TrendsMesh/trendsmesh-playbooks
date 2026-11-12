@@ -69,7 +69,7 @@ The pages have since been built on the shared run page (`engine/src/tm/run_page/
 | G2 audio | G2 (spends) | `audio` own / rule / rule | — |
 | G3 filled storyboard | G3 | `storyboard` 💰 own / own / rule | `ad_storyboard_checked` (re-plans with the video) |
 | G4 takes | G4 (spends) | `takes` own / rule / rule (`fails_qa` stops) | — |
-| S6 edit, S7 QA | S6, S7 | — | — (tools: `tm render`, `tm tool take_qa`, `deliver`) |
+| S6 edit, S7 QA | S6, S7 | — | — (tools: `tm tool ffmpeg`, `deliver finish`, `take_qa`, `layer_check`; issue 96) |
 | G5 review | G5 | `review` own / own / rule | — |
 | S8 Meta copy | S8 | `copy` own / own / rule | `ad_copy_checked` |
 | S9 deliver | S9 | — | `ad_delivered` |

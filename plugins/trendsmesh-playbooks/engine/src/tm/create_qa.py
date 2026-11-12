@@ -33,7 +33,10 @@ is the takes check-in page's data, in the page's language.
 `tm ad check edit` (`check_edit`) refuses it unless it names the latest edit and that edit's latest QA, the QA
 measures the run's `qa.lufs_target` within 1 LU and a true peak at most `qa.true_peak_max`, an edit with spoken
 lines has a transcript at `qa.transcript_min` or above and no stutter, and every CA11 check is written with a note,
-none of them a problem (a problem is fixed in a new version, S6, and QA'd again). Step check `ad_edit_checked` (S7,
+none of them a problem (a problem is fixed in a new version, S6, and QA'd again). The edit itself must come from the
+plugin's loudness pass (a `tm tool deliver finish` row in the manifest, issue 96), and its latest layer check (`tm tool
+layer_check`, `<edit dir>/qa/<stem>_layers_vNN.json`) must find no layer over a face or another layer and no capture
+scaled up. Step check `ad_edit_checked` (S7,
 `edit_gap`), also required by `review accept`: the latest edit QA is the checked one, unchanged, and still names the
 latest edit and its latest QA. `edit_report` is the review page's "what was checked". All read only but the check.
 """
@@ -45,7 +48,7 @@ import statistics
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import config, create_config, create_plan, i18n, organic_qa, organic_specs, state, stepchecks
+from tm import config, create_config, create_plan, i18n, manifest, organic_qa, organic_specs, state, stepchecks
 from tm.config import Problem
 from tm.review import VIDEO_EXT
 from tm.runfolder import RunFolder
@@ -62,6 +65,9 @@ RESULTS = ("ok", "not_applicable", "problem")
 LONG_WORD = 2.0      # a word lasting about 2× its expected length is a possible hidden repeat (CA11)
 LUFS_SLACK = 1.0     # LU around qa.lufs_target, as organic video's final
 QA_TOOL = "tm tool take_qa --run R {video} --lang <the market language>"
+FINISH = "tm tool deliver finish"          # the manifest source of the edit's loudness pass (S6, issue 96)
+LAYERS_TOOL = "tm tool layer_check --run R {video} --layers <its layers file>"
+SHOWN = 5                                  # the collisions named one by one; the rest are counted
 
 
 def _english() -> i18n.Translator:
@@ -292,6 +298,37 @@ def _measured(run: RunFolder, cfg: dict, edit: Path, qa_path: Path) -> list[Prob
     return out
 
 
+def _finished(run: RunFolder, rel: str) -> bool:
+    return any(r["file"] == rel and r["source"] == FINISH for r in manifest.rows(run))
+
+
+def layers_file(run: RunFolder, edit: Path) -> Path | None:
+    """The latest layer check of an edit (`tm tool layer_check`), or None."""
+    return run.latest(organic_qa.qa_stage(run, edit), f"{Path(edit).stem}_layers", "json")
+
+
+def _layers(run: RunFolder, edit: Path) -> list[Problem]:
+    want = _rel(run, edit)
+    run_it = f"Run {LAYERS_TOOL.format(video=want)} (S7)."
+    path = layers_file(run, edit)
+    if path is None:
+        return [Problem("layers", f"{want} has no layer check yet: nothing says its captions and overlays are clear "
+                        "of the faces and of each other (CA10).", run_it)]
+    try:
+        found = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return [Problem("layers", f"{_rel(run, path)} cannot be read.", run_it)]
+    if not isinstance(found, dict) or found.get("edit") != want:
+        return [Problem("layers", f"{_rel(run, path)} is not the layer check of {want}.", run_it)]
+    hits = [x for x in found.get("collisions") or [] if isinstance(x, dict)]
+    out = [Problem("layers", f"In {want}, {x.get('message') or x.get('kind')}.", "Move it in the next version of "
+                   "the edit (S6), render and level it, then check that version (CA10, CA11).") for x in hits[:SHOWN]]
+    if len(hits) > SHOWN:
+        out.append(Problem("layers", f"{len(hits) - SHOWN} more collision(s) in {_rel(run, path)}.",
+                           "Fix them in the same version."))
+    return out
+
+
 def check_edit(run: RunFolder, data: dict) -> list[Problem]:
     """`tm ad check edit`: the edit QA file (the module docstring)."""
     cfg = _cfg(run)
@@ -303,6 +340,11 @@ def check_edit(run: RunFolder, data: dict) -> list[Problem]:
         return [Problem("edit", f"The edit QA names {data.get('edit')!r}, not the latest edit, {want}.",
                         "QA the latest version.")]
     out: list[Problem] = []
+    if not _finished(run, want):
+        out.append(Problem("edit", f"{want} was not levelled by the plugin's loudness pass.",
+                           f"Render the edit under another name (03_wip/edit_mix_vNN.mp4), then {FINISH} --run R "
+                           "<that render> (with --gain for a quiet line): its next version is the edit. QA that."))
+    out.extend(_layers(run, latest))
     qa_path = organic_qa.qa_file(run, latest)
     if qa_path is None:
         out.append(Problem("qa", f"{want} has no QA yet.", f"Run {QA_TOOL.format(video=want)} (with --script <the "

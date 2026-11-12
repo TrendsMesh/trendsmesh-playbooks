@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from tm import create_plan, create_qa, flow, i18n, state, stepchecks
+from tm import create_plan, create_qa, flow, i18n, manifest, state, stepchecks
 from tm.flow import decide
 
 from test_create_plan import _check, _new, _ready_for, _write, storyboard
@@ -189,9 +189,22 @@ def _edit_qa(run, *, edit=EDIT, qa="03_wip/qa/edit_v01_qa_v01.json", checked=Non
     return _check(run, create_qa.EDIT_QA, data)
 
 
-def _edit(run, version=1):
+def _edit(run, version=1, *, finished=True, collisions=()):
+    """An edit version as S6 leaves it: levelled by `tm tool deliver finish` (its manifest row) and checked by
+    `tm tool layer_check` (its file, with `collisions`)."""
     rel = f"03_wip/edit_v{version:02d}.mp4"
     (run.path / rel).write_bytes(b"edit")
+    return finish_and_check_layers(run, rel, finished=finished, collisions=collisions)
+
+
+def finish_and_check_layers(run, rel, *, finished=True, collisions=()):
+    """`rel`'s manifest row from `tm tool deliver finish` and its layer check (`tm tool layer_check`)."""
+    stem = rel.rsplit("/", 1)[1].rsplit(".", 1)[0]
+    if finished:
+        manifest.record(run, rel, "03_wip", "tm tool deliver finish", parent=rel.replace("edit_v", "edit_mix_v"))
+    _write(run, f"03_wip/qa/{stem}_layers_v01.json", {
+        "edit": rel, "layers": {"file": rel.replace("edit_v", "edit_layers_v").replace(".mp4", ".json"),
+                                "sha256": "0" * 64}, "faces": [], "collisions": list(collisions)})
     return rel
 
 
@@ -259,3 +272,35 @@ def test_tm_ad_check_edit_on_the_command_line(run, capsys):
         {"check": k, "result": "ok", "note": "fine"} for k in create_qa.EDIT_CHECKS]}), encoding="utf-8")
     assert main(["ad", "check", "edit", "--run", str(run.path), "--file", str(path), "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["status"] == "done"
+
+
+def test_the_edit_comes_from_the_plugins_loudness_pass(run):
+    """Issue 96: a level set by hand in ffmpeg is refused; the edit is the finish of the render."""
+    _edit(run, finished=False)
+    _qa(run, EDIT, lufs=-14.2, peak=-1.8)
+    problems = _edit_qa(run)
+    assert [p.field for p in problems] == ["edit"] and "tm tool deliver finish" in problems[0].todo
+
+
+def test_a_layer_over_a_face_or_another_layer_sends_the_edit_back(run):
+    """Issue 96: the layer check's collisions are problems, each named, until a new version is clear."""
+    hit = {"kind": "face", "layer": "caption 3", "with": "creator", "at": 4.2,
+           "message": "caption 3 covers a face in creator at 4.20 s"}
+    _edit(run, collisions=[hit])
+    _qa(run, EDIT, lufs=-14.0)
+    problems = _edit_qa(run)
+    assert [p.field for p in problems] == ["layers"] and "caption 3 covers a face" in problems[0].what
+    assert "next version" in problems[0].todo
+    many = [{**hit, "layer": f"caption {n}", "message": f"caption {n} covers a face"} for n in range(8)]
+    _write(run, "03_wip/qa/edit_v01_layers_v02.json", {"edit": EDIT, "collisions": many})
+    assert len(_edit_qa(run)) == create_qa.SHOWN + 1
+
+
+def test_an_edit_without_its_layer_check_is_refused(run):
+    _edit(run)
+    (run.path / "03_wip/qa/edit_v01_layers_v01.json").unlink()
+    _qa(run, EDIT, lufs=-14.0)
+    problems = _edit_qa(run)
+    assert [p.field for p in problems] == ["layers"] and "tm tool layer_check" in problems[0].todo
+    _write(run, "03_wip/qa/edit_v01_layers_v01.json", {"edit": "03_wip/edit_v00.mp4", "collisions": []})
+    assert "not the layer check" in _edit_qa(run)[0].what

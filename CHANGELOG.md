@@ -279,6 +279,25 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **No casting paid for a face Seedance can't use.** Seedance refuses a realistic face in its inputs. When the plan
   picks it for a person, Claude says so before the casting, casts the person from a description, and the plan's
   check refuses a casting line beside a Seedance take.
+- **Create an ad uses the brand's own font and logo.** At the intake the plugin reads the product's site and keeps
+  the fonts it uses (its own files, or the same family from Google Fonts) and its logo, and shows you both. A font
+  bought for the web may not cover video, so you are asked about its licence; what the site doesn't give is asked
+  for with your other files. The captions and the end card use them, not a system font or the name as plain text.
+- **Create an ad keeps captions and overlays off faces and off each other.** Before you see an edit, the plugin
+  checks every caption, tag, code chip and window against the faces in the shots under it and against each other,
+  and the edit is fixed first when one covers a mouth or a chin, or runs under the caption band.
+- **Create an ad's loudness goes through the plugin.** The edit is levelled by the plugin's own finish (free, on
+  your computer): a quiet line such as a whisper is lifted where it is, the speech is evened out, and the ad lands
+  at −14 LUFS with its peaks under −1.5 dBFS. An edit levelled any other way is not shown.
+- **Sharp captures of your site.** Screens of the product's site are captured in your own Chrome or Edge at two or
+  three times the screen's resolution, or of the one element the scene shows, so a card is never blown up and
+  blurry. The edit check finds a capture drawn larger than it is.
+- **A small set of sound effects, with their licence.** A whoosh, a sweep, a click, a pop and a notification from
+  Mixkit (free in ads, no credit needed), fetched after your yes and kept for your next ads. Other Mixkit effects can
+  be searched; one Mixkit doesn't have can be made with ElevenLabs Sound Effects, for credits, after your yes.
+- **Create an ad no longer installs Remotion.** Its edit is built with the plugin's ffmpeg, so its check no longer
+  asks for the video editing tools (about 0.5 GB). It now says when Chrome or Edge is missing: without one, the site's
+  captures, logo and font come from you as files.
 
 ## 0.12.0
 

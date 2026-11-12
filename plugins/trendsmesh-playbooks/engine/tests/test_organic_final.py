@@ -335,8 +335,8 @@ def test_one_idea_id_in_any_case(tmp_path, capsys, monkeypatch):
     # finish --id M5 writes m5_final_v01, which the G1 check finds
     monkeypatch.setattr(deliver, "_has_audio", lambda path: True)
     monkeypatch.setattr(deliver, "_not_vertical", lambda path: None)   # a 9:16 render
-    monkeypatch.setattr(deliver, "_first_pass", lambda src, target: {"input_i": -20})
-    monkeypatch.setattr(deliver, "_finish", lambda run, src, out, target, m: out.write_bytes(b"the final"))
+    monkeypatch.setattr(deliver, "_first_pass", lambda src, target, *more: {"input_i": -20})
+    monkeypatch.setattr(deliver, "_finish", lambda run, src, out, target, m, *more: out.write_bytes(b"the final"))
     monkeypatch.setattr(deliver, "loudness", lambda path: (-14.0, -1.6))
     (run.path / "03_wip" / "render_v01.mp4").write_bytes(b"render")
     code, out = _tool(capsys, "finish", "--run", str(run.path), "03_wip/render_v01.mp4", "--id", "M5")
@@ -389,8 +389,8 @@ def test_finish_never_stretches_a_picture_that_is_not_9_16(ov, capsys, monkeypat
     monkeypatch.setattr(common, "probe", lambda path: {"has_video": True, "has_audio": True, "is_video": True,
                                                         "width": width, "height": height, "fps": 25.0,
                                                         "frames": 150, "duration": 6.0})
-    monkeypatch.setattr(deliver, "_first_pass", lambda src, target: {"input_i": -20})
-    monkeypatch.setattr(deliver, "_finish", lambda run, src, out, target, m: out.write_bytes(b"the final"))
+    monkeypatch.setattr(deliver, "_first_pass", lambda src, target, *more: {"input_i": -20})
+    monkeypatch.setattr(deliver, "_finish", lambda run, src, out, target, m, *more: out.write_bytes(b"the final"))
     monkeypatch.setattr(deliver, "loudness", lambda path: (-14.0, -1.6))
     (ov.path / "03_wip" / "render_v01.mp4").write_bytes(b"render")
     code, out = _tool(capsys, "finish", "--run", str(ov.path), "03_wip/render_v01.mp4", "--id", "M5")

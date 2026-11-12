@@ -1165,3 +1165,32 @@ def test_scribe_and_voice_changer_estimates_are_by_the_minute():
 
     assert tts_models.scribe_credits(15) == 83 and tts_models.scribe_credits(60) == 330
     assert tts_models.sts_credits(15) == 250 and tts_models.sts_credits(0.1) == 2
+
+
+def test_sound_effect_posts_the_words_and_length_and_saves_the_effect(api, run, capsys):
+    """Issue 96: an effect the free set lacks is made by ElevenLabs Sound Effects, paid in credits."""
+    api.routes[("POST", "/v1/sound-generation")] = lambda p: Api._raw(
+        p, MP3, headers={"content-type": "audio/mpeg", "character-cost": "40"})
+    assert elevenlabs.main(["sound-effect", "--run", str(run.path), "--text", "A soft paper swipe", "--seconds",
+                            "1.5", "--cost", "60", "--json"]) == 0
+    post = next(c for c in api.calls if c.method == "POST")
+    assert post.url == "https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128"
+    assert json.loads(post.body) == {"text": "A soft paper swipe", "duration_seconds": 1.5, "prompt_influence": 0.3}
+    out = run.path / "03_wip" / "audio" / "sfx_a-soft-paper-swipe_v01.mp3"
+    assert out.read_bytes() == MP3
+    result = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert result["credits_used"] == 40 and result["outputs"] == ["03_wip/audio/sfx_a-soft-paper-swipe_v01.mp3"]
+    assert "ElevenLabs Sound Effects" in (run.path / "manifest.md").read_text(encoding="utf-8")
+    _no_key_anywhere(run, capsys)
+
+
+@pytest.mark.parametrize("argv,fragment", [(["--seconds", "45"], "--seconds"), (["--seconds", "0.1"], "--seconds"),
+                                           (["--seconds", "2", "--influence", "2"], "--influence")])
+def test_sound_effect_refuses_a_length_or_influence_out_of_range(api, run, argv, fragment, capsys):
+    assert elevenlabs.main(["sound-effect", "--run", str(run.path), "--text", "a click", *argv, "--cost", "40",
+                            "--json"]) == 1
+    assert fragment in capsys.readouterr().out and not [c for c in api.calls if c.method == "POST"]
+
+
+def test_a_sound_effect_is_paid_from_the_voice_credits():
+    assert TOOLS["elevenlabs"].kind_for(["sound-effect", "--text", "x", "--seconds", "1"]) == "voice_credits"

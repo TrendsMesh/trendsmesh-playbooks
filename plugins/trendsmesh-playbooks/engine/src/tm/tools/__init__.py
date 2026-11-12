@@ -119,19 +119,25 @@ TOOLS: dict[str, Tool] = {
     "ffmpeg": Tool("base", (), "the plugin's ffmpeg in the run folder: frames, cuts, joins, mixes; never overwrites"),
     "speaker_sim": Tool("voice", (), "speaker similarity (ECAPA) for clone QA"),
     "vo_qa": Tool("voice", (), "R9 check of a processed voiceover line against the unprocessed one"),
-    "elevenlabs": Tool("voice", ("elevenlabs_api_key",), "Voice Isolator, IVC clone, TTS (with word times), Scribe, Voice Changer, history search, voice previews, Music, credits",
+    "elevenlabs": Tool("voice", ("elevenlabs_api_key",), "Voice Isolator, IVC clone, TTS (with word times), Scribe, Voice Changer, history search, voice previews, Music, sound effects, credits",
                        {"isolate": "voice_credits", "clone-ivc": "voice_credits", "tts": "voice_credits",
                         "scribe": "voice_credits", "sts": "voice_credits",
                         "history-search": None, "music-upload": "voice_credits",
                         "music-compose": "voice_credits", "music-compose:--resume": None,
+                        "sound-effect": "voice_credits",
                         "credits": None, "voices": None}, light=("credits",)),
     "music_index": Tool("breakdown", (), "index a music folder: length, loudness, tempo estimate, mood"),
     "music_fetch": Tool("breakdown", (), "a Mixkit track found, fetched after the user's yes and indexed; the "
                         "offered tracks copied into the run"),
     "cover_fit": Tool("breakdown", (), "the cover's text moved or made smaller until a face in the frame is clear"),
     "take_qa": Tool("breakdown", (), "QA of a generated take: cuts, transcript, pace, loudness, contact sheet"),
+    "layer_check": Tool("breakdown", (), "an edit's captions and overlays kept off faces and off each other; no "
+                        "capture scaled up"),
     "replicate_price": Tool("base", (), "live prices from Replicate's public model pages (billingConfig)"),
     "deliver": Tool("base", (), "finish, speed, upload copy, preview, cover, no-sound export, loudness"),
+    "site": Tool("base", (), "the product's site in the user's browser: sharp captures, its font and logo"),
+    "sfx_fetch": Tool("base", (), "a small set of Mixkit sound effects, fetched after the user's yes with the "
+                      "licence shown, copied into the run"),
     "replicate_run": Tool("ai", ("replicate_api_token",), "run a Replicate model from a JSON spec (and ProPainter)",
                           {"*": "ai_usd", "--resume": None}),
 }

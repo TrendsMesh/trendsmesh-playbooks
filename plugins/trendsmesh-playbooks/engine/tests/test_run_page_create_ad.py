@@ -15,7 +15,7 @@ from tm.stops import Stop
 
 from test_create_copy import KEY, _choices, ad
 from test_create_plan import CLAIMS, _check, _new, _write, board, concepts, plan, storyboard
-from test_create_qa import _edit_qa, _qa as _take_qa
+from test_create_qa import _edit_qa, _qa as _take_qa, finish_and_check_layers
 from test_create_upload import _propose, proposal
 from test_run_page import _artifact_list, _publish, _read
 
@@ -202,6 +202,7 @@ def test_the_storyboard_page_shows_one_scene_at_a_time_with_the_exact_prompt_and
 def test_the_review_page_shows_up_to_four_versions_with_a_pick_and_pinned_notes(run):
     for n in range(1, 6):
         _media(run, f"03_wip/edit_v{n:02d}.mp4")
+    finish_and_check_layers(run, "03_wip/edit_v05.mp4")
     _take_qa(run, "03_wip/edit_v05.mp4", lufs=-14.2, peak=-1.8)
     assert _edit_qa(run, edit="03_wip/edit_v05.mp4", qa="03_wip/qa/edit_v05_qa_v01.json") == []
     built = run_page.build(run, _ask(run, "review"))

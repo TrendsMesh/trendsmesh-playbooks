@@ -1,0 +1,15 @@
+# A small set of basic sound effects for an edit (issue 96), from Mixkit: free, no account, each at a fixed file
+# address (https://assets.mixkit.co/active_storage/sfx/<id>/<id>.wav). The Mixkit Sound Effects Free License allows
+# them in commercial projects and online marketing ads, with no credit; it does not allow handing an effect on by
+# itself, so the plugin keeps only these pointers and `tm tool sfx_fetch` fetches each file for its user, after their
+# yes, into their own workspace. Each effect is checked on the Mixkit page that lists it before it is fetched.
+# The licence was read on the date below; read it again (licence_url) before changing the set.
+licence: Mixkit Sound Effects Free License
+licence_url: https://mixkit.co/license/#sfxFree
+checked: 2026-11-12
+effects:
+  whoosh: {id: 1490, title: Fast whoosh transition, page: "https://mixkit.co/free-sound-effects/whoosh/"}
+  sweep: {id: 166, title: Fast small sweep transition, page: "https://mixkit.co/free-sound-effects/transition/"}
+  click: {id: 2568, title: Cool interface click tone, page: "https://mixkit.co/free-sound-effects/click/"}
+  pop: {id: 2354, title: Message pop alert, page: "https://mixkit.co/free-sound-effects/pop/"}
+  notification: {id: 951, title: Positive notification, page: "https://mixkit.co/free-sound-effects/notification/"}

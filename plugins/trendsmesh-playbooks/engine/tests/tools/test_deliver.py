@@ -11,7 +11,7 @@ from datetime import date
 import pytest
 from _media import ffmpeg
 
-from tm import config, organic_config, organic_final, state, stepchecks
+from tm import config, manifest, organic_config, organic_final, state, stepchecks
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 from tm.tools import _common as c
@@ -133,3 +133,78 @@ def test_finish_refuses_a_render_without_sound(ov, capsys):
     code, out = _tool(capsys, "finish", "--run", str(ov.path), "03_wip/mute.mp4", "--id", "M5")
     assert code == 1 and "no sound" in out["message"] and "nosound" in out["message"]
     assert not (ov.path / "04_final" / "M5_final_v01.mp4").exists()
+
+
+# --- Create an ad's finish (issue 96): the loudness pass of the edit goes through the plugin ----------------
+
+@pytest.fixture
+def ad(tmp_path):
+    from tm import create_config
+    from tm.playbooks import CREATE_AD
+
+    run = RunFolder.create(tmp_path / "Pulpit Łukasz Nowak", "rising ad", date(2026, 11, 12), playbook=CREATE_AD)
+    config.save(run, create_config.defaults())
+    return run
+
+
+def _whisper_render(path, seconds=SECONDS):
+    """A 540×960 render whose sound is loud for 3 s, then a whisper 20 dB under it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run([ffmpeg(), "-nostdin", "-v", "error", "-y",
+                    "-f", "lavfi", "-i", f"testsrc2=size=540x960:rate=25:duration={seconds}",
+                    "-f", "lavfi", "-i", f"sine=frequency=440:sample_rate=44100:duration={seconds}",
+                    "-af", "volume=-8dB,volume=-20dB:enable='gte(t,3)'", "-c:v", "libx264", "-preset", "veryfast",
+                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(path)], check=True)
+    return path
+
+
+def _loudness_between(path, start, end):
+    cut = path.with_name(f"cut_{start:g}_{end:g}.wav")
+    subprocess.run([ffmpeg(), "-nostdin", "-v", "error", "-y", "-ss", str(start), "-t", str(end - start),
+                    "-i", str(path), "-vn", str(cut)], check=True)
+    return take_qa.loudness(cut)[0]
+
+
+@pytest.mark.tools
+def test_create_ad_finish_writes_the_next_edit_version(ad, capsys):
+    _quiet_render(ad.path / "03_wip" / "edit_mix_v01.mp4")
+    code, out = _tool(capsys, "finish", "--run", str(ad.path), "03_wip/edit_mix_v01.mp4")
+    assert code == 0, out
+    assert out["outputs"] == ["03_wip/edit_v01.mp4"] and abs(out["lufs"] - (-14)) <= 1 and out["peak"] <= -1.5
+    assert out["lufs_target"] == -14
+    rows = [r for r in manifest.rows(ad) if r["file"] == "03_wip/edit_v01.mp4"]
+    assert rows and rows[-1]["source"] == "tm tool deliver finish"
+    code, again = _tool(capsys, "finish", "--run", str(ad.path), "03_wip/edit_mix_v01.mp4")
+    assert (code, again["outputs"]) == (0, ["03_wip/edit_v02.mp4"])
+
+
+@pytest.mark.tools
+def test_create_ad_finish_lifts_a_quiet_line(ad, capsys):
+    """A timed gain brings a whisper up before the level is set: the quiet part ends far closer to the loud one."""
+    render = _whisper_render(ad.path / "03_wip" / "edit_mix_v01.mp4")
+    gap_before = _loudness_between(render, 0.2, 2.8) - _loudness_between(render, 3.2, 5.8)
+    code, out = _tool(capsys, "finish", "--run", str(ad.path), "03_wip/edit_mix_v01.mp4", "--gain", "3-6:+18",
+                      "--compress")
+    assert code == 0, out
+    edit = ad.path / "03_wip" / "edit_v01.mp4"
+    gap_after = _loudness_between(edit, 0.2, 2.8) - _loudness_between(edit, 3.2, 5.8)
+    assert gap_before > 18 and gap_after < 6, (gap_before, gap_after)
+    assert out["gains"] == [{"start": 3.0, "end": 6.0, "db": 18.0}] and out["compress"] is True
+
+
+def test_finish_gain_is_start_end_and_decibels():
+    assert deliver.parse_gain("1.5-3.25:+9") == (1.5, 3.25, 9.0)
+    assert deliver.parse_gain("0-2:-3") == (0.0, 2.0, -3.0)
+    for bad in ("3-1:+9", "1-2", "a-b:+3", "1-2:+40"):
+        with pytest.raises(c.ToolError):
+            deliver.parse_gain(bad)
+
+
+@pytest.mark.tools
+def test_finish_needs_the_idea_in_organic_video_and_refuses_it_in_create_ad(ov, ad, capsys):
+    _quiet_render(ov.path / "03_wip" / "M5" / "edit_v01_render.mp4")
+    code, out = _tool(capsys, "finish", "--run", str(ov.path), "03_wip/M5/edit_v01_render.mp4")
+    assert code == 1 and "--id" in out["message"]
+    _quiet_render(ad.path / "03_wip" / "edit_mix_v01.mp4")
+    code, out = _tool(capsys, "finish", "--run", str(ad.path), "03_wip/edit_mix_v01.mp4", "--id", "M5")
+    assert code == 1 and "--id" in out["message"] and not (ad.path / "03_wip" / "edit_v01.mp4").exists()

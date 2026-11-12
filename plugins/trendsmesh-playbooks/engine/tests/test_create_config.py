@@ -23,6 +23,8 @@ ANSWERS = {
 }
 INVENTORY = {"earlier_runs_checked": True,
              "assets": [{"file": "00_raw/logo.svg", "kind": "logo", "usable": True, "replaces": None},
+                        {"file": "02_research/brand/acme-sans-700.ttf", "kind": "font", "usable": True,
+                         "replaces": None},
                         {"file": "00_raw/vo.wav", "kind": "voiceover", "usable": True, "replaces": "voice"}]}
 
 
@@ -142,6 +144,19 @@ def test_s0_needs_the_config_and_the_asset_inventory(run, capsys):
     assert stepchecks.run("ad_intake_written", run) is None
 
 
+def test_the_inventory_always_says_where_the_brands_logo_and_font_come_from(run, capsys):
+    """Issue 96: the logo and the font are taken from the site, or asked for; listed either way."""
+    _write(run, "answers.json", _answers())
+    assert main(["config", "write", "--run", str(run.path), "--answers", "answers.json", "--json"]) == 0
+    capsys.readouterr()
+    _write(run, "03_wip/assets_v01.json", {**INVENTORY, "assets": [INVENTORY["assets"][2]]})
+    gap = stepchecks.run("ad_intake_written", run)
+    assert "the brand's logo is listed" in gap and "the brand's font is listed" in gap and "site brand" in gap
+    none = {"file": "none (asked: the brand has no font file)", "kind": "font", "usable": False, "replaces": None}
+    _write(run, "03_wip/assets_v02.json", {**INVENTORY, "assets": [INVENTORY["assets"][0], none]})
+    assert stepchecks.run("ad_intake_written", run) is None
+
+
 def test_the_doctor_warns_without_trendsmesh_and_meta():
     r = doctor.check({"video_ad"}, False, {"trendsmesh": "missing", "meta": "missing", "artifacts": "missing"},
                      playbook="create-ad")
@@ -152,7 +167,8 @@ def test_the_doctor_warns_without_trendsmesh_and_meta():
     assert item(r, "mcp_trendsmesh_create").warn and item(r, "mcp_meta_create").warn
     assert "best guess" in item(r, "mcp_trendsmesh_create").note
     assert "paused ad" in item(r, "mcp_meta_create").note
-    assert {"tier_base", "tier_ai", "tier_video", "tier_voice", "tier_breakdown"} <= set(ids(r))
+    assert {"tier_base", "tier_ai", "tier_voice", "tier_breakdown"} <= set(ids(r))
+    assert "tier_video" not in ids(r)        # the edit is the plugin's ffmpeg, never Remotion (issue 96)
 
 
 def test_the_guess_notice_comes_with_the_concept():

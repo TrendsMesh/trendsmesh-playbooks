@@ -43,8 +43,9 @@ PLACEMENTS = ("reels", "stories", "feed", "advantage_plus")
 # The asset types of a production plan (S5) and of `models.<asset_type>` (CA5).
 ASSET_TYPES = ("presenter", "hook_scene", "product_shot", "still", "slide", "animation", "music", "sfx",
                "voice", "upscale", "transcription")
-ASSET_KINDS = ("music", "voiceover", "footage", "broll", "product_shot", "logo", "brand_guide", "past_ad",
+ASSET_KINDS = ("music", "voiceover", "footage", "broll", "product_shot", "logo", "font", "brand_guide", "past_ad",
                "earlier_run")
+BRAND_KINDS = ("logo", "font")   # the brand's own, on the ad (CA10): from the site (tm tool site brand) or the user
 MODES = {"hands_off": "auto"}  # the level -> the spec's mode; any other level is hitl
 BUDGETS = {"ai_usd": "generation_usd", "voice_credits": "voice_credits"}  # budget kind -> its budget.* key
 
@@ -229,7 +230,9 @@ def load(run: RunFolder) -> dict:
 
 def inventory_problems(path: Path) -> list[str]:
     """What is wrong with an asset inventory (question 4): {"earlier_runs_checked": true, "assets": [{"file",
-    "kind", "usable", "replaces"}]}. `replaces` is the asset type a usable file removes from generation, or null."""
+    "kind", "usable", "replaces"}]}. `replaces` is the asset type a usable file removes from generation, or null.
+    The brand's logo and font are always listed (issue 96): the files `tm tool site brand` took from the product's
+    site, or the user's own; `usable: false` when there is none after asking."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
@@ -250,6 +253,11 @@ def inventory_problems(path: Path) -> list[str]:
         replaces = a.get("replaces")
         if replaces is not None and (replaces not in ASSET_TYPES or not a["usable"]):
             out.append(f"asset {n} ({a['file']}) replaces an asset type ({', '.join(ASSET_TYPES)}) only when usable")
+    kinds = {a.get("kind") for a in assets if isinstance(a, dict)}
+    for kind in BRAND_KINDS:
+        if kind not in kinds:
+            out.append(f"the brand's {kind} is listed (kind {kind}): the file tm tool site brand took from the "
+                       f"product's site, or the user's own when the site gave none (usable false when there is none)")
     return out
 
 

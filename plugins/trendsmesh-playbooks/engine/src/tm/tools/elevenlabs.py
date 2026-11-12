@@ -16,6 +16,8 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
     tm tool elevenlabs music-compose --run RUN --plan PLAN.json --cost CREDITS [--model music_v2_5]
                            [--format mp3_44100_192] [--out PATH] [--json]
     tm tool elevenlabs music-compose --run RUN --resume 03_wip/audio/<take>.json [--json]     (free)
+    tm tool elevenlabs sound-effect --run RUN --text TEXT --seconds S --cost CREDITS [--influence 0.3]
+                           [--out PATH] [--json]
     tm tool elevenlabs credits --run RUN [--json]     (free)
 
 - Voice isolation is always ElevenLabs Voice Isolator, `POST /v1/audio-isolation` (never Demucs,
@@ -93,6 +95,9 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
 - On the music endpoints a plan refusal, or a 401, 402 or 403 we don't recognise, stops with one message
   (MUSIC_STOP): the plan or key cannot use Music. A wrong key, a missing permission, no credits and a rate limit
   get their own message, as everywhere. Nothing is spent.
+- sound-effect (issue 96) makes one effect the plugin's free set (`tm tool sfx_fetch`) does not have, `POST
+  /v1/sound-generation` with the words, its length (0.5 to 30 s, so its price is known first) and how closely it
+  follows them (`--influence`, 0 to 1): `03_wip/audio/sfx_<words>_vNN.mp3`. Paid, for credits, after the user's yes.
 - credits reads `GET /v1/user/subscription` and prints {tier, character_count, character_limit,
   next_character_count_reset_unix, instant_cloning}; it is free and writes nothing. `instant_cloning`
   is the plan's `can_use_instant_voice_cloning` (None when ElevenLabs does not say): refresh-ad's V3
@@ -141,6 +146,8 @@ MUSIC_MODEL = music_models.DEFAULT
 LAG_WAITS = (2, 4)   # seconds between the late reads of the subscription after a music take with no reported cost
 MUSIC_FORMAT = "mp3_44100_192"
 MUSIC_UPLOAD_PLAN = "music_v2"
+SFX_FORMAT = "mp3_44100_128"
+SFX_SECONDS = (0.5, 30.0)
 MUSIC_STOP = ("Your ElevenLabs plan or key cannot use Music, so nothing was generated and nothing was spent. "
               "Open elevenlabs.io, choose Subscription and pick a plan with Music, then tell Claude. "
               "The run continues from the same place.")
@@ -557,6 +564,24 @@ def music_compose(plan: dict, out: Path | str, model: str = MUSIC_MODEL, fmt: st
     return {**done, "out": str(out), "request": request, "response": _response_record(resp)}
 
 
+def sound_effect(text: str, seconds: float, influence: float, out: Path | str) -> dict:
+    """One sound effect from its words and length, saved to `out` (mp3)."""
+    out = Path(out)
+    body = {"text": text, "duration_seconds": seconds, "prompt_influence": influence}
+    before = _before_paid("the sound effect")
+    resp = _paid("/v1/sound-generation", "the sound effect", params={"output_format": SFX_FORMAT}, json=body)
+    _check(resp, "the sound effect", "sound_effects")
+    credits = _music_credits(resp, before)
+    c.report_cost(True, credits)   # spent, whatever happens to the file next
+    if not resp.content:
+        raise c.ToolError("ElevenLabs answered the sound effect with no sound. It may have been charged: check the "
+                          "ElevenLabs history before trying again.")
+    _write_whole(out, resp.content)
+    request = {"method": "POST", "url": API + "/v1/sound-generation", "params": {"output_format": SFX_FORMAT},
+               "json": body}
+    return {"out": str(out), "credits_used": credits, "request": request, "response": _response_record(resp)}
+
+
 def music_resume(record_path: Path | str) -> dict:
     """Finish a paid take whose audio was not saved: fetch it from the account's history (free)."""
     record_path = Path(record_path)
@@ -968,6 +993,28 @@ def _cmd_music_compose(a: argparse.Namespace, run) -> int:
                     f"Take saved to {c.rel(run, out)}, {res['length_s']} s ({_cost(res)}).")
 
 
+def _cmd_sound_effect(a: argparse.Namespace, run) -> int:
+    text = (a.text or "").strip()
+    if not text:
+        raise c.ToolError("Give --text, what the effect sounds like (e.g. \"a soft paper swipe\"). Nothing was sent.")
+    lo, hi = SFX_SECONDS
+    if not lo <= a.seconds <= hi:
+        raise c.ToolError(f"--seconds is {lo:g} to {hi:g}: the effect's length, which sets its price. Nothing was "
+                          "sent.")
+    if not 0 <= a.influence <= 1:
+        raise c.ToolError("--influence is 0 to 1 (how closely the effect follows the words). Nothing was sent.")
+    if a.out and not a.out.lower().endswith(".mp3"):
+        raise c.ToolError(f"--out must end in .mp3, got {a.out}. Nothing was sent.")
+    out = _audio_target(run, a.out, f"sfx_{slug(text).lower()[:40].strip('-') or 'effect'}", "mp3")
+    res = sound_effect(text, a.seconds, a.influence, out)
+    c.record(run, out, "ElevenLabs Sound Effects", None, prompt=text,
+             params={"seconds": a.seconds, "influence": a.influence, "format": SFX_FORMAT},
+             model="eleven sound effects", cost=_cost(res), request=res["request"], response=res["response"])
+    return c.finish(a, {"tool": "elevenlabs sound-effect", "outputs": [c.rel(run, out)],
+                        "credits_used": res["credits_used"]},
+                    f"Sound effect saved to {c.rel(run, out)}, {a.seconds:g} s ({_cost(res)}).")
+
+
 def _inside(run, value: str) -> Path:
     """A --resume record: a non-empty path relative to the run folder, never outside it."""
     if not value.strip():
@@ -1049,6 +1096,12 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--model", default=MUSIC_MODEL)
     s.add_argument("--format", default=MUSIC_FORMAT, help="output format (an mp3_* format)")
     s.add_argument("--resume", default=None, help="a take record (relative to the run folder) to finish, free")
+    s = sub.add_parser("sound-effect", allow_abbrev=False, help="one sound effect from its words (paid)")
+    c.add_common(s)
+    s.add_argument("--cost", type=float, default=None, help="the approved estimate in credits")
+    s.add_argument("--text", required=True, help="what the effect sounds like")
+    s.add_argument("--seconds", type=float, required=True, help="its length, 0.5 to 30 s")
+    s.add_argument("--influence", type=float, default=0.3, help="how closely it follows the words, 0 to 1")
     a = p.parse_args(argv)
     c.report_cost(False)
     run = c.open_run(a.run)
@@ -1057,7 +1110,7 @@ def main(argv: list[str] | None = None) -> int:
     return {"isolate": _cmd_isolate, "clone-ivc": _cmd_clone, "tts": _cmd_tts,
             "history-search": _cmd_history, "scribe": _cmd_scribe, "sts": _cmd_sts,
             "music-upload": _cmd_music_upload,
-            "music-compose": _cmd_music_compose, "credits": _cmd_credits,
+            "music-compose": _cmd_music_compose, "credits": _cmd_credits, "sound-effect": _cmd_sound_effect,
             "voices": _cmd_voices}[a.action](a, run)
 
 

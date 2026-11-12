@@ -279,13 +279,14 @@ def test_every_tool_has_a_tier():
     assert set(tools.TOOLS) == {"transcribe", "speaker_sim", "inpaint_mode", "inpaint", "replicate_run",
                                 "elevenlabs", "teardown", "reframe", "vo_qa", "ffmpeg", "recut",
                                 "recut_qa", "segment_map", "replicate_price", "music_index", "take_qa", "deliver",
-                                "music_fetch", "cover_fit"}
+                                "music_fetch", "cover_fit", "layer_check", "site", "sfx_fetch"}
     assert {n: t.tier for n, t in tools.TOOLS.items()} == {
         "transcribe": "breakdown", "teardown": "breakdown", "inpaint_mode": "breakdown", "inpaint": "breakdown",
         "recut": "breakdown",
         "recut_qa": "breakdown", "segment_map": "breakdown", "music_index": "breakdown",
         "music_fetch": "breakdown", "cover_fit": "breakdown",
-        "take_qa": "breakdown",
+        "take_qa": "breakdown", "layer_check": "breakdown",
+        "site": "base", "sfx_fetch": "base",
         "reframe": "base", "ffmpeg": "base", "replicate_price": "base", "deliver": "base", "speaker_sim": "voice", "vo_qa": "voice", "elevenlabs": "voice",
         "replicate_run": "ai"}
 

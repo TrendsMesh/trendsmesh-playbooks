@@ -1,6 +1,6 @@
 """deliver: an organic video's delivery files (playbook 03, FLOWS.md G1 and G2; PLAYBOOK.md "Output format").
 
-    tm tool deliver finish  --run RUN IN --id ID [--asmr] [--json]
+    tm tool deliver finish  --run RUN IN --id ID [--asmr] [--gain START-END:DB ...] [--compress] [--json]
     tm tool deliver speed   --run RUN IN --factor F [--json]
     tm tool deliver upload  --run RUN FINAL [--json]
     tm tool deliver preview --run RUN IN [--json]
@@ -16,6 +16,11 @@ Free and local (base tier).
   `qa.lufs_asmr` (−16) with --asmr. The final is measured again and its LUFS printed. A render with no sound is
   refused: a video posted with only the in-app sound is a final's `nosound` export. (A 720p take made 1080p by an
   upscaler is a pack item, paid at F2; this scaling is free.)
+  In a Create an ad run (playbook 05, issue 96) there is no idea: `--id` is refused, and the finish is the edit's next
+  version, `03_wip/edit_vNN.mp4` (S6), levelled to the run's `qa.lufs_target` with a true peak of `qa.true_peak_max`;
+  S7's check refuses an edit that no finish wrote. In both playbooks, `--gain START-END:DB` (seconds, again for each
+  part) lifts a quiet line (a whisper) or lowers a loud one before the level is set, and `--compress` evens the
+  speech with a gentle compressor (`acompressor`, 3:1 from −20 dB) first.
 - speed: IN sped up ×F (`setpts` and `atempo`: the pitch is kept, so lips stay in sync), F above 1 and at most the
   run's `qa.speed_max` (×1.25), else refused (exit 2). `<IN stem>_speed<F×100>.mp4` beside IN (in 03_wip when IN is
   a saved original).
@@ -46,7 +51,8 @@ import subprocess
 from pathlib import Path
 from typing import Callable
 
-from tm import organic_final, stepchecks
+from tm import organic_final, state, stepchecks
+from tm.playbooks import CREATE_AD
 from tm.runfolder import READ_ONLY_STAGES, RunFolder
 from tm.tools import _common as c
 from tm.tools.take_qa import loudness
@@ -58,6 +64,9 @@ FINAL_CRF = 18
 ASPECT_SLACK = 0.02   # 9:16 within 2 %: MiniMax H3's 768×1344 (4:7) and its 1088×1904 upscale are vertical takes
 FASTSTART = ["-movflags", "+faststart"]
 PREVIEW_WIDTH = 720
+COMPRESSOR = "acompressor=threshold=-20dB:ratio=3:attack=5:release=120"
+MAX_GAIN_DB = 30
+AD_EDIT = ("03_wip", "edit", "mp4")     # Create an ad's edit versions (S6), what its finish writes
 
 
 def _input(run: RunFolder, text: str, what: str) -> Path:
@@ -137,11 +146,30 @@ def cover_name(run: RunFolder, stem: str) -> str:
     return stem
 
 
-def _first_pass(src: Path, target: float) -> dict:
+def parse_gain(text: str) -> tuple[float, float, float]:
+    """`START-END:DB` (seconds, decibels with a sign or none) as (start, end, dB); a ToolError when it is not."""
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*:\s*([+-]?\d+(?:\.\d+)?)\s*(?:dB)?\s*", text, re.I)
+    if not m:
+        raise c.ToolError(f"--gain {text} must be START-END:DB in seconds and decibels, e.g. 3.2-5.8:+9.")
+    start, end, db = (float(v) for v in m.groups())
+    if end <= start:
+        raise c.ToolError(f"--gain {text}: the end must come after the start.")
+    if abs(db) > MAX_GAIN_DB:
+        raise c.ToolError(f"--gain {text}: at most {MAX_GAIN_DB} dB either way.")
+    return start, end, db
+
+
+def _before(gains: list[tuple[float, float, float]], compress: bool) -> str:
+    """The filters before the limiter: each timed gain, then the compressor."""
+    parts = [f"volume=volume={db:g}dB:enable='between(t,{start:g},{end:g})'" for start, end, db in gains]
+    return "".join(f"{x}," for x in [*parts, *([COMPRESSOR] if compress else [])])
+
+
+def _first_pass(src: Path, target: float, peak: float = TRUE_PEAK, before: str = "") -> dict:
     """loudnorm's measure of the limited sound (its print_format=json block)."""
     proc = subprocess.run([c.ffmpeg_bin(), "-nostdin", "-hide_banner", "-nostats", "-v", "info", "-i", c.media(src),
                            "-vn", "-af",
-                           f"{LIMITER},loudnorm=I={target:g}:TP={TRUE_PEAK:g}:LRA={LRA}:print_format=json",
+                           f"{before}{LIMITER},loudnorm=I={target:g}:TP={peak:g}:LRA={LRA}:print_format=json",
                            "-f", "null", "-"], capture_output=True, check=True)
     text = proc.stderr.decode("utf-8", "replace")
     found = re.findall(r"\{[^{}]*\"input_i\"[^{}]*\}", text, re.S)
@@ -153,9 +181,10 @@ def _first_pass(src: Path, target: float) -> dict:
     return measured
 
 
-def _finish(run: RunFolder, src: Path, out: Path, target: float, measured: dict) -> None:
+def _finish(run: RunFolder, src: Path, out: Path, target: float, measured: dict, peak: float = TRUE_PEAK,
+            before: str = "") -> None:
     m = measured
-    norm = (f"{LIMITER},loudnorm=I={target:g}:TP={TRUE_PEAK:g}:LRA={LRA}:measured_I={m['input_i']}:"
+    norm = (f"{before}{LIMITER},loudnorm=I={target:g}:TP={peak:g}:LRA={LRA}:measured_I={m['input_i']}:"
             f"measured_TP={m['input_tp']}:measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:"
             f"offset={m['target_offset']}:linear=true,aresample={organic_final.SAMPLE_RATE}")
     w, h = organic_final.SIZE
@@ -175,9 +204,23 @@ def _not_vertical(src: Path) -> str | None:
     return None if abs((width / height) / (w / h) - 1) <= ASPECT_SLACK else f"{width}×{height}"
 
 
+def _is_ad(run: RunFolder) -> bool:
+    try:
+        return state.load(run).playbook == CREATE_AD
+    except (OSError, ValueError):
+        return False
+
+
 def finish(run: RunFolder, a: argparse.Namespace) -> tuple[dict, str]:
     src = _input(run, a.input, "render")
-    out = final_path(run, a.id)
+    ad = _is_ad(run)
+    gains = [parse_gain(g) for g in a.gain or []]
+    if ad and a.id:
+        raise c.ToolError("--id names an organic video's idea; a Create an ad finish is the edit's next version "
+                          f"({AD_EDIT[0]}/{AD_EDIT[1]}_vNN.{AD_EDIT[2]}): leave --id out. Nothing was written.")
+    if not ad and not a.id:
+        raise c.ToolError("--id is required: the idea's id (00_raw/proposal.json's), e.g. --id M5. Nothing was "
+                          "written.")
     size = _not_vertical(src)
     if size:
         raise c.ToolError(f"{c.name_of(a.input)} is {size}, not 9:16, and a finish never stretches a picture to "
@@ -188,20 +231,33 @@ def finish(run: RunFolder, a: argparse.Namespace) -> tuple[dict, str]:
                           "video posted with only the in-app trending sound is a final's no-sound export "
                           "(tm tool deliver nosound --run <run> <final>).")
     target = float(organic_final.setting(run, "lufs_asmr" if a.asmr else "lufs_target"))
-    measured = _first_pass(src, target)
-    _finish(run, src, out, target, measured)
+    peak_max = TRUE_PEAK
+    if ad:
+        try:
+            found = organic_final.setting(run, "true_peak_max")
+        except KeyError:
+            found = None
+        peak_max = min(TRUE_PEAK, float(found)) if isinstance(found, (int, float)) else TRUE_PEAK
+    before = _before(gains, a.compress)
+    out = _new(run, run.next_version(*AD_EDIT)) if ad else final_path(run, a.id)
+    measured = _first_pass(src, target, peak_max, before)
+    _finish(run, src, out, target, measured, peak_max, before)
     lufs, peak = loudness(out)
     rel = c.rel(run, out)
+    shown = [{"start": s, "end": e, "db": db} for s, e, db in gains]
     c.record(run, out, "tm tool deliver finish", c.parent_ref(run, src),
-             params={"lufs_target": target, "asmr": a.asmr, "lufs": lufs, "peak": peak},
+             params={"lufs_target": target, "asmr": a.asmr, "lufs": lufs, "peak": peak, "gains": shown,
+                     "compress": a.compress},
              model="ffmpeg scale (lanczos), alimiter, loudnorm (two passes)", cost="0 (local)",
-             request={"action": "finish", "input": c.parent_ref(run, src), "id": out.name.rsplit("_final_v", 1)[0],
-                      "lufs_target": target, "asmr": a.asmr},
+             request={"action": "finish", "input": c.parent_ref(run, src),
+                      "id": None if ad else out.name.rsplit("_final_v", 1)[0], "lufs_target": target,
+                      "true_peak": peak_max, "asmr": a.asmr, "gains": shown, "compress": a.compress},
              response={"first_pass": measured, "lufs": lufs, "peak": peak})
     text = f"Wrote {rel}: 1080×1920, H.264, AAC 48 kHz, {_level(lufs, peak)} (target {target:g} LUFS)."
     if lufs is None or abs(lufs - target) > organic_final.LUFS_SLACK:
         text += " That is more than 1 LU from the target, so the final check will not pass: look at the render's sound."
-    return {"outputs": [rel], "lufs": lufs, "peak": peak, "lufs_target": target}, text
+    return {"outputs": [rel], "lufs": lufs, "peak": peak, "lufs_target": target, "gains": shown,
+            "compress": a.compress}, text
 
 
 # --- speed --------------------------------------------------------------------------------------------
@@ -354,8 +410,11 @@ def main(argv: list[str] | None = None) -> int:
         return s
 
     f = action("finish", "the final: 1080×1920, H.264, AAC 48 kHz, levelled", "the edit's render")
-    f.add_argument("--id", required=True, help="the idea's id (00_raw/proposal.json's; any case, the run's spelling "
-                                                "is written)")
+    f.add_argument("--id", help="organic video: the idea's id (00_raw/proposal.json's; any case, the run's spelling "
+                                "is written); Create an ad has none")
+    f.add_argument("--gain", action="append", default=[], help="START-END:DB, a part's gain in seconds and dB before "
+                   "the level is set (e.g. 3.2-5.8:+9 for a whisper); again for each part")
+    f.add_argument("--compress", action="store_true", help="even the speech with a gentle compressor first")
     f.add_argument("--asmr", action="store_true", help="level to qa.lufs_asmr (−16) instead of qa.lufs_target")
     action("speed", "a take sped up, the pitch kept", "the take").add_argument(
         "--factor", type=float, required=True, help="above 1, at most qa.speed_max (1.25)")

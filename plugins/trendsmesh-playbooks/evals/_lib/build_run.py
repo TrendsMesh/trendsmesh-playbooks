@@ -129,6 +129,9 @@ English; every file written and checked with the engine's own `tm ad` commands, 
                  quiet last line: "not missing yet", a Scribe check first (issue #94)
   ca_at_g4_weak_voice  Check every step; through the checked storyboard and its yes; a clean presenter take made and
                  QA'd; at "Accept the takes", asked (issue #95: a weak native voice)
+  ca_at_s7_caption_on_face  Hands-off; through a clean take and S6: the edit levelled by `tm tool deliver finish`
+                 (its manifest row), measured at −14.1 LUFS, its layers file, and its layer check (issue 96) found the
+                 second caption over the presenter's mouth at 2.4 s; at S7's work, the edit QA not written yet
 """
 from __future__ import annotations
 
@@ -1763,7 +1766,8 @@ def _ca_files(ws: Path, run: Path, upto: str) -> None:
     today = _date.today().isoformat()
     price = {"checked": today, "price_file": "02_research/prices_v01.json"}
     _ca_write(run, "03_wip/assets_v01.json", {"earlier_runs_checked": True, "assets": [
-        {"file": "00_raw/logo.svg", "kind": "logo", "usable": True, "replaces": None}]})
+        {"file": "00_raw/logo.svg", "kind": "logo", "usable": True, "replaces": None},
+        {"file": "02_research/brand/brand-sans-700.ttf", "kind": "font", "usable": True, "replaces": None}]})
     _ca_write(run, "02_research/prices_v01.json", {"gpt-image-2": "0.04 USD an image", "gemini-omni": "0.10 USD a second",
                                                     "checked": today})
     checks = [
@@ -1902,12 +1906,36 @@ def ca_edit(ws: Path, run: Path) -> None:
     """S6 and S7: the edit, its QA and what was checked (tm ad check edit)."""
     _ca_write(run, "03_wip/edit_v01.mp4", b"mp4")
     tm(ws, "record", "--run", str(run), "--file", "03_wip/edit_v01.mp4", "--stage", "03_wip",
-       "--source", "the edit (eval fixture)")
+       "--source", "tm tool deliver finish")      # the loudness pass made it (issue 96)
+    _ca_write(run, "03_wip/qa/edit_v01_layers_v01.json", {   # tm tool layer_check found nothing (issue 96)
+        "edit": "03_wip/edit_v01.mp4", "layers": {"file": "03_wip/edit_layers_v01.json", "sha256": "0" * 64},
+        "faces": [], "collisions": []})
     qa = _ca_qa(ws, run, "03_wip/edit_v01.mp4", lufs=-14.1, peak=-1.8)
     rel = _ca_write(run, "03_wip/edit_qa_v01.json", {"edit": "03_wip/edit_v01.mp4", "qa": qa, "checked": [
         {"check": k, "result": "ok", "note": "checked on the fixture edit"}
         for k in ("cuts", "take_scenes", "stills", "captions", "speech", "joins", "overlay_ends", "text")]})
     tm(ws, "ad", "check", "edit", "--run", str(run), "--file", rel)
+
+
+def ca_edit_with_a_collision(ws: Path, run: Path) -> None:
+    """S6 as the edit is made (issue 96): the render levelled into edit_v01, its layers, and a layer check that found
+    a caption over the presenter's mouth."""
+    _ca_write(run, "03_wip/edit_mix_v01.mp4", b"mp4")
+    _ca_write(run, "03_wip/edit_v01.mp4", b"mp4")
+    tm(ws, "record", "--run", str(run), "--file", "03_wip/edit_v01.mp4", "--stage", "03_wip",
+       "--source", "tm tool deliver finish")
+    take = {"id": "presenter", "kind": "picture", "src": "03_wip/presenter-take_v01_0.mp4", "start": 0, "end": 6}
+    caption = {"id": "caption 2", "kind": "caption", "start": 1.8, "end": 3.2, "box": [140, 980, 800, 150]}
+    _ca_write(run, "03_wip/edit_layers_v01.json", {"layers": [take, caption]})
+    _ca_write(run, "03_wip/qa/edit_v01_layers_v01.json", {
+        "edit": "03_wip/edit_v01.mp4", "layers": {"file": "03_wip/edit_layers_v01.json", "sha256": "0" * 64},
+        "size": [1080, 1920], "faces": [{"layer": "presenter", "at": 2.4, "head": [300, 560, 780, 1160]}],
+        "collisions": [{"kind": "face", "layer": "caption 2", "with": "presenter", "at": 2.4,
+                        "box": caption["box"], "other": [300, 560, 780, 1160],
+                        "message": "caption 2 covers a face in presenter at 2.40 s (the head at 300, 560, 780, "
+                                   "1160): move it clear of the face and the chin"}],
+        "message": "1 collision(s)"})
+    _ca_qa(ws, run, "03_wip/edit_v01.mp4", lufs=-14.1, peak=-1.8)
 
 
 def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None, hooks: dict | None = None) -> dict:
@@ -1943,7 +1971,8 @@ def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None,
 def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     level = {"ca_at_s5_plan": "every_step", "ca_at_s10b_hands_off": "hands_off",
              "ca_at_g4_take_stutters": "hands_off", "ca_at_g4_quiet_line": "hands_off",
-             "ca_at_g4_weak_voice": "every_step"}[scn]
+             "ca_at_g4_weak_voice": "every_step",
+             "ca_at_s7_caption_on_face": "hands_off"}[scn]
     made = Path(tm(ws, "run", "new", "--playbook", "create-ad", "--name", "planner")["path"])
     run = made.with_name(CA_RUN)
     if made != run:
@@ -1964,6 +1993,10 @@ def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     if scn == "ca_at_g4_weak_voice":
         _ca_files(ws, run, "storyboard")
         return run, ca_drive(ws, run, "G4", stop_checkin="takes", hooks={"G4": lambda: ca_take(ws, run)})
+    if scn == "ca_at_s7_caption_on_face":
+        _ca_files(ws, run, "storyboard")
+        return run, ca_drive(ws, run, "S7", hooks={"G4": lambda: ca_take(ws, run),
+                                                    "S6": lambda: ca_edit_with_a_collision(ws, run)})
     _ca_files(ws, run, "proposal")
     n = ca_drive(ws, run, "S10a", stop_checkin="upload",
                  hooks={"G4": lambda: ca_take(ws, run), "S7": lambda: ca_edit(ws, run)})
