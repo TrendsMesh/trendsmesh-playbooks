@@ -13,8 +13,8 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 fail() { echo "FAIL: $1" >&2; exit 1; }
 # Under Git Bash, paths go in as C:/... so that both the sh guard and pwsh can open them.
-HEREW=$HERE
-if command -v cygpath >/dev/null 2>&1; then TMP=$(cygpath -m "$TMP"); HEREW=$(cygpath -m "$HERE"); fi
+HEREW=$HERE ROOTW=$ROOT
+if command -v cygpath >/dev/null 2>&1; then TMP=$(cygpath -m "$TMP"); HEREW=$(cygpath -m "$HERE"); ROOTW=$(cygpath -m "$ROOT"); fi
 export CLAUDE_PLUGIN_DATA="$TMP/home/.claude/plugins/data/trendsmesh-playbooks-TrendsMesh"
 mkdir -p "$CLAUDE_PLUGIN_DATA/envs/abc/envs/default/bin" "$TMP/code" "$TMP/ws/runs/03-organic-ai-video" \
   "$TMP/ws/runs/01-refresh-ad" "$TMP/ws/.secrets" "$TMP/ws2/runs/03-organic-ai-video"
@@ -31,7 +31,7 @@ json() {  # cwd, tool_name, tool_input
   printf '{"session_id":"s","transcript_path":"/t.jsonl","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"%s","tool_input":%s}' "$1" "$2" "$3"
 }
 run_sh() { json "$@" | sh -c "$cmd" || fail "hook exited non-zero: $2 $3"; }
-run_ps() { json "$@" | $PWSH -NoProfile -Command "& ([scriptblock]::Create([IO.File]::ReadAllText('$HEREW/guard-secrets.ps1')))"; }
+run_ps() { json "$@" | CLAUDE_PLUGIN_ROOT=$ROOTW $PWSH -NoProfile -Command "& ([scriptblock]::Create([IO.File]::ReadAllText('$HEREW/guard-secrets.ps1')))"; }
 n=0; bad=0
 miss() { echo "FAIL: $1" >&2; bad=$((bad + 1)); }
 t() {  # expect (allow | deny:<rule>), cwd, tool, input
@@ -49,6 +49,13 @@ t() {  # expect (allow | deny:<rule>), cwd, tool, input
     [ "$got" != allow ] || [ -z "$out" ] || miss "$runner: an allowed call printed: $out"
     case "$out" in *"$TOKEN"*|*r8_AAAA*) miss "$runner: the block message repeats the token: $out" ;; esac
     printf '%s' "$out" | grep -q 'tm doctor' || [ "$got" = allow ] || miss "$runner: no way forward in: $out"
+  done
+}
+says() {  # text the block message must hold, cwd, tool, input (a denied call)
+  want=$1; shift
+  for runner in $RUNNERS; do
+    out=$($runner "$@")
+    case "$out" in *"$want"*) ;; *) miss "$runner: the block message for $2 $3 does not say: $want ($out)" ;; esac
   done
 }
 RUNNERS=run_sh
@@ -111,17 +118,41 @@ t deny:data-folder "$C" PowerShell '{"command":"Get-ChildItem -Recurse $HOME\\.c
 # A data folder with a Polish letter and no tell-tale name: only the folder itself gives it away.
 ( export CLAUDE_PLUGIN_DATA="$TMP/Łukasz Nowak/dane"
   t deny:data-folder "$C" Glob "{\"pattern\":\"**/*\",\"path\":\"$TMP/Łukasz Nowak/dane\"}" )
-# Climbing out of envs/ or pixi/, or moving into the data folder, is denied too.
-t deny:data-climb "$C" Bash '{"command":"cat \"$TM_PLUGIN_DATA/envs/../s\"*"}'
-t deny:data-climb "$C" Bash '{"command":"cd \"$TM_PLUGIN_DATA/envs\" && cat ../s*"}'
-t deny:data-climb "$C" Bash '{"command":"pushd $TM_PLUGIN_DATA/pixi"}'
-t deny:data-climb "$C" Bash '{"command":"D=$TM_PLUGIN_DATA/envs; cat $(dirname $D)/s*"}'
-t deny:data-climb "$C" PowerShell '{"command":"Get-Content \"$(Split-Path $env:TM_PLUGIN_DATA\\envs)\\s*\""}'
-t deny:data-climb "$C" PowerShell '{"command":"Set-Location $env:TM_PLUGIN_DATA\\envs"}'
-t deny:data-climb "$C" Read "{\"file_path\":\"$D/envs/abc/../../install-pixi.log\"}"
-t deny:data-climb "$C" Bash '{"command":"cat \"$TM_PLUGIN_DATA\"/envs/{..,x}/s*"}'
-t deny:data-climb "$C" Bash '{"command":"D=$TM_PLUGIN_DATA/envs; cat $D/../s*"}'
-t deny:data-climb "$C" Bash '{"command":"ln -s \"$TM_PLUGIN_DATA/envs\" e && cat e/../s*"}'
+# envs/ and pixi/ are no way in either (issue #62): only the programs guard-programs.txt lists.
+t deny:data-folder "$C" Bash '{"command":"cat \"$TM_PLUGIN_DATA/envs/../s\"*"}'
+t deny:data-folder "$C" Bash '{"command":"cd \"$TM_PLUGIN_DATA/envs\" && cat ../s*"}'
+t deny:data-folder "$C" Bash '{"command":"pushd $TM_PLUGIN_DATA/pixi"}'
+t deny:data-folder "$C" Bash '{"command":"D=$TM_PLUGIN_DATA/envs; cat $(dirname $D)/s*"}'
+t deny:data-folder "$C" PowerShell '{"command":"Get-Content \"$(Split-Path $env:TM_PLUGIN_DATA\\envs)\\s*\""}'
+t deny:data-folder "$C" PowerShell '{"command":"Set-Location $env:TM_PLUGIN_DATA\\envs"}'
+t deny:data-folder "$C" Read "{\"file_path\":\"$D/envs/abc/../../install-pixi.log\"}"
+t deny:data-folder "$C" Bash '{"command":"cat \"$TM_PLUGIN_DATA\"/envs/{..,x}/s*"}'
+t deny:data-folder "$C" Bash '{"command":"D=$TM_PLUGIN_DATA/envs; cat $D/../s*"}'
+t deny:data-folder "$C" Bash '{"command":"ln -s \"$TM_PLUGIN_DATA/envs\" e && cat e/../s*"}'
+t deny:data-folder "$C" Bash '{"command":"cat \"$TM_PLUGIN_DATA/pixi/config.toml\""}'
+t deny:data-folder "$C" Bash '{"command":"ls \"$TM_PLUGIN_DATA/envs\""}'
+t deny:data-folder "$C" Bash '{"command":"cat $TM_PLUGIN_DATA/envs/abc/envs/base/lib/python3.11/site.py"}'
+t deny:data-folder "$C" Bash '{"command":"$TM_PLUGIN_DATA/envs/abc/envs/base/bin/python3.11 x.py"}'
+t deny:data-folder "$C" Bash '{"command":"$TM_PLUGIN_DATA/envs/abc/envs/base/bin/ffmpegx -version"}'
+t deny:data-folder "$C" Bash '{"command":"cat $TM_PLUGIN_DATA/envs/abc/envs/base/bin/ffmpeg/../../../../s*"}'
+t deny:data-folder "$C" Bash '{"command":"cat $TM_PLUGIN_DATA/envs/.?/envs/base/bin/ffmpeg"}'
+t deny:data-folder "$C" Bash '{"command":"cat $TM_PLUGIN_DATA/envs/[.]/envs/base/bin/ffmpeg"}'
+t deny:data-folder "$C" Bash '{"command":"ls $TM_PLUGIN_DATA/envs/*/envs/*/bin/ff*"}'
+t deny:data-folder "$C" Bash '{"command":"ls $TM_PLUGIN_DATA/envs/*/envs/*/bin/"}'
+t deny:data-folder "$C" Glob "{\"pattern\":\"**/ffmpeg\",\"path\":\"$D/envs\"}"
+t deny:data-folder "$C" Grep "{\"pattern\":\"x\",\"path\":\"$D/pixi\"}"
+t deny:data-folder "$C" Read "{\"file_path\":\"$D/envs/abc/conda-meta/pixi\"}"
+t deny:data-folder "$C" Read "{\"file_path\":\"$D/remotion/package.json\"}"
+t deny:data-folder "$C" PowerShell '{"command":"Get-ChildItem $env:TM_PLUGIN_DATA\\envs -Recurse"}'
+# Climbing out of one of those programs, or moving into the data folder, is denied too.
+t deny:data-climb "$C" Bash '{"command":"cd \"$(dirname \"$TM_PLUGIN_DATA/pixi/bin/pixi\")\" && cat ../../s*"}'
+t deny:data-climb "$C" Bash '{"command":"pushd $TM_PLUGIN_DATA/pixi/bin/pixi"}'
+t deny:data-climb "$C" Bash '{"command":"D=$TM_PLUGIN_DATA/pixi/bin/pixi; cat $(dirname $D)/../../s*"}'
+t deny:data-climb "$C" PowerShell '{"command":"Get-Content \"$(Split-Path (Split-Path $env:TM_PLUGIN_DATA\\pixi\\bin\\pixi.exe))\\..\\s*\""}'
+t deny:data-climb "$C" PowerShell '{"command":"Set-Location $env:TM_PLUGIN_DATA\\pixi\\bin\\pixi.exe"}'
+t deny:data-climb "$C" Bash '{"command":"D=$TM_PLUGIN_DATA/pixi/bin/pixi; cat $D/../../../s*"}'
+t deny:data-climb "$C" Bash '{"command":"ln -s \"$TM_PLUGIN_DATA/pixi/bin/pixi\" p && cat p/../../../s*"}'
+t deny:data-climb "$C" Bash '{"command":"realpath $TM_PLUGIN_DATA/envs/abc/envs/base/bin/python"}'
 # A recursive read of a folder above the data folder (home, ~/.claude, ~/.claude/plugins).
 t deny:data-parent "$C" Bash '{"command":"grep -rh r8_ ~/.claude"}'
 t deny:data-parent "$C" Bash '{"command":"tar cf - -C ~/.claude/plugins data | tar xOf -"}'
@@ -293,14 +324,21 @@ for ws in "$W" "$W2"; do
   t allow "$ws" Bash '{"command":"tm tool elevenlabs history-search --run runs/x \"keynote mysteries security\" --json"}'
   t allow "$ws" Bash '{"command":"tm budget estimate ai_usd 2 --what \"Replicate Veo clip, more motion\""}'
   t allow "$ws" Bash '{"command":"tm budget estimate ai_usd 2 --what \"Replicate clip, type: B-roll\""}'
-  # The tools the plugin installs in its data folder (ffmpeg, pixi) can be run.
+  # The programs the plugin installs in its data folder (guard-programs.txt) can be run.
   t allow "$ws" Bash '{"command":"\"$TM_PLUGIN_DATA/envs/abc/envs/default/bin/ffmpeg\" -i in.mp4 -f null -"}'
   t allow "$ws" Bash "{\"command\":\"'$D/envs/abc/envs/default/bin/ffprobe' -v error in.mp4\"}"
   t allow "$ws" Bash '{"command":"${TM_PLUGIN_DATA}/pixi/bin/pixi --version"}'
   t allow "$ws" Bash '{"command":"ls \"$TM_PLUGIN_DATA\"/envs/*/envs/default/bin/ffmpeg"}'
   t allow "$ws" PowerShell '{"command":"& \"$env:TM_PLUGIN_DATA\\envs\\abc\\envs\\default\\Library\\bin\\ffmpeg.exe\" -version"}'
-  t allow "$ws" Glob "{\"pattern\":\"**/ffmpeg\",\"path\":\"$D/envs\"}"
-  t allow "$ws" Read "{\"file_path\":\"$D/envs/abc/conda-meta/pixi\"}"
+  t allow "$ws" Bash '{"command":"\"$TM_PLUGIN_DATA/envs/abc/envs/base/bin/python\" -c \"print(1)\""}'
+  t allow "$ws" Bash '{"command":"$TM_PLUGIN_DATA/envs/abc/envs/video/bin/node --version"}'
+  t allow "$ws" Bash '{"command":"$TM_PLUGIN_DATA/envs/abc/envs/video/bin/npx remotion versions"}'
+  t allow "$ws" Bash '{"command":"\"$TM_PLUGIN_DATA/remotion/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell\" --version"}'
+  t allow "$ws" PowerShell '{"command":"& \"$env:TM_PLUGIN_DATA\\envs\\abc\\envs\\base\\python.exe\" -V"}'
+  t allow "$ws" PowerShell '{"command":"& \"$env:TM_PLUGIN_DATA\\envs\\abc\\envs\\video\\npx.cmd\" remotion versions"}'
+  t allow "$ws" PowerShell '{"command":"& $env:TM_PLUGIN_DATA\\pixi\\bin\\pixi.exe --version"}'
+  t allow "$ws" Read "{\"file_path\":\"$D/pixi/bin/pixi\"}"
+  t allow "$ws" Bash "{\"command\":\"'$D/envs/abc/envs/base/bin/ffprobe' a.mp4 && '$D/envs/abc/envs/base/bin/ffmpeg' -i a.mp4 b.mp4\"}"
   t allow "$ws" Bash '{"command":"cd runs/x && \"$TM_PLUGIN_DATA/envs/abc/envs/default/bin/ffmpeg\" -i in.mp4 out.mp4"}'
   t allow "$ws" Bash '{"command":"\"$TM_PLUGIN_DATA/envs/abc/envs/default/bin/ffmpeg\" -i ../in.mp4 out.mp4"}'
   t allow "$ws" Bash '{"command":"tm next --json | jq '"'"'.[0]'"'"'"}'
@@ -310,6 +348,18 @@ done
 # A workspace with no key store of its own can be searched as a whole.
 t allow "$W2" Grep '{"pattern":"REPLICATE","path":"."}'
 t allow "$W2" Bash '{"command":"grep -ri elevenlabs ."}'
+# Ordinary commands the guard still blocks (issue #62): each block message says how to rephrase.
+says "write that text to a file with the Write tool" "$W" Bash '{"command":"cat >> runs/x/notes.md <<'"'"'EOF'"'"'\nThe keys stay in .secrets/ and never in a run.\nEOF"}'
+says "write that text to a file with the Write tool" "$W" Bash '{"command":"awk '"'"'/^title: .*/ {print}'"'"' runs/x/a.md"}'
+says "write that text to a file with the Write tool" "$W" Bash '{"command":"python3 - <<'"'"'EOF'"'"'\nimport re\nprint(re.findall(r\"id: .*?;\", open(\"runs/x/a.md\").read()))\nEOF"}'
+t deny:key-store "$W" Bash '{"command":"awk '"'"'/^title: .*/ {print}'"'"' runs/x/a.md"}'
+t deny:data-parent "$C" Bash '{"command":"grep -rn \"width / 2\" ~/.claude/plugins/cache/tm/trendsmesh-playbooks/0.11.0/engine"}'
+says "use the Grep tool with that folder as its path" "$C" Bash '{"command":"grep -rn \"width / 2\" ~/.claude/plugins/cache/tm/trendsmesh-playbooks/0.11.0/engine"}'
+says "tm tool ffmpeg" "$C" Bash '{"command":"ls \"$TM_PLUGIN_DATA/envs\""}'
+# The rephrased forms pass.
+t allow "$W" Bash '{"command":"awk -f runs/x/titles.awk runs/x/a.md"}'
+t allow "$W" Bash '{"command":"python3 runs/x/ids.py"}'
+t allow "$C" Grep '{"pattern":"width / 2","path":"/Users/x/.claude/plugins/cache/tm/trendsmesh-playbooks/0.11.0/engine"}'
 # Leaving the data folder is allowed.
 t allow "$D/envs" Bash '{"command":"cd ~/project"}'
 

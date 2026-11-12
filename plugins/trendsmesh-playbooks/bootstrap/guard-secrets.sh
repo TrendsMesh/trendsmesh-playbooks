@@ -29,11 +29,13 @@
 #   data-folder    the plugin data folder ($CLAUDE_PLUGIN_DATA expanded, CLAUDE_PLUGIN_DATA,
 #                  TM_PLUGIN_DATA, plugins/data itself, plugins/data/<trendsmesh..., a glob or a
 #                  short name such as TRENDS~1>,
-#                  data/trendsmesh-playbooks...) anywhere but its envs/ and pixi/ folders, which
-#                  hold the installed tools (ffmpeg, pixi);
-#   data-climb     a way out of envs/ or pixi/ or into the data folder: .. or {..,} in the same
-#                  path, cd/pushd/Set-Location to it, dirname, Split-Path, .parent, realpath...;
-#                  when the path is put in a variable or a link (D=..., ln -s), any .. or cd;
+#                  data/trendsmesh-playbooks...) other than as the full path of one of the
+#                  programs the plugin installs there (ffmpeg, pixi...), which guard-programs.txt
+#                  lists: the one list this guard, guard-secrets.ps1 and their tests read;
+#   data-climb     a way out of one of those programs or into the data folder: .. or {..,} in
+#                  the same path, cd/pushd/Set-Location to it, dirname, Split-Path, .parent,
+#                  realpath...; when the path is put in a variable or a link (D=..., ln -s), any
+#                  .. or cd;
 #   data-parent    a recursive read (grep -r, rg, find, tar, cp -r, -Recurse, the Grep tool) of a
 #                  folder above the data folder: /, home, ~/.claude, ~/.claude/plugins;
 #   plugins-glob   a wildcard folder inside .claude/ or a wildcard in .claude/plugins/, which can
@@ -154,14 +156,30 @@ $TN" "$re")
   esac
 fi
 # data-folder, data-climb and data-parent. Each mention of the data folder is looked at in turn:
-# one followed by /envs or /pixi is the installed tools (and becomes @), any other is the folder
-# itself. Each word that is a folder above the data folder is noted too.
+# one followed by the rest of a program's path from guard-programs.txt is that program (and
+# becomes @), any other is the folder itself. Each word that is a folder above the data folder
+# is noted too.
 if [ -z "$rule" ]; then
-  refs=$(printf '%s\n' "$Q" | LIT=$dl CWDL=$cl awk '
+  refs=$(printf '%s\n' "$Q" | LIT=$dl CWDL=$cl LIST="$HERE/guard-programs.txt" awk '
     BEGIN {
       lit = ENVIRON["LIT"]; cwdl = ENVIRON["CWDL"]; soh = sprintf("%c", 1)
       re = "(\\$\\{?(env:)?|%)?(claude|tm)_plugin_data[}%]?|plugins/data/[^/ ;|&)]*(trendsmesh|[*?[~])[^/ ;|&)]*"
       re = re "|plugins/data/?([ ;|&)]|$)|(^|[^a-z0-9_.-])data/trendsmesh-playbooks[^/ ;|&)]*|" soh
+      # The programs, as one regex: a * is one name (no leading dot), anything else as it is.
+      progs = ""
+      while ((getline line < ENVIRON["LIST"]) > 0) {
+        sub(/\r$/, "", line); sub(/^[ \t]+/, "", line); sub(/[ \t]+$/, "", line)
+        if (line == "" || line ~ /^#/ || line ~ /^outside:/) continue
+        line = tolower(line); p = ""
+        for (k = 1; k <= length(line); k++) {
+          ch = substr(line, k, 1)
+          if (ch == "*") p = p "[a-z0-9_*+-][a-z0-9_.*+-]*"
+          else if (ch ~ /[a-z0-9_\/-]/) p = p ch
+          else p = p "[" ch "]"
+        }
+        progs = progs (progs == "" ? "" : "|") p
+      }
+      prog = progs == "" ? "" : "^/(" progs ")([ ;|&)<>]|$)"
     }
     {
       n = split(tolower($0), tk, /[ ;|&()]+/)
@@ -182,9 +200,10 @@ if [ -z "$rule" ]; then
       }
       while (match(l, re)) {
         any = 1
-        ref = substr(s, RSTART, RLENGTH); rest = substr(l, RSTART + RLENGTH)
-        if (rest ~ /^\/(envs|pixi)([\/ ;|&)]|$)/) {
-          cut = RSTART + RLENGTH + 5
+        ref = substr(s, RSTART, RLENGTH); rest = substr(l, RSTART + RLENGTH); at = RSTART; n = RLENGTH
+        if (prog != "" && match(rest, prog)) {
+          len = RLENGTH; if (substr(rest, len, 1) ~ /[ ;|&)<>]/) len--
+          cut = at + n + len; RSTART = at
           l = substr(l, 1, RSTART - 1) "@" substr(l, cut)
           s = substr(s, 1, RSTART - 1) "@" substr(s, cut)
           continue
@@ -200,8 +219,8 @@ if [ -z "$rule" ]; then
   bad=$(field deny | head -n 1)
   if [ -n "$bad" ]; then
     hit=$bad
-    deny data-folder "this call names the plugin's data folder, where secrets.env (the keys) is kept, outside its envs/ and pixi/ folders" \
-      "To run a tool the plugin installed, name it by its full path under envs/ or pixi/ (for example \"\$TM_PLUGIN_DATA/envs/.../bin/ffmpeg\"), or use tm tool ffmpeg."
+    deny data-folder "this call names the plugin's data folder, where secrets.env (the keys) is kept, other than as the full path of a program the plugin installed there" \
+      "Use the tm command the playbook gives (tm tool ffmpeg, for example). Only the programs in the plugin's bootstrap/guard-programs.txt (pixi, the environments' python, ffmpeg, ffprobe, node, npm and npx) can be named, by their full path with nothing after it, for example \"\$TM_PLUGIN_DATA/envs/<folder>/envs/base/bin/ffmpeg\"."
   elif printf '%s\n' "$refs" | grep -qx any; then
     S=$(field s)
     re='@[^ ;|&)]*[/{,]\.\.([/ ;|&),}]|$)|(cd|pushd|chdir|set-location|push-location|sl) +@|dirname|split-path|\.parent|-parent|pardir|realpath|readlink|\$\{[a-z_][a-z0-9_]*%'
@@ -209,8 +228,8 @@ if [ -z "$rule" ]; then
       re="$re|(^|[/ {,])\\.\\.([/ ;|&),}]|\$)|(^|[^a-z0-9_-])(cd|pushd|chdir|set-location|push-location|sl)( |\$)"
     fi
     hit=$(mi "$S" "$re")
-    [ -n "$hit" ] && deny data-climb "this call names the plugin's data folder and climbs out of its envs/ or pixi/ folder, or moves into it" \
-      "Run the tool by its full path, without cd, .. or a parent-folder lookup."
+    [ -n "$hit" ] && deny data-climb "this call names a program in the plugin's data folder and climbs out of it, or moves into the folder" \
+      "Run the program by its full path, without cd, .. or a parent-folder lookup."
   fi
   if [ -z "$rule" ]; then
     hit=$(field parent | head -n 1)
@@ -225,7 +244,7 @@ if [ -z "$rule" ]; then
         *) hit= ;;
       esac
       [ -n "$hit" ] && deny data-parent "this call reads all of a folder that holds the plugin's data folder (/, home, ~/.claude or ~/.claude/plugins), where secrets.env (the keys) is kept" \
-        "Search or copy a narrower folder, one outside ~/.claude/plugins/data."
+        "Search or copy a narrower folder, one outside ~/.claude/plugins/data (for the plugin's own code, its folder: \$TM_PLUGIN_ROOT). When the match is only text in the command (a / or ~ in a pattern), use the Grep tool with that folder as its path, or put the pattern in a file (grep -f)."
     fi
   fi
 fi
@@ -246,7 +265,7 @@ if [ -z "$rule" ] && [ "$tool" != Glob ]; then
   [ -n "$hit" ] || [ -z "$workspace" ] ||
     hit=$(mi "$Q" '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|(^|[/ =(])\.[^/ .]*[*?]|api_keys')
   [ -n "$hit" ] && deny key-store "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" \
-    "Don't open, search or copy it: tm reads the keys itself."
+    "Don't open, search or copy it: tm reads the keys itself. When it is only text in the command (a note in a heredoc, or a regex such as .* or .*?), write that text to a file with the Write tool and use the file (awk -f, python3 script.py, a note appended from it)."
 fi
 if [ -z "$rule" ] && { [ -n "$workspace" ] || [ "$tool" = Grep ]; }; then
   hit=

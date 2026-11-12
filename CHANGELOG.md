@@ -41,6 +41,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   exactly ("Gemini Sequence 2.0"), Claude asks one short question ("Do you mean Seedance 2.0?") before the paid
   call, and the engine refuses the call until your answer is recorded. A paid call also runs only the model on its
   approved line.
+- **The key guard lets through only the plugin's own programs.** A call could name anything under the plugin
+  data folder's `envs/` and `pixi/`; now it can name only the programs the plugin installs there (pixi, the
+  environments' python, ffmpeg, ffprobe, node, npm and npx, and Remotion's headless browser), by their full path,
+  listed in one file, `bootstrap/guard-programs.txt`, that the guard reads on every system. A test runs every
+  command the playbooks and the engine tell Claude to run through the guard, and fails when one would be blocked or
+  when the engine starts a program the list doesn't name. When the guard blocks a note or a regex that only looks
+  like a key store, or a search whose pattern holds a lone `/`, its message says how to rephrase it.
 - **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
   longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
   against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.

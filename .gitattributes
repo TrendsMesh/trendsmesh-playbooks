@@ -5,6 +5,8 @@
 # sh and awk read a CR as part of the line ("then\r", "in\r"): LF only, on every system.
 *.sh text eol=lf
 *.awk text eol=lf
+# The key guard's list of programs, which guard-secrets.sh reads with awk too.
+plugins/trendsmesh-playbooks/bootstrap/guard-programs.txt text eol=lf
 plugins/trendsmesh-playbooks/bin/tm text eol=lf
 
 # cmd.exe misparses batch files with bare LF (labels, long lines), so CRLF. PowerShell reads

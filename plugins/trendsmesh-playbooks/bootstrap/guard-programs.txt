@@ -1,0 +1,37 @@
+# The programs the plugin runs: the one list the key guard (guard-secrets.sh and guard-secrets.ps1)
+# and its test (engine/tests/test_guard_programs.py) read.
+#
+# A path is a program in the plugin's data folder ($TM_PLUGIN_DATA), where secrets.env (the keys)
+# is kept too. These programs are the only things there a call may name, by their full path and
+# with nothing after it: no folder, no other file, no way out (.., cd, dirname, a link). A * stands
+# for one folder name (letters, digits, _ . + - and *, never a leading dot). Case does not matter.
+#
+# "outside:" names programs the engine starts from the user's own system, outside the data folder:
+# the guard has nothing to let through for them; they are here so the test knows every program.
+
+# pixi, which installs and runs the plugin's environments
+pixi/bin/pixi
+pixi/bin/pixi.exe
+
+# The environments' programs (envs/<folder>/envs/<environment>/...): the engine runs python, ffmpeg
+# and ffprobe, and node, npm and npx for the renders. bin/ on macOS and Linux; on Windows python.exe
+# and node's are in the environment's folder itself, ffmpeg's in Library/bin.
+envs/*/envs/*/bin/python
+envs/*/envs/*/bin/ffmpeg
+envs/*/envs/*/bin/ffprobe
+envs/*/envs/*/bin/node
+envs/*/envs/*/bin/npm
+envs/*/envs/*/bin/npx
+envs/*/envs/*/python.exe
+envs/*/envs/*/Library/bin/ffmpeg.exe
+envs/*/envs/*/Library/bin/ffprobe.exe
+envs/*/envs/*/node.exe
+envs/*/envs/*/npm.cmd
+envs/*/envs/*/npx.cmd
+
+# Remotion's headless browser, which the renders use when the user has no Chrome or Edge
+remotion/node_modules/.remotion/chrome-headless-shell/*/chrome-headless-shell-*/chrome-headless-shell
+remotion/node_modules/.remotion/chrome-headless-shell/*/chrome-headless-shell-*/chrome-headless-shell.exe
+
+# The user's own: Chrome or Edge, GitHub's gh (report-issue), and ps and taskkill (a render's clean-up)
+outside: browser gh ps taskkill

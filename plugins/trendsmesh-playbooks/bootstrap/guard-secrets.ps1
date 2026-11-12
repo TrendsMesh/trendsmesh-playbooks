@@ -107,6 +107,24 @@ if (-not $rule) {
     $soh = [string][char]1
     $re = '(\$\{?(env:)?|%)?(claude|tm)_plugin_data[}%]?|plugins/data/[^/ ;|&)]*(trendsmesh|[*?[~])[^/ ;|&)]*'
     $re += '|plugins/data/?([ ;|&)]|$)|(^|[^a-z0-9_.-])data/trendsmesh-playbooks[^/ ;|&)]*|' + $soh
+    # The programs in guard-programs.txt, as one regex, the same as guard-secrets.sh builds. Run as a
+    # script block, this file has no $PSScriptRoot: the plugin root comes from CLAUDE_PLUGIN_ROOT.
+    $progs = @()
+    $plugin = if ($env:CLAUDE_PLUGIN_ROOT) { $env:CLAUDE_PLUGIN_ROOT } elseif ($PSScriptRoot) { Split-Path $PSScriptRoot } else { '' }
+    $list = @()
+    if ($plugin) { try { $list = [IO.File]::ReadAllLines((Join-Path (Join-Path $plugin 'bootstrap') 'guard-programs.txt')) } catch { $list = @() } }
+    foreach ($line in $list) {
+        $line = $line.Trim()
+        if (-not $line -or $line.StartsWith('#') -or $line.StartsWith('outside:')) { continue }
+        $one = ''
+        foreach ($ch in $line.ToLowerInvariant().ToCharArray()) {
+            if ($ch -eq '*') { $one += '[a-z0-9_*+-][a-z0-9_.*+-]*' }
+            elseif ($ch -cmatch '[a-z0-9_/-]') { $one += $ch }
+            else { $one += "[$ch]" }
+        }
+        $progs += $one
+    }
+    $prog = if ($progs.Count) { '^/(' + ($progs -join '|') + ')([ ;|&)<>]|$)' } else { '' }
     $any = $false; $bad = $null; $parents = @(); $stripped = @()
     foreach ($s in ($Q -split "`n")) {
         foreach ($t in ($s.ToLowerInvariant() -split '[ ;|&()]+')) {
@@ -128,8 +146,9 @@ if (-not $rule) {
         while (($m = [regex]::Match($l, $re)).Success) {
             $any = $true
             $ref = $s.Substring($m.Index, $m.Length); $rest = $l.Substring($m.Index + $m.Length)
-            if ($rest -cmatch '^/(envs|pixi)([/ ;|&)]|$)') {
-                $cut = $m.Index + $m.Length + 5
+            $pm = if ($prog) { [regex]::Match($rest, $prog) } else { $null }
+            if ($pm -and $pm.Success) {
+                $cut = $m.Index + $m.Length + 1 + $pm.Groups[1].Length
                 $l = $l.Substring(0, $m.Index) + '@' + $l.Substring($cut)
                 $s = $s.Substring(0, $m.Index) + '@' + $s.Substring($cut)
                 continue
@@ -143,7 +162,7 @@ if (-not $rule) {
     }
     if ($null -ne $bad) {
         $hit = $bad
-        Deny 'data-folder' "this call names the plugin's data folder, where secrets.env (the keys) is kept, outside its envs/ and pixi/ folders" 'To run a tool the plugin installed, name it by its full path under envs/ or pixi/ (for example "$TM_PLUGIN_DATA/envs/.../bin/ffmpeg"), or use tm tool ffmpeg.'
+        Deny 'data-folder' "this call names the plugin's data folder, where secrets.env (the keys) is kept, other than as the full path of a program the plugin installed there" 'Use the tm command the playbook gives (tm tool ffmpeg, for example). Only the programs in the plugin''s bootstrap/guard-programs.txt (pixi, the environments'' python, ffmpeg, ffprobe, node, npm and npx) can be named, by their full path with nothing after it, for example "$TM_PLUGIN_DATA/envs/<folder>/envs/base/bin/ffmpeg".'
     } elseif ($any) {
         $joined = $stripped -join "`n"
         $re = '@[^ ;|&)]*[/{,]\.\.([/ ;|&),}]|$)|(cd|pushd|chdir|set-location|push-location|sl) +@|dirname|split-path|\.parent|-parent|pardir|realpath|readlink|\$\{[a-z_][a-z0-9_]*%'
@@ -151,7 +170,7 @@ if (-not $rule) {
             $re += '|(^|[/ {,])\.\.([/ ;|&),}]|$)|(^|[^a-z0-9_-])(cd|pushd|chdir|set-location|push-location|sl)( |$)'
         }
         $hit = MatchCi $joined $re
-        if ($hit) { Deny 'data-climb' "this call names the plugin's data folder and climbs out of its envs/ or pixi/ folder, or moves into it" 'Run the tool by its full path, without cd, .. or a parent-folder lookup.' }
+        if ($hit) { Deny 'data-climb' "this call names a program in the plugin's data folder and climbs out of it, or moves into the folder" 'Run the program by its full path, without cd, .. or a parent-folder lookup.' }
     }
     if (-not $rule) {
         $hit = if ($parents.Count) { $parents[0] } else { '' }
@@ -162,7 +181,7 @@ if (-not $rule) {
                 $rec += '|(^|[^a-z0-9_-])cp( [^|;&]*)? -[a-z]*[ra]|-recurse|robocopy|xcopy|compress-archive|findstr [^|;&]*/s'
                 if (-not (MatchCi $TP $rec)) { $hit = '' }
             } elseif ($tool -ne 'Grep') { $hit = '' }
-            if ($hit) { Deny 'data-parent' "this call reads all of a folder that holds the plugin's data folder (/, home, ~/.claude or ~/.claude/plugins), where secrets.env (the keys) is kept" 'Search or copy a narrower folder, one outside ~/.claude/plugins/data.' }
+            if ($hit) { Deny 'data-parent' "this call reads all of a folder that holds the plugin's data folder (/, home, ~/.claude or ~/.claude/plugins), where secrets.env (the keys) is kept" 'Search or copy a narrower folder, one outside ~/.claude/plugins/data (for the plugin''s own code, its folder: $TM_PLUGIN_ROOT). When the match is only text in the command (a / or ~ in a pattern), use the Grep tool with that folder as its path, or put the pattern in a file (grep -f).' }
         }
     }
 }
@@ -182,7 +201,7 @@ if (-not $rule -and $tool -ne 'Glob') {
     if (-not $hit -and $workspace) {
         $hit = MatchCi $Q '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|(^|[/ =(])\.[^/ .]*[*?]|api_keys'
     }
-    if ($hit) { Deny 'key-store' "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" "Don't open, search or copy it: tm reads the keys itself." }
+    if ($hit) { Deny 'key-store' "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" "Don't open, search or copy it: tm reads the keys itself. When it is only text in the command (a note in a heredoc, or a regex such as .* or .*?), write that text to a file with the Write tool and use the file (awk -f, python3 script.py, a note appended from it)." }
 }
 if (-not $rule -and ($workspace -or $tool -eq 'Grep')) {
     $hit = ''
