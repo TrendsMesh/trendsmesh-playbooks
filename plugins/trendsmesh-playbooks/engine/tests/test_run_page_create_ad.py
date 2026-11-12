@@ -52,6 +52,15 @@ def _media(run, rel, data=b"x"):
     return rel
 
 
+def _checked_values(html) -> dict[str, list[str]]:
+    """The radios selected in advance, by the first key of their detail path."""
+    out: dict[str, list[str]] = {}
+    for tag in re.findall(r'<input type="radio"[^>]*\bchecked\b[^>]*>', html):
+        path = json.loads(re.search(r'data-detail="([^"]+)"', tag).group(1).replace("&quot;", '"'))
+        out.setdefault(path[0], []).append(re.search(r'value="([^"]*)"', tag).group(1))
+    return out
+
+
 def _paths(html) -> set[str]:
     return {json.loads(p.replace("&quot;", '"'))[0] for p in re.findall(r'data-detail="([^"]+)"', html)}
 
@@ -96,7 +105,8 @@ def test_the_concepts_page_shows_model_ads_trends_and_concepts_with_a_pick(run):
     assert "Nobody told me" in now and "Before and after" in now and "18 s" in now and "2–4 USD" in now
     assert "Why this length: Reels" in now and "How it combines them: the opener on the brief tool" in now
     assert "Pick this concept" in now and _paths(now) == {"concept"}
-    assert _built(run, built)["offer"]["concept"] == {"concept": {"type": "pick", "values": ["c1", "c2"]}}
+    assert _built(run, built)["offer"]["concept"] == {"concept": {"type": "pick", "values": ["c1", "c2"], "default": "c1"}}
+    assert _checked_values(now) == {"concept": ["c1"]}               # the recommended (first) concept, in advance
     assert (run.path / built["folder"] / "assets/media/01_m1_15s.mp4").is_file()
 
 
@@ -150,6 +160,8 @@ def test_the_visual_and_audio_gates_show_the_batch_raw_with_a_choice_each(run, c
     assert "unrelated" not in now and "Accept" in now and "Redo" in now and "Drop" in now
     offer = _built(run, built)["offer"][checkin]["items"]
     assert offer["keys"] == [f.rsplit("/", 1)[1].rsplit(".", 1)[0] for f in files]
+    assert offer["defaults"] == {k: "accept" for k in offer["keys"]}             # no item left empty (issue #97)
+    assert _checked_values(now) == {"items": ["accept"] * len(files)}
 
 
 def test_the_takes_gate_shows_each_take_with_its_transcript_qa_and_what_fails(run):
@@ -170,6 +182,8 @@ def test_the_takes_gate_shows_each_take_with_its_transcript_qa_and_what_fails(ru
     assert "Transcript matches the script" in now and "Loudness (LUFS)" in now and "Cuts found" in now
     assert "presenter-take_v01_0_contact_v01.png" in now and "gemini-omni" in now
     assert _built(run, built)["offer"]["takes"]["items"]["keys"] == ["presenter-take_v01_0"]
+    assert _built(run, built)["offer"]["takes"]["items"]["defaults"] == {"presenter-take_v01_0": "redo"}   # it fails QA
+    assert _checked_values(now) == {"items": ["redo"]}
 
 
 def test_the_storyboard_page_shows_one_scene_at_a_time_with_the_exact_prompt_and_price(run):
@@ -199,6 +213,7 @@ def test_the_review_page_shows_up_to_four_versions_with_a_pick_and_pinned_notes(
     assert _paths(now) == {"version", "pins"}
     offer = _built(run, built)["offer"]["review"]
     assert offer["pins"]["versions"] == ["edit_v02", "edit_v03", "edit_v04", "edit_v05"]
+    assert offer["version"]["default"] == "edit_v05" and _checked_values(now) == {"version": ["edit_v05"]}
 
 
 def test_the_copy_page_shows_every_text_editable_with_its_live_count_and_keep_tick(run):
@@ -300,6 +315,24 @@ def test_a_concept_picked_on_the_page_is_read_back_and_recorded_with_its_name(ru
     assert 'data-detail="' not in html and "Concept: Before and after" in html
 
 
+def test_items_left_as_selected_in_advance_are_recorded_with_their_recommended_choice(run, capsys):
+    """Issue #97: the takes' halves came back with no verdict. What the page selected in advance and the user did not
+    change is the recorded choice for that item."""
+    _checked_through(run, "production_plan")
+    _to(run, "visual")
+    for n in (0, 1):
+        _media(run, f"03_wip/casting_v01_{n}.png")
+    _write(run, "03_wip/casting_v01.run.json", {"status": "done", "outputs": ["casting_v01_0.png", "casting_v01_1.png"]})
+    run_page.build(run, _ask(run, "visual"))
+    _publish(run)
+    _read(run, _doc("visual", "visual_v01", "accept", items={"casting_v01_1": "drop"}))     # one changed, one left
+    got = run_page.decision(run, "visual")
+    assert got["detail"] == {"items": {"casting_v01_0": "accept", "casting_v01_1": "drop"}}
+    assert main(["page", "decision", "visual", "--run", str(run.path), "--record", "--json"]) == 0
+    note = json.loads(capsys.readouterr().out)["recorded_note"]
+    assert "casting_v01_0: Accept" in note and "casting_v01_1: Drop" in note
+
+
 def test_what_the_page_did_not_offer_is_refused(run):
     _checked_through(run, "concepts")
     _to(run, "concept")
@@ -360,6 +393,27 @@ def test_detail_takes_only_what_was_offered():
     assert detail.check(offer, {"items": {"a": "redo"}, "scene_notes": {"1": "  "}}) == ({"items": {"a": "redo"}}, [])
     assert detail.check(offer, {"items": {"a": "pay"}})[1] and detail.check(offer, {"budget": 9})[1]
     assert detail.check({}, {}) == ({}, []) and detail.check({}, None) == ({}, [])
+
+
+def test_detail_fills_only_what_the_page_left_empty_with_the_offered_default():
+    offer = {"items": {"type": "each", "keys": ["a", "b"], "values": ["accept", "redo"], "defaults": {"a": "accept",
+                                                                                                    "b": "redo"}},
+             "version": {"type": "pick", "values": ["v1", "v2"], "default": "v2"},
+             "concept": {"type": "pick", "values": ["c1"]}}
+    assert detail.fill(offer, {"items": {"b": "accept"}}) == {"items": {"a": "accept", "b": "accept"}, "version": "v2"}
+    assert detail.fill(offer, {"version": "v1"})["version"] == "v1"            # what the user chose wins
+    old = {"items": {"type": "each", "keys": ["a"], "values": ["accept"]}, "v": {"type": "pick", "values": ["x"]}}
+    assert detail.fill(old, {}) == {}                                          # a page built before the defaults
+    assert detail.fill({"v": {"type": "pick", "values": ["x"], "default": "gone"}}, {}) == {}
+
+
+def test_a_choice_selected_in_advance_is_rendered_checked_only_in_a_live_stage():
+    choose = {"path": ["items", "a"], "label": "A", "default": "redo",
+              "options": [{"value": "accept", "label": "Accept"}, {"value": "redo", "label": "Redo"}]}
+    live = template._choose(choose, True)
+    assert _checked_values(live) == {"items": ["redo"]} and live.count(" checked") == 1
+    assert template._choose(choose, False) == ""
+    assert " checked" not in template._choose({**choose, "default": None}, True)
 
 
 def test_the_page_script_saves_the_detail_with_the_choice():

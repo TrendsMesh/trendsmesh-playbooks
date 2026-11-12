@@ -167,17 +167,19 @@ def _bars(b: dict, ds: Datasets, lang: str) -> str:
     return f'<div class="bars">{rows}</div>{_source_line(d, lang)}'
 
 
-def media_tag(src: str, alt: str = "") -> str:
+def media_tag(src: str, alt: str = "", poster: str | None = None) -> str:
+    """An audio, video or image tag; a video shows `poster` (its thumbnail) until it plays."""
     low = src.lower()
     if low.endswith((".mp3", ".wav", ".m4a", ".aac", ".ogg")):
         return f'<audio src="{E(src)}" controls preload="metadata" aria-label="{E(alt)}"></audio>'
     if low.endswith((".mp4", ".mov", ".webm", ".m4v")):
-        return f'<video src="{E(src)}" controls playsinline preload="metadata" aria-label="{E(alt)}"></video>'
+        cover = f' poster="{E(poster)}"' if poster else ""
+        return f'<video src="{E(src)}"{cover} controls playsinline preload="metadata" aria-label="{E(alt)}"></video>'
     return f'<img src="{E(src)}" alt="{E(alt)}" loading="lazy">'
 
 
 def _media(b: dict, ds: Datasets, lang: str) -> str:
-    figs = "".join(f'<figure>{media_tag(i["src"], i.get("caption") or "")}'
+    figs = "".join(f'<figure>{media_tag(i["src"], i.get("caption") or "", i.get("poster"))}'
                    + (f'<figcaption>{E(i["caption"])}</figcaption>' if i.get("caption") else "") + "</figure>"
                    for i in b["items"])
     return f'<div class="media">{figs}</div>'
@@ -257,12 +259,15 @@ def _path(path: list) -> str:
 
 
 def _choose(c: dict, live: bool) -> str:
-    """Radios for one value at `path` (a card's pick, an item's accept / redo / drop); nothing when not live."""
+    """Radios for one value at `path` (a card's pick, an item's accept / redo / drop), the recommended one (`default`)
+    selected in advance, so no item is left empty (issue #97); nothing when not live."""
     if not live:
         return ""
     name = _path(c["path"])
+    on = c.get("default")
     opts = "".join(f'<label class="chip-opt"><input type="radio" name="x{name}" value="{E(o["value"])}" '
-                   f'data-detail="{name}" disabled><span>{E(o["label"])}</span></label>' for o in c["options"])
+                   f'data-detail="{name}"{" checked" if on is not None and o["value"] == on else ""} disabled>'
+                   f'<span>{E(o["label"])}</span></label>' for o in c["options"])
     return f'<div class="choose" role="radiogroup" aria-label="{E(c.get("label") or "")}">{opts}</div>'
 
 
@@ -331,9 +336,11 @@ def _versions(b: dict, ds: Datasets, lang: str, live: bool) -> str:
     """1 to 4 versions side by side, each labelled, with (live) a pick and a note box that pins a note at the
     playing version's time; the pinned notes, a click on one seeks its version."""
     figs = []
+    on = (b.get("pick") or {}).get("default")          # the recommended version, selected in advance
     for v in b["items"]:
         pick = (f'<label class="chip-opt"><input type="radio" name="x{_path(b["pick"]["path"])}" value="{E(v["key"])}" '
-                f'data-detail="{_path(b["pick"]["path"])}" disabled><span>{E(b["pick"]["label"])}</span></label>'
+                f'data-detail="{_path(b["pick"]["path"])}"{" checked" if v["key"] == on else ""} disabled>'
+                f'<span>{E(b["pick"]["label"])}</span></label>'
                 if live and b.get("pick") else "")
         figs.append(f'<figure data-version="{E(v["key"])}" data-label="{E(v["label"])}">'
                     f'<figcaption><b>{E(v["label"])}</b> {E(v.get("caption") or "")}</figcaption>'

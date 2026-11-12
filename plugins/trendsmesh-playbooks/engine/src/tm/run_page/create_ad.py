@@ -29,6 +29,10 @@ The pages and where their data comes from (never typed into the page by hand):
     upload_offer  the files an upload would send, and the paused note
     upload        `tm ad upload check`'s card (create_upload.card): the PAUSED proposal in full, read-only
 
+No decision is left empty (issue #97): the first concept (the agent's recommendation), each item's accept (redo
+for a take that fails its QA) and the checked edit's version (else the latest) are selected in advance, and
+`tm page decision` takes what the user left as it was (tm.run_page.detail.fill).
+
 Nothing here spends, generates or uploads: a page records the user's choice, and the engine keeps every money
 approval where it already guards it (tm budget approve, the paid-call guard, tm ad redo). The upload page never
 activates anything (issue #46).
@@ -42,8 +46,8 @@ import json
 import re
 from pathlib import Path
 
-from tm import (create_config, create_copy, create_plan, create_qa, create_upload, i18n, manifest, organic_qa,
-                organic_specs, state)
+from tm import (create_clips, create_config, create_copy, create_plan, create_qa, create_upload, i18n, manifest,
+                organic_qa, organic_specs, state)
 from tm.run_page import refresh_ad
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.template import fmt
@@ -54,6 +58,7 @@ from tm.tools import _common as tools_common
 VISUAL_TYPES = ("presenter", "hook_scene", "product_shot", "still", "slide", "animation")
 AUDIO_TYPES = ("music", "sfx", "voice")
 ITEM_CHOICES = ("accept", "redo", "drop")
+ACCEPT, REDO = ITEM_CHOICES[:2]          # an item's recommended choice, selected on the page in advance (issue #97)
 REVIEW_VERSIONS = 4
 WIP = create_config.WIP
 
@@ -103,6 +108,19 @@ def _media(ctx: Context, files) -> list[dict]:
 
 # --- concept --------------------------------------------------------------------------------------
 
+def _model_ad_media(ctx: Context, ad: dict) -> list[dict]:
+    """A model ad's clip with its thumbnail as the poster (issue #97): the concepts file's `clip` and `thumb`, else
+    what `tm ad clips` saved for its id; its thumbnail alone without a clip."""
+    def served(key: str, saved: Path) -> str | None:
+        return (ctx.put(ad[key]) if isinstance(ad.get(key), str) else None) or \
+            (ctx.put(ctx.rel(saved)) if saved.is_file() else None)
+    clip = served("clip", create_clips.clip_path(ctx.run, ad.get("id")))
+    thumb = served("thumb", create_clips.thumb_path(ctx.run, ad.get("id")))
+    if clip:
+        return [{"src": clip, "caption": "", **({"poster": thumb} if thumb else {})}]
+    return [{"src": thumb, "caption": ""}] if thumb else []
+
+
 def _concept(ctx: Context) -> list[dict]:
     data, src = _checked(ctx, create_plan.CONCEPTS)
     if data is None:
@@ -119,7 +137,7 @@ def _concept(ctx: Context) -> list[dict]:
             if _num(a.get("run_days")):
                 chips.append({"text": _w(ctx, "run_days", n=fmt(a["run_days"]))})
             cards.append({"title": str(names[a.get("id")]), "chips": chips,
-                          "lines": [_w(ctx, "take_from", why=a.get("why") or "")], "media": _media(ctx, a.get("clip"))})
+                          "lines": [_w(ctx, "take_from", why=a.get("why") or "")], "media": _model_ad_media(ctx, a)})
         blocks.append({"kind": "cards", "title": _w(ctx, "model_ads"), "items": cards})
     trends = [t for t in data.get("trends") or [] if isinstance(t, dict)]
     tnames = {t.get("id"): t.get("name") or t.get("id") for t in trends}
@@ -150,6 +168,7 @@ def _concept(ctx: Context) -> list[dict]:
         blocks.append({"kind": "cards", "title": _w(ctx, "trends"), "items": plain})
     concepts = [c for c in data.get("concepts") or [] if isinstance(c, dict)]
     cards, keys = [], []
+    best = str(concepts[0].get("key")) if concepts else None      # the recommended concept is listed first
     for c in concepts:
         key = str(c.get("key"))
         keys.append(key)
@@ -168,11 +187,11 @@ def _concept(ctx: Context) -> list[dict]:
                       "lines": [uses, _w(ctx, "combine", text=c.get("combine") or ""),
                                 _w(ctx, "length_why", why=c.get("length_why") or "")],
                       "table": table,
-                      "choose": {"path": ["concept"], "label": _w(ctx, "pick_concept"),
+                      "choose": {"path": ["concept"], "label": _w(ctx, "pick_concept"), "default": best,
                                  "options": [{"value": key, "label": _w(ctx, "pick_concept")}]}})
     if cards:
         blocks.append({"kind": "cards", "title": _w(ctx, "concepts"), "items": cards,
-                       "offer": {"concept": {"type": "pick", "values": keys}}})
+                       "offer": {"concept": {"type": "pick", "values": keys, "default": best}}})
     return blocks
 
 
@@ -346,11 +365,13 @@ def _gate(checkin: str):
                     if organic_qa.qa_file(ctx.run, f) else ([], None, [])
                 cards.append({"title": title, "chips": chips, "lines": lines,
                               "media": [{"src": served, "caption": f.name}] + sheet, "table": qa,
-                              "choose": {"path": ["items", key], "label": title, "options": options}})
+                              "choose": {"path": ["items", key], "label": title, "options": options,
+                                         "default": ACCEPT}})
         if not cards:
             return [{"kind": "text", "text": _w(ctx, "nothing_yet")}]
         return [{"kind": "cards", "title": _w(ctx, "gate." + checkin), "items": cards,
-                 "offer": {"items": {"type": "each", "keys": keys, "values": list(ITEM_CHOICES)}}}]
+                 "offer": {"items": {"type": "each", "keys": keys, "values": list(ITEM_CHOICES),
+                                     "defaults": {k: ACCEPT for k in keys}}}}]
     return component
 
 
@@ -364,7 +385,7 @@ def _takes(ctx: Context) -> list[dict]:
     per_item: dict[str, int] = {}
     for r in rows:
         per_item[r["item"]] = per_item.get(r["item"], 0) + 1
-    cards, keys, seen = [], [], {}
+    cards, keys, seen, defaults = [], [], {}, {}
     options = [{"value": c, "label": _w(ctx, "item." + c)} for c in ITEM_CHOICES]
     for r in rows:
         served = ctx.put(r["take"])
@@ -372,6 +393,7 @@ def _takes(ctx: Context) -> list[dict]:
             continue
         key = Path(r["take"]).stem
         keys.append(key)
+        defaults[key] = REDO if r.get("fails") else ACCEPT      # a take that fails its QA: redo it
         seen[r["item"]] = seen.get(r["item"], 0) + 1
         title = _w(ctx, "option", item=_readable(r["item"]), n=seen[r["item"]]) if per_item[r["item"]] > 1 \
             else _readable(r["item"])
@@ -385,11 +407,12 @@ def _takes(ctx: Context) -> list[dict]:
         lines += [_w(ctx, "qa_finding", text=f) for f in r.get("findings") or []]
         cards.append({"title": title, "chips": chips, "lines": lines,
                       "media": [{"src": served, "caption": Path(r["take"]).name}] + sheet, "table": qa,
-                      "choose": {"path": ["items", key], "label": title, "options": options}})
+                      "choose": {"path": ["items", key], "label": title, "options": options,
+                                 "default": defaults[key]}})
     if not cards:
         return [{"kind": "text", "text": _w(ctx, "nothing_yet")}]
     return [{"kind": "cards", "title": _w(ctx, "gate.takes"), "items": cards,
-             "offer": {"items": {"type": "each", "keys": keys, "values": list(ITEM_CHOICES)}}}]
+             "offer": {"items": {"type": "each", "keys": keys, "values": list(ITEM_CHOICES), "defaults": defaults}}}]
 
 
 # --- storyboard -----------------------------------------------------------------------------------
@@ -461,11 +484,15 @@ def _review(ctx: Context) -> list[dict]:
         items.append({"key": f.stem, "label": label, "src": served, "caption": ""})
     if not items:
         return [{"kind": "text", "text": _w(ctx, "no_version")}]
+    report = create_qa.edit_report(ctx.run, i18n.translator(ctx.lang))
+    checked = Path(str((report or {}).get("edit") or "")).stem
+    best = checked if checked in keys else keys[-1]        # the checked edit, else the latest version
     blocks = [{"kind": "versions", "title": _w(ctx, "versions"), "items": items,
-               "pick": {"path": ["version"], "label": _w(ctx, "pick_version")},
+               "pick": {"path": ["version"], "label": _w(ctx, "pick_version"), "default": best},
                "pins": {"path": ["pins"], "label": _w(ctx, "pin_label"), "button": _w(ctx, "pin_button"),
                         "heading": _w(ctx, "pins"), "empty": _w(ctx, "no_pins")},
-               "offer": {"version": {"type": "pick", "values": keys}, "pins": {"type": "pins", "versions": keys}}}]
+               "offer": {"version": {"type": "pick", "values": keys, "default": best},
+                         "pins": {"type": "pins", "versions": keys}}}]
     return blocks + _checked_edit(ctx)
 
 

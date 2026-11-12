@@ -10,6 +10,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   and every note in full. Nothing in them can be clicked, and the creator's view never shows them. Every view, the
   PDF downloads and the team's own decisions (each person saves theirs) work as before. A page in another language
   now also needs the run page's words translated, else it is built in English and says so.
+- **Create an ad's pages leave no decision empty.** On a page with a choice per item, the recommended one now comes
+  selected: the first concept, accept for each gate item (redo for a take that fails its QA), and the checked
+  edit's version. Change only what you want; what you leave as it was is recorded with your answer, so the takes'
+  halves no longer come back without a verdict.
+- **The model ads play on the concepts page.** Create an ad saves each model ad's thumbnail and its first 15 seconds
+  from the Ad Library answer into the run, and the concepts page plays them, instead of linking out to the Ad
+  Library. An image ad shows its picture.
+
 - **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
   longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
   against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.

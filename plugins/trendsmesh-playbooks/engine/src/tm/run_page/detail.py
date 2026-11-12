@@ -9,11 +9,15 @@ it offers in its `offer`: `{field: spec}`. The build keeps the offer of every op
 `check(offer, detail)` takes back only what was offered, in the offered shape; anything else is a problem, so a
 saved value is never acted on unless the page offered it. The specs:
 
-    {"type": "pick", "values": [...]}                 one of the values (a concept, a version)
-    {"type": "each", "keys": [...], "values": [...]}  per key one of the values (a gate's items)
+    {"type": "pick", "values": [...], "default": v}                     one of the values (a concept, a version)
+    {"type": "each", "keys": [...], "values": [...], "defaults": {k: v}}  per key one of the values (a gate's items)
     {"type": "notes", "keys": [...]}                  per key a text (a scene's note); empty ones are dropped
     {"type": "pins", "versions": [...]}               a list of {version, t (seconds), text} (review notes)
     {"type": "copy", "ads": {ad: {list: count}}}      per ad, per list, per text number {text, keep}
+
+A pick's `default` and an item's `defaults` are the recommended values, selected on the page in advance (issue #97);
+`fill(offer, detail)` gives the checked detail with every one the page left empty, so a recorded choice leaves no
+item without a decision.
 """
 
 from __future__ import annotations
@@ -126,3 +130,22 @@ def check(offer: dict, detail: object) -> tuple[dict, list[str]]:
         else:
             problems.append(f"{field}: the offer has no type the page knows")
     return out, problems
+
+
+def fill(offer: dict, detail: dict) -> dict:
+    """The checked `detail` with the offer's recommended values (`default`, `defaults`) where the page left a pick or
+    an item empty; an offer without them adds nothing (a page built before them)."""
+    out = dict(detail or {})
+    for field, spec in (offer or {}).items():
+        kind = (spec or {}).get("type")
+        if kind == "pick" and field not in out and spec.get("default") in spec.get("values", []):
+            out[field] = spec["default"]
+        elif kind == "each" and isinstance(spec.get("defaults"), dict):
+            got = dict(out.get(field) or {})
+            for key in spec.get("keys", []):
+                value = spec["defaults"].get(key)
+                if key not in got and value in spec.get("values", []):
+                    got[key] = value
+            if got:
+                out[field] = got
+    return out

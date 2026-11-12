@@ -52,7 +52,10 @@ page and one in chat count the same. Rules: `rules.md`.
   visual), "source" (trendsmesh, guess), "name", "evidence" (2 videos for a TrendsMesh trend), "thumbs" (2 evidence
   thumbnails saved in the run, for the page), "licence" (a sound)}], "concepts": [{"key", "name", "model_ad", "trends": [ids], "combine",
   "beats": [{"t", "picture", "line"}], "length_s" (inside the chosen length), "length_why", "cost_usd": [low,
-  high]}]}` with 2–3 concepts. The model ad gives the structure of its first seconds, not its length.
+  high]}]}` with 2–3 concepts, your recommendation first (the page selects it). The model ad gives the structure of its first seconds, not its length.
+- `tm ad clips --run R --file <it>` saves each model ad's thumbnail and first ~15 s from its saved Ad Library (or
+  TrendsMesh) answer into `02_research/clips/`, so they play on the concepts page by themselves; it says which ad
+  has no video file (an image ad), whose card shows its thumbnail.
 - `tm ad check concepts --run R --file <it>`, then `tm done S1`. The concept check-in is the concepts page
   (`pages.md`) and its card, with the guess notice `tm next` gives; a concept picked on the page comes back with
   `tm page decision`. **Feedback loop:** notes or results are analysed and the

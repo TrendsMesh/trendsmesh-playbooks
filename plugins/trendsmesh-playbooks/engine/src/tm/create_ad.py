@@ -2,6 +2,7 @@
 
     tm ad check <concepts|claims|board|plan|storyboard> --run R --file F   check what the agent wrote (S1 to G3)
     tm ad check edit --run R --file F                                     check the edit's QA (S7, tm.create_qa)
+    tm ad clips --run R --file F                                          the model ads' clips for the concepts page (S1)
     tm ad redo --run R --item ITEM --note "<the user's words>"           the user's request for a new video take
     tm ad copy check --run R --file F                                     check the Meta copy draft (S8)
     tm ad copy accept --run R --file F                                    write the accepted copy (S8, after the check-in)
@@ -29,6 +30,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     c = sub.add_parser("check", help="check a file the agent wrote (S1 to G3, and the edit QA at S7)")
     c.add_argument("what", choices=list(_CHECK))
     c.add_argument("--file", required=True)
+    cl = sub.add_parser("clips", help="save each model ad's thumbnail and first ~15 s from its saved answer (S1)")
+    cl.add_argument("--file", required=True, help="the concepts file")
     r = sub.add_parser("redo", help="record the user's request for a new take of a video item")
     r.add_argument("--item", required=True)
     r.add_argument("--note", required=True, help="the user's own words")
@@ -38,7 +41,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     up = sub.add_parser("upload", help="the PAUSED Meta upload (S10)")
     up.add_argument("upload_action", choices=["check", "record"])
     up.add_argument("--file", required=True)
-    for sp in (c, r, cp, up):
+    for sp in (c, cl, r, cp, up):
         sp.add_argument("--run", required=True, help="the run folder")
         sp.add_argument("--json", action="store_true")
 
@@ -51,6 +54,11 @@ def _run(args: argparse.Namespace) -> int:
             if problems:
                 return cli.refuse_problems(args, rel, problems)
             cli.emit(args, {"status": "done", "file": rel}, f"{rel} passed the check.")
+            return 0
+        if args.action == "clips":
+            from tm import create_clips
+            got = create_clips.fetch(run, args.file)
+            cli.emit(args, {"status": "done", **got}, create_clips.words(got))
             return 0
         if args.action == "redo":
             entry = create_plan.redo(run, args.item, args.note)

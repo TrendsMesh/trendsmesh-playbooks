@@ -423,10 +423,12 @@ def decision(run: RunFolder, checkin: str) -> dict:
     if data["choice"] not in labels:
         raise Stop(f"The choice saved for {checkin} ({data['choice']!r}) is not one the question offers "
                    f"({', '.join(labels)}). {_chat(checkin)}")
-    detail, problems = details.check(((built or {}).get("offer") or {}).get(checkin) or {}, data.get("detail"))
+    offer = ((built or {}).get("offer") or {}).get(checkin) or {}
+    detail, problems = details.check(offer, data.get("detail"))
     if problems:
         raise Stop(f"The page saved for {checkin} what its question did not offer ({'; '.join(problems[:3])}), so it "
                    f"is not taken as the user's answer. Ask the user to choose again on the latest page. {_chat(checkin)}")
+    detail = details.fill(offer, detail)       # what the page selected in advance and the user left as it was
     note = data.get("note")
     return {"checkin": checkin, "ask": ask["_id"], "choice": data["choice"], "label": labels[data["choice"]],
             "note": note if isinstance(note, str) else "", "detail": detail, "saved_at": data.get("saved_at"),
