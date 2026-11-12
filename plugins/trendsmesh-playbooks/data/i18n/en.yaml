@@ -1387,6 +1387,8 @@ ad:
     calls_made: "{item}'s line covers {calls} calls, and {made} are made, so this one is not run. Nothing was run or spent. Another call is a new plan version with its cost, shown to the user (or, for a video, their request: tm ad redo)."
     voice_out: "Name the plan's item with --out 03_wip/audio/<item>_vNN.mp3 (or .wav): the take must be a line of the checked production plan. Nothing was run or spent."
     voice_not_line: "{item} is not a line of the checked production plan, so it is not made: a new item is a new plan version, checked and shown to the user. Nothing was run or spent."
+    model_differs: "{item}'s call runs {given}, but its line is {model}: a paid call runs only the model on its approved line. Nothing was run or spent. Run it with the line's model; another model is a new plan version, checked and shown to the user."
+    model_unclear: "The user called {item}'s model “{said}”, which does not name {model}. Nothing was run or spent. Ask them one short question first: “Do you mean {label}?”, then keep their answer in the line's model_confirmed (a new version, checked) and run it again."
     music_rate: "The plan makes {seconds} s of music: at {rate} credits a second ({model}, ElevenLabs' prices checked {checked}) that is about {need} credits, more than {item}'s line gives a take ({cost} credits). Nothing was sent or spent. Price the line again in a new plan version and show the user the new cost."
   # the takes' and the edit's QA (engine/src/tm/create_qa.py): the takes check-in shows the fails and findings under
   # each take (beside organic.qa.*'s), the review page what was checked (S7); the numbers come formatted

@@ -34,6 +34,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **The spend on rejected takes is kept apart.** Asking for a new take, or turning a take down for a new line,
   books what that take cost as rejected spend in the run, and `tm ad costs` shows it on its own line under each
   budget.
+- **Create an ad's concepts check says which trend cards it needs.** Each TrendsMesh trend a concept uses must have
+  its card saved first, and the playbook now says so at S1 with the command that saves it. The check names each
+  missing `trend_<id>.json` and the step that saves it, instead of failing on cards it never asked for.
+- **An unclear model name is confirmed before any money is spent on it.** When the model you name doesn't match one
+  exactly ("Gemini Sequence 2.0"), Claude asks one short question ("Do you mean Seedance 2.0?") before the paid
+  call, and the engine refuses the call until your answer is recorded. A paid call also runs only the model on its
+  approved line.
 - **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
   longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
   against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.

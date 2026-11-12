@@ -44,8 +44,11 @@ page and one in chat count the same. Rules: `rules.md`.
   `"source": "guess"`.
 - **Trends:** any type that fits product, persona and model ad; the default recipe one hook, one format, one topic.
   Sound trends only with a licence for ads (`licence: ads`), otherwise as inspiration. Organic clips are evidence,
-  never footage. Save each MCP answer in `02_research/` (`trend_<id>.json` for `get_trend`) and summarise large
-  answers with a script, never read them whole.
+  never footage. Save each MCP answer in `02_research/` and summarise large answers with a script, never read them
+  whole. **Each TrendsMesh trend a concept uses has its card saved before the check**: its `get_trend` answer, with
+  `tm trends ingest --run R --tool get_trend --input '{"trend_id": "<id>"}' --file <the answer>`, which writes
+  `02_research/trend_<id>.json` (this run does not save answers by itself); `tm ad check concepts` names each card
+  that is missing.
 - Write `03_wip/concepts_vNN.json`: `{"model_ads": [{"id", "name", "source" (trendsmesh, ad_library, user, guess),
   "why" (what to take from it), "saved" (the saved answer, for trendsmesh and ad_library), "run_days", "clip" (its
   first ~15 s saved in the run, for the page)}], "trends": [{"id", "type" (hook, format, topic, sound, hashtag,
@@ -102,6 +105,11 @@ page and one in chat count the same. Rules: `rules.md`.
   and its cost the lines' characters at that model's rate (0.5 credits a character for v4, 1 for
   `eleven_multilingual_v2`); the lines write numbers, dates and percentages out as words in the market's
   language, which the take is recorded in (`language_code`).
+- **A model the user names is their choice only when it is plain:** a line made from the user's own words for a
+  model (a pick, a change, a new take) keeps those words in `user_named`. When they don't name one model exactly
+  ("Gemini Sequence 2.0" when no such model exists), ask one short question before any paid call ("Do you mean
+  Seedance 2.0?") and keep their answer in `model_confirmed`; the paid-call guard refuses the line until then, and
+  refuses a call whose model (the spec's, or ElevenLabs' `--model`) is not the line's.
 - `tm ad check plan` re-plans the money: its pre-video lines. `tm done S5`. The check-in is "Confirm the
   production plan and its cost" (at Just the big calls on one card with the script-board): the user confirms once
   per asset type; a new type or a model change later is a new plan version and asks again. After the yes, `tm

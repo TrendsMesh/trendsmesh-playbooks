@@ -24,6 +24,11 @@ guard (`tools.PRECHECK[CREATE_AD]["elevenlabs"]`, `voice_guard`): the item is th
 the rate is refused before anything is sent. The spend on takes the user turned down is kept apart in run.json
 (`ad.rejected`: per take, its item, budget kind and amount), booked by `tm ad redo` (the take it replaces) and `tm ad
 reject` (a take not made again under its item, e.g. replaced by a new line); `tm ad costs` shows it on its own line.
+
+Models (#98): a paid call runs only its line's model (Replicate's spec `model`, its owner optional and a pinned
+version allowed; ElevenLabs' `--model`). A line made from the user's own words for a model keeps them in
+`user_named`; when they do not name the line's model plainly (`names_model`: its words, in order), the call waits
+for the user's answer to one short question ("Do you mean Seedance 2.0?"), kept in `model_confirmed`.
 """
 
 from __future__ import annotations
@@ -157,14 +162,12 @@ def check_concepts(run: RunFolder, data: dict) -> list[Problem]:
             if not (isinstance(evidence, list) and len(evidence) >= 2 and all(_text(e) for e in evidence)):
                 out.append(Problem(f"trends[{n}]", f"Trend {tr['id']} needs 2 evidence videos.",
                                    "Name two of its videos."))
-            if not any((run.path / RESEARCH).glob("trend_*.json")):
-                out.append(Problem(f"trends[{n}]", "The trend cards are not saved in the run.",
-                                   f"Save each get_trend answer as {RESEARCH}/trend_<id>.json."))
         if tr["type"] == "sound" and tr.get("licence") not in ("ads", "inspiration"):
             out.append(Problem(f"trends[{n}]", "A sound trend is used in an ad only with a licence for ads.",
                                "Set licence: ads (licensed for ads) or inspiration (not used as the sound)."))
     concepts = data.get("concepts")
     concepts = concepts if isinstance(concepts, list) else []
+    out.extend(_missing_cards(run, trends, concepts))
     if not 2 <= len(concepts) <= 3:
         out.append(Problem("concepts", f"There are {len(concepts)} concepts; the page shows 2 to 3.",
                            "Write 2 or 3 concepts."))
@@ -198,6 +201,29 @@ def check_concepts(run: RunFolder, data: dict) -> list[Problem]:
         if not (isinstance(cost, list) and len(cost) == 2 and all(_number(v) for v in cost) and cost[0] <= cost[1]):
             out.append(Problem(f"concepts[{n}].cost_usd", f"Concept {name} needs a cost range [low, high] in USD.",
                                "Give the range."))
+    return out
+
+
+def _card_saved(run: RunFolder, tid: str) -> bool:
+    """`02_research/trend_<id>.json`, or a later version of it (`tm trends ingest` never overwrites)."""
+    folder = run.path / RESEARCH
+    pattern = re.compile(rf"^trend_{re.escape(tid)}(?:_v\d+)?\.json$")
+    return folder.is_dir() and any(pattern.match(p.name) for p in folder.iterdir() if p.is_file())
+
+
+def _missing_cards(run: RunFolder, trends: list, concepts: list) -> list[Problem]:
+    """#98 point 1: each TrendsMesh trend a concept uses has its card saved (S1), named when it is missing."""
+    used = {t for cp in concepts if isinstance(cp, dict) and isinstance(cp.get("trends"), list) for t in cp["trends"]}
+    out = []
+    for n, tr in enumerate(trends, 1):
+        if not (isinstance(tr, dict) and tr.get("source") == "trendsmesh" and _text(tr.get("id"))):
+            continue
+        if tr["id"] in used and not _card_saved(run, tr["id"]):
+            out.append(Problem(f"trends[{n}]", f"Trend {tr['id']}'s trend card is not saved in the run: "
+                               f"{RESEARCH}/trend_{tr['id']}.json is missing.",
+                               "S1 saves the card of each trend a concept uses before this check: its get_trend "
+                               f"answer, with tm trends ingest --run R --tool get_trend --input "
+                               f"'{{\"trend_id\": \"{tr['id']}\"}}' --file <the answer> (flow.md S1, Trends)."))
     return out
 
 
@@ -580,6 +606,9 @@ def guard(run: RunFolder, args: list[str]) -> str | None:
         return f"{a.name} spends {line.get('budget')}, not Replicate's USD: it is not a Replicate call."
     if abs(cost - _per_call(line)) > TOL:
         return _wrong_cost(a.name, cost, line, "USD")
+    held = _model_held(a.name, _spec_model(run, a.spec), line)
+    if held:
+        return held
     s = state.load(run)
     made = [r for r in _records(run, stem) if r.get("status") not in FAILED]
     if stem not in videos and "calls" in line and len(made) >= line["calls"]:
@@ -602,6 +631,66 @@ def _wrong_cost(name: str, cost: float, line: dict, unit: str) -> str:
     return (f"--cost {cost:g} is not {name}'s line ({_per_call(line):g} {unit}{calls}, price checked "
             f"{line.get('checked')}). Run it with its line's cost; another cost is a new version, checked and "
             "shown to the user.")
+
+
+def _model_words(text: object) -> list[str]:
+    return re.findall(r"[a-z]+|\d+", str(text or "").lower())
+
+
+def _name(model: str) -> str:
+    """A model id's own name: `owner/name:version` -> `name`."""
+    return str(model).split(":", 1)[0].rsplit("/", 1)[-1]
+
+
+def names_model(said: object, model: str) -> bool:
+    """True when the user's words name `model` plainly: its name's words (or its whole id's), in order, among theirs
+    ("Seedance 2.0 at 720p" names bytedance/seedance-2.0; "Gemini Sequence 2.0" does not)."""
+    heard = _model_words(said)
+    for want in (_model_words(_name(model)), _model_words(str(model).split(":", 1)[0])):
+        if want and any(heard[i:i + len(want)] == want for i in range(len(heard) - len(want) + 1)):
+            return True
+    return False
+
+
+def model_label(model: str) -> str:
+    """How a model is named in the question to the user: `bytedance/seedance-2.0` -> `Seedance 2.0`; an id with
+    underscores (ElevenLabs') as it is."""
+    name = _name(model)
+    if "_" in name:
+        return name
+    return " ".join(w[:1].upper() + w[1:] for w in name.split("-") if w)
+
+
+def _spec_model(run: RunFolder, spec: str | None) -> str | None:
+    """The model a Replicate spec runs, or None when it cannot be read (the tool then refuses it, spending nothing)."""
+    if not _text(spec):
+        return None
+    try:
+        data = json.loads(run.given(str(spec)).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data.get("model") if isinstance(data, dict) and _text(data.get("model")) else None
+
+
+def _same_model(given: str, line_model: str, owner: bool) -> bool:
+    if given == line_model:
+        return True
+    if not owner:
+        return False
+    base = given.split(":", 1)[0]
+    return line_model in (base, _name(given))
+
+
+def _model_held(item: str, given: str | None, line: dict, owner: bool = True) -> str | None:
+    """#98 point 2: the call runs the line's model, and a model the user named unplainly is confirmed first."""
+    model = str(line.get("model"))
+    if given is not None and not _same_model(str(given), model, owner):
+        return i18n.t("ad.guard.model_differs", item=item, given=given, model=model)
+    named = line.get("user_named")
+    if _text(named) and not names_model(named, model) and not _text(line.get("model_confirmed")):
+        return i18n.t("ad.guard.model_unclear", item=item, said=str(named).strip(), model=model,
+                      label=model_label(model))
+    return None
 
 
 def _voice_args(args: list[str]):
@@ -660,6 +749,10 @@ def voice_guard(run: RunFolder, args: list[str]) -> str | None:
         return f"{stem} spends {line.get('budget')}, not ElevenLabs credits: it is not an ElevenLabs call."
     if abs(cost - _per_call(line)) > TOL:
         return _wrong_cost(stem, cost, line, "credits")
+    default = music_models.DEFAULT if a.action == "music-compose" else tts_models.DEFAULT
+    held = _model_held(stem, a.model or default, line, owner=False)
+    if held:
+        return held
     made = _audio_takes(run, stem)
     if "calls" in line and len(made) >= line["calls"]:
         return i18n.t("ad.guard.calls_made", item=stem, calls=line["calls"], made=len(made))

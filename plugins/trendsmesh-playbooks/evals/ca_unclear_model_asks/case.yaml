@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: ca_unclear_model_asks
+context:
+  scaffold_script: fixture.sh

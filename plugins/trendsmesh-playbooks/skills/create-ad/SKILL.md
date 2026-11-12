@@ -86,7 +86,9 @@ Before you do, plan or describe a step's work, read its section in `references/f
   automatically.** Every price comes from a saved price file with its date, never from memory (ElevenLabs' music
   by the second: `tm ad prices`). A line may cover several calls (`calls`), and an ElevenLabs music or voice take
   runs only as a plan line too (`--out 03_wip/audio/<item>_vNN.mp3`). Spend on rejected takes is kept apart
-  (`tm ad redo`, `tm ad reject`; `tm ad costs`).
+  (`tm ad redo`, `tm ad reject`; `tm ad costs`). **A model name the user gives that does not name one model
+  exactly is confirmed first**, with one short question ("Do you mean Seedance 2.0?"), before any paid call with it;
+  the engine runs a call only on its line's own model.
 - **Long steps show progress**: a task list with time estimates and a one-line status at each stage change.
 - A run spans days and sessions: everything lives in the run folder; `tm next` picks it up.
 
@@ -118,6 +120,7 @@ check-in; CA14 the upload is offered, proposed in full and created PAUSED; CA15 
 |---|---|
 | "The user said generate everything, so I'll start" | Nothing paid before the plan's yes (and the storyboard's for the video), with the prices and their dates shown. |
 | "That take stutters; I'll regenerate it" | Never automatically. Show it raw with its QA notes and offer: a precise cut, a clone of the line, a new take with its cost, or accept. |
+| "There's no Gemini 2.0 video model, so they mean Seedance 2.0" | Probably, but ask first: "Do you mean Seedance 2.0?" No money goes to a model the user didn't clearly choose. |
 | "A daily budget of 20 seems right" | The ad budget is never inferred. Ask for the amount and the cadence. |
 | "These ads obviously use AI, so OPT_IN" | The AI disclosure is the advertiser's call. Show the facts and ask. |
 | "Paused is boring; I'll activate it so they see results" | Never. This playbook creates PAUSED objects only and never activates anything. |
