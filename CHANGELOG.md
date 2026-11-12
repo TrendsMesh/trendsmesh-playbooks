@@ -335,6 +335,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   captions are added. What OCR can't settle stays on the sheet for Claude to check. It isn't installed by default:
   in Refresh an ad, Claude offers it once, at the winner breakdown, when the ad's on-screen text is to be removed or
   replaced and the teardown is unsure of it. Say no, and Claude checks the frames by eye as before.
+- **Create an ad shows the talking person's options on the plan's page.** At the production plan, the page lists
+  the five ways to make the person who talks: from a description, from an approved image, with your own or a brand
+  voice, with the exact wording, and the fallback after a weak take. Your plan's situation comes first. Each row
+  gives its model, what it needs (a description, a face, a voice sample, the lines as text) and today's price for a
+  15 s take, read from Replicate. You pick the situation, and another model if you want one. Your pick goes into the
+  plan, which is checked again and asks for your yes again when it changes. The fallback can only be picked once a
+  review asked for it.
 
 - **No command stops on "partially initialized module" any more.** Trend research's report imported the run page at
   its top, and the run page loads every playbook's page code, so `tm tool deliver`, `tm kit`, the Organic AI video

@@ -42,15 +42,16 @@ the same**: an answer in chat is `tm decide` as usual (their words in `--note`),
 settled.
 
 **The question card in chat** restates every point of its page, so the user can answer without opening it: a
-concept card its beats, length and cost; the plan card each asset type's model, price and date; the storyboard card
-the exact prompt and price; the upload card the proposal in full.
+concept card its beats, length and cost; the plan card each asset type's model, price and date, and the talking
+person's rows (model, what it needs, price for 15 s); the storyboard card the exact prompt and price; the upload card
+the proposal in full.
 
 ## What each page shows
 
 | Page (check-in) | Shows (data source) | The user does | Saved beside the choice |
 |---|---|---|---|
 | Concepts (`concept`) | per model ad its clip (the first ~15 s, with its thumbnail: `tm ad clips`, or `clip` and `thumb`) and what to take from it; per trend its card (a TrendsMesh trend's `02_research/trend_<id>.json`, with its type), its evidence and thumbnails (`thumbs`), or "my guess" in a guess run; 2–3 concept cards: beats (time / picture / line), length and why, cost range (`03_wip/concepts_vNN.json`, the checked one) | picks a concept, or writes a mix note | the concept, the note |
-| Script-board + plan (`board`, `plan`; one card `board_and_plan` at Just the big calls) | the scenes: time, name, picture, on-screen text, line, sound, source (`board_vNN.json`); per line the asset type, the suggested model, its price with the check date, the alternative; what an own file replaces (`assets_vNN.json`); the pre-video totals and the video estimate (`production_plan_vNN.json`) | approves, or notes per scene or line | the notes per scene and per line |
+| Script-board + plan (`board`, `plan`; one card `board_and_plan` at Just the big calls) | the scenes: time, name, picture, on-screen text, line, sound, source (`board_vNN.json`); per line the asset type, the suggested model, its price with the check date, the alternative; what an own file replaces (`assets_vNN.json`); the pre-video totals and the video estimate (`production_plan_vNN.json`); with a talking person, CA5's rows, the plan's situation first, each with its model, what it needs and today's Replicate price for 15 s (`presenter.price_file` and the run's `02_research/models/prices_*`) | approves, or notes per scene or line; picks the talking person's situation and model | the notes per scene and per line; the situation and model (`presenter`, `presenter_model`) |
 | Gate (`visual`, `audio`, `takes`) | the batch side by side, raw: each output of the plan's items (visual: stills, slides, casting; audio: music, sound effects, voice) or of the storyboard's videos (takes), found by its name (below); a take with its transcript, its QA (`tm tool take_qa`) and what fails or needs a look (the takes' QA check) | accepts, redoes or drops each; a note | each item's choice, the note |
 | Storyboard (`storyboard`) | one scene at a time: big frame(s), time, picture, on-screen text, line, sound; previous / next / scene numbers / arrow keys; the placeholder render; each paid video's exact prompt and price (`storyboard_vNN.json`, with the board's scenes) | approves (= the paid video), or notes | the notes per scene |
 | Review (`review`) | the latest 1–4 versions (`03_wip/edit_vNN.mp4`) side by side, each labelled, with a pick; a note box that pins a note at the playing version's time; the notes (click = seek); what was checked (the checked edit QA, `03_wip/edit_qa_vNN.json`: loudness, true peak, each CA11 check) | picks a version, adds notes, accepts or asks for fixes | the version, the notes (version, time, text) |
@@ -65,6 +66,12 @@ they left as it was.
 **A gate finds its outputs by their names:** name every paid call after its plan or storyboard item, so the gate
 shows it: `tm tool replicate_run --name <item>` (the gate shows the outputs of the item's latest run), and an
 ElevenLabs take goes to `--out 03_wip/audio/<item>_vNN.<ext>`. A take's QA is `tm tool take_qa` on it (`03_wip/qa/`).
+
+**The talking person from the page** (issue #100): `tm page decision plan --record` (or `board_and_plan`)
+writes a situation or model that changes the plan as the next `production_plan_vNN.json` and names it
+(`files.plan`): `presenter.situation`, plus `user_choice: true` and `model` when the model is not the row's. Rewrite
+its take lines to the pick, run `tm ad check plan` on it, and ask the plan's yes again (`flow.md#s5`). A reject
+writes nothing.
 
 **The copy from the page:** `tm page decision copy --record` writes the copy as the user left it as
 `03_wip/copy_decisions_vNN.json` and names it; run `tm ad copy accept --file <it>`, which checks every kept text

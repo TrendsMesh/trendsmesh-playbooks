@@ -4,17 +4,20 @@ read back by `tm page decision` and recorded as an answer from chat."""
 
 import json
 import re
+from datetime import date, timedelta
 
 import pytest
 
 from tm import budget, checkins, create_copy, create_upload, flow, i18n, manifest, run_page, state, stepchecks
 from tm.cli import main
 from tm.playbooks import CREATE_AD
+from tm import create_presenter
 from tm.run_page import create_ad, detail, template, words
 from tm.stops import Stop
 
 from test_create_copy import KEY, _choices, ad
-from test_create_plan import CLAIMS, _check, _new, _write, board, concepts, plan, storyboard
+from test_create_plan import CLAIMS, TODAY, _check, _new, _write, board, concepts, plan, storyboard
+from test_create_presenter import _prices
 from test_create_qa import _edit_qa, _qa as _take_qa, finish_and_check_layers
 from test_create_upload import _propose, proposal
 from test_run_page import _artifact_list, _publish, _read
@@ -130,7 +133,7 @@ def test_the_plan_page_shows_models_prices_dates_own_files_and_totals(run):
     assert "Before the video (USD)" in now and "The video, estimated (USD)" in now and "your voice-over recording" in now
     assert "Source: 03_wip/production_plan_v01.json" in now
     assert "What your own files replace" in now
-    assert _paths(now) == {"line_notes"}
+    assert _paths(now) == {"line_notes", "presenter", "presenter_model"}
 
 
 def test_board_and_plan_on_one_card_at_just_the_big_calls(tmp_path):
@@ -139,7 +142,8 @@ def test_board_and_plan_on_one_card_at_just_the_big_calls(tmp_path):
     built = run_page.build(run, _ask(run, "board_and_plan", options=[{"choice": "accept", "label": "Go"}]))
     now = _now(_html(run, built))
     assert "Script-board and plan" in now and "Nobody told me this" in now and "gpt-image-2" in now
-    assert set(_built(run, built)["offer"]["board_and_plan"]) == {"scene_notes", "line_notes"}
+    assert set(_built(run, built)["offer"]["board_and_plan"]) == {"scene_notes", "line_notes", "presenter",
+                                                                  "presenter_model"}
 
 
 @pytest.mark.parametrize("checkin,files,shown", [
@@ -262,6 +266,45 @@ def test_the_upload_pages_show_the_paused_proposal_and_take_only_go_ahead_or_ski
     assert "ads_activate" not in now and "ACTIVE" not in now
 
 
+def test_the_plan_page_shows_the_talking_persons_rows_the_plans_situation_first_with_a_pick(run):
+    """Issue #100: CA5's table on the plan's page, each row with its model, what it needs and today's price."""
+    _checked_through(run, "production_plan")
+    _prices(run)
+    built = run_page.build(run, _ask(run, "plan"))
+    now = _now(_html(run, built))
+    assert "The talking person: which model makes it" in now
+    order = [now.index(w) for w in ("Exact wording needed", "A person generated from a description",
+                                    "A specific person from an approved image", "Your own voice or a brand voice",
+                                    "The fallback")]
+    assert order == sorted(order)                                   # the plan's situation first, then CA5's order
+    assert "Your plan&#x27;s situation" in now and "Gemini Omni 1.2 Flash" in now and "1.58 USD for 15 s" in now
+    assert "0.105 USD per second on Replicate, read " + TODAY in now
+    assert "a voice sample of 2 to 15 s" in now and "no face image, so no paid casting" in now
+    assert "plus the ElevenLabs line, in credits" in now and "Only after a review shows a take" in now
+    offer = _built(run, built)["offer"]["plan"]
+    assert offer["presenter"] == {"type": "pick", "values": ["exact_wording", "described", "specific_person",
+                                                             "own_voice"], "default": "exact_wording"}
+    assert offer["presenter_model"] == {"type": "pick", "values": ["row", *create_presenter.MODELS], "default": "row"}
+    assert _checked_values(now)["presenter"] == ["exact_wording"] and _checked_values(now)["presenter_model"] == ["row"]
+
+
+def test_a_plan_without_a_talking_person_shows_no_rows(run):
+    _checked_through(run, "board")
+    lines = [ln for ln in plan()["lines"] if ln["type"] != "presenter"]
+    assert _check(run, "production_plan", {**plan(lines=lines), "presenter": None}) == []
+    built = run_page.build(run, _ask(run, "plan"))
+    assert "The talking person" not in _now(_html(run, built))
+    assert set(_built(run, built)["offer"]["plan"]) == {"line_notes"}
+
+
+def test_an_old_price_says_how_old_and_a_row_without_one_says_so(run):
+    _checked_through(run, "production_plan")
+    old = (date.today() - timedelta(days=1 + 7)).isoformat()      # today now, not at import: a run past midnight
+    _prices(run, day=old, models={"minimax/h3"})
+    now = _now(_html(run, run_page.build(run, _ask(run, "plan"))))
+    assert "Read 8 days ago: I read it again before you pay" in now and "No price read from Replicate yet" in now
+
+
 # --- the choice saved on the page, read back ---------------------------------------------------------
 
 def _to(run, checkin):
@@ -370,6 +413,49 @@ def test_the_copy_edited_on_the_page_becomes_the_choices_tm_ad_copy_accept_takes
     assert len(kept["primary_texts"]) == 4 and len(kept["headlines"]) == 1 and len(kept["descriptions"]) == 5
 
 
+def test_the_talking_person_picked_on_the_page_is_written_into_the_next_plan_version(run, capsys):
+    """Issue #100: the pick is the plan's presenter.situation, with user_choice for another model than the row's;
+    `tm ad check plan` reads it unchanged, and the plan's yes is asked again after the re-check."""
+    _checked_through(run, "production_plan")
+    _prices(run)
+    _to(run, "plan")
+    run_page.build(run, _ask(run, "plan"))
+    _publish(run)
+    _read(run, _doc("plan", "plan_v01", "approve", presenter="own_voice", presenter_model="bytedance/seedance-2.0"))
+    assert main(["page", "decision", "plan", "--run", str(run.path), "--record", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "Talking person: Your own voice or a brand voice, with Seedance 2.0 (your choice, not the row" \
+        in out["recorded_note"]
+    assert out["files"]["plan"] == "03_wip/production_plan_v02.json"
+    data = json.loads((run.path / out["files"]["plan"]).read_text(encoding="utf-8"))
+    assert data["presenter"] == {"situation": "own_voice", "user_choice": True, "model": "bytedance/seedance-2.0"}
+    assert stepchecks.fresh(run, "ad_production_plan", "03_wip", "production_plan", "json") is not None
+    html = _html(run, run_page.build(run))                    # settled: read-only, the pick in the note
+    assert 'data-detail="' not in html and "Talking person: Your own voice" in html
+
+
+def test_the_talking_person_left_as_the_plan_has_it_writes_nothing(run, capsys):
+    _checked_through(run, "production_plan")
+    _to(run, "plan")
+    run_page.build(run, _ask(run, "plan"))
+    _publish(run)
+    _read(run, _doc("plan", "plan_v01", "approve"))
+    assert main(["page", "decision", "plan", "--run", str(run.path), "--record", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "Talking person: Exact wording needed, with Gemini Omni 1.2 Flash" in out["recorded_note"]
+    assert "plan" not in out["files"] and run.latest("03_wip", "production_plan", "json").name == "production_plan_v01.json"
+
+
+def test_a_rejected_plan_keeps_its_versions_as_they_are(run, capsys):
+    _checked_through(run, "production_plan")
+    _to(run, "plan")
+    run_page.build(run, _ask(run, "plan"))
+    _publish(run)
+    _read(run, _doc("plan", "plan_v01", "reject", presenter="described"))
+    assert main(["page", "decision", "plan", "--run", str(run.path), "--record", "--json"]) == 0
+    assert "plan" not in json.loads(capsys.readouterr().out)["files"]
+
+
 def test_review_notes_pinned_at_a_time_and_gate_choices_go_into_the_note(run, capsys):
     for n in (1, 2):
         _media(run, f"03_wip/edit_v{n:02d}.mp4")
@@ -436,7 +522,9 @@ def test_every_create_ad_page_word_is_in_the_table():
                 "licence": ("ads", "inspiration"), "stage": ("pre_video", "video"), "budget": ("ai_usd", "voice_credits"),
                 "route": ("native", "elevenlabs_voice", "user_vo", "clone_take"), "qa": ("match", "wps", "lufs", "peak"),
                 "cadence": ("daily", "lifetime"), "ai": ("OPT_IN", "OPT_OUT"), "type": ("upscale", "transcription"),
-                "col": ("name", "on_screen_text", "sound", "source")}
+                "col": ("name", "on_screen_text", "sound", "source"),
+                "presenter.situation": create_presenter.ROWS, "presenter.needs": create_presenter.ROWS,
+                "presenter.voice": create_presenter.ROWS}
     keys |= {f"ad.page.{group}.{k}" for group, names in families.items() for k in names}
     en = i18n.english()
     assert not [k for k in sorted(keys) if k not in en]

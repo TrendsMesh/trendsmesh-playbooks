@@ -1514,6 +1514,44 @@ ad:
       pre_credits: Before the video (credits)
       video_usd: The video, estimated (USD)
       voice: Voice
+    # the talking person: CA5's table on the plan's page (issue #100; engine/src/tm/create_presenter.py)
+    presenter:
+      title: "The talking person: which model makes it"
+      hint: "Your plan's situation comes first. Pick the one that fits this ad; the model, what it needs and its price for one 15 s take come with it."
+      plan_row: Your plan's situation
+      pick: This is the situation
+      fallback_only: Only after a review shows a take looks or sounds wrong
+      model: "Model: {model}"
+      needs_line: "Needs: {what}"
+      voice_line: "Voice: {voice}"
+      usd: "{usd} USD for 15 s"
+      unit_price: "{price} USD per {unit} on Replicate, read {date}"
+      plus: plus the ElevenLabs line, in credits
+      no_price: No price read from Replicate yet
+      old:
+        one: "Read {n} day ago: I read it again before you pay"
+        other: "Read {n} days ago: I read it again before you pay"
+      model_title: Make it with
+      model_hint: "Another model than the situation's is your choice: the plan keeps it as yours."
+      model_row: The situation's own model
+      situation:
+        described: A person generated from a description
+        specific_person: A specific person from an approved image
+        own_voice: Your own voice or a brand voice
+        exact_wording: Exact wording needed
+        fallback: The fallback
+      needs:
+        described: "a description of the person in words; no face image, so no paid casting (Seedance refuses a photoreal face)"
+        specific_person: an approved image of the person (the casting's face)
+        own_voice: the casting's face and a voice sample of 2 to 15 s
+        exact_wording: the lines as text in the prompt, and the casting's face as a reference
+        fallback: the casting's face and the voice from ElevenLabs
+      voice:
+        described: the model's own (native)
+        specific_person: the model's own (native)
+        own_voice: close to the sample
+        exact_wording: the model's own (native)
+        fallback: ElevenLabs
     # the gates
     gate:
       visual: The first visual output, raw
@@ -1599,6 +1637,8 @@ ad:
       version: "Version picked: {name}"
       pin: "{version} at {time}: {text}"
       copy: "The copy as edited on the page: {edited} edited, {dropped} dropped"
+      presenter: "Talking person: {situation}, with {model}"
+      presenter_choice: "Talking person: {situation}, with {model} (your choice, not the row's model)"
 
 # --- Refresh an ad: the winning ad moved into the original's campaign, PAUSED, at G12 (issue #64;
 # engine/src/tm/livetest_move.py, skills/refresh-ad/references/flow.md#e4) ---

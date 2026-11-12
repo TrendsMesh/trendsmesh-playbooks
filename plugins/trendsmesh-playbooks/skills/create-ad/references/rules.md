@@ -33,7 +33,8 @@ laptop), "breaking news", literal product-category lines, outputs that do not ma
 prompt and keep the rules used next to the prompt. **The talking person comes from one table, by situation** (issue
 #95; `../../references/model-prompting/README.md` holds the same table): the plan asks the user which situation
 applies before any casting, names it (`presenter.situation`), and suggests that row's model; the user may pick
-another (`presenter.user_choice`).
+another (`presenter.user_choice`). The user sees the rows on the plan's page, with today's prices, and picks
+there (issue #100; `flow.md#s5`).
 
 | Situation (`presenter.situation`) | Model | Voice | Casting face | Cost per 15 s |
 |---|---|---|---|---|

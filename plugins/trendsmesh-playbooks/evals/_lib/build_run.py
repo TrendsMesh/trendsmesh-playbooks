@@ -121,6 +121,9 @@ Create an ad scenarios (playbook 05, `runs/05-create-ad/2026-11-11_planner`, a m
 English; every file written and checked with the engine's own `tm ad` commands, prices dated the build day):
   ca_at_s5_plan  Check every step; the concepts, claims, board and production plan checked (casting 0.12 USD before
                  the video, the presenter take 1.50 USD); at "Confirm the production plan and its cost"
+  ca_at_s5_presenter  as ca_at_s5_plan, with today's Replicate prices of CA5's four talking-person models saved
+                 (`02_research/models/prices_<day>_v01.json`, as `tm tool replicate_price` writes it) and named as
+                 the plan's `presenter.price_file` (issue #100: the talking person chosen on the plan's page)
   ca_at_s10b_hands_off  Hands-off (5 USD at intake); everything through the accepted copy, the delivered files and
                  the checked upload proposal (20 USD a day, OPT_IN); the go-ahead given; run at S10b. The take
                  (G4) and the edit (S7) are fixture files with their QA as `tm tool take_qa` writes it (a clean
@@ -1811,11 +1814,30 @@ def _ca_write(run: Path, rel: str, data) -> str:
     return rel
 
 
-def _ca_files(ws: Path, run: Path, upto: str) -> None:
-    """Write and check the run's files up to `upto` (plan, storyboard, copy or proposal)."""
+CA_PRESENTER_PRICES = [   # Replicate's billingConfig tiers of CA5's talking-person models (rules.md, 2026-11-12)
+    ("bytedance/seedance-2.0", [("model variant=non_video_in, target resolution=720p", "$0.18"),
+                                ("model variant=video_in, target resolution=720p", "$0.22")]),
+    ("minimax/h3", [("target resolution=768P", "$0.08"), ("target resolution=2K", "$0.13")]),
+    ("google/gemini-omni-1.2-flash", [("target resolution=720p", "$0.105")]),
+    ("kwaivgi/kling-avatar-v2", [("mode=std", "$0.056"), ("mode=pro", "$0.11")])]
+
+
+def _ca_presenter_prices(run: Path, today: str) -> str:
+    """The talking-person models' prices as `tm tool replicate_price` saves them, dated `today`."""
+    return _ca_write(run, f"02_research/models/prices_{today}_v01.json", [
+        {"model": m, "checked": today, "tiers": [{"criteria": c, "price": p, "unit": "second"} for c, p in tiers]}
+        for m, tiers in CA_PRESENTER_PRICES])
+
+
+def _ca_files(ws: Path, run: Path, upto: str, presenter_prices: bool = False) -> None:
+    """Write and check the run's files up to `upto` (plan, storyboard, copy or proposal); `presenter_prices` saves
+    the talking-person models' prices and names them in the plan's presenter (issue #100)."""
     from datetime import date as _date
     today = _date.today().isoformat()
     price = {"checked": today, "price_file": "02_research/prices_v01.json"}
+    presenter = {"situation": "exact_wording"}
+    if presenter_prices:
+        presenter["price_file"] = _ca_presenter_prices(run, today)
     _ca_write(run, "03_wip/assets_v01.json", {"earlier_runs_checked": True, "assets": [
         {"file": "00_raw/logo.svg", "kind": "logo", "usable": True, "replaces": None},
         {"file": "02_research/brand/brand-sans-700.ttf", "kind": "font", "usable": True, "replaces": None}]})
@@ -1841,7 +1863,7 @@ def _ca_files(ws: Path, run: Path, upto: str) -> None:
             {"n": 2, "start": 3, "end": 12, "picture": "the brief screen", "line": "You answer five questions and it "
              "writes the brief", "speaker": "presenter", "source": "site", "claims": ["k1"]},
             {"n": 3, "start": 12, "end": 18, "picture": "logo sting", "source": "asset:00_raw/logo.svg"}]}),
-        ("plan", {"voice_route": "native", "presenter": {"situation": "exact_wording"}, "lines": [
+        ("plan", {"voice_route": "native", "presenter": presenter, "lines": [
             {"item": "casting", "type": "presenter", "stage": "pre_video", "model": "gpt-image-2",
              "alternative": "flux-1.1-pro", "cost": 0.12, "budget": "ai_usd", **price},
             {"item": "presenter_take", "type": "presenter", "stage": "video", "model": "gemini-omni",
@@ -2021,7 +2043,7 @@ def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None,
 
 
 def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
-    level = {"ca_at_s5_plan": "every_step", "ca_at_s10b_hands_off": "hands_off",
+    level = {"ca_at_s5_plan": "every_step", "ca_at_s5_presenter": "every_step", "ca_at_s10b_hands_off": "hands_off",
              "ca_at_g4_take_stutters": "hands_off", "ca_at_g4_quiet_line": "hands_off",
              "ca_at_g4_weak_voice": "every_step",
              "ca_at_s7_caption_on_face": "hands_off"}[scn]
@@ -2035,6 +2057,9 @@ def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     f.unlink()
     if scn == "ca_at_s5_plan":
         _ca_files(ws, run, "plan")
+        return run, ca_drive(ws, run, "S5", stop_checkin="plan")
+    if scn == "ca_at_s5_presenter":
+        _ca_files(ws, run, "plan", presenter_prices=True)
         return run, ca_drive(ws, run, "S5", stop_checkin="plan")
     if scn == "ca_at_g4_take_stutters":
         _ca_files(ws, run, "storyboard")

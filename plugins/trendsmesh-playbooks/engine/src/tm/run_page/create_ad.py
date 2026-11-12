@@ -14,7 +14,10 @@ The pages and where their data comes from (never typed into the page by hand):
     board         board_vNN.json: the scenes (time, name, picture, on-screen text, line, sound, source); a note per
                   scene (`scene_notes`)
     plan          production_plan_vNN.json: per line the model, its price with the check date, the alternative;
-                  what the user's own files replace; the pre-video totals and the video estimate; a note per line
+                  what the user's own files replace; the pre-video totals and the video estimate; a note per line;
+                  with a talking person, CA5's rows (tm.create_presenter: the plan's situation first, each row's
+                  model, needs, voice and today's Replicate price) and two picks, the situation (`presenter`) and the
+                  model (`presenter_model`), written into the next plan version when they change it (issue #100)
     visual, audio the gate's batch, raw: each output of the plan's items (its latest Replicate record, as for the takes,
                   and its ElevenLabs takes `03_wip/audio/<item>_vNN.<ext>`); accept, redo or drop each (`items`)
     takes         create_qa.take_rows: each take of the storyboard's videos raw, with its transcript, QA numbers,
@@ -44,10 +47,11 @@ from __future__ import annotations
 
 import json
 import re
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-from tm import (create_clips, create_config, create_copy, create_plan, create_qa, create_upload, i18n, manifest,
-                organic_qa, organic_specs, state)
+from tm import (create_clips, create_config, create_copy, create_plan, create_presenter, create_qa, create_upload,
+                i18n, manifest, organic_qa, organic_specs, state)
 from tm.run_page import refresh_ad
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.template import fmt
@@ -282,11 +286,64 @@ def _plan(ctx: Context) -> list[dict]:
            for a in assets or [] if isinstance(a, dict) and a.get("usable") and a.get("replaces")]
     if own:
         blocks.append({"kind": "list", "title": _w(ctx, "own_files"), "items": own})
+    blocks += _presenter(ctx, data, lines)
     keys = [str(ln.get("item")) for ln in lines if ln.get("item")]
     blocks.append({"kind": "notes", "summary": _w(ctx, "line_notes"),
                    "items": [{"path": ["line_notes", k], "label": _readable(k)} for k in keys],
                    "offer": {"line_notes": {"type": "notes", "keys": keys}}})
     return blocks
+
+
+def _cents(usd: float) -> str:
+    """A price in USD to the cent, rounded half up (1.575 is 1.58, as CA5's table writes it)."""
+    return str(Decimal(str(usd)).quantize(Decimal("0.01"), ROUND_HALF_UP))
+
+
+def _presenter(ctx: Context, data: dict, lines: list[dict]) -> list[dict]:
+    """The talking person (issue #100): CA5's rows, the plan's situation first, each with its model, what it needs,
+    its voice and today's price for a 15 s take (tm.create_presenter); a pick of the situation (`presenter`; the
+    fallback only once the plan names it, after a review) and of the model (`presenter_model`: the row's own, or
+    another of the table's). Nothing for a plan without a talking person."""
+    if not any(ln.get("type") == "presenter" for ln in lines):
+        return []
+    rows = create_presenter.rows(ctx.run, data)
+    current = create_presenter.situation_of(data)
+    cards, values = [], []
+    for row in rows:
+        s, p = row["situation"], row["price"]
+        chips = [{"text": _w(ctx, "presenter.plan_row"), "style": "pink"}] if row["plan"] else []
+        chips.append({"text": _w(ctx, "presenter.usd", usd=_cents(p["usd"])) if p else _w(ctx, "presenter.no_price"),
+                      "style": "" if p and not p["old_days"] else "warn"})
+        out = [_w(ctx, "presenter.model", model=f"{create_presenter.MODELS[row['model']]} ({row['model']})"),
+               _w(ctx, "presenter.needs_line", what=_w(ctx, f"presenter.needs.{s}")),
+               _w(ctx, "presenter.voice_line", voice=_w(ctx, f"presenter.voice.{s}"))]
+        if p:
+            out.append(_w(ctx, "presenter.unit_price", price=f"{p['unit_price']:g}", unit=p["unit"], date=p["checked"]))
+            if p["old_days"]:
+                out.append(_wn(ctx, "presenter.old", p["old_days"], n=p["old_days"]))
+        if row["plus"]:
+            out.append(_w(ctx, "presenter.plus"))
+        card = {"title": _w(ctx, f"presenter.situation.{s}"), "chips": chips, "lines": out}
+        if s != create_presenter.FALLBACK or current == s:
+            values.append(s)
+            card["choose"] = {"path": ["presenter"], "label": _w(ctx, "presenter.pick"), "default": current,
+                              "options": [{"value": s, "label": _w(ctx, "presenter.pick")}]}
+        else:
+            card["lines"].append(_w(ctx, "presenter.fallback_only"))
+        cards.append(card)
+    chosen = (data.get("presenter") or {}).get("model") if (data.get("presenter") or {}).get("user_choice") else None
+    models = [create_presenter.ROW, *create_presenter.MODELS]
+    pick_model = {"title": _w(ctx, "presenter.model_title"), "lines": [_w(ctx, "presenter.model_hint")],
+                  "choose": {"path": ["presenter_model"], "label": _w(ctx, "presenter.model_title"),
+                             "default": chosen if chosen in models else create_presenter.ROW,
+                             "options": [{"value": m, "label": _w(ctx, "presenter.model_row") if m == create_presenter.ROW
+                                          else create_presenter.MODELS[m]} for m in models]}}
+    return [{"kind": "text", "title": _w(ctx, "presenter.title"), "text": _w(ctx, "presenter.hint")},
+            {"kind": "cards", "items": cards,
+             "offer": {"presenter": {"type": "pick", "values": values, "default": current}}},
+            {"kind": "cards", "items": [pick_model],
+             "offer": {"presenter_model": {"type": "pick", "values": models,
+                                           "default": pick_model["choose"]["default"]}}}]
 
 
 # --- the gates: visual, audio, takes --------------------------------------------------------------
@@ -717,6 +774,13 @@ def note_lines(run: RunFolder, checkin: str, got: dict, lang: str) -> list[str]:
     for pin in detail.get("pins") or []:
         lines.append(_w(lang, "rec.pin", version=_w(lang, "version", n=int(pin["version"].split("_v")[1])),
                         time=_clock(pin["t"]), text=pin["text"]))
+    if detail.get("presenter"):
+        situation, model = detail["presenter"], detail.get("presenter_model")
+        own = create_presenter.is_rows_model(situation, model)
+        name = create_presenter.MODELS.get(create_presenter.ROWS[situation]["model"] if own else model, model)
+        said = _w(lang, f"presenter.situation.{situation}")
+        lines.append(_w(lang, "rec.presenter", situation=said, model=name) if own
+                     else _w(lang, "rec.presenter_choice", situation=said, model=name))
     if checkin == "copy":
         edited = _edited_copy(run, detail)
         if edited and (edited[1] or edited[2]):
@@ -727,7 +791,15 @@ def note_lines(run: RunFolder, checkin: str, got: dict, lang: str) -> list[str]:
 def write_files(run: RunFolder, checkin: str, got: dict) -> dict:
     """The files a recorded choice writes: the copy as the user left it on the page, as
     `03_wip/copy_decisions_vNN.json` (create_copy's choices: per ad, per list, `{n, text, keep}`), for `tm ad copy
-    accept`, which checks it again. Nothing else is acted on."""
+    accept`, which checks it again; and the plan's talking person picked on the page (not on a reject), as the next
+    `production_plan_vNN.json` when it changes the plan (`files["plan"]`), for `tm ad check plan`. Nothing else is
+    acted on."""
+    if checkin in ("plan", "board_and_plan"):
+        detail = got.get("detail") or {}
+        if not detail.get("presenter") or got.get("choice") == "reject":
+            return {}
+        rel = create_presenter.record(run, detail["presenter"], detail.get("presenter_model"))
+        return {"plan": rel} if rel else {}
     if checkin != "copy":
         return {}
     edited = _edited_copy(run, got.get("detail") or {})

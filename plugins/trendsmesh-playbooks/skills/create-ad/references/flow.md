@@ -128,6 +128,18 @@ page and one in chat count the same. Rules: `rules.md`.
   (the board's). With **Seedance** (a person from a description), say before the casting that a casting face can't
   be used: the person is cast from a description in the prompt, and the plan has no casting line. One take per
   speaker whose lines fit one take (CA4).
+- **The talking person is chosen on the plan's page** (issue #100), not only in chat. Before the plan's check-in,
+  read today's price of each row's model: `tm tool replicate_price --run R bytedance/seedance-2.0 minimax/h3
+  google/gemini-omni-1.2-flash kwaivgi/kling-avatar-v2` (free), and name the file as `presenter.price_file`. Write
+  the situation that fits best as `presenter.situation`. The page shows CA5's rows, your situation first, each with
+  its model, what it needs (a description, a face, a voice sample, the lines as text) and its price for a 15 s take,
+  and the user picks the situation and the model (the row's own, or another of the table's; the fallback only once a
+  review asked for it). `tm page decision --run R plan --record` (or `board_and_plan`) writes a pick that changes the
+  plan as the next `production_plan_vNN.json` (`files.plan` in its answer): `presenter.situation`, and
+  `"user_choice": true` with `model` when the model is not the row's. Rewrite the take lines (and the casting: none
+  for Seedance) to the pick in that version, `tm ad check plan` it, and ask the plan's yes again (`tm decide plan
+  approve --change` after the user's yes, on the rebuilt page or in chat). A pick left as the plan has it writes
+  nothing. Without a page, the chat card lists the same rows with their prices.
 - `tm ad check plan` re-plans the money: its pre-video lines; it refuses a talking person without its situation, a
   take on another model than the row's (unless the user chose it), the fallback without what the review showed, a
   casting for Seedance, and two takes of one speaker whose lines fit one. `tm done S5`. The check-in is "Confirm the
