@@ -368,8 +368,10 @@ def _copy(b: dict, ds: Datasets, lang: str, live: bool) -> str:
             items = []
             for it in lst["items"]:
                 over = it["count"] > lst["limit"]
-                count = (f'<span class="count{" over" if over else ""}" data-ok="{E(b["count"])}" data-over="{E(b["over"])}">'
-                         f'{E((b["over"] if over else b["count"]).replace("{n}", str(it["count"])).replace("{limit}", str(lst["limit"])))}</span>')
+                # the count's words in the form its limit takes (issue #3), the page filling in {n} as the user types
+                ok, too = lst.get("count") or b.get("count", ""), lst.get("over") or b.get("over", "")
+                count = (f'<span class="count{" over" if over else ""}" data-ok="{E(ok)}" data-over="{E(too)}">'
+                         f'{E((too if over else ok).replace("{n}", str(it["count"])).replace("{limit}", str(lst["limit"])))}</span>')
                 if live:
                     items.append(f'<li><textarea class="copy-text" data-limit="{lst["limit"]}" data-detail="{_path(it["path"] + ["text"])}" '
                                  f'disabled>{E(it["text"])}</textarea><div class="row">{count}<label class="small keep">'

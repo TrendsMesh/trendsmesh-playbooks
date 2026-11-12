@@ -67,6 +67,12 @@ def t(key: str, lang: str = i18n.ENGLISH, **values: object) -> str:
     return _translator(lang)(PREFIX + key, **values)
 
 
+def plural(_key: str, count: object, lang: str = i18n.ENGLISH, **values: object) -> str:
+    """The form of the count `_key` (a whole key with `one` / `other` forms in en.yaml, e.g. `ad.copy.count`) that
+    `count` takes in `lang`, with `values` filled (none: the text with its placeholders, for the page's script)."""
+    return _translator(lang).plural(_key, count, **values)
+
+
 def tx(_key: str, lang: str = i18n.ENGLISH, **values: object) -> str:
     """The text of the whole key `_key` (a playbook's own page area, e.g. `ad.page.concepts`) in `lang`."""
     return _translator(lang)(_key, **values)

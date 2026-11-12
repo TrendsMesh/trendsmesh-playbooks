@@ -1231,7 +1231,9 @@ run_page:
     rank: Rising hooks
     confirmations: What confirms it
     videos: Example videos
-    placement: Where the hook sits, out of {n} videos read
+    placement:
+      one: Where the hook sits, out of {n} video read
+      other: Where the hook sits, out of {n} videos read
     n:
       videos: Videos with this hook
       creators: Distinct creators
@@ -1348,8 +1350,13 @@ ad:
     headline: Headline
     description: Description
     keep: Keep
-    count: "{n} of {limit} characters"
-    over: "{n} of {limit} characters: too long"
+    # the form follows the limit ("of 125 characters"); the page fills {n} as the user types
+    count:
+      one: "{n} of {limit} character"
+      other: "{n} of {limit} characters"
+    over:
+      one: "{n} of {limit} character: too long"
+      other: "{n} of {limit} characters: too long"
     facts: Ad name, video title, call to action, display link and URL
   upload:
     title: Upload to Meta, PAUSED
@@ -1400,7 +1407,9 @@ ad:
       generate: generated
       site: from the site
       asset: "your file: {file}"
-    run_days: "Running for {n} days"
+    run_days:
+      one: "Running for {n} day"
+      other: "Running for {n} days"
     take_from: "What to take from it: {why}"
     guess: My guess, not TrendsMesh data
     evidence: "Evidence: {links}"

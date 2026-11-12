@@ -14,10 +14,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
   selected: the first concept, accept for each gate item (redo for a take that fails its QA), and the checked
   edit's version. Change only what you want; what you leave as it was is recorded with your answer, so the takes'
   halves no longer come back without a verdict.
+- **The run page's counts read right in your language.** "Out of 1 videos read" on a trend card, "Running for 1
+  days" on a model ad and the copy's "of 125 characters" now take the form their number needs: "1 video" in
+  English, and each translated language's own forms, as the trend report's counts already do.
 - **The model ads play on the concepts page.** Create an ad saves each model ad's thumbnail and its first 15 seconds
   from the Ad Library answer into the run, and the concepts page plays them, instead of linking out to the Ad
   Library. An image ad shows its picture.
-
 - **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
   longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
   against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.

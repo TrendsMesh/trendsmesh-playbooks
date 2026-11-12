@@ -328,8 +328,8 @@ def page_data(run: RunFolder) -> dict:
             limit = cfg["copy"][limit_key.split(".")[1]]
             lists[field] = {"label": tr(label), "items": [
                 {"n": i, "text": it["text"], "limit": limit, "count": len(it["text"]), "keep": True,
-                 "count_text": tr("ad.copy.count" if len(it["text"]) <= limit else "ad.copy.over",
-                                  n=len(it["text"]), limit=limit)}
+                 "count_text": tr.plural("ad.copy.count" if len(it["text"]) <= limit else "ad.copy.over",
+                                         limit, n=len(it["text"]), limit=limit)}
                 for i, it in enumerate(ad.get(field) or [], 1)]}
         ads.append({"key": ad["key"], "facts": {k: ad.get(k) for k in ("ad_name", "video_title", "cta",
                                                                       "display_link", "url")},

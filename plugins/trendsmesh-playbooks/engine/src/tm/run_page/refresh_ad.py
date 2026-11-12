@@ -230,7 +230,7 @@ def _trend_card(ctx: Context, path) -> dict | None:
             if isinstance(where, str) and where:
                 places[where] = places.get(where, 0) + 1
         if places:
-            out["placement"] = {"title": ctx.t("trend.placement", n=len(vids)),
+            out["placement"] = {"title": ctx.plural("trend.placement", len(vids), n=len(vids)),
                                 "parts": [{"label": ctx.t_or("hook_source." + k, k), "value": n} for k, n in places.items()]}
         top = sorted((v for v in vids if isinstance(v, dict)), key=lambda v: -(v.get("views") or 0))[:8]
         out["videos"] = ctx.ds.add(ctx.t("trend.videos"), vsrc, [

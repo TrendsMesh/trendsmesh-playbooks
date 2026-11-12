@@ -51,7 +51,7 @@ from tm import (create_clips, create_config, create_copy, create_plan, create_qa
 from tm.run_page import refresh_ad
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.template import fmt
-from tm.run_page.words import has_key, tx
+from tm.run_page.words import has_key, plural, tx
 from tm.runfolder import RunFolder
 from tm.tools import _common as tools_common
 
@@ -67,6 +67,11 @@ def _w(where: Context | str, _key: str, **values: object) -> str:
     """`ad.page.<_key>` in the page's language (`where`: the Context, or the language)."""
     lang = where if isinstance(where, str) else where.lang
     return tx("ad.page." + _key, lang, **values)
+
+
+def _wn(ctx: Context, _key: str, count: object, **values: object) -> str:
+    """The count `ad.page.<_key>` (one / other in en.yaml) in the form `count` takes in the page's language."""
+    return plural("ad.page." + _key, count, ctx.lang, **values)
 
 
 def _word(ctx: Context, key: str, default: object) -> str:
@@ -135,7 +140,7 @@ def _concept(ctx: Context) -> list[dict]:
             chips = [{"text": _w(ctx, "source." + str(a.get("source"))) if a.get("source") in create_plan.SOURCES_MODEL_AD
                       else str(a.get("source")), "style": "warn" if a.get("source") == "guess" else ""}]
             if _num(a.get("run_days")):
-                chips.append({"text": _w(ctx, "run_days", n=fmt(a["run_days"]))})
+                chips.append({"text": _wn(ctx, "run_days", a["run_days"], n=fmt(a["run_days"]))})
             cards.append({"title": str(names[a.get("id")]), "chips": chips,
                           "lines": [_w(ctx, "take_from", why=a.get("why") or "")], "media": _model_ad_media(ctx, a)})
         blocks.append({"kind": "cards", "title": _w(ctx, "model_ads"), "items": cards})
@@ -543,12 +548,13 @@ def _copy(ctx: Context) -> list[dict]:
                       "path": ["copy", key, field, str(it["n"])]} for it in got.get("items") or []]
             limit = (got.get("items") or [{}])[0].get("limit") if got.get("items") else None
             if items:
-                lists.append({"name": field, "label": tx(words, ctx.lang), "limit": limit, "items": items})
+                lists.append({"name": field, "label": tx(words, ctx.lang), "limit": limit, "items": items,
+                              "count": plural("ad.copy.count", limit, ctx.lang),
+                              "over": plural("ad.copy.over", limit, ctx.lang)})
                 offer.setdefault(key, {})[field] = len(items)
         facts = [(_w(ctx, "fact." + k), (ad.get("facts") or {}).get(k)) for k in FACTS]
         ads.append({"key": key, "title": (ad.get("facts") or {}).get("ad_name") or key, "facts": facts, "lists": lists})
-    return [{"kind": "copy", "title": tx("ad.copy.title", ctx.lang), "ads": ads, "count": tx("ad.copy.count", ctx.lang),
-             "over": tx("ad.copy.over", ctx.lang), "keep": tx("ad.copy.keep", ctx.lang),
+    return [{"kind": "copy", "title": tx("ad.copy.title", ctx.lang), "ads": ads, "keep": tx("ad.copy.keep", ctx.lang),
              "source": ctx.rel(draft) if draft else "", "offer": {"copy": {"type": "copy", "ads": offer}}}]
 
 

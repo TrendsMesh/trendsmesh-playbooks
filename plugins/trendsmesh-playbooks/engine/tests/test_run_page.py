@@ -156,7 +156,7 @@ def polish_run(run, tmp_path, monkeypatch):
 
 
 def _translate(tmp_path, drop=()):
-    strings = {k: _pseudo(v) for k, v in i18n.english().items() if k.startswith("run_page.") and k not in drop}
+    strings = {k: _pseudo(v) for k, v in i18n.wanted("pl", ["run_page"]).items() if k not in drop}   # Polish's count forms
     path = tmp_path / "i18n_pl.yaml"
     path.write_text(yaml.safe_dump({"lang": "pl", "strings": strings}, allow_unicode=True), encoding="utf-8")
     i18n.import_file("pl", path)
@@ -270,6 +270,18 @@ def test_trend_cards_show_the_trendsmesh_fields(run):
     assert "What confirms it" in html and "31 creators in 14 days" in html
     assert "out of 2 videos read" in html and "On-screen text" in html
     assert 'href="https://www.tiktok.com/@a/video/1"' in html and "javascript:x" not in html.split("tm-page")[0]
+
+
+def test_where_the_hook_sits_counts_its_videos_in_the_form_the_number_takes(run):
+    """Issue #3: "out of {n} videos read" is a count (one / other in en.yaml, a language's own forms)."""
+    from tm import trends
+    trends.save_answer(run, "get_trend", {"trend_id": "t1"}, {"id": "t1", "kind": "hook_trend", "name": "a made-up hook"})
+    trends.save_answer(run, "get_trend_videos", {"trend_id": "t1"}, {"videos": [
+        {"asset_id": "v1", "hook_text": "a made-up hook", "hook_source": "speech", "views": 10}]})
+    html = _html(run, run_page.build(run, _ask(run, "G2", options=[{"choice": "hook", "label": "Hook"}])))
+    assert "out of 1 video read" in html and "1 videos" not in html
+    assert words.plural("run_page.trend.placement", 2, n=2) == "Where the hook sits, out of 2 videos read"
+    assert {"run_page.trend.placement.few", "run_page.trend.placement.many"} <= set(i18n.wanted("pl", ["run_page"]))
 
 
 def test_every_fixed_string_the_page_uses_is_in_the_table():

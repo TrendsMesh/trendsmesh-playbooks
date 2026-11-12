@@ -10,7 +10,7 @@ from pathlib import Path
 
 from tm import page
 from tm.run_page.template import Datasets
-from tm.run_page.words import has, label, t
+from tm.run_page.words import PREFIX, has, label, plural, t
 from tm.runfolder import RunFolder
 
 MEDIA_EXT = (".mp4", ".mov", ".webm", ".m4v", ".mp3", ".wav", ".m4a", ".aac", ".ogg",
@@ -27,6 +27,10 @@ class Context:
     # words
     def t(self, key: str, **values: object) -> str:
         return t(key, self.lang, **values)
+
+    def plural(self, key: str, count: object, **values: object) -> str:
+        """The form of the count `run_page.<key>` that `count` takes in the page's language."""
+        return plural(PREFIX + key, count, self.lang, **values)
 
     def t_or(self, key: str, default: object) -> str:
         """The table's words for `key` when it has them (a stage name, a badge), else `default` as it is."""

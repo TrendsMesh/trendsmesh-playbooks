@@ -425,6 +425,7 @@ def test_the_page_script_saves_the_detail_with_the_choice():
 def test_every_create_ad_page_word_is_in_the_table():
     text = open(SRC, encoding="utf-8").read()
     keys = {"ad.page." + k for k in re.findall(r'_w\((?:ctx|lang), ["\']([a-z0-9_.]+)["\']', text) if not k.endswith(".")}
+    keys |= {f"ad.page.{k}.{form}" for k in re.findall(r'_wn\(ctx, "([a-z0-9_.]+)"', text) for form in ("one", "other")}
     keys |= {f"ad.page.type.{k}" for k in create_ad.VISUAL_TYPES + create_ad.AUDIO_TYPES + ("hook", "format", "topic",
                                                                                               "sound", "hashtag", "visual")}
     keys |= {f"ad.page.item.{k}" for k in create_ad.ITEM_CHOICES} | {f"ad.page.gate.{k}" for k in ("visual", "audio", "takes")}
@@ -439,6 +440,20 @@ def test_every_create_ad_page_word_is_in_the_table():
     en = i18n.english()
     assert not [k for k in sorted(keys) if k not in en]
     assert not [k for k in sorted(en) if k.startswith("ad.page.") and k not in keys]      # no word left unused
+
+
+def test_the_copys_character_count_takes_the_form_of_its_limit():
+    """Issue #3: "{n} of {limit} characters" is a count by its limit; {n} stays for the page's live count."""
+    assert words.plural("ad.copy.count", 1) == "{n} of {limit} character"
+    assert words.plural("ad.page.run_days", 1, n=1) == "Running for 1 day"
+    assert words.plural("ad.copy.over", 125) == "{n} of {limit} characters: too long"
+    block = {"ads": [{"title": "Ad", "facts": [], "lists": [
+        {"label": "Headline", "limit": 1, "count": words.plural("ad.copy.count", 1),
+         "over": words.plural("ad.copy.over", 1), "items": [{"n": 1, "text": "Hi", "count": 2, "path": ["copy"]}]}]}],
+        "keep": "Keep"}
+    html = template._copy(block, template.Datasets(), "en", True)
+    assert "2 of 1 character: too long" in html and 'data-ok="{n} of {limit} character"' in html
+    assert {"ad.copy.count.few", "ad.copy.count.many", "ad.copy.over.many"} <= set(i18n.wanted("pl", ["ad"]))
 
 
 def test_a_create_ad_page_needs_the_ad_words_translated_too(run):
