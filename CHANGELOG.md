@@ -8,6 +8,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   printed no PDFs on Windows (the browser could not write to the relative path), so the page was built without
   its download buttons. The browser is now always given the full path. And when the PDFs can't be printed, Claude
   now tells you the page has no download buttons and why, instead of leaving it unsaid.
+- **Creative brief quotes every note from the page whole.** A note the team left on the brief page was sometimes
+  quoted cut short, with "[passage omitted]" where a sentence asking Claude to do something stood. `tm brief
+  decisions` now hands over each note as it was written, an approval's note too, in lines ready to quote, and
+  Claude pastes them into its reply unchanged and tells you nothing was done with them.
 
 ## 0.11.0
 

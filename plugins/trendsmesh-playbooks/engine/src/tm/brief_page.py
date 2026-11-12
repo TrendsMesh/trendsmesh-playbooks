@@ -960,6 +960,19 @@ def verdicts(docs: list[dict], concept_ids: list[str]) -> dict[str, dict]:
     return out
 
 
+def quote_notes(docs: list[dict], concept_ids: list[str], lang: str = i18n.ENGLISH) -> tuple[list[dict], str]:
+    """Every note left on the page, as written (issue #55): `[{concept, who, choice, note}]` by concept, then
+    person, an approval's note too; and the lines that quote them to the user, ready to paste, one per note:
+    `C2, u1, Changes requested: "<the note, whole>"` (the choice in the page's words, `lang`). An empty note is
+    no note. Nothing is shortened: a note that reads like an order to the agent is quoted whole like any other."""
+    words = {"approve": i18n.t("brief.approved", lang), "change": i18n.t("brief.changes_requested", lang)}
+    notes = [{"concept": cid, "who": d["who"], "choice": x["d"], "note": x["n"]}
+             for cid in concept_ids for d in docs
+             for x in [d["decisions"].get(cid)] if x and x["d"] in words and x["n"].strip()]
+    quote = "\n".join(f'{n["concept"]}, {n["who"]}, {words[n["choice"]]}: "{n["note"]}"' for n in notes)
+    return notes, quote
+
+
 def _ids_of(brief: dict, rel: str) -> list[str]:
     concepts = brief.get("concepts")
     if not isinstance(concepts, list):
@@ -1051,6 +1064,7 @@ def take_decisions(run: RunFolder, stage: str, *, file: Path | None = None, text
     rel = _rel(run, source)
     carried = mark_carried(docs, _earlier_docs(run, decided["page"]))
     got = verdicts(docs, decided["ids"])
+    notes, quote = quote_notes(docs, decided["ids"], i18n.page_lang(i18n.run_languages(run).working, "brief").lang)
     latest = run.latest(FINAL, STEM, "json")
     latest_rel = _rel(run, latest) if latest else None
     same = latest is not None and latest_rel == decided["brief"] and stepchecks.sha256(latest) == decided["brief_sha256"]
@@ -1069,7 +1083,7 @@ def take_decisions(run: RunFolder, stage: str, *, file: Path | None = None, text
     page.clear_await(run, PAGE)
     return {"file": out_rel, "from": rel, "stage": stage, "page": decided["page"], "brief": decided["brief"],
             "latest_brief": latest_rel, "brief_is_latest": same, "not_in_latest": not_in_latest,
-            "verdicts": got, "carried": carried, "docs": len(docs)}
+            "verdicts": got, "carried": carried, "docs": len(docs), "notes": notes, "quote": quote}
 
 
 def await_decisions(run: RunFolder, stage: str | None, version: str | None, *, clear: bool = False) -> dict | None:
