@@ -220,9 +220,10 @@ def build(run: RunFolder, options_file: str | None = None) -> dict:
 
 # --- the picks -----------------------------------------------------------------------------------------------
 
-def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None) -> dict:
-    """The picks into `03_wip/taste_vNN.json`, and the next pack version with `taste` filled in (`by: user`)."""
-    got = choices.read(run, PAGE, file=file, text=text)
+def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None, got: dict | None = None) -> dict:
+    """The picks into `03_wip/taste_vNN.json`, and the next pack version with `taste` filled in (`by: user`); `got`:
+    answers already read (`choices.from_docs`, the run page's)."""
+    got = got or choices.read(run, PAGE, file=file, text=text)
     a, plugin = got["answers"], got["data"]["plugin"]
     style = voice = None
     if "style" in a and a["style"]["choice"]:

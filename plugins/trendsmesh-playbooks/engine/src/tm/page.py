@@ -761,6 +761,8 @@ def _decision(args: argparse.Namespace, run: RunFolder) -> int:
         if (got.get("files") or {}).get("copy_decisions"):
             text += (f" The copy as the user left it on the page is {got['files']['copy_decisions']}: run tm ad copy "
                      f"accept --file {got['files']['copy_decisions']}, and show the user the accepted copy.")
+        if isinstance((got.get("files") or {}).get("then"), str):     # what the playbook's files ask of the agent
+            text += f" {got['files']['then']}"
     else:
         text = (f"Saved on the page for {args.checkin}: {got['choice']} ({got['label']}) at {got['saved_at']}.{note} "
                 f"Record it with tm page decision --run <run> {args.checkin} --record.")

@@ -102,6 +102,9 @@ proposals page's decisions and renamed `2026-11-07_exampleedu-m5`; its price fil
   ov_at_f2_failed_take  the same, the pack approved ($5), the host image made ($0.26) and picked by rule, the
                  13 s take made ($1.04) with its QA (match 0.72, 2.4 words a second), transcript and contact
                  sheet; run at F2
+  ov_at_f1_on_page  m5 as an AI video at Check every step, driven to F1 (the taste and the pack accepted, $5
+                 approved), two host images made ($0.26), the images check-in on the run page (issue #60): the ask
+                 written, `tm page build`, published as art_mock_8 and awaited; run at F1
   ov_at_g2_kit   the same with a take that passes, picked by rule, and G1's final, upload copy and cover
                  (`tm.tools.deliver` with the host's ffmpeg on a 2 s test-pattern clip), then the chat English
                  (config languages.working en: the brief's "English chat"; the pack stays Polish); run at G2
@@ -1676,6 +1679,8 @@ def ov_main(scn: str, ws: Path) -> tuple[Path | None, dict | None]:
         n = ov_prod_drive(ws, prod, "G2", OV_VIDEO_HOOKS)
         ov_chat(ws, prod, "en")
         return prod, n
+    if scn == "ov_at_f1_on_page":
+        return ov_on_page(ws, scn)
     prod = ov_production(ws, "m5", "hands_off", "video")
     if scn == "ov_at_e2_m5":
         n = ov_prod_drive(ws, prod, "E2", OV_VIDEO_HOOKS)
@@ -1686,6 +1691,27 @@ def ov_main(scn: str, ws: Path) -> tuple[Path | None, dict | None]:
     if scn == "ov_at_f2_failed_take":
         n = ov_prod_drive(ws, prod, "F2", OV_VIDEO_HOOKS)
         ov_take(ws, prod, 0.72, 2.4)
+        return prod, n
+    raise SystemExit(f"unknown scenario {scn}")
+
+
+def ov_on_page(ws: Path, scn: str) -> tuple[Path, dict]:
+    """Organic AI video's check-ins on the run page (issue #60)."""
+    if scn == "ov_at_f1_on_page":
+        prod = ov_production(ws, "m5", "every_step", "video")
+        n = ov_prod_drive(ws, prod, "F1", {k: v for k, v in OV_VIDEO_HOOKS.items() if k != "F1"})
+        ov_record(ws, prod, "host_v01", "openai/gpt-image-2", {"host_v01_0.png": PNG_1PX, "host_v01_1.png": PNG_1PX},
+                  0.26)
+        ask = place(ws, prod, "03_wip/ask_images.json", {
+            "checkin": "images", "title": "Dwa obrazy prowadzącego do wyboru", "question": "Bierzemy jeden z nich?",
+            "options": [{"choice": "accept", "label": "Akceptuję", "recommended": True},
+                        {"choice": "redo", "label": "Popraw"}, {"choice": "drop", "label": "Odrzuć"}]},
+            "the agent's ask (eval fixture)")
+        built = tm(ws, "page", "build", "--run", str(prod), "--ask", str(ask))
+        assert built["open"] == ["images"], built
+        tm(ws, "page", "published", "--run", str(prod), "--page", "run_page", "--slug", "art_mock_8",
+           "--version", "ver_mock_1", "--url", "https://claude.ai/artifact/art_mock_8")
+        tm(ws, "page", "await", "--run", str(prod), "--page", "run_page", "--version", "ver_mock_1")
         return prod, n
     raise SystemExit(f"unknown scenario {scn}")
 

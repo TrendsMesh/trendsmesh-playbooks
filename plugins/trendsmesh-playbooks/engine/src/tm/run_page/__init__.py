@@ -35,7 +35,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from tm import checkins, flow, i18n, manifest, page, playbooks, state
-from tm.run_page import create_ad, detail as details, refresh_ad, template, trend_research, words
+from tm.run_page import (create_ad, detail as details, organic_video, refresh_ad, template, trend_research,
+                         words)
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.words import t
 from tm.runfolder import RunFolder
@@ -52,11 +53,14 @@ BUILD_FILE = ".build.json"          # in the page folder; hidden, so never publi
 CAPABILITIES = {"db": {"rules": [{"path": COLLECTION, "read": "owner", "write": "owner"}]}, "user": {},
                 "downloads": {}}
 COMPONENTS = {playbooks.REFRESH_AD: refresh_ad.materials, playbooks.CREATE_AD: create_ad.materials,
-              playbooks.TREND_RESEARCH: trend_research.materials}
+              playbooks.TREND_RESEARCH: trend_research.materials, playbooks.ORGANIC_VIDEO: organic_video.materials}
 OUTCOMES = {playbooks.REFRESH_AD: refresh_ad.outcome,     # a decided choice in words, when no ask labels it
-            playbooks.CREATE_AD: create_ad.outcome, playbooks.TREND_RESEARCH: trend_research.outcome}
-# what a stage's detail adds when its choice is recorded: the lines of its note, and the files it writes
-RECORDED = {playbooks.CREATE_AD: (create_ad.note_lines, create_ad.write_files)}
+            playbooks.CREATE_AD: create_ad.outcome, playbooks.TREND_RESEARCH: trend_research.outcome,
+            playbooks.ORGANIC_VIDEO: organic_video.outcome}
+# what a stage's detail adds when its choice is recorded: the lines of its note (a Stop there refuses the answer
+# before anything is recorded), and the files it writes (with `then`, a line for the agent)
+RECORDED = {playbooks.CREATE_AD: (create_ad.note_lines, create_ad.write_files),
+            playbooks.ORGANIC_VIDEO: (organic_video.note_lines, organic_video.write_files)}
 ANSWER_SOURCE = "tm page decision --record"
 
 _ASK_KEYS = {"checkin", "title", "lede", "question", "context", "options", "points", "media", "data"}

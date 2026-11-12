@@ -4,7 +4,13 @@ their data, the decisions taken on them, and the `final_page_built` step check.
     gate_json(run, gate)        the images or video check-in page's data (`tm organic page gate --gate …`)
     delivery_json(run)          the delivery page's data, gate `edit` (`tm organic page delivery`)
     take_decisions(run, page, *, file, text, keep_carried)   03_wip/decisions_<page>_vNN.json
+    act(run, page, decided, docs, ...)   the same from documents read elsewhere (the run page's answer, issue #60)
     delivery_gap(run)           the step check `final_page_built` (G4)
+
+On the run page (`tm.run_page.organic_video`, issue #60) the same data is a stage of the one page per run: its build
+keeps the data as `03_wip/gates/<page>_vNN.json` with a manifest row of this page's source on the run page's folder
+(so `decided_page`, the picks' dates and `delivery_gap` read it as a build of this page), and the answer saved there
+is turned into this page's documents and written by `act`.
 
 The week's delivery page (`week_delivery`, `tm.organic_week_delivery`) is read by the same `take_decisions`: each of
 its items names its slot run (`plugin.items[id].run`), so a redo becomes the user's request in that run (keyed as its
@@ -592,10 +598,11 @@ def delivery_gap(run: RunFolder) -> str | None:
 
 # --- decisions ----------------------------------------------------------------------------------------
 
-def decided_page(run: RunFolder, page_name: str) -> dict:
-    """The build people decide on: the published folder (`state.pages[page]`), else the latest build; its data file,
-    unchanged since. `{folder, data_file, data}`; a Stop when there is none or its data changed."""
-    target = (state.load(run).pages.get(page_name) or {}).get("folder")
+def decided_page(run: RunFolder, page_name: str, folder: str | None = None) -> dict:
+    """The build people decide on: the published folder (`state.pages[page]`, or `folder`: the published run page
+    that showed it), else the latest build; its data file, unchanged since. `{folder, data_file, data}`; a Stop when
+    there is none or its data changed."""
+    target = folder or (state.load(run).pages.get(page_name) or {}).get("folder")
     rows = [r for r in manifest.rows(run) if r["source"] == f"{gate_page.SOURCE} {page_name}"
             and (target is None or r["file"] == target)]
     if not rows:
@@ -854,7 +861,6 @@ def take_decisions(run: RunFolder, page_name: str, *, file: Path | None = None, 
                    f"user's answer in chat form and read it with --text; {AGAIN}.")
     decided = decided_page(run, page_name)
     data = decided["data"]
-    ids = {it["id"] for it in data["items"]}
     if text is not None:
         source = Path(text)
         docs = parse_chat(source.read_text(encoding="utf-8-sig"), data)
@@ -870,6 +876,21 @@ def take_decisions(run: RunFolder, page_name: str, *, file: Path | None = None, 
                        "their answer one line per item (for example `final: accept; platforms: tiktok, youtube` or "
                        "`takes-take: redo; note: <their words>`) to a file in the run and read it with --text; "
                        f"{AGAIN}.")
+    return act(run, page_name, decided, docs, source=source, how="chat" if text is not None else "page", slug=slug,
+               keep_carried=keep_carried)
+
+
+def act(run: RunFolder, page_name: str, decided: dict, docs: list[tuple[str, dict]], *, source: Path, how: str,
+        slug: str | None, keep_carried: bool = False, carried_from_earlier: bool = True,
+        awaited: str | None = None) -> dict:
+    """The decisions in `docs` (the page's documents, or the chat's, `how`) on the build `decided` (`decided_page`),
+    into `03_wip/decisions_<page>_vNN.json`, and acted on: each redo with a note the user's request, the final's
+    platform ticks a new kit version. A choice carried over from an earlier build is marked (`carried_from_earlier`:
+    the run page asks each question anew, so nothing there is carried). Stops waiting on `awaited` (the page)."""
+    data = decided["data"]
+    collection = gate_page.COLLECTIONS[page_name]
+    text = source if how == "chat" else None
+    ids = {it["id"] for it in data["items"]}
     newest = _newest(docs, ids)
     rows = _rows(data, newest)
     read = {iid: {k: v for k, v in doc.items() if k != "updated_at"} for iid, doc in newest.items()}
@@ -885,7 +906,7 @@ def take_decisions(run: RunFolder, page_name: str, *, file: Path | None = None, 
                 rows[iid]["note"] = "\n".join([x for x in [rows[iid]["note"]] if x]
                                               + [f"{k}: {v}" for k, v in notes.items()])
     carried: list[str] = []
-    if text is None:
+    if text is None and carried_from_earlier:
         earlier = page.earlier_decisions(run, _decisions_files(run, page_name), decided["folder"], built="folder",
                                          rows="read", command=DECISIONS_SOURCE, shape=dict) or {}
         carried = page.mark_carried(copy.deepcopy(read), earlier)
@@ -934,7 +955,7 @@ def take_decisions(run: RunFolder, page_name: str, *, file: Path | None = None, 
         _write_kit(run, data, rows["final"], kit_out, kit_body)
     for k in slot_kits:
         _write_kit(k["target"], k["data"], rows[k["item"]], k["out"], k["body"])
-    page.clear_await(run, page_name)
+    page.clear_await(run, awaited or page_name)
     return {"file": out_rel, "from": rel, "page": page_name, "folder": decided["folder"], "source": body["source"],
             "decisions": rows, "carried": carried, "redos": redos, "redo_labels": redo_labels, "kit": new_kit,
             "ticked": ticked, "kits": body["kits"], "docs": len(docs)}

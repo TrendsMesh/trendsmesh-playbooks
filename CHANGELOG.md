@@ -206,6 +206,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   takes no clicks and is never published while you are deciding. Its three views, the hooks lists, the Ad Library
   results and the translated words are as before. The page still loads no Google Fonts. For a page in another
   language, the run page's words need translating too (`tm i18n export` lists them).
+- **Organic AI video's check-ins are on the run page.** The images, the takes, the final video with its posting kit
+  and the style, voice and music are now stages of one page per video, in the TrendsMesh look with the playbook's
+  name in the top bar, as Refresh an ad's and Create an ad's pages are: the newest question on top, the earlier
+  ones folded below as read-only summaries of what you decided, so an earlier choice can't be saved again by
+  mistake. Each item still takes its option, Accept, Redo with a note or Drop, a note on each storyboard frame, the
+  platform ticks and the YouTube thumbnail, and the kit's texts still come one per platform with their Copy
+  buttons. Large videos are still shown as 720p previews, and the page is in Polish for a Polish run. The
+  proposals, the week, the script, the intake and the models pages are unchanged for now.
 
 ## 0.12.0
 

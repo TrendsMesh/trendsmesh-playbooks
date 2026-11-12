@@ -13,12 +13,16 @@ from __future__ import annotations
 from functools import lru_cache
 
 from tm import i18n
-from tm.playbooks import CREATE_AD, TREND_RESEARCH
+from tm.playbooks import CREATE_AD, ORGANIC_VIDEO, TREND_RESEARCH
 
 AREA = "run_page"
 PREFIX = AREA + "."
-AREAS = {CREATE_AD: ("ad",),      # a playbook's own page words, beside run_page's
+AREAS = {CREATE_AD: ("ad",), ORGANIC_VIDEO: ("organic",),     # a playbook's own page words, beside run_page's
          TREND_RESEARCH: ("report", "common")}    # its report, and the month names
+# A playbook whose stages are named and worded in its own area (Organic AI video: `organic.*`, which the plugin ships
+# in Polish) needs of `run_page` only the template's own words and its own name, not the other playbooks' stages.
+OWN_STAGES = {ORGANIC_VIDEO: "organic_video"}
+TEMPLATE = ("top", "footer", "from_page", "now", "settled", "decision", "record", "data", "media")
 
 
 def page_lang(run) -> i18n.PageLang:
@@ -27,6 +31,15 @@ def page_lang(run) -> i18n.PageLang:
         playbook = state.load(run).playbook
     except (OSError, ValueError):
         playbook = None
+    if playbook in OWN_STAGES:
+        wanted = i18n.tag(i18n.run_languages(run).working) or i18n.ENGLISH
+        if i18n.is_english(wanted):
+            return i18n.PageLang(wanted, wanted, ())
+        mine = (*TEMPLATE, f"playbook.{OWN_STAGES[playbook]}")
+        gaps = tuple(k for k in i18n.missing(wanted, (AREA,))
+                     if k.split(".")[1] in TEMPLATE or k.removeprefix(PREFIX) in mine)
+        gaps += tuple(i18n.missing(wanted, AREAS[playbook]))
+        return i18n.PageLang(i18n.ENGLISH if gaps else wanted, wanted, gaps)
     return i18n.page_lang(i18n.run_languages(run).working, AREA, *AREAS.get(playbook, ()))
 
 

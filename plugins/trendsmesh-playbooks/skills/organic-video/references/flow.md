@@ -719,23 +719,29 @@ carries a bed. A style is asked only for an animation.
    voice may be a row of `tm tool elevenlabs voices --json` (the library's, or `--mine`) copied as
    it is, with your `why` and `recommended` added: its `preview_file` is its preview, and a `--mine`
    row is the user's own. `trending` is the trending sound trend research found that fits this video, or null. Then
-   `tm organic page taste --run R --json` builds `04_final/taste_vNN/`: the voiceover script with
-   its times and a note on each line, the styles, the voices with a player, and the music with
-   "No track, I'll add a sound in the app" first (the default: the fitting trending sound, else
-   your recommended track). Publish it (collection `taste`, `organic_pages.CAPABILITIES["taste"]`),
-   `tm page await --page taste`, and end your turn with the reply button. On the click (or
-   "done"): one unfiltered `ArtifactData` list (collection `taste`), then `tm organic decisions
-   --run R --page taste --json`: it writes `03_wip/taste_vNN.json` (the picks, with the voice's
-   ID for F1's take) and the pack's next `_vNN` with `taste` filled in (`by: user`); check it
-   with `--stage recipe`. A note on a line means: rewrite that line first. An answer in chat (or
-   at Hands-off, by rule) is written one line per section (`voice: <voice id>`, `music: none`) and
-   read with `--text`, the same. Without a publishing tool, send the previews and ask in chat.
+   the `taste` check-in goes on the run page (the plugin's `references/pages.md`, "The run page";
+   issue #60): write `03_wip/ask_taste.json` (`"checkin": "taste"`, a title, the question, the option
+   `accept`) and `tm page build --run R --ask 03_wip/ask_taste.json --json`: its stage has the
+   voiceover script with its times and a note on each line, the styles, the voices with a player,
+   and the music with "No track, I'll add a sound in the app" first (the default: the fitting
+   trending sound, else your recommended track), each with a note. Publish it to the run page's URL
+   with the build's `capabilities`, `tm page published --page run_page`, `tm page await --page
+   run_page`, and end your turn with the reply button. On the click (or "done"): one unfiltered
+   `ArtifactData` list (collection `decisions`), then `tm page decision --run R taste --record
+   --json`: it records `taste` and writes `03_wip/taste_vNN.json` (the picks, with the voice's ID
+   for F1's take) and the pack's next `_vNN` with `taste` filled in (`by: user`); check it with
+   `--stage recipe`. A note on a line means: rewrite that line first. An answer in chat (or at
+   Hands-off, by rule) is written one line per section (`voice: <voice id>`, `music: none`) and
+   read with `tm organic decisions --run R --page taste --text <file> --json` (after a run page
+   build that showed the stage), the same. At Just the big calls the taste is in the plan card:
+   ask it in chat with the pack (`checkin-cards.md`). Without a publishing tool, send the previews
+   and ask in chat.
 6. **The picks go into the profile**: write a new version of the channel profile with the voice
    and the music, `tm brand check --run R --file 03_wip/channel_<slug>_vNN.json --json`, then `tm brand
    save --run R --file 03_wip/channel_<slug>_vNN.json --json` (it carries the date the user
    confirmed the profile). Then the pack's next `_vNN` with `taste` filled in (`by: user`, or
-   `profile` for a saved pick), checked again with `--stage recipe` (from the page, `tm organic
-   decisions --page taste` has written that version).
+   `profile` for a saved pick), checked again with `--stage recipe` (from the page, `tm page
+   decision --run R taste --record` has written that version).
 7. `tm done D2 --run R`. **The `taste` check-in** comes next: at Check every step its own card; at
    Just the big calls it is part of the plan card after E2; at Hands-off the rule (the profile's
    saved picks, else your pick with its reason in `taste.why`).
@@ -1020,26 +1026,32 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      `tm organic text approve --run R --style 03_wip/text_style_vNN.json --note "<their words>"
      --json`; by rule (Just the big calls, Hands-off) the suggested style, `--by rule --note "the
      suggested style"`.
-   - **Check every step**: the images page side by side.
-     `tm organic page gate --gate images --run R --json` builds `04_final/gate_images_vNN/`;
-     `tm trends collect on --run R --json` right before its publish; then
-     `tm page files --run R --page gate_images --json`, an `Artifact` publish of its `file_path`
-     and `files` (a title in the chat language, "Pick the images: <title>") with `capabilities` =
-     `{"db": {"rules": [{"path": "gate_images", "read": "owner", "write": "owner"}, {"path": "gate_video", "read": "owner", "write": "owner"}, {"path": "gate_edit", "read": "owner", "write": "owner"}]}, "user": {"scopes": ["profile"]}, "downloads": {}}`
-     (the engine's `CAPABILITIES["gate"]`), the declaration checked in its result (the older
-     tools: `publish_files`, `read_declaration`, `declare_capabilities` with the same object,
-     `read_declaration` once more), then
-     `tm page published --run R --page gate_images --url <its URL> --version <the version id> --json`
-     and `tm page await --run R --page gate_images --version <the version> --json`. Show the card
-     (`checkin-cards.md`); with a style spec, each item also shows the evidence videos and the
-     latest still of the composition, the look to judge. When the user says they are done: **one
-     unfiltered `ArtifactData` list** (the
-     page's `url`, collection `gate_images`, `query.limit` 1000, no cursor), then
-     `tm organic decisions --run R --page gate_images --json`: each accept is that item's pick; each
-     redo with a note is the user's request, paid for as in [E2](#paying-for-a-redo) and then run
-     once; carried choices are asked about once
-     (`--keep-carried`); an answer in chat is one line per item (`<item id>: accept|redo|drop[;
-     choice: <option id>][; note: <their words>]`) in a file, read with `--text`.
+   - **Check every step**: the images side by side, a stage of the run page (the plugin's
+     `references/pages.md`, "The run page"; issue #60). Write the ask with the Write tool,
+     `03_wip/ask_images.json`: `{"checkin": "images", "title": "<what is new, in the chat
+     language>", "question": "<the check-in's question>", "options": [{"choice": "accept", "label":
+     …}, {"choice": "redo", …}, {"choice": "drop", …}]}`, then `tm page build --run R --ask
+     03_wip/ask_images.json --json`: `04_final/run_page_vNN/` with each image item (its options side
+     by side, the pick marked, the product and the references beside them), each with Accept / Redo /
+     Drop, an option and a note; `tm trends collect on --run R --json` right before its publish;
+     then an `Artifact` publish of the build's `artifact` (the first time a new artifact, its
+     `title` the build's; later the same `url`, `tm page link --run R --page run_page`) with
+     `capabilities` = the build's `capabilities`, the declaration checked in its result, then
+     `tm page published --run R --page run_page --url <its URL> --version <the version id> --json`
+     and `tm page await --run R --page run_page --version <the version> --json`. Show the card
+     (`checkin-cards.md`) with the page's link and the reply button; with a style spec, each item
+     also shows the evidence videos and the latest still of the composition, the look to judge.
+     When the user says they are done: **one unfiltered `ArtifactData` list** (the run page's
+     `url`, collection `decisions`, `query.limit` 1000, no cursor), then `tm page decision --run R
+     images --json` (what they saved) and `tm page decision --run R images --record --json`: it
+     records the check-in (`tm decide images <their choice>`, the note "(from the page)") and
+     writes `03_wip/decisions_gate_images_vNN.json`, as the images page did: each accept is that
+     item's pick; each redo with a note is the user's request, paid for as in
+     [E2](#paying-for-a-redo) and then run once. A choice made on an earlier question, or one the
+     page did not offer, is refused (its message says what to do). An answer in chat is one line
+     per item (`<item id>: accept|redo|drop[; choice: <option id>][; note: <their words>]`) in a
+     file, read with `tm organic decisions --run R --page gate_images --text <file> --json`, then
+     `tm decide images …`.
    - **Just the big calls and Hands-off**: the rubric pick (realism, consistency, the safe zone, no
      text): `tm organic pick --run R --stage images --name <item> --file 03_wip/<the image> --reason
      "<against the rubric>" --json`. One automatic redo per image item is allowed while the
@@ -1051,7 +1063,7 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
    - **An animation's storyboard** is this check-in: the images page shows its latest sheet and
      its frames one under another (each panel full size on a click, its time, the voiceover line,
      what is on screen, and a note), with the voiceover beside it, and an accept there is its pick.
-     A note on a frame is saved per frame: `tm organic decisions` returns them as the row's
+     A note on a frame is saved per frame: the decisions file has them as the row's
      `frame_notes` (in chat: `storyboard-<item>: redo; frame 2: <their words>`), and only the frames
      with a note are drawn again; by rule, `tm organic pick --run R
      --stage storyboard --name <item> --file 03_wip/<item>/storyboard_vNN/sheet.png --reason
@@ -1120,11 +1132,14 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
    out for a take with no spoken lines). It measures the cuts, the transcript against the script,
    the pace, the loudness and makes a contact sheet; look at the sheet (consistency, artefacts,
    burned-in text). The page build makes the 720p preview of each video over 15 MB itself, as
-   `tm tool deliver preview --run R <video> --json` does, and shows it (free, local; its answer
-   lists them in `previews`): no preview by hand.
+   `tm tool deliver preview --run R <video> --json` does, and shows it (free, local): no preview
+   by hand.
 3. **The video check-in**:
-   - **Check every step**: the takes page, as F1 with `--gate video` and the page `gate_video`
-     (`tm organic page gate --gate video --run R --json`; collection `gate_video`), each take with
+   - **Check every step**: the takes, a stage of the run page as in F1 (the ask's `checkin`
+     `video`, its options `accept`, `redo`, `drop` and `fails_qa`; `tm page build --run R --ask
+     03_wip/ask_video.json --json`, the same publish, wait and read, then `tm page decision --run R
+     video --record --json`, which writes `03_wip/decisions_gate_video_vNN.json`; in chat, `tm
+     organic decisions --page gate_video --text`), each take with
      its QA findings and, for a narrator or an animation, **played with the voiceover laid under it**
      at the pack's times and the take's own sound turned down (a mux on this computer, free, into
      `showcase/<take>__<voiceover>_vo.mp4`; no edit, the music comes in G1), each animation's renders and each stills item's motion-graphics renders,
@@ -1271,37 +1286,42 @@ and `tm kit check` refuses a kit without it.
 <a id="g4"></a>
 ## G4 Final page
 
-1. `tm trends collect on --run R --json` (again at every resume), then `tm organic page delivery
-   --run R --json`: `04_final/delivery_vNN/` with the final (its preview and the upload copy to
-   download), the cover JPG to download, the posting kit (per platform the texts to paste, each with
-   its Copy button: one description with its hashtags, YouTube's title, description and tags; then
-   "At posting", the steps with no Copy, and TikTok's search phrase to check in Creator Search
+1. `tm trends collect on --run R --json` (again at every resume). Write the ask with the Write tool,
+   `03_wip/ask_final_edit.json` (`"checkin": "final_edit"`, a title such as "Your video: <title>",
+   the question, the options `accept`, `redo`, `drop`), then `tm page build --run R --ask
+   03_wip/ask_final_edit.json --json`: the delivery stage of the run page (the plugin's
+   `references/pages.md`, "The run page"; issue #60) with the final (its preview and the upload copy
+   to download), the cover JPG to download, the posting kit (per platform the texts to paste, each
+   with its Copy button: one description with its hashtags, YouTube's title, description and tags;
+   then "At posting", the steps with no Copy, and TikTok's search phrase to check in Creator Search
    Insights), the platform ticks ("Posting kit for": the user posts the video themselves) and the
    YouTube-thumbnail tick, and **every step**: all images with the pick marked, the raw takes with
-   their QA findings, the voiceover. Each item has Accept / Redo with a note / Drop.
-2. **Publish it**: `tm page files --run R --page delivery --json`, an `Artifact` publish of its
-   `file_path` and `files` (a title in the chat language, "Your video: <title>") with
-   `capabilities` =
-   `{"db": {"rules": [{"path": "gate_images", "read": "owner", "write": "owner"}, {"path": "gate_video", "read": "owner", "write": "owner"}, {"path": "gate_edit", "read": "owner", "write": "owner"}]}, "user": {"scopes": ["profile"]}, "downloads": {}}`
-   (the engine's `CAPABILITIES["gate"]`), the declaration checked in its result (if the rules or
-   the downloads are refused, say so once and take the decisions in chat, with the files' paths;
-   the older tools: `publish_files`, `read_declaration`, `declare_capabilities`, `read_declaration`
-   once more), then `tm page published --run R --page delivery --url <its URL> --version <the
-   version id> --json` and `tm page await --run R --page delivery --version <the version> --json`.
+   their QA findings, the voiceover. Each item has Accept / Redo with a note / Drop. The build is
+   G4's step check (`final_page_built`): it is made from the latest final.
+2. **Publish it** to the run page's URL (`tm page link --run R --page run_page`; the first time a new
+   artifact), an `Artifact` publish of the build's `artifact` with `capabilities` = the build's
+   `capabilities` (the owner's `decisions`, the viewer, the downloads), the declaration checked in
+   its result (if the rules or the downloads are refused, say so once and take the decisions in
+   chat, with the files' paths), then `tm page published --run R --page run_page --url <its URL>
+   --version <the version id> --json` and `tm page await --run R --page run_page --version <the
+   version> --json`.
 3. `tm done G4 --run R`; the `final_edit` check-in comes next (`checkin-cards.md`).
-4. **When the user says they are done**: **one unfiltered `ArtifactData` list** (the page's `url`,
-   collection `gate_edit`, `query.limit` 1000, no cursor), then `tm organic decisions --run R --page delivery --json`.
-   Redos become the user's requests (each paid one priced and approved as in
-   [E2](#paying-for-a-redo) before it runs once); an unticked
-   platform writes a new kit version: `tm kit check` and `tm kit md` on it. Carried choices are
-   asked about once (`--keep-carried`); an answer in chat is read with `--text` (one line per item,
-   `<item id>: accept|redo|drop[; platforms: tiktok, youtube][; thumbnail: yes|no][; note: …]`).
-   Then `tm decide final_edit accept --run R --note "<their words>"` (or `redo`, `drop`). **A
-   `redo` takes the run back to G1**: the next edit with the user's changes and a new final (G1
-   refuses a final older than the redo), its cover, the kit checked again (G2) and a new delivery
-   page (G4), each through its step, then this check-in again. At
-   Hands-off the rule delivers it on this page: `tm decide final_edit accept --by rule --note
-   "<the page version and the final>"`, and the page still takes the user's choices.
+4. **When the user says they are done**: **one unfiltered `ArtifactData` list** (the run page's
+   `url`, collection `decisions`, `query.limit` 1000, no cursor), then `tm page decision --run R
+   final_edit --record --json`: it records `final_edit` with their choice and writes
+   `03_wip/decisions_delivery_vNN.json` as the delivery page did. Redos become the user's requests
+   (each paid one priced and approved as in [E2](#paying-for-a-redo) before it runs once); an
+   unticked platform writes a new kit version: `tm kit check` and `tm kit md` on it, as its message
+   says; every platform unticked is refused (ask which to post to). An answer in chat is read with
+   `tm organic decisions --run R --page delivery --text <file> --json` (one line per item, `<item
+   id>: accept|redo|drop[; platforms: tiktok, youtube][; thumbnail: yes|no][; note: …]`), then `tm
+   decide final_edit accept --run R --note "<their words>"` (or `redo`, `drop`). **A `redo` takes
+   the run back to G1**: the next edit with the user's changes and a new final (G1 refuses a final
+   older than the redo), its cover, the kit checked again (G2) and a new delivery stage (G4), each
+   through its step, then this check-in again. At Hands-off the rule delivers it on this page: `tm
+   decide final_edit accept --by rule --note "<the page version and the final>"`; when the user
+   later wants to untick a platform or redo an item there, put the question on the run page again
+   (a new ask for `final_edit`) and record their answer from it, as above (it changes the decision).
 
 <a id="h1"></a>
 ## H1 Publish (the user posts)

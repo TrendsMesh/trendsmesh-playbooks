@@ -380,6 +380,14 @@ _LIVE_BLOCKS = {"cards": _cards, "notes": _notes, "facts": _facts, "pager": _pag
                 "copy": _copy}
 
 
+def register_block(kind: str, render_block) -> None:
+    """A playbook's own block (`render_block(b, ds, lang, live) -> html`, every text escaped by it): its inputs carry
+    `data-detail` paths as the shared ones do, so the page saves them as the stage's detail (tm.run_page.detail)."""
+    if kind in _BLOCKS or _LIVE_BLOCKS.get(kind, render_block) is not render_block:
+        raise ValueError(f"{kind!r} is a block the template already has.")
+    _LIVE_BLOCKS[kind] = render_block
+
+
 def _block(b: dict, ds: Datasets, lang: str, live: bool = False) -> str:
     head = f"<h3>{E(b['title'])}</h3>" if b.get("title") else ""
     body = _LIVE_BLOCKS[b["kind"]](b, ds, lang, live) if b["kind"] in _LIVE_BLOCKS else _BLOCKS[b["kind"]](b, ds, lang)

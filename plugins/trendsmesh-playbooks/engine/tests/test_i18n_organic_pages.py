@@ -13,6 +13,7 @@ import yaml
 from tm import i18n, kit, organic, organic_pack, organic_pages, organic_qa, organic_week_delivery
 from tm.organic_pages import gate, proposals, script, week
 from tm.playbooks import ORGANIC_VIDEO
+from tm.run_page import organic_video
 from tm.runfolder import RunFolder
 
 SOURCES = [Path(organic_pages.__file__).parent.glob("*.py"),
@@ -53,7 +54,7 @@ def _used() -> set[str]:
             | {f"organic.kit_md.{label}" for label in kit.LABELS} | _pack_md_keys() | _qa_keys()
             | {k for kind in ("product", "risk", "status", "production")
                for k in organic_pages.value_keys(kind).values()}
-            | _choice_keys())
+            | _choice_keys() | organic_video.keys())
 
 
 

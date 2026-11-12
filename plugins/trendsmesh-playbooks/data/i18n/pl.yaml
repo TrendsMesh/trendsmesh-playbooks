@@ -1,5 +1,6 @@
 # The plugin's own Polish of the string table (data/i18n/en.yaml), read by tm.i18n: what a Polish page says. It holds
-# the organic video pages' strings (organic.*) and Create an ad's promise phrases (checks.promise_*); every other
+# the organic video pages' strings (organic.*), the run page's own words that an Organic AI video run page needs
+# (run_page.*: the template's, issue #60) and Create an ad's promise phrases (checks.promise_*); every other
 # string Polish needs is the agent's translation, kept in the plugin data folder (tm i18n export / import), and a kept
 # translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
 
@@ -530,3 +531,77 @@ strings:
       production_animation: animacji
       production_stills_motion: grafikach z animacją
       production_sections: filmie z części
+    # Organic AI video's stages on the run page (issue #60)
+    stage:
+      reuse_profile: Zapisany profil kanału
+      profile: Profil kanału
+      proposals: Co nagrać
+      week: Tydzień
+      schedule: Pakiet tygodniowy
+      taste: Styl, głos i muzyka
+      pack: Pakiet generowania i jego koszt
+      plan: Plan tego filmu
+      script: Scenariusz do nagrania
+      images: Obrazy
+      video: Ujęcia
+      final_edit: Gotowy film i zestaw do publikacji
+    page:
+      how_gate: "Przy każdym elemencie wybierz opcję tam, gdzie jest wybór, potem Akceptuj, Popraw (napisz, co zmienić) albo Odrzuć. Wybory zapisują się od razu; potem odpowiedz na pytanie na dole."
+      how_taste: "Proponowane opcje są już zaznaczone. Zmień, co chcesz: wybory zapisują się od razu. Potem odpowiedz na pytanie na dole."
+      undecided: bez decyzji
+      decided_items: Co zdecydowano
+      picks: Wybory
+      line: "Linia {n}"
+      rec_item: "{item}: {action}"
+      rec_note: "{item} (uwaga): {text}"
+      rec_frame: "{item}, {frame}: {text}"
+      rec_platforms: "{item}, zestaw do publikacji dla: {platforms}"
+      rec_thumbnail: "{item}: zrób miniaturę YouTube"
+      rec_pick: "{section}: {choice}"
+  # the run page's own words (engine/src/tm/run_page/template.py), which an Organic AI video page needs in Polish
+  run_page:
+    top:
+      brand: TrendsMesh
+      title: '{playbook}: {run}'
+    playbook:
+      organic_video: Organiczne wideo AI
+    footer:
+      built: Zbudowane z runu {run} {when}. Każda liczba pokazuje swoje źródło po najechaniu kursorem.
+    from_page: (ze strony)
+    now:
+      new: Nowe
+      label: Teraz
+      updated: Zaktualizowano {when}
+      nothing_open: Teraz nie ma nic do decyzji.
+    settled:
+      heading: Już ustalone ({n})
+      outcome: '{stage}: {outcome}'
+      saved: zapisane
+      by_rule: według reguły
+    decision:
+      now: Teraz
+      recommended: polecane
+      note: Twoja uwaga (opcjonalnie)
+      save_notes: Zapisz uwagi
+      connecting: Łączenie…
+      ready: Kliknij opcję, aby ją zapisać.
+      saving: Zapisywanie…
+      saved_at: Zapisano o {time}. Napisz Claude w czacie, gdy wybierzesz.
+      save_error: Nie udało się zapisać ({error}). Odpowiedz w czacie.
+      cannot_save: Ten widok nie zapisuje; odpowiedz w czacie.
+      answer_in_chat: Ta kopia strony nie zapisuje wyborów. Odpowiedz w czacie.
+    record:
+      picked: Wybrano
+      by_rule: Zdecydowano według reguły
+      note: Uwaga
+      saved: Zapisano
+    data:
+      source: 'Źródło: {file}'
+      download_csv: Pobierz CSV
+      open: otwórz
+      empty: Na razie brak danych.
+      show_text: Pokaż tekst
+    media:
+      play_both: Odtwórz oba
+      pause: Pauza
+      seek: Pozycja w obu filmach

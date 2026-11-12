@@ -412,10 +412,11 @@ def build(run: RunFolder, data: dict, **params) -> dict:
 
 # --- reading the answers ------------------------------------------------------------------------------------
 
-def decided(run: RunFolder, name: str) -> dict:
-    """The build people decide on (the published folder, else the latest build) and the data it was made from:
-    `{folder, data_file, data, params}`. Stop when the data is gone or changed since."""
-    target = (state.load(run).pages.get(name) or {}).get("folder")
+def decided(run: RunFolder, name: str, folder: str | None = None) -> dict:
+    """The build people decide on (the published folder, or `folder`: the published run page that showed it, else
+    the latest build) and the data it was made from: `{folder, data_file, data, params}`. Stop when the data is gone
+    or changed since."""
+    target = folder or (state.load(run).pages.get(name) or {}).get("folder")
     rows = [r for r in manifest.rows(run) if r["source"] == f"{SOURCE} {name}"
             and (target is None or r["file"] == target)]
     if not rows:
@@ -575,7 +576,16 @@ def read(run: RunFolder, name: str, *, file: Path | None = None, text: Path | No
             raise Stop(f"Nothing was saved on the {name} page. Ask the user in chat; an answer in chat counts. Write it "
                        f"one line per section into a file in the run and read it with --text; {AGAIN}.")
         how = "page"
-    found, done, bad = answers(data, docs)
+    return from_docs(run, name, got, docs, source=source, how=how)
+
+
+def from_docs(run: RunFolder, name: str, got: dict, docs: list[tuple[str, dict]], *, source: Path, how: str,
+              done: bool = False) -> dict:
+    """The answers in `docs` on the build `got` (`decided`), checked as `read` checks them (the run page's answer
+    comes this way, issue #60: its choice of the check-in is the "Done", `done`)."""
+    data = got["data"]
+    found, pressed, bad = answers(data, docs)
+    done = done or pressed
     if bad:
         raise Stop(f"The {name} page's answer cannot be taken as it is: {'; '.join(bad[:5])}. Nothing was written. Ask "
                    f"the user to choose again on the latest page, or write their answer from chat and read it with "

@@ -1014,6 +1014,34 @@ organic:
     production_animation: an animation
     production_stills_motion: stills with motion graphics
     production_sections: a video in sections
+  # Organic AI video's stages on the run page (engine/src/tm/run_page/organic_video.py, issue #60): their names,
+  # and the words around the check-in pages' items there
+  stage:
+    reuse_profile: Saved channel profile
+    profile: Channel profile
+    proposals: What to make
+    week: The week
+    schedule: Weekly pack
+    taste: Style, voice and music
+    pack: Generation pack and its cost
+    plan: The plan for this video
+    script: Script to film
+    images: Images
+    video: Takes
+    final_edit: Final video and posting kit
+  page:
+    how_gate: "For each item pick an option where there is a choice, then Accept, Redo (write what to change) or Drop. Your choices save as you click; then answer the question at the bottom."
+    how_taste: "The suggested options are already ticked. Change what you want: your choices save as you click. Then answer the question at the bottom."
+    undecided: not decided
+    decided_items: What was decided
+    picks: The picks
+    line: "Line {n}"
+    rec_item: "{item}: {action}"
+    rec_note: "{item} (note): {text}"
+    rec_frame: "{item}, {frame}: {text}"
+    rec_platforms: "{item}, posting kit for: {platforms}"
+    rec_thumbnail: "{item}: make a YouTube thumbnail"
+    rec_pick: "{section}: {choice}"
 
 # --- Refresh an ad's run page: engine/src/tm/run_page/ (issue #19) ---
 # decision.saved_at's {time} and decision.save_error's {error} are filled on the page itself.
@@ -1026,6 +1054,7 @@ run_page:
     refresh_ad: Refresh an ad
     create_ad: Create an ad
     trend_research: Trend research
+    organic_video: Organic AI video
   footer:
     built: Built from the run {run} on {when}. Every number shows its source when you hover over it.
     built_from: Built from the run {run} on {when}.

@@ -184,7 +184,10 @@ the publish result says are stored (step 2), and say plainly if they are missing
 Refresh an ad's and Create an ad's one page per run (`skills/refresh-ad/references/checkin-cards.md`, "The run
 page"; `skills/create-ad/references/pages.md`):
 `tm page build --run R --ask <file> --json` builds `04_final/run_page_vNN/` from the run state, the page
-`run_page`. Its decisions take the rules above, with these calls:
+`run_page`. Organic AI video's images, takes, delivery and taste check-ins are stages of it too
+(`skills/organic-video/references/flow.md#f1`, `#f2`, `#g4`, `#d2`): there `tm page await --page run_page`
+holds the publish while the user chooses, and `tm page decision --record` lifts it. Its decisions take the
+rules above, with these calls:
 
 1. **Publish** with the Artifact tool as above: `file_path` and `files` = the build's `artifact`, and
    **`capabilities` = the build's `capabilities`, at every publish** (the owner reads and writes the

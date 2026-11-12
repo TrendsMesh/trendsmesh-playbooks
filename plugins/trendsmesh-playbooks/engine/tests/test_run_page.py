@@ -174,9 +174,9 @@ def test_a_polish_run_builds_its_page_in_polish(polish_run, tmp_path, capsys):
 
 
 def test_an_untranslated_working_language_builds_in_english_and_says_so(polish_run, tmp_path, capsys):
-    _translate(tmp_path, drop=("run_page.decision.save_notes",))
+    _translate(tmp_path, drop=("run_page.g1.title",))            # a key the plugin's own Polish does not ship
     got = i18n.page_lang("pl", "run_page")
-    assert got.lang == "en" and got.missing == ("run_page.decision.save_notes",)
+    assert got.lang == "en" and got.missing == ("run_page.g1.title",)
     assert main(["page", "build", "--run", str(polish_run.path), "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["lang"] == "en" and out["language_warning"] == got.warning and got.warning in out["message"]
