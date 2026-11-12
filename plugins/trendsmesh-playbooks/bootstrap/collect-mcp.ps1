@@ -1,7 +1,8 @@
 # PostToolUse hook for Windows without Git Bash: the same as collect-mcp.sh (read its header). Run
 # as a script block, so it reads the hook's own stdin; $PSScriptRoot is empty there, so the plugin
 # root comes from CLAUDE_PLUGIN_ROOT. Prints only what `tm trends spool` prints, or one fixed line
-# when tm itself fails; always exits 0.
+# when tm itself fails; always exits 0. A too-large answer's notice passes as it is: tm reads the file
+# it names (issue #84).
 function Value($text, $key) {
     # The first string value of $key. Only that one key is decoded: decoding the whole event (an
     # answer can be large) is slow, and 5.1's ConvertFrom-Json refuses texts over 2 MB. A key inside

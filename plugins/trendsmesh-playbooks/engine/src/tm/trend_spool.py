@@ -30,6 +30,11 @@ spike proved both under `claude plugin eval` on Claude Code 2.1.319. A Meta read
 answer (`mcp_saves.SAVES`) is saved by `mcp_saves.save` in a run whose playbook keeps that tool
 (`mcp_saves.SAVED_BY`) and never replaced; in any other run it is ignored.
 
+An answer too large for Claude Code to show reaches the hook as Claude Code's notice naming the file
+it saved the answer to (issue #84): `spool` reads that file (`saved_by_claude_code`: only this
+session's own tool-results folder, never a path an answer could plant), saves the answer with the
+hook's tool input and summarises it as usual, so nothing is asked of Claude.
+
 `spool` never fails a tool call. When an answer of the collecting session cannot be saved, Claude is
 told (`additionalContext`: save it with `tm trends ingest`), a line goes to the run's
 `02_research/collect_failures.log`, and the reason to `<data>/logs/collect.log`.
@@ -371,6 +376,71 @@ def parse_answer(response: Any) -> tuple[Any, bool]:
     return {"raw": response}, False
 
 
+# --- an answer too large to show (issue #84) --------------------------------------------------
+#
+# Claude Code shows no MCP answer over its limit. It saves the answer to a file and passes, as the tool's
+# output (and as the hook's tool_response), only a notice naming that file. Claude Code 2.1.229 to 2.1.317
+# write it as, the first line:
+#   Error: result (143,210 characters across 1 line) exceeds maximum allowed tokens. Output has been saved
+#   to <config>/projects/<project>/<session>/tool-results/mcp-<server>-<tool>-<ms>.txt.
+# then "Format: Plain text" (the answer's text) or, in older versions, "Format: JSON array ..." (its content
+# blocks), and advice on reading it. The file is read only when the notice is the whole answer from its
+# first character and names a regular file, not a link, directly in this session's own tool-results folder,
+# named for this tool: no path an answer could plant elsewhere is ever read.
+
+_TOO_LARGE = re.compile(r"Error: result \(\d[\d,]* characters(?: across \d[\d,]* lines?)?\) exceeds maximum "
+                        r"allowed tokens\. Output has been saved to (?P<path>[^\n]+?)\.(?:\n|$)")
+TOOL_RESULTS = "tool-results"
+CONFIG_ENV = "CLAUDE_CONFIG_DIR"            # Claude Code's config folder, else ~/.claude
+MAX_SAVED_BYTES = 64 * 1024 * 1024
+
+
+def too_large_path(text: Any) -> str | None:
+    """The file Claude Code's too-large notice names, when `text` is that notice; else None."""
+    m = _TOO_LARGE.match(text) if isinstance(text, str) else None
+    return m["path"] if m else None
+
+
+def _own_folder(event: dict, session: str, folder: Path) -> bool:
+    """Whether `folder` (resolved) is this session's tool-results folder: beside its transcript
+    (<project>/<session>.jsonl -> <project>/<session>/tool-results), else in a project of Claude Code's
+    config folder (`CLAUDE_CONFIG_DIR`, else ~/.claude), as an event may name no usable transcript."""
+    if folder.name != TOOL_RESULTS or folder.parent.name != session:
+        return False
+    transcript = event.get("transcript_path")
+    if isinstance(transcript, str) and transcript.endswith(".jsonl"):
+        beside = Path(transcript).parent / session / TOOL_RESULTS
+        if beside.is_dir() and beside.resolve() == folder:
+            return True
+    projects = Path(os.environ.get(CONFIG_ENV) or Path.home() / ".claude") / "projects"
+    return projects.is_dir() and folder.parent.parent.parent == projects.resolve()
+
+
+def saved_by_claude_code(event: dict, tool: str, text: Any) -> Path | None:
+    """The file of a too-large answer, when `text` is Claude Code's notice naming a regular file (not a
+    link) directly in this session's own tool-results folder, named `mcp-...-<tool>-<digits>.txt|.json`;
+    else None."""
+    named = too_large_path(text)
+    session = safe_session(event.get("session_id"))
+    if named is None or session is None:
+        return None
+    path = Path(named)
+    if not path.is_absolute() or not re.fullmatch(rf"mcp-.+-{re.escape(tool)}-\d+\.(?:txt|json)", path.name):
+        return None
+    try:
+        if path.is_symlink() or not path.is_file():
+            return None
+        real = path.resolve(strict=True)
+        ok = _own_folder(event, session, real.parent) and real.stat().st_size <= MAX_SAVED_BYTES
+    except OSError:
+        return None
+    return real if ok else None
+
+
+def _raw_text(answer: Any) -> Any:
+    return answer.get("raw") if isinstance(answer, dict) and set(answer) == {"raw"} else None
+
+
 # --- the summary Claude sees ------------------------------------------------------------------
 
 def summarisable(tool: str, answer: Any) -> bool:
@@ -479,8 +549,8 @@ def _not_saved(reason: str, run: str | None = None, tool: str | None = None) -> 
 
 def _not_json(run: str, tool: str, tool_input: Any) -> dict:
     """The hook output for a TrendsMesh or Ad Library answer that is not JSON: Claude Code's notice in
-    place of an answer too large to show (it names the file it saved the answer to), or the tool's
-    plain-text message."""
+    place of an answer too large to show whose file cannot be read (`saved_by_claude_code`), or the
+    tool's plain-text message."""
     text = ("This answer was not saved to the run (it is not JSON, so it holds no trend or Ad Library data). "
             "If it is Claude Code's notice that the output was too large and saved to a file, save that file "
             f"whole with tm trends ingest --run {run} --tool {tool} --input <file with the tool's input> "
@@ -530,23 +600,31 @@ def handle(event: dict, workspace: Path) -> dict | None:
         if kept:
             _keep(run, tool, tool_input, answer, server=mcp_saves.server_of(tool_name))
             return None
+        big = None
         if not parsed and "error" not in answer:      # {"raw": ...}: a notice or a message, no data
-            reason = "the answer is not JSON (Claude Code's notice for a large answer, or the tool's message)"
-            _failed(run, tool, reason)
-            _log(f"{tool}: {reason}")
-            return _not_json(run.path.relative_to(Path(workspace)).as_posix(), tool, tool_input)
+            big = saved_by_claude_code(event, tool, _raw_text(answer))
+            if big is not None:                       # Claude Code's notice: its file holds the answer
+                answer, parsed = parse_answer(big.read_text(encoding="utf-8-sig"))
+            if not parsed and "error" not in answer:
+                reason = "the answer is not JSON (Claude Code's notice for a large answer, or the tool's message)"
+                _failed(run, tool, reason)
+                _log(f"{tool}: {reason}")
+                return _not_json(run.path.relative_to(Path(workspace)).as_posix(), tool, tool_input)
         path = _save(run, tool, tool_input, answer)
     except (OSError, ValueError) as exc:              # TimeoutError is an OSError
         reason = f"{type(exc).__name__}: {exc}"
         _failed(run, tool, reason)
         _log(f"{tool}: {reason}")
         return _not_saved(str(exc), run.path.relative_to(Path(workspace)).as_posix(), tool)
-    if not summarisable(tool, answer):
-        return None
-    shaped = _shaped(response, summary(tool, tool_input, answer, path.relative_to(Path(workspace)).as_posix()))
-    if shaped is None:
-        return None
-    return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "updatedToolOutput": shaped}}
+    saved_to = path.relative_to(Path(workspace)).as_posix()
+    shaped = _shaped(response, summary(tool, tool_input, answer, saved_to)) if summarisable(tool, answer) else None
+    if shaped is not None:
+        return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "updatedToolOutput": shaped}}
+    if big is not None:                               # Claude sees only the notice: say it is saved
+        return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": (
+            f"This answer was saved to the run ({saved_to}) from the file Claude Code saved it to, so there is "
+            "nothing to ingest by hand. Read that file only for what this step needs from it.")}}
+    return None
 
 
 # --- command line -----------------------------------------------------------------------------

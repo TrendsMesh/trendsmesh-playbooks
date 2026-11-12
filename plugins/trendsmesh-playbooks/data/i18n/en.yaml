@@ -20,6 +20,12 @@ common:
 trends:
   # offered to the user for the weekly run, in their working language
   weekly_phrase: update my trend report
+  # Organic AI video's trend shortlist (B2, engine/src/tm/shortlist.py): its words, not Creative brief's ad words
+  shortlist:
+    hooks_by_fit: "ranked by their fit for this channel (the agent's 1-5 scores, with one line on why), then by usability (status, momentum, creators, view lift, recency, language, sensitivity)."
+    formats_note: A format is used only if the video can be made honestly.
+    sounds_note: A trending sound is added in the app when you post, for organic videos only.
+    not_pulled: Evidence videos not pulled yet (B3 pulls them)
 
 checks:
   # CB13 (Creative brief): words the creator view never says. Comma-separated; a translation lists the same

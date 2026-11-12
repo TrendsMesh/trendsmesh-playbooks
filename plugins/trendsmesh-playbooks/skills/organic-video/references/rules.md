@@ -30,8 +30,8 @@ How to read the copy in the plugin:
   pages in languages other than English and Polish, the sensitivity filter, measurement.
 
 What the engine checks, so you never do it by hand: the channel profile and its confirmation
-(`tm brand check`, `tm brand save --confirmed`: OV1); the shortlist with its anchors and sound
-relevance (`tm trends shortlist`: OV2); the used trends and series (`tm organic used`); the
+(`tm brand check`, `tm brand save --confirmed`: OV1); the shortlist with its anchors, the fit
+scores and sound relevance (`tm trends shortlist`: OV2); the used trends and series (`tm organic used`); the
 proposals (`tm organic proposals check`: 4 to 6, every trend a saved card, Recreate's two picks,
 Inspire's weak link, the nine risk items with mitigations and no percentages, the production
 types the stack hides, the product level, used trends, never "no trend found": OV2 to OV5); one
@@ -98,7 +98,8 @@ The agent may not skip them. The config changes only thresholds and defaults, no
 ### OV2. Trend search and shortlist
 - Query the trend source (`tools/trends_api.py`, later the TrendsMesh MCP) with the niche anchor terms, the problems the catalog solves and the channel's own formats. Search both the audience language and English.
 - Shortlist four types: **hooks, topics, formats, sounds** (CTAs when TrendsMesh adds them). Each comes with evidence videos and numbers: creators, videos, views, status, hook source, view lift.
-- Relevance needs a niche anchor term next to the activity term, to avoid shared-word noise.
+- A topic's relevance needs an anchor term next to the activity term, to avoid shared-word noise: the subjects the channel covers, from its profile, not only the niche's own words.
+- Hooks and formats get no word filter (they say how a video opens and is told, not what it is about): each gets a fit score for this channel, can it carry what the channel films and how it tells it, shown on the shortlist with one line on why (issue #84).
 - Sounds need a niche-relevance score from their description and the evidence captions.
 - Never write "no trend found"; show the best fit.
 - Transfer across language or subject is a hypothesis. It lowers expected reach, not feasibility, and the proposal says so.

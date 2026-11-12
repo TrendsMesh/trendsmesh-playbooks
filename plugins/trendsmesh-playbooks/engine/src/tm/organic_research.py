@@ -1,7 +1,8 @@
 """Trends for a channel (organic video, FLOWS.md B1 to B3).
 
 - B2's check `shortlist_written` (`shortlist_gap`): a `03_wip/trend_shortlist_vNN.json` written by
-  `tm trends shortlist` in this run (its manifest row is dated on or after the run's creation).
+  `tm trends shortlist` in this run (its manifest row is dated on or after the run's creation), its
+  hooks and formats ranked by the agent's fit for the channel (`--fit`, issue #84) when it lists any to score.
 - B3's check `evidence_saved` (`evidence_gap`): each of the shortlist's top `research.cards` trends
   (`top_trends`: the lists taken in turn, hooks, topics, formats, sounds) has a saved card (an error
   answer is none, `brief_research.card_of`) and saved video pages holding at least one video.
@@ -131,6 +132,10 @@ def shortlist_gap(run: RunFolder) -> str | None:
     if not any(r["file"] == rel and r["source"] == SHORTLIST_SOURCE and r["date"] >= created
                for r in manifest.rows(run)):
         return f"the latest shortlist {latest.name} is written by tm trends shortlist in this run (run it again)"
+    plugin = (data.get("meta") or {}).get("plugin") or {}
+    if data.get("fit_candidates") and not plugin.get("fit_file"):   # a shortlist from before issue #84 has none
+        return (f"the hooks and formats of the latest shortlist {latest.name} are scored for the channel: each of its "
+                f"fit_candidates in {WIP}/trend_fit_vNN.json, then tm trends shortlist again with --fit")
     return None
 
 

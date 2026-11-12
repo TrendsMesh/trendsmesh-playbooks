@@ -813,3 +813,162 @@ def test_the_live_trends_envelope_is_summarised(ws, capsys):
     assert (last["page"], last["results"], last["has_more"]) == (3, 1, False)
     assert trend_spool.handle(_event(ws, "search_trends", {"about": "nails"},
                                      {"error": "not_in_plan", "trends": []}), ws) is None
+
+
+# --- issue #84: an answer Claude Code saved to a file as too large to show ------------------------------------
+
+def _notice(path: Path, chars: int = 143_210, lines: int | None = 1) -> str:
+    """Claude Code's notice in place of an answer too large to show, as 2.1.229 to 2.1.317 write it."""
+    across = f" across {lines:,} line{'s' if lines != 1 else ''}" if lines is not None else ""
+    return (f"Error: result ({chars:,} characters{across}) exceeds maximum allowed tokens. Output has been saved to "
+            f"{path}.\nFormat: Plain text\n- For targeted searches (find a string): use grep on the file directly.\n"
+            f"- For analysis or summarization that requires reading the full content: the file's lines are too long "
+            f"for Read's offset/limit. Slice by character range via Bash instead.")
+
+
+def _big(tmp_path: Path, tool: str, answer, *, session: str = "s1", name: str | None = None) -> tuple[Path, Path]:
+    """(the transcript, the file Claude Code saved the answer to) under a Claude config folder in tmp_path:
+    <config>/projects/<project>/<session>.jsonl and <config>/projects/<project>/<session>/tool-results/."""
+    project = tmp_path / "claude" / "projects" / "-ws"
+    results = project / session / "tool-results"
+    results.mkdir(parents=True, exist_ok=True)
+    path = results / (name or f"mcp-plugin_trendsmesh-playbooks_trendsmesh-{tool}-1793035416828.txt")
+    path.write_text(answer if isinstance(answer, str) else json.dumps(answer), encoding="utf-8")
+    transcript = project / f"{session}.jsonl"
+    transcript.write_text("", encoding="utf-8")
+    return transcript, path
+
+
+def _too_large(ws: Path, tool: str, tool_input: dict, transcript: Path, path: Path, **kw) -> dict:
+    event = _event(ws, tool, tool_input, _notice(path), **kw)
+    return {**event, "transcript_path": str(transcript)}
+
+
+SEARCH_PAGE = {"trends": [{"id": f"t{n}", "kind": "format_trend", "name": f"F{n}", "status": "confirmed"}
+                          for n in range(15)], "total": 40}
+
+
+@pytest.mark.parametrize("shape", ["blocks", "text"])
+def test_a_too_large_answer_is_saved_from_the_file_claude_code_wrote(ws, tmp_path, monkeypatch, capsys, shape):
+    """Issue #84: Claude Code shows a notice naming the file it saved a too-large answer to. The collector
+    reads that file, saves the answer with the hook's tool input, and Claude sees the usual summary."""
+    _on(ws, capsys)
+    tool_input = {"about": "explainer", "limit": 15}
+    transcript, path = _big(tmp_path, "search_trends", SEARCH_PAGE)
+    event = _too_large(ws, "search_trends", tool_input, transcript, path)
+    if shape == "text":
+        event["tool_response"] = _notice(path)
+    out = json.loads(_spool(monkeypatch, capsys, event))
+    hook = out["hookSpecificOutput"]
+    shown = hook["updatedToolOutput"]
+    got = json.loads(shown[0]["text"] if shape == "blocks" else shown)
+    assert got["saved_to"] == f"{RUN_REL}/02_research/search/search_explainer.json"
+    assert (got["results"], got["total"], got["has_more"]) == (15, 40, True)
+    saved = json.loads((ws / got["saved_to"]).read_text(encoding="utf-8"))
+    assert saved["_tool"] == "search_trends" and saved["_input"] == tool_input and saved["answer"] == SEARCH_PAGE
+    assert not (ws / RUN_REL / trend_spool.FAILURES).exists()
+
+
+def test_a_too_large_answer_saved_as_content_blocks_is_read(ws, tmp_path, capsys):
+    """An older notice saves the content blocks as a JSON array ("Format: JSON array"): read the same."""
+    _on(ws, capsys)
+    blocks = [{"type": "text", "text": json.dumps(SEARCH_PAGE)}]
+    transcript, path = _big(tmp_path, "list_trends", blocks)
+    event = _too_large(ws, "list_trends", {"sort": "rising", "trend_type": "format_trend", "limit": 50},
+                       transcript, path)
+    got = _summary(trend_spool.handle(event, ws))
+    assert got["results"] == 15 and got["saved_to"].startswith(f"{RUN_REL}/02_research/lists/")
+
+
+def test_a_too_large_card_is_saved_and_claude_is_told_so(ws, tmp_path, capsys):
+    """An answer the collector never summarises (a card) is saved too; Claude is told it is saved, so it does
+    not ingest it by hand."""
+    _on(ws, capsys)
+    card = {"id": "t1", "kind": "hook_trend", "name": "Day _ of _", "examples": []}
+    transcript, path = _big(tmp_path, "get_trend", card)
+    out = trend_spool.handle(_too_large(ws, "get_trend", {"trend_id": "t1"}, transcript, path), ws)
+    note = out["hookSpecificOutput"]["additionalContext"]
+    assert "updatedToolOutput" not in out["hookSpecificOutput"]
+    assert note.startswith("This answer was saved to the run") and "02_research/trend_t1.json" in note
+    assert trends.answer_of(ws / RUN_REL / "02_research" / "trend_t1.json") == card
+
+
+def test_the_config_folder_is_found_without_a_transcript(ws, tmp_path, monkeypatch, capsys):
+    """Without a usable transcript_path, Claude's config folder (CLAUDE_CONFIG_DIR) holds the tool results."""
+    _on(ws, capsys)
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
+    transcript, path = _big(tmp_path, "search_trends", SEARCH_PAGE)
+    event = {**_too_large(ws, "search_trends", {"about": "ai"}, transcript, path), "transcript_path": "/t.jsonl"}
+    assert _summary(trend_spool.handle(event, ws))["results"] == 15
+
+
+def _refused(ws: Path, event: dict) -> str:
+    out = trend_spool.handle(event, ws)
+    note = out["hookSpecificOutput"]["additionalContext"]
+    assert "updatedToolOutput" not in out["hookSpecificOutput"]
+    assert note.startswith("This answer was not saved to the run (it is not JSON")
+    assert _saved(ws) == ["collect_failures.log"]
+    return note
+
+
+@pytest.mark.parametrize("where", ["other_session", "outside", "lookalike", "other_tool", "not_mcp", "symlink",
+                                   "missing", "relative"])
+def test_only_claude_codes_own_tool_results_are_read(ws, tmp_path, capsys, where):
+    """The notice is parsed strictly: only a file in this session's own tool-results folder, named for this
+    tool, is read. A path an answer could plant (elsewhere, another session's, a link out) falls back to
+    today's message: save it with tm trends ingest."""
+    _on(ws, capsys)
+    transcript, path = _big(tmp_path, "search_trends", SEARCH_PAGE)
+    if where == "other_session":
+        path = _big(tmp_path, "search_trends", SEARCH_PAGE, session="s2")[1]
+    elif where == "outside":
+        path = tmp_path / "planted.txt"
+        path.write_text(json.dumps(SEARCH_PAGE), encoding="utf-8")
+    elif where == "lookalike":    # the right names, in a folder that is not Claude Code's
+        fake = tmp_path / "ws" / "planted" / "s1" / "tool-results"
+        fake.mkdir(parents=True)
+        path = fake / path.name
+        path.write_text(json.dumps(SEARCH_PAGE), encoding="utf-8")
+    elif where == "other_tool":
+        path = _big(tmp_path, "get_usage", SEARCH_PAGE, name="mcp-trendsmesh-get_usage-1.txt")[1]
+    elif where == "not_mcp":
+        path = _big(tmp_path, "search_trends", SEARCH_PAGE, name="search_trends.txt")[1]
+    elif where == "symlink":
+        outside = tmp_path / "planted.txt"
+        outside.write_text(json.dumps(SEARCH_PAGE), encoding="utf-8")
+        path.unlink()
+        path.symlink_to(outside)
+    elif where == "missing":
+        path.unlink()
+    elif where == "relative":
+        path = Path("tool-results") / path.name
+    _refused(ws, _too_large(ws, "search_trends", {"about": "ai"}, transcript, path))
+
+
+def test_a_notice_inside_other_text_is_not_read(ws, tmp_path, capsys):
+    """The notice is the whole answer, from its first character: one quoted in a tool's own message is not."""
+    _on(ws, capsys)
+    transcript, path = _big(tmp_path, "search_trends", SEARCH_PAGE)
+    event = _too_large(ws, "search_trends", {"about": "ai"}, transcript, path)
+    event["tool_response"] = [{"type": "text", "text": "Tip: " + _notice(path)}]
+    _refused(ws, event)
+
+
+def test_a_saved_file_that_is_not_json_falls_back_to_ingest(ws, tmp_path, capsys):
+    _on(ws, capsys)
+    transcript, path = _big(tmp_path, "search_trends", "Rate limit reached.")
+    note = _refused(ws, _too_large(ws, "search_trends", {"about": "ai"}, transcript, path))
+    assert f"--file <the file the notice names>" in note
+
+
+def test_notice_parser():
+    """The notice's own words, with and without the line count; anything else is no notice."""
+    p = "/Users/u/.claude/projects/-ws/s1/tool-results/mcp-x-search_trends-1.txt"
+    assert trend_spool.too_large_path(_notice(Path(p))) == p
+    assert trend_spool.too_large_path(_notice(Path(p), chars=64_537, lines=None)) == p
+    assert trend_spool.too_large_path(_notice(Path(p), lines=2)) == p
+    assert trend_spool.too_large_path(f"Error: result (1 characters) exceeds maximum allowed tokens. Output has been "
+                                      f"saved to {p}.") == p
+    for text in ("Rate limit reached.", None, {"raw": "x"}, " " + _notice(Path(p)),
+                 "Error: result (many characters) exceeds maximum allowed tokens. Output has been saved to /x.txt.\n"):
+        assert trend_spool.too_large_path(text) is None

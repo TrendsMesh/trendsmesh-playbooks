@@ -89,6 +89,7 @@ proposals page's decisions and renamed `2026-11-07_exampleedu-m5`; its price fil
   ov_at_c2_published  the page v01 built, published as art_mock_3 and awaited; at the proposals check-in
   ov_at_c2_no_artifacts  the stack without artifacts tools; the page v01 built locally; run at C2
   ov_no_replicate  English pages, the stack without Replicate and artifacts tools; run at C1
+  ov_at_b2       English pages, the walkthrough's 17 searches saved (B1 done); run at B2 (the shortlist and its fit)
   ov_week_at_i2  a week run (Just the big calls, $5 a week): a made-up week plan with the plugin blocks, dated the
                  coming week, the reserve r2 priced $3.26, checked, its page built, published as art_mock_5 and
                  awaited; run at I2
@@ -1188,9 +1189,23 @@ def ov_b1(ws: Path, run: Path) -> None:
         trends.save_answer(folder, "search_trends", {"about": query, "limit": len(cards)}, cards, at=OV_AT)
 
 
+OV_FIT_CRITERIA = ("brand_fit", "persona_fit", "bridge", "lifecycle", "transfer", "sensitivity", "feasibility")
+
+
+def ov_shortlist(ws: Path, run: Path, *extra: str) -> dict:
+    return tm(ws, "trends", "shortlist", "--run", str(run), "--terms", OV_TERMS, "--anchor-terms", OV_ANCHORS,
+              "--sound-relevance", "--market-language", "pl", "--recent-days", "7", "--today", OV_CREATED, *extra)
+
+
 def ov_b2(ws: Path, run: Path) -> None:
-    tm(ws, "trends", "shortlist", "--run", str(run), "--terms", OV_TERMS, "--anchor-terms", OV_ANCHORS,
-       "--sound-relevance", "--market-language", "pl", "--recent-days", "7", "--today", OV_CREATED)
+    """The shortlist, its hooks and formats scored for the channel (issue #84), then the shortlist again with the
+    fit: every candidate a neutral 3, so the walkthrough's order stands."""
+    out = ov_shortlist(ws, run)
+    first = json.loads((run / out["json"]).read_text(encoding="utf-8"))
+    fit = {c["id"]: {**dict.fromkeys(OV_FIT_CRITERIA, 3), "why": "eval fixture: a neutral fit"}
+           for c in first["fit_candidates"]}
+    f = place(ws, run, "03_wip/trend_fit_v01.json", fit, "the shortlist's fit candidates (eval fixture: a neutral fit)")
+    ov_shortlist(ws, run, "--fit", str(f))
 
 
 def _search_card(tid: str) -> dict | None:
@@ -1623,6 +1638,9 @@ def ov_week_i2(ws: Path, run: Path) -> None:
 def ov_main(scn: str, ws: Path) -> tuple[Path | None, dict | None]:
     if scn == "ov_at_a1":
         return None, None
+    if scn == "ov_at_b2":
+        run = ov_run(ws, "every_step", ["proposals"], chat="en")
+        return run, ov_drive(ws, run, "B2")
     if scn == "ov_no_replicate":
         run = ov_run(ws, "every_step", ["proposals"], stack={"replicate": "missing", "artifacts": "missing"}, chat="en")
         return run, ov_drive(ws, run, "C1")

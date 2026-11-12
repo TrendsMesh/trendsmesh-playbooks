@@ -109,10 +109,14 @@ content (the evidence videos at D1: `tm research evidence` gives the top five pe
   creative brief run a Meta or page answer, and in an organic video run a page answer, goes where
   the collector keeps it; a page's database read goes to `03_wip/decisions/` in any run, also a
   Refresh an ad run, which has no collector).
-- **The answer was not JSON** (the hook says "it is not JSON"): Claude Code showed its notice that
-  the output was too large and saved it to a file, so nothing reached the run. Save that file whole:
-  `tm trends ingest … --file <the file the notice names>`, with the input as above. A tool's own
-  plain-text message (a limit, an outage) is not saved and needs nothing.
+- **An answer too large to show** is saved by the collector itself: Claude Code saves it to a file
+  and shows a notice naming that file, and the hook reads that file from this session's own
+  tool-results folder, saves the answer and gives you the usual summary (or "This answer was saved
+  to the run …" for a card). Nothing to do.
+- **The answer was not JSON** (the hook says "it is not JSON"): the notice's file could not be read
+  (moved, or not in this session's tool-results folder), so nothing reached the run. Save that file
+  whole: `tm trends ingest … --file <the file the notice names>`, with the input as above. A tool's
+  own plain-text message (a limit, an outage) is not saved and needs nothing.
 - **Nothing is said, and the whole answer came back** (the claude.ai connector, collection off,
   or a new session that did not turn it on again for itself): run `collect on` right before the
   next call; if answers still come back whole, use the fallback.

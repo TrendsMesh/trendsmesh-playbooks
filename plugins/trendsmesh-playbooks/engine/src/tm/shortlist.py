@@ -45,7 +45,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from tm import cli, i18n, manifest, trends
+from tm import cli, i18n, manifest, state, trends
+from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import ReadOnlyError, RunFolder
 
 # ---------------------------------------------------------------------------- weights (verbatim)
@@ -86,6 +87,7 @@ LICENCE_KEYS = ("license", "licence", "license_type", "licence_type", "music_lic
                 "ads_allowed", "usage", "usage_rights", "rights")
 
 STEM = "trend_shortlist"
+PULLED = "_videos_pulled"   # on a pool card whose video pages (get_trend_videos) are saved
 DEFAULT_INPUTS = ("search/*.json", "lists/*.json", "trend_*.json", "videos/*.json")   # under 02_research
 
 
@@ -239,6 +241,7 @@ def load_pool(paths: list[Path], skipped: list[Path] | None = None) -> tuple[dic
         if target is not None:
             target.setdefault("examples", [])
             target["examples"] = list(target["examples"]) + vids
+            target[PULLED] = True             # its evidence videos are pulled (get_trend_videos)
     for t in pool.values():  # de-duplicate examples by asset id / url
         seen, uniq = set(), []
         for e in t.get("examples") or []:
@@ -461,8 +464,8 @@ def score_all(trends: dict, found_by: dict, terms: list[str], exclude: list[str]
     """The original's score_all: `hooks`, `topics`, `formats`, `sounds` (ranked records), `dropped`
     (counts) and `pool` (`pool_size`, `term_doc_freq`, `term_idf`).
 
-    The plugin's `anchors` (organic video) drop topics and formats without a niche anchor
-    (`anchor_filter`) before the weak fill, so `min_topics` still holds with anchored weak fits; the
+    The plugin's `anchors` (organic video) drop topics without a niche anchor (`anchor_filter`)
+    before the weak fill, so `min_topics` still holds with anchored weak fits; the
     rows dropped are in `anchor_dropped`. Without anchors this is the original's, unchanged."""
     regexes = {t: term_regex(t) for t in terms}
     exclude_rx = {t: term_regex(t) for t in exclude}
@@ -544,9 +547,7 @@ def score_all(trends: dict, found_by: dict, terms: list[str], exclude: list[str]
     sounds.sort(key=tie)
     anchor_dropped: list[dict] = []
     if anchors:
-        topics, anchor_dropped = anchor_filter(topics, trends, anchors)
-        formats, dropped_formats = anchor_filter(formats, trends, anchors)
-        anchor_dropped += dropped_formats
+        topics, anchor_dropped = anchor_filter(topics, trends, anchors)   # formats are ranked by fit (issue #84)
         weak = anchor_filter(weak, trends, anchors)[0]
     if len(topics) < min_topics:
         weak.sort(key=lambda r: -r["components"]["signals"])
@@ -563,14 +564,16 @@ def score_all(trends: dict, found_by: dict, terms: list[str], exclude: list[str]
 
 # ---------------------------------------------------------------------------- the plugin's filters (PB03)
 #
-# Organic video (ANALYSIS.md lessons 1 and 2, PLAYBOOK.md B1): a topic or format must carry a niche
-# anchor, sounds are ranked by how much their description and evidence name the niche, and a weekly
+# Organic video (ANALYSIS.md lessons 1 and 2, PLAYBOOK.md B1): a topic must carry a niche anchor (the
+# channel's subjects), hooks and formats are ranked by the agent's fit for the channel (issue #84), sounds are ranked by how much their description and evidence name the niche, and a weekly
 # run marks rows whose newest evidence is older than its window. None of it runs without its flag, so
 # PB04's and PB02's shortlists stay the original's.
 
 ANCHOR_DROP = "no niche anchor next to the activity term"
 WEAK_SOUND = "weak fit (no niche relevance)"
-ANCHOR_EXEMPT = ("hook_trend", "sound_trend")  # hooks are subject-agnostic (OV2); sounds get a relevance score
+# Hooks and formats say how a video opens and is told, not what it is about, so niche words are almost never
+# in them (issue #84): they get the agent's fit score instead (`apply_fit`). Sounds get a relevance score.
+ANCHOR_EXEMPT = ("hook_trend", "format_trend", "sound_trend")
 
 
 def anchor_regex(term: str) -> re.Pattern:
@@ -587,9 +590,9 @@ def _evidence_texts(videos: list) -> list[str]:
 
 
 def anchor_filter(rows: list[dict], cards: dict, anchors: list[str]) -> tuple[list[dict], list[dict]]:
-    """(the rows kept, the rows dropped). A topic or format row is kept only when an anchor term is in its
-    name, `what_it_is`, or a saved evidence text (`hook_text`, `excerpt` of its card's examples in
-    `cards`, by id). Hooks and sounds are exempt. A dropped row is a copy whose `reason` says why."""
+    """(the rows kept, the rows dropped). A topic row is kept only when an anchor term is in its name,
+    `what_it_is`, or a saved evidence text (`hook_text`, `excerpt` of its card's examples in `cards`, by
+    id). Hooks, formats and sounds are exempt. A dropped row is a copy whose `reason` says why."""
     if not anchors:
         return list(rows), []
     regexes = [anchor_regex(a) for a in anchors]
@@ -641,10 +644,110 @@ def apply_filters(scored: dict, pool: dict, terms: list[str], *, anchors: list[s
     if recent_days is not None:
         for key in ("hooks", "topics", "formats", "sounds"):
             for r in scored[key]:
-                newest = newest_evidence(pool.get(r["id"]) or {})
+                card = pool.get(r["id"]) or {}
+                newest = newest_evidence(card)
+                pulled = bool(card.get(PULLED))      # before B3 pulls them, a trend's age is not known (issue #84)
                 r.setdefault("plugin", {}).update(
-                    stale=newest is None or (today - newest).days > recent_days,
-                    newest_evidence=newest.isoformat() if newest else None)
+                    stale=(newest is None or (today - newest).days > recent_days) if pulled else None,
+                    newest_evidence=newest.isoformat() if newest else None, videos_pulled=pulled)
+
+
+# ---------------------------------------------------------------------------- fit for the channel (issue #84)
+#
+# Trend research's hook fit (issue #8, `research_growth.hook_fit`), for organic video's hooks and formats: the
+# agent scores every hook and format in the pool from its card on Creative brief's seven CB3 criteria, 1-5, for
+# this channel (can it carry what the channel films, and how it tells it, from the profile), with one line on
+# why: `{"<trend id>": {"brand_fit": 4, ..., "why": "..."}}`. The fit is their equal-weight mean
+# (`brief_research.totals`). Hooks and formats are ranked by it, a fit under MIN_FIT last, marked weak.
+
+MIN_FIT = 3.0             # Trend research's `hooks.min_fit`: neutral; below it a trend is a weak fit for the channel
+FIT_KINDS = ("hook_trend", "format_trend")
+WEAK_FIT = "weak fit for this channel"
+FIT_NOT_SCORED = "fit not scored yet"
+
+
+def _cb3() -> tuple[tuple[str, ...], dict]:
+    """Creative brief's CB3 criteria and their equal default weights (imported here: brief_research imports
+    this module)."""
+    from tm import brief_config
+    return brief_config.CRITERIA, dict(brief_config.DEFAULTS["scoring"]["weights"])
+
+
+def fit_candidates(pool: dict) -> list[dict]:
+    """Every hook and format of the pool the agent scores (a contradicted one is never ranked):
+    `{id, label, name, what_it_is, example}`, the example its first evidence hook text."""
+    out = []
+    for tid, t in pool.items():
+        if t.get("kind") not in FIT_KINDS or t.get("status") == "contradicted":
+            continue
+        ex = next((e.get("hook_text") or e.get("excerpt") for e in t.get("examples") or []
+                   if isinstance(e, dict) and (e.get("hook_text") or e.get("excerpt"))), None)
+        out.append({"id": tid, "label": "hook" if t["kind"] == "hook_trend" else "format", "name": t.get("name"),
+                    "what_it_is": t.get("what_it_is"), "example": ex})
+    return out
+
+
+def check_fit(data: object, pool: dict) -> list[str]:
+    """What is wrong with the agent's fit scores for this pool; empty when every hook and format is scored."""
+    from tm import brief_research
+    criteria, _ = _cb3()
+    wanted = {c["id"]: c for c in fit_candidates(pool)}
+    if not isinstance(data, dict):
+        return ["the fit scores must be one table {\"<trend id>\": {criterion: 1-5, \"why\": \"...\"}}"]
+    out = []
+    for tid, row in data.items():
+        if tid not in wanted:
+            out.append(f"{tid} is not a hook or format of this shortlist's pool")
+            continue
+        scores = {k: v for k, v in row.items() if k != "why"} if isinstance(row, dict) else row
+        wrong = brief_research.score_problems(scores)
+        if isinstance(row, dict) and not (isinstance(row.get("why"), str) and row["why"].strip()):
+            wrong.append("why is not one line on why it fits or not")
+        if wrong:
+            out.append(f"{tid} ({wanted[tid]['name']!r}): its scores {'; '.join(wrong)}")
+    missing = [c for tid, c in wanted.items() if tid not in data]
+    if missing:
+        shown = ", ".join(f"{c['name']!r} ({c['id']})" for c in missing[:10])
+        more = f" and {len(missing) - 10} more" if len(missing) > 10 else ""
+        out.append(f"{len(missing)} hooks and formats are not scored: {shown}{more} (score each one, 1-5 on "
+                   f"{', '.join(criteria)}; a trend that fits badly scores low, it is never left out)")
+    return out
+
+
+def apply_fit(scored: dict, fit: dict | None) -> None:
+    """Rank the hooks and formats by their fit for the channel (`fit`, checked by `check_fit`), then by the
+    original's score; a fit under MIN_FIT last, flagged WEAK_FIT. Each row's `plugin.fit` is `{score, why}`
+    and its reason starts with them. Without `fit`, the rows say FIT_NOT_SCORED and keep their order."""
+    from tm import brief_research
+    criteria, weights = _cb3()
+    totals = brief_research.totals({tid: {c: row[c] for c in criteria} for tid, row in fit.items()},
+                                   weights) if fit else {}
+    for key in ("hooks", "formats"):
+        for r in scored[key]:
+            if not fit:
+                r.setdefault("plugin", {})["fit"] = None
+                r["reason"] = f"{FIT_NOT_SCORED}; {hook_reason(r)}"
+                continue
+            score = totals[r["id"]]
+            r.setdefault("plugin", {})["fit"] = {"score": score, "why": fit[r["id"]]["why"].strip()}
+            if score < MIN_FIT:
+                r["flags"].append(WEAK_FIT)
+            r["reason"] = f"fit {score:.1f}/5: {fit[r['id']]['why'].strip()}; {hook_reason(r)}"
+        if fit:
+            scored[key].sort(key=lambda r: (r["plugin"]["fit"]["score"] < MIN_FIT, -r["plugin"]["fit"]["score"],
+                                            -r["score"], -(r["creators"] or 0), -(r["views"] or 0)))
+
+
+AD_LICENCE_FLAGS = ("organic only: in ads use a licensed equivalent (CB9)", "licence unknown: treat as organic only (CB9)")
+
+
+def organic_words(scored: dict) -> None:
+    """An organic video's sounds are added in the app when the video is posted, so the ads' licence flags
+    (Creative brief's CB9) are not theirs; the licence stays in its column."""
+    for r in scored["sounds"]:
+        if any(f in AD_LICENCE_FLAGS for f in r["flags"]):
+            r["flags"] = [f for f in r["flags"] if f not in AD_LICENCE_FLAGS]
+            r["reason"] = hook_reason(r)
 
 
 def filters_md(payload: dict, dropped: list[dict], *, anchors: list[str], sound_terms: list[str] | None,
@@ -656,11 +759,15 @@ def filters_md(payload: dict, dropped: list[dict], *, anchors: list[str], sound_
             f"`{r['short_id']}` {md_escape(r['name'])} ({r['label']})" for r in dropped) or "none") + ".")
     if sound_terms is not None:
         lines.append(f"Sounds ranked by their niche relevance to: {', '.join(sound_terms)}.")
-    stale = [r for key in ("hooks", "topics", "formats", "sounds") for r in payload[key]
-             if (r.get("plugin") or {}).get("stale")]
+    rows = [r for key in ("hooks", "topics", "formats", "sounds") for r in payload[key]]
+    stale = [r for r in rows if (r.get("plugin") or {}).get("stale")]
+    waiting = [r for r in rows if (r.get("plugin") or {}).get("videos_pulled") is False]
     if recent_days is not None:
         lines.append(f"No evidence in the last {recent_days} days: " + ("; ".join(
             f"`{r['short_id']}` {md_escape(r['name'])}" for r in stale) or "none") + ".")
+        if waiting:
+            lines.append(i18n.t("trends.shortlist.not_pulled") + ": " + "; ".join(
+                f"`{r['short_id']}` {md_escape(r['name'])}" for r in waiting) + ".")
     return "\n".join(lines) + "\n"
 
 
@@ -670,7 +777,17 @@ def md_escape(s) -> str:
     return str(s if s is not None else "").replace("|", "\\|").replace("\n", " ")
 
 
-def render_md(hooks, topics, meta, hooks_rest=(), formats=(), sounds=()) -> str:
+FORMATS_NOTE = ("A format is used only if the ad can be made honestly (no invented posts or testimonials).")
+SOUNDS_NOTE = ("Only `commercial` sounds may go into ads; `organic` or `unknown` ones get a licensed equivalent in "
+               "the ad brief (CB9).")
+HOOKS_RANKED = ("ranked by usability (status, momentum, creators, view lift, recency, language, sensitivity) with a "
+                "small term-fit bonus.")
+
+
+def render_md(hooks, topics, meta, hooks_rest=(), formats=(), sounds=(), notes: dict | None = None) -> str:
+    """The original's page; `notes` (organic video) replaces its `hooks`, `formats` and `sounds` intros' last
+    sentence, which are Creative brief's ad words."""
+    notes = {"hooks": HOOKS_RANKED, "formats": FORMATS_NOTE, "sounds": SOUNDS_NOTE, **(notes or {})}
     lines = [f"# Trend shortlist ({meta['today']})", "",
              f"Generated by `tm trends shortlist`. Market language: `{meta['market_language']}`. "
              f"Terms: {', '.join(meta['terms'])}.",
@@ -678,8 +795,7 @@ def render_md(hooks, topics, meta, hooks_rest=(), formats=(), sounds=()) -> str:
              f"({meta['hooks_scored']} hooks scored, {meta['topics_kept']} topics kept; dropped: "
              + ", ".join(f"{k} {v}" for k, v in meta["dropped"].items()) + ").", "",
              "## Best-fitting hooks", "",
-             "Hooks (`hook_trend`) are opening structures usable for any subject; ranked by usability "
-             "(status, momentum, creators, view lift, recency, language, sensitivity) with a small term-fit bonus.", "",
+             f"Hooks (`hook_trend`) are opening structures usable for any subject; {notes['hooks']}", "",
              "| # | Hook | Score | Status | Creators | Views | Lift | Last seen | Lang | Example | Reason |",
              "|---|---|---|---|---|---|---|---|---|---|---|"]
     for i, r in enumerate(hooks, 1):
@@ -721,15 +837,15 @@ def render_md(hooks, topics, meta, hooks_rest=(), formats=(), sounds=()) -> str:
                        + (f" {r.get('licence', 'unknown')} |" if licence else "") + f" {exs} | {md_escape(r['reason'])} |")
         return out
     lines += struct_table("Best-fitting formats", "Formats (`format_trend`): how a video is told (e.g. a story over clips, before and after); scored like hooks. "
-                          "A format is used only if the ad can be made honestly (no invented posts or testimonials).", formats)
-    lines += struct_table("Best-fitting sounds", "Sounds (`sound_trend`): scored like hooks, with the licence from the trend data. Only `commercial` "
-                          "sounds may go into ads; `organic` or `unknown` ones get a licensed equivalent in the ad brief (CB9).", sounds, licence=True)
+                          + notes["formats"], formats)
+    lines += struct_table("Best-fitting sounds", "Sounds (`sound_trend`): scored like hooks, with the licence from the trend data. "
+                          + notes["sounds"], sounds, licence=True)
     lines += ["", "Scores are 0-100; every component is in the JSON output. Flags: a hook with evidence only in "
               "another language is a hypothesis for this market (CB2 transferability).", ""]
     return "\n".join(lines)
 
 
-def build(scored: dict, meta: dict, top: int) -> tuple[dict, str]:
+def build(scored: dict, meta: dict, top: int, notes: dict | None = None) -> tuple[dict, str]:
     """The JSON payload and the Markdown page, cut to `top` per list (the original's main)."""
     hooks, topics, formats, sounds = scored["hooks"], scored["topics"], scored["formats"], scored["sounds"]
     hooks_top, topics_top, formats_top, sounds_top = hooks[:top], topics[:top], formats[:top], sounds[:top]
@@ -743,30 +859,47 @@ def build(scored: dict, meta: dict, top: int) -> tuple[dict, str]:
     payload = {"meta": meta, "hooks": hooks_top, "topics": topics_top, "formats": formats_top, "sounds": sounds_top,
                "hooks_beyond_top": rest(hooks[top:], top + 1),
                "topics_beyond_top": rest(topics[top:], top + 1)}
-    return payload, render_md(hooks_top, topics_top, meta, hooks[top:], formats_top, sounds_top)
+    return payload, render_md(hooks_top, topics_top, meta, hooks[top:], formats_top, sounds_top, notes)
 
 
 def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list[str] = (), market: str = "en",
               today: date | None = None, top: int = 10, min_topics: int = 3,
               sounds_commercial_only: bool = False, anchors: list[str] = (), sound_fit: bool = False,
-              recent_days: int | None = None) -> dict:
+              recent_days: int | None = None, organic: bool = False, fit: dict | None = None,
+              fit_file: str | None = None) -> dict:
     """Score `inputs` and write 03_wip/trend_shortlist_vNN.json and .md (the same NN, never over an
     earlier one). Returns the counts, the two files (run-relative) and the files skipped.
 
     The plugin's filters (`score_all`'s anchors, `apply_filters`): `anchors` (niche anchor terms), `sound_fit` (sounds ranked
     by relevance to the anchors, else the terms) and `recent_days`. With none of them, the output is
-    the original's."""
+    the original's.
+
+    `organic` (an organic video run, issue #84): hooks and formats are ranked by the agent's `fit` for the
+    channel (`apply_fit`; `fit_file` names it), every hook and format to score is in the payload's
+    `fit_candidates`, and the page speaks of organic videos, not ads. ValueError for fit scores that do not
+    hold (`check_fit`), before anything is written."""
     today = today or date.today()
     market = market.lower()
     anchors = list(anchors)
-    filtered = bool(anchors or sound_fit or recent_days is not None)
+    filtered = bool(anchors or sound_fit or recent_days is not None or organic)
     skipped: list[Path] = []
     pool, found_by = load_pool(inputs, skipped)
+    if organic and fit is not None:
+        wrong = check_fit(fit, pool)
+        if wrong:
+            raise ValueError(f"The fit scores{f' in {fit_file}' if fit_file else ''} do not hold: " + "; ".join(wrong)
+                             + ". Fix them in a new version, then run the shortlist again; nothing was written.")
     scored = score_all(pool, found_by, terms, list(exclude), market, today, trends.DEFAULT_NOISE, min_topics,
                        sounds_commercial_only, anchors)
     dropped = scored.get("anchor_dropped", [])
     if filtered:
         apply_filters(scored, pool, terms, anchors=anchors, sound_fit=sound_fit, recent_days=recent_days, today=today)
+    notes = None
+    if organic:
+        organic_words(scored)
+        apply_fit(scored, fit)
+        notes = {"formats": i18n.t("trends.shortlist.formats_note"), "sounds": i18n.t("trends.shortlist.sounds_note"),
+                 **({"hooks": i18n.t("trends.shortlist.hooks_by_fit")} if fit else {})}
     meta = {"today": today.isoformat(), "market_language": market, "terms": terms,
             "exclude_terms": list(exclude), "inputs": [_shown(run, f) for f in dict.fromkeys(inputs)],
             "pool_size": scored["pool"]["pool_size"], "term_doc_freq": scored["pool"]["term_doc_freq"],
@@ -780,7 +913,11 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
                                       "proper_name": PENALTY_PROPER_NAME, "spike": PENALTY_SPIKE}}}
     if filtered:
         meta["plugin"] = {"anchor_terms": anchors, "sound_relevance": sound_fit, "recent_days": recent_days}
-    payload, md = build(scored, meta, top)
+    if organic:
+        meta["plugin"].update(fit_file=fit_file if fit else None, min_fit=MIN_FIT)
+    payload, md = build(scored, meta, top, notes)
+    if organic:
+        payload["fit_candidates"] = fit_candidates(pool)
     if anchors:
         payload["anchor_dropped"] = [{"id": r["id"], "name": r["name"], "label": r["label"], "reason": r["reason"]}
                                      for r in dropped]
@@ -801,7 +938,8 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
             "hooks": len(scored["hooks"]), "topics": len(scored["topics"]), "formats": len(scored["formats"]),
             "sounds": len(scored["sounds"]), "dropped": scored["dropped"],
             "skipped": [_shown(run, f) for f in skipped],
-            **({"anchor_dropped": len(dropped)} if anchors else {})}
+            **({"anchor_dropped": len(dropped)} if anchors else {}),
+            **({"fit_scored": bool(fit), "fit_candidates": len(payload["fit_candidates"])} if organic else {})}
 
 
 def _shown(run: RunFolder, path: Path) -> str:
@@ -847,6 +985,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
                    help="rank sounds by their niche relevance (the anchor terms, else the terms)")
     p.add_argument("--recent-days", type=int,
                    help="mark rows whose newest saved evidence is older than this many days")
+    p.add_argument("--fit", help="organic video: the agent's fit scores of the hooks and formats for the channel, "
+                                 "03_wip/trend_fit_vNN.json (from here first, else in the run)")
     p.add_argument("--json", action="store_true")
 
 
@@ -873,14 +1013,27 @@ def run_shortlist(args: argparse.Namespace) -> int:
                              "TrendsMesh with collection on (or give --inputs), then run the shortlist again; the "
                              "run continues from the same place.")
         market = (args.market_language or i18n.primary(i18n.run_languages(run).market)).lower()
+        organic = state.load(run).playbook == ORGANIC_VIDEO
+        fit, fit_file = None, None
+        if args.fit:
+            if not organic:
+                raise ValueError("--fit is for an organic video run (the hooks and formats ranked by fit for a "
+                                 "channel); Trend research ranks its hooks with tm research hook-fit.")
+            path = run.given(args.fit)
+            fit, fit_file = json.loads(path.read_text(encoding="utf-8")), _shown(run, path)
         out = write(run, inputs, terms, exclude=_terms(args.exclude_terms), market=market,
                         today=today, top=args.top, min_topics=args.min_topics,
                         sounds_commercial_only=args.sounds_commercial_only, anchors=_terms(args.anchor_terms),
-                        sound_fit=args.sound_relevance, recent_days=args.recent_days)
+                        sound_fit=args.sound_relevance, recent_days=args.recent_days, organic=organic,
+                        fit=fit, fit_file=fit_file)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return cli.fail(args, str(exc))
     skipped = f" Skipped (not readable JSON): {', '.join(out['skipped'])}." if out["skipped"] else ""
-    cli.emit(args, {"status": "done", **out},
+    fit = ""
+    if "fit_scored" in out and not out["fit_scored"] and out["fit_candidates"]:
+        fit = (f" The {out['fit_candidates']} hooks and formats are not scored for the channel yet: score each one "
+               f"(fit_candidates in {out['json']}) in 03_wip/trend_fit_v01.json, then run this again with --fit.")
+    cli.emit(args, {"status": "done", **out, **({"todo": fit.strip()} if fit else {})},
              f"Wrote {out['json']} and {out['md']}: {out['pool_size']} trends, {out['hooks']} hooks, "
-             f"{out['topics']} topics, {out['formats']} formats, {out['sounds']} sounds.{skipped}")
+             f"{out['topics']} topics, {out['formats']} formats, {out['sounds']} sounds.{skipped}{fit}")
     return 0

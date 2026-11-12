@@ -5,8 +5,10 @@
 # organic video run (`tm trends collect on` wrote <workspace>/.trendsmesh/collect/<session_id>.json,
 # one marker per Claude Code session), it hands the event to `tm trends spool`,
 # which saves the answer into the run and prints the summary Claude sees instead of a search, a list
-# or a video page. hooks.json's matcher picks the tools; this script has no filter of its own. It
-# always exits 0.
+# or a video page. An answer too large for Claude Code to show arrives as its notice naming the file it
+# saved the answer to: tm reads that file from the session's own tool-results folder (issue #84), so
+# the event passes as it is. hooks.json's matcher picks the tools; this script has no filter of its own.
+# It always exits 0.
 #
 # The workspace comes from the event's `cwd` on stdin (paths.json knows the plugin, not the
 # workspace): that folder, or the nearest one above it holding the marker, as Claude may have gone

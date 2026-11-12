@@ -12,7 +12,7 @@ import exampleedu
 from tm import (brand, brief_config, brief_research, library, manifest, organic_research, runcmd, seeds, shortlist, state,
                 stepchecks, trends)
 from tm.cli import main
-from tm.playbooks import ORGANIC_VIDEO
+from tm.playbooks import CREATIVE_BRIEF, ORGANIC_VIDEO, TREND_RESEARCH
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -88,7 +88,8 @@ def _topic(tid, name, what, creators=10):
 
 def test_anchors_drop_through_write_before_the_weak_fill(ws, capsys):
     """The anchors run before --min-topics' weak fill: the minimum holds with a weak topic that carries an
-    anchor, and one without is never offered. The dropped rows are in the JSON, the page and the manifest."""
+    anchor, and one without is never offered. The dropped rows are in the JSON, the page and the manifest.
+    A format is never dropped by the anchors (issue #84): it is ranked by its fit for the channel."""
     run = _organic_run(ws)
     cards = [_topic("t-dog", "Dog grooming at home", "Brushing a dog"),
              _topic("t-hair", "Curly hair grooming routine", "Styling curls"),
@@ -102,18 +103,16 @@ def test_anchors_drop_through_write_before_the_weak_fill(ws, capsys):
 
     code, out = _cli(capsys, "trends", "shortlist", "--run", str(run.path), "--terms", "grooming", "--today",
                      TODAY.isoformat(), "--min-topics", "2", "--anchor-terms", "dog,puppy")
-    assert code == 0 and out["anchor_dropped"] == 2, out
+    assert code == 0 and out["anchor_dropped"] == 1, out
     data = json.loads((run.path / out["json"]).read_text(encoding="utf-8"))
     assert [r["id"] for r in data["topics"]] == ["t-dog", "w-pup"]          # the minimum, with an anchored weak fit
     assert "weak fit (no term match)" in data["topics"][1]["flags"]
-    assert data["formats"] == []
+    assert [r["id"] for r in data["formats"]] == ["f-bath"]
     assert data["anchor_dropped"] == [
-        {"id": "t-hair", "name": "Curly hair grooming routine", "label": "topic", "reason": ANCHOR_DROP},
-        {"id": "f-bath", "name": "Before and after bath", "label": "format", "reason": ANCHOR_DROP}]
+        {"id": "t-hair", "name": "Curly hair grooming routine", "label": "topic", "reason": ANCHOR_DROP}]
     assert data["meta"]["topics_kept"] == 2
     md = (run.path / out["md"]).read_text(encoding="utf-8")
-    assert (f"Niche anchors: dog, puppy. Dropped ({ANCHOR_DROP}): `t-hair` Curly hair grooming routine (topic); "
-            "`f-bath` Before and after bath (format).") in md
+    assert f"Niche anchors: dog, puppy. Dropped ({ANCHOR_DROP}): `t-hair` Curly hair grooming routine (topic)." in md
     row = next(r for r in manifest.rows(run) if r["file"] == out["json"])
     params = json.loads(row["params"])
     assert (params["anchor_terms"], params["sound_relevance"], params["recent_days"]) == (["dog", "puppy"], False, None)
@@ -203,13 +202,150 @@ def test_stale_rows_marked_by_recent_days(ws, capsys):
                      TODAY.isoformat(), "--recent-days", "7")
     assert code == 0, out
     data = json.loads((run.path / out["json"]).read_text(encoding="utf-8"))
-    marks = {r["id"]: r["plugin"] for r in data["hooks"]}
-    assert marks == {"h-new": {"stale": False, "newest_evidence": "2026-11-04"},
-                     "h-old": {"stale": True, "newest_evidence": "2026-10-20"},
-                     "h-none": {"stale": True, "newest_evidence": None}}
-    assert data["meta"]["plugin"] == {"anchor_terms": [], "sound_relevance": False, "recent_days": 7}
+    marks = {r["id"]: {k: v for k, v in r["plugin"].items() if k != "fit"} for r in data["hooks"]}
+    # Issue #84: only a trend whose videos are pulled (B3) can be old; before, its evidence is not pulled yet.
+    assert marks == {"h-new": {"stale": False, "newest_evidence": "2026-11-04", "videos_pulled": True},
+                     "h-old": {"stale": None, "newest_evidence": "2026-10-20", "videos_pulled": False},
+                     "h-none": {"stale": None, "newest_evidence": None, "videos_pulled": False}}
+    assert data["meta"]["plugin"] == {"anchor_terms": [], "sound_relevance": False, "recent_days": 7,
+                                      "fit_file": None, "min_fit": 3.0}
+    md = (run.path / out["md"]).read_text(encoding="utf-8")
+    assert "No evidence in the last 7 days: none." in md
+    assert "Evidence videos not pulled yet (B3 pulls them): `h-old` Nobody: _; `h-none` Wait for it." in md
+    trends.save_answer(run, "get_trend_videos", {"trend_id": "h-old"},
+                       {"data": [_video("2026-10-21T08:00:00Z", asset_id="v-old")], "page": 1, "has_more": False})
+    trends.save_answer(run, "get_trend_videos", {"trend_id": "h-none"}, {"data": [], "page": 1, "has_more": False})
+    code, out = _cli(capsys, "trends", "shortlist", "--run", str(run.path), "--terms", "pov", "--today",
+                     TODAY.isoformat(), "--recent-days", "7")
+    md = (run.path / out["md"]).read_text(encoding="utf-8")
+    assert "No evidence in the last 7 days: `h-old` Nobody: _; `h-none` Wait for it." in md
+    assert "not pulled yet" not in md
     assert _cli(capsys, "trends", "shortlist", "--run", str(run.path), "--terms", "pov",
                 "--recent-days", "0")[0] == 1
+
+
+# --- issue #84: hooks and formats ranked by fit, an organic video's words -----------------------------------
+
+CB3 = ("brand_fit", "persona_fit", "bridge", "lifecycle", "transfer", "sensitivity", "feasibility")
+
+
+def _fit(score: int, why: str, **over) -> dict:
+    return {**dict.fromkeys(CB3, score), **over, "why": why}
+
+
+def _explainer_pool(run) -> None:
+    """An explainer channel's pool: formats whose words never name the niche, hooks, a topic, a sound."""
+    base = {"status": "confirmed", "momentum": "rising", "reach": {"creators": 12, "views": 90000}}
+    cards = [{**base, "id": "f-talk", "kind": "format_trend", "name": "Selfie Talking-Head Explainer",
+              "what_it_is": "One person explains to the camera"},
+             {**base, "id": "f-dance", "kind": "format_trend", "name": "Couple dance challenge",
+              "what_it_is": "Two people dance in sync", "reach": {"creators": 40, "views": 900000}},
+             {**base, "id": "h-day", "kind": "hook_trend", "name": "day _ of _", "what_it_is": "A counted series"},
+             {**base, "id": "h-be", "kind": "hook_trend", "name": "_ be like", "what_it_is": "A skit opener",
+              "reach": {"creators": 30, "views": 500000}},
+             {**base, "id": "t-ai", "kind": "topic_trend", "name": "New AI tools this week",
+              "what_it_is": "News about AI tools"},
+             {**base, "id": "s-1", "kind": "sound_trend", "name": "Lo-fi beat", "what_it_is": "A calm beat"}]
+    trends.save_answer(run, "search_trends", {"about": "ai"}, {"data": cards})
+
+
+def _ov_shortlist(capsys, run, *extra):
+    code, out = _cli(capsys, "trends", "shortlist", "--run", str(run.path), "--terms", "ai,tools", "--anchor-terms",
+                     "ai,tools,tech", "--sound-relevance", "--today", TODAY.isoformat(), "--recent-days", "7", *extra)
+    return code, out
+
+
+def test_hooks_and_formats_are_ranked_by_the_channels_fit(ws, capsys):
+    """Issue #84: no word filter drops a format; the agent's fit for the channel (Creative brief's CB3
+    criteria, as Trend research scores its hooks) ranks hooks and formats, shown with one line on why."""
+    run = _organic_run(ws, "explainer")
+    _explainer_pool(run)
+    code, out = _ov_shortlist(capsys, run)
+    assert code == 0 and out["fit_scored"] is False and out["fit_candidates"] == 4, out
+    assert "not scored for the channel yet" in out["todo"] and "--fit" in out["todo"]
+    first = json.loads((run.path / out["json"]).read_text(encoding="utf-8"))
+    assert {c["id"] for c in first["fit_candidates"]} == {"f-talk", "f-dance", "h-day", "h-be"}
+    assert [r["id"] for r in first["formats"]] == ["f-dance", "f-talk"]          # by usability, before the fit
+    assert first["formats"][0]["reason"].startswith("fit not scored yet; ")
+
+    fit = {"f-talk": _fit(5, "the channel explains to camera every day"),
+           "f-dance": _fit(1, "a dance has nothing to explain", feasibility=2),
+           "h-day": _fit(4, "a counted series of explainers"),
+           "h-be": _fit(2, "a skit opener, not how the channel talks")}
+    (run.path / "03_wip" / "trend_fit_v01.json").write_text(json.dumps(fit), encoding="utf-8")
+    code, out = _ov_shortlist(capsys, run, "--fit", "03_wip/trend_fit_v01.json")
+    assert code == 0 and out["fit_scored"] is True, out
+    data = json.loads((run.path / out["json"]).read_text(encoding="utf-8"))
+    assert [r["id"] for r in data["formats"]] == ["f-talk", "f-dance"]
+    assert [r["id"] for r in data["hooks"]] == ["h-day", "h-be"]
+    talk, dance = data["formats"]
+    assert talk["plugin"]["fit"] == {"score": 5.0, "why": "the channel explains to camera every day"}
+    assert talk["reason"].startswith("fit 5.0/5: the channel explains to camera every day; ")
+    assert dance["plugin"]["fit"]["score"] == 1.14 and "weak fit for this channel" in dance["flags"]
+    assert data["meta"]["plugin"]["fit_file"] == "03_wip/trend_fit_v01.json"
+    assert [r["id"] for r in data["topics"]] == ["t-ai"]
+    md = (run.path / out["md"]).read_text(encoding="utf-8")
+    assert "fit 5.0/5: the channel explains to camera every day" in md
+    assert "ranked by their fit for this channel" in md
+
+
+def test_b2_waits_for_the_fit_scores(ws, capsys):
+    """B2's check: a shortlist that lists hooks or formats to score is done once they are scored (--fit); one
+    written before issue #84 (no fit_candidates) is not asked for them."""
+    run = _organic_run(ws, "explainer")
+    _explainer_pool(run)
+    out = _ov_shortlist(capsys, run)[1]
+    assert "scored for the channel" in organic_research.shortlist_gap(run)
+    path = run.path / out["json"]
+    old = json.loads(path.read_text(encoding="utf-8"))
+    path.write_text(json.dumps({k: v for k, v in old.items() if k != "fit_candidates"}), encoding="utf-8")
+    assert organic_research.shortlist_gap(run) is None
+    fit = {c["id"]: _fit(3, "fits") for c in old["fit_candidates"]}
+    (run.path / "03_wip" / "trend_fit_v01.json").write_text(json.dumps(fit), encoding="utf-8")
+    assert _ov_shortlist(capsys, run, "--fit", "03_wip/trend_fit_v01.json")[0] == 0
+    assert organic_research.shortlist_gap(run) is None
+
+
+def test_fit_scores_that_do_not_hold_are_refused(ws, capsys):
+    run = _organic_run(ws, "explainer")
+    _explainer_pool(run)
+    bad = {"f-talk": _fit(6, "x"), "h-day": {**_fit(4, ""), "why": " "}, "t-ai": _fit(3, "a topic")}
+    (run.path / "03_wip" / "trend_fit_v01.json").write_text(json.dumps(bad), encoding="utf-8")
+    code, out = _ov_shortlist(capsys, run, "--fit", "03_wip/trend_fit_v01.json")
+    assert code == 1
+    said = out["message"]
+    assert "brand_fit 6 is outside 1-5" in said and "why is not one line" in said
+    assert "t-ai is not a hook or format" in said and "2 hooks and formats are not scored" in said
+    assert not list((run.path / "03_wip").glob("trend_shortlist_*"))
+
+
+def test_fit_is_for_organic_video_only(tmp_path, capsys, monkeypatch):
+    monkeypatch.setenv("TM_WORKSPACE", str(tmp_path))
+    run = RunFolder.create(tmp_path, "ld", TODAY, playbook=TREND_RESEARCH)
+    trends.save_answer(run, "search_trends", {"about": "x"}, {"data": []})
+    code, out = _cli(capsys, "trends", "shortlist", "--run", str(run.path), "--terms", "x", "--fit", "{}")
+    assert code == 1 and "tm research hook-fit" in out["message"]
+
+
+def test_the_organic_shortlist_speaks_of_organic_videos(ws, tmp_path, capsys, monkeypatch):
+    """Issue #84: an organic video's shortlist says how its sounds and formats are used; a creative brief's
+    keeps its own ad words."""
+    run = _organic_run(ws, "explainer")
+    _explainer_pool(run)
+    md = (run.path / _ov_shortlist(capsys, run)[1]["md"]).read_text(encoding="utf-8")
+    assert "A trending sound is added in the app when you post, for organic videos only." in md
+    assert "A format is used only if the video can be made honestly." in md
+    assert "ad brief" not in md and "CB9" not in md and "the ad can be made" not in md
+
+    other = tmp_path / "brief"
+    other.mkdir()
+    monkeypatch.setenv("TM_WORKSPACE", str(other))
+    brief = RunFolder.create(other, "brief", TODAY, playbook=CREATIVE_BRIEF)
+    _explainer_pool(brief)
+    code, out = _cli(capsys, "trends", "shortlist", "--run", str(brief.path), "--terms", "ai")
+    md = (brief.path / out["md"]).read_text(encoding="utf-8")
+    assert "get a licensed equivalent in the ad brief (CB9)" in md and "the ad can be made honestly" in md
+    assert "fit_candidates" not in json.loads((brief.path / out["json"]).read_text(encoding="utf-8"))
 
 
 # --- the channel's used trends, series and history --------------------------------------------------

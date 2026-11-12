@@ -143,8 +143,9 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   chosen per idea on the proposals page. The user may change it at any time: `tm level
   <every_step|big_calls|hands_off> --run R`.
 - **Long steps show progress**: a task list with time estimates, and a one-line status at each
-  stage change. The times seen in the tests (FLOWS K): trend search and the proposals page about
-  10 to 15 minutes; two images about 1 minute; a 15 s take 4 to 6 minutes; a Remotion render about
+  stage change. The times seen in the tests (FLOWS K) and live runs: the trend search (B1 to B3)
+  about 20 minutes, said before it starts, with which part runs and how many are done
+  (`flow.md#b1`); the proposals page about 10 to 15 minutes; two images about 1 minute; a 15 s take 4 to 6 minutes; a Remotion render about
   1 minute; a whole Hands-off talking-host video about 20 minutes; for an animation, a storyboard
   about 15 minutes, an animation and its render about 15 minutes (each subagent appends its stage
   to `03_wip/<item>/_progress.txt`).

@@ -180,6 +180,12 @@ The profile (OV1, `channel/1`, `../../references/brand-and-audience.md`, "Channe
 Read `rules.md` (OV1 to OV3) first. `tm done B1` is refused until every channel of the run has a
 saved profile that passes the check (a reuse skips A1, so B1 asks the same).
 
+**The time, said before B1 starts** (SKILL.md's "long steps show progress"): B1 to B3 take about 20
+minutes, the searches and lists about 8, the shortlist and its fit scores about 5, the cards and
+their videos about 7. Keep a task list of the four parts (searches, lists, cards, videos) and say,
+at each part and every few calls, which part is running and how many are done ("Searches: 7 of
+13 done").
+
 1. **What this channel already used:** `tm organic used --channel <slug> --json` (the trends its
    videos were made from, and its running series) and `tm organic history --channel <slug>
    --json` (what was produced, put off or skipped, per production type and approach): skip used
@@ -199,10 +205,16 @@ saved profile that passes the check (a reuse skips A1, so B1 asks the same).
    | `trend <id>` (`pull_cards.py`) | `get_trend` |
    | `videos <id> --order views --limit 20` | `get_trend_videos` order views, limit 20 |
 
+   The rising lists are four, one per kind, format trends too (`trend_type: format_trend`: its
+   cards say how the video is told, with `format.how_to_reproduce`).
+
    **What TrendsMesh lacks today**, said where it matters and filed with the backend requests:
-   format trends are empty, so a format is read from the hook's or the topic's evidence videos
-   (lesson 4); there is no sound licence flag, so a sound is "organic only", and a business account
-   gets the commercial-library alternative in the kit; `momentum` and `visible_until` are absent.
+   there is no sound licence flag, so a sound is "organic only", and a business account gets the
+   commercial-library alternative in the kit; `momentum` and `visible_until` are absent.
+   **Large answers:** a search of 15 or a list of 50 is often too large for Claude Code to show. It
+   saves the answer to a file and shows a notice; the collector reads that file and saves the
+   answer itself, so you get the usual summary. Only an answer that says "This answer was not
+   saved…" is ingested by hand.
 5. Before a long pull, `get_usage` (pacing: `trend-collection.md`). A limit hit mid-search is a
    stop you record (`tm stop`), with the reset time.
 6. `tm done B1 --run R`.
@@ -210,20 +222,36 @@ saved profile that passes the check (a reuse skips A1, so B1 asks the same).
 <a id="b2"></a>
 ## B2 Shortlist
 
-1. `tm trends shortlist --run R --terms <bubble terms> --anchor-terms <niche anchors>
+1. `tm trends shortlist --run R --terms <bubble terms> --anchor-terms <channel subjects>
    --sound-relevance --market-language <audience language> --recent-days 7 --json` (the run's
    `research.recent_days`; `--exclude-terms` for noise words). It ranks the saved answers into four
    lists, **hooks, topics, formats, sounds**, writes `03_wip/trend_shortlist_vNN.json` and `.md`,
-   and drops a topic or format with no anchor term next to its activity (lesson 2: "groom" pulled
-   human grooming). Sounds are ranked by their niche relevance (lesson 1). A thin niche's topics
-   are kept as weak fits: never "no trend found".
-2. Read the `.md`. **The used trends** (B1) are left out, unless a series continues them (a
+   and drops a topic with no anchor term next to its activity (lesson 2: "groom" pulled human
+   grooming). **The anchors are the subjects the channel covers**, from the profile's `context`
+   (`topic`, `films`), broader than the niche's own words, in the audience language and English:
+   for an AI explainer channel not only "AI" but also "tools", "tech", "apps", "news", so news
+   about AI tools stays. Sounds are ranked by their niche relevance (lesson 1). A thin niche's
+   topics are kept as weak fits: never "no trend found".
+2. **The fit of each hook and format for the channel** (no word filter: a hook says how a video
+   opens and a format how it is told, so niche words are almost never in them). The JSON's
+   `fit_candidates` lists every hook and format of the pool. Score each one from its card, as
+   Trend research scores its hooks: Creative brief's seven CB3 criteria, 1 to 5 (`brand_fit`,
+   `persona_fit`, `bridge`, `lifecycle`, `transfer`, `sensitivity`, `feasibility`), for this
+   channel: can it carry what the channel films, and how it tells it (the profile's `context`),
+   with `why`, one line. Write `03_wip/trend_fit_v01.json` (`{"<trend id>": {"brand_fit": 4, ...,
+   "why": "..."}}`; a trend that fits badly scores low, it is never left out), then run step 1's
+   command again with `--fit 03_wip/trend_fit_v01.json`. Hooks and formats are ranked by their fit
+   (the mean), each shown with its score and why; a fit under 3 is marked "weak fit for this
+   channel" and comes last.
+3. Read the `.md`. **The used trends** (B1) are left out, unless a series continues them (a
    proposal then names its series). Mark a transfer (a hook with evidence only in another subject
    or language) as a hypothesis: it lowers the expected reach, not the feasibility (lesson 20).
    News, tragedy and real people in topic trends: leave them out by judgement (the sensitivity
-   filter is not built yet).
-3. `tm done B2 --run R` (refused until the shortlist was written by `tm trends shortlist` in this
-   run).
+   filter is not built yet). "Evidence videos not pulled yet" means B3 has not pulled that trend's
+   videos; "No evidence in the last 7 days" is said only of a trend whose pulled videos are all
+   older.
+4. `tm done B2 --run R` (refused until the shortlist was written by `tm trends shortlist` in this
+   run, with the fit scores).
 
 <a id="b3"></a>
 ## B3 Cards and evidence

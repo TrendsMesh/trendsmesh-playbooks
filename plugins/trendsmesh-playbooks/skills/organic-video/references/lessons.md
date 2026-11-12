@@ -5,10 +5,12 @@ dry run of 2026-11-04). They bind the agent: read the ones a step names before d
 (`flow.md`). What changed for the plugin:
 
 - Lessons 1 and 2 (sound relevance, shared-word noise) are `tm trends shortlist --sound-relevance`
-  and `--anchor-terms` (B2): the anchors are the channel's niche words.
+  and `--anchor-terms` (B2): the anchors are the subjects the channel covers, and they filter
+  topics only; hooks and formats are ranked by their fit for the channel (`--fit`, issue #84).
 - Lessons 3 to 6 and 20 (breed topics pick the cast, no format trends, hooks on screen at 0.0 s,
-  no DIY topic, hook transfer) are read at B2 and C1: the format comes from the hook's evidence
-  videos, and a transfer is marked (`plugin.transfer`, its weak link).
+  no DIY topic, hook transfer) are read at B2 and C1. Format trends exist now (B1 lists them);
+  without a fitting one, the format comes from the hook's evidence videos, and a transfer is
+  marked (`plugin.transfer`, its weak link).
 - Lesson 7 (a plan before anything is generated) is the pack check-in, "Approve the generation
   pack and its cost" (the AI video), and the script to film ($0).
 - Lessons 8 to 19 and 21 are about generation, the edit and the look: they bind the AI video

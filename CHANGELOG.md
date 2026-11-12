@@ -109,6 +109,19 @@ What changed in each version of the TrendsMesh playbooks plugin.
   and name (for Organic AI video, the same channel too), with their folder, date and step, and every playbook asks
   you whether to continue one or start the new one.
 
+- **Organic AI video saves every trend answer, however large.** A search of 15 or a list of 50 is often too large for
+  Claude Code to show: it saves the answer to a file and shows a notice instead, and the agent had to save each one
+  by hand. The collector now reads that file, only from the session's own folder of Claude Code's tool results, and
+  saves the answer itself. The agent says which part of the trend search is running and how many are done, and that
+  the search takes about 20 minutes.
+- **Organic AI video's shortlist keeps the hooks and formats a channel can use.** A word filter dropped formats such
+  as a talking-head explainer because their descriptions don't name the niche. Hooks and formats now get a fit score
+  for the channel instead, shown with one line on why, and the search lists format trends too. Topics are still
+  filtered, by the broader subjects the channel covers.
+- **Organic AI video's shortlist speaks of organic videos.** Its sounds and formats no longer carry Creative brief's
+  ad wording, and a trend whose videos aren't pulled yet says "evidence videos not pulled yet" instead of "no
+  evidence in the last 7 days".
+
 ## 0.12.0
 
 - **Creative brief's PDFs print when the run is given by a relative path.** `tm brief page --run <relative path>`
