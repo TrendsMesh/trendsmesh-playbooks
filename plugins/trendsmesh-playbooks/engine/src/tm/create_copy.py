@@ -6,8 +6,16 @@ cuts when there are any), each with `key` (the ad key: `utm_content`), `ad_name`
 Meta's call-to-action types), `display_link`, `url`, and `primary_texts`, `headlines` and `descriptions`, each a list
 of `copy.count` (5) items `{"text", "claims": [claim ids]}`. `tm ad copy check` refuses: a wrong count, a text over
 its limit (125 / 40 / 30 characters), a claim that is not checked, **a number that is in none of the text's claims**
-(CA3: never an invented number), a CTA that is not Meta's, a link or URL off the brand's site, UTM missing or
-`utm_content` not the ad key, and a name that reads like "Ad 1".
+(CA3: never an invented number), **a promise of results or availability that none of its claims says** (CA3), a CTA
+that is not Meta's, a link or URL off the brand's site, UTM missing or `utm_content` not the ad key, and a name that
+reads like "Ad 1".
+
+The promises are phrases of the market language (the copy's own), in the string table as `checks.promise_results`
+and `checks.promise_availability` (tm.i18n: English and Polish ship; another language is the agent's translation,
+`tm i18n export` / `import`): comma-separated, matched as whole words in any case, a word ending in `*` taking any
+ending ("guarantee*", "gwarant*"). A phrase in a text passes only when one of the claims the text names says it too.
+A market language with no list is checked for numbers only, and `promise_note` says so plainly: read the copy for
+promises yourself, or translate the table.
 
 After the copy check-in, the user's choices (kept, edited, dropped; `03_wip/copy_decisions_vNN.json`: per ad key,
 per list, `{"n": the draft's number, "text": the text as kept or edited, "keep": true or false}`) become the
@@ -19,10 +27,12 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from tm import create_config, create_plan, state, stepchecks
+
+from tm import create_config, create_plan, i18n, state, stepchecks
 from tm.config import Problem
 from tm.playbooks import CREATE_AD
 from tm.runfolder import RunFolder
@@ -60,13 +70,60 @@ def _cfg(run: RunFolder) -> dict:
     return create_config.load(run)
 
 
-def _claims(run: RunFolder) -> dict[str, set[str]]:
+PROMISES = {"results": ("checks.promise_results", "a result"),
+            "availability": ("checks.promise_availability", "availability")}
+
+
+def _claims(run: RunFolder) -> dict[str, str]:
+    """The checked claims' texts by id."""
     data = create_plan.checked(run, create_plan.CLAIMS) or {}
-    return {c["id"]: create_plan.numbers(str(c.get("text", ""))) for c in data.get("claims") or []
+    return {c["id"]: str(c.get("text", "")) for c in data.get("claims") or []
             if isinstance(c, dict) and _text(c.get("id"))}
 
 
-def _text_problems(where: str, item: object, limit: int, claims: dict[str, set[str]]) -> list[Problem]:
+def _fold(text: str) -> str:
+    return unicodedata.normalize("NFC", text).casefold()
+
+
+def _phrase(phrase: str) -> re.Pattern:
+    """A phrase as whole words in any case; a word ending in `*` takes any ending."""
+    parts = []
+    for word in _fold(phrase).split():
+        open_end = word.endswith("*")
+        parts.append(re.escape(word.rstrip("*")) + (r"\w*" if open_end else ""))
+    return re.compile(r"(?<!\w)" + r"\s+".join(parts) + r"(?!\w)")
+
+
+def _market(run: RunFolder) -> str:
+    return i18n.languages_of(_cfg(run)).market
+
+
+def promises(run: RunFolder) -> list[tuple[str, str, re.Pattern]] | None:
+    """(kind, phrase, pattern) of every promise phrase of the run's market language, or None when that language
+    has no list (both keys of the string table are needed)."""
+    table = i18n.table(_market(run))
+    out = []
+    for kind, (key, _) in PROMISES.items():
+        text = table.get(key)
+        if not isinstance(text, str):
+            return None
+        out += [(kind, p.strip(), _phrase(p.strip())) for p in text.split(",") if p.strip().rstrip("*")]
+    return out
+
+
+def promise_note(run: RunFolder) -> str | None:
+    """What the promise check could not read, said plainly; None when the market language has its list."""
+    if promises(run) is not None:
+        return None
+    lang = _market(run)
+    return (f"{i18n.name(lang)} ({lang}), the copy's market language, has no list of promise phrases, so the copy "
+            "was checked for numbers only. Read every text for promises of results or availability yourself (CA3: "
+            "only what a checked claim says), or translate the string table (tm i18n export --lang "
+            f"{lang}, then tm i18n import) and check again.")
+
+
+def _text_problems(where: str, item: object, limit: int, claims: dict[str, str],
+                   phrases: list[tuple[str, str, re.Pattern]] | None = None) -> list[Problem]:
     if not (isinstance(item, dict) and _text(item.get("text"))):
         return [Problem(where, f"{where} has no text.", "Write it.")]
     out, text = [], item["text"]
@@ -77,15 +134,22 @@ def _text_problems(where: str, item: object, limit: int, claims: dict[str, set[s
     if unknown:
         out.append(Problem(where, f"{where} names claims that are not checked: {', '.join(map(str, unknown))}.",
                            "Use only the checked claims (CA3)."))
-    allowed = set().union(*(claims.get(c, set()) for c in named)) if named else set()
+    backing = [claims[c] for c in named if c in claims]
+    allowed = set().union(*(create_plan.numbers(t) for t in backing)) if backing else set()
     invented = sorted(create_plan.numbers(text) - allowed)
     if invented:
         out.append(Problem(where, f"{where} says {', '.join(invented)}, which is in none of its claims.",
                            "Take the number out, or name the checked claim it comes from (CA3: no invented numbers)."))
+    said = [_fold(t) for t in backing]
+    for kind, phrase, pattern in phrases or []:
+        if pattern.search(_fold(text)) and not any(pattern.search(t) for t in said):
+            out.append(Problem(where, f"{where} promises {PROMISES[kind][1]} (\"{phrase}\"), which none of its "
+                               "claims says.", "Take the promise out, or name the checked claim that says it (CA3: "
+                               "the copy never promises results or availability)."))
     return out
 
 
-def _ad_problems(run: RunFolder, ad: object, n: int, cfg: dict, claims: dict[str, set[str]],
+def _ad_problems(run: RunFolder, ad: object, n: int, cfg: dict, claims: dict[str, str],
                  lists_needed: bool = True) -> list[Problem]:
     if not isinstance(ad, dict):
         return [Problem(f"ads[{n}]", f"Ad {n} must be an object.", "Write it again.")]
@@ -121,6 +185,7 @@ def _ad_problems(run: RunFolder, ad: object, n: int, cfg: dict, claims: dict[str
             out.append(Problem(f"ads[{n}].url", f"{label}'s utm_content is {query['utm_content'][0]!r}, not the ad key "
                                f"{key!r}.", "Set utm_content to the ad key (CA13)."))
     count = cfg["copy"]["count"]
+    phrases = promises(run)
     for field, (limit_key, _) in LISTS.items():
         items = ad.get(field)
         if not isinstance(items, list):
@@ -131,7 +196,7 @@ def _ad_problems(run: RunFolder, ad: object, n: int, cfg: dict, claims: dict[str
                                f"Write {count} (CA13)."))
         limit = cfg["copy"][limit_key.split(".")[1]]
         for i, item in enumerate(items, 1):
-            out.extend(_text_problems(f"{label} {field}[{i}]", item, limit, claims))
+            out.extend(_text_problems(f"{label} {field}[{i}]", item, limit, claims, phrases))
     return out
 
 

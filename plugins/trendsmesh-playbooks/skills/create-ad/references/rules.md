@@ -17,7 +17,8 @@ to production on a note. Without TrendsMesh, every model ad and trend is labelle
 
 **CA3. Claims come from the site and the user.** Sources: the product site, the user's context, trend data for trend
 facts. Staged data inside the story (a mock-up screen, a trend card) is allowed. The ad copy never invents numbers,
-never promises results, and never promises availability. (`ad_claims_checked`, `ad_copy_checked`)
+never promises results, and never promises availability. (`ad_claims_checked`, `ad_copy_checked`: a number or a
+promise phrase of the market language in a text needs a named claim that says it)
 
 **CA4. The script is a board, sized to the takes.** Scene by scene: time, picture, on-screen text, spoken line,
 sound, where the picture comes from. Word budget = seconds × the model ad's words per minute. One take carries all
@@ -43,7 +44,7 @@ guard)
 
 **CA8. Staged gates; raw assets are always shown raw.** Every generated batch goes back as a gate (a page, or in
 chat until the pages exist), never only as images in chat without the check-in. Every generated video goes back raw
-with its transcript and QA notes and is accepted before the edit uses it.
+with its transcript and QA notes and is accepted before the edit uses it. (`ad_takes_checked`, `ad_takes_accepted`)
 
 **CA9. Generation craft.** One character = one take. Describe people in text; never name real people. Anti-slop
 camera: handheld, phone look, natural light. Silent reactions keep the mouth closed. Stills agree the look; they are
@@ -64,7 +65,7 @@ inside its own shot. Transition sounds from a small library, a cue list mixed af
 every layout change; caption collisions with every overlay. Scribe on the take and on the edit; a word about 2× its
 expected length is a possible hidden repeat; never clear a repeat on a re-transcribed slice; compare the edit's audio
 with the take. ~80 ms of natural pause at every speech join; overlays end one frame before a cut. Generated logos
-and text checked letter by letter. Loudness: −14 LUFS integrated, true peak ≤ −1.5 dBFS.
+and text checked letter by letter. Loudness: −14 LUFS integrated, true peak ≤ −1.5 dBFS. (`ad_edit_checked`)
 
 **CA12. Review.** Versions side by side, each labelled with a pick; notes pinned to the playing version's time.
 Audio-only fixes (a stutter, a long pause) are free under screen-only beats: cut the speech track, keep the picture,

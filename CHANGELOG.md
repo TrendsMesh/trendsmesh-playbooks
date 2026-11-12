@@ -17,6 +17,16 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **The support report names Windows 11.** It said "Windows 10" on Windows 11; it now reads the build number.
 - **One way to send the support report.** The doctor now says what the report itself says: read it, then send it
   privately to contact@trendsmesh.com, not to a public issue.
+- **Create an ad checks the takes and the edit itself.** Moving past the takes now needs every generated take QA'd,
+  and the takes are accepted only when each passes, or after you have seen the one that failed: a word heard twice
+  in a row that the script says once fails it, and a word that lasts about twice as long as it should is flagged as
+  a possible hidden repeat. The edit is shown for review only after its QA: the loudness at −14 LUFS with a true
+  peak at or below −1.5 dBFS, the lines heard in full, and every CA11 check written down, which the review shows as
+  "what was checked".
+- **Create an ad's copy makes no promise its claims don't.** Besides numbers, the copy check now refuses a promise
+  of results or availability ("guaranteed", "in stock", "results in", "gwarantujemy", "od ręki") that none of the
+  text's checked claims says. The phrases are read in the ad's market language, English and Polish to start; for
+  another language the check says plainly that it read the numbers only.
 
 ## 0.12.0
 

@@ -143,3 +143,56 @@ def test_tm_ad_copy_on_the_command_line(run, capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["page"]["ads"][0]["key"] == KEY
     assert main(["ad", "copy", "accept", "--run", str(run.path), "--file", str(_choices(run)), "--json"]) == 0
+
+
+# --- CA3 beyond numbers: promises of results or availability -----------------------------------
+
+def _one(text, claims=()):
+    return ad(primary_texts=[{"text": text, "claims": list(claims)}] + ad()["primary_texts"][1:])
+
+
+@pytest.mark.parametrize("text,says", [
+    ("Guaranteed client approval on every brief", "promises a result (\"guarantee*\")"),
+    ("Your brief tool, in stock tomorrow", "promises availability (\"in stock\")"),
+    ("See results in your first week", "promises a result (\"see results\")"),
+    ("Ships the same day you sign up", "promises availability (\"same day\")"),
+])
+def test_a_promise_no_claim_says_is_refused(run, text, says):
+    assert says in _fields(_draft(run, _one(text, ["k1"])))
+
+
+def test_a_promise_its_claim_says_passes(tmp_path):
+    run = _new(tmp_path)
+    claims = {"claims": [*CLAIMS["claims"], {"id": "k3", "text": "Every plan is available now, on the site",
+                                             "source": "site", "ref": "https://planner.example.com/pricing"}]}
+    assert _check(run, "claims", claims) == []
+    assert _draft(run, _one("Available now for freelance designers", ["k3"])) == []
+    assert "available now" in _fields(_draft(run, _one("Available now for freelance designers", ["k2"]), v=2))
+
+
+def test_promises_are_whole_words_in_any_case(run):
+    assert _draft(run, _one("Briefs your clients answer GUARANTEED", [])) != []
+    assert _draft(run, _one("Briefs, nextday style", []), v=2) == []          # "next day" is two words or next-day
+    assert _draft(run, _one("Stockholm studios love it", []), v=3) == []      # not "in stock"
+
+
+def test_polish_copy_reads_the_polish_list(tmp_path):
+    from test_create_config import ANSWERS
+    run = _new(tmp_path, answers={**ANSWERS, "languages": {"working": "pl", "market": "pl"}})
+    assert _check(run, "claims", CLAIMS) == []
+    assert "promises a result (\"gwarant*\")" in _fields(_draft(run, _one("Gwarantujemy zadowolenie klienta", [])))
+    assert "promises availability (\"od ręki\")" in _fields(_draft(run, _one("Brief od ręki", []), v=2))
+    assert create_copy.promise_note(run) is None
+
+
+def test_a_market_language_without_a_list_says_so(tmp_path, capsys):
+    from test_create_config import ANSWERS
+    run = _new(tmp_path, answers={**ANSWERS, "languages": {"working": "en", "market": "de"}})
+    assert _check(run, "claims", CLAIMS) == []
+    assert _draft(run, _one("Garantiert in 3 Minuten", ["k1"])) == []         # numbers checked, promises unknown
+    note = create_copy.promise_note(run)
+    assert "German (de)" in note and "no list of promise phrases" in note and "tm i18n export --lang de" in note
+    path = run.latest("03_wip", "copy", "json")
+    assert main(["ad", "copy", "check", "--run", str(run.path), "--file", str(path), "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["promise_warning"] == note

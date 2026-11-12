@@ -31,10 +31,10 @@ steps:
   - {id: G1, title: First visual output, outputs: [video_ad], checkins: [visual], spends: true, budget: ai_usd, skip_when: {plan: reject}, ref: "skills/create-ad/references/flow.md#g1"}
   - {id: G2, title: Audio, outputs: [video_ad], checkins: [audio], spends: true, skip_when: {plan: reject}, ref: "skills/create-ad/references/flow.md#g2"}
   - {id: G3, title: Filled storyboard and the paid video, outputs: [video_ad], checkins: [storyboard], spends: false, skip_when: {plan: reject}, requires: [ad_storyboard_checked], ref: "skills/create-ad/references/flow.md#g3"}
-  - {id: G4, title: Takes, outputs: [video_ad], checkins: [takes], spends: true, budget: ai_usd, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#g4"}
+  - {id: G4, title: Takes, outputs: [video_ad], checkins: [takes], spends: true, budget: ai_usd, skip_when: {plan: reject, storyboard: reject}, requires: [ad_takes_checked], ref: "skills/create-ad/references/flow.md#g4"}
   # S6, S7, G5: the edit, its QA and the review (CA10 to CA12)
   - {id: S6, title: Edit, outputs: [video_ad], spends: false, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#s6"}
-  - {id: S7, title: Edit QA, outputs: [video_ad], spends: false, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#s7"}
+  - {id: S7, title: Edit QA, outputs: [video_ad], spends: false, skip_when: {plan: reject, storyboard: reject}, requires: [ad_edit_checked], ref: "skills/create-ad/references/flow.md#s7"}
   - {id: G5, title: Review, outputs: [video_ad], checkins: [review], spends: false, skip_when: {plan: reject, storyboard: reject}, ref: "skills/create-ad/references/flow.md#g5"}
   # S8, S9: the Meta copy and the delivery (CA13)
   - {id: S8, title: Meta copy, outputs: [video_ad], checkins: [copy], spends: false, skip_when: {plan: reject, storyboard: reject}, requires: [ad_copy_checked], ref: "skills/create-ad/references/flow.md#s8"}

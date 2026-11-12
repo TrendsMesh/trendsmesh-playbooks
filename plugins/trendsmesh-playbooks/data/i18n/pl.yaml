@@ -1,9 +1,13 @@
 # The plugin's own Polish of the string table (data/i18n/en.yaml), read by tm.i18n: what a Polish page says. It holds
-# the organic video pages' strings (organic.*); every other string Polish needs is the agent's translation, kept in
-# the plugin data folder (tm i18n export / import), and a kept translation wins over this file. Keep {placeholders}
-# and <markup> as in English; never translate keys.
+# the organic video pages' strings (organic.*) and Create an ad's promise phrases (checks.promise_*); every other
+# string Polish needs is the agent's translation, kept in the plugin data folder (tm i18n export / import), and a kept
+# translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
 
 strings:
+  checks:
+    # CA3 (Create an ad): the promises Polish ad copy makes only when a checked claim says them too
+    promise_results: "gwarant*, efekty po, efekt po, rezultaty po, wyniki po, zobaczysz efekty, zobaczysz efekt, zobaczysz wyniki, natychmiastow* efekt*, natychmiastow* rezultat*, murowan* efekt*, bez ryzyka, zwrot pieniędzy, zwrot kasy, zawsze działa, podwoisz, potroisz, pewny efekt, pewne efekty"
+    promise_availability: "w magazynie, na stanie, od ręki, wysyłka dziś, wysyłka dzisiaj, wysyłka jutro, wysyłka w 24, dostawa dziś, dostawa dzisiaj, dostawa jutro, dostawa następnego dnia, jutro u ciebie, dziś u ciebie, natychmiastow* dostęp, dostępn* teraz, dostępn* od zaraz, zawsze dostępn*"
   organic:
     # the levels (how much Claude stops to ask), named as the plugin names them
     level_every_step: Sprawdzaj każdy krok

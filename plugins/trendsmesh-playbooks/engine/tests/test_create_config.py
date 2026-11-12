@@ -177,9 +177,13 @@ def test_every_ad_string_is_read_and_every_key_read_is_in_the_table():
     import re
     from pathlib import Path
     src = Path(create_config.__file__).parent
-    code = "".join((src / f).read_text(encoding="utf-8") for f in ("create_copy.py", "create_upload.py"))
+    code = "".join((src / f).read_text(encoding="utf-8") for f in ("create_copy.py", "create_upload.py",
+                                                                    "create_qa.py"))
     read = set(re.findall(r'"(ad\.[a-z_]+\.[a-z_]+)"', code))
     read |= {f"ad.upload.created_{how}" for how in ("paused", "draft")}   # read by the outcome's created_as
+    from tm import create_qa
+    read |= {f"ad.qa.check_{k}" for k in create_qa.EDIT_CHECKS} | {f"ad.qa.result_{r}" for r in create_qa.RESULTS}
+    read = (read - {"ad.qa.finding_cuts"}) | {"ad.qa.finding_cuts.one", "ad.qa.finding_cuts.other"}   # a count
     table = {k for k in i18n.english() if k.startswith("ad.")}
     assert sorted(read - table) == [] and sorted(table - read) == []
     for key in table:

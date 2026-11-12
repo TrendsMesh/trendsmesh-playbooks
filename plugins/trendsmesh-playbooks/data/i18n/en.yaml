@@ -25,6 +25,11 @@ checks:
   # CB13 (Creative brief): words the creator view never says. Comma-separated; a translation lists the same
   # ideas in its language (and may keep the English ones that are used as they are, such as CTR or ROAS).
   creator_words: cost per, cpa, ctr, roas, spend, checkout, conversion, ad library, competitor, reddit, goodreads, r/
+  # CA3 (Create an ad, engine/src/tm/create_copy.py): promises the Meta copy makes only when a checked claim says
+  # them too, read in the copy's market language. Comma-separated phrases, whole words in any case; a word ending in
+  # * takes any ending. A translation lists the same promises as that language makes them (not word for word).
+  promise_results: "guarantee*, results in, see results, proven results, instant results, overnight results, money back, money-back, risk-free, risk free, works every time, never fails, double your, triple your"
+  promise_availability: "in stock, available now, available today, available tomorrow, ships today, ships tomorrow, same day, same-day, next day, next-day, delivered today, delivered tomorrow, delivery today, delivery tomorrow, instant access, immediate access, always available, never out of stock"
 
 # --- The Replicate and ElevenLabs keys (issue #66): engine/src/tm/providers.py, tools/replicate_run.py, tools/elevenlabs.py,
 # doctor.py. {said} is the provider's status and words in brackets (or nothing), {need} the sentence keys.need (or nothing).
@@ -1019,6 +1024,26 @@ ad:
     created_draft: "Created as a draft: the campaign, ad set, creative and ad are in your ad account and not published."
     activate_howto: "To switch it on: open Ads Manager, find the campaign {campaign}, and turn on the campaign, the ad set and the ad. Nothing in this run switches it on."
     active_found: "{what} is not paused in Meta ({status}). Nothing should run from this playbook: pause it now in Ads Manager (or with the Meta Ads connector), then record the objects again."
+  # the takes' and the edit's QA (engine/src/tm/create_qa.py): the takes check-in shows the fails and findings under
+  # each take (beside organic.qa.*'s), the review page what was checked (S7); the numbers come formatted
+  qa:
+    fail_repeat: "the word “{word}” is heard twice in a row at {at} s, and the lines say it once: a possible stutter"
+    finding_long: "the word “{word}” at {at} s lasts {seconds} s, about {times}× its expected length: a possible hidden repeat, listen there"
+    finding_cuts:
+      one: "the take has {n} internal cut, at {at} s: keep each line's picture inside its own shot"
+      other: "the take has {n} internal cuts, at {at} s: keep each line's picture inside its own shot"
+    checked_title: What was checked
+    check_cuts: Motion at every cut
+    check_take_scenes: Scene detection inside the generated takes
+    check_stills: Stills after every layout change
+    check_captions: Captions against every overlay
+    check_speech: The take's and the edit's speech compared, word by word
+    check_joins: A natural pause at every speech join
+    check_overlay_ends: Overlays end one frame before a cut
+    check_text: Generated logos and text, letter by letter
+    result_ok: OK
+    result_not_applicable: Not in this ad
+    result_problem: Problem
 
 # --- Refresh an ad: the winning ad moved into the original's campaign, PAUSED, at G12 (issue #64;
 # engine/src/tm/livetest_move.py, skills/refresh-ad/references/flow.md#e4) ---

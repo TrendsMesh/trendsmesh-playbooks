@@ -31,8 +31,9 @@ from tm.runfolder import RunFolder
 WIP = create_config.WIP
 RESEARCH = "02_research"
 CONCEPTS, CLAIMS, BOARD, PLAN, STORYBOARD = "concepts", "claims", "board", "production_plan", "storyboard"
+EDIT_QA = "edit_qa"   # S7's file, checked by tm.create_qa (`tm ad check edit`)
 WHAT = {CONCEPTS: "the concepts", CLAIMS: "the claims", BOARD: "the script-board", PLAN: "the production plan",
-        STORYBOARD: "the filled storyboard"}
+        STORYBOARD: "the filled storyboard", EDIT_QA: "the edit QA"}
 KEY = {stem: f"ad_{stem}" for stem in WHAT}   # run.json `checked` keys
 SOURCES_MODEL_AD = ("trendsmesh", "ad_library", "user", "guess")
 SOURCES_TREND = ("trendsmesh", "guess")
@@ -401,13 +402,22 @@ def check_storyboard(run: RunFolder, data: dict, *, today: date | None = None) -
         if isinstance(v, dict) and not _in_run(run, v.get("prompt_rules")) and not _text(v.get("prompt_rules")):
             out.append(Problem(f"videos[{n}].prompt_rules", f"{v.get('item')} names no prompting guide.",
                                "Read the model's prompting guide and name it (CA5)."))
+        if isinstance(v, dict) and "speaks" in v and not isinstance(v["speaks"], bool):
+            out.append(Problem(f"videos[{n}].speaks", f"{v.get('item')}'s speaks must be true (the take says the "
+                               "lines) or false (its voice comes in the edit).", "Set it, or leave it out to follow "
+                               "the voice route."))
     return out
 
 
 # --- recording a check ----------------------------------------------------------
 
+def _check_edit_qa(run: RunFolder, data: dict) -> list[Problem]:
+    from tm import create_qa   # it reads this module's checked files
+    return create_qa.check_edit(run, data)
+
+
 CHECKS = {CONCEPTS: check_concepts, CLAIMS: check_claims, BOARD: check_board, PLAN: check_plan,
-          STORYBOARD: check_storyboard}
+          STORYBOARD: check_storyboard, EDIT_QA: _check_edit_qa}
 
 
 def check(run: RunFolder, stem: str, file: str | Path) -> tuple[str, list[Problem]]:

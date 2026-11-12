@@ -94,6 +94,7 @@ checkins:
       accepted; fails_qa when it does not
     choices: [accept, redo, drop, fails_qa]
     on_choice:
+      accept: {requires: [ad_takes_accepted]}
       fails_qa:
         stop:
           what: "The take did not pass QA, and a video is never regenerated automatically."
@@ -106,6 +107,8 @@ checkins:
     route: {every_step: own, big_calls: own, hands_off: rule}
     rule: "the latest version, once its edit QA is green (CA11), logged with what was checked"
     choices: [accept, fix]
+    on_choice:
+      accept: {requires: [ad_edit_checked]}
 
   - id: copy
     name: Accept the Meta copy

@@ -114,7 +114,9 @@ counts. Rules: `rules.md`.
   must not sit small inside a card.
 - `03_wip/storyboard_vNN.json`: `{"frames": [{"scene", "file"}], "placeholder_render", "audio": {...}, "videos":
   [{"item", "model", "prompt" (exact), "params", "prompt_rules" (the guide used), "cost", "budget", "price_file",
-  "checked"}]}`; an ad without video: `"videos": []` with `no_video_reason`. One character = one take.
+  "checked", "speaks" (optional: true when the take says the lines, false when its voice comes in the edit; left
+  out, it follows the voice route: native and clone_take speak)}]}`; an ad without video: `"videos": []` with
+  `no_video_reason`. One character = one take.
 - `tm ad check storyboard` re-plans the money with the videos, so the plan's yes no longer covers it. `tm done G3`.
   The check-in "Approve the filled storyboard and the paid video" shows the storyboard scene by scene with the exact
   prompt and price; on the yes, `tm budget approve --run R ai_usd <the new total>`.
@@ -125,12 +127,19 @@ counts. Rules: `rules.md`.
 - Each take: `tm tool replicate_run --run R <spec> --name <the storyboard's item> --cost <its line>`; an unfinished
   take is resumed for free (`--resume`), never run again. The engine refuses a video before the storyboard's yes and
   a second take of an item the user did not ask for.
-- **Every take goes back raw** on the gate with its transcript and QA notes: `tm tool take_qa` (cuts, pace, loudness,
-  contact sheet) and ElevenLabs Scribe word timestamps (verbatim, keeps repeats; Whisper hid a repeat and ran early).
-  A word lasting about 2× its expected length is a possible hidden repeat.
-- **A failed take is never regenerated automatically**: `fails_qa` stops for the user, with the options a precise
-  cut of the original (Scribe times), a voice clone of the line (only when it must change), a new take (its cost
-  first; on their yes `tm ad redo --run R --item <item> --note "<their words>"`), or accept. `tm done G4`.
+- **Every take goes back raw** on the gate with its transcript and QA notes: `tm tool take_qa --run R <take> --lang
+  <market language> --script <its lines>` (cuts, the transcript, pace, loudness, contact sheet; leave `--script` out
+  for a take that does not speak) and ElevenLabs Scribe word timestamps (verbatim, keeps repeats; Whisper hid a
+  repeat and ran early). `tm done G4` needs every take of the storyboard made and QA'd (`ad_takes_checked`).
+- The engine judges each take (`tm.create_qa`, the gate's QA notes): it **fails** on a transcript under the
+  threshold, a loudness outside the usable range, or a word heard twice in a row that the lines say once (a
+  stutter); its **findings** are a word lasting about 2× its expected length (a possible hidden repeat: listen
+  there), internal cuts (keep each line's picture inside its own shot) and a slow pace.
+- **A failed take is never regenerated automatically**: `takes accept` is refused while a take fails, until
+  `fails_qa` was recorded after its latest QA (the stop for the user). The options: a precise cut of the original
+  (Scribe times), a voice clone of the line (only when it must change), a new take (its cost first; on their yes
+  `tm ad redo --run R --item <item> --note "<their words>"`), or accept it as is (`tm decide takes accept --change`
+  on their word).
 
 <a id="s6"></a>
 ## S6 Edit (CA10)
@@ -145,7 +154,15 @@ counts. Rules: `rules.md`.
 - Before every showing: motion at every cut, scene detection inside generated takes, stills after every layout
   change, caption collisions, Scribe on the take and the edit (compare the two to tell an edit bug from a model
   stutter), ~80 ms of pause at speech joins, generated logos and text letter by letter, −14 LUFS integrated and true
-  peak ≤ −1.5 dBFS. Write what was checked next to the version. `tm done S7`.
+  peak ≤ −1.5 dBFS.
+- Measure the latest edit like a take: `tm tool take_qa --run R 03_wip/edit_vNN.mp4 --lang <market language>
+  --script <the board's lines>`. Write what was checked next to the version, `03_wip/edit_qa_vNN.json`: `{"edit"
+  (the latest edit), "qa" (its latest take_qa file), "checked": [{"check" (cuts, take_scenes, stills, captions,
+  speech, joins, overlay_ends, text), "result" (ok, not_applicable, problem), "note" (what you looked at)}]}`, one
+  row per check. `tm ad check edit --run R --file <it>` refuses a loudness more than 1 LU off the target, a true
+  peak above the limit, a transcript under the threshold or a stutter in an edit with lines, a check left out, and
+  a `problem` (fix it in a new version, S6, and QA that). `tm done S7`; `review accept` needs the same check on the
+  latest version, so a fix after the review is QA'd again before it is shown.
 
 <a id="g5"></a>
 ## G5 Review (CA12)
@@ -161,7 +178,9 @@ counts. Rules: `rules.md`.
   (the ad key, also `utm_content`), "ad_name", "video_title", "cta" (Meta's type, e.g. LEARN_MORE), "display_link",
   "url" (with utm_source, utm_medium, utm_campaign, utm_content), "primary_texts", "headlines", "descriptions"
   (5 each, `{"text", "claims": [ids]}`)}]}`, in the ad language. Limits 125 / 40 / 30 characters; any number in a
-  text comes from one of its named claims.
+  text comes from one of its named claims, and so does any promise of results or availability ("guaranteed", "in
+  stock", "results in"): the check reads the market language's promise phrases, and when that language has none
+  it says so (`promise_warning`): then read every text for promises yourself.
 - `tm ad copy check` (its answer carries the copy page's data), `tm done S8`. The check-in shows each text with its
   count and a keep tick, and asks "Do you want to change anything?". Write the user's choices as
   `03_wip/copy_decisions_vNN.json` (`{"ads": [{"key", "primary_texts": [{"n", "text", "keep"}], ...}], "note"}`) and

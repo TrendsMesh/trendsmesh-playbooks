@@ -108,7 +108,8 @@ def test_creative_brief_steps_match_the_plan():
               for c in checkins.load(playbook=pb).checkins.values()
               for effect in c.on_choice.values() for name in effect.get("requires") or ()}
     assert chosen == {"profile_confirmed", "week_in_budget",   # organic video's reuse_profile reuse, week approve
-                      "ad_upload_proposed"}                    # create an ad's upload create
+                      "ad_upload_proposed",                    # create an ad's upload create,
+                      "ad_takes_accepted", "ad_edit_checked"}  # takes accept, review accept
     assert set(stepchecks.NAMES) == named | chosen   # every check is required; none registered unused
     assert not any(st.requires for pb in (REFRESH_AD, TREND_RESEARCH) for st in flow.steps(pb))
 

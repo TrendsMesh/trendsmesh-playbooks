@@ -1,6 +1,7 @@
 """`tm ad`: the commands of Create an ad (playbook 05).
 
     tm ad check <concepts|claims|board|plan|storyboard> --run R --file F   check what the agent wrote (S1 to G3)
+    tm ad check edit --run R --file F                                     check the edit's QA (S7, tm.create_qa)
     tm ad redo --run R --item ITEM --note "<the user's words>"           the user's request for a new video take
     tm ad copy check --run R --file F                                     check the Meta copy draft (S8)
     tm ad copy accept --run R --file F                                    write the accepted copy (S8, after the check-in)
@@ -20,12 +21,12 @@ from tm.runfolder import RunFolder
 from tm.stops import Stop
 
 _CHECK = {"concepts": create_plan.CONCEPTS, "claims": create_plan.CLAIMS, "board": create_plan.BOARD,
-          "plan": create_plan.PLAN, "storyboard": create_plan.STORYBOARD}
+          "plan": create_plan.PLAN, "storyboard": create_plan.STORYBOARD, "edit": create_plan.EDIT_QA}
 
 
 def _setup(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="action", required=True)
-    c = sub.add_parser("check", help="check a file the agent wrote (S1 to G3)")
+    c = sub.add_parser("check", help="check a file the agent wrote (S1 to G3, and the edit QA at S7)")
     c.add_argument("what", choices=list(_CHECK))
     c.add_argument("--file", required=True)
     r = sub.add_parser("redo", help="record the user's request for a new take of a video item")
@@ -63,10 +64,12 @@ def _run(args: argparse.Namespace) -> int:
                 if problems:
                     return cli.refuse_problems(args, rel, problems)
                 page = create_copy.page_data(run)
+                promise = create_copy.promise_note(run)
                 cli.emit(args, {"status": "done", "file": rel, "page": page,
-                                "language_warning": page["language_warning"]},
+                                "language_warning": page["language_warning"], "promise_warning": promise},
                          f"{rel} passed the check. Show the copy to the user and ask whether to change anything."
-                         + (f" {page['language_warning']}" if page["language_warning"] else ""))
+                         + (f" {page['language_warning']}" if page["language_warning"] else "")
+                         + (f" {promise}" if promise else ""))
                 return 0
             rel, problems = create_copy.accept(run, args.file)
             if problems:
