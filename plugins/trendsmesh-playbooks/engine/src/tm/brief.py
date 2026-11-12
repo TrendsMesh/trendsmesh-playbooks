@@ -238,7 +238,9 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
         pdfs = got["pdfs"]
         message += (f" Printed {len(pdfs)} PDFs (the full report and one per view, in {where}/pdf/): they publish with "
                     "the page, and its buttons download them." if pdfs else
-                    f" No PDFs: {got['pdf_note']}. The page works without them; its download buttons are left out.")
+                    f" No PDFs: {got['pdf_note']}. The page works without them, but it has no download buttons. "
+                    "Tell the user so, with why, when you give them the page: one view for someone outside the "
+                    "team then has no PDF to send. `tm brief page` again, once the cause is fixed, prints them.")
         message += (" Publish it with the Artifact tool (tm page files --page brief_pack gives its file_path and "
                     "files), declaring the decisions db and the downloads (tm brief capabilities) in the same publish.")
     if got.get("language_warning"):

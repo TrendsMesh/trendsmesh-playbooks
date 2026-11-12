@@ -10,6 +10,9 @@ import copy
 import json
 import re
 import struct
+import subprocess
+import time
+import types
 import zlib
 from pathlib import Path
 
@@ -312,6 +315,54 @@ def test_stills_missing_print_without_them(run, printer, capsys):
     folder = run.path / json.loads(capsys.readouterr().out)["folder"]
     text = (folder / ".print" / "print.html").read_text(encoding="utf-8")
     assert "<video" not in text and 'class="stills"' not in text and len(printer.calls) == 4
+
+
+def _absolute_only_browser(monkeypatch) -> list[list[str]]:
+    """The real `print_pdf` with a fake browser that, like Chrome on Windows, writes no PDF to a relative
+    `--print-to-pdf` path (issue #54): the argv of each call is kept."""
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        out = Path(next(a for a in argv if a.startswith("--print-to-pdf=")).split("=", 1)[1])
+        if out.is_absolute():
+            out.write_bytes(make_pdf([["View"]]))
+        return types.SimpleNamespace(returncode=0, stdout="", stderr="" if out.is_absolute() else
+                                     f"Failed to write file {out}: The system cannot find the path specified.")
+    monkeypatch.setattr(brief_pdf, "browser", lambda: Path("/Applications/Chrome"))
+    monkeypatch.setattr(brief_pdf, "subprocess", types.SimpleNamespace(
+        run=run, TimeoutExpired=subprocess.TimeoutExpired, CalledProcessError=subprocess.CalledProcessError))
+    monkeypatch.setattr(brief_pdf, "WAIT_S", 2)
+    monkeypatch.setattr(brief_pdf, "time", types.SimpleNamespace(monotonic=time.monotonic, sleep=lambda s: None))
+    return calls
+
+
+def test_a_relative_run_path_prints_every_pdf(run, monkeypatch, capsys):
+    """`tm brief page --run <relative path>`: the browser is given absolute paths, so all four PDFs print."""
+    calls = _absolute_only_browser(monkeypatch)
+    _write_brief(run, _with_animatics(run, _brief(), stills=False))
+    monkeypatch.chdir(run.path.parent)
+    assert main(["brief", "page", "--run", run.path.name, "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["pdf_note"] is None and [p.split("/", 2)[2] for p in out["pdfs"]] == PDFS
+    assert len(calls) == 4
+    for argv in calls:
+        out_arg = next(a for a in argv if a.startswith("--print-to-pdf=")).split("=", 1)[1]
+        assert Path(out_arg).is_absolute() and argv[-1].startswith("file:")
+    assert "vb-dl" in (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
+
+
+def test_no_pdfs_tells_the_user_the_page_has_no_download_buttons(run, monkeypatch, capsys):
+    """A print that fails is never silent: the answer says to tell the user the page has no download buttons,
+    and why."""
+    monkeypatch.setattr(brief_pdf, "browser", lambda: Path("/Applications/Chrome"))
+    monkeypatch.setattr(brief_pdf, "print_pdf", FakePrinter(fail_on="full"))
+    _write_brief(run, _with_animatics(run, _brief()))
+    assert main(["brief", "page", "--run", str(run.path), "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["pdfs"] == []
+    assert "Tell the user" in out["message"] and "no download buttons" in out["message"]
+    assert "brief_pack-full.pdf" in out["message"]                       # why: the print's own error
 
 
 def test_capabilities_declare_the_downloads(capsys):

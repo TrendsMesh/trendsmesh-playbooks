@@ -90,7 +90,9 @@ def _argv(browser_path: Path, url: str, out: Path, profile: Path) -> list[str]:
 
 def print_pdf(browser_path: Path, page: Path, key: str, out: Path) -> None:
     """Print `page#print-<key>` to `out` with the browser, headless, in a profile folder of its own, and
-    wait for the whole file. ValueError when no PDF came out."""
+    wait for the whole file. ValueError when no PDF came out. The browser is given absolute paths: it does not
+    write a PDF to a relative one (issue #54, `--run` given as a relative path, on Windows)."""
+    out = Path(out).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.unlink(missing_ok=True)
     url = f"{Path(page).resolve().as_uri()}#print-{key}"

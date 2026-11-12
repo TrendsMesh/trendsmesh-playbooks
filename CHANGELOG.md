@@ -2,6 +2,13 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## Unreleased
+
+- **Creative brief's PDFs print when the run is given by a relative path.** `tm brief page --run <relative path>`
+  printed no PDFs on Windows (the browser could not write to the relative path), so the page was built without
+  its download buttons. The browser is now always given the full path. And when the PDFs can't be printed, Claude
+  now tells you the page has no download buttons and why, instead of leaving it unsaid.
+
 ## 0.11.0
 
 - **New playbook: Create an ad (first build).** Makes a new Meta video ad from zero for a product with a website:

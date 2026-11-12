@@ -387,8 +387,11 @@ the example). One file is the source of the page, the animatics and the hand-off
      again if it adds a clip) and check again.
   3. `tm brief page --run R --json`: the page `04_final/brief_pack_vNN/` from the latest brief,
      with its PDFs printed by the user's Chrome or Edge (`pdf/brief_pack-full.pdf` and one per
-     view; a minute or so; without a browser the page is built without them, and the answer says
-     so). The page folder is numbered on its own: `brief_pack_v01/` built from `brief_pack_v02.json`
+     view; a minute or so; without a browser, or when a print fails, the page is built without
+     them and without its download buttons, and the answer says why: `pdfs` empty, `pdf_note`).
+     **No PDFs is never silent:** tell the user, when you give them the page, that it has no
+     download buttons and why (`pdf_note`), so one view for someone outside the team has no PDF
+     to send yet; `tm brief page` again once the cause is fixed prints them. The page folder is numbered on its own: `brief_pack_v01/` built from `brief_pack_v02.json`
      (the version `tm brief evidence` wrote) is the latest page. Whether a page is built from the
      latest brief is `tm done C1`'s check (`page_built`), never the numbers: don't build again
      only because they differ.

@@ -173,7 +173,8 @@ the category.
   declaration checked in its result, then `tm page published` with the version it returns; later
   versions go to the same URL with the same capabilities, the declaration checked again.
 - **The PDFs:** `tm brief page` prints the full report and one PDF per view (the user's Chrome or
-  Edge; none without a browser), published with the page; its buttons download them. The link
+  Edge; none without a browser), published with the page; its buttons download them. Without
+  them (`pdfs` empty) the page has no download buttons: tell the user so, with `pdf_note`. The link
   goes to the team only (it opens every view): one view for someone outside it is sent as that
   view's PDF. The PDFs hold no decisions: they are built before people decide.
 - **Deciding on the page** (G2, G3, G4 at Check every step and Just the big calls): `tm brief
