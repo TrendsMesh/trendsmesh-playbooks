@@ -1131,9 +1131,13 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
    --script 03_wip/pack_vNN.json --brackets <the cut times, e.g. 3,7,11> --json` (leave `--script`
    out for a take with no spoken lines). It measures the cuts, the transcript against the script,
    the pace, the loudness and makes a contact sheet; look at the sheet (consistency, artefacts,
-   burned-in text). The page build makes the 720p preview of each video over 15 MB itself, as
-   `tm tool deliver preview --run R <video> --json` does, and shows it (free, local): no preview
-   by hand.
+   burned-in text). A line Whisper did not hear is listened to again, levelled; one still not
+   heard is "not missing yet" (Whisper misses quiet lines): with ElevenLabs in the stack, check it
+   with the Scribe call the answer names (`tm tool elevenlabs scribe`, its credits first) and QA
+   again with `--scribe <its file>`; without it, say the line may only be quiet. Each cut is
+   measured against its nearest bracket (issue #94). The page build makes the 720p preview of
+   each video over 15 MB itself, as `tm tool deliver preview --run R <video> --json` does, and
+   shows it (free, local): no preview by hand.
 3. **The video check-in**:
    - **Check every step**: the takes, a stage of the run page as in F1 (the ask's `checkin`
      `video`, its options `accept`, `redo`, `drop` and `fails_qa`;

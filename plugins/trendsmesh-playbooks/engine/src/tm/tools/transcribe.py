@@ -35,35 +35,61 @@ def _model_class():
     return WhisperModel
 
 
+_LOADED: dict[tuple, object] = {}
+
+
+def _whisper(model: str):
+    """The Whisper model, loaded once per process and class (take_qa listens to a take more than once)."""
+    cls, root = _model_class(), str(c.models_dir("whisper"))
+    if (cls, model, root) not in _LOADED:
+        _LOADED[(cls, model, root)] = cls(model, device="cpu", compute_type="int8", download_root=root)
+    return _LOADED[(cls, model, root)]
+
+
+def listen(audio, model: str = DEFAULT_MODEL, lang: str | None = None, *, vad: bool = True,
+           offset: float = 0.0) -> tuple[list[dict], object]:
+    """(segments, Whisper's info) of 16 kHz mono samples, every time moved by `offset` seconds. `vad`: Whisper's
+    silence filter, which also drops a whispered line (issue #94), so a second listen goes without it."""
+    segments, info = _whisper(model).transcribe(audio, language=lang, word_timestamps=True, vad_filter=vad)
+    out = []
+    for s in segments:
+        out.append({
+            "start": round(s.start + offset, 2), "end": round(s.end + offset, 2), "text": s.text.strip(),
+            "words": [{"start": round(w.start + offset, 2), "end": round(w.end + offset, 2), "word": w.word,
+                       "probability": round(w.probability, 3)} for w in (s.words or [])],
+        })
+        c.say(f"[{s.start + offset:6.2f}-{s.end + offset:6.2f}] {s.text.strip()}")
+    return out, info
+
+
 def transcribe(media: Path | str, model: str = DEFAULT_MODEL, lang: str | None = None) -> dict:
     info = c.probe(media)
     if not info.get("has_audio"):
         return {"language": None, "language_probability": 0.0, "duration": info.get("duration") or 0.0,
                 "segments": [], "note": "no audio track"}
-    whisper = _model_class()(model, device="cpu", compute_type="int8",
-                             download_root=str(c.models_dir("whisper")))
-    segments, info = whisper.transcribe(load_audio(media), language=lang, word_timestamps=True, vad_filter=True)
-    result = {"language": info.language, "language_probability": round(float(info.language_probability), 3),
-              "duration": round(float(info.duration), 2), "segments": []}
-    for s in segments:
-        result["segments"].append({
-            "start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip(),
-            "words": [{"start": round(w.start, 2), "end": round(w.end, 2), "word": w.word,
-                       "probability": round(w.probability, 3)} for w in (s.words or [])],
-        })
-        c.say(f"[{s.start:6.2f}-{s.end:6.2f}] {s.text.strip()}")
-    return result
+    segments, info = listen(load_audio(media), model, lang)
+    return {"language": info.language, "language_probability": round(float(info.language_probability), 3),
+            "duration": round(float(info.duration), 2), "segments": segments}
+
+
+PARAMS = {"device": "cpu", "compute_type": "int8", "word_timestamps": True, "vad_filter": True}
+
+
+def keep(run, media: Path | str, out: Path, result: dict, model: str, lang: str | None,
+         extra: dict | None = None) -> None:
+    """Write a transcript of `media` to `out` and give it its manifest row; `extra` adds to its params."""
+    c.write_json(out, result)
+    params = {"lang": lang, **PARAMS, **(extra or {})}
+    c.record(run, out, "faster-whisper (local)", c.parent_ref(run, media), params=params, model=model,
+             cost="0 (local)", request={"media": c.parent_ref(run, media), "model": model, **params},
+             response={k: result[k] for k in ("language", "language_probability", "duration")}
+             | {"segments": len(result["segments"])})
 
 
 def save(run, media: Path | str, out: Path, model: str, lang: str | None) -> dict:
     """Transcribe `media` into `out` and give it its manifest row (teardown uses this too)."""
     result = transcribe(media, model, lang)
-    c.write_json(out, result)
-    params = {"lang": lang, "device": "cpu", "compute_type": "int8", "word_timestamps": True, "vad_filter": True}
-    c.record(run, out, "faster-whisper (local)", c.parent_ref(run, media), params=params, model=model,
-             cost="0 (local)", request={"media": c.parent_ref(run, media), "model": model, **params},
-             response={k: result[k] for k in ("language", "language_probability", "duration")}
-             | {"segments": len(result["segments"])})
+    keep(run, media, out, result, model, lang)
     return result
 
 

@@ -936,6 +936,9 @@ organic:
     fail_no_transcript: "the transcript matches no transcript match (QA without --script) of the script, under {least}"
     fail_loudness: "the loudness is {lufs} LUFS, outside the usable {low} to {high} LUFS"
     fail_no_sound: the take has no measurable sound, and it carries the spoken lines
+    # issue #94: a line local Whisper did not hear, even with that part of the take levelled, is not missing yet
+    fail_unconfirmed: "the transcript matches {score} of the script, under {least}; not heard whole even with the take levelled: {lines}. Whisper misses quiet lines, so no line is missing yet: check the take with Scribe before you call one missing or pay for a new take"
+    finding_line_missing: "Scribe hears {heard} of the line “{line}”: the rest is missing from the take"
     finding_no_cut: "no cut near {at} s"
     finding_cut_off: "the cut at {cut} s is {off} s off its bracket at {bracket} s (more than {flag} s)"
     finding_slow: "the pace is {wps} words a second, under {least}: speed it up ×{speed} in the edit (pitch kept) before any redo"

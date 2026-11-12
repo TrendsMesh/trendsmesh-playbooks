@@ -456,7 +456,8 @@ def test_script_from_the_pack_is_the_lines_its_one_take_says(tmp_path):
         line["text"] = text
     path = tmp_path / "pack_v01.json"
     path.write_text(json.dumps(m5, ensure_ascii=False), encoding="utf-8")
-    assert take_qa.script_text(path) == exampleedu.take_script()   # the four host lines, as the take's prompt said them
+    # the four host lines, as the take's prompt said them, one a line (issue #94: each line is checked)
+    assert take_qa.script_text(path) == "\n".join(exampleedu.take_lines())
     p3 = json.loads((FIXTURES / "p3_sections_pack.json").read_text(encoding="utf-8"))
     path.write_text(json.dumps(p3, ensure_ascii=False), encoding="utf-8")
     with pytest.raises(_common.ToolError, match="elevenlabs_narrator.*Leave out --script"):

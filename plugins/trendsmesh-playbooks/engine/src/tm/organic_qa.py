@@ -2,14 +2,17 @@
 
 `tm tool take_qa` measures a generated take and writes `<take dir>/qa/<stem>_qa_vNN.json` (`qa_file` finds the
 latest): {take, transcript, match, words, speech_seconds, wps, tail_silence, cuts, cut_offsets, lufs, peak,
-contact_sheet}. Here:
+contact_sheet, lines, heard_by}. Here:
 
 - `match(script, words)`: the share of the script's words Whisper heard, in order (lower-case, punctuation
   dropped, Polish and other letters kept as they are): the longest common subsequence ÷ the script's word count.
+  `script_lines` and `line_hits` split that alignment by line (issue #94): the share of each line heard, and where.
 - `rubric_takes(qa, cfg, *, speech=True)`: the takes rubric (PLAYBOOK.md OV9) against the run's `qa.*` thresholds
-  (defaults `organic_config.DEFAULTS`). `fails`: the transcript under `qa.transcript_min`, the loudness outside
-  `qa.lufs_usable`; `findings`: a cut more than `qa.cut_flag_s` off its bracket, a bracket with no cut, a slow
-  pace (each a sentence of the string table `organic.qa.*`: English here, `rubric_words` in a page's language);
+  (defaults `organic_config.DEFAULTS`). `fails`: the transcript under `qa.transcript_min` (when local Whisper,
+  even on the levelled take, did not hear a whole line, the fail says the line is not confirmed missing: check it
+  with Scribe first; issue #94), the loudness outside
+  `qa.lufs_usable`; `findings`: a cut more than `qa.cut_flag_s` off its bracket, a bracket with no cut, a line
+  Scribe did not hear whole (missing from the take), a slow pace (each a sentence of the string table `organic.qa.*`: English here, `rubric_words` in a page's language);
   `speed`: what a slow take (under `qa.wps_min`) is sped up to in the edit, `min(qa.speed_max, 2.9 / wps)`,
   before any redo is suggested. The transcript and pace rules apply only to a take that carries the spoken lines
   (`speech`: the pack's route speaks in the model, `SPEECH_IN_TAKE`). A narrated or silent take gets its voice in
@@ -123,6 +126,49 @@ def match(script: str, words: list[str]) -> float:
     return row[-1] / len(want)
 
 
+_SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
+
+
+def script_lines(script: str) -> list[str]:
+    """The script's lines: each line of the text, split again after a sentence's end (. ! ? …); lines with no
+    words are left out."""
+    out = []
+    for line in (script or "").splitlines():
+        out += [part.strip() for part in _SENTENCE_END.split(line) if _plain(part)]
+    return out
+
+
+def line_hits(lines: list[str], words: list[dict]) -> list[dict]:
+    """Which of each line's words were heard, from the same alignment as `match` (the longest common subsequence of
+    the lines' words, in order, and the heard words). One {heard, first, last} per line: `heard` the share of its
+    words heard (0 to 1), `first` and `last` the indexes in `words` of its first and last heard word (None when
+    none was heard)."""
+    want = [(tok, n) for n, line in enumerate(lines) for tok in _plain(line)]
+    heard = [(tok, j) for j, w in enumerate(words) for tok in _plain(str(w.get("word", "")))]
+    rows, cols = len(want), len(heard)
+    table = [[0] * (cols + 1) for _ in range(rows + 1)]
+    for i in range(rows - 1, -1, -1):
+        for k in range(cols - 1, -1, -1):
+            table[i][k] = (table[i + 1][k + 1] + 1 if want[i][0] == heard[k][0]
+                           else max(table[i + 1][k], table[i][k + 1]))
+    got: dict[int, list[int]] = {}
+    i = k = 0
+    while i < rows and k < cols:
+        if want[i][0] == heard[k][0] and table[i][k] == table[i + 1][k + 1] + 1:
+            got.setdefault(want[i][1], []).append(heard[k][1])
+            i, k = i + 1, k + 1
+        elif table[i + 1][k] >= table[i][k + 1]:
+            i += 1
+        else:
+            k += 1
+    out = []
+    for n, line in enumerate(lines):
+        found, total = got.get(n, []), len(_plain(line))
+        out.append({"heard": round(len(found) / total, 3) if total else 1.0,
+                    "first": found[0] if found else None, "last": found[-1] if found else None})
+    return out
+
+
 def _setting(cfg: dict | None, key: str):
     found = config.get(cfg, f"qa.{key}") if cfg else None
     return found if found is not None else organic_config.DEFAULTS["qa"][key]
@@ -133,6 +179,20 @@ def _number(value: object) -> bool:
 
 
 _Q = "organic.qa."   # the rubric's sentences in the string table (issue #3): English here, a page's language there
+LOCAL, SCRIBE = "whisper", "scribe"   # what heard a QA's words (`heard_by`): local Whisper, or ElevenLabs Scribe
+
+
+def short_lines(qa: dict, heard_by: str) -> list[dict]:
+    """The QA's lines not fully heard, when its words came from `heard_by` (a QA file without `lines`, written
+    before issue #94, has none)."""
+    if qa.get("heard_by") != heard_by:
+        return []
+    return [line for line in qa.get("lines") or [] if isinstance(line, dict) and _number(line.get("heard"))
+            and line["heard"] < 1 and isinstance(line.get("line"), str)]
+
+
+def _quoted(lines: list[dict]) -> str:
+    return ", ".join(f"“{line['line']}”" for line in lines)
 
 
 def _rubric(qa: dict, cfg: dict | None, speech: bool) -> tuple[list, list, float | None]:
@@ -144,9 +204,16 @@ def _rubric(qa: dict, cfg: dict | None, speech: bool) -> tuple[list, list, float
     if speech:
         least = _setting(cfg, "transcript_min")
         score = qa.get("match")
+        quiet = short_lines(qa, LOCAL)
         if not _number(score) or score < least:
-            fails.append((_Q + "fail_transcript", {"score": f"{score:.0%}", "least": f"{least:.0%}"}) if _number(score)
-                         else (_Q + "fail_no_transcript", {"least": f"{least:.0%}"}))
+            if quiet and _number(score):   # not missing yet: Whisper misses quiet lines (issue #94)
+                fails.append((_Q + "fail_unconfirmed", {"score": f"{score:.0%}", "least": f"{least:.0%}",
+                                                        "lines": _quoted(quiet)}))
+            else:
+                fails.append((_Q + "fail_transcript", {"score": f"{score:.0%}", "least": f"{least:.0%}"})
+                             if _number(score) else (_Q + "fail_no_transcript", {"least": f"{least:.0%}"}))
+        for line in short_lines(qa, SCRIBE):
+            findings.append((_Q + "finding_line_missing", {"line": line["line"], "heard": f"{line['heard']:.0%}"}))
     low, high = _setting(cfg, "lufs_usable")
     lufs = qa.get("lufs")
     if _number(lufs) and not low <= lufs <= high:

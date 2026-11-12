@@ -9,6 +9,7 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
                            [--use-case U] [--limit 10] [--json]     (free)
     tm tool elevenlabs voices --run RUN --mine [--query Q] [--limit 100] [--json]     (free)
     tm tool elevenlabs history-search --run RUN TEXT [--json]
+    tm tool elevenlabs scribe --run RUN MEDIA --cost CREDITS [--language L] [--model scribe_v3] [--out PATH] [--json]
     tm tool elevenlabs music-upload --run RUN AUDIO --cost CREDITS [--out PATH] [--json]
     tm tool elevenlabs music-compose --run RUN --plan PLAN.json --cost CREDITS [--model music_v2_5]
                            [--format mp3_44100_192] [--out PATH] [--json]
@@ -44,6 +45,14 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
   `language_code` is the run's market language (`video_fonts.market_language`, its region left out: `pt-BR` ->
   `pt`), or --language; it is sent to every model but multilingual_v2, which does not support it. `--settings`
   overrides the voice's stored settings for this request; with a clone keep similarity_boost at 0.75 or less.
+- scribe (issue #94): Speech to Text, `POST /v1/speech-to-text` (multipart `file`, `model_id` `scribe_v3`,
+  `timestamps_granularity=word`, `language_code` the run's market language or --language; no audio events, no
+  speakers), read from ElevenLabs' API reference on 2026-11-12. Verbatim word times: it keeps a repeat Whisper hides
+  and hears a quiet line Whisper's silence filter drops. Written in the shape of a local transcript, so `tm tool
+  take_qa --scribe` and the takes' QA read it as they read Whisper's: `<media dir>/qa/<stem>_scribe_vNN.json` =
+  {"source": "scribe", "model", "media" (run-relative), "language", "language_probability", "duration",
+  "segments": [{start, end, text, words: [{start, end, word, probability}]}] (a segment ends at . ! ? …),
+  "credits_used"}. About 330 credits a minute (`tts_models.scribe_credits`).
 - history-search finds earlier generations whose text contains the given text (case, spacing and
   punctuation ignored), to reuse the original voice and settings (V1a) instead of cloning.
 - Music endpoints, read from the ElevenLabs Python SDK 2.77.0 (`elevenlabs/music/raw_client.py`,
@@ -86,7 +95,7 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
 - Before a paid call the subscription is read (free) and what is left, counting usage-based billing, is compared
   with the approved estimate (TM_COST_ESTIMATE, from `tm tool`): when it falls short, the call stops before anything
   is sent (#66 point 4). A subscription the key may not read skips that check.
-- Paid calls (isolate, clone-ivc, tts, music-upload, music-compose) need `--cost` (the approved estimate in credits): the
+- Paid calls (isolate, clone-ivc, tts, scribe, music-upload, music-compose) need `--cost` (the approved estimate in credits): the
   engine records it against the voice_credits budget before this runs and reconciles it with
   `credits_used`, which is reported to it as soon as ElevenLabs answers (before saving the file).
 """
@@ -374,6 +383,61 @@ def tts(voice_id: str, text: str, out: Path | str, speed: float = 1.0, model: st
     request = {"method": "POST", "url": f"{API}{path}", "params": {"output_format": fmt}, "json": body}
     return {"out": str(out), "credits_used": credits, "request": request,
             "response": record or _response_record(resp), "alignment": alignment}
+
+
+_SENTENCE_END = tuple(".!?…")
+
+
+def scribe_segments(words: list[dict]) -> list[dict]:
+    """Scribe's words (`type` word, with times) as transcript segments, one per sentence."""
+    import math
+
+    segments, current = [], []
+    for w in words:
+        if not isinstance(w, dict) or w.get("type", "word") != "word":
+            continue
+        try:
+            start, end = round(float(w["start"]), 2), round(float(w["end"]), 2)
+        except (KeyError, TypeError, ValueError):
+            continue
+        logprob = w.get("logprob")
+        prob = round(math.exp(logprob), 3) if isinstance(logprob, (int, float)) and logprob <= 0 else None
+        current.append({"start": start, "end": end, "word": " " + str(w.get("text", "")).strip(), "probability": prob})
+        if current[-1]["word"].rstrip().endswith(_SENTENCE_END):
+            segments.append(current)
+            current = []
+    if current:
+        segments.append(current)
+    return [{"start": seg[0]["start"], "end": seg[-1]["end"], "text": "".join(w["word"] for w in seg).strip(),
+             "words": seg} for seg in segments]
+
+
+def scribe(media: Path | str, model: str = tts_models.SCRIBE_MODEL, language: str | None = None) -> dict:
+    """Speech to Text of `media` with word times: {"answer" (the transcript's fields), credits_used, request,
+    response}."""
+    media = Path(media)
+    data = {"model_id": model, "timestamps_granularity": "word", "tag_audio_events": "false", "diarize": "false",
+            **({"language_code": language} if language else {})}
+    before = _before_paid("the speech to text")
+    with media.open("rb") as fh:
+        resp = _paid("/v1/speech-to-text", "the speech to text", data=data, files={"file": (media.name, fh)})
+    _check(resp, "the speech to text")
+    credits = _credits(resp, before)
+    c.report_cost(True, credits)
+    try:
+        body = resp.json()
+        words = body["words"]
+        if not isinstance(words, list):
+            raise TypeError
+    except (ValueError, KeyError, TypeError):
+        raise c.ToolError("ElevenLabs answered the speech to text in a form this plugin does not know, so no "
+                          "transcript was saved. It may have been charged: check the ElevenLabs history.") from None
+    answer = {"language": body.get("language_code"), "language_probability": body.get("language_probability"),
+              "duration": body.get("audio_duration_secs"), "segments": scribe_segments(words)}
+    request = {"method": "POST", "url": API + "/v1/speech-to-text", "data": data, "files": {"file": media.name}}
+    record = _response_record(resp)
+    record.pop("json", None)   # the words are in the transcript itself
+    return {"answer": answer, "credits_used": credits, "request": request, "response": record}
 
 
 def music_upload(audio: Path | str, out: Path | str) -> dict:
@@ -664,6 +728,30 @@ def _cmd_tts(a: argparse.Namespace, run) -> int:
                     + (f" Word and phrase times beside it ({len(words)} words)." if a.timestamps else ""))
 
 
+def _cmd_scribe(a: argparse.Namespace, run) -> int:
+    media = Path(a.media)
+    if not media.is_file():
+        raise c.ToolError(f"{c.name_of(a.media)} does not exist. Nothing was sent.")
+    try:
+        rel = c.rel(run, media)
+        stage = f"{c.rel(run, media.parent)}/qa"
+    except ValueError:
+        raise c.ToolError(f"{c.name_of(a.media)} is not inside the run folder {run.path}. Nothing was sent.") from None
+    out = c.output(run, a.out, stage, f"{media.stem}_scribe", "json")
+    language = _language(run, a.language)
+    res = scribe(media, a.model, language)
+    words = sum(len(seg["words"]) for seg in res["answer"]["segments"])
+    c.write_json(out, {"source": "scribe", "model": a.model, "media": rel, **res["answer"],
+                       "credits_used": res["credits_used"]})
+    c.record(run, out, "ElevenLabs Speech to Text (Scribe)", rel, params={"language_code": language}, model=a.model,
+             cost=_cost(res), request=res["request"], response=res["response"])
+    return c.finish(a, {"tool": "elevenlabs scribe", "outputs": [c.rel(run, out)], "words": words,
+                        "credits_used": res["credits_used"]},
+                    f"Scribe's transcript of {rel} saved to {c.rel(run, out)}: {words} word(s) ({_cost(res)}). "
+                    f"Check the take with it: tm tool take_qa --run {a.run} {rel} --lang <its language> --script "
+                    f"<its lines> --scribe {c.rel(run, out)}.")
+
+
 def _language(run, given: str | None) -> str | None:
     """The `language_code` of a take: --language, else the run's market language; its primary subtag (`pt-BR` ->
     `pt`), as ElevenLabs takes ISO 639-1 (and 639-3 for a few). None when the run names no market language."""
@@ -854,6 +942,12 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--settings", default=None, help="voice settings: a JSON file (or inline JSON), e.g. {\"stability\": 0.5}")
     s.add_argument("--timestamps", action="store_true",
                    help="use with-timestamps and write <stem>.words.json, .words.srt and .phrases.srt")
+    s = sub.add_parser("scribe", allow_abbrev=False, help="Speech to Text with word times (Scribe), for a take's QA")
+    c.add_common(s)
+    s.add_argument("--cost", type=float, default=None, help="the approved estimate in credits (about 330 a minute)")
+    s.add_argument("--model", default=tts_models.SCRIBE_MODEL)
+    s.add_argument("--language", default=None, help="the language_code, e.g. pl (default: the run's market language)")
+    s.add_argument("media", help="the take or the edit, inside the run")
     s = sub.add_parser("history-search", allow_abbrev=False, help="earlier generations with this text")
     c.add_common(s)
     s.add_argument("text")
@@ -884,10 +978,10 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     c.report_cost(False)
     run = c.open_run(a.run)
-    c.inputs(run, a, "audio", "files", "settings")   # a run-relative input, whatever the working folder
+    c.inputs(run, a, "audio", "files", "settings", "media")   # a run-relative input, whatever the working folder
     _key()  # stop before writing anything when the key is missing
     return {"isolate": _cmd_isolate, "clone-ivc": _cmd_clone, "tts": _cmd_tts,
-            "history-search": _cmd_history, "music-upload": _cmd_music_upload,
+            "history-search": _cmd_history, "scribe": _cmd_scribe, "music-upload": _cmd_music_upload,
             "music-compose": _cmd_music_compose, "credits": _cmd_credits,
             "voices": _cmd_voices}[a.action](a, run)
 

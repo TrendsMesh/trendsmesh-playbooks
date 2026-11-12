@@ -1045,3 +1045,57 @@ def test_the_library_search_still_needs_a_query_and_a_language(api, run, capsys)
     assert elevenlabs.main(["voices", "--run", str(run.path), "--language", "pl", "--json"]) == 1
     assert "--query" in json.loads(capsys.readouterr().out.strip().splitlines()[-1])["message"]
     assert not api.calls
+
+
+# --- Scribe (issue #94): a take's words, verbatim, for its QA ------------------------------------------------
+
+SCRIBE_ANSWER = {"language_code": "en", "language_probability": 0.98, "text": "Your plan. First month free.",
+                 "audio_duration_secs": 4.5, "words": [
+                     {"text": "Your", "start": 0.2, "end": 0.5, "type": "word", "logprob": -0.05},
+                     {"text": " ", "start": 0.5, "end": 0.5, "type": "spacing", "logprob": 0.0},
+                     {"text": "plan.", "start": 0.5, "end": 0.9, "type": "word", "logprob": -0.1},
+                     {"text": "(sigh)", "start": 1.0, "end": 1.4, "type": "audio_event", "logprob": 0.0},
+                     {"text": "First", "start": 3.4, "end": 3.7, "type": "word", "logprob": -0.2},
+                     {"text": "month", "start": 3.7, "end": 4.0, "type": "word", "logprob": -0.2},
+                     {"text": "free.", "start": 4.0, "end": 4.4, "type": "word", "logprob": -0.3}]}
+
+
+def test_scribe_writes_a_transcript_take_qa_reads(api, run, capsys):
+    def stt(prepared):
+        api.used += 25
+        return Api._json(prepared, SCRIBE_ANSWER)
+
+    api.routes[("POST", "/v1/speech-to-text")] = stt
+    take = run.path / "03_wip" / "take_v01_0.mp4"
+    take.parent.mkdir(parents=True, exist_ok=True)
+    take.write_bytes(b"fake mp4")
+    assert elevenlabs.main(["scribe", "--run", str(run.path), "03_wip/take_v01_0.mp4", "--language", "en",
+                            "--json"]) == 0
+    post = next(c for c in api.calls if c.method == "POST")
+    assert post.url == "https://api.elevenlabs.io/v1/speech-to-text"
+    for field, value in (("model_id", b"scribe_v3"), ("timestamps_granularity", b"word"),
+                         ("language_code", b"en"), ("tag_audio_events", b"false")):
+        assert f'name="{field}"'.encode() in post.body and value in post.body
+    assert b'name="file"; filename="take_v01_0.mp4"' in post.body and b"fake mp4" in post.body
+    result = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert result["outputs"] == ["03_wip/qa/take_v01_0_scribe_v01.json"] and result["credits_used"] == 25
+    saved = json.loads((run.path / "03_wip" / "qa" / "take_v01_0_scribe_v01.json").read_text(encoding="utf-8"))
+    assert (saved["source"], saved["model"], saved["media"]) == ("scribe", "scribe_v3", "03_wip/take_v01_0.mp4")
+    # one segment a sentence, words only (no spacing, no audio events), in the local transcript's shape
+    assert [s["text"] for s in saved["segments"]] == ["Your plan.", "First month free."]
+    assert saved["segments"][1]["words"][0] == {"start": 3.4, "end": 3.7, "word": " First", "probability": 0.819}
+    _no_key_anywhere(run, capsys)
+
+
+def test_scribe_is_paid():
+    tool = TOOLS["elevenlabs"]
+    assert tool.kind_for(["scribe", "--run", "r", "03_wip/take.mp4"]) == "voice_credits"
+
+
+def test_scribe_refuses_a_file_outside_the_run(api, run, tmp_path, capsys):
+    outside = tmp_path / "elsewhere.mp4"
+    outside.write_bytes(b"x")
+    assert elevenlabs.main(["scribe", "--run", str(run.path), str(outside), "--json"]) == 1
+    assert "not inside the run folder" in json.loads(capsys.readouterr().out)["message"]
+    assert not [c for c in api.calls if c.method == "POST"]
+

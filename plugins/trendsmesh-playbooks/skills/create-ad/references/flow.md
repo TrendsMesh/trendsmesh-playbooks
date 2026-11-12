@@ -160,9 +160,16 @@ page and one in chat count the same. Rules: `rules.md`.
   take is resumed for free (`--resume`), never run again. The engine refuses a video before the storyboard's yes and
   a second take of an item the user did not ask for.
 - **Every take goes back raw** on the gate with its transcript and QA notes: `tm tool take_qa --run R <take> --lang
-  <market language> --script <its lines>` (cuts, the transcript, pace, loudness, contact sheet; leave `--script` out
-  for a take that does not speak) and ElevenLabs Scribe word timestamps (verbatim, keeps repeats; Whisper hid a
-  repeat and ran early). `tm done G4` needs every take of the storyboard made and QA'd (`ad_takes_checked`).
+  <market language> --script <its lines, one a line> --brackets <the board's cut times>` (cuts, the transcript,
+  pace, loudness, contact sheet; leave `--script` out for a take that does not speak) and ElevenLabs Scribe word
+  timestamps (verbatim, keeps repeats; Whisper hid a repeat and ran early): `tm tool elevenlabs scribe --run R
+  <take> --cost <credits>` (about 330 credits a minute, from the `voice_credits` budget), then the QA again with
+  `--scribe <its file>`. `tm done G4` needs every take of the storyboard made and QA'd (`ad_takes_checked`).
+- **A line is missing only when Scribe says so** (issue #94). Whisper's silence filter drops a quiet or whispered
+  line, so `take_qa` hears a line it missed again, that part levelled to the take's speech level and without the
+  filter; a line still not heard is "not missing yet", and the answer names the Scribe call and its credits. Never
+  tell the user a line is missing, or propose a paid re-take for it, before Scribe's words are in the QA.
+  `cut_offsets` gives each cut against its nearest board mark, then the marks with no cut.
 - The engine judges each take (`tm.create_qa`, the gate's QA notes): it **fails** on a transcript under the
   threshold, a loudness outside the usable range, or a word heard twice in a row that the lines say once (a
   stutter); its **findings** are a word lasting about 2× its expected length (a possible hidden repeat: listen

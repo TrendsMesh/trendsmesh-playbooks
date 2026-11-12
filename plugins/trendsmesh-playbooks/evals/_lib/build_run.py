@@ -125,6 +125,8 @@ English; every file written and checked with the engine's own `tm ad` commands, 
   ca_at_g4_take_stutters  Hands-off (5 USD at intake); through the checked storyboard and its yes; the presenter take
                  made, its QA heard "Nobody told me me briefs" (a stutter at 0.9 s); `tm done G4`; at "Accept the
                  takes", decided by rule
+  ca_at_g4_quiet_line  as ca_at_g4_take_stutters, but the take's QA (local Whisper, levelled again) did not hear the
+                 quiet last line: "not missing yet", a Scribe check first (issue #94)
 """
 from __future__ import annotations
 
@@ -1852,9 +1854,13 @@ def _ca_files(ws: Path, run: Path, upto: str) -> None:
 CA_LINES = "Nobody told me briefs could take three minutes You answer five questions and it writes the brief"
 
 
-def _ca_qa(ws: Path, run: Path, video: str, *, lufs: float, peak: float, heard: str = CA_LINES) -> str:
+CA_LINE_1, CA_LINE_2 = "Nobody told me briefs could take three minutes", "You answer five questions and it writes the brief"
+
+
+def _ca_qa(ws: Path, run: Path, video: str, *, lufs: float, peak: float, heard: str = CA_LINES,
+           extra: dict | None = None) -> str:
     """A video's QA as `tm tool take_qa` writes it: the transcript (`heard`: the board's lines), the measures, the
-    contact sheet; each recorded as the fixture's."""
+    contact sheet (`extra` replaces or adds keys); each recorded as the fixture's."""
     stem, folder = Path(video).stem, f"{Path(video).parent.as_posix()}/qa"
     words = [{"word": " " + w, "start": round(0.3 * n, 2), "end": round(0.3 * n + 0.25, 2)}
              for n, w in enumerate(heard.split())]
@@ -1864,23 +1870,30 @@ def _ca_qa(ws: Path, run: Path, video: str, *, lufs: float, peak: float, heard: 
     qa = _ca_write(run, f"{folder}/{stem}_qa_v01.json", {
         "take": video, "transcript": transcript, "match": 0.97, "words": len(words), "speech_seconds": words[-1]["end"],
         "wps": 3.2, "tail_silence": 0.6, "cuts": [], "cut_offsets": [], "lufs": lufs, "peak": peak,
-        "contact_sheet": sheet})
+        "contact_sheet": sheet, **(extra or {})})
     for rel in (transcript, sheet, qa):
         tm(ws, "record", "--run", str(run), "--file", rel, "--stage", "03_wip", "--source", "take QA (eval fixture)")
     return qa
 
 
-def ca_take(ws: Path, run: Path, stutter: bool = False) -> None:
+def ca_take(ws: Path, run: Path, stutter: bool = False, quiet: bool = False) -> None:
     """G4: the presenter take, finished on Replicate (its record as the guard's run writes it), and its QA; with
-    `stutter`, the presenter says "me" twice ("Nobody told me me briefs", at 0.9 s), which the lines say once."""
+    `stutter`, the presenter says "me" twice ("Nobody told me me briefs", at 0.9 s), which the lines say once; with
+    `quiet`, local Whisper heard only the first line, even with the rest of the take levelled +24 dB (issue #94)."""
     _ca_write(run, "03_wip/presenter-take_v01.run.json", {
         "status": "done", "model": "gemini-omni", "prediction_id": "pred_fixture_0001",
         "outputs": ["presenter-take_v01_0.mp4"], "cost": 1.5})
     _ca_write(run, "03_wip/presenter-take_v01_0.mp4", b"mp4")
     tm(ws, "record", "--run", str(run), "--file", "03_wip/presenter-take_v01_0.mp4", "--stage", "03_wip",
        "--source", "the presenter take (eval fixture)")
-    heard = CA_LINES.replace("told me", "told me me", 1) if stutter else CA_LINES
-    _ca_qa(ws, run, "03_wip/presenter-take_v01_0.mp4", lufs=-16.0, peak=-2.5, heard=heard)
+    heard = CA_LINES.replace("told me", "told me me", 1) if stutter else CA_LINE_1 if quiet else CA_LINES
+    extra = None
+    if quiet:
+        said = len(CA_LINE_1.split())
+        extra = {"match": round(said / len(CA_LINES.split()), 3), "heard_by": "whisper", "lines": [
+            {"line": CA_LINE_1, "heard": 1.0, "start": 0.0, "end": round(0.3 * (said - 1) + 0.25, 2), "by": "whisper"},
+            {"line": CA_LINE_2, "heard": 0.0, "start": None, "end": None, "by": None, "gain_db": 24.0, "quiet": True}]}
+    _ca_qa(ws, run, "03_wip/presenter-take_v01_0.mp4", lufs=-16.0, peak=-2.5, heard=heard, extra=extra)
 
 
 def ca_edit(ws: Path, run: Path) -> None:
@@ -1927,7 +1940,7 @@ def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None,
 
 def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     level = {"ca_at_s5_plan": "every_step", "ca_at_s10b_hands_off": "hands_off",
-             "ca_at_g4_take_stutters": "hands_off"}[scn]
+             "ca_at_g4_take_stutters": "hands_off", "ca_at_g4_quiet_line": "hands_off"}[scn]
     made = Path(tm(ws, "run", "new", "--playbook", "create-ad", "--name", "planner")["path"])
     run = made.with_name(CA_RUN)
     if made != run:
@@ -1942,6 +1955,9 @@ def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     if scn == "ca_at_g4_take_stutters":
         _ca_files(ws, run, "storyboard")
         return run, ca_drive(ws, run, "G4", stop_checkin="takes", hooks={"G4": lambda: ca_take(ws, run, stutter=True)})
+    if scn == "ca_at_g4_quiet_line":
+        _ca_files(ws, run, "storyboard")
+        return run, ca_drive(ws, run, "G4", stop_checkin="takes", hooks={"G4": lambda: ca_take(ws, run, quiet=True)})
     _ca_files(ws, run, "proposal")
     n = ca_drive(ws, run, "S10a", stop_checkin="upload",
                  hooks={"G4": lambda: ca_take(ws, run), "S7": lambda: ca_edit(ws, run)})

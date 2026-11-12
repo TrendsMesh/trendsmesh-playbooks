@@ -17,10 +17,15 @@ https://elevenlabs.io/docs/overview/models, .../capabilities/text-to-speech/elev
   other model takes it, and one that does not support the given language ignores it.
 - Speed: "Style and Speed sliders are not available in Eleven v4", so a v4 request sends no `speed`, and a speed
   other than 1.0 is refused before anything is sent (record with `eleven_multilingual_v2` to set a speed).
+- Speech to text (Scribe, `scribe_v3`, the docs' model for recorded audio) and the Voice Changer (speech to speech,
+  `eleven_multilingual_sts_v2`) are billed by the minute of audio: the pricing page's credits FAQ, read 2026-11-12,
+  gives 330 credits a minute for Speech to Text and 1,000 for the Voice Changer ("approximate"). An estimate is the
+  audio's minutes at that rate, rounded up to a whole credit (`scribe_credits`, `sts_credits`).
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 DEFAULT = "eleven_v4"
@@ -67,3 +72,23 @@ def takes_language(model: str) -> bool:
 def takes_speed(model: str) -> bool:
     found = MODELS.get(model)
     return found.speed if found else True
+
+
+SCRIBE_MODEL = "scribe_v3"
+STS_MODEL = "eleven_multilingual_sts_v2"
+SCRIBE_PER_MINUTE = 330
+STS_PER_MINUTE = 1000
+
+
+def _per_minute(seconds: float, rate: int) -> int:
+    return max(1, math.ceil(max(0.0, seconds) / 60 * rate))
+
+
+def scribe_credits(seconds: float) -> int:
+    """The estimate for Scribe on `seconds` of audio."""
+    return _per_minute(seconds, SCRIBE_PER_MINUTE)
+
+
+def sts_credits(seconds: float) -> int:
+    """The estimate for the Voice Changer on `seconds` of audio."""
+    return _per_minute(seconds, STS_PER_MINUTE)

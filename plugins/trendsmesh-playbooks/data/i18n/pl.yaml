@@ -438,6 +438,8 @@ strings:
       fail_no_transcript: "brak transkrypcji do porównania ze scenariuszem (QA bez --script), wymagane {least}"
       fail_loudness: "głośność to {lufs} LUFS, poza użytecznym zakresem od {low} do {high} LUFS"
       fail_no_sound: ujęcie nie ma mierzalnego dźwięku, a niesie kwestie mówione
+      fail_unconfirmed: "transkrypcja zgadza się ze scenariuszem w {score}, poniżej {least}; nie usłyszano całych kwestii nawet po wyrównaniu głośności ujęcia: {lines}. Whisper gubi ciche kwestie, więc żadnej jeszcze nie brakuje: sprawdź ujęcie Scribe, zanim uznasz kwestię za brakującą albo zapłacisz za nowe ujęcie"
+      finding_line_missing: "Scribe słyszy {heard} kwestii „{line}”: reszty w ujęciu brakuje"
       finding_no_cut: "brak cięcia w okolicy {at} s"
       finding_cut_off: "cięcie w {cut} s jest {off} s od swojego znacznika w {bracket} s (więcej niż {flag} s)"
       finding_slow: "tempo: {wps} sł./s, poniżej {least}: przyspiesz ujęcie ×{speed} w montażu (bez zmiany wysokości głosu), zanim poprosisz o nowe"

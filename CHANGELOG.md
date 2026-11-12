@@ -253,6 +253,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   proposals, the week, the script, the intake and the models pages are unchanged for now.
 - **The week page counts its videos in your language.** Its summary said "1 videos this week", and in Polish
   "filmów" for every number; it now says "1 video", "2 videos", and in Polish "1 film", "3 filmy", "5 filmów".
+- **A quiet line in a take is no longer reported missing.** The take QA's local transcription could drop a whispered
+  line, so Claude told you a line was missing that was in the take. It now listens to that part again, raised to the
+  take's level, and a line it still can't hear is "not missing yet": Claude checks it with ElevenLabs Scribe first
+  (the new `tm tool elevenlabs scribe`, about 330 credits a minute, its cost shown first) before it calls the line
+  missing or suggests a paid re-take. In Create an ad and Organic AI video.
+- **Cut offsets measure each cut against the nearest mark.** A take's QA compared each cut with every mark of the
+  board (8.75 / 5.75 / 2.75 / 0.75 s for one cut); it now gives one offset per cut, from its nearest mark, and names
+  the marks with no cut.
 
 ## 0.12.0
 
