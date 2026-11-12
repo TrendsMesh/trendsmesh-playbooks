@@ -47,7 +47,7 @@ def test_missing_replicate_for_ai_video_tells_user_where():
     it = item(r, "replicate_api_token")
     assert not it.ok and it.fixer == "user" and not r.ready
     assert it.fix.startswith("Make a token at https://replicate.com/account/api-tokens")   # #66: where, and the link
-    assert "open /plugin, choose trendsmesh-playbooks, choose configure" in it.fix
+    assert "open /plugin, choose Installed, then trendsmesh-playbooks, then Configure options" in it.fix
 
 
 def test_replicate_set_is_ok(world):
@@ -509,8 +509,8 @@ REFRESH_AD_CARD_030 = """**Not ready yet.** Here is what is in place and what is
 - Can't be checked until Meta Ads is connected and signed in.
 
 **You need to do these yourself:**
-1. Make a token at https://replicate.com/account/api-tokens (sign in, then Create token, and copy it). Then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the Replicate API token, and start a new session. It makes the AI images and video; each run is paid from your Replicate account (https://replicate.com/account/billing).
-2. Make a key at https://elevenlabs.io/app/settings/api-keys (Developers, then API Keys, then Create key). If you restrict it, allow: Text to Speech, Voices (read and write), Audio Isolation, Music Generation, History (read) and User (read). Then open /plugin, choose trendsmesh-playbooks, choose configure, paste it as the ElevenLabs API key, and start a new session. It makes the voices and the music, from your ElevenLabs credits.
+1. Make a token at https://replicate.com/account/api-tokens (sign in, then Create token, and copy it). Then open /plugin, choose Installed, then trendsmesh-playbooks, then Configure options, paste it as the Replicate API token, and start a new session. It makes the AI images and video; each run is paid from your Replicate account (https://replicate.com/account/billing).
+2. Make a key at https://elevenlabs.io/app/settings/api-keys (Developers, then API Keys, then Create key). If you restrict it, allow: Text to Speech, Voices (read and write), Audio Isolation, Music Generation, History (read) and User (read). Then open /plugin, choose Installed, then trendsmesh-playbooks, then Configure options, paste it as the ElevenLabs API key, and start a new session. It makes the voices and the music, from your ElevenLabs credits.
 
 When they are done, tell me and I check again. The run continues from the same place."""
 

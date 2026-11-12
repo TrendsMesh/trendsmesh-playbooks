@@ -299,6 +299,6 @@ esc() { printf '%s' "$1" | tr -d '\000-\037' | sed 's/\\/\\\\/g; s/"/\\"/g'; }
 hit=$(printf '%s' "$hit" | sed "s/^[ ;&|({\`\"$q=]*//; s/[ ;&|)}>\"$q]*\$//")
 said=
 [ -n "$hit" ] && [ "$rule" != token ] && said=" It matched: $hit."
-reason="Blocked by the TrendsMesh playbooks plugin's key guard (rule: $rule): $what.$said $how Keys are never shown, not even masked: tm doctor says whether each key is set, and the user changes them in /plugin, trendsmesh-playbooks, configure."
+reason="Blocked by the TrendsMesh playbooks plugin's key guard (rule: $rule): $what.$said $how Keys are never shown, not even masked: tm doctor says whether each key is set, and the user changes them in /plugin, under Installed, trendsmesh-playbooks, Configure options."
 printf '{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "%s"}}\n' "$(esc "$reason")"
 exit 0

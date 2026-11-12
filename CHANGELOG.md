@@ -48,6 +48,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
   command the playbooks and the engine tell Claude to run through the guard, and fails when one would be blocked or
   when the engine starts a program the list doesn't name. When the guard blocks a note or a regex that only looks
   like a key store, or a search whose pattern holds a lone `/`, its message says how to rephrase it.
+- **Where to set a key, as Claude Code names it.** The doctor, the playbooks and the key messages said to choose
+  "configure" in `/plugin`; the menu item is `/plugin` → **Installed** → trendsmesh-playbooks → **Configure
+  options**, and they now say so.
 - **The plugin installs on Windows paths.** Cloning the plugin on Windows could fail with "Filename too long": its
   longest file path was 124 characters, and Claude Code's plugin folder and your user profile come in front of it,
   against Windows' limit of 260. Every path in the plugin is now 90 characters or fewer, and a test keeps it so.

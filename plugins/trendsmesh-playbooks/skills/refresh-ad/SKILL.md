@@ -189,7 +189,7 @@ reorder or cut inside one continuous shot at level 0 (offer the regenerated shot
   in the run, recorded the same way).
 - **Keys** (Replicate, ElevenLabs) are never searched for, read, printed, echoed, logged,
   committed or written into the workspace: not in part, not masked, not their length. The user
-  sets them in `/plugin` → trendsmesh-playbooks → configure; `tm doctor` says whether each is
+  sets them in `/plugin` → **Installed** → trendsmesh-playbooks → **Configure options**; `tm doctor` says whether each is
   set, without showing it.
 - **Costs** (Replicate, ElevenLabs, Meta spend): before any paid call, show the prompts,
   parameters, model and the estimate (`tm budget estimate <ai_usd|voice_credits|test> <amount>

@@ -157,8 +157,8 @@ def _key() -> str:
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
         raise c.ToolStop("The ElevenLabs key is not set, so nothing was sent and nothing was spent. Open "
-                         "/plugin, choose trendsmesh-playbooks, set the ElevenLabs key, then start a new "
-                         "session. The run continues from the same place.")
+                         "/plugin, choose Installed, then trendsmesh-playbooks, then Configure options, set the "
+                         "ElevenLabs key, then start a new session. The run continues from the same place.")
     return key
 
 

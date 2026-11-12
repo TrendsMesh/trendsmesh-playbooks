@@ -19,7 +19,7 @@ a case's JSON or a check-in id.
 
 **One plain question at a time.** Ask it, then wait for the answer before anything else.
 **Keys are never pasted into the chat**, not even when the user offers: a missing key is set in
-`/plugin` → trendsmesh-playbooks → configure (the doctor's card says how), and you check it with
+`/plugin` → **Installed** → trendsmesh-playbooks → **Configure options** (the doctor's card says how), and you check it with
 the doctor again. Say "check-in", never "gate"; the levels are **Check every step**, **Just the
 big calls** and **Hands-off**. Every stop you tell the user about says what happened, what to do,
 and that the acceptance continues from the same place.
@@ -77,7 +77,7 @@ and that the acceptance continues from the same place.
    - `file`: ask for the path of the file the case's `steps` name (the original video as
      uploaded to Meta, a product clip, an earlier case's music take).
    - `key`: the doctor's card says whether the key is set. If it isn't, tell them where to set
-     it (`/plugin` → trendsmesh-playbooks → configure), never in the chat, and run the doctor
+     it (`/plugin` → **Installed** → trendsmesh-playbooks → **Configure options**), never in the chat, and run the doctor
      again once they say it's done.
    - `budget`: the first time in the suite (`budget.approved` false), ask for the suite budget's
      one yes and record their words: `tm acceptance approve --note "<their words>"`. In the case

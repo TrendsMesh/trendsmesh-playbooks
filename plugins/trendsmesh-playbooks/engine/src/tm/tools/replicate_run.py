@@ -63,8 +63,8 @@ def _token() -> str:
     token = os.environ.get("REPLICATE_API_TOKEN")
     if not token:
         raise c.ToolStop("The Replicate token is not set, so nothing was sent and nothing was spent. Open "
-                         "/plugin, choose trendsmesh-playbooks, set the Replicate token, then start a new "
-                         "session. The run continues from the same place.")
+                         "/plugin, choose Installed, then trendsmesh-playbooks, then Configure options, set the "
+                         "Replicate token, then start a new session. The run continues from the same place.")
     return token
 
 

@@ -230,6 +230,6 @@ if (-not $rule) { exit 0 }
 $hit = ($hit -replace '[\x00-\x1f]', '') -replace '^[ ;&|({`"''=]*', '' -replace '[ ;&|)}>"'']*$', ''
 $said = ''
 if ($hit -and $rule -ne 'token') { $said = " It matched: $hit." }
-$reason = "Blocked by the TrendsMesh playbooks plugin's key guard (rule: $rule): $what.$said $how Keys are never shown, not even masked: tm doctor says whether each key is set, and the user changes them in /plugin, trendsmesh-playbooks, configure."
+$reason = "Blocked by the TrendsMesh playbooks plugin's key guard (rule: $rule): $what.$said $how Keys are never shown, not even masked: tm doctor says whether each key is set, and the user changes them in /plugin, under Installed, trendsmesh-playbooks, Configure options."
 @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; permissionDecision = 'deny'; permissionDecisionReason = $reason } } | ConvertTo-Json -Compress -Depth 4
 exit 0

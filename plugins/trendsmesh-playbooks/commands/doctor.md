@@ -62,8 +62,8 @@ name none, a short general check; and write a support report they can read and s
    is missing, why it matters and the exact next step for each. Leave out every command, flag
    and id: the user never needs to see `--mcp` or `--fact`. Things you can install, you offer
    with their size and time and do only after the user's yes (`tm env install <tier> --yes`).
-   Things only the user can do (sign in, a plan, a key in `/plugin` → trendsmesh-playbooks →
-   configure, the one `sudo` line on Linux), you explain step by step. A warning (TrendsMesh) is
+   Things only the user can do (sign in, a plan, a key in `/plugin` → **Installed** →
+   trendsmesh-playbooks → **Configure options**, the one `sudo` line on Linux), you explain step by step. A warning (TrendsMesh) is
    not a to-do that blocks: say the card's guess-mode warning in plain words, once, and say the
    playbook still runs without it, with its changes as best guesses. The sign-in question and
    the plan offer were made in step 1: don't make them again. The voice-cloning warning needs
@@ -78,7 +78,7 @@ name none, a short general check; and write a support report they can read and s
    **connected but unusable** (refused, or no credits left: the row's step says why and what to
    do, with the link), is **missing** (the step says where to make one, with the link), or is set
    but **not checked** (the provider could not be reached; nothing blocks). The user sees and
-   changes a key in `/plugin` → trendsmesh-playbooks → configure.
+   changes a key in `/plugin` → **Installed** → trendsmesh-playbooks → **Configure options**.
 6. When the edited or AI video tools are needed, say once: Remotion is free for individuals and
    companies of up to 3 people; a company of 4 or more needs its own Remotion licence.
 

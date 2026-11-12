@@ -17,7 +17,7 @@ How to read the copy in the plugin:
   its MCP (`flow.md#b1` maps each call), and the collector saves every answer to the run
   (`references/trend-collection.md` at the plugin root): there is no TrendsMesh key, ever, and
   nothing reads that file. The Replicate token and the ElevenLabs key come from the plugin's own
-  configuration (`/plugin` → trendsmesh-playbooks → configure), never from a file in the workspace.
+  configuration (`/plugin` → **Installed** → trendsmesh-playbooks → **Configure options**), never from a file in the workspace.
 - The tools it names are `tm` commands: `trend_shortlist.py` is `tm trends shortlist`;
   `proposals_page.py` and `script_page.py` are `tm organic page proposals` and `tm organic page
   script`; the kit's checks are `tm kit check` (in a script, `tm organic script check`); the

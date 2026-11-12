@@ -86,8 +86,8 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
    `unchecked` there). Its answer names the production types the stack hides for an AI video (a
    script to film may use any type) and the speech routes it takes away: say them in one line.
 5. **Keys never appear in chat.** Never search for, read, print or ask for a key or token: not in
-   part, not masked, not their length. The user sets them in `/plugin` → trendsmesh-playbooks →
-   configure; the doctor says whether each is set.
+   part, not masked, not their length. The user sets them in `/plugin` → **Installed** →
+   trendsmesh-playbooks → **Configure options**; the doctor says whether each is set.
 
 ## 2. Intake (A0), one batch of questions
 
