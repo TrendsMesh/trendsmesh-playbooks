@@ -144,7 +144,7 @@ hypothesis is never a finding.
 | Thought | Reality |
 |---|---|
 | "There are no trends in this category" | Never. A thin map shows its closest trends as a **"weak match"** (V7). |
-| "Not in ads" | Say **"none found in Ad Library titles"**: the Ad Library returns titles only. Hooks are "Not checkable without Foreplay". |
+| "Not in ads" | Say **"none found in Ad Library titles"**: the Ad Library returns titles only. A shortlisted hook checked in the category's words says "competitor found" or "none found in Ad Library titles", never "unused"; an unchecked hook is "Not checkable without Foreplay". |
 | "I'll count creators myself" | `tm research growth` counts them, every time. Never a number by hand. |
 | "I'll paste the videos into a file" | The collector saves every answer (`tm trends collect on`); a missed one goes through `tm trends ingest`. |
 | "No TrendsMesh, I'll use what I know" | Trend research stops without TrendsMesh: the sign-in or the offer, never guesses. |

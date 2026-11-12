@@ -92,6 +92,8 @@ def test_report_json_rebuilds_report_v05(beauty_run, tmp_path):
     assert folder == run.path / "04_final" / "report_v01"
     got = _read(folder / "report.json")
     expected, changed = beauty.as_whole_words(_strip(_read(REPORT_V05 / "report.json")), run)
+    # issue #58: hooks by their rising place; the digest is the reference's own, copied in
+    expected = {**beauty.as_rising_bands(expected, run), "digest": expected["digest"]}
     assert _strip(got) == expected and changed == beauty.WHOLE_WORDS      # issue #8: whole words
     assert research_report.schema_problems(got) == []
     # F7b: the weighted total goes under each pick's plugin key (the reference picks have no score table)
@@ -114,12 +116,21 @@ def test_page_has_three_views_and_switch(beauty_run, tmp_path):
     # the reference digest's previous state is not marked rebuilt: no "rebuilt" line
     assert "Compared with the report of 29 Oct 2026 (6 days of evidence)." in text
     assert "rebuilt from the evidence dates" not in text
-    assert "a hook among all 101 rising hooks" in text and "of all rising hooks" in text
+    # issue #58: a hook's band is its place among the 101 rising hooks TrendsMesh lists
+    assert "a hook by its place among the 101 rising hooks TrendsMesh lists" in text
+    assert "of TrendsMesh&#x27;s 101 rising hooks" in text and "of all rising hooks" not in text
+    hooks = text[text.index("<section id='hooks'>"):]
+    hooks = hooks[:hooks.index("</section>")]
+    assert "<h3>Already used in beauty · 5</h3>" in hooks and "<b>day _ of _</b>" in hooks
+    assert "<h3>Fit the message, not used in beauty yet · 0</h3>" in hooks
+    assert "Every shortlisted hook already has a beauty video." in hooks
+    assert hooks.count("Ad Library: not checked") == 5                    # no B4 check in the reference run
 
 
 @pytest.mark.private_data
-def test_page_says_hooks_rank_among_the_hooks_read(beauty_run, tmp_path):
-    """Issue #8: only the shortlisted hooks' videos are fetched, so the page never says "all rising hooks"."""
+def test_page_places_hooks_among_every_rising_hook_when_only_the_shortlist_is_read(beauty_run, tmp_path):
+    """Issue #8: only the shortlisted hooks' videos are fetched. Issue #58: the band still compares a hook with
+    every rising hook, by its place in TrendsMesh's list, so the page never says "the rising hooks read"."""
     run = _copy(beauty_run, tmp_path)
     mapped = {r["id"] for r in research_growth.category_map(run)["kept"]}   # one hook is on the map too
     for row in beauty.handoff("02_research/hooks_in_category.json")["not_in_category"]:
@@ -127,8 +138,8 @@ def test_page_says_hooks_rank_among_the_hooks_read(beauty_run, tmp_path):
             f.unlink()
     research_growth.compute(run, AS_OF, _cfg(run))
     text = (_build_beauty(run) / "index.html").read_text(encoding="utf-8")
-    assert "a hook among the 6 rising hooks whose videos were read (the shortlist; 101 listed)" in text
-    assert "of the rising hooks read" in text and "all rising hooks" not in text
+    assert "a hook by its place among the 101 rising hooks TrendsMesh lists" in text
+    assert "rising hooks read" not in text and "whose videos were read" not in text
 
 
 @pytest.mark.private_data
@@ -463,3 +474,74 @@ def test_unchecked_ad_library_is_said(tmp_path):
     assert "Meta Ad Library was not checked in this run" in text
     assert "Paid check: Meta Ad Library was not checked in this run" in text
     assert "<title>Kosmetyki naturalne Trend Report</title>" in text            # only the first letter raised
+
+
+# --- issue #58: the hooks section, the hooks' band by their rising place -------------------------
+
+POV, DZIEN, BLASK = "d7" * 16, "e8" * 16, "f9" * 16
+
+
+def _hook(tid: str, name: str, *, use: str | None, rank: int, relative: dict, ad: dict | None = None) -> dict:
+    row = {**_row(tid, name, "still_rising"), "kind": "hook_trend", "group": "hooks", "sub_category": "hooks",
+           "relative": relative}
+    if use is None:                                 # a hooks path from before 0.11: no use, no fit
+        return row
+    return {**row, "category_videos": 2 if use == "in_category" else 0, "videos_checked": 6,
+            "plugin": {"fit": 4.25, "fit_rank": rank, "in_category": use == "in_category", "use": use,
+                       "why": "Pasuje do porannej rutyny.", "ad_library": ad}}
+
+
+def _with_hooks(run: RunFolder, picks: dict, hooks: list[dict], **category) -> None:
+    growth = _read(run.path / "02_research" / "growth_v01.json")
+    growth["params"]["category"].update(category)
+    growth["trends"] += hooks
+    _write(run.path / "02_research" / "growth_v02.json", growth)
+    picks["still_rising"].append({"id": hooks[0]["id"], "what": "Otwarcie: POV.", "how": "POV klientki.",
+                                  "risk": "Ogólny hook."})
+    _write(run.path / "03_wip" / "picks_v01.json", picks)
+
+
+def test_hooks_section_lists_used_and_transfer_hooks_with_their_rising_band(tmp_path):
+    run, picks = _uroda(tmp_path)
+    _with_hooks(run, picks, [
+        _hook(POV, "pov _", use="in_category", rank=1,
+              relative={"velocity_index": 1.3, "rising_position": 2, "rising_of": 40, "percentile": 0.95,
+                        "band": "top 10%"},
+              ad={"verdict": "competitor_found", "query": "pov krem", "advertisers": ["Marka B"]}),
+        _hook(DZIEN, "dzień _ z _", use="transfer", rank=2,
+              relative={"velocity_index": 0.7, "rising_position": None, "rising_of": 40},
+              ad={"verdict": "none_found", "query": "dzień 3 pielęgnacji", "advertisers": []}),
+        _hook(BLASK, "glow _", use="transfer", rank=3,
+              relative={"velocity_index": 0.5, "rising_position": 30, "rising_of": 40, "percentile": 0.25,
+                        "band": "lower half"})],
+        hooks_rising=40)
+    folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    text = (folder / "index.html").read_text(encoding="utf-8")
+    hooks = text[text.index("<section id='hooks'>"):]
+    hooks = hooks[:hooks.index("</section>")]
+    assert "<h2>Hooks for Uroda</h2>" in hooks
+    used, transfer = hooks.split("<h3>Fit the message, not used in Uroda yet · 2</h3>")
+    assert "<h3>Already used in Uroda · 1</h3>" in used and "<b>pov _</b>" in used
+    assert "Uroda videos: 2 of 6" in used and "Ad Library: competitor found (Marka B)" in used
+    assert "Top 10% of TrendsMesh&#x27;s 40 rising hooks" in used and "fit 4.2" in used
+    assert transfer.index("dzień _ z _") < transfer.index("glow _")                     # fit order
+    assert transfer.count("<span class='pill k-hook'>transfer</span>") == 2
+    assert "Nobody in Uroda uses these yet" in transfer
+    assert "Not in TrendsMesh&#x27;s rising hooks" in transfer and "Lower half of TrendsMesh" in transfer
+    assert "Ad Library: none found in Ad Library titles" in transfer and "Ad Library: not checked" in transfer
+    # the card and the sample say the band is the hook's place among every rising hook
+    assert "a hook by its place among the 40 rising hooks TrendsMesh lists" in text
+    assert "rising hooks read" not in text and "of all rising hooks" not in text
+    assert _read(folder / "report.json")["plugin"] == {"hooks": {"in_category": [POV], "transfer": [DZIEN, BLASK]}}
+
+
+def test_report_of_a_growth_file_from_before_the_rising_band_still_renders(tmp_path):
+    """A run grown before issue #58 (hooks ranked among the hooks read, no use marked) builds its page as before."""
+    run, picks = _uroda(tmp_path)
+    _with_hooks(run, picks, [_hook(POV, "pov _", use=None, rank=1,
+                                   relative={"velocity_index": 1.3, "percentile": 0.8, "band": "top 25%"})])
+    folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    text = (folder / "index.html").read_text(encoding="utf-8")
+    assert "Top 25% of all rising hooks" in text and "a hook among all 10 rising hooks" in text
+    assert "<section id='hooks'>" not in text and "TrendsMesh lists" not in text
+    assert "plugin" not in _read(folder / "report.json")

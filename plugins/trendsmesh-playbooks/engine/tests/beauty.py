@@ -149,6 +149,48 @@ def as_whole_words(reference: Any, run: RunFolder) -> tuple[Any, set[str]]:
     return walk(reference), changed
 
 
+def as_rising_bands(reference: Any, run: RunFolder) -> Any:
+    """`reference` (a growth file, a snapshot, a backtest, a report, a digest) with every hook's band read
+    from its place in this run's rising hook list, as growth reads it since issue #58 (the owner's choice:
+    among every rising hook TrendsMesh lists, not among the hooks whose videos were read), and the list's
+    length (`hooks_rising`) beside each `hooks_pool`. The dry run ranked hooks among the hooks read; all
+    else, the velocity index and the stages too, must still be the reference's. A hook is found by its
+    `id`, or by its key in a dict of rows (the snapshot's `trends`)."""
+    order = research_growth.rising_order(run)
+    hooks = {c["id"] for c in research_growth.hook_cards(run)}
+
+    def walk(x: Any, key: str | None = None) -> Any:
+        if isinstance(x, list):
+            return [walk(v) for v in x]
+        if not isinstance(x, dict):
+            return x
+        out = {k: walk(v, k) for k, v in x.items()}
+        tid = out.get("id") or key
+        if order and tid in hooks:
+            for k in ("relative", "relative_then"):
+                if isinstance(out.get(k), dict) and "velocity_index" in out[k]:
+                    out[k] = research_growth.rising_place(out[k], tid, order)
+        if order and "hooks_pool" in out:
+            out["hooks_rising"] = len(order)
+        return out
+
+    return walk(reference)
+
+
+def md_rising_bands(md: str, rows: list[dict]) -> str:
+    """A growth .md with each hook row's Band cell as `rows` (a growth file's trends) give it: the
+    markdown side of `as_rising_bands`."""
+    band = {r["name"]: (r.get("relative") or {}).get("band", "—") for r in rows if r.get("kind") == "hook_trend"}
+    out = []
+    for line in md.split("\n"):
+        cells = line.split(" | ")
+        if line.startswith("| ") and len(cells) > 4 and cells[2] == "hook" and cells[1] in band:
+            cells[3] = band[cells[1]]
+            line = " | ".join(cells)
+        out.append(line)
+    return "\n".join(out)
+
+
 def fit_scores(hooks_in_category: dict) -> dict:
     """Fit scores (issue #8) that rank the reference's kept hooks first, in their order, and every other
     hook card last: the shortlist of `len(kept)` is then the hooks the reference dry run kept."""

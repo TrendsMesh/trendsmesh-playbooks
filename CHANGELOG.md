@@ -46,6 +46,18 @@ What changed in each version of the TrendsMesh playbooks plugin.
   original's shown for reference. Nothing is switched on or off: the final report ends with your part, step by step
   (switch the new ad on, move the budget, switch the original off), and under a campaign budget it says that Meta
   can move budget away from your original at once and suggests ad set spend limits for a gradual move.
+- **Trend research checks the shortlisted hooks in the Ad Library.** Each hook that fits your category is
+  searched in your market's Meta Ad Library in the category's words ("pov nail salon", never the hook's name
+  alone), as Creative brief does, and says "competitor found" with the advertiser or "none found in Ad Library
+  titles". The map check-in and the report show it next to the hook's fit, and the paid view reuses it instead of
+  "Not checkable without Foreplay". If Meta isn't connected, the hooks say "not checked" and the run goes on.
+- **The trend report lists hooks in two lists.** A new "Hooks for <category>" section shows the shortlisted hooks
+  in fit order: those already used in your category, with how many of their videos are, and those that fit your
+  message although nobody in the category uses them yet, each labelled as a transfer to test.
+- **A hook's band compares it with every rising hook.** A hook's band ("top 10% of TrendsMesh's 101 rising hooks")
+  now comes from its place in TrendsMesh's rising list, not from the roughly 8 shortlisted hooks whose videos
+  were read. Its stage still comes from how fast new creators join it. A hook only a search found has no band.
+  Reports built before keep their wording.
 
 ## 0.11.0
 

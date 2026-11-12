@@ -192,6 +192,7 @@ report:
   unknown_platform: unknown platform
   hook_pool_read: "a hook among the {pool} rising hooks whose videos were read (the shortlist; {listed} listed)"
   hook_pool_all: "a hook among all {pool} rising hooks"
+  hook_pool_rising: "a hook by its place among the {n} rising hooks TrendsMesh lists"
   # the picks
   act_on_one: Act on this one
   act_on_these: "Act on these {n}"
@@ -202,6 +203,8 @@ report:
   # a trend's card
   band_all_hooks: "{band} of all rising hooks"
   band_hooks_read: "{band} of the rising hooks read"
+  band_rising: "{band} of TrendsMesh's {n} rising hooks"
+  band_not_rising: "Not in TrendsMesh's rising hooks"
   band_topics: "{band} of {category} topics"
   velocity: "{index}× the new creators of a typical {category} trend"
   spread_one: One account
@@ -249,13 +252,27 @@ report:
   mapped_split_many: 'One phrase in: "{root}" matched only {n} trends strongly, so it was split into sub-categories, and thin ones split once more'
   mapped_whole_one: 'One phrase in: "{root}" matched {n} trend strongly, so it was not split'
   mapped_whole_many: 'One phrase in: "{root}" matched {n} trends strongly, so it was not split'
-  mapped_note: "{mapped} (relevant = search match score ≥ {min_match}). Hooks were kept when their evidence videos are about {category}."
+  mapped_note: "{mapped} (relevant = search match score ≥ {min_match}). Hooks have their own path, from TrendsMesh's rising hook list."
   col_search: Search
   col_parent: Parent
   col_relevant: Relevant results
   col_kept: Trends kept here
   split_further: split further
   left_out: "Left out ({n}) and why"
+  # the hooks section: the shortlisted hooks in two lists (issue #58)
+  hooks_heading: "Hooks for {category}"
+  hooks_note: "The rising hooks that fit {category} best, in fit order (1 to 5 on Creative brief's criteria). A hook is an opening structure for any subject, so whether {category} already uses it is shown, never a reason to leave it out."
+  hooks_used_heading: "Already used in {category}"
+  hooks_used_none: "No shortlisted hook has a {category} video yet."
+  hooks_transfer_heading: "Fit the message, not used in {category} yet"
+  hooks_transfer_note: "Nobody in {category} uses these yet: each is a transfer from other niches, a hypothesis to test, not a proven pattern."
+  hooks_transfer_none: "Every shortlisted hook already has a {category} video."
+  hooks_transfer: transfer
+  hooks_fit: "fit {fit}"
+  hooks_category_videos: "{category} videos: {n} of {checked}"
+  hooks_ad_competitor: "Ad Library: competitor found ({advertisers})"
+  hooks_ad_none: "Ad Library: none found in Ad Library titles"
+  hooks_ad_not_checked: "Ad Library: not checked"
   sure_heading: How sure are we
   backtest_note: 'Backtest: stages computed with the evidence known on a past date, then the new creators that joined in the next 14 days. A good rule puts more growth in "act now" than in "past its peak".'
   col_ref_date: Reference date

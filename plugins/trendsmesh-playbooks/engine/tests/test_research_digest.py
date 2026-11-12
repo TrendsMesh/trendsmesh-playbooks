@@ -57,7 +57,7 @@ def beauty_run(tmp_path_factory):
 def test_backtest_v3_rebuilds_three_dates(beauty_run, as_of, capsys):
     path = research_growth.backtest(beauty_run, date.fromisoformat(as_of), beauty.cfg())
     assert path == beauty_run.path / "03_wip" / f"backtest_{as_of}_rule_v3_v01.json"
-    assert _read(path) == beauty.handoff(f"03_wip/backtest_{as_of}_rule_v3.json")
+    assert _read(path) == beauty.as_rising_bands(beauty.handoff(f"03_wip/backtest_{as_of}_rule_v3.json"), beauty_run)
     his_md = (beauty.BEAUTY / "03_wip" / f"backtest_{as_of}_rule_v3.md").read_text(encoding="utf-8")
     assert path.with_suffix(".md").read_text(encoding="utf-8") == his_md.replace("\r\n", "\n")
     assert f"03_wip/backtest_{as_of}_rule_v3_v01.json" in (beauty_run.path / "manifest.md").read_text(encoding="utf-8")
@@ -87,7 +87,7 @@ def test_digest_calls_match_beauty_digest(beauty_run, capsys):
         "Sephora Savings Event sale hauls and picks", "Medicube K-beauty skincare hauls and routines",
         "Hair braiding and long-hair styling", "Keratin hair straightening salon transformations"]
     assert len(digest["down"]) == 22
-    assert (digest["prev"], digest["now"]) == (original["prev"], original["now"])
+    assert (digest["prev"], digest["now"]) == (original["prev"], beauty.as_rising_bands(original["now"], beauty_run))
     # the reference file has no pool_ids, so it is a rebuilt previous state: new by the original rule, ended left out
     assert digest["new"] == [] and digest["ended"] == [] and digest["reidentified"] == []
     assert digest["plugin"]["prev_rebuilt"] is True and digest["plugin"]["ended_checked"] is False

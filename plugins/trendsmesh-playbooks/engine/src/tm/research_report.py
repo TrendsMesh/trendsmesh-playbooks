@@ -289,9 +289,54 @@ class _Page:
     def momentum(self, t: dict) -> tuple[str, str]:
         rel, tr = t.get("relative") or {}, self.tr
         hooks = "report.band_hooks_read" if self.hooks_not_read else "report.band_all_hooks"
+        if t.get("kind") == "hook_trend" and "rising_of" in rel:      # issue #58: its place in the rising list
+            hooks = "report.band_rising" if rel.get("band") else "report.band_not_rising"
         pool = hooks if t.get("kind") == "hook_trend" else "report.band_topics"
-        return (tr(pool, band=rel.get('band', '—').capitalize(), category=self.category),
+        return (tr(pool, band=rel.get('band', '—').capitalize(), category=self.category, n=rel.get("rising_of")),
                 tr("report.velocity", index=rel.get('velocity_index', 0), category=self.category))
+
+    def hooks_section(self) -> str:
+        """Issue #58 (item 5 of #8): the shortlisted hooks in two lists, those already used in the category
+        and the transfers (they fit, nobody in the category uses them yet), each in fit order with its fit,
+        band, category videos and Ad Library verdict. Empty for a growth file from before the hooks path
+        marked a hook's use (0.11), so an older run's page renders as it did."""
+        tr, cat = self.tr, E(self.category)
+        hooks = sorted((t for t in self.trends.values() if t.get("kind") == "hook_trend"
+                        and (t.get("plugin") or {}).get("use") in ("in_category", "transfer")),
+                       key=lambda t: (t["plugin"].get("fit_rank") or 99, t["name"]))
+        if not hooks:
+            return ""
+        ads = {"competitor_found": "report.hooks_ad_competitor", "none_found": "report.hooks_ad_none"}
+
+        def item(t: dict) -> str:
+            p = t["plugin"]
+            ad = p.get("ad_library") or {}
+            verdict = (tr(ads[ad["verdict"]], advertisers=E(", ".join(ad.get("advertisers") or [])))
+                       if ad.get("verdict") in ads else tr("report.hooks_ad_not_checked"))
+            used = (tr("report.hooks_category_videos", category=cat,         # a map's row: under plugin
+                       n=t.get("category_videos", p.get("category_videos")) or 0,
+                       checked=t.get("videos_checked", p.get("videos_checked")) or 0) if p["use"] == "in_category"
+                    else f"<span class='pill k-hook'>{tr('report.hooks_transfer')}</span>")
+            fit = p.get("fit")
+            pills = (f"<span class='pill'>{tr('report.hooks_fit', fit=f'{fit:.1f}')}</span>" if isinstance(fit, (int, float))
+                     else "") + f"<span class='pill'>{E(self.momentum(t)[0])}</span>"
+            why = f"<br><span class='small-print'>{E(p['why'])}</span>" if p.get("why") else ""
+            return f"<li><b>{E(t['name'])}</b> {pills} {used} · {verdict}{why}</li>"
+
+        def part(head: str, rows: list[dict], note: str, none: str) -> str:
+            body = (f"<ul class='hooks'>{''.join(item(t) for t in rows)}</ul>" if rows
+                    else f"<p class='small-print'>{tr(none, category=cat)}</p>")
+            return (f"<h3>{tr(head, category=cat)} · {len(rows)}</h3>"
+                    + (f"<p class='small-print'>{tr(note, category=cat)}</p>" if note else "") + body)
+
+        used = [t for t in hooks if t["plugin"]["use"] == "in_category"]
+        transfer = [t for t in hooks if t["plugin"]["use"] == "transfer"]
+        return (f"<section id='hooks'><div class='sec-head'><h2>{tr('report.hooks_heading', category=cat)}</h2>"
+                f"<p>{tr('report.hooks_note', category=cat)}</p></div>"
+                + part("report.hooks_used_heading", used, "", "report.hooks_used_none")
+                + part("report.hooks_transfer_heading", transfer, "report.hooks_transfer_note",
+                       "report.hooks_transfer_none")
+                + "</section>")
 
     def glance(self, t: dict, paid: dict | None) -> str:
         """TR10 (v02): position in the sample first; raw counts behind 'Raw counts'. Each cell's class is
@@ -644,6 +689,11 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
               "digest": (digest | {"reading": picks.get("digest_reading", {})}) if digest is not None else None,
               "category_map": {"queries": q, "dropped": cmap["dropped"], "min_match": cmap["min_match"]},
               "backtest": [b["summary"] | {"ref": b["ref"]} for b in backtest_data]}
+    hook_use = {u: [t["id"] for t in sorted(rows, key=lambda t: (t.get("plugin") or {}).get("fit_rank") or 99)
+                    if t.get("kind") == "hook_trend" and (t.get("plugin") or {}).get("use") == u]
+                for u in ("in_category", "transfer")}
+    if any(hook_use.values()):                     # issue #58: the hooks section's two lists
+        report["plugin"] = {"hooks": hook_use}
     wrong = schema_problems(report)
     if wrong:
         raise Stop(f"The report breaks its schema ({SCHEMA}): {'; '.join(wrong)}. Fix the input it comes from, "
@@ -719,6 +769,8 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
     pool = ctx.get("hooks_pool", "")
     hook_pool = (tr("report.hook_pool_read", pool=pool, listed=pool + pg.hooks_not_read) if pg.hooks_not_read
                  else tr("report.hook_pool_all", pool=pool))
+    if ctx.get("hooks_rising"):                   # issue #58: a growth file that placed hooks in the rising list
+        hook_pool = tr("report.hook_pool_rising", n=ctx["hooks_rising"])
     outputs = report["outputs"]
     nav = "".join(f"<a href='#{o}'>{E(tr(VIEW_KEY[o]))}</a>" for o in outputs)
     cat = E(category)
@@ -775,6 +827,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
 {lead}
 <section><div class="sec-head"><h2>{tr('report.moved_heading')}</h2><p>{tr('report.moved_note')}</p></div><ul class="moves">{moves}</ul></section>
 {tables}
+{pg.hooks_section()}
 <section><div class="sec-head"><h2>{tr('report.mapped_heading')}</h2><p>{mapped_note}</p></div>
 <div class="tw"><table><tr><th>{tr('report.col_search')}</th><th>{tr('report.col_parent')}</th><th class="r">{tr('report.col_relevant')}</th><th class="r">{tr('report.col_kept')}</th><th></th></tr>{qrows}</table></div>
 <details><summary>{tr('report.left_out', n=len(cmap['dropped']))}</summary><ul class="small-print">{dropped}</ul></details></section>

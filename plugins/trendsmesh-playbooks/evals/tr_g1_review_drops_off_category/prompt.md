@@ -1,5 +1,5 @@
 ---
-description: "Check-every-step trend research run (beauty, US) at the relevance review (B3): the map is built from the searches and holds an off-category trend (dementia, matched through 'anti-aging') and seven Halloween trends (seasonal, inside the category). The agent drops the off-category ones with their reasons, keeps the seasonal ones, does the hooks path and shows the map check-in (G1)."
+description: "Check-every-step trend research run (beauty, US) at the relevance review (B3): the map is built from the searches and holds an off-category trend (dementia, matched through 'anti-aging') and seven Halloween trends (seasonal, inside the category). The agent drops the off-category ones with their reasons, keeps the seasonal ones, does the hooks path (the shortlisted hooks also searched in the mocked Meta Ad Library, which answers every search with unrelated ads: each hook is none found in Ad Library titles) and shows the map check-in (G1)."
 tags: [trend-research, tr1]
 max_turns: 60
 timeout_seconds: 1500

@@ -134,6 +134,27 @@ def test_hook_with_a_level_other_than_not_checkable_fails(stubbed):
     assert "not_checkable" in problems[0].todo
 
 
+def test_hook_checked_at_b4_carries_its_check_into_the_paid_reading(stubbed, tmp_path):
+    """Issue #58: a shortlisted hook searched in the Ad Library at B4 (the hook in the category's words,
+    CB4) may carry that check into the paid reading; its level must say what the B4 check found."""
+    run = _copy(stubbed, tmp_path)
+    shortlisted = research_growth.shortlist(run)["shortlist"]
+    assert GRWM in {r["id"] for r in shortlisted}
+    checks = [{"hook_id": r["id"], "hook": r["name"], "query": f"{r['name'].replace('_', '').strip()} makeup",
+               "verdict": "none_found", "advertisers": [], "note": "no beauty advertiser in the titles"}
+              for r in shortlisted]
+    _stubs(run, {"checks": checks})
+    (run.path / "02_research" / "hooks_ad_library_v01.json").write_text(
+        json.dumps({"checked": True, "checks": checks}), encoding="utf-8")
+    grwm = next(c for c in checks if c["hook_id"] == GRWM)
+    summary = {**_summary(), "checked": True}
+    _row(summary, GRWM).update(level="none", query=grwm["query"])
+    assert research_checks.check_paid(run, summary, _cfg(run)) == []
+    _row(summary, GRWM).update(level="found", advertisers=["A"])          # B4 found none
+    problems = research_checks.check_paid(run, summary, _cfg(run))
+    assert len(problems) == 1 and "none_found" in problems[0].what and "Copy the hook's B4 check" in problems[0].todo
+
+
 def test_found_with_five_advertisers_fails(stubbed):
     summary = {**_summary(), "checked": True}
     _row(summary, CURLY_VS_STRAIGHT)["advertisers"] = ["A", "B", "C", "D", "E"]

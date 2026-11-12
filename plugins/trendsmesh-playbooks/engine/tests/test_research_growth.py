@@ -137,15 +137,19 @@ def test_growth_rebuilds_beauty_growth_and_snapshot(tmp_path, capsys):
     growth, snapshot = _read(path), _read(run.path / "02_research" / "snapshot_v01.json")
 
     expected, changed = beauty.as_whole_words(beauty.handoff("02_research/growth.json"), run)
+    expected = beauty.as_rising_bands(expected, run)                    # issue #58: hooks by rising place
     assert _strip(growth) == expected and changed == beauty.WHOLE_WORDS   # issue #8: whole words
-    assert _strip(snapshot) == beauty.handoff("02_research/snapshot.json")
+    assert _strip(snapshot) == beauty.as_rising_bands(beauty.handoff("02_research/snapshot.json"), run)
     md = (run.path / "02_research" / "growth_v01.md").read_text(encoding="utf-8")
-    assert md == (beauty.BEAUTY / "02_research" / "growth.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+    his_md = (beauty.BEAUTY / "02_research" / "growth.md").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert md == beauty.md_rising_bands(his_md, growth["trends"])
+    hooks = [r["relative"] for r in growth["trends"] if r["kind"] == "hook_trend"]
+    assert hooks and all(r["rising_of"] == 101 for r in hooks)           # every rising hook, not the 5 read
 
     buckets = [r["bucket"] for r in growth["trends"]]
     assert [buckets.count(b) for b in research_growth.BUCKETS] == [7, 19, 19, 12]
     assert growth["params"]["category"] == {"median_new": 3, "trends_active": 51, "creators_active": 249,
-                                            "trends": 57, "hooks_pool": 101}
+                                            "trends": 57, "hooks_pool": 101, "hooks_rising": 101}
     # TR4: every row carries its sensitive videos and level (no beauty video is flagged); every beauty
     # video has a creator
     assert all(r["plugin"] == {"sensitive_videos": 0, "unattributed_videos": 0,
@@ -170,10 +174,11 @@ def test_growth_rebuilds_beauty_growth_and_snapshot(tmp_path, capsys):
     prev_snap = _read(run.path / "02_research" / "snapshot_growth_2026-10-29_rebuilt_v01.json")
     assert prev_snap["rebuilt"] is True
     original, changed = beauty.as_whole_words(beauty.handoff("02_research/growth_2026-10-29_reconstructed.json"), run)
+    original = beauty.as_rising_bands(original, run)
     assert changed == beauty.WHOLE_WORDS
     assert _strip(_read(prev))["params"] == original["params"]
     assert no_confidence(_strip(_read(prev))["trends"]) == no_confidence(original["trends"])
-    original_snap = beauty.handoff("02_research/snapshot_growth_2026-10-29_reconstructed.json")
+    original_snap = beauty.as_rising_bands(beauty.handoff("02_research/snapshot_growth_2026-10-29_reconstructed.json"), run)
     assert no_confidence(prev_snap["trends"].values()) == no_confidence(original_snap["trends"].values())
 
     # the command: as of the run's created date (4 Nov) by default, the next version beside the first

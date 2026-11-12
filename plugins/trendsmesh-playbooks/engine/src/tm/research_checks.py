@@ -2,6 +2,8 @@
 
     evidence     the top videos of one trend, for the agent to read (D1):
                  03_wip/evidence_dump_vNN.txt, one dump per step, each trend appended to it
+    check_hook_ads  the shortlisted hooks' Ad Library checks, 02_research/hooks_ad_library_vNN.json
+                 (issue #58, B4): Creative brief's CB4 saturation check, part of a hook's fit
     check_paid   the Ad Library reading, 02_research/ad_library_summary_vNN.json (TR7, D2)
     check_picks  the picks, 03_wip/picks_vNN.json (TR3 moves, TR4 risk, TR5 scores, TR6, D3)
 
@@ -26,7 +28,7 @@ from typing import Iterator
 from tm import manifest, research_config, research_digest, research_growth, research_map, state, trends
 from tm.config import Problem
 from tm.runfolder import RunFolder
-from tm.stops import Stop
+from tm.stops import AGAIN, Stop
 
 WIP = "03_wip"
 PICKS_STEM = "picks"
@@ -196,7 +198,8 @@ def paid_scope(run: RunFolder, rows: dict[str, dict], cfg: dict, out: list[Probl
     return pick_ids(picks)
 
 
-def _check_row(c: dict, field: str, rows: dict[str, dict], checked: object, answered: set[str]) -> list[Problem]:
+def _check_row(c: dict, field: str, rows: dict[str, dict], checked: object, answered: set[str],
+               hook_checks: dict[str, dict] | None = None) -> list[Problem]:
     out = []
     tid = _id(c, "trend_id")
     row = rows.get(tid) if tid else None
@@ -208,9 +211,18 @@ def _check_row(c: dict, field: str, rows: dict[str, dict], checked: object, answ
     if level not in LEVELS:
         return out + [Problem(field, f"{label} has the level {level!r}.", f"Use one of {', '.join(LEVELS)}.")]
     if row is not None and row.get("kind") == "hook_trend" and level != "not_checkable":
-        out.append(Problem(field, f'{label} is a hook, and hooks are "{NOT_CHECKABLE}": an opening structure cannot be '
-                                  f"matched in Ad Library titles, so it can't be {level}.",
-                           "Set its level to not_checkable."))
+        b4 = (hook_checks or {}).get(tid)              # issue #58: a shortlisted hook checked at B4
+        if b4 is None:
+            out.append(Problem(field, f'{label} is a hook with no Ad Library check at B4, so it is "{NOT_CHECKABLE}": an '
+                                      f"opening structure cannot be matched in Ad Library titles by its name, so it "
+                                      f"can't be {level}.",
+                               "Set its level to not_checkable, or copy its check from the hooks' Ad Library checks "
+                               f"({HOOK_ADS_STEM}_vNN.json)."))
+        elif (level == "none") != (b4["verdict"] == "none_found") or _key(ad_query(str(c.get("query") or ""))) != _key(b4["query"]):
+            out.append(Problem(field, f"{label} is {level} with the query {c.get('query')!r}, but its B4 check is "
+                                      f"{b4['verdict']} with {b4['query']!r}.",
+                               "Copy the hook's B4 check: its query, none for none_found, found or crowded by its "
+                               "advertisers for competitor_found."))
     if checked is False:
         if level != "not_checkable":
             out.append(Problem(field, f"The Ad Library was not checked (checked is false), so {label} can't be {level}.",
@@ -240,6 +252,18 @@ def _check_row(c: dict, field: str, rows: dict[str, dict], checked: object, answ
     return out
 
 
+def _hook_checks(run: RunFolder) -> dict[str, dict]:
+    """The B4 Ad Library checks of the shortlisted hooks that hold, by hook id; {} when there are none
+    (a run from before issue #58, Meta unavailable, or checks that no longer hold)."""
+    data, where = hook_ads_file(run)
+    try:
+        if where is None or not data.get("checked") or check_hook_ads(run, data):
+            return {}
+    except Stop:                                     # no shortlist any more: nothing holds
+        return {}
+    return {c["hook_id"]: c for c in data["checks"]}
+
+
 def check_paid(run: RunFolder, summary: dict, cfg: dict) -> list[Problem]:
     """Everything wrong in the Ad Library summary (TR7, V22, V22a); empty when it holds."""
     if not isinstance(summary, dict):
@@ -262,8 +286,9 @@ def check_paid(run: RunFolder, summary: dict, cfg: dict) -> list[Problem]:
     if checked is not False:
         answered, unreadable = saved_queries(run)
         out += unreadable
+    hook_checks = _hook_checks(run)
     for i, c in enumerate(checks):
-        out += _check_row(c, f"checks[{i}]", rows, checked, answered)
+        out += _check_row(c, f"checks[{i}]", rows, checked, answered, hook_checks)
     if checked is not False:
         have = {_id(c, "trend_id") for c in checks}
         missing = [i for i in paid_scope(run, rows, cfg, out) if i not in have]
@@ -273,6 +298,109 @@ def check_paid(run: RunFolder, summary: dict, cfg: dict) -> list[Problem]:
                                "Check each in the Ad Library (its most specific product phrase; a hook is "
                                "not_checkable) and add its row."))
     return out + _wording(summary, PAID_WORDS)
+
+
+# --- the shortlisted hooks in the Ad Library (issue #58, B4) -----------------------------------
+
+HOOK_ADS_STEM = "hooks_ad_library"
+HOOK_VERDICTS = ("competitor_found", "none_found")                # CB4's verdicts
+HOOK_WORDS = {**PAID_WORDS, "unused": (NONE_FOUND, _TITLES_ONLY + ": titles can't show which hook an ad uses")}
+
+
+def hook_ads_file(run: RunFolder) -> tuple[dict | None, str | None]:
+    """The latest hooks' Ad Library checks and their run-relative path; (None, None) before one."""
+    path = run.latest(trends.RESEARCH, HOOK_ADS_STEM, "json")
+    if path is None:
+        return None, None
+    data = trends.read(path)
+    return (data if isinstance(data, dict) else {}), path.relative_to(run.path).as_posix()
+
+
+def check_hook_ads(run: RunFolder, data: object) -> list[Problem]:
+    """Everything wrong in the shortlisted hooks' Ad Library checks; empty when they hold. Each
+    shortlisted hook (the latest `tm research hook-fit`) is searched in the market's Ad Library with the
+    hook in the category's words, never its name alone, as Creative brief's CB4 checks a hook: one row
+    `{hook_id, hook, query, verdict, advertisers, note}`, `competitor_found` naming the relevant
+    advertisers, `none_found` none. `"checked": false` (the Meta Ads connector unavailable) has no rows."""
+    short = research_growth.shortlist(run)
+    if short is None:
+        raise Stop("The rising hooks are not ranked yet, so there is no shortlist to check in the Ad Library. Run "
+                   f"tm research hook-fit first; {AGAIN}.")
+    names = {r["id"]: r.get("name") or r["id"] for r in short["shortlist"]}
+    if not isinstance(data, dict):
+        raise Stop("The hooks' Ad Library checks must hold one JSON object. Write it as {\"checked\": true, "
+                   f"\"checks\": [...]}}, then check again; {AGAIN}.")
+    out: list[Problem] = []
+    checked = data.get("checked")
+    if not isinstance(checked, bool):
+        out.append(Problem("checked", "The checks do not say whether the Ad Library was searched.",
+                           'Add "checked": true at the top, or "checked": false when the Meta Ads connector is '
+                           "unavailable."))
+    checks = data.get("checks")
+    if not isinstance(checks, list) or not all(isinstance(c, dict) for c in checks):
+        return out + [Problem("checks", "checks must be a list of rows {hook_id, hook, query, verdict, advertisers}.",
+                              "Write one row per shortlisted hook.")]
+    if checked is False:
+        if checks:
+            out.append(Problem("checks", "The Ad Library was not searched (checked is false), yet the file has "
+                                         f"{len(checks)} checks.",
+                               'Leave checks empty: every hook then says "not checked". Or search them and set '
+                               "checked to true."))
+        return out + wording(data, HOOK_WORDS)
+    answered, unreadable = saved_queries(run)
+    out += unreadable
+    for i, c in enumerate(checks):
+        field, hid = f"checks[{i}]", _id(c, "hook_id")
+        label = f"{names[hid]!r} ({hid})" if hid in names else repr(c.get("hook") or hid)
+        if hid not in names:
+            out.append(Problem(field, f"{label} is not shortlisted ({short['path']}).",
+                               "Check the shortlisted hooks only, by their hook_id."))
+        verdict, advertisers = c.get("verdict"), c.get("advertisers")
+        if verdict not in HOOK_VERDICTS:
+            out.append(Problem(field, f"{label} has the verdict {verdict!r}.", f"Use one of {', '.join(HOOK_VERDICTS)}."))
+        if not isinstance(advertisers, list):
+            out.append(Problem(field, f"{label}'s advertisers are not a list.", "List the relevant advertisers, [] for none."))
+        elif verdict == "competitor_found" and not advertisers:
+            out.append(Problem(field, f"{label} is competitor found, but names no advertiser.",
+                               "Name the relevant advertisers the titles show, or set it to none_found."))
+        elif verdict == "none_found" and advertisers:
+            out.append(Problem(field, f"{label} is none_found, but names {len(advertisers)} advertisers.",
+                               "Set it to competitor_found, or leave the advertisers out."))
+        query = c.get("query")
+        if not _text(query):
+            out.append(Problem(field, f"{label} has no query.", "Give the query the Ad Library was searched with."))
+        elif hid in names and _key(query) == _key(names[hid]):
+            out.append(Problem(field, f"{label} was searched by the hook's name, which titles never hold.",
+                               "Search the hook in the category's words, the way an ad would open with it "
+                               "(\"pov nail salon\", not \"pov _\"), with collection on, then check again."))
+        elif _key(ad_query(query)) not in answered:
+            out.append(Problem(field, f"The query {ad_query(query)!r} of {label} has no saved answer in "
+                                      f"{trends.RESEARCH}/ad_library/.",
+                               "Search it again with collection on (tm trends collect on), so the answer is saved, "
+                               "then check again."))
+    have = {_id(c, "hook_id") for c in checks}
+    missing = [hid for hid in names if hid not in have]
+    if missing:
+        out.append(Problem("checks", f"{len(missing)} shortlisted hooks have no Ad Library check: "
+                                     + ", ".join(f"{names[h]!r} ({h})" for h in missing) + ".",
+                           "Search each in the market's Ad Library, in the category's words, and add its row."))
+    return out + wording(data, HOOK_WORDS)
+
+
+def hook_verdicts(run: RunFolder) -> tuple[dict[str, dict] | None, str | None]:
+    """Each shortlisted hook's Ad Library verdict `{verdict, query, advertisers}` from the latest checks,
+    and their path: (None, None) before any check, ({}, path) when the Ad Library was not searched.
+    Stops when the checks don't hold (a newer shortlist, a wrong row): check them again first."""
+    data, where = hook_ads_file(run)
+    if where is None:
+        return None, None
+    problems = check_hook_ads(run, data)
+    if problems:
+        raise Stop(f"The hooks' Ad Library checks ({where}) don't hold: "
+                   + " ".join(f"{p.what} {p.todo}" for p in problems)
+                   + f" Fix them as a new version and run tm research hook-ads, then this again; {AGAIN}.")
+    return ({c["hook_id"]: {"verdict": c["verdict"], "query": c["query"], "advertisers": c["advertisers"]}
+             for c in data["checks"]} if data.get("checked") else {}), where
 
 
 # --- the picks (TR3-TR6) ----------------------------------------------------------------------

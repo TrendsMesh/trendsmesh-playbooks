@@ -181,7 +181,7 @@ def test_hooks_count_whole_words_and_keep_every_shortlisted_hook(tmp_path, capsy
     assert kept["h2"]["category_videos"] == 0 and kept["h2"]["plugin"]["use"] == "transfer"
     assert kept["h3"]["category_videos"] == 2 and kept["h3"]["videos_checked"] == 4   # "nails" is another word
     assert kept["h3"]["plugin"] == {"fit": 4.0, "fit_rank": 2, "in_category": True, "use": "in_category",
-                                    "why": "the blank takes a nail step"}
+                                    "why": "the blank takes a nail step", "ad_library": None}
     assert kept["h1"]["category_videos"] == 0                               # "nails" is not "nail"
     assert [r["id"] for r in out["not_shortlisted"]] == ["h5"]
     assert out["shortlist"] == "02_research/hooks_shortlist_v01.json"
@@ -264,3 +264,146 @@ def test_hook_fit_never_shortlists_a_poor_fit(tmp_path):
     cfg = _cfg(8)
     cfg["hooks"]["min_fit"] = 1
     assert len(_read(research_growth.hook_fit(run, rows, cfg))["shortlist"]) == 4
+
+
+# --- issue #58: the band is the hook's place in the rising list -------------------------------
+
+def _grown_hooks(tmp_path, shortlist: int = 3) -> RunFolder:
+    """The nails run with a hook only a search found (h6), the shortlist h2, h3, h6, their videos, the
+    hooks path and the topics' videos: ready for growth."""
+    run = _run(tmp_path)
+    for tid in ("t1", "t2"):
+        _videos(run, tid, ["nails"] * 3)
+    card = {"id": "h6", "kind": "hook_trend", "name": "glow check _", "status": "confirmed"}
+    trends.save_answer(run, "search_trends", {"about": "glow"}, {"data": [card]})
+    research_growth.hook_fit(run, {**FIT, "h6": _row(4)}, _cfg(shortlist))      # h2, h3, then h6 (a tie)
+    _videos(run, "h2", ["nail"] * 4)
+    _videos(run, "h3", ["nail"] * 2)
+    _videos(run, "h6", ["nail"] * 2)
+    research_growth.hooks(run, ["nail"], _cfg())
+    return run
+
+
+def test_growth_bands_a_hook_by_its_place_among_all_the_rising_hooks(tmp_path):
+    """The owner's choice on issue #58: a hook's band compares it with every hook of TrendsMesh's rising
+    list (its place there), not with the few shortlisted hooks whose videos were read. The velocity
+    index, and so the stage, still comes from its new creators against the category."""
+    run = _grown_hooks(tmp_path)
+    out = _read(research_growth.compute(run, AS_OF, _cfg()))
+    rows = {r["id"]: r for r in out["trends"]}
+    assert out["params"]["category"]["hooks_rising"] == 5               # h1-h5 listed, h6 from a search
+    assert rows["h2"]["relative"] == {"velocity_index": 1.3, "rising_position": 2, "rising_of": 5,
+                                      "percentile": 0.6, "band": "top half"}
+    assert rows["h3"]["relative"] == {"velocity_index": 0.7, "rising_position": 3, "rising_of": 5,
+                                      "percentile": 0.4, "band": "lower half"}
+    # a hook not in the rising list has no place there, so no band; it still has its stage
+    assert rows["h6"]["relative"] == {"velocity_index": 0.7, "rising_position": None, "rising_of": 5}
+    assert rows["h6"]["bucket"] in research_growth.BUCKETS
+    # topics are still ranked among the category's topics
+    assert rows["t1"]["relative"] == {"velocity_index": 1.0, "percentile": 0.0, "band": "lower half"}
+    md = (run.path / "02_research" / "growth_v01.md").read_text(encoding="utf-8")
+    assert "| hooks | pov _ | hook | top half |" in md and "| hooks | glow check _ | hook | — |" in md
+
+
+def test_growth_without_a_saved_rising_list_ranks_hooks_among_those_read(tmp_path):
+    """A run whose hooks came from searches only has no rising list to place them in: as before."""
+    run = _grown_hooks(tmp_path)
+    (run.path / LIST).unlink()
+    out = _read(research_growth.compute(run, AS_OF, _cfg()))
+    rel = {r["id"]: r["relative"] for r in out["trends"] if r["kind"] == "hook_trend"}
+    assert "hooks_rising" not in out["params"]["category"]
+    assert all("rising_of" not in r for r in rel.values())
+    assert rel["h2"]["band"] == "top half"                                # 2 of the 3 hooks read below it
+
+
+# --- issue #58: the shortlisted hooks in the market's Ad Library --------------------------------
+
+def _ads(run: RunFolder, query: str, answer: list | None = None) -> None:
+    trends.save_answer(run, "ads_library_search", {"search_terms": query, "ad_reached_countries": ["US"]},
+                       {"data": answer or []})
+
+
+def _hook_ads(run: RunFolder, data: dict, nn: int = 1) -> str:
+    rel = f"02_research/hooks_ad_library_v{nn:02d}.json"
+    (run.path / rel).write_text(json.dumps(data), encoding="utf-8")
+    return rel
+
+
+HOOK_ADS = {"checked": True, "checks": [
+    {"hook_id": "h2", "hook": "pov _", "query": "pov nail salon", "verdict": "competitor_found",
+     "advertisers": ["Salon A (2 ads)"], "note": "a salon's POV booking ad"},
+    {"hook_id": "h3", "hook": "start your _ with _", "query": "start your manicure with", "verdict": "none_found",
+     "advertisers": [], "note": "titles show coffee and fitness ads"}]}
+
+
+def test_hook_ads_need_every_shortlisted_hook_checked_with_a_saved_answer(tmp_path, capsys):
+    from tm import research_checks
+    run = _run(tmp_path)
+    research_growth.hook_fit(run, FIT, _cfg(2))                           # h2, h3
+    _ads(run, "pov nail salon", [{"page_name": "Salon A"}])
+    _ads(run, "start your manicure with")
+    assert research_checks.check_hook_ads(run, HOOK_ADS) == []
+    rel = _hook_ads(run, HOOK_ADS)
+    assert main(["research", "hook-ads", "--run", str(run.path), "--file", rel, "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "done" and "2 shortlisted hooks" in payload["message"]
+
+    def problems(**change):
+        data = json.loads(json.dumps(HOOK_ADS))
+        for i, row in change.items():
+            data["checks"][int(i[1:])].update(row)
+        return research_checks.check_hook_ads(run, data)
+
+    assert "competitor found" in problems(c1={"verdict": "competitor_found"})[0].what      # names none
+    assert "none_found" in problems(c0={"verdict": "none_found"})[0].what                 # names one
+    assert "unused" in problems(c1={"note": "this hook is unused in ads"})[0].what
+    assert "no saved answer" in problems(c1={"query": "start your nails"})[0].what
+    assert "the hook's name" in problems(c1={"query": "start your _ with _"})[0].what
+    assert "not shortlisted" in problems(c1={"hook_id": "h5"})[0].what or \
+        any("not shortlisted" in p.what for p in problems(c1={"hook_id": "h5"}))
+    missing = research_checks.check_hook_ads(run, {"checked": True, "checks": HOOK_ADS["checks"][:1]})
+    assert len(missing) == 1 and "start your _ with _" in missing[0].what
+    # Meta unavailable: nothing to check, every hook says "not checked"
+    assert research_checks.check_hook_ads(run, {"checked": False, "checks": []}) == []
+    assert research_checks.check_hook_ads(run, {"checked": False, "checks": HOOK_ADS["checks"]})
+
+
+def test_hooks_carry_their_ad_library_verdict(tmp_path):
+    run = _run(tmp_path)
+    research_growth.hook_fit(run, FIT, _cfg(2))
+    _videos(run, "h2", ["nail"])
+    _videos(run, "h3", ["nail"])
+    out = _read(research_growth.hooks(run, ["nail"], _cfg()))
+    assert {r["plugin"]["ad_library"] for r in out["kept"]} == {None} and out["ad_library"] is None  # not checked
+    _ads(run, "pov nail salon", [{"page_name": "Salon A"}])
+    _ads(run, "start your manicure with")
+    _hook_ads(run, HOOK_ADS)
+    out = _read(research_growth.hooks(run, ["nail"], _cfg()))
+    kept = {r["id"]: r["plugin"]["ad_library"] for r in out["kept"]}
+    assert kept["h2"] == {"verdict": "competitor_found", "query": "pov nail salon", "advertisers": ["Salon A (2 ads)"]}
+    assert kept["h3"] == {"verdict": "none_found", "query": "start your manicure with", "advertisers": []}
+    assert out["ad_library"] == "02_research/hooks_ad_library_v01.json"
+    # a check that no longer covers the shortlist stops the hooks path, writing nothing
+    research_growth.hook_fit(run, FIT, _cfg(3))                           # h1 is shortlisted now
+    _videos(run, "h1", ["nail"])
+    with pytest.raises(Stop, match="day _ of _"):
+        research_growth.hooks(run, ["nail"], _cfg())
+    assert not (run.path / "02_research" / "hooks_in_category_v03.json").exists()
+    _hook_ads(run, {"checked": False, "checks": []}, nn=2)                # Meta went away: not checked
+    out = _read(research_growth.hooks(run, ["nail"], _cfg()))
+    assert {r["plugin"]["ad_library"] for r in out["kept"]} == {None}
+
+
+def test_a_shortlisted_hook_on_the_map_keeps_its_use_and_fit(tmp_path):
+    """A hook a search kept on the map is listed once, the map's row: it still carries the hooks path's
+    fit, use and Ad Library verdict, so the report's two lists hold it (issue #58)."""
+    run = _grown_hooks(tmp_path)
+    cmap = _read(run.path / "02_research" / "category_map_v01.json")
+    cmap["kept"].append({"id": "h2", "name": "pov _", "kind": "hook_trend", "group": "nails",
+                         "sub_category": "nails", "status": "confirmed"})
+    (run.path / "02_research" / "category_map_v02.json").write_text(json.dumps(cmap), encoding="utf-8")
+    rows = [r for r in _read(research_growth.compute(run, AS_OF, _cfg()))["trends"] if r["id"] == "h2"]
+    assert len(rows) == 1 and rows[0]["group"] == "nails"                  # the map's row
+    plugin = rows[0]["plugin"]
+    assert (plugin["use"], plugin["fit_rank"], plugin["category_videos"], plugin["videos_checked"]) == \
+        ("in_category", 1, 4, 4)

@@ -43,6 +43,7 @@ what each does in a weekly run is under the step. In order:
 | 6 | `tm research fetch-plan` (tell the user how many minutes the fetch takes) | B4 |
 | 7 | `tm research reuse` | B4 |
 | 8 | fetch the plan's videos (every page) and the `get_trend` cards of its `check` list: the shortlisted hooks' first (B4), the rest after the map check-in (C1) | B4, C1 |
+| 8b | the shortlisted hooks in the Ad Library, then `tm research hook-ads` | B4 |
 | 9 | `tm research hooks` | B4 |
 | 10 | `tm research growth` | C2 |
 | 11 | `tm research digest` (it stops until every called trend has videos) | F2 |
@@ -278,18 +279,44 @@ own path (TR1).
    C1. Only these hooks are fetched. After the first trend's pages, **`tm trends check-fields --run R
    --json`**: exit 2 names the fields the answers lack (the run needs `creator` or a handle in `url`,
    `published`, `views`, `thumbnail_url`, `url`, and `match` on search cards): tell the user and wait.
-7. **`tm research hooks --run R --terms "<the category's words>" --json`**: the words a category
+7. **The shortlisted hooks in the Ad Library** (part of fit, as Creative brief's CB4 checks a hook;
+   `tm trends collect on --run R` first on a resume, so the answers are saved). For each
+   shortlisted hook, `ads_library_search` in the market's country, active ads, with the hook **in
+   the category's words**, the way an ad would open with it ("pov nail salon", "day 1 of my lash
+   routine"), never the hook's name alone (titles never hold "pov _"). Read the titles and keep only
+   the relevant advertisers (matching is loose). Write `02_research/hooks_ad_library_v01.json`:
+
+   ```json
+   {"checked": true,
+    "checks": [{"hook_id": "<id>", "hook": "pov _", "query": "pov nail salon",
+                "verdict": "competitor_found", "advertisers": ["<page> (2 ads)"], "note": "<what the titles show>"}]}
+   ```
+
+   `verdict` is `competitor_found` (a relevant advertiser, named) or `none_found`; the words are
+   **"competitor found"** and **"none found in Ad Library titles"**, never "unused" or "not in ads"
+   (titles can't show which hook an ad uses). **When Meta fails** (not connected, signed out,
+   refused): `{"checked": false, "checks": []}`, and every hook says "not checked". Record it (`tm
+   record`, source "your reading of the Meta Ads MCP ads_library_search answers in
+   02_research/ad_library/"), then **`tm research hook-ads --run R --file
+   02_research/hooks_ad_library_v01.json --json`**: exit 2 lists what to fix (a shortlisted hook
+   with no check, a query with no saved answer or that is the hook's name, a verdict its advertisers
+   don't support, a forbidden phrase). A hook a competitor already runs is weaker as an opening:
+   weigh it in the picks (D3) and say it on its card.
+8. **`tm research hooks --run R --terms "<the category's words>" --json`**: the words a category
    video would carry in its excerpt, hook text or slot fill (the phrase, the sub-categories and
    their common words). Words match whole, never inside another word ("art" is not in "start"), so
    give each in the forms the videos use: "beauty,makeup,hair,nail,nails,lash,lashes,brow,brows,
    skin,lip,lips", and phrases as they are written ("nail art"). It keeps every shortlisted hook,
    in fit order, and counts its videos in the category as information, never as a gate: a hook with
    at least one is **used in the category**, one with none is a **transfer** (it fits, nobody in the
-   category uses it yet). A stop names the shortlisted hooks with no saved videos (fetch them), or
-   hooks saved after the fit scores (score them in a new version, `hook-fit` again).
-8. Prepare the G1 card (`checkin-cards.md`): the sub-categories with counts, what was kept and
+   category uses it yet). Each carries its Ad Library verdict (step 7). A stop names the shortlisted
+   hooks with no saved videos (fetch them), hooks saved after the fit scores (score them in a new
+   version, `hook-fit` again), or Ad Library checks that no longer cover the shortlist (check the new
+   ones, `hook-ads` again).
+9. Prepare the G1 card (`checkin-cards.md`): the sub-categories with counts, what was kept and
    dropped and why, the weak matches, the shortlisted hooks in two lists (used in the category, with
-   "used in your category: N videos", and transfers), each with its fit. `tm done B4 --run R`.
+   "used in your category: N videos", and transfers), each with its fit and its Ad Library verdict.
+   `tm done B4 --run R`. The report shows the same two lists under "Hooks for <category>".
 
 <a id="c1"></a>
 ## C1 Evidence videos
@@ -383,12 +410,14 @@ TR7. Through the Meta Ads MCP's `ads_library_search`.
   specific product phrase** of the trend ("cat eye nails", "lash clusters", a brand), not the
   trend's name. Keep only the relevant advertisers (matching is loose: "cat eye nails" returns
   fridge shelves); note each with an example ad id. Cross-check event dates in the ad titles (an
-  ad "Ends 11/9" corrects a description's dates). **Hooks are not searched**: they are
-  `not_checkable`, "Not checkable without Foreplay".
+  ad "Ends 11/9" corrects a description's dates). **Hooks are not searched again:** a hook checked
+  at B4 (`02_research/hooks_ad_library_vNN.json`) copies that check, its query, `none` for
+  none_found, `found` or `crowded` by its advertisers for competitor_found; a hook B4 did not check
+  is `not_checkable`, "Not checkable without Foreplay".
 - **Levels:** `none` (no relevant advertiser: say **"none found in Ad Library titles"**, never that
   it is not in ads; the Ad Library returns titles only), `found` (1–3 relevant advertisers),
   `crowded` (4 or more, or a very large estimated count with relevant top results),
-  `not_checkable` (hooks).
+  `not_checkable` (a hook without a B4 check).
 - Write `02_research/ad_library_summary_v01.json`:
 
   ```json

@@ -37,9 +37,13 @@ its videos carried a category word (matched on word starts), so it fetched every
 videos and, in a niche, kept none. Here the agent scores every hook candidate for fit from its card,
 `hook_fit` keeps the top `hooks.shortlist`, only those are fetched, and `hooks` counts their category
 videos on whole words as information (a kept hook's `plugin.use`: `in_category` with any match,
-else `transfer`). A hook is ranked against the hook candidates whose videos are saved (all of them
-in a run from before the shortlist); the others are listed in the growth file's
-`plugin.hooks_not_read`. `snapshot_extra` adds keys to the snapshot when it is first written (ruling
+else `transfer`), with its Ad Library verdict from the shortlisted hooks' checks (issue #58,
+`research_checks.check_hook_ads`; `plugin.ad_library`, None when not checked). A hook's band and
+percentile are its place in the saved rising hook lists (`relative.rising_position` of
+`relative.rising_of`, the owner's choice on issue #58: it compares a hook with every rising hook,
+where the videos read are only the shortlist's); a hook only a search found has no place and no band.
+A run without a saved rising list ranks hooks against the hook candidates whose videos are saved, as
+before; those without are listed in the growth file's `plugin.hooks_not_read`. `snapshot_extra` adds keys to the snapshot when it is first written (ruling
 F9: `{"rebuilt": true}`), never replaces one; no file is rewritten.
 """
 
@@ -171,16 +175,36 @@ def _need_videos(run: RunFolder, cards: list[dict], what: str) -> None:
 
 # --- hooks path (TR1) -------------------------------------------------------------------------
 
-def hook_cards(run: RunFolder) -> list[dict]:
-    """Hook cards of the saved rising hook lists, then of the searches, by file name."""
+def _is_hook(card: object) -> bool:
+    return isinstance(card, dict) and card.get("kind") == "hook_trend" and bool(card.get("id"))
+
+
+def _list_cards(run: RunFolder) -> list[dict]:
+    """The cards of the saved rising hook lists, page by page (by file name), as TrendsMesh ranked them."""
     lists = run.path / trends.RESEARCH / "lists"
     files = sorted(f for f in lists.glob(HOOK_LISTS) if f.is_file()) if lists.is_dir() else []
     cards = []
     for f in files:
         cards += trends.items(trends.unwrap(trends.read(f)))
+    return cards
+
+
+def rising_order(run: RunFolder) -> dict[str, int]:
+    """Each hook of the saved rising hook lists and its place there, from 0 (the first time it is listed
+    counts): TrendsMesh's own ranking of every rising hook, which the hooks' band reads (issue #58)."""
+    out: dict[str, int] = {}
+    for c in _list_cards(run):
+        if _is_hook(c) and c["id"] not in out:
+            out[c["id"]] = len(out)
+    return out
+
+
+def hook_cards(run: RunFolder) -> list[dict]:
+    """Hook cards of the saved rising hook lists, then of the searches, by file name."""
+    cards = _list_cards(run)
     for f in trends.search_files(run):
         cards += trends.search_cards(trends.unwrap(trends.read(f)))
-    return [c for c in cards if isinstance(c, dict) and c.get("kind") == "hook_trend" and c.get("id")]
+    return [c for c in cards if _is_hook(c)]
 
 
 def _candidates(run: RunFolder) -> list[dict]:
@@ -310,6 +334,8 @@ def hooks(run: RunFolder, terms: list[str], cfg: dict) -> Path:
     by_id = {c["id"]: c for c in cards}
     picked = [(r, by_id[r["id"]]) for r in short["shortlist"] if r["id"] in by_id]
     _need_videos(run, [c for _, c in picked], "shortlisted hooks")
+    from tm import research_checks                # it imports this module
+    verdicts, ads_file = research_checks.hook_verdicts(run)     # issue #58; None: not checked
     match = term_matcher(terms)
     kept = []
     for r, c in picked:
@@ -324,12 +350,13 @@ def hooks(run: RunFolder, terms: list[str], cfg: dict) -> Path:
                      "category_examples": [{"url": v.get("url"), "excerpt": (v.get("excerpt") or "")[:140],
                                             "slot_fill": v.get("slot_fill")} for v in hits[:5]],
                      "plugin": {"fit": r["fit"], "fit_rank": r["rank"], "in_category": bool(hits),
-                                "use": "in_category" if hits else "transfer", "why": r.get("why")}})
-    out = {"terms": terms, "shortlist": short["path"], "kept": kept,
+                                "use": "in_category" if hits else "transfer", "why": r.get("why"),
+                                "ad_library": (verdicts or {}).get(c["id"])}})
+    out = {"terms": terms, "shortlist": short["path"], "ad_library": ads_file, "kept": kept,
            "not_shortlisted": [{k: r[k] for k in ("id", "name", "fit")} for r in short["not_shortlisted"]]}
     nn = _versioned(run, [(CANDIDATES_STEM, "json"), (HOOKS_STEM, "json")])
     target = run.path / trends.RESEARCH / f"{HOOKS_STEM}_v{nn:02d}.json"
-    params = {"terms": terms, "shortlist": short["path"]}
+    params = {"terms": terms, "shortlist": short["path"], **({"ad_library": ads_file} if ads_file else {})}
     _write(run, candidates_of(target), _dump(cards), params, SOURCE_HOOKS)
     _write(run, target, _dump(out), params, SOURCE_HOOKS)
     return target
@@ -444,13 +471,30 @@ def category_context(rows: list[dict]) -> dict:
             "creators_active": len(creators), "trends": len(rows)}
 
 
+def _band(pct: float) -> str:
+    return "top 10%" if pct >= 0.9 else "top 25%" if pct >= 0.75 else "top half" if pct >= 0.5 else "lower half"
+
+
 def relative(g: dict, ctx: dict, pool: list[int]) -> dict:
     n = g.get("new_recent", 0)
     below = sum(1 for x in pool if x < n)
     pct = below / len(pool) if pool else 0
-    band = "top 10%" if pct >= 0.9 else "top 25%" if pct >= 0.75 else "top half" if pct >= 0.5 else "lower half"
     return {"velocity_index": round(n / ctx["median_new"], 1) if ctx["median_new"] else 0,
-            "percentile": round(pct, 2), "band": band}
+            "percentile": round(pct, 2), "band": _band(pct)}
+
+
+def rising_place(rel: dict, trend_id: str, order: dict[str, int]) -> dict:
+    """`rel` with a hook's band and percentile read from its place among every rising hook TrendsMesh
+    lists (`order`, from `rising_order`), not among the hooks whose videos were read: the owner's choice
+    on issue #58. `rising_position` counts from 1; a hook the lists don't hold (a search found it) has
+    None and no band. The velocity index, which the stage reads, is kept."""
+    n, pos = len(order), order.get(trend_id)
+    out = {"velocity_index": rel["velocity_index"], "rising_position": None if pos is None else pos + 1,
+           "rising_of": n}
+    if pos is not None:
+        pct = (n - 1 - pos) / n                 # the share of the listed hooks below it, as `relative`
+        out |= {"percentile": round(pct, 2), "band": _band(pct)}
+    return out
 
 
 def confidence(g: dict, status: str | None, th: Thresholds) -> tuple[str, str]:
@@ -493,8 +537,14 @@ def _inputs(run: RunFolder) -> tuple[dict, list[dict], list[dict] | None]:
                    "tm research hooks --terms \"<the category's words>\" first, then this again; the run continues "
                    "from the same place.")
     if path is not None:              # a hook the map already keeps is not listed twice
+        kept = {r.get("id"): r for r in trends.read(path)["kept"]}
         mapped = {r.get("id") for r in rows}
-        rows += [r for r in trends.read(path)["kept"] if r.get("id") not in mapped]
+        # ... but the map's row carries the hooks path's fit, use and category videos (issue #58)
+        rows = [{**r, "plugin": {**(r.get("plugin") or {}), **(kept[r["id"]].get("plugin") or {}),
+                                 "category_videos": kept[r["id"]].get("category_videos"),
+                                 "videos_checked": kept[r["id"]].get("videos_checked")}}
+                if r.get("id") in kept else r for r in rows]
+        rows += [r for hid, r in kept.items() if hid not in mapped]
     path = run.latest(trends.RESEARCH, CANDIDATES_STEM, "json")
     candidates = None if path is None else [c for c in trends.items(trends.read(path))
                                             if isinstance(c, dict) and c.get("kind") == "hook_trend"]
@@ -543,9 +593,16 @@ def _evaluate(run: RunFolder, ref: date, cfg: dict) -> tuple[list[dict], dict, d
         pools[True] = [_pool_new(run, c, ref, window, baseline, no_creator) for c in candidates
                        if trends.video_files(run, c["id"])]
         ctx["hooks_pool"] = len(pools[True])
+    # Issue #58: with a saved rising list, a hook's band is its place there, among every rising hook.
+    order = rising_order(run)
+    if order:
+        ctx["hooks_rising"] = len(order)
     for r in rows:
         g = r["growth"]
-        r["relative"] = relative(g, ctx, pools[r.get("kind") == "hook_trend"]) if g.get("creators") else None
+        hook = r.get("kind") == "hook_trend"
+        r["relative"] = relative(g, ctx, pools[hook]) if g.get("creators") else None
+        if hook and order and r["relative"] is not None:
+            r["relative"] = rising_place(r["relative"], r["id"], order)
         r["bucket"] = bucket(g, r.get("status"), r["seasonal_over"], r["relative"], th)
         r["confidence"], r["confidence_why"] = confidence(g, r.get("status"), th) if g.get("creators") else ("low", "no evidence")
     return rows, ctx, cmap, candidates, no_creator
