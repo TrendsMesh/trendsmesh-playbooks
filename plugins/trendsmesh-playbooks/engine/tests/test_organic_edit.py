@@ -80,7 +80,15 @@ def _ns(run, props, *extra):
                          "--json", *extra])
 
 
+
+def _plugin_folders(run, monkeypatch):
+    """The plugin's folders as a session's set-up names them (~/.trendsmesh/paths.json exists only on a machine
+    where the plugin ran, never on CI): the plugin itself, and a data folder of the test's own."""
+    monkeypatch.setenv("TM_PLUGIN_ROOT", str(Path(__file__).resolve().parents[2]))
+    monkeypatch.setenv("TM_PLUGIN_DATA", str(run.path.parent / "plugin-data"))
+
 def test_tm_render_refuses_the_shot_sound_under_a_voiceover_before_anything_runs(ov, monkeypatch, capsys):
+    _plugin_folders(ov, monkeypatch)
     path, _ = _props(ov)
     ran = []
     monkeypatch.setattr(render, "_need_setup", lambda: ran.append("setup"))

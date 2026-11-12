@@ -964,9 +964,10 @@ def test_a_saved_file_that_is_not_json_falls_back_to_ingest(ws, tmp_path, capsys
 def test_notice_parser():
     """The notice's own words, with and without the line count; anything else is no notice."""
     p = "/Users/u/.claude/projects/-ws/s1/tool-results/mcp-x-search_trends-1.txt"
-    assert trend_spool.too_large_path(_notice(Path(p))) == p
-    assert trend_spool.too_large_path(_notice(Path(p), chars=64_537, lines=None)) == p
-    assert trend_spool.too_large_path(_notice(Path(p), lines=2)) == p
+    native = str(Path(p))                       # the notice names the file as this system writes paths
+    assert trend_spool.too_large_path(_notice(Path(p))) == native
+    assert trend_spool.too_large_path(_notice(Path(p), chars=64_537, lines=None)) == native
+    assert trend_spool.too_large_path(_notice(Path(p), lines=2)) == native
     assert trend_spool.too_large_path(f"Error: result (1 characters) exceeds maximum allowed tokens. Output has been "
                                       f"saved to {p}.") == p
     for text in ("Rate limit reached.", None, {"raw": "x"}, " " + _notice(Path(p)),

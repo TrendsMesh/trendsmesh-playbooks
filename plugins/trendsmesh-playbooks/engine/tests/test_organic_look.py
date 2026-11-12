@@ -6,6 +6,7 @@ its own minimal proposal."""
 import copy
 import json
 import re
+from pathlib import Path
 
 import pytest
 
@@ -232,12 +233,20 @@ def test_copy_summary_reads_back_the_look_and_the_style():
 
 # --- 2. what an AI video's route installs ----------------------------------------------------------------
 
+def _plugin_folders(tmp_path, monkeypatch):
+    """The plugin's folders as a session's set-up names them (~/.trendsmesh/paths.json exists only on a machine
+    where the plugin ran, never on CI): the plugin itself, and a data folder of the test's own."""
+    monkeypatch.setenv("TM_PLUGIN_ROOT", str(Path(__file__).resolve().parents[2]))
+    monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "plugin-data"))
+
+
 def _tier_rows(**kw):
     r = doctor.check({"organic_video"}, False, OK, playbook="organic-video", **kw)
     return {i.id for i in r.items if i.id.startswith("tier_")}
 
 
-def test_an_animation_asks_for_the_animatic_tools_not_breakdown_or_ai():
+def test_an_animation_asks_for_the_animatic_tools_not_breakdown_or_ai(tmp_path, monkeypatch):
+    _plugin_folders(tmp_path, monkeypatch)
     assert _tier_rows() >= {"tier_breakdown", "tier_ai", "tier_video", "tier_voice"}     # as before
     assert "tier_animatic" not in _tier_rows()
     anim = _tier_rows(production="animation")
@@ -258,7 +267,8 @@ def test_route_installs_lists_what_is_missing_once(monkeypatch):
     assert organic_proposals.route_installs("animation") == []
 
 
-def test_the_installer_names_the_tier_it_installed(monkeypatch, capsys):
+def test_the_installer_names_the_tier_it_installed(tmp_path, monkeypatch, capsys):
+    _plugin_folders(tmp_path, monkeypatch)
     monkeypatch.setattr(envtiers.subprocess, "run", lambda *a, **kw: type("P", (), {"returncode": 0})())
     monkeypatch.setattr(atlas, "setup", lambda: None)
     assert envtiers.install("animatic", True) == 0
