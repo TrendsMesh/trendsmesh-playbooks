@@ -391,7 +391,7 @@ def test_sync_src_from_two_processes_never_shares_a_temp_folder(light):
 
 
 def _ps(*pids: int, fields: str = "pid=,ppid=,pgid=,stat=,command=") -> str:
-    return subprocess.run(["ps", "-o", fields, "-p", ",".join(map(str, pids))], capture_output=True, text=True,
+    return subprocess.run(["ps", "-ww", "-o", fields, "-p", ",".join(map(str, pids))], capture_output=True, text=True,
                           check=False).stdout.strip()
 
 
@@ -421,6 +421,32 @@ def _why_alive(pid: int, seen: list) -> str:
     if now:
         lines.append(f"its parent now: {_ps(int(now.split()[1]))[:160]!r}")
     return "\n".join(lines)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="no ps listing on Windows")
+def test_the_chrome_listing_is_never_cut_to_the_screen_width(light, monkeypatch):
+    """Issue 63 on CI's Linux: procps' ps cuts each line to 80 columns when its output is a pipe, so the
+    `node_modules/.remotion` part of a long path never reached the listing and a leftover Chrome was missed.
+    `-ww` asks for unlimited width, on procps and BSD ps alike."""
+    calls = []
+
+    class Listing:
+        def __init__(self, args, **kwargs):
+            calls.append(args)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def communicate(self, timeout=None):
+            return ("", "")
+
+    monkeypatch.setattr(render.subprocess, "Popen", Listing)
+    render._close_orphaned_chrome()
+    (args,) = calls
+    assert args[0] == "ps" and "-ww" in args
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Remotion starts Chrome in a process group of its own on POSIX only")

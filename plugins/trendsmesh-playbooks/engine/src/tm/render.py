@@ -137,7 +137,7 @@ def _close_orphaned_chrome() -> None:
         return
     roots = {str(work_dir() / "node_modules" / ".remotion"), str(work_dir().resolve() / "node_modules" / ".remotion")}
     try:   # Popen, not run: the listing is no step of the render (the tests' fakes of run never see it)
-        with subprocess.Popen(["ps", "-A", "-o", "pid=,ppid=,pgid=,command="], stdout=subprocess.PIPE,
+        with subprocess.Popen(["ps", "-A", "-ww", "-o", "pid=,ppid=,pgid=,command="], stdout=subprocess.PIPE,
                               stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace") as ps:
             listing = ps.communicate(timeout=10)[0]
     except (OSError, subprocess.SubprocessError):
