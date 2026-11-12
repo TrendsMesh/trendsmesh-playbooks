@@ -159,6 +159,24 @@ def test_e1_plan_says_the_original_runs_on_and_overlaps_the_test():
         assert part in plan, part
 
 
+def test_control_is_a_new_creative_even_without_4x5_except_a_partnership_ad():
+    """Issue 73: with or without a 4:5 version, the control is a new creative of the original's files; only
+    when a new one can't match the original (a partnership ad from a creator's account) is it the original's."""
+    e1 = _flow_section("e1")
+    for part in ("the control is still a new creative", "with or without a 4:5 version",
+                 "never the original's creative id", "The one exception:", "partnership ad",
+                 "say so in the plan, with the reason", "a second difference"):
+        assert part in e1, part
+    plan = _text(SKILL / "templates" / "live_test_plan_template.md")
+    assert "the original ad, its creative id" not in plan
+    for part in ("never the original's creative id", "still a new creative, 9:16 only like the variants",
+                 "The one exception:", "partnership ad"):
+        assert part in plan, part
+    assert "the original as the control." not in _text(SKILL / "references" / "rules.md")
+    check = _text(SKILL / "templates" / "prelaunch_check_template.md")
+    assert "the control is a new creative of the original's files" in check and "partnership ad" in check
+
+
 def test_g12_moves_the_winner_paused_in_a_new_ad_set_and_never_activates():
     e4 = _flow_section("e4")
     for part in ("G12 `scale`", "never by rule", "`tm live-test move check --run R", "`tm live-test move approve",

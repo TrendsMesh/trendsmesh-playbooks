@@ -767,11 +767,10 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   then the same QA (its frames against the teardown's frame sheets: no text, face, product or
   logo cut, the safe zones kept; the result's `method`, crop or pad). It is free and local, so
   it needs no check-in of its own: make it at E1 at the latest. Both ads then carry 9:16 and 4:5
-  on the same placements (placement asset customization), and the control is a new creative
-  made of the original's files (its video, its 4:5 version, its copy, headline, call to action
-  and thumbnail), PAUSED like the rest. Only when the original's 4:5 version fails its QA and no
-  free fix helps, the plan says "test in 9:16 only; 4:5 after the test" and why, and the card
-  says so.
+  on the same placements (placement asset customization). Only when the original's 4:5 version
+  fails its QA and no free fix helps, the plan says "test in 9:16 only; 4:5 after the test" and
+  why, the card says so, and both ads carry 9:16 only: the control is still a new creative (see
+  "Both test ads are new" below).
 - **AI disclosure (Meta's `self_ai_disclosure`).** Meta sets it only when a creative is created
   and leaves it to the advertiser: never decide or infer it for the user. Before the card, run
   `tm ai-media --run R --file <each file the plan's ads use> --json`. For each file it lists the
@@ -804,8 +803,17 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   (`templates/live_test_plan_template.md`): a Meta A/B test with the original's files as control, the
   numbers from `tm r4`, no decisions before the end of the window (except the cost guardrail), and
   the objects it creates, all PAUSED.
-- **Both test ads are new** (issue #64): the control, made of the original's files, starts like
-  the variant, with no delivery history of its own, so the test changes one thing only. **The
+- **Both test ads are new** (issues #64 and #73): the control is always a new creative made of the
+  original's files (its video, its 4:5 version when there is one, its copy, headline, call to
+  action and thumbnail), PAUSED like the rest, with or without a 4:5 version, never the original's
+  creative id. It starts like the variant, with no delivery history of its own, so the test
+  changes one thing only; the original's social proof is checked after the test, when the winner
+  runs next to the original in its campaign (G12). **The one exception:** when a new creative
+  can't match the original, for example a partnership ad run from a creator's account (A3's
+  `ads_get_creatives` shows the creative under the creator's identity), keep the original's
+  creative as the control, and say so in the plan, with the reason, and on the card: the control
+  then carries the original post's likes, comments and shares, a second difference next to the
+  change under test. **The
   original ad keeps running, untouched, in its own campaign** during the test: the run never
   pauses, edits or moves it. The plan says so, and says that the original reaches the same people
   as the test (the audiences overlap), so it competes with the test in the same auctions and may

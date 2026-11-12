@@ -46,6 +46,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
   original's shown for reference. Nothing is switched on or off: the final report ends with your part, step by step
   (switch the new ad on, move the budget, switch the original off), and under a campaign budget it says that Meta
   can move budget away from your original at once and suggests ad set spend limits for a gradual move.
+- **Refresh an ad: the control is a new ad even when the test runs in 9:16 only.** When the 4:5 version of your
+  original can't be made, the control used to be your original's own creative, with its post's likes, comments and
+  shares, so the two ads differed in more than the change under test. Now the control is always a new creative
+  made of your original's files, PAUSED like the variant. The one exception is an ad a new creative can't match,
+  such as a partnership ad run from a creator's account: then the control is your original's creative, and the
+  plan says so and why.
 - **Trend research checks the shortlisted hooks in the Ad Library.** Each hook that fits your category is
   searched in your market's Meta Ad Library in the category's words ("pov nail salon", never the hook's name
   alone), as Creative brief does, and says "competitor found" with the advertiser or "none found in Ad Library

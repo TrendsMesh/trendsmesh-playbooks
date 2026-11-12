@@ -82,7 +82,7 @@ The test plan (`04_final/live_test_plan.md`) contains, before activation:
 - the **minimum number of events** per variant before any decision; budget and time follow from this number, not the other way round. For a rate metric (hook rate, ThruPlay rate, CTR) that means the trials the metric needs at the control's cost per impression or play, run for at least `test.min_days` days; cost per result is the guardrail, not a sizing condition: it is checked once a variant has `test.guardrail_min_results` results, and a variant that wins on its metric with fewer is "won on <metric>; cost per result not confirmed yet" (scale step by step). The plan says what its budget is based on;
 - **no decisions before the end of the window** (no peeking and no early switch-off), except for the cost guardrail;
 - a **Meta A/B test** (`ads_experiment_abtest_*`), not a manual comparison of ads in one ad set;
-- the original as the control.
+- the original's files as the control: a new creative, PAUSED like the variants, with the same formats; the original's own creative only when a new one can't match it (for example a partnership ad run from a creator's account), said in the plan with the reason.
 
 A plan that, at the given budget, will not collect the minimum number of events goes back to the user with a calculation: how many events, what budget, what time. Example: 150 PLN/day for 5–7 days gives 17–50 purchases across 2–3 ads, too few to compare on cost per purchase.
 

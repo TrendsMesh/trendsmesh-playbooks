@@ -16,9 +16,9 @@ the launch ("Approve the launch").
 ## 2. Structure (a Meta A/B test, not a manual comparison)
 - Campaign (existing or new), objective and event, pixel.
 - Ad set: targeting copied from the original's ad set (name it), placements, optimisation.
-- Ads, **all created PAUSED**: the control (the original ad, its creative id; a new creative of
-  the original's files when it gets a 4:5 version below) and each variant (file, copy, headline,
-  thumbnail).
+- Ads, **all created PAUSED**: the control (a new creative of the original's files, with or
+  without a 4:5 version below, never the original's creative id; the one exception is under "The
+  original ad during the test") and each variant (file, copy, headline, thumbnail).
 - **Files and placements per ad** (R6, from `tm formats`). The ads differ only in the change
   under test, so the control and the variants carry the same formats on the same placements
   (placement asset customization when an ad has two files):
@@ -30,7 +30,8 @@ the launch ("Approve the launch").
 
   When R6 asks for 4:5 and the original has none, the 4:5 version of the original is made with
   `tm tool reframe` and QA (free). Only if it fails its QA: "test in 9:16 only; 4:5 after the
-  test", and why. The upload (E2) builds exactly this table; any change is asked first.
+  test", and why; the control is then still a new creative, 9:16 only like the variants. The
+  upload (E2) builds exactly this table; any change is asked first.
 - **AI disclosure** (Meta's `self_ai_disclosure`, set only when a creative is created): what the
   run made or edited with generative AI, per ad (`tm ai-media`: voice lines, music, frames
   inpainted by a model such as ProPainter, AI shots or video; the free OpenCV caption plate isn't AI media), what is known about the original, and the user's answer: both,
@@ -40,7 +41,10 @@ the launch ("Approve the launch").
   and its ad set); the run never pauses, edits or moves it. Say plainly that it reaches the same
   people as the test (the audiences overlap), so it competes with the test in the same auctions
   and may slow the test's delivery. Both test ads are new, the control included, so the test
-  changes one thing only.
+  changes one thing only. **The one exception:** when a new creative can't match the original
+  (for example a partnership ad run from a creator's account), the control is the original's
+  creative: say so here, with the reason, and that the control then carries the original post's
+  likes, comments and shares, a second difference next to the change under test.
 - `ads_experiment_check_eligibility` result.
 
 ## 3. Thresholds, written now

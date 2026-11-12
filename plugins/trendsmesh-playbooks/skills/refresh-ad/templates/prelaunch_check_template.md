@@ -20,7 +20,7 @@ For each variant:
 | 5 | Text on the image: legible in the feed preview, inside the safe zones, no spelling errors | | |
 | 6 | Known visual defects, with their time (none left that the user did not accept) | | |
 | 7 | Quality against the original (the before and after pair on the run page) | | |
-| 8 | Formats and placements: each ad built (control and variants) has the files the plan names per placement (9:16 in Reels and Stories, 4:5 in feed, through placement asset customization), the same for the control and the variants; red on any difference from the approved plan | | |
+| 8 | Formats and placements: each ad built (control and variants) has the files the plan names per placement (9:16 in Reels and Stories, 4:5 in feed, through placement asset customization), the same for the control and the variants, and the control is a new creative of the original's files, not the original's creative id (unless the plan names the exception: a new creative can't match the original, for example a partnership ad run from a creator's account); red on any difference from the approved plan | | |
 
 **Result:** green (every item green) or red (the red items, and what fixes each).
 
