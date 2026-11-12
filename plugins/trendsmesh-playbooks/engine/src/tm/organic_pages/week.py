@@ -242,7 +242,7 @@ def render(week: dict, lang: str | None = None) -> str:
     labels_js = _script({k: L[k] for k in L if k != "days"})
     week_js = _script(dict(week=w['week'], budget=w['budget'], slots=[dict(slot=s['slot'], id=s['id'], output=s.get('output', 'video')) for s in w['slots']], reserves=[]))
     ideas_text = _script(ideas_js)
-    return f"""<!DOCTYPE html><html lang="{esc(i18n.html_lang(tr.lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    return organic_pages.look(f"""<!DOCTYPE html><html lang="{esc(i18n.html_lang(tr.lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(w['title'])}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class="wrap">
@@ -258,7 +258,7 @@ def render(week: dict, lang: str | None = None) -> str:
 <script>window.__L__ = {labels_js};
 window.__WEEK__ = {week_js};
 (function(){{ const I = {ideas_text}; window.__WEEK__.slots.forEach(s => Object.assign(s, I[s.id], {{id: s.id}})); window.__WEEK__.reserves = Object.keys(I).filter(k => !window.__WEEK__.slots.some(s => s.id === k)).map(k => Object.assign({{id: k}}, I[k])); }})();</script>
-<script>{JS}</script></body></html>"""
+<script>{JS}</script></body></html>""", tr)
 
 
 def page_html(week: dict) -> tuple[str, i18n.PageLang]:

@@ -30,8 +30,9 @@ reader against the data the published run page was built from: `organic_gates.ac
 question anew (`ask`), so a choice made on an earlier question is never taken.
 
 A settled stage shows what was decided, read-only: each item with its decision and the file it took (the latest
-decisions file), or the picks (the latest taste file). The pages not moved yet (the proposals, the week, the
-script, the intake, the models, the week's delivery) are still `tm.organic_pages`'.
+decisions file), or the picks (the latest taste file). The pages not moved (the proposals, the week, the
+script, the intake, the models, the week's delivery) are still `tm.organic_pages`', in the run page's look and top
+bar (`organic_pages.look`).
 
 The page's fixed words are `organic.*` keys (the plugin ships them in Polish); its language is the run page's
 (`words.page_lang`: the template's words and the organic area). The run's own words (labels, captions, the kit's

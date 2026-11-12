@@ -12,6 +12,7 @@ import pytest
 import exampleedu
 from tm import config, manifest, page, state, stepchecks
 from tm.cli import main
+from tm import organic_pages
 from tm.organic_pages import script
 
 REL = "03_wip/script_M5_en_v01.json"
@@ -56,7 +57,7 @@ def test_script_page_and_md_rebuild_m5_en(tmp_path, capsys):
     assert out["folder"] == "04_final/M5_script_en_v01" and out["markdown"] == "M5_script_v01.md"
     folder = run.path / out["folder"]
     html, md = exampleedu.script_package()
-    assert (folder / "index.html").read_text(encoding="utf-8").replace("\r", "") == html
+    assert (folder / "index.html").read_text(encoding="utf-8").replace("\r", "") == organic_pages.look(html, "en")   # #60
     assert (folder / "M5_script_v01.md").read_text(encoding="utf-8").replace("\r", "") == md
     assert [f["as"] for f in out["files"]] == ["index.html", "M5_script_v01.md"]
     assert script.checked_gap(run) is None and script.built_gap(run) is None

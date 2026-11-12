@@ -33,6 +33,12 @@ Shared here:
 - `POST_NOTE`: under the platform ticks of the proposals and delivery pages, labelled "Posting kit for" (issue #91:
   the original's "Post to" read as if the plugin posts the video). `worded` puts both in a reference page's row.
 - `CSS` (pages.css): the reference pages' stylesheet, verbatim.
+- `look(page, lang)` (issue #60): a built page in the TrendsMesh look of the shared run page (tm.run_page), as each
+  page builder finishes it: the run page's font in place of the reference pages' (Source Sans 3 is gone), the
+  theme's colours and font (assets/page/theme.css) set as the page's own names (`--bg`, `--surface`, `--accent` …)
+  in one light look, after the page's stylesheet, and the run page's top bar (the mark and name, an "Organic AI
+  video" pill) first in the page's wrap. The page's own layout and script are unchanged, so its readers and saved
+  choices are too. `worded` puts a reference page in the look as well.
 """
 
 from __future__ import annotations
@@ -237,20 +243,65 @@ def localize(page: str, lang: str | i18n.Translator, frags: list[Frag]) -> str:
 def worded(page: str, lang: str) -> str:
     """A page of the reference tool as the plugin builds it: `WORDING`, then (a Polish page) the reference tool's
     Polish words -> the plugin's (`REFERENCE`, and the proposals page's lede, which the reference tool leaves in
-    English)."""
+    English), in the plugin's `look`."""
     en = i18n.translator(i18n.ENGLISH)
     for old, key in WORDING:
         page = page.replace(old, en(key))
     page = _platform_rows(page, en if lang not in REFERENCE else i18n.translator(lang))
     if lang not in REFERENCE:
-        return page
+        return look(page, lang)
     tr = i18n.translator(lang)
     from tm.organic_pages import proposals
     pairs = [*((old, tr(key)) for old, key in REFERENCE[lang]),
              *((f.english or f.fill(en), f.fill(tr)) for n in range(1, 10) for f in proposals.lede_frags(n))]
     for old, new in pairs:
         page = page.replace(old, new)
-    return _stored_values(page, tr)
+    return look(_stored_values(page, tr), lang)
+
+
+# --- the TrendsMesh look (issue #60) ---------------------------------------------------------------------
+
+# The top bar's pill: the playbook's name in the pages' own area (a language translated for these pages has it),
+# as the run page names it (`run_page.playbook.organic_video`); the brand is the run page's, else English.
+PLAYBOOK_KEY = "organic.playbook"
+BRAND_KEY = "run_page.top.brand"
+LOOK_ID = "tm-look"
+# The page's own names for its colours and fonts, in the theme's (theme.css's `--ink` and `--line` are the page's
+# own names too). The check-in colours (ok, warn, bad) keep their light values: the look is light only.
+_AS_THEME = ("--bg:var(--cream);--surface:var(--paper);--muted:var(--ink-soft);--accent:var(--pink-text);"
+             "--accent-soft:color-mix(in srgb,var(--pink) 14%,var(--paper));--display:var(--font);--body:var(--font);"
+             "--ok:#2F7D4F;--ok-soft:#E3F2E8;--warn:#A86A00;--warn-soft:#FBF0D9;--bad:#B23A3A;--bad-soft:#F8E1E1;")
+# every :root the pages' stylesheets set colours on (their dark scheme's too), so the theme's are the ones used
+_ROOTS = ':root,:root:not([data-theme="light"]),:root[data-theme="dark"]'
+_HEADINGS = "h1,h2{font-stretch:78%;font-weight:800;letter-spacing:-.02em}"   # the run page's headings
+_FONT_LINK = re.compile(r'<link href="https://fonts\.googleapis\.com/css2\?[^"]*" rel="stylesheet">')
+_WRAP = '<div class="wrap">'
+
+
+def _bar_words(lang: str | i18n.Translator) -> tuple[str, str]:
+    """The top bar's words in `lang`: the playbook's name, and the brand (in English when `lang`'s table lacks the
+    run page's words: a language translated for the organic pages only)."""
+    tr = translator(lang)
+    try:
+        brand = tr(BRAND_KEY)
+    except i18n.Missing:
+        brand = i18n.translator(i18n.ENGLISH)(BRAND_KEY)
+    return tr(PLAYBOOK_KEY), brand
+
+
+def look(page: str, lang: str | i18n.Translator) -> str:
+    """`page` (a whole built page, `<head>` and its wrap) in the TrendsMesh look, its top bar in `lang`. A part of a
+    page (a script, a fragment) and a page already in the look are left as they are."""
+    if "</head>" not in page or _WRAP not in page or f'<style id="{LOOK_ID}">' in page:
+        return page
+    from tm.run_page import template    # the run page reads these pages' modules: imported when used
+
+    name, brand = _bar_words(lang)
+    css = (f"{_ROOTS}{{{template.theme_tokens()}{_AS_THEME}}}{_HEADINGS}"
+           f"{template.theme_section('top bar')}.wrap>.top{{padding:0}}")
+    page = _FONT_LINK.sub(lambda _: f'<link href="{template.E(template.FONTS)}" rel="stylesheet">', page, count=1)
+    page = page.replace("</head>", f'<style id="{LOOK_ID}">{css}</style></head>', 1)
+    return page.replace(_WRAP, _WRAP + template.top_bar(name, brand), 1)
 
 
 # A reference page's platform row: its label (the original's "Post to", its Polish "Publikuj na") and ticks.

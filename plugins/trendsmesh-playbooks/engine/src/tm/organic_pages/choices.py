@@ -341,7 +341,7 @@ def render(data: dict, put, lang: str) -> str:
     bar_total = (f'<span>{esc(total.get("label") or tr(_C + "total"))} <span class="total" id="total"></span></span>'
                  if total else "<span></span>")
     eyebrow = tr(_C + "eyebrow", page=tr(_C + "page_" + data["page"]))
-    return (f'<!DOCTYPE html><html lang="{esc(i18n.html_lang(lang))}"><head><meta charset="utf-8">'
+    return organic_pages.look((f'<!DOCTYPE html><html lang="{esc(i18n.html_lang(lang))}"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1"><title>{esc(data["title"])}</title>'
             '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
             '<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700'
@@ -356,7 +356,7 @@ def render(data: dict, put, lang: str) -> str:
             f'<span class="status" id="save-status" aria-live="polite"></span></span></div>'
             f'<footer>{esc(tr("organic.run_folder"))} {esc(data["run"])}</footer></div>'
             f'<script type="application/json" id="tm-choices">{_script(meta)}</script><script>{JS}</script>'
-            "</body></html>")
+            "</body></html>"), lang)
 
 
 # --- building it in the run --------------------------------------------------------------------------------

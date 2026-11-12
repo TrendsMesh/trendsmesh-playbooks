@@ -86,6 +86,7 @@ def test_intake_page_asks_every_question_with_its_default_and_never_a_paid_outpu
     assert _section(data, "channel")["kind"] == "text"                 # a text field only where something is typed
     html = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
     assert 'id="done"' in html and "Start a new video plan" in html
+    assert '<span class="pill dark">Organic AI video</span>' in html and '<style id="tm-look">' in html   # #60
     assert out["reply_button"] == "Saved, read my choices" and "reply button" in out["message"]
     assert organic_pages.CAPABILITIES["intake"]["db"]["rules"][0]["path"] == "intake"
 

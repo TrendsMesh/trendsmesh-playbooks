@@ -502,6 +502,8 @@ report:
 
 # --- Organic AI video pages: engine/src/tm/organic_pages/*, organic_gates.py, organic_week_delivery.py ---
 organic:
+  # the playbook's name in the pages' top bar, as the run page names it (run_page.playbook.organic_video, issue #60)
+  playbook: Organic AI video
   # the levels (how much Claude stops to ask), named as the plugin names them
   level_every_step: Check every step
   level_big_calls: Just the big calls

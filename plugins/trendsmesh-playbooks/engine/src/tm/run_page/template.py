@@ -481,6 +481,26 @@ def mark_svg() -> str:
     return (THEME / "mark.svg").read_text(encoding="utf-8").strip()
 
 
+def theme_tokens() -> str:
+    """The declarations of theme.css's `:root` (its colours, radius and font), without the braces: for a page in the
+    look that keeps its own stylesheet (Organic AI video's own pages, `organic_pages.look`)."""
+    return re.search(r":root\s*\{(.*?)\}", theme_css(), re.S).group(1)
+
+
+def theme_section(name: str) -> str:
+    """theme.css's section `/* <name> */`, up to the next section's comment (`theme_section("top bar")`)."""
+    css = theme_css()
+    start = css.index(f"/* {name} */")
+    end = css.find("\n/* ", start + 1)
+    return css[start:] if end < 0 else css[start:end + 1]
+
+
+def top_bar(playbook: str, brand: str) -> str:
+    """The top bar: the mark and `brand` (`run_page.top.brand`), a dark pill with the playbook's name."""
+    return (f'<header class="top"><span class="brand">{mark_svg()}<span>{E(brand)}</span></span>'
+            f'<span class="pill dark">{E(playbook)}</span></header>')
+
+
 def render(model: dict) -> str:
     """The page. A playbook whose page is a document of its own (Trend research's report) also gives `body`: its
     HTML, built and escaped by that playbook's own renderer, placed between the "Now" block and "Already settled"
@@ -497,15 +517,13 @@ def render(model: dict) -> str:
             "open": [{"checkin": s["decision"]["checkin"], "ask": s["decision"]["ask"]} for s in model["now"]],
             "datasets": ds.items,
             "words": {k: t("decision." + k, lang) for k in ("saving", "saved_at", "save_error", "cannot_save", "ready")}}
-    mark = mark_svg()
     fonts = (f'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="{E(FONTS)}">'
              if model.get("fonts", True) else "")
     footer = model.get("footer") or t("footer.built", lang, run=model["run"], when=model["updated"])
     return (f'<!doctype html><html lang="{E(lang)}"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1"><title>{E(model["title"])}</title>'
             f'{fonts}<style>{theme_css()}{model.get("css") or ""}</style></head><body><div class="wrap">'
-            f'<header class="top"><span class="brand">{mark}<span>{E(t("top.brand", lang))}</span></span>'
-            f'<span class="pill dark">{E(model["playbook"])}</span></header><main>{now}{body}'
+            f'{top_bar(model["playbook"], t("top.brand", lang))}<main>{now}{body}'
             f'{_settled(model["settled"], ds, lang)}</main>'
             f'<footer>{E(footer)}</footer></div>'
             f'<script type="application/json" id="tm-page">{_script_json(data)}</script><script>{SCRIPT}</script>'

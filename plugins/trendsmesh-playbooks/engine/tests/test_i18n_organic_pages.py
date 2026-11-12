@@ -54,7 +54,7 @@ def _used() -> set[str]:
             | {f"organic.kit_md.{label}" for label in kit.LABELS} | _pack_md_keys() | _qa_keys()
             | {k for kind in ("product", "risk", "status", "production")
                for k in organic_pages.value_keys(kind).values()}
-            | _choice_keys() | organic_video.keys())
+            | _choice_keys() | organic_video.keys() | {organic_pages.PLAYBOOK_KEY})
 
 
 
@@ -170,6 +170,18 @@ def _pages(lang):
                for g in ("images", "video", "edit")},
             "week": week.page_html(_week(lang))[0], "script": script.page_html(_script(lang), "M1.md", md)[0],
             "script_md": md}
+
+
+@pytest.mark.parametrize("lang, name", [("en", "Organic AI video"), ("pl", "Organiczne wideo AI")])
+def test_every_page_has_the_run_pages_top_bar_and_look(lang, name):
+    """Issue #60: the proposals, the check-in and delivery pages (the week's delivery is one), the week and the
+    script in the TrendsMesh look, with its top bar naming the playbook in the page's language."""
+    for which, text in _pages(lang).items():
+        if which == "script_md":
+            continue
+        assert f'<div class="wrap"><header class="top"><span class="brand">' in text, which
+        assert f'<span class="pill dark">{name}</span></header>' in text, which
+        assert '<style id="tm-look">' in text and "Source+Sans" not in text, which
 
 
 def test_the_proposals_page_shows_the_lead_lines():

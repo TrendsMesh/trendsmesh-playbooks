@@ -457,7 +457,7 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
     out.append(f"""<footer><p>{esc(data['data_note'])}</p><p>Run folder: {esc(data['run'])}</p></footer></div>
 <script>window.__PROPOSALS__ = {proposals_js}; window.__RUN_ID__ = {run_js}; window.__DEFAULT_OUTPUT__ = {output_js}; window.__DEFAULT_LEVEL__ = {level_js}; window.__LEVELS__ = {_script(levels)};</script>
 <script>{JS}</script></body></html>""")
-    return localize("".join(out), tr)
+    return organic_pages.look(localize("".join(out), tr), tr)
 
 
 def _look_row(p: dict, tr) -> str:

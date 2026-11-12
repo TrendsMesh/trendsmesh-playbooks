@@ -392,7 +392,7 @@ def render(data: dict, put) -> str:
 def page_html(data: dict, put) -> tuple[str, i18n.PageLang]:
     """The page as built, and the language it is built in (`organic_pages.page_lang` of its data)."""
     built = organic_pages.page_lang(data)
-    return localize(render(data, put), built.lang), built
+    return organic_pages.look(localize(render(data, put), built.lang), built.lang), built
 
 
 # --- building it in the run ------------------------------------------------------------------------

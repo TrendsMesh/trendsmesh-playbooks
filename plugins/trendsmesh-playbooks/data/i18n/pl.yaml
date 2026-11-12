@@ -13,6 +13,8 @@ strings:
     promise_results: "gwarant*, efekty po, efekt po, rezultaty po, wyniki po, zobaczysz efekty, zobaczysz efekt, zobaczysz wyniki, natychmiastow* efekt*, natychmiastow* rezultat*, murowan* efekt*, bez ryzyka, zwrot pieniędzy, zwrot kasy, zawsze działa, podwoisz, potroisz, pewny efekt, pewne efekty"
     promise_availability: "w magazynie, na stanie, od ręki, wysyłka dziś, wysyłka dzisiaj, wysyłka jutro, wysyłka w 24, dostawa dziś, dostawa dzisiaj, dostawa jutro, dostawa następnego dnia, jutro u ciebie, dziś u ciebie, natychmiastow* dostęp, dostępn* teraz, dostępn* od zaraz, zawsze dostępn*"
   organic:
+    # the playbook's name in the pages' top bar, as the run page names it (run_page.playbook.organic_video, issue #60)
+    playbook: Organiczne wideo AI
     # the levels (how much Claude stops to ask), named as the plugin names them
     level_every_step: Sprawdzaj każdy krok
     level_big_calls: Tylko najważniejsze decyzje

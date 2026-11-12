@@ -152,6 +152,8 @@ def test_the_choice_on_the_page_is_what_e1_starts_from(tmp_path, capsys):
     _candidates(run)
     code, out = _cli(capsys, "organic", "page", "models", "--run", str(run.path))
     assert code == 0, out
+    built = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
+    assert '<header class="top">' in built and '<style id="tm-look">' in built       # the run page's look (#60)
     page.record_published(run, "models", SLUG, "v1", f"https://claude.ai/artifact/{SLUG}")
     page.await_(run, "models", "v1")
     data = choices.decided(run, "models")["data"]

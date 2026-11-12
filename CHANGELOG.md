@@ -4,6 +4,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## 0.13.0
 
+- **Organic AI video's other pages have the TrendsMesh look too.** The proposals, the week plan, the script to film,
+  the intake, the models page and the week's delivery now have the run page's top bar, with an "Organic AI video"
+  pill, and its colours and font, light on every screen. The old look's colours and Source Sans font are gone. Each
+  page still works as before: the same choices, the same saving, and Claude reads them back the same way. A
+  language translated for these pages also names the playbook in its own words.
 - **Creative brief's page has the TrendsMesh look of every playbook page.** The brief page now has the TrendsMesh
   top bar with the playbook's name, the theme, and the run page's layout. The brief sits under the check-in it is
   up for. The check-ins already decided are folded below it, read-only, with what was chosen, the team's verdicts

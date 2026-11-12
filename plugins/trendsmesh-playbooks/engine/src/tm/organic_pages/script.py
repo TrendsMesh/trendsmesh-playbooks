@@ -158,7 +158,7 @@ def render(s: dict, md_name: str, md: str, lang: str | None = None) -> str:
     facts = "".join(f'<li>{esc(f["claim"])} <a href="{esc(f["url"])}" target="_blank" rel="noopener">{esc(f["source"])}</a>. {esc(f.get("note",""))}</li>' for f in s.get("facts", []))
     g = s.get("generate_instead")
     gen = (f'<section class="card"><h2>{e["gen"]}</h2><p class="meta">{esc(g["note"])}</p>{field("g-host", t["host"], g["host_image_prompt"], t)}{field("g-video", t["video"], g["video_prompt"], t)}</section>' if g else "")
-    return f"""<!DOCTYPE html><html lang="{esc(i18n.html_lang(lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    return organic_pages.look(f"""<!DOCTYPE html><html lang="{esc(i18n.html_lang(lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(s['title'])}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class="wrap">
@@ -192,7 +192,7 @@ def render(s: dict, md_name: str, md: str, lang: str | None = None) -> str:
     }});
   }})();
 }})();
-</script></body></html>"""
+</script></body></html>""", lang)
 
 
 def page_html(s: dict, md_name: str, md: str) -> tuple[str, i18n.PageLang]:
