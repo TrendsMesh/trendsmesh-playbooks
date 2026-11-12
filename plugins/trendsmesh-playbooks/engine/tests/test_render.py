@@ -390,12 +390,37 @@ def test_sync_src_from_two_processes_never_shares_a_temp_folder(light):
     assert not list(render.work_dir().glob(f".src.*-{os.getpid()}"))
 
 
+def _ps(*pids: int, fields: str = "pid=,ppid=,pgid=,stat=,command=") -> str:
+    return subprocess.run(["ps", "-o", fields, "-p", ",".join(map(str, pids))], capture_output=True, text=True,
+                          check=False).stdout.strip()
+
+
 def _alive(pid: int) -> bool:
+    """The process runs: it exists and is no zombie (killed, but its parent has not reaped it yet)."""
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    return True
+    return not _ps(pid, fields="stat=").startswith("Z")
+
+
+def _why_alive(pid: int, seen: list) -> str:
+    """What the cleanup saw and what the process is now, for the failure message (issue 63 on CI's Linux)."""
+    version = subprocess.run(["ps", "--version"], capture_output=True, text=True, check=False)
+    lines = [f"ps: {(version.stdout or version.stderr).strip()[:80]!r}"]
+    for listing, parent, picked in seen:
+        rows = {r.split(None, 1)[0]: r.strip() for r in listing.splitlines() if r.strip()[:1].isdigit()}
+        chain, at = [], str(parent)
+        while at in rows and at not in ("0", "1") and len(chain) < 20:
+            chain.append(rows[at][:120])
+            at = rows[at].split()[1]
+        lines += [f"listing: {len(rows)} rows, picked {picked}, chrome row {rows.get(str(pid), 'missing')[:160]!r}",
+                  "our ancestors: " + " <- ".join(chain)]
+    now = _ps(pid)
+    lines.append(f"now: {now!r}")
+    if now:
+        lines.append(f"its parent now: {_ps(int(now.split()[1]))[:160]!r}")
+    return "\n".join(lines)
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Remotion starts Chrome in a process group of its own on POSIX only")
@@ -415,6 +440,10 @@ def test_a_failed_render_closes_its_chrome(light, monkeypatch):
              f"stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL); "
              f"open({str(pid_file)!r}, 'w').write(str(p.pid)); sys.exit(1)")
     monkeypatch.setattr(render, "_prefix", lambda: [])
+    seen, find = [], render._orphaned_chrome
+    monkeypatch.setattr(render, "_orphaned_chrome",
+                        lambda listing, roots, parent: seen.append((listing, parent, find(listing, roots, parent)))
+                        or seen[-1][2])
     owned = subprocess.Popen([str(shell)], start_new_session=True)   # a render of this cache still running
     try:
         with pytest.raises(common.ToolError, match="remotion still failed"):
@@ -423,7 +452,7 @@ def test_a_failed_render_closes_its_chrome(light, monkeypatch):
         deadline = time.monotonic() + 5
         while _alive(chrome) and time.monotonic() < deadline:
             time.sleep(0.05)
-        assert not _alive(chrome)
+        assert not _alive(chrome), _why_alive(chrome, seen)
         assert owned.poll() is None                  # its parent (this test) is alive: not ours to kill
     finally:
         os.killpg(owned.pid, 9)
