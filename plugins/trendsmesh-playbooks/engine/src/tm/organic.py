@@ -220,6 +220,11 @@ def _setup(p: argparse.ArgumentParser) -> None:
     pi.add_argument("--by", choices=("rule", "user"), default="rule",
                     help="rule: the agent picked by the rubric (default); user: the user picked it")
     pi.add_argument("--json", action="store_true")
+    up = sub.add_parser("upscale", help="check the upscale of an accepted take (size, frame rate, sound) and pick it "
+                                        "by rule (free, local)")
+    up.add_argument("--run", required=True, help="the run folder")
+    up.add_argument("--name", required=True, help="the pack's upscale item, as replicate_run's --name")
+    up.add_argument("--json", action="store_true")
     st = sub.add_parser("start", help="start one production run per idea marked produce on the proposals page (C3), "
                                       "or per OK slot of an approved week but the flexible one (I3)")
     st.add_argument("--run", required=True, help="the idea run or week run folder")
@@ -751,6 +756,17 @@ def _pick(args: argparse.Namespace) -> int:
     return 0
 
 
+def _upscale(args: argparse.Namespace) -> int:
+    from tm import organic_qa   # it reads the pack, which imports this module
+
+    got = organic_qa.upscale_check(RunFolder.open(Path(args.run)), args.name)
+    row = got["row"]
+    message = (f"Checked the upscale {row['file']} against the accepted take {got['source']}: the size, the frame rate "
+               f"and the sound are as they should be. Picked it by rule; the user is not asked about it.")
+    cli.emit(args, {"status": "done", **got, "message": message}, message)
+    return 0
+
+
 def _atlas_styles(args: argparse.Namespace) -> int:
     from tm import atlas_prompt
 
@@ -1032,7 +1048,7 @@ def _stack(args: argparse.Namespace) -> int:
 _ACTIONS = {"stack": _stack, "videos": _videos, "used": _used, "history": _history, "seed-check": _seed_check,
             "proposals": _proposals, "page": _page, "script": _script, "decisions": _decisions, "start": _start,
             "week": _week, "flexible": _flexible, "deliver-week": _deliver_week, "drop-slot": _drop_slot,
-            "pack": _pack, "redo": _redo, "pick": _pick,
+            "pack": _pack, "redo": _redo, "pick": _pick, "upscale": _upscale,
             "dashboard-checked": _dashboard_checked, "atlas-styles": _atlas_styles, "atlas-prompt": _atlas_prompt,
             "atlas-page": _atlas_page,
             "storyboard": _storyboard, "animate": _animate, "vo-sync": _vo_sync}

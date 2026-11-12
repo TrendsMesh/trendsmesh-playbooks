@@ -466,3 +466,97 @@ def test_script_from_the_pack_is_the_lines_its_one_take_says(tmp_path):
     path.write_text(json.dumps(two, ensure_ascii=False), encoding="utf-8")
     with pytest.raises(_common.ToolError, match="2 video items"):
         take_qa.script_text(path)
+
+
+# --- issue #90: the upscale of an accepted take is an automatic step ---------------------------------------------
+
+def _with_upscale(pack):
+    pack["resolution"]["choice"] = "768p_pruna"
+    pack["stages"].append({"stage": "upscale", "items": [{"name": "up1", "model": "prunaai/p-video-upscale",
+                                                         "seconds": 15}]})
+
+
+def _upscaled(run, made_from="take_v01_0.mp4"):
+    wip = run.path / "03_wip"
+    (wip / "up1_v01.run.json").write_text(json.dumps(
+        {"model": "prunaai/p-video-upscale", "status": "done", "prediction_id": "u1", "outputs": ["up1_v01_0.mp4"],
+         "input": {"video": f"file:{made_from}", "target": "1080p"}}), encoding="utf-8")
+    (wip / "up1_v01_0.mp4").write_bytes(b"not decoded here")
+
+
+TAKE_MEASURED = {"width": 768, "height": 1344, "fps": 24.0, "seconds": 15.04, "sound": True, "lufs": -9.9}
+
+
+@pytest.fixture
+def upscaled(tmp_path, capsys, monkeypatch):
+    """M5 PL's run with the 768p + upscale option: the take accepted on its QA, then upscaled from it (the test of
+    the recipe: 768×1344 in, 1088×1904 out, the frame rate and the sound kept)."""
+    run = _run(tmp_path, "m5_pl_pack.json")
+    _check(run, n=2, change=_with_upscale)
+    s = state.load(run)
+    s.checked["pack"]["at"] = CHECKED_AT
+    state.save(run, s)
+    _record(run, "host", 1, ["host_v01_0.png"])
+    _record(run, "take", 1, ["take_v01_0.mp4"])
+    _qa(run, QA_PASS)
+    assert _pick(capsys, run, "takes", "take", "03_wip/take_v01_0.mp4", "the user accepted it", "--by", "user")[0] == 0
+    _upscaled(run)
+    measured = {"take_v01_0.mp4": TAKE_MEASURED, "up1_v01_0.mp4": {**TAKE_MEASURED, "width": 1088, "height": 1904}}
+    monkeypatch.setattr(organic_qa, "_measure", lambda path: dict(measured[Path(path).name]))
+    return run, measured
+
+
+def _upscale(capsys, run, name="up1"):
+    code = main(["organic", "upscale", "--run", str(run.path), "--name", name, "--json"])
+    return code, json.loads(capsys.readouterr().out)
+
+
+def test_an_upscale_is_checked_technically_and_picked_by_rule(upscaled, capsys):
+    run, _ = upscaled
+    gap = stepchecks.run("takes_checked", run)
+    assert "up1: it has no pick" in gap and "tm organic upscale" in gap, gap
+    code, out = _upscale(capsys, run)
+    assert code == 0 and out["source"] == "03_wip/take_v01_0.mp4" and out["row"]["by"] == "rule", out
+    assert out["qa"] == "03_wip/qa/up1_v01_0_qa_v01.json"
+    qa = json.loads((run.path / out["qa"]).read_text(encoding="utf-8"))
+    assert (qa["kind"], qa["fails"], qa["source"]) == ("upscale", [], "03_wip/take_v01_0.mp4")
+    assert "transcript" not in qa and "match" not in qa             # technical only: no transcript, no pace
+    assert _log(run)[-1]["name"] == "up1" and _log(run)[-1]["stage"] == "takes"
+    _backdate(run, "2026-11-07T09:00:00+00:00")                      # after the pack check at 08:00
+    assert stepchecks.run("takes_checked", run) is None
+
+
+def test_an_upscale_is_never_picked_as_a_take(upscaled, capsys):
+    run, _ = upscaled
+    code, out = _pick(capsys, run, "takes", "up1", "03_wip/up1_v01_0.mp4", "looks sharp", "--by", "user")
+    assert code == 2 and "automatic step" in out["message"] and "tm organic upscale" in out["message"], out
+    assert [r["name"] for r in _log(run)] == ["take"]
+
+
+@pytest.mark.parametrize("change, words", [
+    ({"fps": 30.0}, "runs at 30 fps, and the take at 24 fps"),
+    ({"width": 768, "height": 1344}, "not 1080p in the take's shape"),
+    ({"width": 1080, "height": 1080}, "not 1080p in the take's shape"),
+    ({"seconds": 12.0}, "lasts 12 s, and the take 15.04 s"),
+    ({"sound": False, "lufs": None}, "lost the take's sound"),
+    ({"lufs": -14.0}, "loudness is -14.0 LUFS, and the take's -9.9 LUFS"),
+])
+def test_an_upscale_that_changed_the_take_is_not_picked(upscaled, capsys, change, words):
+    run, measured = upscaled
+    measured["up1_v01_0.mp4"].update(change)
+    code, out = _upscale(capsys, run)
+    assert code == 2 and words in out["message"] and "stays accepted" in out["message"], out
+    assert [r["name"] for r in _log(run)] == ["take"]
+    qa = json.loads((run.path / "03_wip/qa/up1_v01_0_qa_v01.json").read_text(encoding="utf-8"))
+    assert any(words in f for f in organic_qa.rubric_takes(qa, None)["fails"])   # the page shows them too
+
+
+def test_an_upscale_of_a_take_not_accepted_is_refused(upscaled, capsys):
+    run, _ = upscaled
+    _upscaled(run, made_from="take_v01_1.mp4")
+    (run.path / "03_wip" / "up1_v01.run.json").rename(run.path / "03_wip" / "up1_v02.run.json")
+    _upscaled(run, made_from="take_v01_1.mp4")
+    code, out = _upscale(capsys, run)
+    assert code == 2 and "not made from an accepted take" in out["message"], out
+    code, out = _upscale(capsys, run, "take")
+    assert code == 2 and "not an upscale item" in out["message"], out

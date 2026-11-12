@@ -32,6 +32,9 @@ Sources:
   is ever lost or re-encoded, mux the original track back with ffmpeg before the edit.
 - **Upscale the picked take, never a take that is still to be judged**: the take's QA and pick come first, and the
   upscale is the pack's item with its own line, so a second upscale is a redo like any other.
+- **The upscale's own check is technical only** (issue #90): `tm organic upscale` compares it with the accepted take
+  (1080p in the same shape, the same frame rate, the sound there, as long and as loud) and picks it by rule. It is
+  never a new take for the user to judge (Organic AI video's `flow.md#f2`).
 
 ## What the test found (pet store P4 take v06, 2026-11-06, $0.30)
 - 15.1 s of 768P H3 footage to 1080p in about 43 s of predict time (61 s wall), one output, the audio copied.

@@ -48,6 +48,12 @@ contact_sheet}. Here:
   (QuizGrid's `options[].img`, a ranking's `items[].src`) show every generated item's current pick (the cards, or a
   ranking's takes), and nothing else the pack made; a picture the pack did not make only when it takes the user's own
   (an item with no model), and never one of the check-in pages' (`03_wip/gates/`, PR D review I1).
+- An upscale (the pack's upscale-stage item, `organic_pack.UPSCALER`, issue #90) is an automatic step after the user
+  accepted the take: `upscale_check` (`tm organic upscale`) finds the item's latest output and the accepted take it
+  was made from (the current takes pick its record names as input), checks only what an upscale may change (the
+  1080p size with the take's shape, the frame rate, and the sound: there as in the take, as long, as loud, within
+  `UPSCALE_SLACK`), writes that technical QA as the output's QA file (`kind: "upscale"`) and, when it passes, logs the
+  output's pick by rule. `tm organic pick` refuses an upscale item: it is never a take to judge.
 - Step checks: `images_gap` (`images_picked`, F1: each image item's pick, and each animated item's storyboard) and
   `takes_gap` (`takes_checked`, F2: each take's pick, each animated item's animation drawn from its current
   storyboard, and the latest motion-graphics render from the current picks for stills). Both read only.
@@ -86,6 +92,9 @@ SPEECH_IN_TAKE = ("h3_native", "h3_narrator")   # the routes whose spoken lines 
 BRISK_WPS = 2.9   # the pace a slow take is sped up to (round 43): speed = 2.9 / wps, at most qa.speed_max
 QA_TOOL = ("tm tool take_qa --run <run> <take> --lang <audio language> [--script <its lines, or the pack>] "
            "[--brackets <cuts>]")
+UPSCALE_QA = "upscale"     # an upscale's technical QA (`upscale_check`), the `kind` of its QA file
+UPSCALE_TOOL = "tm organic upscale --run <run> --name <the upscale item>"
+UPSCALE_SLACK = {"size": 0.99, "shape": 0.01, "fps": 0.01, "seconds": 0.1, "lu": 1.0}   # what an upscale may move
 
 
 # --- the measures --------------------------------------------------------------------------------------
@@ -128,7 +137,9 @@ _Q = "organic.qa."   # the rubric's sentences in the string table (issue #3): En
 
 def _rubric(qa: dict, cfg: dict | None, speech: bool) -> tuple[list, list, float | None]:
     """The takes rubric as (fails, findings, speed), each fail and finding a key of the string table and its
-    values."""
+    values. An upscale's QA (`upscale_check`) holds its own technical fails."""
+    if qa.get("kind") == UPSCALE_QA:
+        return [(f["key"], f.get("values") or {}) for f in qa.get("fails") or [] if isinstance(f, dict)], [], None
     fails, findings = [], []
     if speech:
         least = _setting(cfg, "transcript_min")
@@ -522,6 +533,10 @@ def pick(run: RunFolder, stage: str, name: str, file: str, reason: str, by: str 
     pack = _pack(run)
     if stage == STORYBOARD:
         return _pick_storyboard(run, pack, name, rel, reason, by)
+    if (up := upscale_item(pack, name)) is not None:
+        raise Stop(f"{up['name']} is the upscale of the accepted take, an automatic step: it is checked for what an "
+                   f"upscale may change and picked by rule with {UPSCALE_TOOL}, never picked as a take; nothing was "
+                   f"logged; {AGAIN}.")
     video = stage == TAKES
     found = organic_specs.item_of(pack, c.stem_of(name))
     kinds = ", ".join(i["name"] for i in _wanted(pack, video)) or "none"
@@ -590,6 +605,110 @@ def _pick_storyboard(run: RunFolder, pack: dict, name: str, rel: str, reason: st
     return {"row": row, "qa": None}
 
 
+# --- the upscale of an accepted take (issue #90) ---------------------------------------------------------------
+
+def upscale_item(pack: dict, name: str) -> dict | None:
+    """The pack's upscale-stage item named `name` (any case, as its stem), or None."""
+    stem = c.stem_of(name)
+    return next((item for st in pack["stages"] if st["stage"] == organic_pack.UPSCALE_STAGE for item in st["items"]
+                 if item.get("model") == organic_pack.UPSCALER and c.stem_of(item["name"]) == stem), None)
+
+
+def _measure(path: Path) -> dict:
+    from tm.tools import take_qa   # heavy imports inside
+
+    found = c.probe(path)
+    lufs, _ = take_qa.loudness(path) if found.get("has_audio") else (None, None)
+    return {"width": found.get("width"), "height": found.get("height"), "fps": found.get("fps"),
+            "seconds": found.get("duration"), "sound": bool(found.get("has_audio")), "lufs": lufs}
+
+
+def _upscale_fails(out: dict, src: dict) -> list[dict]:
+    """What the upscale changed that it may not (the module docstring), as string-table keys and values."""
+    fails = []
+    slack = UPSCALE_SLACK
+    w, h, sw, sh = out["width"] or 0, out["height"] or 0, src["width"] or 0, src["height"] or 0
+    if min(w, h) < 1080 * slack["size"] or not (sw and sh and abs(w / h - sw / sh) <= slack["shape"] * (sw / sh)):
+        fails.append({"key": _Q + "upscale_size", "values": {"got": f"{w}×{h}", "take": f"{sw}×{sh}"}})
+    if abs((out["fps"] or 0) - (src["fps"] or 0)) > slack["fps"]:
+        fails.append({"key": _Q + "upscale_fps", "values": {"got": f"{out['fps']:g}", "take": f"{src['fps']:g}"}})
+    if abs((out["seconds"] or 0) - (src["seconds"] or 0)) > slack["seconds"]:
+        fails.append({"key": _Q + "upscale_length", "values": {"got": f"{out['seconds']:g}",
+                                                               "take": f"{src['seconds']:g}"}})
+    if src["sound"] and not out["sound"]:
+        fails.append({"key": _Q + "upscale_no_sound", "values": {}})
+    elif (src["sound"] and _number(out["lufs"]) and _number(src["lufs"])
+          and abs(out["lufs"] - src["lufs"]) > slack["lu"]):
+        fails.append({"key": _Q + "upscale_loudness", "values": {"got": f"{out['lufs']:.1f}",
+                                                                 "take": f"{src['lufs']:.1f}",
+                                                                 "slack": f"{slack['lu']:g}"}})
+    return fails
+
+
+def _upscaled_from(run: RunFolder, pack: dict, stem: str) -> str | None:
+    """The accepted take the item's latest record was made from: the current takes pick whose file its inputs name."""
+    names = set()
+    for _, record in organic_specs.records(run, stem):
+        if record.get("outputs"):
+            names = {v.removeprefix("file:").casefold() for v in (record.get("input") or {}).values()
+                     if isinstance(v, str) and v.startswith("file:")}
+    checked = _checked_at(run)
+    for row in picks(run, TAKES).values():
+        if (upscale_item(pack, row["name"]) is None and Path(row["file"]).name.casefold() in names
+                and current(run, row, checked_at=checked) is None):
+            return posix(row["file"])
+    return None
+
+
+def upscale_check(run: RunFolder, name: str) -> dict:
+    """The upscale's technical QA and its pick by rule (the module docstring). Returns {row, qa, source, measured}; a
+    Stop when there is nothing to check, or the upscale changed what it may not (nothing is logged)."""
+    if state.load(run).playbook != ORGANIC_VIDEO:
+        raise ValueError("Upscales are checked in organic video runs.")
+    pack = _pack(run)
+    item = upscale_item(pack, name)
+    if item is None:
+        ups = [i["name"] for st in pack["stages"] if st["stage"] == organic_pack.UPSCALE_STAGE for i in st["items"]]
+        raise Stop(f"{name} is not an upscale item of the checked pack (its upscale items: {', '.join(ups) or 'none'}); "
+                   f"nothing was checked; {AGAIN}.")
+    stem = c.stem_of(item["name"])
+    latest, _ = _outputs(run, stem)
+    made = sorted(f for f in latest if Path(f).suffix.lower() in VIDEO_EXT)
+    if len(made) != 1:
+        raise Stop(f"{item['name']} has {'no' if not made else 'more than one'} video from its latest run "
+                   f"({', '.join(made) or 'nothing yet'}): upscale the accepted take once (tm tool replicate_run --name "
+                   f"{item['name']}); nothing was checked; {AGAIN}.")
+    rel = made[0]
+    source = _upscaled_from(run, pack, stem)
+    if source is None:
+        raise Stop(f"{rel} is not made from an accepted take: {item['name']}'s spec takes the take the user accepted "
+                   f"(its current pick, with its QA) as its input video. Nothing was checked; {AGAIN}.")
+    out, src = _measure(run.path / rel), _measure(run.path / source)
+    fails = _upscale_fails(out, src)
+    target = run.next_version(qa_stage(run, run.path / rel), f"{Path(rel).stem}_qa", "json")
+    run.assert_writable(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    qa = {"take": rel, "kind": UPSCALE_QA, "source": source, "measured": out, "source_measured": src, "fails": fails}
+    target.write_text(json.dumps(qa, ensure_ascii=False, indent=1), encoding="utf-8")
+    qa_rel = c.rel(run, target)
+    manifest.record(run, qa_rel, qa_rel.split("/", 1)[0], "tm organic upscale", parent=rel, cost="0")
+    if fails:
+        tr = i18n.translator(i18n.ENGLISH)
+        raise Stop(f"{rel} changed what an upscale may not ({'; '.join(tr(f['key'], **f['values']) for f in fails)}), "
+                   f"so it is not picked (its QA: {qa_rel}). Show the user these findings; the take they accepted, "
+                   f"{source}, stays accepted. They choose: deliver at the take's own resolution (the pack re-planned "
+                   f"without the upscale), or the upscale made again, paid as a redo (tm organic redo); {AGAIN}.")
+    row = {"stage": TAKES, "name": item["name"], "file": rel,
+           "rubric": {"qa": qa_rel, "upscale_of": source, "fails": [], "findings": []},
+           "reason": f"the upscale of the accepted take {source}: the size, the frame rate and the sound checked",
+           "by": "rule", "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    organic_specs.az_rows(run)   # a damaged log is mended first, so a pick never lands after an unreadable line
+    library.append_jsonl(run.path / AZ_LOG, [row])
+    manifest.record(run, rel, rel.split("/", 1)[0], f"{TAKES} pick (rule)", parent=qa_rel,
+                    params={"item": item["name"], "reason": row["reason"]}, cost="0")
+    return {"row": row, "qa": qa_rel, "source": source, "measured": out}
+
+
 # --- step checks -------------------------------------------------------------------------------------
 
 NO_PACK_GAP = "the latest pack passed the pack check (tm organic pack check --stage pack)"
@@ -608,6 +727,8 @@ def _gap(run: RunFolder, stage: str, video: bool) -> str | None:
         for item in _wanted(pack, video):
             row = done.get(c.stem_of(item["name"]))
             why = "it has no pick" if row is None else current(run, row, checked_at=checked_at)
+            if why and video and upscale_item(pack, item["name"]) is not None:
+                why += f": it is the upscale of the accepted take, checked and picked by rule with {UPSCALE_TOOL}"
             if why:
                 missing.append(f"{item['name']}: {why}")
         boards = picks(run, STORYBOARD)

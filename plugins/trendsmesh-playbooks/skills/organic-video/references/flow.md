@@ -958,7 +958,18 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      --note "<their words>"`.
 4. **The `video` check-in comes before `tm done F2`**, as the message says (an animation by
    rule: the stills against the rubric, `tm decide video accept --run R --by rule --note "<what the
-   stills show>"`). A `redo` keeps F2 open, as in F1. Then `tm done F2 --run R` closes the step
+   stills show>"`). A `redo` keeps F2 open, as in F1.
+   **The upscale** (the 768P + upscale option) is an automatic step after the user accepted the
+   take, at every level: the pack's upscale item through the guard (`tm tool replicate_run --run R
+   03_wip/<item>_vNN.json --name <item> --cost <its line cost> --json`, the spec per
+   `p-video-upscale.md`, its `video` the accepted take), then `tm organic upscale --run R --name
+   <item> --json`. It checks only what an upscale may change (1080p in the take's shape, the frame
+   rate and the sound as in the take: there, as long and as loud) and picks it by rule; the user
+   is not asked again, and `tm organic pick` refuses it. One that fails stops (exit 2): show the
+   findings in words; the accepted take stays accepted, and the user chooses between delivering
+   at the take's resolution (the pack re-planned without the upscale) and the upscale made again
+   as a paid redo ([E2](#paying-for-a-redo)).
+   Then `tm done F2 --run R` closes the step
    (refused until the video check-in is decided, and each video item has a pick that counts: its
    latest take, with that take's latest QA; each animation is drawn from its accepted storyboard;
    and the latest motion-graphics render of stills shows the cards' current picks, every one of

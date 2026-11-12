@@ -709,6 +709,12 @@ organic:
     finding_no_cut: "no cut near {at} s"
     finding_cut_off: "the cut at {cut} s is {off} s off its bracket at {bracket} s (more than {flag} s)"
     finding_slow: "the pace is {wps} words a second, under {least}: speed it up ×{speed} in the edit (pitch kept) before any redo"
+    # an upscale's technical QA (organic_qa.upscale_check): what an upscale may not change
+    upscale_size: "the upscale is {got}, not 1080p in the take's shape ({take})"
+    upscale_fps: "the upscale runs at {got} fps, and the take at {take} fps"
+    upscale_length: "the upscale lasts {got} s, and the take {take} s"
+    upscale_no_sound: the upscale lost the take's sound
+    upscale_loudness: "the upscale's loudness is {got} LUFS, and the take's {take} LUFS (more than {slack} LU apart)"
   # the pack's Markdown beside pack_vNN.json (organic_pack.render_md; a test compares the English headings with
   # templates/pack_template.md)
   pack_md:
