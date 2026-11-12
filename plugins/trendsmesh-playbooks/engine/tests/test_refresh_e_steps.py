@@ -70,6 +70,20 @@ def test_the_plan_and_the_card_carry_the_ai_disclosure():
     assert "AI disclosure" in g10
 
 
+def test_the_free_opencv_plate_alone_gives_no_reason_for_the_ai_label():
+    """#56, option 2: the free caption removal is classical image processing, not AI media; ProPainter is."""
+    e1 = _flow_section("e1")
+    assert "OpenCV Telea: classical image processing, no model) is not AI media" in e1
+    assert "ProPainter" in e1 and "the free plate is the run's only edit" in e1
+    vc = _flow_section("vc")
+    assert "not AI media, so alone it adds no AI label" in vc
+    cards = _text(SKILL / "references" / "checkin-cards.md")
+    g10 = cards[cards.index("| G10 |"):cards.index("| E2b |")]
+    assert "free OpenCV caption plate is not AI media" in g10
+    item = _text(SKILL / "templates" / "prelaunch_check_template.md")
+    assert "not the free OpenCV plate" in item
+
+
 # --- #26: the 4:5 crop of the original, files and placements per ad --------------------------------------------
 
 def test_e1_crops_the_original_to_4x5_when_r6_asks_for_it():

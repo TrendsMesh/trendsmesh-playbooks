@@ -39,6 +39,11 @@ from pathlib import Path
 from tm.tools import _common as c
 
 TEXT_KINDS = ("word_captions", "text")
+# The plate's and the mask's manifest sources (issue #56): classical image processing, no model, so the free
+# plate alone doesn't get Meta's AI label. No `tm ai-media` AI marker matches them (it says "inpaint" for a
+# model's inpainting); runs recorded before #56 carry "tm tool inpaint budget (...)", which it reads the same way.
+SOURCE = "opencv-telea (free caption removal)"
+MASK_SOURCE = "opencv-telea mask (free caption removal)"
 
 
 def regions(teardown: dict, fps: float, frames: int, width: int, height: int, *, overlays: list[int] | None = None,
@@ -290,10 +295,10 @@ def main(argv: list[str] | None = None) -> int:
                 end=a.end, pad=a.pad, grow=a.grow, hold=a.hold, smooth=a.smooth, radius=a.radius,
                 whole_box=a.mask == "box")
     parents = [c.parent_ref(run, a.video), c.parent_ref(run, c.resolve(run, a.teardown))]
-    c.record(run, out, "tm tool inpaint budget (OpenCV Telea)", ", ".join(parents), params=res["params"],
+    c.record(run, out, SOURCE, ", ".join(parents), params=res["params"],
              cost="0 (local)", request={"video": parents[0], "teardown": parents[1], **res["params"]},
              response={k: v for k, v in res.items() if k != "params"})
-    c.record(run, mask, "tm tool inpaint budget (mask)", c.rel(run, out), params=res["params"], cost="0 (local)")
+    c.record(run, mask, MASK_SOURCE, c.rel(run, out), params=res["params"], cost="0 (local)")
     outputs = [c.rel(run, out), c.rel(run, mask)]
     x0, y0, x1, y1 = res["crop"]
     return c.finish(a, {"tool": "inpaint", "outputs": outputs, "cost": 0, **{k: v for k, v in res.items()

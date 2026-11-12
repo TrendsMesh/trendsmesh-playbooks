@@ -138,7 +138,7 @@ def test_cli_records_a_free_plate_and_its_mask(ad, run, capsys):
     assert out["regions"][0]["spans_s"][0] == [0.48, 0.6]               # from the frame on screen at 0.5 s
     rows = {r["file"]: r for r in manifest.rows(run)}
     assert rows["03_wip/inpaint_v01.mp4"]["cost"] == "0 (local)"
-    assert "OpenCV Telea" in rows["03_wip/inpaint_v01.mp4"]["source"]
+    assert rows["03_wip/inpaint_v01.mp4"]["source"] == inpaint.SOURCE and "opencv-telea" in inpaint.SOURCE
     assert "03_wip/inpaint_v01_mask.mp4" in rows
     # the mask goes straight into the residue check
     assert inpaint_mode.decide(run.path / out["outputs"][1], run.path / out["outputs"][0], tuple(out["crop"]))[

@@ -542,7 +542,8 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   words>"` (`<total>`: the `ai_usd` already approved plus this amount). It approves nothing for
   the AI video: its plan and budget (G6) come later and approve the running total, this spend
   included. Hands-off: the intake's AI budget; without one, take the free way and list its defect
-  in the final report. Budget is the free plate from `tm tool inpaint`.
+  in the final report. Budget is the free plate from `tm tool inpaint`: not AI media, so alone it
+  adds no AI label; ProPainter is AI media (`#e1`, the AI disclosure).
 - New captions in the original's style: WordCaptions props (word times from the transcript,
   style matched with comparison stills), `tm render still|video --comp WordCaptions`. QA as in
   section 4a.
@@ -775,8 +776,12 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   and leaves it to the advertiser: never decide or infer it for the user. Before the card, run
   `tm ai-media --run R --file <each file the plan's ads use> --json`. For each file it lists the
   media this run created or edited with generative AI (a cloned or synthetic voice line,
-  generated music, inpainted frames, an AI shot, the AI video), from the run's own records, and
-  the files it can't trace, the original's always among them. A file not made yet (at Just the
+  generated music, frames inpainted by a model such as ProPainter, an AI shot, the AI video), from
+  the run's own records, and the files it can't trace, the original's always among them. The free
+  caption removal (`tm tool inpaint`, OpenCV Telea: classical image processing, no model) is not
+  AI media and isn't listed: when the free plate is the run's only edit of the picture, the card
+  says so in one line ("the old captions were removed with the free OpenCV tool, not with AI"), so
+  the plate alone gives no reason for the AI label. A file not made yet (at Just the
   big calls the spending card can come before the renders): list what the approved changes and
   generation plans will make. The plan and the G10 card show those facts and ask one question,
   "Do these ads contain media created or edited with generative AI?", with three choices:

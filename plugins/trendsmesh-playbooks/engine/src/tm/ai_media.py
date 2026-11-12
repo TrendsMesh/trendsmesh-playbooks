@@ -10,8 +10,12 @@ files it cannot trace: the original's (`00_raw`, `01_base`: the run does not kno
 file without a manifest row. The answer is facts for the card, never the decision.
 
 `kind`: `voice` (a synthetic, cloned or AI-processed voice), `music` (generated music) or `picture` (a
-generated or AI-edited video or image: an AI shot, inpainted frames, an interpolated frame). Only media files
+generated or AI-edited video or image: an AI shot, frames inpainted by a model such as ProPainter, an interpolated
+frame). The free caption removal (`tm tool inpaint`, OpenCV Telea: classical image processing, no model) is not
+AI media (issue #56): its plate and mask carry their own source, `opencv-telea`, and the plate recorded before
+that, as "tm tool inpaint budget (...)", reads the same way. Only media files
 count (video, audio, images); the JSON beside them (voice ids, histories, previews' lists) does not.
+`classical`: the free plates in a file's ancestry, edited without a model, for the card to name (not AI media).
 `elsewhere`: AI media in the run that none of the given files uses (a take not kept, for example).
 """
 
@@ -31,6 +35,9 @@ AI_MARKERS = ("elevenlabs", "replicate", "veo", "propainter", "inpaint", "frame-
               "stable-diffusion", "stable diffusion", "dall-e", "dalle", "luma", "pika", "hailuo", "wan-")
 # Not ad media even when a marker matches: a shared voice's sample, a price page.
 NOT_MEDIA_SOURCES = ("voice preview", "model page", "run record")
+# Classical edits, no model (issue #56): the free plate's source (`tm.tools.inpaint.SOURCE`) and the one it was
+# recorded with before (which says "inpaint"). A source starting so is not AI unless its model names one.
+CLASSICAL_SOURCES = ("opencv-telea", "tm tool inpaint budget")
 UNTRACED_STAGES = ("00_raw", "01_base")
 
 
@@ -42,10 +49,19 @@ def _kind(text: str) -> str:
     return "picture"
 
 
+def _is_classical(row: dict) -> bool:
+    """The free caption removal's plate (or mask): a media file edited without a model (issue #56)."""
+    return (PurePosixPath(row["file"]).suffix.lower() in MEDIA and row["source"].lower().startswith(CLASSICAL_SOURCES)
+            and not _is_ai(row))
+
+
 def _is_ai(row: dict) -> bool:
     if PurePosixPath(row["file"]).suffix.lower() not in MEDIA:
         return False
-    text = f"{row['source']} {row['model']}".lower()
+    source, model = row["source"].lower(), row["model"].lower()
+    if source.startswith(CLASSICAL_SOURCES):
+        source = ""
+    text = f"{source} {model}"
     return not any(s in text for s in NOT_MEDIA_SOURCES) and any(m in text for m in AI_MARKERS)
 
 
@@ -80,7 +96,7 @@ def facts(run: RunFolder, files: list[str]) -> dict:
     used: set[str] = set()
     out = []
     for f in files:
-        ai, untraced, seen = [], [], set()
+        ai, classical, untraced, seen = [], [], [], set()
         todo = [f]
         while todo:
             name = todo.pop(0)
@@ -97,9 +113,11 @@ def facts(run: RunFolder, files: list[str]) -> dict:
                 untraced.append(key)
             if _is_ai(row):
                 ai.append(_entry(row))
+            elif _is_classical(row):
+                classical.append({"file": row["file"], "source": row["source"]})
             todo.extend(p.strip() for p in row["parent"].split(",") if p.strip())
         used |= seen
-        out.append({"file": f, "recorded": f in by_file, "ai": ai, "untraced": untraced})
+        out.append({"file": f, "recorded": f in by_file, "ai": ai, "classical": classical, "untraced": untraced})
     elsewhere = [_entry(r) for r in by_file.values() if _is_ai(r) and r["file"] not in used]
     return {"files": out, "elsewhere": elsewhere}
 
@@ -110,6 +128,9 @@ def message(result: dict) -> str:
         made = "; ".join(f"{a['file']} ({a['source']}{', ' + a['model'] if a['model'] else ''}: {a['kind']})"
                          for a in e["ai"]) or "nothing this run made with generative AI"
         lines.append(f"{e['file']}: {made}.")
+        if e["classical"]:
+            lines.append("  Edited without AI (the free OpenCV caption removal, no model; not AI media): "
+                         + ", ".join(c["file"] for c in e["classical"]) + ".")
         if e["untraced"]:
             lines.append(f"  Not traceable from the run's records (ask the user): {', '.join(e['untraced'])}.")
     if result["elsewhere"]:

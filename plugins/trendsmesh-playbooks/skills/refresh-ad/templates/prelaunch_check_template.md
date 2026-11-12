@@ -13,7 +13,7 @@ For each variant:
 
 | # | Item | Green / red | Evidence |
 |---|---|---|---|
-| 1 | AI disclosure: any media created or edited with a generative AI tool (a cloned or synthetic voice, generated music, inpainted frames, an AI shot or video, generated people or scenes). Check, never ask: the `self_ai_disclosure` on the creative matches the plan's decision (asked before the upload) and what the run made with AI (`tm ai-media` on the final files). Red if it differs, or the creative has none while the run used generative AI | | |
+| 1 | AI disclosure: any media created or edited with a generative AI tool (a cloned or synthetic voice, generated music, frames inpainted by a model such as ProPainter (not the free OpenCV plate), an AI shot or video, generated people or scenes). Check, never ask: the `self_ai_disclosure` on the creative matches the plan's decision (asked before the upload) and what the run made with AI (`tm ai-media` on the final files). Red if it differs, or the creative has none while the run used generative AI | | |
 | 2 | Claims: health, financial, "before and after", references to institutions | | |
 | 3 | Music licence for advertising (trending organic sounds are not licensed) | | |
 | 4 | Voice licence (the intake confirmation; a cloned or new voice's rights) | | |

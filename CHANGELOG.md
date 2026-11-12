@@ -29,6 +29,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **The run page carries its title in the run's language.** The Artifact tool keeps a page's own `<title>` over the
   title it is given, so the run page's `<title>` now names the playbook in the page's language, and `tm page build`
   gives that title for the publish.
+- **Refresh an ad: the free caption removal no longer adds the AI label on its own.** A clean plate made with the
+  free OpenCV caption removal (classical image processing, no model) is no longer counted as AI-edited media for
+  Meta's AI disclosure; the paid ProPainter removal and every other AI tool still are. The disclosure card says
+  when the free plate was the only edit. Runs already on disk read the same way: their free plates, recorded under
+  the old name, stop counting as AI media too, while an answer you already gave to the disclosure question stays as
+  you gave it, and ads already uploaded keep the label they were created with.
 
 ## 0.11.0
 

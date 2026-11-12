@@ -126,3 +126,61 @@ def test_tm_loads_the_command_by_itself():
     code = ("import sys\nfrom tm import cli\nsys.exit(0 if 'ai-media' in "
             "cli.build_parser()._subparsers._group_actions[0].choices else 3)")
     assert subprocess.run([sys.executable, "-c", code]).returncode == 0
+
+
+# --- #56: the free OpenCV plate alone doesn't get the AI label ----------------------------------------------------
+
+def _plate_run(tmp_path, plate_source, mask_source):
+    run = _run(tmp_path)
+    rec = lambda f, src, parent=None, model=None: manifest.record(run, f, f.split("/")[0], src, parent, None, None,
+                                                                  model, None, None)
+    rec("00_raw/original.mp4", "the user's brand folder")
+    rec("03_wip/inpaint_v01.mp4", plate_source, "00_raw/original.mp4, 02_research/teardown_v01.json")
+    rec("03_wip/inpaint_v01_mask.mp4", mask_source, "03_wip/inpaint_v01.mp4")
+    rec("04_final/captions_9x16_v01.mp4", "tm render video (Remotion)", "03_wip/inpaint_v01.mp4")
+    return run, rec
+
+
+def test_the_free_opencv_plate_is_not_ai_media(tmp_path):
+    from tm.tools import inpaint
+    run, _ = _plate_run(tmp_path, inpaint.SOURCE, inpaint.MASK_SOURCE)
+    out = ai_media.facts(run, ["04_final/captions_9x16_v01.mp4"])
+    (entry,) = out["files"]
+    assert entry["ai"] == [] and entry["untraced"] == ["00_raw/original.mp4"]
+    assert entry["classical"] == [{"file": "03_wip/inpaint_v01.mp4", "source": inpaint.SOURCE}]
+    assert out["elsewhere"] == []                      # its mask isn't AI media either
+    text = ai_media.message(out)
+    assert "nothing this run made with generative AI" in text and "free OpenCV caption removal" in text
+    # its own source: no AI marker matches it
+    for src in (inpaint.SOURCE, inpaint.MASK_SOURCE):
+        assert not any(m in src.lower() for m in ai_media.AI_MARKERS), src
+
+
+def test_a_plate_recorded_before_56_with_the_old_source_is_not_ai_media_either(tmp_path):
+    run, _ = _plate_run(tmp_path, "tm tool inpaint budget (OpenCV Telea)", "tm tool inpaint budget (mask)")
+    out = ai_media.facts(run, ["04_final/captions_9x16_v01.mp4"])
+    assert out["files"][0]["ai"] == [] and out["elsewhere"] == []
+
+
+def test_propainter_over_the_free_plate_still_counts(tmp_path):
+    from tm.tools import inpaint
+    run, rec = _plate_run(tmp_path, inpaint.SOURCE, inpaint.MASK_SOURCE)
+    manifest.record(run, "03_wip/propainter_v01.mp4", "03_wip", "Replicate", "00_raw/original.mp4, "
+                    "03_wip/inpaint_v01_mask.mp4", None, None, "jd7h/propainter", "$0.40", None)
+    rec("04_final/captions_9x16_v02.mp4", "tm render video (Remotion)", "03_wip/propainter_v01.mp4")
+    (entry,) = ai_media.facts(run, ["04_final/captions_9x16_v02.mp4"])["files"]
+    assert [(a["file"], a["kind"]) for a in entry["ai"]] == [("03_wip/propainter_v01.mp4", "picture")]
+    assert [c["file"] for c in entry["classical"]] == ["03_wip/inpaint_v01_mask.mp4", "03_wip/inpaint_v01.mp4"]
+
+
+def test_other_model_based_removal_still_counts(tmp_path):
+    run = _run(tmp_path)
+    manifest.record(run, "03_wip/clean_v01.mp4", "03_wip", "LaMa inpainting (by hand)", None, None, None, None,
+                    None, None)
+    manifest.record(run, "03_wip/clean_v02.mp4", "03_wip", "tm tool inpaint budget (OpenCV Telea)", None, None,
+                    None, "jd7h/propainter", None, None)   # the old free source, but an AI model named: counts
+    manifest.record(run, "03_wip/clean_v03.mp4", "03_wip", "opencv-telea", None, None, None,
+                    "jd7h/propainter", None, None)
+    files = ["03_wip/clean_v01.mp4", "03_wip/clean_v02.mp4", "03_wip/clean_v03.mp4"]
+    out = ai_media.facts(run, files)
+    assert [len(e["ai"]) for e in out["files"]] == [1, 1, 1]

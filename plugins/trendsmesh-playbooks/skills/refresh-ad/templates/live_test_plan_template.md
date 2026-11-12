@@ -32,8 +32,8 @@ the launch ("Approve the launch").
   `tm tool reframe` and QA (free). Only if it fails its QA: "test in 9:16 only; 4:5 after the
   test", and why. The upload (E2) builds exactly this table; any change is asked first.
 - **AI disclosure** (Meta's `self_ai_disclosure`, set only when a creative is created): what the
-  run made or edited with generative AI, per ad (`tm ai-media`: voice lines, music, inpainted
-  frames, AI shots or video), what is known about the original, and the user's answer: both,
+  run made or edited with generative AI, per ad (`tm ai-media`: voice lines, music, frames
+  inpainted by a model such as ProPainter, AI shots or video; the free OpenCV caption plate isn't AI media), what is known about the original, and the user's answer: both,
   neither or only the variant (the last one makes the "AI info" label a second difference).
   Never decided for the user.
 - `ads_experiment_check_eligibility` result.

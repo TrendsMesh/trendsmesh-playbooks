@@ -241,7 +241,7 @@ Untested: pasting a new line (not a sentence from the original) into the full ad
    - ExampleTravel: at most 0.21% of the frame, 1.13 s → budget. In listening and viewing, the user saw no difference between OpenCV and ProPainter. On static close-ups the difference was clear, but the assessment must take into account motion, the full frame and the new captions on top.
    - ProPainter is needed when the text disappears without a replacement, the new words are shorter or in a different place, the background is sharp and textured (face, lettering, static shot) or the caption is large.
    - **pro, 💰 ProPainter** on a crop around the captions (ExampleTravel: 600×520 px, 75 frames, 34 s GPU, about $0.05). Inputs as `.mp4` data URIs, because the model checks the file extension. The result comes back at 608×528, so we scale it to the crop and paste it in only within a soft mask.
-   - **budget, 0 zł, OpenCV Telea:** on a close-up it leaves patches on texture (sand, water).
+   - **budget, 0 zł, OpenCV Telea:** on a close-up it leaves patches on texture (sand, water). Classical image processing, no model: not AI media, so the free plate alone adds no AI label (`tm ai-media`, `flow.md#e1`). ProPainter is AI media.
 4. 🤖 **Style recreation:** stills with typeface candidates over the original word → comparison of the boxes (width, height, baseline) → correction of size, scaleY and position. ExampleTravel: Nunito 900, 64 px, scaleY 1.11, outline #15151A 7 px, center x 540, baseline y 1509.
 5. 🤖 **Timings:** a word is visible from its start to the start of the next one, the last one until the end of speech +0.15 s (rule read from the original).
 6. 🤖 **QA:**
