@@ -231,7 +231,7 @@ def test_delivery_lists_every_step(tmp_path, capsys):
     # the raw take with its QA findings, and its contact sheet; the host image beside it
     (take,) = takes["options"]
     assert take["src"] == "03_wip/take_v01_0.mp4" and take["pick"] is True
-    assert "kontrola jakości: bez zastrzeżeń" in take["caption"] and "speed it up ×1.17" in take["caption"]
+    assert "kontrola jakości: bez zastrzeżeń" in take["caption"] and "przyspiesz ujęcie ×1.17" in take["caption"]
     assert {r["src"] for r in takes["refs"]} == {"03_wip/host_v01_0.png", "03_wip/qa/take_v01_0_contact_v01.png"}
     html = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
     for name in ("M5_final_v01_720p.mp4", "M5_final_v01_upload.mp4", "cover_M5_v01.jpg", "host_v01_0.png",
@@ -241,7 +241,7 @@ def test_delivery_lists_every_step(tmp_path, capsys):
     assert html.count("<span class=pick>Wybór agenta</span>") == 3
     shown = _visible(html)
     assert shown.count('value="accept"') == shown.count('value="redo"') == shown.count('value="drop"') == 3
-    assert "speed it up ×1.17" in html and "Zestaw do publikacji" in html
+    assert "przyspiesz ujęcie ×1.17" in html and "Zestaw do publikacji" in html
     assert "bramka" not in _visible(html) and "gate" not in _visible(html)
     assert stepchecks.run("final_page_built", run) is None
     # a new final: the page is no longer built from the latest final
