@@ -81,6 +81,33 @@ What changed in each version of the TrendsMesh playbooks plugin.
   and the voices you saved, with previews. It is free.
 - **`--help` works on every tool.** `tm tool elevenlabs --help` said it costs money and needed a run and a cost.
   The help of every tool, paid or not, now shows with no run, no cost and no key.
+- **Organic AI video closes the images and takes stages after your decision.** The check-in on the images (F1) and
+  on the takes (F2) now comes while the stage is open, and the stage closes only after your answer, so the chat no
+  longer shows a step finished before you judged anything. A redo keeps the stage open and asks you again.
+- **Redoing the final edit goes back to the edit.** "Redo" on the final edit now takes the run back to the edit
+  (G1): the new final, its cover, the posting kit and the delivery page go through their steps again, and the
+  engine refuses a final older than your redo. Before, the run moved on to posting and the new files were made
+  outside the steps.
+- **A word changed for the voice keeps the storyboard's approval.** An animation's storyboard is approved on what
+  it shows: its scenes, their order, the on-screen text (a new `on_screen` per script line in the pack) and the
+  style. Changing a word of the voiceover so it is read right no longer asks you to accept the same storyboard
+  again.
+- **The upscale is checked and picked by itself.** After you accept a take, its upscale to 1080p is an automatic
+  step: `tm organic upscale` checks only what an upscale may change (the size, the frame rate, the sound) against
+  the take you accepted, and picks it by rule. You are not asked about it again, and one that changed the take
+  stops with what it found.
+- **Every command finds a run's file by the same relative path.** A path such as `03_wip/edit_v01.props.json` is
+  now read in the run folder first, whatever folder Claude works in, for every `tm` command with `--run`: among
+  others `tm render`, `tm tool transcribe`, `tm tool teardown`, the ElevenLabs and inpaint tools, `tm record`,
+  `tm register check`, `tm library add`, `tm r1`, `tm diagnose`, `tm r4` and `tm trends shortlist`.
+- **Pages build without manual previews.** A check-in or delivery page now makes the 720p preview of every video
+  over 15 MB itself (free, on your computer) and shows it, instead of stopping and naming one file at a time.
+- **A new page version can't overwrite decisions you are making.** While the engine waits for your decisions on a
+  page, `tm page published` and `tm page await` refuse another version of it until they are read, in every
+  playbook. When nobody has decided yet, an empty read of the page's store says so and lets it through.
+- **Starting a run lists your unfinished ones.** `tm run new` now returns the unfinished runs of the same playbook
+  and name (for Organic AI video, the same channel too), with their folder, date and step, and every playbook asks
+  you whether to continue one or start the new one.
 
 ## 0.12.0
 

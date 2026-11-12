@@ -1244,6 +1244,18 @@ OV_BUILT = lambda ws, run: None  # noqa: E731  (C2: the page is already built an
 OV_HOOKS = {"A1": ov_a1, "B1": ov_b1, "B2": ov_b2, "B3": ov_b3, "C1": ov_c1, "C2": ov_c2}
 
 
+OV_FIRST = "comes before the step is closed"   # F1, F2: the check-in is decided before `tm done` (issue #90)
+
+
+def _ov_first(ws: Path, run: Path, n: dict, choices: dict | None = None) -> None:
+    """A step whose check-in comes before `tm done`: decide it as the work message says (by rule or the user's)."""
+    if OV_FIRST not in (n.get("message") or "") or not n.get("checkin"):
+        return
+    extra = ["--by", "rule", "--note", "set by the eval fixture"] if "--by rule" in n["message"] else []
+    for cid in n["checkin"]["ids"]:
+        tm(ws, "decide", cid, (choices or {}).get(cid, "accept"), "--run", str(run), *extra)
+
+
 def ov_drive(ws: Path, run: Path, stop_at: str, hooks: dict | None = None, choices: dict | None = None,
              stop_checkin: str | None = None) -> dict:
     """Do each step's work (OV_HOOKS, then `hooks`) and answer each check-in (`choices`, else accept), until
@@ -1257,6 +1269,7 @@ def ov_drive(ws: Path, run: Path, stop_at: str, hooks: dict | None = None, choic
                 return n
             if n["step"] in hooks:
                 hooks[n["step"]](ws, run)
+            _ov_first(ws, run, n, choices)
             tm(ws, "done", n["step"], "--run", str(run))
         elif n["action"] in ("ask", "auto"):
             ids = n["checkin"]["ids"]
@@ -1555,6 +1568,7 @@ def ov_prod_drive(ws: Path, run: Path, stop_at: str, hooks: dict) -> dict:
                 return n
             if n["step"] in hooks:
                 hooks[n["step"]](ws, run)
+            _ov_first(ws, run, n)
             tm(ws, "done", n["step"], "--run", str(run))
         elif n["action"] in ("ask", "auto"):
             for cid in n["checkin"]["ids"]:

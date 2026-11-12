@@ -258,6 +258,11 @@ strings:
       finding_no_cut: "brak cięcia w okolicy {at} s"
       finding_cut_off: "cięcie w {cut} s jest {off} s od swojego znacznika w {bracket} s (więcej niż {flag} s)"
       finding_slow: "tempo: {wps} sł./s, poniżej {least}: przyspiesz ujęcie ×{speed} w montażu (bez zmiany wysokości głosu), zanim poprosisz o nowe"
+      upscale_size: "upscale ma {got}, a nie 1080p w proporcjach ujęcia ({take})"
+      upscale_fps: "upscale ma {got} kl./s, a ujęcie {take} kl./s"
+      upscale_length: "upscale trwa {got} s, a ujęcie {take} s"
+      upscale_no_sound: upscale stracił dźwięk ujęcia
+      upscale_loudness: "głośność upscale'u to {got} LUFS, a ujęcia {take} LUFS (różnica ponad {slack} LU)"
     # the pack's Markdown (organic_pack.render_md)
     pack_md:
       h_script:

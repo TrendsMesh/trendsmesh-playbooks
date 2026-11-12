@@ -71,7 +71,7 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
 ## 2. Intake (step A0), one batch of questions
 
 `tm run new --name <product or short label> --json` gives the run folder (the ad is not
-chosen yet; the name never needs to change). Then ask everything at once,
+chosen yet; the name never needs to change). **Its answer lists `unfinished_runs`**: this playbook's runs of the same name that were started and are not done (`folder`, `created`, `step`). When it lists any, always ask first, in one short question, whether to continue one of them (then `tm next` on it; the new folder stays unused) or start this new one. Then ask everything at once,
 each with a default: ad account, market, the working and market languages, product and landing page, brand assets
 folder (where the original video should be), outputs (default: the creative brief, the edited
 video and the AI video), brand and compliance rules, budgets (AI in USD, ElevenLabs credits;

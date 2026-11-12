@@ -65,7 +65,7 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
 
 ## 2. Intake (A0), one batch of questions
 
-A new category: `tm run new --playbook trend-research --name <category> --json`, then the intake
+A new category: `tm run new --playbook trend-research --name <category> --json`. **Its answer lists `unfinished_runs`**: this playbook's runs of the same name that were started and are not done (`folder`, `created`, `step`). When it lists any, always ask first, in one short question, whether to continue one of them (then `tm next` on it; the new folder stays unused) or start this new one. Then the intake
 in one batch with defaults: the level, the category phrase (a link, store, competitor or ad as the
 input is "not supported yet": ask for a phrase), market, the working and market languages, focus (optional), outputs
 (the category report always; weekly digest; paid view; default all three), currency. Then `tm

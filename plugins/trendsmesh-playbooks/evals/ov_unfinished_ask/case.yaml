@@ -1,0 +1,5 @@
+schema_version: "1.1"
+name: ov_unfinished_ask
+# Issue 90, point 5: an unfinished run of the channel is never missed.
+context:
+  scaffold_script: fixture.sh

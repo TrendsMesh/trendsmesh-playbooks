@@ -54,7 +54,7 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
 
 ## 2. Intake (S0), one card
 
-`tm run new --playbook create-ad --name <product> --json`. Pre-fill from the site, the config and earlier runs of
+`tm run new --playbook create-ad --name <product> --json`. **Its answer lists `unfinished_runs`**: this playbook's runs of the same name that were started and are not done (`folder`, `created`, `step`). When it lists any, always ask first, in one short question, whether to continue one of them (then `tm next` on it; the new folder stays unused) or start this new one. Pre-fill from the site, the config and earlier runs of
 the brand (language, ad account, CTA, budget, music) and show it as one card for correction, with **four
 questions, each with options** (`references/flow.md#s0`): who the ad is for and what they make or do; what it
 sells; the length and placements; the existing materials. Add the level ("How involved do you want to be?") and,

@@ -82,7 +82,7 @@ Follow the doctor's "Creative brief" section (`commands/doctor.md` in the plugin
 ## 2. Intake (A0, A1): one product, one card
 
 `tm run new --playbook creative-brief --name <product or short label> --json` (with `--seed
-<seed_id>` when starting from a trend pick, section 4). Then `tm next`: A0 is the readiness
+<seed_id>` when starting from a trend pick, section 4). **Its answer lists `unfinished_runs`**: this playbook's runs of the same name that were started and are not done (`folder`, `created`, `step`). When it lists any, always ask first, in one short question, whether to continue one of them (then `tm next` on it; the new folder stays unused) or start this new one. Then `tm next`: A0 is the readiness
 above, with nothing asked yet. At A1, `tm trends collect on --run R` right before the run's first
 MCP call (`ads_get_ad_accounts`), then:
 

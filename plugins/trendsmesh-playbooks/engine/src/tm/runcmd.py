@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 from datetime import date
 from pathlib import Path
 
+import yaml
+
 from tm import cli, manifest, paths, playbooks, state, trend_spool
-from tm.runfolder import ReadOnlyError, RunExists, RunFolder
+from tm.runfolder import ReadOnlyError, RunExists, RunFolder, slug
 
 
 _emit = cli.emit
@@ -78,6 +81,47 @@ def _finish(run: RunFolder, previous: str | None, seed: dict | None) -> None:
                          "again with the same command.") from None
 
 
+def _channels(path: Path) -> set[str]:
+    """The channels a run's config names (organic video's `channels`), as run names spell them; none without."""
+    try:
+        cfg = yaml.safe_load((path / "config.yaml").read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return set()
+    found = cfg.get("channels") if isinstance(cfg, dict) else None
+    return {slug(str(c)).casefold() for c in found} if isinstance(found, list) else set()
+
+
+def _started(s: state.RunState, path: Path) -> bool:
+    """Anything was done in the run: a step reached, a level or a decision, or its config written. A run folder made
+    and never used (a new run the user then did not want) is not one to continue."""
+    return bool(s.step or s.level or s.decisions or (path / "config.yaml").is_file())
+
+
+def unfinished_runs(workspace: Path, playbook: str, name: str, *, but: Path | None = None) -> list[dict]:
+    """The runs of `playbook` in the workspace that are not done and were started, under the same name (as its folder
+    spells it, or that name's `-2`, `-3` … of a later run the same day) or for the same channel (organic video's
+    config `channels`): {folder (workspace-relative), created, step, status}, the newest first. `but` is left out.
+    Issue #90: `tm run new` returns them, so an unfinished run is never missed."""
+    base = slug(name).casefold()
+    same = re.compile(rf"^\d{{4}}-\d{{2}}-\d{{2}}_{re.escape(base)}(-\d+)?$")
+    folder = Path(workspace) / "runs" / playbooks.get(playbook).id
+    found = []
+    for path in folder.iterdir() if folder.is_dir() else ():
+        if (but is not None and path.resolve() == Path(but).resolve()) or not (path / "manifest.md").is_file():
+            continue
+        if not (same.match(path.name.casefold()) or base in _channels(path)):
+            continue
+        try:
+            s = state.load(RunFolder.open(path))
+        except (OSError, ValueError):
+            continue                          # a folder whose state cannot be read: `tm status` says why
+        if s.status == "done" or not _started(s, path):
+            continue
+        found.append({"folder": path.relative_to(workspace).as_posix(), "created": s.created, "step": s.step,
+                      "status": s.status})
+    return sorted(found, key=lambda r: (r["created"], r["folder"]), reverse=True)
+
+
 def _taken(args: argparse.Namespace, exc: RunExists) -> int:
     """A run of that name exists today: say which (its status and step, so the user can be asked whether
     to continue it) and a free name for a new one. Nothing is made."""
@@ -113,7 +157,18 @@ def _run_run(args: argparse.Namespace) -> int:
             trend_spool.turn_off(workspace, trend_spool.this_session())
         except OSError:
             pass                              # the run exists; the marker stays tied to its own run
-    _emit(args, {"status": "done", "path": str(run.path), "run_id": run.path.name}, str(run.path))
+    try:
+        unfinished = unfinished_runs(workspace, pb.id, args.name, but=run.path)
+    except OSError:
+        unfinished = []
+    text = str(run.path)
+    if unfinished:
+        listed = "; ".join(f"{r['folder']} (from {r['created']}, at {r['step']}"
+                           + (", stopped" if r["status"] == "stopped" else "") + ")" for r in unfinished)
+        text += (f"\nUnfinished runs of this {pb.name} name or channel: {listed}. Ask the user first whether to "
+                 "continue one (then `tm next` on it; this new folder stays unused) or start this new one.")
+    _emit(args, {"status": "done", "path": str(run.path), "run_id": run.path.name, "unfinished_runs": unfinished,
+                 "message": text}, text)
     return 0
 
 
