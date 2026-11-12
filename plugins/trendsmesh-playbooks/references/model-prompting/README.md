@@ -50,3 +50,16 @@ The agent suggests a tier from the format (speech, precision) and the budget; th
 - Suggested (default) upscaler, user decision round 30: **`prunaai/p-video-upscale`** (`target: 1080p`, keep the source fps; $0.02/s at 1080p, keeps the audio). Alternatives on request: `topazlabs/video-upscale` ($0.08 per unit, probably per second), `bytedance/video-upscaler` with `scene: aigc` (`pro` for faces).
 - MiniMax H3 has a native 2K tier ($0.13/s), often cheaper than 768P + Topaz. Seedance 2.0 at 720p + upscale is about half the price of native 1080p.
 - Upscaling must not change the sound; mux the original audio back with ffmpeg if needed. Comparison: `runs/03-organic-ai-video/2026-11-05_pet-dtc-proposals/02_research/models/upscale_models_v01.md`.
+
+## Talking person in Create an ad: one table by situation (issue #95, checked 2026-11-12)
+The plugin's own section, added after the handoff's text above. Create an ad's rule CA5 (`skills/create-ad/references/rules.md`) uses this same table: the plan asks which situation applies **before the casting** (`presenter.situation` in the production plan, `tm ad check plan`), so no casting is paid for a face the model will not use. Organic AI video keeps its own speech routes (above, and its rules OV6–OV7).
+
+| Situation (`presenter.situation`) | Model | Voice | Casting face | Cost per 15 s | Recipe |
+|---|---|---|---|---|---|
+| A person generated from a description (`described`) | `bytedance/seedance-2.0` | native | no (face block), so no paid casting | $2.70 | [seedance-2.0.md](seedance-2.0.md) |
+| A specific person from an approved image (`specific_person`) | `minimax/h3`, reference mode | native | yes | $1.20 | [minimax-h3.md](minimax-h3.md) |
+| The user's own voice or a brand voice (`own_voice`) | `minimax/h3` with a voice sample (`reference_audio_urls`, 2–15 s) | close to the sample | yes | $1.20 | [minimax-h3.md](minimax-h3.md) |
+| Exact wording needed (`exact_wording`) | `google/gemini-omni-1.2-flash` (lines as text in the prompt) | native | as a reference | $1.58 | [gemini-omni-1.2-flash.md](gemini-omni-1.2-flash.md) |
+| Fallback, only when the review shows the take looks or sounds wrong (`fallback`) | ElevenLabs + `kwaivgi/kling-avatar-v2` | ElevenLabs | yes | about $0.84–1.65 | [kling-avatar-v2.md](kling-avatar-v2.md), [eleven-v4.md](eleven-v4.md) |
+
+Prices from Replicate's `billingConfig`, read 2026-11-12: Seedance 2.0 $0.18/s at 720p, MiniMax H3 $0.08/s at 768P, Gemini Omni 1.2 Flash $0.105/s at 720p, Kling Avatar v2 $0.056/s (std) to $0.11/s (pro) plus the ElevenLabs line. One speaker is one take whenever the lines fit the model's length (15 s for each of these), with the cuts between places described in the prompt; a next take keeps the same image and the same voice description. A weak native voice with the right lines and timing is changed with the Voice Changer (`tm tool elevenlabs sts`), which keeps the lip sync, before any new take.

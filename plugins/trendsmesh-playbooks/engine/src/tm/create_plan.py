@@ -401,6 +401,75 @@ def check_plan(run: RunFolder, data: dict, *, today: date | None = None) -> list
             out.append(Problem(f"lines[{n}]", f"The user's own file replaces {line.get('type')}, so {item} is not "
                                "generated.", "Drop the line, and say in the plan what the file replaces."))
         out.extend(_music_problems(line, n))
+    out.extend(presenter_problems(run, data, lines))
+    return out
+
+
+# --- the talking person: CA5's table, CA4's one take per speaker (issue #95) -------
+
+PRESENTERS = {   # situation -> (a word of its take's model, what the casting gives it); rules.md CA5's table
+    "described": ("seedance", "nothing: the face block"),
+    "specific_person": ("h3", "the face"),
+    "own_voice": ("h3", "the face"),
+    "exact_wording": ("gemini-omni", "a reference"),
+    "fallback": ("kling-avatar", "the face"),
+}
+NO_FACE = ("seedance",)   # refuses a photoreal face in its inputs (Replicate E005): no casting face can be used
+
+
+def _names(lines: list[dict]) -> str:
+    return ", ".join(str(ln.get("item")) for ln in lines)
+
+
+def presenter_problems(run: RunFolder, data: dict, lines: list) -> list[Problem]:
+    """The plan's talking person (lines of type presenter: the casting before the video, the takes at video): the
+    situation of CA5's table named (`presenter.situation`) and its model used, unless the user picked another
+    (`presenter.user_choice`); the fallback only with what the review showed (`presenter.why`); no paid casting for
+    a model that cannot use the casting's face (Seedance); and one take per speaker whose lines fit one (CA4)."""
+    talking = [ln for ln in lines if isinstance(ln, dict) and ln.get("type") == "presenter"]
+    if not talking:
+        return []
+    takes = [ln for ln in talking if ln.get("stage") == "video"]
+    casting = [ln for ln in talking if ln.get("stage") == "pre_video"]
+    chosen = data.get("presenter") if isinstance(data.get("presenter"), dict) else {}
+    situation, out = chosen.get("situation"), []
+    if situation not in PRESENTERS:
+        out.append(Problem("presenter.situation", "The plan makes a talking person, but names no situation of CA5's "
+                           f"table ({', '.join(PRESENTERS)}).", "Ask the user which situation applies, before any "
+                           "casting, and write presenter.situation (rules.md CA5)."))
+    else:
+        family = PRESENTERS[situation][0]
+        for ln in takes:
+            if family not in str(ln.get("model", "")).lower() and chosen.get("user_choice") is not True:
+                out.append(Problem("presenter", f"CA5's table makes the presenter for {situation} with {family}, and "
+                                   f"{ln.get('item')} uses {ln.get('model')}.", "Use the table's model, or write "
+                                   "presenter.user_choice: true when the user picked another (suggest, never impose)."))
+        if situation == "fallback" and not _text(chosen.get("why")):
+            out.append(Problem("presenter.why", "The fallback (ElevenLabs + Kling Avatar v2) is only for a take the "
+                               "review showed looks or sounds wrong.", "Write what the review showed (presenter.why), "
+                               "or use the situation's own model."))
+    faceless = [ln for ln in takes if any(m in str(ln.get("model", "")).lower() for m in NO_FACE)]
+    if faceless and casting:
+        out.append(Problem("lines", f"{_names(faceless)} is made with {faceless[0].get('model')}, which cannot use a "
+                           "casting face (it refuses a photoreal face, E005), and the plan still pays for casting "
+                           f"({_names(casting)}).", "Drop the casting: the person is cast from a description in the "
+                           "prompt. Tell the user so before the casting (CA5)."))
+    board = checked(run, BOARD) or {}
+    said: dict[str, int] = {}
+    for sc in board.get("scenes") or []:
+        if isinstance(sc, dict) and _text(sc.get("line")):
+            speaker = sc.get("speaker") or "voice"
+            said[speaker] = said.get(speaker, 0) + _words(sc["line"])
+    cfg = create_config.load(run)
+    words_max, max_s = config.get(cfg, "take.words_max"), config.get(cfg, "take.max_s")
+    for speaker, words in said.items():
+        mine = [ln for ln in takes if ln.get("speaker") == speaker or (len(said) == 1 and not ln.get("speaker"))]
+        if len(mine) > 1 and words <= words_max:
+            out.append(Problem("lines", f"{speaker}'s lines ({words} words) fit one take (about {words_max} words, "
+                               f"{max_s:g} s), and the plan makes {len(mine)} takes ({_names(mine)}): two generations "
+                               "give two slightly different faces, voices and light.", "Make it one take, with the "
+                               "cuts between places described in its prompt (\"selfie, then a hard cut to a whispered "
+                               "close-up\"; CA4)."))
     return out
 
 

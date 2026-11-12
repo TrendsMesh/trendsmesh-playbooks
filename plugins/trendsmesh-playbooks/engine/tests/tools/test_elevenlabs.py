@@ -1099,3 +1099,69 @@ def test_scribe_refuses_a_file_outside_the_run(api, run, tmp_path, capsys):
     assert "not inside the run folder" in json.loads(capsys.readouterr().out)["message"]
     assert not [c for c in api.calls if c.method == "POST"]
 
+
+# --- the Voice Changer (issue #95): a weak native voice changed, its timing kept ----------------------------
+
+def _tone(path, seconds, video=False):
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        pytest.skip("ffmpeg is not on PATH (run the tests through pixi)")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    picture = ["-f", "lavfi", "-i", f"color=c=navy:size=180x320:rate=25:duration={seconds}"] if video else []
+    subprocess.run([ffmpeg, "-nostdin", "-v", "error", "-y", *picture, "-f", "lavfi", "-i",
+                    f"sine=frequency=330:sample_rate=44100:duration={seconds}",
+                    *(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-shortest"] if video else []), str(path)], check=True)
+    return path
+
+
+@pytest.mark.parametrize("answer_s,kept", [(2.0, True), (2.6, False)])
+def test_sts_changes_the_take_voice_and_measures_the_timing(api, run, tmp_path, capsys, answer_s, kept):
+    changed = _tone(tmp_path / "changed.mp3", answer_s).read_bytes()
+
+    def voice_changer(prepared):
+        api.used += 33
+        return Api._raw(prepared, changed, headers={"content-type": "audio/mpeg"})
+
+    api.routes[("POST", "/v1/voice-changer/v123")] = voice_changer
+    _tone(run.path / "03_wip" / "presenter-take_v01_0.mp4", 2.0, video=True)
+    assert elevenlabs.main(["sts", "--run", str(run.path), "03_wip/presenter-take_v01_0.mp4", "--voice-id", "v123",
+                            "--settings", '{"stability": 0.5}', "--json"]) == 0
+    post = next(c for c in api.calls if c.method == "POST")
+    assert post.url == "https://api.elevenlabs.io/v1/voice-changer/v123?output_format=mp3_44100_128"
+    assert b'name="audio"; filename="presenter-take_v01_0.wav"' in post.body and b"RIFF" in post.body
+    for field, value in (("model_id", b"eleven_multilingual_sts_v2"), ("remove_background_noise", b"false"),
+                         ("voice_settings", b'{"stability": 0.5}')):
+        assert f'name="{field}"'.encode() in post.body and value in post.body
+    out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert out["outputs"] == ["03_wip/audio/presenter-take_v01_0_voice_v01.mp3"] and out["credits_used"] == 33
+    assert (run.path / out["outputs"][0]).read_bytes() == changed
+    timing = out["timing"]
+    assert timing["take_s"] == pytest.approx(2.0, abs=0.05)
+    assert (abs(timing["drift_s"]) <= elevenlabs.STS_DRIFT_S) is kept
+    manifest = (run.path / "manifest.md").read_text(encoding="utf-8")
+    assert "presenter-take_v01_0_voice_v01.mp3" in manifest and "33 credits" in manifest
+    _no_key_anywhere(run, capsys)
+
+
+def test_sts_refuses_a_take_with_no_sound_before_anything_is_sent(api, run, capsys):
+    take = run.path / "03_wip" / "silent.mp4"
+    take.parent.mkdir(parents=True, exist_ok=True)
+    ffmpeg = shutil.which("ffmpeg") or pytest.skip("ffmpeg is not on PATH")
+    subprocess.run([ffmpeg, "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i",
+                    "color=c=navy:size=180x320:rate=25:duration=1", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    str(take)], check=True)
+    assert elevenlabs.main(["sts", "--run", str(run.path), "03_wip/silent.mp4", "--voice-id", "v123",
+                            "--json"]) == 1
+    assert "no sound to change" in json.loads(capsys.readouterr().out)["message"]
+    assert not [c for c in api.calls if c.method == "POST"]
+
+
+def test_the_voice_changer_is_paid():
+    assert TOOLS["elevenlabs"].kind_for(["sts", "--run", "r", "--voice-id", "v", "03_wip/t.mp4"]) == "voice_credits"
+
+
+def test_scribe_and_voice_changer_estimates_are_by_the_minute():
+    from tm import tts_models
+
+    assert tts_models.scribe_credits(15) == 83 and tts_models.scribe_credits(60) == 330
+    assert tts_models.sts_credits(15) == 250 and tts_models.sts_credits(0.1) == 2

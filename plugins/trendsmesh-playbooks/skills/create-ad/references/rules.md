@@ -22,19 +22,40 @@ promise phrase of the market language in a text needs a named claim that says it
 
 **CA4. The script is a board, sized to the takes.** Scene by scene: time, picture, on-screen text, spoken line,
 sound, where the picture comes from. Word budget = seconds × the model ad's words per minute. One take carries all
-speech when there is one speaker (15 s ≈ 45 words). Openers that failed: non-visual (desk + laptop), "breaking
-news", literal product-category lines, outputs that do not match the persona. (`ad_board_checked`)
+speech when there is one speaker (15 s ≈ 45 words): one speaker in two places is still one take, the cuts between
+the places described in its prompt ("selfie, then a hard cut to a whispered close-up"); two generations give two
+slightly different faces, voices and light. Lines that do not fit the model's length go on in a next take with the
+same image and the same voice description (issue #95; `tm ad check plan`). Openers that failed: non-visual (desk +
+laptop), "breaking news", literal product-category lines, outputs that do not match the persona.
+(`ad_board_checked`)
 
 **CA5. Models per asset type: suggest, never impose.** Read the model's current prompting guide before writing a
-prompt and keep the rules used next to the prompt. Default talking presenter: Gemini Omni (lines as text in the
-prompt, a reference image, native voice, up to 15 s per take); alternative: Seedance 2.0. Stills: GPT Image 2.
-Generation stays provider-neutral. (`ad_plan_checked`)
+prompt and keep the rules used next to the prompt. **The talking person comes from one table, by situation** (issue
+#95; `../../references/model-prompting/README.md` holds the same table): the plan asks the user which situation
+applies before any casting, names it (`presenter.situation`), and suggests that row's model; the user may pick
+another (`presenter.user_choice`).
+
+| Situation (`presenter.situation`) | Model | Voice | Casting face | Cost per 15 s |
+|---|---|---|---|---|
+| A person generated from a description (`described`) | Seedance 2.0 | native | no (face block), so no paid casting | $2.70 |
+| A specific person from an approved image (`specific_person`) | MiniMax H3, reference mode | native | yes | $1.20 |
+| The user's own voice or a brand voice (`own_voice`) | MiniMax H3 with a voice sample (`reference_audio_urls`, 2–15 s) | close to the sample | yes | $1.20 |
+| Exact wording needed (`exact_wording`) | Gemini Omni 1.2 Flash (lines as text in the prompt) | native | as a reference | $1.58 |
+| Fallback, only when the review shows the take looks or sounds wrong (`fallback`) | ElevenLabs + Kling Avatar v2 | ElevenLabs | yes | about $0.84–1.65 |
+
+Prices from Replicate at 720p (768P for H3), read 2026-11-12; the plan reads them again. **Seedance cannot use the
+casting's face**: it refuses a photoreal face in its inputs (E005), so when the plan picks it for a person, it says
+so before the casting, and the person is cast from a description in the prompt, with no paid casting stills.
+Stills: GPT Image 2. Generation stays provider-neutral. (`ad_plan_checked`)
 
 **CA6. The voice route is decided in S5.** Native voice of the video model, an ElevenLabs voice (library or the
 user's), a 1:1 clone of the user's VO recording, or a clone of a native take for extra VO. When a take has a flaw:
 original take > a precise cut of the original (Scribe word times) > a voice clone; the clone only when the line must
-change. A clone patched into a phone or street take needs its ambience and a phone-mic colour, and sits better on a
-scene cut. The agent cannot hear: syllable-level cuts are confirmed by the user before they ship. (`ad_plan_checked`)
+change. **When the lines and their timing are right and only the voice is wrong** (a weak native voice), the voice
+change is offered first: the take's own audio in another voice (`tm tool elevenlabs sts`, the Voice Changer), which
+keeps the timing, so the lips still match; never a new text-to-speech reading under the mouth (it does not follow the
+lips). A new take on another model is offered only when the lines are wrong (issue #95). A clone patched into a
+phone or street take needs its ambience and a phone-mic colour, and sits better on a scene cut. The agent cannot hear: syllable-level cuts are confirmed by the user before they ship. (`ad_plan_checked`)
 
 **CA7. Cost and approvals.** Every paid step shows prompt, parameters and price (with the check date) first. The
 plan's yes covers the pre-video amount, the storyboard's the video; Hands-off spends only inside the budget given

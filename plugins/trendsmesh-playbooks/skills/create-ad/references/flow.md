@@ -80,7 +80,8 @@ page and one in chat count the same. Rules: `rules.md`.
   "line", "speaker", "sound", "source" (generate, site, asset:<file>), "claims": [ids]}]}`. Scenes follow each
   other from 0 s to the ad's length, inside the chosen length; the hook has on-screen text from 0 s.
 - The word budget is seconds × the model ad's words per minute; one speaker's lines fit one take (about 45 words,
-  15 s). Avoid the openers that failed (rules.md CA4). `tm ad check board`, `tm done S4`.
+  15 s), also when the speaker is in two places: the cut between them goes into the take's prompt. Avoid the
+  openers that failed (rules.md CA4). `tm ad check board`, `tm done S4`.
 
 <a id="s5"></a>
 ## S5 Production plan and its cost (CA5 to CA7)
@@ -110,7 +111,16 @@ page and one in chat count the same. Rules: `rules.md`.
   ("Gemini Sequence 2.0" when no such model exists), ask one short question before any paid call ("Do you mean
   Seedance 2.0?") and keep their answer in `model_confirmed`; the paid-call guard refuses the line until then, and
   refuses a call whose model (the spec's, or ElevenLabs' `--model`) is not the line's.
-- `tm ad check plan` re-plans the money: its pre-video lines. `tm done S5`. The check-in is "Confirm the
+- **The talking person** (lines of type `presenter`: the casting at `pre_video`, the take at `video`) comes from CA5's
+  table, by situation: ask the user which applies before any casting, and write `"presenter": {"situation"
+  (described, specific_person, own_voice, exact_wording, fallback), "user_choice" (true when the user picked another
+  model than the row's), "why" (the fallback only: what the review showed)}`. Each take line may name its `speaker`
+  (the board's). With **Seedance** (a person from a description), say before the casting that a casting face can't
+  be used: the person is cast from a description in the prompt, and the plan has no casting line. One take per
+  speaker whose lines fit one take (CA4).
+- `tm ad check plan` re-plans the money: its pre-video lines; it refuses a talking person without its situation, a
+  take on another model than the row's (unless the user chose it), the fallback without what the review showed, a
+  casting for Seedance, and two takes of one speaker whose lines fit one. `tm done S5`. The check-in is "Confirm the
   production plan and its cost" (at Just the big calls on one card with the script-board): the user confirms once
   per asset type; a new type or a model change later is a new plan version and asks again. After the yes, `tm
   budget approve --run R ai_usd <the pre-video ai_usd total>` (and `voice_credits`). Hands-off: the intake's budget
@@ -120,11 +130,11 @@ page and one in chat count the same. Rules: `rules.md`.
 ## G1 First visual output (CA8, CA9)
 
 - What the ad type needs first: presenter casting (2–3 visibly different, non-identifiable people, one prompt each
-  under one line of `calls`; the CA9 guard in the prompt when a model ad's look is reused), stills or slides, or a
-  test frame. Each paid call: `tm tool replicate_run --run R <spec> --name <the plan's item> --cost <its line's cost
-  a call>` (the gate page shows the outputs of the
-  item's latest run). Show the batch raw, side by side, on the gate (`pages.md` "Gate"); never only as images in chat. `tm done
-  G1`, then the check-in.
+  under one line of `calls`; the CA9 guard in the prompt when a model ad's look is reused; none for Seedance, which
+  cannot use the face: the plan said so), stills or slides, or a test frame. Each paid call: `tm tool replicate_run
+  --run R <spec> --name <the plan's item> --cost <its line's cost a call>` (the gate page shows the outputs of the
+  item's latest run). Show the batch raw, side by side, on the gate (`pages.md` "Gate"); never only as images in chat.
+  `tm done G1`, then the check-in.
 
 <a id="g2"></a>
 ## G2 Audio
@@ -148,7 +158,9 @@ page and one in chat count the same. Rules: `rules.md`.
   [{"item", "model", "prompt" (exact), "params", "prompt_rules" (the guide used), "cost", "budget", "price_file",
   "checked", "speaks" (optional: true when the take says the lines, false when its voice comes in the edit; left
   out, it follows the voice route: native and clone_take speak)}]}`; an ad without video: `"videos": []` with
-  `no_video_reason`. One character = one take.
+  `no_video_reason`. One character = one take: one speaker's lines in one take, the cuts between places written into
+  its prompt ("selfie, then a hard cut to a whispered close-up"); lines over the model's length go on in a next take
+  with the same image and the same voice description, word for word.
 - `tm ad check storyboard` re-plans the money with the videos, so the plan's yes no longer covers it. `tm done G3`.
   The check-in "Approve the filled storyboard and the paid video" shows the storyboard scene by scene with the exact
   prompt and price; on the yes, `tm budget approve --run R ai_usd <the new total>`.
@@ -176,7 +188,11 @@ page and one in chat count the same. Rules: `rules.md`.
   there), internal cuts (keep each line's picture inside its own shot) and a slow pace.
 - **A failed take is never regenerated automatically**: `takes accept` is refused while a take fails, until
   `fails_qa` was recorded after its latest QA (the stop for the user). The options: a precise cut of the original
-  (Scribe times), a voice clone of the line (only when it must change), a new take (its cost first; on their yes
+  (Scribe times), a voice clone of the line (only when it must change), **a voice change when only the voice is
+  weak** and the lines and timing are right (`tm tool elevenlabs sts --run R <take> --voice-id <a voice from tm tool
+  elevenlabs voices> --cost <credits>`, about 1,000 credits a minute: the take's own audio in another voice, timing
+  kept, so the lips still match; the edit lays it under the take's picture with the take's sound muted; never a new
+  text-to-speech reading under the mouth), a new take (only when the lines are wrong; its cost first; on their yes
   `tm ad redo --run R --item <item> --note "<their words>"`), or accept it as is (`tm decide takes accept --change`
   on their word).
 - **Rejected spend is kept apart:** `tm ad redo` books the take it replaces as rejected; a take the user turns down

@@ -127,6 +127,8 @@ English; every file written and checked with the engine's own `tm ad` commands, 
                  takes", decided by rule
   ca_at_g4_quiet_line  as ca_at_g4_take_stutters, but the take's QA (local Whisper, levelled again) did not hear the
                  quiet last line: "not missing yet", a Scribe check first (issue #94)
+  ca_at_g4_weak_voice  Check every step; through the checked storyboard and its yes; a clean presenter take made and
+                 QA'd; at "Accept the takes", asked (issue #95: a weak native voice)
 """
 from __future__ import annotations
 
@@ -1784,7 +1786,7 @@ def _ca_files(ws: Path, run: Path, upto: str) -> None:
             {"n": 2, "start": 3, "end": 12, "picture": "the brief screen", "line": "You answer five questions and it "
              "writes the brief", "speaker": "presenter", "source": "site", "claims": ["k1"]},
             {"n": 3, "start": 12, "end": 18, "picture": "logo sting", "source": "asset:00_raw/logo.svg"}]}),
-        ("plan", {"voice_route": "native", "lines": [
+        ("plan", {"voice_route": "native", "presenter": {"situation": "exact_wording"}, "lines": [
             {"item": "casting", "type": "presenter", "stage": "pre_video", "model": "gpt-image-2",
              "alternative": "flux-1.1-pro", "cost": 0.12, "budget": "ai_usd", **price},
             {"item": "presenter_take", "type": "presenter", "stage": "video", "model": "gemini-omni",
@@ -1940,7 +1942,8 @@ def ca_drive(ws: Path, run: Path, stop_at: str, stop_checkin: str | None = None,
 
 def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     level = {"ca_at_s5_plan": "every_step", "ca_at_s10b_hands_off": "hands_off",
-             "ca_at_g4_take_stutters": "hands_off", "ca_at_g4_quiet_line": "hands_off"}[scn]
+             "ca_at_g4_take_stutters": "hands_off", "ca_at_g4_quiet_line": "hands_off",
+             "ca_at_g4_weak_voice": "every_step"}[scn]
     made = Path(tm(ws, "run", "new", "--playbook", "create-ad", "--name", "planner")["path"])
     run = made.with_name(CA_RUN)
     if made != run:
@@ -1958,6 +1961,9 @@ def ca_main(scn: str, ws: Path) -> tuple[Path, dict]:
     if scn == "ca_at_g4_quiet_line":
         _ca_files(ws, run, "storyboard")
         return run, ca_drive(ws, run, "G4", stop_checkin="takes", hooks={"G4": lambda: ca_take(ws, run, quiet=True)})
+    if scn == "ca_at_g4_weak_voice":
+        _ca_files(ws, run, "storyboard")
+        return run, ca_drive(ws, run, "G4", stop_checkin="takes", hooks={"G4": lambda: ca_take(ws, run)})
     _ca_files(ws, run, "proposal")
     n = ca_drive(ws, run, "S10a", stop_checkin="upload",
                  hooks={"G4": lambda: ca_take(ws, run), "S7": lambda: ca_edit(ws, run)})

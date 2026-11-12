@@ -31,6 +31,7 @@ VERBATIM_RECIPES = ("README.md", "minimax-h3.md", "gpt-image-2.md", "veo-3.1.md"
 OWN_RECIPES = ("seedance-2.0.md", "kling-avatar-v2.md",   # the plugin's, from the handoff's pet-store research
                "seedance-1.5-pro.md", "seedance-2.5.md", "p-video-upscale.md")
 VOICE_RECIPES = ("eleven-v4.md",)   # the plugin's, from ElevenLabs' docs and the owner's live run (#88)
+PRESENTER_RECIPES = ("gemini-omni-1.2-flash.md",)   # the plugin's, from Replicate's page and the owner's run (#95)
 ROUTED_RECIPES = {   # every model the engine itself sends a take to (a tier, a host image, a described person,
     "bytedance/seedance-1.5-pro": "seedance-1.5-pro.md",   # the upscaler) -> its recipe
     "minimax/h3": "minimax-h3.md",
@@ -45,8 +46,13 @@ def _text(path) -> str:
     return path.read_text(encoding="utf-8").replace("\r", "")
 
 
+OWN_README_SECTION = "\n## Talking person in Create an ad: one table by situation"   # the plugin's (issue #95)
+
+
 def _unquoted(text: str) -> str:
-    """The text with the line quoted in the "Last line (half-whisper)" note blanked: the plugin's is made up."""
+    """The text with the line quoted in the "Last line (half-whisper)" note blanked (the plugin's is made up), and
+    without the plugin's own section at the README's end (Create an ad's presenter table, issue #95)."""
+    text = text.split(OWN_README_SECTION, 1)[0].rstrip("\n") + "\n" if OWN_README_SECTION in text else text
     return re.sub(r'(\*\*Last line \(half-whisper\):\*\* [^(]*)\("[^"]*"\)', r'\1("")', text)
 
 
@@ -468,7 +474,8 @@ def test_model_recipes_are_the_handoffs_and_the_plugins_own_lf():
     Seedance 1.5 Pro, Seedance 2.5 and Pruna's upscaler written from the handoff's pet-store research, each with its sources
     and dated; pinned LF. The pack check reads this folder (`organic_pack.RECIPES`)."""
     assert organic_pack.RECIPES == RECIPES
-    assert sorted(p.name for p in RECIPES.iterdir()) == sorted(VERBATIM_RECIPES + OWN_RECIPES + VOICE_RECIPES)
+    assert sorted(p.name for p in RECIPES.iterdir()) == sorted(VERBATIM_RECIPES + OWN_RECIPES + VOICE_RECIPES
+                                                              + PRESENTER_RECIPES)
     for name in VERBATIM_RECIPES:   # the handoff's, but for the client's line quoted in MiniMax's: a made-up one in ours
         assert _unquoted(_text(RECIPES / name)) == _unquoted(_text(HANDOFF_RECIPES / name)), name
     assert sorted(p.name for p in HANDOFF_RECIPES.iterdir()) == sorted(VERBATIM_RECIPES)
@@ -481,6 +488,10 @@ def test_model_recipes_are_the_handoffs_and_the_plugins_own_lf():
         text = _text(RECIPES / name)
         assert re.search(r"^# .+: prompting recipe \(checked \d{4}-\d{2}-\d{2}\)$", text, re.M), name
         assert "\nSources:\n" in text and "https://elevenlabs.io/docs/" in text, name
+    for name in PRESENTER_RECIPES:
+        text = _text(RECIPES / name)
+        assert re.search(r"^# .+: prompting recipe \(checked \d{4}-\d{2}-\d{2}\)$", text, re.M), name
+        assert "\nSources:\n" in text and "https://replicate.com/" in text, name
     assert _pinned_lf("plugins/trendsmesh-playbooks/references/model-prompting/*.md")
 
 

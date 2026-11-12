@@ -10,6 +10,8 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
     tm tool elevenlabs voices --run RUN --mine [--query Q] [--limit 100] [--json]     (free)
     tm tool elevenlabs history-search --run RUN TEXT [--json]
     tm tool elevenlabs scribe --run RUN MEDIA --cost CREDITS [--language L] [--model scribe_v3] [--out PATH] [--json]
+    tm tool elevenlabs sts --run RUN TAKE --voice-id ID --cost CREDITS [--model eleven_multilingual_sts_v2]
+                           [--remove-noise] [--settings JSON] [--out PATH] [--json]
     tm tool elevenlabs music-upload --run RUN AUDIO --cost CREDITS [--out PATH] [--json]
     tm tool elevenlabs music-compose --run RUN --plan PLAN.json --cost CREDITS [--model music_v2_5]
                            [--format mp3_44100_192] [--out PATH] [--json]
@@ -53,6 +55,15 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
   {"source": "scribe", "model", "media" (run-relative), "language", "language_probability", "duration",
   "segments": [{start, end, text, words: [{start, end, word, probability}]}] (a segment ends at . ! ? …),
   "credits_used"}. About 330 credits a minute (`tts_models.scribe_credits`).
+- sts (issue #95): the Voice Changer (speech to speech), `POST /v1/voice-changer/{voice_id}` (multipart `audio`,
+  `model_id` `eleven_multilingual_sts_v2`, `remove_background_noise`, `voice_settings` as a JSON string; query
+  `output_format=mp3_44100_128`), read from ElevenLabs' API reference on 2026-11-12 ("Maintain full control over
+  emotion, timing and delivery"; at most 5 minutes a request). For a take whose lines and timing are right and only
+  its voice is weak (CA6): the take's own sound (a video's audio track, taken out as 44.1 kHz WAV) said again in
+  `voice_id`, saved as `03_wip/audio/<take stem>_voice_vNN.mp3`. The answer measures both lengths (`timing`:
+  {take_s, voice_s, drift_s}); a drift over STS_DRIFT_S is said, since the lips follow the take's timing. About 1,000
+  credits a minute (`tts_models.sts_credits`). The edit lays it under the take's picture at the same start, with the
+  take's own sound muted.
 - history-search finds earlier generations whose text contains the given text (case, spacing and
   punctuation ignored), to reuse the original voice and settings (V1a) instead of cloning.
 - Music endpoints, read from the ElevenLabs Python SDK 2.77.0 (`elevenlabs/music/raw_client.py`,
@@ -95,7 +106,7 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
 - Before a paid call the subscription is read (free) and what is left, counting usage-based billing, is compared
   with the approved estimate (TM_COST_ESTIMATE, from `tm tool`): when it falls short, the call stops before anything
   is sent (#66 point 4). A subscription the key may not read skips that check.
-- Paid calls (isolate, clone-ivc, tts, scribe, music-upload, music-compose) need `--cost` (the approved estimate in credits): the
+- Paid calls (isolate, clone-ivc, tts, scribe, sts, music-upload, music-compose) need `--cost` (the approved estimate in credits): the
   engine records it against the voice_credits budget before this runs and reconciles it with
   `credits_used`, which is reported to it as soon as ElevenLabs answers (before saving the file).
 """
@@ -386,6 +397,8 @@ def tts(voice_id: str, text: str, out: Path | str, speed: float = 1.0, model: st
 
 
 _SENTENCE_END = tuple(".!?…")
+STS_FORMAT = "mp3_44100_128"
+STS_DRIFT_S = 0.1   # the voice-changed take may differ from the take by this much before the lips are said to drift
 
 
 def scribe_segments(words: list[dict]) -> list[dict]:
@@ -438,6 +451,26 @@ def scribe(media: Path | str, model: str = tts_models.SCRIBE_MODEL, language: st
     record = _response_record(resp)
     record.pop("json", None)   # the words are in the transcript itself
     return {"answer": answer, "credits_used": credits, "request": request, "response": record}
+
+
+def sts(audio: Path | str, voice_id: str, out: Path | str, model: str = tts_models.STS_MODEL,
+        remove_noise: bool = False, settings: dict | None = None) -> dict:
+    """The Voice Changer: `audio` said again in `voice_id`, its timing kept, saved to `out` (MP3)."""
+    audio, out = Path(audio), Path(out)
+    data = {"model_id": model, "remove_background_noise": "true" if remove_noise else "false",
+            **({"voice_settings": json.dumps(settings)} if settings else {})}
+    path = f"/v1/voice-changer/{voice_id}"
+    before = _before_paid("the voice change")
+    with audio.open("rb") as fh:
+        resp = _paid(path, "the voice change", params={"output_format": STS_FORMAT}, data=data,
+                     files={"audio": (audio.name, fh)})
+    _check(resp, "the voice change")
+    credits = _credits(resp, before)
+    c.report_cost(True, credits)  # spent, whatever happens to the file next
+    _write_whole(out, resp.content)
+    request = {"method": "POST", "url": API + path, "params": {"output_format": STS_FORMAT}, "data": data,
+               "files": {"audio": audio.name}}
+    return {"out": str(out), "credits_used": credits, "request": request, "response": _response_record(resp)}
 
 
 def music_upload(audio: Path | str, out: Path | str) -> dict:
@@ -752,6 +785,39 @@ def _cmd_scribe(a: argparse.Namespace, run) -> int:
                     f"<its lines> --scribe {c.rel(run, out)}.")
 
 
+def _cmd_sts(a: argparse.Namespace, run) -> int:
+    take = Path(a.take)
+    if not take.is_file():
+        raise c.ToolError(f"{c.name_of(a.take)} does not exist. Nothing was sent.")
+    try:
+        rel = c.rel(run, take)
+    except ValueError:
+        raise c.ToolError(f"{c.name_of(a.take)} is not inside the run folder {run.path}. Nothing was sent.") from None
+    if not c.probe(take).get("has_audio"):
+        raise c.ToolError(f"{rel} has no sound to change. Nothing was sent.")
+    settings = cli.json_arg(a.settings) if a.settings else None
+    out = _audio_target(run, a.out, f"{take.stem}_voice", "mp3")
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = Path(tmp) / f"{take.stem}.wav"
+        c.run_ffmpeg(["-i", c.media(take), "-vn", "-ac", "1", "-ar", "44100", "-c:a", "pcm_s16le", c.media(wav)])
+        take_s = float(c.probe(wav)["duration"])
+        res = sts(wav, a.voice_id, out, model=a.model, remove_noise=a.remove_noise, settings=settings)
+    voice_s = float(c.probe(out)["duration"])
+    timing = {"take_s": round(take_s, 3), "voice_s": round(voice_s, 3), "drift_s": round(voice_s - take_s, 3)}
+    c.record(run, out, "ElevenLabs Voice Changer", rel, params={"voice_id": a.voice_id, "settings": settings,
+             "remove_background_noise": a.remove_noise, "timing": timing}, model=a.model, cost=_cost(res),
+             request=res["request"], response=res["response"])
+    text = (f"The take's voice changed into {c.rel(run, out)} ({_cost(res)}): {timing['voice_s']:g} s against the "
+            f"take's {timing['take_s']:g} s.")
+    if abs(timing["drift_s"]) > STS_DRIFT_S:
+        text += (f" It is {abs(timing['drift_s']):g} s {'longer' if timing['drift_s'] > 0 else 'shorter'}: the "
+                 "lips follow the take's timing, so watch the mouth in the edit before showing it.")
+    else:
+        text += " The timing is kept: lay it under the take's picture at the same start, the take's own sound muted."
+    return c.finish(a, {"tool": "elevenlabs sts", "outputs": [c.rel(run, out)], "timing": timing,
+                        "credits_used": res["credits_used"]}, text)
+
+
 def _language(run, given: str | None) -> str | None:
     """The `language_code` of a take: --language, else the run's market language; its primary subtag (`pt-BR` ->
     `pt`), as ElevenLabs takes ISO 639-1 (and 639-3 for a few). None when the run names no market language."""
@@ -948,6 +1014,14 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--model", default=tts_models.SCRIBE_MODEL)
     s.add_argument("--language", default=None, help="the language_code, e.g. pl (default: the run's market language)")
     s.add_argument("media", help="the take or the edit, inside the run")
+    s = sub.add_parser("sts", allow_abbrev=False, help="the Voice Changer: a take's own voice changed, its timing kept")
+    c.add_common(s)
+    s.add_argument("--cost", type=float, default=None, help="the approved estimate in credits (about 1,000 a minute)")
+    s.add_argument("--voice-id", required=True)
+    s.add_argument("--model", default=tts_models.STS_MODEL)
+    s.add_argument("--remove-noise", action="store_true", help="remove the background noise as well")
+    s.add_argument("--settings", default=None, help="voice settings: a JSON file (or inline JSON)")
+    s.add_argument("take", help="the take (a video or its sound), inside the run")
     s = sub.add_parser("history-search", allow_abbrev=False, help="earlier generations with this text")
     c.add_common(s)
     s.add_argument("text")
@@ -978,10 +1052,11 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     c.report_cost(False)
     run = c.open_run(a.run)
-    c.inputs(run, a, "audio", "files", "settings", "media")   # a run-relative input, whatever the working folder
+    c.inputs(run, a, "audio", "files", "settings", "media", "take")   # a run-relative input, whatever the working folder
     _key()  # stop before writing anything when the key is missing
     return {"isolate": _cmd_isolate, "clone-ivc": _cmd_clone, "tts": _cmd_tts,
-            "history-search": _cmd_history, "scribe": _cmd_scribe, "music-upload": _cmd_music_upload,
+            "history-search": _cmd_history, "scribe": _cmd_scribe, "sts": _cmd_sts,
+            "music-upload": _cmd_music_upload,
             "music-compose": _cmd_music_compose, "credits": _cmd_credits,
             "voices": _cmd_voices}[a.action](a, run)
 

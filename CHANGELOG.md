@@ -261,6 +261,24 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Cut offsets measure each cut against the nearest mark.** A take's QA compared each cut with every mark of the
   board (8.75 / 5.75 / 2.75 / 0.75 s for one cut); it now gives one offset per cut, from its nearest mark, and names
   the marks with no cut.
+- **One table says which model makes the talking person in Create an ad.** The rules and the model guide used to
+  disagree on the default presenter. Now one table, by situation, is in both: a person from a description (Seedance
+  2.0), a specific person from an approved image (MiniMax H3), your own or a brand voice (MiniMax H3 with a voice
+  sample), exact wording (Gemini Omni 1.2 Flash), and ElevenLabs with Kling Avatar only when a take looks or sounds
+  wrong. The plan asks which applies before any casting, and its check holds the plan to it, unless you picked
+  another model.
+- **A prompting recipe for Gemini Omni 1.2 Flash.** Its inputs, what it can't take (audio, so a library voice can't
+  drive its lips), its 3 to 15 s length and its Replicate prices, read on 2026-11-12.
+- **One speaker, one take.** A person who speaks in two places is one take, with the cut between the places written
+  into the prompt; two takes gave two slightly different faces, voices and light. The plan's check refuses two
+  takes for one speaker whose lines fit one.
+- **A weak voice is changed without losing the lip sync.** When the lines and their timing are right and only the
+  voice is wrong, Claude offers the new `tm tool elevenlabs sts` first: ElevenLabs' Voice Changer says the take's
+  own audio again in another voice and keeps its timing (about 1,000 credits a minute, its cost shown first). A new
+  take is offered only when the lines are wrong.
+- **No casting paid for a face Seedance can't use.** Seedance refuses a realistic face in its inputs. When the plan
+  picks it for a person, Claude says so before the casting, casts the person from a description, and the plan's
+  check refuses a casting line beside a Seedance take.
 
 ## 0.12.0
 

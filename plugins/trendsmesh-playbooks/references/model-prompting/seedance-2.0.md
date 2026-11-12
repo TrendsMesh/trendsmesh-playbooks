@@ -32,6 +32,11 @@ Sources:
   host image goes to MiniMax H3 reference mode instead (`minimax-h3.md`). The BytePlus asset library is the
   official route for a portrait and is not used (round 25); the tricks that hide a face from the check (grids,
   banners, crops) are never used.
+- **In Create an ad, said before the casting** (issue #95, 2026-11-12): when the plan picks Seedance for a person
+  (CA5's `described` situation), the plan says that a casting face cannot be used, and the person is cast from a
+  description in the prompt, with no paid casting stills (`tm ad check plan` refuses a casting line beside a
+  Seedance take). In the owner's live run a described creator came out a different person from the approved
+  casting candidate, and the casting and the storyboard frames with that face stopped matching the ad.
 
 ## Rules
 - **Inputs:** a first frame (`image`) **or** reference images (`reference_images`, up to 9), never both; up to 3

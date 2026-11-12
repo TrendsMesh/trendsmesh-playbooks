@@ -74,7 +74,7 @@ def board(**over):
 
 def plan(**over):
     line = {"checked": TODAY, "price_file": "02_research/prices_v01.json"}
-    base = {"voice_route": "user_vo", "lines": [
+    base = {"voice_route": "user_vo", "presenter": {"situation": "exact_wording"}, "lines": [
         {"item": "casting", "type": "still", "stage": "pre_video", "model": "gpt-image-2", "alternative": "flux",
          "cost": 0.4, "budget": "ai_usd", **line},
         {"item": "music", "type": "music", "stage": "pre_video", "model": "elevenlabs-music", "alternative": "user's",
@@ -208,6 +208,93 @@ def test_plan_refused(run, change, field):
     data = plan()
     change(data)
     assert field in _fields(_check(run, "production_plan", data))
+
+
+# --- issue #95: the talking person from CA5's table, one take per speaker -------------------------------------
+
+def _take(item="presenter_take", model="google/gemini-omni-1.2-flash", **over):
+    alternative = "google/gemini-omni-1.2-flash" if "h3" in model else "minimax/h3"
+    return {"item": item, "type": "presenter", "stage": "video", "model": model, "alternative": alternative,
+            "cost": 1.58, "budget": "ai_usd", "checked": TODAY, "price_file": "02_research/prices_v01.json", **over}
+
+
+def _casting():
+    return {**_take("casting", "openai/gpt-image-2", stage="pre_video", cost=0.38), "alternative": "flux"}
+
+
+def _plan_with(*talking, **presenter):
+    data = plan()
+    data["lines"] = [*data["lines"][:2], *talking]
+    data["presenter"] = presenter
+    return data
+
+
+@pytest.mark.parametrize("situation,model", [
+    ("described", "bytedance/seedance-2.0"), ("specific_person", "minimax/h3"), ("own_voice", "minimax/h3"),
+    ("exact_wording", "google/gemini-omni-1.2-flash"), ("exact_wording", "gemini-omni"),
+])
+def test_the_plan_takes_the_presenter_from_the_table(run, situation, model):
+    _ready_for(run, "production_plan")
+    assert _check(run, "production_plan", _plan_with(_take(model=model), situation=situation)) == []
+
+
+def test_the_plan_names_the_situation_and_follows_its_row(run):
+    _ready_for(run, "production_plan")
+    problems = _check(run, "production_plan", _plan_with(_take()))
+    assert _fields(problems) == {"presenter.situation"}
+    assert "Ask the user which situation applies, before any casting" in problems[0].todo
+    # the run's first plan: ElevenLabs with Kling Avatar for a specific person, where the table says MiniMax H3
+    wrong = _take(model="kwaivgi/kling-avatar-v2")
+    problems = _check(run, "production_plan", _plan_with(wrong, situation="specific_person"))
+    assert _fields(problems) == {"presenter"} and "with h3" in problems[0].what
+    # suggest, never impose: the user picked another model
+    assert _check(run, "production_plan", _plan_with(wrong, situation="specific_person", user_choice=True)) == []
+    # the fallback only with what the review showed
+    assert _fields(_check(run, "production_plan", _plan_with(wrong, situation="fallback"))) == {"presenter.why"}
+    assert _check(run, "production_plan", _plan_with(wrong, situation="fallback", why="the native voice is weak "
+                                                     "and the mouth drifts in take 1")) == []
+
+
+def test_seedance_gets_no_paid_casting(run):
+    """Seedance refuses a photoreal face (E005): a casting still is money for a face the take cannot use."""
+    _ready_for(run, "production_plan")
+    seedance = _take(model="bytedance/seedance-2.0")
+    problems = _check(run, "production_plan", _plan_with(_casting(), seedance, situation="described"))
+    assert _fields(problems) == {"lines"}
+    assert "cannot use a casting face" in problems[0].what and "casting" in problems[0].what
+    assert "cast from a description" in problems[0].todo
+    # also when the user picked Seedance for a specific person
+    problems = _check(run, "production_plan", _plan_with(_casting(), seedance, situation="specific_person",
+                                                         user_choice=True))
+    assert _fields(problems) == {"lines"}
+    # a casting is fine for a model that takes the face (Gemini as a reference, H3 reference mode)
+    assert _check(run, "production_plan", _plan_with(_casting(), _take(), situation="exact_wording")) == []
+
+
+def test_one_speaker_is_one_take_when_the_lines_fit(run):
+    """The live run: one creator in a corner window and a whispered close-up, planned as two takes; the board's
+    17 words fit one 15 s take, so the plan is refused."""
+    _ready_for(run, "production_plan")
+    two = (_take("creator_window"), _take("creator_closeup"))
+    problems = _check(run, "production_plan", _plan_with(*two, situation="exact_wording"))
+    assert _fields(problems) == {"lines"}
+    assert "presenter's lines (17 words) fit one take" in problems[0].what
+    assert "creator_window, creator_closeup" in problems[0].what and "hard cut" in problems[0].todo
+    assert _check(run, "production_plan", _plan_with(two[0], situation="exact_wording")) == []
+
+
+def test_each_speaker_has_one_take_of_their_own(tmp_path):
+    run = _new(tmp_path)
+    _ready_for(run, "board")
+    scenes = board()["scenes"]
+    # two speakers, each with a take of their own; one of them with two takes is refused, as its lines fit one
+    duo = board(scenes=[{**scenes[0], "speaker": "creator"}, {**scenes[1], "speaker": "friend"}, scenes[2]])
+    assert _check(run, "board", duo) == []
+    own = (_take("creator_take", speaker="creator"), _take("friend_take", speaker="friend"))
+    assert _check(run, "production_plan", _plan_with(*own, situation="exact_wording")) == []
+    extra = _take("creator_take_2", speaker="creator")
+    problems = _check(run, "production_plan", _plan_with(*own, extra, situation="exact_wording"))
+    assert _fields(problems) == {"lines"} and "creator's lines" in problems[0].what
 
 
 def _walk_to(run, step):
