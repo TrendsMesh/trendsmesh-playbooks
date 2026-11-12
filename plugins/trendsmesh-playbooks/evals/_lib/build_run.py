@@ -19,6 +19,9 @@ Scenarios (every one of them: a run `2026-11-05_ad`, Hands-off unless said, answ
   at_e3_hands_off_launch  brief + live test (picked, 150 a day for 7 days), Hands-off; R4's plan from the
                  ranking, the paused ads recorded (made-up ids) and a green R8 check; run at E3, where
                  "Approve the launch" (G11) waits for the user (issue #22: never by rule)
+  at_g12_variant_won  brief + live test, Check every step; the same paused ads, launched (G11 activate, the
+                 spend booked), the three measurements taken (the variant ahead on hook rate) and G12
+                 decided `scale` by the user; run at E4's close (issue #64: the winner's PAUSED move is asked)
 
 Re-cut scenarios (handoff v03 HANDOFF.md 9b and 9b-2: decisions on the engine's recorded data, no
 media; the original files are placeholders, the teardown, transcript and segment map JSON are in the run):
@@ -259,6 +262,33 @@ def drive(ws: Path, run: Path, stop_at: str | None, scn: str | None = None, ai_s
         else:
             return n
     raise SystemExit(f"never reached {stop_at}")
+
+
+MEASURED = ("2026-11-08", "2026-11-10", "2026-11-12")   # the live test's day 3, 5 and 7, in the past
+
+
+def g12_won(ws: Path, run: Path) -> dict:
+    """Launch the paused test, take its three measurements (the variant ahead) and decide G12 `scale`."""
+    tm(ws, "decide", "G11", "activate", "--run", str(run), "--note", "launch it (eval fixture)")
+    tm(ws, "budget", "approve", "--run", str(run), "test", "1050", "--note", "150 a day for 7 days (eval fixture)")
+    tm(ws, "budget", "spend", "--run", str(run), "test", "1050", "--what", "live test")
+    tm(ws, "done", "E3", "--run", str(run))
+    state_file = run / "run.json"
+    s = json.loads(state_file.read_text(encoding="utf-8"))
+    s["measurements_due"] = list(MEASURED)   # the activation was a week ago
+    state_file.write_text(json.dumps(s, indent=1), encoding="utf-8")
+    for i, day in enumerate(MEASURED):
+        place(ws, run, f"05_results/measurement_{day}_v01.json",
+              {"date": day, "control": {"impressions": 4000 + 2000 * i, "hook_rate": "21.0%", "results": 9 + 6 * i},
+               "variant": {"impressions": 4000 + 2000 * i, "hook_rate": "27.5%", "results": 13 + 8 * i}},
+              "Meta Ads MCP ads_get_ad_entities (eval fixture)")
+        tm(ws, "next", "--run", str(run), ok=(0, 2))
+        tm(ws, "done", "E4", "--measured", day, "--run", str(run))
+    n = tm(ws, "next", "--run", str(run), ok=(0, 2))
+    assert n["action"] == "ask" and n["checkin"]["ids"] == ["G12"], n
+    tm(ws, "decide", "G12", "scale", "--run", str(run), "--note",
+       "the variant won on hook rate (27.5% against 21.0%, p below alpha); scale")
+    return tm(ws, "next", "--run", str(run), ok=(0, 2))
 
 
 def test_plan(ws: Path, run: Path) -> None:
@@ -1815,6 +1845,16 @@ def main(scn: str, ws: Path) -> int:
            "--run", str(run))
         n = tm(ws, "next", "--run", str(run), ok=(0, 2))
         assert n["action"] == "ask" and n["checkin"]["ids"] == ["G11"], n
+    elif scn == "at_g12_variant_won":
+        run = new_run(ws, ["creative_brief", "live_test"], level="every_step",
+                      budget={"test_per_day": 150, "test_days": 7})
+        drive(ws, run, "E2b", scn="hook", hooks={"E1": test_plan, "E2": paused_ads})
+        place(ws, run, "04_final/prelaunch_check_v01.md",
+              "# Pre-launch check (R8)\n\nEvery item green.\n", "the R8 checklist (eval fixture)")
+        tm(ws, "done", "E2b", "--run", str(run))
+        tm(ws, "decide", "E2b", "green", "--by", "rule", "--note", "04_final/prelaunch_check_v01.md: all green",
+           "--run", str(run))
+        n = g12_won(ws, run)
     elif scn in ("at_g1a_every_step", "ra_g1a_on_page"):
         run = new_run(ws, ["creative_brief"], level="every_step")
         drive(ws, run, "A1a", scn="hook")                    # stops after the ranking, before the diagnosis

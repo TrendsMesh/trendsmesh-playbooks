@@ -801,9 +801,17 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   --per-day <amount> --days <days>` (Hands-off: with `--note "<their words>"`; the landing page
   with `--landing-url` if the config lacks it): the run reopens here, at E1.
 - `ads_experiment_check_eligibility`. Write `04_final/live_test_plan_vNN.md`
-  (`templates/live_test_plan_template.md`): a Meta A/B test with the original as control, the
+  (`templates/live_test_plan_template.md`): a Meta A/B test with the original's files as control, the
   numbers from `tm r4`, no decisions before the end of the window (except the cost guardrail), and
   the objects it creates, all PAUSED.
+- **Both test ads are new** (issue #64): the control, made of the original's files, starts like
+  the variant, with no delivery history of its own, so the test changes one thing only. **The
+  original ad keeps running, untouched, in its own campaign** during the test: the run never
+  pauses, edits or moves it. The plan says so, and says that the original reaches the same people
+  as the test (the audiences overlap), so it competes with the test in the same auctions and may
+  slow the test's delivery. The plan also says what happens when the variant wins (`#e4`, G12):
+  with the user's yes, a new ad set in the original's campaign, PAUSED, from the test ad's post;
+  switching it on, moving the budget and switching the original off stay the user's.
 - "Approve the live test plan" (G10), in the spending card: `approve`, then
   `tm budget approve --run R test <per day × days>`; or `reject`, which skips the live test.
 
@@ -879,6 +887,38 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   (`test.guardrail_min_results`) is said as the plan's verdict, e.g. "won on hook rate; cost per
   result not confirmed yet": recommend scaling step by step while watching cost per result, not
   a full scale.
+- **When the variant wins (G12 `scale`): move it to the original's campaign, PAUSED** (issue
+  #64). Ask once, at every level (Hands-off: the final report asks it; never by rule): "Shall I
+  create a new ad set in your campaign <the original's campaign>, PAUSED, with the winning ad
+  from the test's post?" On a no: `tm live-test move decline --run R --note "<their words>"`,
+  nothing is created. On a yes:
+  - Read from Meta and save in `05_results/`: the original ad, its ad set and campaign (ids,
+    names, the ad set's targeting, placements, optimisation and bid strategy, and whether the
+    campaign holds the budget), and the winning test ad with its post
+    (`effective_object_story_id`).
+  - Write `05_results/move_proposal_vNN.json`: `{"ad_account_id", "original": {"ad_id",
+    "ad_name", "adset_id", "adset_name", "campaign_id", "campaign_name", "saved"}, "winner":
+    {"key", "ad_id", "post_id", "saved"}, "adset": {"campaign_id" (the original's),
+    "settings_from" (the original's ad set: its targeting, placements, optimisation and bid
+    strategy are copied), "name", "budget"}, "ad": {"name", "post_id" (the winner's)}, "status":
+    "PAUSED"}`. `budget`: `{"campaign_budget": true}` when the campaign holds the budget;
+    otherwise `{"amount", "cadence", "currency", "said"}` from the user's own answer, never
+    inferred. `tm live-test move check --run R --file <it>`: its answer is the card (the
+    proposal in full, the post, the own ad set, the paused note). **A new ad set, never the
+    original's**: an ad added there would restart its learning.
+  - Show the card and ask for the go-ahead (a yes the user already gave to this move, in their own
+    words, counts: don't ask it twice, show the card with what is created); record it: `tm
+    live-test move approve --run R --note "<their words>"`. Then create the ad set and the ad, **PAUSED** (`status: PAUSED`), the ad
+    from the post (`object_story_id`), so its likes, comments and shares come along. **Never call
+    `ads_activate_entity`, never set another status, and never pause, edit or move the original.**
+  - Read both back, get the preview (`ads_get_ad_preview`), show it to the user, save Meta's
+    answers, and write `05_results/move_objects_vNN.json`: `{"proposal", "adset": {"id",
+    "name", "status", "campaign_id"}, "ad": {"id", "name", "status", "adset_id", "post_id",
+    "preview_url"}, "answers"}`. `tm live-test move record --run R --file <it>`: an object
+    that is not paused is a stop (pause it now, then record again).
+  - **The user's part** goes at the end of the final report, step by step, from `tm live-test
+    move report --run R` (in the run's working language): switch the new ad set and its ad on,
+    move the budget, switch the original off. Nothing in this run does any of the three.
 - R5 closes the run: one row per variant, `tm library add --run R --row <file>`, the row with
   account, product, market, diagnosis, trend {id, type, status_on_test_day}, change {layer,
   method}, decision_metric, result_vs_control, events, decision and a distinct `variant`. In a

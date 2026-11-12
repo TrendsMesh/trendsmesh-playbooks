@@ -11,6 +11,8 @@ changes go through here, each on the user's word:
 - `budget`: a higher daily budget or more days, the way out of an estimate that cannot reach the minimum
   events (`tm r4 --estimate`); refused once the test plan is approved (G10) or the spend is booked.
 - `drop`: skip the live test before its design (E1) is done; afterwards, G10 `reject` skips it.
+- `move check|approve|decline|record|report`: after G12 `scale`, the winning ad into the original's campaign, in a
+  new ad set, PAUSED, on the user's yes (issue #64, `tm.livetest_move`).
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from pathlib import Path
 
 from tm import budget, cli, config, flow, state
 from tm.runfolder import RunFolder
+from tm.stops import Stop
 
 LIVE_TEST = "live_test"
 
@@ -118,6 +121,12 @@ def _setup(p: argparse.ArgumentParser) -> None:
     a = sub.add_parser("add", help="add the live test after the intake, with the user's daily budget and days")
     b = sub.add_parser("budget", help="a new daily budget or number of days, before the test plan is approved")
     d = sub.add_parser("drop", help="skip the live test before its design (E1) is done")
+    mv = sub.add_parser("move", help="after G12 scale: the winning ad into the original's campaign, PAUSED")
+    mv.add_argument("move_action", choices=["check", "approve", "decline", "record", "report"])
+    mv.add_argument("--file", help="the proposal (check) or the objects read back (record)")
+    mv.add_argument("--run", required=True, help="the run folder")
+    mv.add_argument("--note", help="the user's own words (approve, decline)")
+    mv.add_argument("--json", action="store_true")
     for sp in (a, b):
         sp.add_argument("--per-day", type=float, required=True, help="the daily test budget the user gave")
         sp.add_argument("--days", type=int, required=True, help="the number of days the user gave")
@@ -131,6 +140,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
 def _run(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
+        if args.action == "move":
+            return _move(args, run)
         if args.action == "add":
             s = add(run, args.per_day, args.days, landing_url=args.landing_url, note=args.note)
             text = (f"The live test is added: {args.per_day:g} per day for {args.days} days. Run `tm next`: the "
@@ -146,8 +157,47 @@ def _run(args: argparse.Namespace) -> int:
                         "budget": {"test_per_day": getattr(args, "per_day", None),
                                    "test_days": getattr(args, "days", None)}}, text)
         return 0
+    except Stop as exc:
+        cli.emit(args, {"status": "stop", "message": str(exc)}, str(exc))
+        return 2
     except (OSError, ValueError) as exc:
         return cli.fail(args, str(exc))
+
+
+def _move(args: argparse.Namespace, run: RunFolder) -> int:
+    from tm import livetest_move as mv
+    action = args.move_action
+    if action in ("check", "record") and not args.file:
+        raise ValueError(f"tm live-test move {action} needs --file.")
+    if action == "check":
+        rel, problems = mv.check(run, args.file)
+        if problems:
+            return cli.refuse_problems(args, rel, problems)
+        card = mv.card(run)
+        cli.emit(args, {"status": "done", "file": rel, "card": card, "language_warning": card["language_warning"]},
+                 f"{rel} passed the check. Show the user the proposal in full and ask for their yes; nothing is "
+                 "created before it." + (f" {card['language_warning']}" if card["language_warning"] else ""))
+        return 0
+    if action == "approve":
+        rel = mv.approve(run, args.note)
+        cli.emit(args, {"status": "done", "file": rel},
+                 f"Recorded the user's yes to {rel}. Create the ad set and the ad PAUSED, read them back with the "
+                 "preview, then tm live-test move record.")
+        return 0
+    if action == "decline":
+        mv.decline(run, args.note)
+        cli.emit(args, {"status": "done"}, "Recorded the user's no: nothing is created in Meta.")
+        return 0
+    if action == "record":
+        rel, problems = mv.record(run, args.file)
+        if problems:
+            return cli.refuse_problems(args, rel, problems)
+        out = mv.report(run)
+        cli.emit(args, {"status": "done", "file": rel, **out}, out["text"])
+        return 0
+    out = mv.report(run)
+    cli.emit(args, {"status": "done", **out}, out["text"])
+    return 0
 
 
 cli.register("live-test", _setup, _run)

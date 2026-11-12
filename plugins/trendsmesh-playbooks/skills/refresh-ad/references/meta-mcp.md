@@ -37,6 +37,7 @@ the video is never fetched through it (A2).
 | E2 | `ads_creative_upload_media`, `ads_create_*` (PAUSED), `ads_get_ad_preview` | every file in one upload (in the Claude desktop app an upload window the user finishes: SKILL.md section 7); every creative with `self_ai_disclosure` from the plan (it can't be set later); 9:16 and 4:5 through placement asset customization; ids saved in `05_results/` |
 | E3 | `ads_experiment_abtest_create_test`, `ads_activate_entity` | only after a green R8 and the launch check-in |
 | E4 | `ads_get_ad_entities` and the test's results | on day 3, 5 and 7 |
+| E4 (G12 `scale`, on the user's yes) | `ads_get_ad_entities`, `ads_create_adset` and `ads_create_ad` (PAUSED), `ads_get_ad_preview` | a new ad set in the original's campaign with the original ad set's settings, never the original's ad set; the ad from the test ad's post (`object_story_id`); never `ads_activate_entity`; the original untouched (`flow.md#e4`) |
 
 ## Reading the numbers
 

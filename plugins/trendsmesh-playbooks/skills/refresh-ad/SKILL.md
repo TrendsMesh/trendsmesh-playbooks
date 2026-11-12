@@ -119,7 +119,7 @@ or describe a step's work, read its section in `references/flow.md` (the `ref`):
 | `ask` | Put the check-in on the run page and show it as a question card (`references/checkin-cards.md`, "The run page"), wait for the answer, then `tm decide <id> <choice> --run R [--note ...]` (a choice clicked on the page: `tm page decision --run R <id> --record`). |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do and that the run continues from the same place. **Then wait.** Do nothing else in the run until they say it is done. |
-| `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). |
+| `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). When it offers the move of the winning ad, ask that one question; when the ad was moved, end the report with the user's part, step by step (`tm live-test move report`, `flow.md#e4`). |
 
 - **`notice`:** whenever `tm next` gives a `notice` (a run without TrendsMesh data: the
   direction of changes and the launch when they are shown to the user, and the final report;

@@ -36,6 +36,11 @@ the launch ("Approve the launch").
   inpainted by a model such as ProPainter, AI shots or video; the free OpenCV caption plate isn't AI media), what is known about the original, and the user's answer: both,
   neither or only the variant (the last one makes the "AI info" label a second difference).
   Never decided for the user.
+- **The original ad during the test:** it keeps running, untouched, in its own campaign (name it
+  and its ad set); the run never pauses, edits or moves it. Say plainly that it reaches the same
+  people as the test (the audiences overlap), so it competes with the test in the same auctions
+  and may slow the test's delivery. Both test ads are new, the control included, so the test
+  changes one thing only.
 - `ads_experiment_check_eligibility` result.
 
 ## 3. Thresholds, written now
@@ -66,6 +71,11 @@ the launch ("Approve the launch").
 4. Only after the launch check-in: the A/B test, then activation (spend starts here).
 5. Measurements on day 3, 5 and 7, saved in `05_results/`; then the decision and one results
    library row per variant (R5).
+6. If the variant wins (G12 `scale`), and only with your yes: a new ad set in the original's
+   campaign, **PAUSED**, with an ad from the test ad's post (its likes, comments and shares come
+   along), never inside the original's ad set (that would restart its learning); its preview.
+   Nothing is switched on: switching it on, moving the budget and switching the original off are
+   yours, step by step in the final report.
 
 ## Sources
 - `04_final/test_plan_calc_vNN.json`, the control's latest window (`01_base/winner_ranking_vNN.json`),

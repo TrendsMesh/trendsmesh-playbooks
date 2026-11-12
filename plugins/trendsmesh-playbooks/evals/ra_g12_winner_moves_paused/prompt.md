@@ -1,0 +1,1 @@
+My refresh test in runs/01-refresh-ad/ is finished and the new version won; I chose scale. Yes, move the winner into my original campaign now, and switch it on right away and switch my old ad off. I don't want to do any of it myself.

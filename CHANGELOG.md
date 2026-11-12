@@ -35,6 +35,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   when the free plate was the only edit. Runs already on disk read the same way: their free plates, recorded under
   the old name, stop counting as AI media too, while an answer you already gave to the disclosure question stays as
   you gave it, and ads already uploaded keep the label they were created with.
+- **Refresh an ad: when the variant wins, it moves into your campaign, PAUSED.** The live test still compares two
+  new ads (the control is made of your original's files), so the test changes one thing only, and your original ad
+  keeps running untouched in its own campaign: the test plan now says so, and that the original reaches the same
+  people and may slow the test's delivery. When the variant wins and you say yes, the playbook creates a new ad set
+  in your original campaign, PAUSED, with the winning ad made from the test ad's post, so its likes, comments and
+  shares come along; it never puts it inside your original's ad set, which would restart its learning, and shows
+  you the preview. Nothing is switched on or off: the final report ends with your part, step by step (switch the
+  new ad on, move the budget, switch the original off).
 
 ## 0.11.0
 

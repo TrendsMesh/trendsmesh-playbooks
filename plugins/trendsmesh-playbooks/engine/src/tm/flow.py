@@ -939,7 +939,7 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
         return _with_notice(s, result)
 
     if s.status == "done":
-        return _with_notice(s, _offered(run, _done(_picture(s))))
+        return _with_notice(s, _offered(run, _winner(run, _done(_picture(s)))))
     held = [x for x in _open_stops(s) if not x.get("engine")]
     if s.status == "stopped" and held:
         last = held[-1]
@@ -979,7 +979,7 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
             return finish(_step_view(_first(st for st in pic.app if st.measures), "work", gap))
         _release(s)
         s.status = "done"
-        return finish(_offered(run, _done(pic)))
+        return finish(_offered(run, _winner(run, _done(pic))))
     st = pic.app[pic.p]
     pending = _pending_measurements(s) if st.measures else []
     if pending and date.fromisoformat(pending[0]) > today:
@@ -1021,6 +1021,15 @@ def _ended_early(s: state.RunState) -> bool:
     cat = checkins.load(playbook=s.playbook)
     return any("end" in cat.checkins[d["checkin"]].on_choice.get(d.get("choice"), {})
                for d in s.decisions if d.get("checkin") in cat.checkins)
+
+
+def _winner(run: RunFolder, result: NextStep) -> NextStep:
+    """After G12 `scale` (Refresh an ad): offer the PAUSED move of the winning ad, or report the user's part (#64)."""
+    from tm import livetest_move
+    note = livetest_move.done_note(run) if result.action == "done" else None
+    if note:
+        result.message = f"{result.message} {note}".strip()
+    return result
 
 
 def _offered(run: RunFolder, result: NextStep) -> NextStep:

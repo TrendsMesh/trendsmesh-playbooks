@@ -94,7 +94,7 @@ spending card, a user who approves one budget and not another gets one decision 
 | G10 | Approve the live test plan | `approve` or `reject` | per day × days; then `tm budget approve test`. The plan's files and placements per ad, and the AI disclosure question (both, neither or only the variant, with the facts from `tm ai-media`, where the free OpenCV caption plate is not AI media and ProPainter is; this one has no recommendation: Meta leaves it to the advertiser; `flow.md#e1`) |
 | E2b | Quality and policy check | `green` or `red` (always by rule) | the checklist file |
 | G11 | Approve the launch | `activate` (only after a green E2b) or `keep_paused` | the amount; never by rule, at any level |
-| G12 | Act on the results | `scale`, `kill` or `keep` | the numbers against the thresholds |
+| G12 | Act on the results | `scale`, `kill` or `keep` | the numbers against the thresholds. After `scale`, one more question at every level (never by rule): the move of the winning ad into a new ad set in the original's campaign, PAUSED, from the test ad's post (`tm live-test move check`, its card; `flow.md#e4`) |
 
 `<running total>`: what is already approved for the kind plus this check-in's amount (`tm status
 --run R --json` → `budgets`), as one approved amount per kind serves the whole run (SKILL.md

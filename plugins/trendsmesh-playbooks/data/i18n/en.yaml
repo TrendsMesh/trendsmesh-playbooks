@@ -809,3 +809,21 @@ ad:
     created_draft: "Created as a draft: the campaign, ad set, creative and ad are in your ad account and not published."
     activate_howto: "To switch it on: open Ads Manager, find the campaign {campaign}, and turn on the campaign, the ad set and the ad. Nothing in this run switches it on."
     active_found: "{what} is not paused in Meta ({status}). Nothing should run from this playbook: pause it now in Ads Manager (or with the Meta Ads connector), then record the objects again."
+
+# --- Refresh an ad: the winning ad moved into the original's campaign, PAUSED, at G12 (issue #64;
+# engine/src/tm/livetest_move.py, skills/refresh-ad/references/flow.md#e4) ---
+refresh:
+  move:
+    title: Move the winning ad to your campaign, PAUSED
+    question: "Shall I create a new ad set in your campaign {campaign}, PAUSED, with the winning ad from the test's post?"
+    post_note: "The ad uses the test ad's post, so its likes, comments and shares come along."
+    own_adset_note: "It goes into a new ad set, never into your original ad's ad set: a new ad there would restart that ad set's learning."
+    paused_note: "Everything is created PAUSED: nothing runs and nothing is spent until you switch it on yourself in Ads Manager."
+    created: "Created PAUSED: the new ad set {adset} and its ad {ad} are in your campaign {campaign}, switched off."
+    steps_title: "Your part, step by step:"
+    step_switch_on: "Switch it on: in Ads Manager, open the campaign {campaign} and turn on the ad set {adset} and its ad {ad}."
+    step_budget: "Move the budget: give the new ad set the budget you want it to spend and take the same amount from your original ad's ad set {original_adset}, in steps, while you watch the cost per result."
+    step_budget_campaign: "Move the budget: your campaign {campaign} shares its budget among its ad sets, so once the original is off the new ad set gets it; raise the campaign's budget in steps only if you want to spend more, while you watch the cost per result."
+    step_switch_off: "Switch the original off: once the new ad delivers, turn off your original ad {original_ad}."
+    never_on: "Nothing in this run switches anything on or off: these steps are yours."
+    active_found: "{what} is not paused in Meta ({status}). Nothing should run from this playbook: pause it now in Ads Manager (or with the Meta Ads connector), then record the objects again."

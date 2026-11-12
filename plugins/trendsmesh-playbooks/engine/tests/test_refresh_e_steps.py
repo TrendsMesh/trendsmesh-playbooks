@@ -144,3 +144,30 @@ def test_the_e_steps_name_only_commands_and_flags_tm_has():
                 assert flag in options, f"`{cmd}`: {flag} is not an option"
             seen += 1
     assert seen >= 5
+
+
+# --- #64: both test ads new; the original runs on; the winner moves PAUSED -------------------------------------
+
+def test_e1_plan_says_the_original_runs_on_and_overlaps_the_test():
+    e1 = _flow_section("e1")
+    for part in ("Both test ads are new", "original ad keeps running, untouched, in its own campaign",
+                 "the audiences overlap", "may slow the test's delivery", "with the user's yes"):
+        assert part in e1, part
+    plan = _text(SKILL / "templates" / "live_test_plan_template.md")
+    for part in ("The original ad during the test", "the audiences overlap", "may slow the test's delivery",
+                 "never inside the original's ad set", "PAUSED"):
+        assert part in plan, part
+
+
+def test_g12_moves_the_winner_paused_in_a_new_ad_set_and_never_activates():
+    e4 = _flow_section("e4")
+    for part in ("G12 `scale`", "never by rule", "`tm live-test move check --run R", "`tm live-test move approve",
+                 "`tm live-test move record", "`tm live-test move decline", "A new ad set, never the original's",
+                 "restart its learning", "from the post", "Never call `ads_activate_entity`",
+                 "never pause, edit or move the original", "`ads_get_ad_preview`", "`tm live-test move report",
+                 "switch the new ad set and its ad on", "move the budget", "switch the original off"):
+        assert part in e4, part
+    cards = _text(SKILL / "references" / "checkin-cards.md")
+    g12 = cards[cards.index("| G12 | Act"):]
+    assert "PAUSED" in g12 and "never by rule" in g12
+    assert "tm live-test move report" in _text(SKILL / "SKILL.md")
