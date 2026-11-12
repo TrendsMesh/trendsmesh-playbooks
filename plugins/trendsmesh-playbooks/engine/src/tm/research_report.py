@@ -48,7 +48,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from tm import (i18n, json_schema, manifest, page, research_checks, research_config, research_digest,
-                research_growth, research_map, run_page, trends)
+                research_growth, research_map, trends)
 from tm.runfolder import RunFolder
 from tm.stops import Stop
 
@@ -104,6 +104,7 @@ def page_language(run: RunFolder) -> i18n.PageLang:
     """The language to build the page in: the run's working language when its table has every word of the
     page (the report's and the shared run page's, issue #60), else English (with `.warning` for what `tm research
     report` says)."""
+    from tm import run_page   # here, not at the top: see _on_the_run_page
     return i18n.page_lang(i18n.run_languages(run).working, run_page.words.AREA, *AREAS)
 
 SCRIPT = """<script>
@@ -771,7 +772,13 @@ def _on_the_run_page(run: RunFolder, out: Path, title: str, css: str, body: str)
     content, and the run's check-ins under it, settled ones as read-only summaries (an open one, put on the page
     with `tm page build --ask`, says to answer in chat). The page saves nothing (`local`): the report is read-only,
     and it is never published while a check-in about it is open. No Google Fonts: every view of a shared page would
-    call Google (GDPR), so the theme's system fallbacks are used."""
+    call Google (GDPR), so the theme's system fallbacks are used.
+
+    The run page is imported here, not at the top: it loads every playbook's page code, and this module is loaded
+    by the Organic AI video engine (organic -> audience -> ... -> seeds -> research_report), so a top-level import
+    made a cycle that broke `tm tool deliver`, `tm kit` and ten other modules loaded first
+    (test_imports.py)."""
+    from tm import run_page
     m, _ = run_page.model(run, out, local=True)
     m.update(title=title, css=css, body=body, fonts=False,
              footer=run_page.words.t("footer.built_from", page_language(run).lang, run=run.path.name, when=m["updated"]))
