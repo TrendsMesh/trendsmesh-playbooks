@@ -1,6 +1,7 @@
 ---
 type: regex
 target: last_message
-pattern: '(?i)refresh an ad:? readiness'
+pattern: 'refresh an ad:? readiness'
+flags: 'i'
 match: not_contains
 ---

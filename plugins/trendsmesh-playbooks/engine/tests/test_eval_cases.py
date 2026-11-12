@@ -6,6 +6,7 @@ cases had their front matter and prompt pasted into case.yaml (behind a `---`) a
 reads the committed cases, so it runs with the rest of the suite. The private cases (git-ignored links) are
 left out."""
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -60,10 +61,27 @@ def problems(case: Path) -> list[str]:
     return out
 
 
+INLINE_FLAGS = re.compile(r"\(\?[imsux]+[):]?")   # Python's (?i), (?s): JavaScript's RegExp refuses them
+
+
+def grader_problems(case: Path) -> list[str]:
+    """A regex grader's pattern and a tool grader's input_match are JavaScript regular expressions: no inline
+    flags (a regex grader takes `flags: 'i'`; for "dot matches newline" write [\\s\\S])."""
+    out = []
+    for g in sorted((case / "graders").glob("*.md")) if (case / "graders").is_dir() else []:
+        meta, _ = front_matter(g.read_text(encoding="utf-8"))
+        for key in ("pattern", "input_match"):
+            value = (meta or {}).get(key)
+            if isinstance(value, str) and INLINE_FLAGS.search(value):
+                out.append(f"{case.name}/graders/{g.name}: {key} uses an inline flag ({value!r}), which the eval "
+                           "runner's JavaScript regex refuses")
+    return out
+
+
 def test_every_eval_case_loads():
     cases = _cases()
     assert len(cases) > 50
-    found = [p for c in cases for p in problems(c)]
+    found = [p for c in cases for p in problems(c) + grader_problems(c)]
     assert not found, ("Eval cases `claude plugin eval` would refuse before running anything (case.yaml: the "
                        "context only; prompt.md: the front matter between --- lines, then the prompt):\n"
                        + "\n".join(found))
@@ -76,3 +94,14 @@ def test_a_case_with_its_prompt_pasted_into_case_yaml_is_named(tmp_path):
                                     encoding="utf-8")
     found = problems(case)
     assert any("not one YAML document" in p for p in found) and any("no prompt.md" in p for p in found)
+
+
+def test_a_grader_with_a_python_inline_flag_is_named(tmp_path):
+    case = tmp_path / "flagged"
+    (case / "graders").mkdir(parents=True)
+    (case / "graders" / "g.md").write_text("---\ntype: regex\ntarget: last_message\npattern: '(?i)hello'\n---\n",
+                                           encoding="utf-8")
+    (case / "graders" / "ok.md").write_text("---\ntype: regex\ntarget: last_message\npattern: 'hello'\nflags: 'i'\n"
+                                            "---\n", encoding="utf-8")
+    found = grader_problems(case)
+    assert len(found) == 1 and "g.md" in found[0] and "inline flag" in found[0]
