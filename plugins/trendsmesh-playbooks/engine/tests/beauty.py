@@ -9,7 +9,8 @@ left out of the handoff, so they are derived from the reference outputs:
 - the hook cards of `hooks_in_category.json` (`kept`, then `not_in_category`, kind `hook_trend`) as
   one saved rising hook list, `02_research/lists/list_rising_hook_trend_all_p01.json` (ruling F8);
 - other inputs are copied with `copy_input`: `_v01` is added unless the name already has a version.
-`mapped_run` then builds the map (the reference split and review) and runs the hooks path, as the reference dry run did.
+`mapped_run` then builds the map (the reference split and review) and runs the hooks path, as the reference dry run did,
+with a judgement of the hooks made from the reference's counts (`hook_use`).
 """
 
 from __future__ import annotations
@@ -115,23 +116,30 @@ def cfg(**sections) -> dict:
     return out
 
 
-def terms() -> list[str]:
-    """The category words of the reference hooks path."""
-    return handoff("02_research/hooks_in_category.json")["terms"]
+# Issue #3, item 5: whether the category uses a shortlisted hook is the agent's judgement of its captions,
+# no longer the reference's word matching, so a hook row's category counts are this run's own.
+JUDGED_KEYS = ("category_videos", "category_share", "videos_checked", "event")
+OLD_ONLY = ("category_examples",)          # the matched videos, which the judgement does not list
 
 
-# Issue #8: the hooks path counts category words as whole words. The reference counted word starts, so
-# "curl" matched inside a longer hashtag word in one of "day _ of _"'s videos: 3 category videos there, 2 here.
-WHOLE_WORDS = {"day _ of _"}
-CATEGORY_KEYS = ("category_videos", "category_share", "category_examples")
+def hook_use(run: RunFolder) -> dict:
+    """The agent's judgement of the run's shortlisted hooks (`tm research hooks --file`), made from the
+    reference: a hook has as many category videos as the reference counted, at most the captions read."""
+    counts = {r["id"]: r["category_videos"] for r in handoff("02_research/hooks_in_category.json")["kept"]}
+    out = {}
+    for r in research_growth.shortlist(run)["shortlist"]:
+        read = len(research_growth.captions_read(trends.load_videos(run, r["id"])))
+        n = min(counts.get(r["id"], 0), read)
+        out[r["id"]] = {"in_category": n > 0, "category_videos": n, "why": "the dry run's category videos",
+                        "event": None}
+    return out
 
 
-def as_whole_words(reference: Any, run: RunFolder) -> tuple[Any, set[str]]:
-    """`reference` (a growth file, a report) with every hook row's category counts as this run's latest
-    hooks path gives them, and the names of the hooks that changed (WHOLE_WORDS, in a test's assert)."""
+def as_judged(reference: Any, run: RunFolder) -> Any:
+    """`reference` (a growth file, a report) with every hook row's category counts and event as this run's
+    latest hooks path gives them (`JUDGED_KEYS`), without the keys only word matching wrote (`OLD_ONLY`)."""
     path = run.latest(trends.RESEARCH, research_growth.HOOKS_STEM, "json")
     ours = {r["id"]: r for r in trends.read(path)["kept"]}
-    changed: set[str] = set()
 
     def walk(x: Any) -> Any:
         if isinstance(x, list):
@@ -140,13 +148,11 @@ def as_whole_words(reference: Any, run: RunFolder) -> tuple[Any, set[str]]:
             return x
         out = {k: walk(v) for k, v in x.items()}
         mine = ours.get(out.get("id"))
-        if out.get("kind") == "hook_trend" and mine and all(k in out for k in CATEGORY_KEYS):
-            if any(out[k] != mine[k] for k in CATEGORY_KEYS):
-                changed.add(out.get("name"))
-                out.update({k: mine[k] for k in CATEGORY_KEYS})
+        if out.get("kind") == "hook_trend" and mine and "category_videos" in out:
+            out = {k: v for k, v in out.items() if k not in OLD_ONLY} | {k: mine[k] for k in JUDGED_KEYS}
         return out
 
-    return walk(reference), changed
+    return walk(reference)
 
 
 def as_rising_bands(reference: Any, run: RunFolder) -> Any:
@@ -210,5 +216,5 @@ def mapped_run(tmp_path: Path) -> RunFolder:
     research_map.build(run, split_of(handoff_map), handoff("03_wip/map_review_v01.json"), cfg())
     reference = handoff("02_research/hooks_in_category.json")
     research_growth.hook_fit(run, fit_scores(reference), cfg(hooks={"shortlist": len(reference["kept"])}))
-    research_growth.hooks(run, terms(), cfg())
+    research_growth.hooks(run, hook_use(run), cfg())
     return run

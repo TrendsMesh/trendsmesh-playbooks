@@ -17,7 +17,7 @@ Copied verbatim from the handoff's `ANALYSIS.md` (handoff `trend-research_v01`, 
 2. **The match threshold lets off-category trends in** (dementia at 41 via "anti-aging", fashion and fan edits via "makeup" / "k-beauty"): an agent relevance review is part of G1 (`map_review_v01.json`, 8 drops and 7 re-tags with reasons).
 3. **PB2's noise list is wrong for PB4:** "holidays" dropped Halloween makeup, which is in-category; "vs" dropped "Curly vs straight hair". Seasonal is now a tag; generic sport tokens are not used.
 4. **Acceleration does not predict, velocity does.** Backtest at 3 dates: growth ratio vs later new creators, Spearman 0.03–0.20; new creators in the last 14 days 0.40–0.57; recency 0.33–0.45. TR3 rewritten as rule v2.
-5. **Seasonal guard needed:** without it, on 4 Nov all Halloween trends were "act now" (the 14-day window ends at the peak). Event dates are in `growth.py EVENTS`.
+5. **Seasonal guard needed:** without it, on 4 Nov all Halloween trends were "act now" (the 14-day window ends at the peak). Event dates were in `growth.py EVENTS` (English words only); since issue #3 the agent names each trend's event and its date in the market language at B3.
 6. **Event-bound trends hide their dates in the description** ("Sephora Savings Event … around October 30 to November 2"): caught by the agent at G2, not by the rule. Candidate for the backend: an event end date on the card.
 7. **Movement without an audience:** "Fall almond nails" had 7 creators and a 214-view median. A median-views gate (≥ 5,000) for "act now".
 8. **Evidence language matters and the card does not say it:** eyelash extensions 71% Russian, "get ready with _ to _" 67% Portuguese. Language share is computed from excerpts; a risk line in the card.

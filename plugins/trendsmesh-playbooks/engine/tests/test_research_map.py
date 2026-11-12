@@ -14,6 +14,7 @@ from tm import research_config, research_map, trends
 from tm.cli import main
 from tm.playbooks import REFRESH_AD, TREND_RESEARCH
 from tm.runfolder import RunFolder
+from tm.stops import Stop
 
 
 def _cfg(**trend_settings) -> dict:
@@ -275,6 +276,33 @@ def test_map_files_resolve_inside_the_run_from_the_workspace(tmp_path, capsys, m
     assert out["status"] == "done" and out["json"] == "02_research/category_map_v01.json"
     built = json.loads((run.path / out["json"]).read_text(encoding="utf-8"))
     assert [r["id"] for r in built["weak_match"]][:1] == ["w2"]        # the review read: w1 dropped
+
+
+def test_review_names_each_trends_event_in_the_market_language(tmp_path, capsys):
+    """Issue #3, item 5: the agent names a kept trend's dated event in the review, in any language, with the
+    date of the occurrence; every kept row then carries its `event` (None: none), which growth's seasonal
+    guard reads. A review written before has no `events`, and its rows no `event` key."""
+    run, split = _thin_run(tmp_path)
+    review = {"drop": {}, "retag": {}, "events": {"Body oil glow routine": {"name": "Wszystkich Świętych",
+                                                                           "date": "2026-11-01"}}}
+    out = research_map.build(run, split, review, _cfg())
+    assert {r["id"]: r["event"] for r in out["kept"]} == {"k1": review["events"]["Body oil glow routine"]}
+    md = run.latest("02_research", "category_map", "md").read_text(encoding="utf-8")
+    assert "| Wszystkich Świętych (2026-11-01) |" in md
+    out = research_map.build(run, split, {"drop": {}, "retag": {}, "events": {}}, _cfg())
+    assert [r["event"] for r in out["kept"]] == [None]
+    out = research_map.build(run, split, {"drop": {}, "retag": {}}, _cfg())     # written before issue #3
+    assert all("event" not in r for r in out["kept"])
+    nn = run.latest("02_research", "category_map", "json")
+    for events, said in [({"Body oil glow routine": {"name": "Andrzejki", "date": "30 Nov"}}, "not YYYY-MM-DD"),
+                         ({"Body oil glow routine": {"name": " ", "date": "2026-11-30"}}, "name is empty"),
+                         ({"Body oil glow routine": None}, "names no event"),
+                         (["Andrzejki"], "not one table"),
+                         ({"Nobody returned this": {"name": "Andrzejki", "date": "2026-11-30"}},
+                          "which no saved search returned")]:
+        with pytest.raises(Stop, match=said):
+            research_map.build(run, split, {"drop": {}, "retag": {}, "events": events}, _cfg())
+    assert run.latest("02_research", "category_map", "json") == nn                  # nothing written
 
 
 def test_map_stops_on_files_to_fix(tmp_path, capsys):

@@ -6,7 +6,8 @@
     tm research map-change --run RUN [--json]                         V26: how much of the map is new
     tm research hook-fit --run RUN --file F [--json]                  TR1: the hooks ranked by fit, the shortlist
     tm research hook-ads --run RUN --file F [--json]                  TR1: the shortlisted hooks' Ad Library checks
-    tm research hooks --run RUN --terms "a,b,..." [--json]            TR1: the shortlist's category videos
+    tm research hook-captions --run RUN [--json]                      TR1: the shortlisted hooks' captions, to judge
+    tm research hooks --run RUN --file F [--json]                     TR1: the shortlist, with the agent's judgement
     tm research growth --run RUN [--as-of D] [--stem S] [--json]      TR2-TR4: growth, stages, snapshot
     tm research backtest --run RUN --as-of D [--horizon N] [--json]   TR3 calibration: stages then, outcome after
     tm research previous --run RUN [--json]                           A2: the previous run's files into 00_raw
@@ -153,12 +154,29 @@ def _hook_ads(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
                 "shortlisted hook says \"not checked\".")
     else:
         done = (f"The hooks' Ad Library checks hold: {len(data['checks'])} shortlisted hooks, each with its saved "
-                "answer. Now tm research hooks.")
+                "answer. Now tm research hook-captions.")
     return _checked(args, problems, done)
 
 
+def _hook_captions(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
+    path, counts = research_growth.hook_captions(run)
+    text = (f"Wrote {_rel(run, path)}: the captions of the {len(counts)} shortlisted hooks (up to "
+            f"{research_growth.CAPTIONS} each, most-viewed first). Read them and judge each hook: are its videos "
+            f"about the category, how many of the captions read are, and one line on why, in "
+            f"03_wip/{research_growth.USE_STEM}_vNN.json; then tm research hooks --file it.")
+    cli.emit(args, {"status": "done", "file": _rel(run, path), "captions": counts, "message": text}, text)
+    return 0
+
+
 def _hooks(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
-    path = research_growth.hooks(run, args.terms.split(","), cfg)
+    data = _json_file(run, args.file)
+    problems = research_growth.check_hook_use(run, data)
+    if problems:
+        return _checked(args, problems, "")
+    inline = args.file.strip()[:1] in ("{", "[")               # the JSON itself: no file to name
+    given = Path(args.file.strip())
+    named = None if inline or not (run.path / given).is_file() else given.as_posix()
+    path = research_growth.hooks(run, data, cfg, use_file=named)
     out = json.loads(path.read_text(encoding="utf-8"))
     candidates = research_growth.candidates_of(path)
     used = [r for r in out["kept"] if r["plugin"]["in_category"]]
@@ -167,7 +185,7 @@ def _hooks(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
                "checked": len(out["kept"]) + len(out["not_shortlisted"])}
     lines = [f"Wrote {payload['json']} and {payload['candidates']}: the {payload['kept']} shortlisted hooks, by fit; "
              f"{payload['in_category']} already used in the category, {payload['transfer']} a transfer (no category "
-             "video yet). Fit, then category videos / videos checked, then the Ad Library:"]
+             "video yet). Fit, then category videos / captions read, then the Ad Library:"]
     ads = {"competitor_found": "competitor found", "none_found": "none found in Ad Library titles"}
     lines += [f"  {r['name'][:40]:40} {r['plugin']['fit']}  {r['category_videos']}/{r['videos_checked']}"
               f"{'' if r['plugin']['in_category'] else '  transfer'}"
@@ -450,7 +468,7 @@ def _schedule(args: argparse.Namespace) -> int:
 
 
 ACTIONS = {"search-status": _search_status, "map": _map, "map-change": _map_change, "hook-fit": _hook_fit,
-           "hook-ads": _hook_ads, "hooks": _hooks,
+           "hook-ads": _hook_ads, "hook-captions": _hook_captions, "hooks": _hooks,
            "growth": _growth, "backtest": _backtest, "previous": _previous_run, "rebuild-previous": _rebuild_previous,
            "fetch-plan": _fetch_plan, "reuse": _reuse, "digest": _digest, "evidence": _evidence, "paid": _paid,
            "picks": _picks, "report": _report, "seeds": _seeds}
@@ -477,9 +495,13 @@ def _setup(p: argparse.ArgumentParser) -> None:
     a.add_argument("--run", required=True, help="the run folder")
     a.add_argument("--file", required=True, help="the checks, 02_research/hooks_ad_library_vNN.json (or the JSON itself)")
     a.add_argument("--json", action="store_true")
-    h = sub.add_parser("hooks", help="the hooks path: the shortlisted hooks, each with its category videos (TR1)")
+    k = sub.add_parser("hook-captions", help="the shortlisted hooks' captions, for the agent's judgement (TR1)")
+    k.add_argument("--run", required=True, help="the run folder")
+    k.add_argument("--json", action="store_true")
+    h = sub.add_parser("hooks", help="the hooks path: the shortlisted hooks, each with the agent's judgement (TR1)")
     h.add_argument("--run", required=True, help="the run folder")
-    h.add_argument("--terms", required=True, help="the category's words, comma-separated")
+    h.add_argument("--file", required=True,
+                   help="the judgement of each shortlisted hook, 03_wip/hook_use_vNN.json (or the JSON itself)")
     h.add_argument("--json", action="store_true")
     g = sub.add_parser("growth", help="growth, stage and confidence of every trend, and the snapshot (TR2-TR4, TR8)")
     g.add_argument("--run", required=True, help="the run folder")

@@ -614,7 +614,14 @@ def tr_b4(ws: Path, run: Path) -> None:
     tm(ws, "research", "hook-fit", "--run", str(run), "--file", "03_wip/hook_fit_v01.json")
     plan = tm(ws, "research", "fetch-plan", "--run", str(run))
     tr_videos(run, plan.get("fetch") or [])
-    tm(ws, "research", "hooks", "--run", str(run), "--terms", ",".join(hooks["terms"]))
+    # issue #3: the agent judges each shortlisted hook from its captions; here, from the dry run's counts
+    read = tm(ws, "research", "hook-captions", "--run", str(run))["captions"]
+    counts = {r["id"]: r["category_videos"] for r in hooks["kept"]}
+    use = {hid: {"in_category": min(counts.get(hid, 0), n) > 0, "category_videos": min(counts.get(hid, 0), n),
+                 "why": "its captions show beauty videos" if counts.get(hid) else "no beauty video in its captions",
+                 "event": None} for hid, n in read.items()}
+    place(ws, run, "03_wip/hook_use_v01.json", use, "the hooks' judgement, from the dry run's counts (eval fixture)")
+    tm(ws, "research", "hooks", "--run", str(run), "--file", "03_wip/hook_use_v01.json")
 
 
 def tr_c3(ws: Path, run: Path) -> None:

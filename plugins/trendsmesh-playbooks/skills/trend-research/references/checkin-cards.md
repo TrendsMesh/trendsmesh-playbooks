@@ -34,7 +34,8 @@ the market, the working language and the market language (`references/languages.
 what was kept; what was dropped and why (noise, contradicted, and your review's drops with their
 reasons, so the user can restore any); the re-tags; the weak matches, if the map stayed thin
 ("weak match": its closest trends, never "no trends"); the shortlisted hooks in fit order, in two
-lists: **used in your category** ("used in your category: N videos" of those checked) and
+lists: **used in your category** ("used in your category: N of the M captions read", with your
+line on why) and
 **transfers** (they fit, no category video uses them yet), each with its fit, its `why` and its Ad Library verdict ("competitor found: <advertiser>", "none
 found in Ad Library titles" or "not checked"). In a weekly run, what is new since last week
 (`tm research map-change`), and the review names carried over from last week that were removed

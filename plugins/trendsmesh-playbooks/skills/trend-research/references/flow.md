@@ -44,7 +44,7 @@ what each does in a weekly run is under the step. In order:
 | 7 | `tm research reuse` | B4 |
 | 8 | fetch the plan's videos (every page) and the `get_trend` cards of its `check` list: the shortlisted hooks' first (B4), the rest after the map check-in (C1) | B4, C1 |
 | 8b | the shortlisted hooks in the Ad Library, then `tm research hook-ads` | B4 |
-| 9 | `tm research hooks` | B4 |
+| 9 | `tm research hook-captions`, the hooks' judgement, then `tm research hooks` | B4 |
 | 10 | `tm research growth` | C2 |
 | 11 | `tm research digest` (it stops until every called trend has videos) | F2 |
 | 12 | the picks, with `digest_reading` (it needs the digest) | D1 to D3 |
@@ -202,18 +202,26 @@ TR1. The engine counts; you choose the phrases.
   A seasonal trend whose card shows the category's own craft is inside it, even when it is framed
   as a costume, a cosplay or a skit (for beauty: makeup, face paint, skin, hair or nails done for
   the look); drop a seasonal trend only when its card shows none of it (a mask, food, crafts).
+- **Name each kept trend's dated event** (a holiday, a sale, a season's day: Halloween, Black Friday,
+  Wszystkich Świętych, 七五三), from its name, card and the dates in its description, in the **market
+  language**, with the date of the occurrence the trend is about (`YYYY-MM-DD`, the year included:
+  last week's Halloween is `2026-10-31`). TR3's seasonal guard reads it: an event that passed within
+  60 days puts the trend past its peak. A trend tied to no date is left out of `events`; write
+  `"events": {}` when none is.
 - Write `03_wip/map_review_vNN.json`, names copied exactly from the map:
 
   ```json
   {"drop": {"Dementia in family life and memory": "off-category: matched 'anti-aging' on ageing, not beauty"},
-   "retag": {"Glazed donut nails": "nails"}}
+   "retag": {"Glazed donut nails": "nails"},
+   "events": {"Halloween nail art": {"name": "Halloween", "date": "2026-10-31"}}}
   ```
 
   Then `tm research map --run R --split 03_wip/split_vNN.json --review 03_wip/map_review_vNN.json
   --json`.
 - **A weekly run** starts from last week's review (the previous run's latest
   `03_wip/map_review_vNN.json`): copy its drops and re-tags into this run's `map_review_v01.json`,
-  then review the new trends. If the map stops because the review names a trend no search returned,
+  then review the new trends (and name the new ones' events). If the map stops because the review
+  names a trend no search returned,
   that name was carried over from last week and its trend has left the searches: remove it from the
   review file (a new version) and build again, at every level. At Check every step and Just the big
   calls, list the names removed on the G1 card; in Hands-off log them in G1's rule note and the
@@ -302,20 +310,33 @@ own path (TR1).
    with no check, a query with no saved answer or that is the hook's name, a verdict its advertisers
    don't support, a forbidden phrase). A hook a competitor already runs is weaker as an opening:
    weigh it in the picks (D3) and say it on its card.
-8. **`tm research hooks --run R --terms "<the category's words>" --json`**: the words a category
-   video would carry in its excerpt, hook text or slot fill (the phrase, the sub-categories and
-   their common words). Words match whole, never inside another word ("art" is not in "start"), so
-   give each in the forms the videos use: "beauty,makeup,hair,nail,nails,lash,lashes,brow,brows,
-   skin,lip,lips", and phrases as they are written ("nail art"). It keeps every shortlisted hook,
-   in fit order, and counts its videos in the category as information, never as a gate: a hook with
-   at least one is **used in the category**, one with none is a **transfer** (it fits, nobody in the
-   category uses it yet). Each carries its Ad Library verdict (step 7). A stop names the shortlisted
-   hooks with no saved videos (fetch them), hooks saved after the fit scores (score them in a new
-   version, `hook-fit` again), or Ad Library checks that no longer cover the shortlist (check the new
-   ones, `hook-ads` again).
+8. **Is each shortlisted hook used in the category?** You judge it from its videos' captions, in
+   any language (no word list: "makijażu" is makeup too, and Japanese has no spaces). **`tm research
+   hook-captions --run R --json`** writes `03_wip/hook_captions_vNN.md`: each shortlisted hook with
+   the captions of up to 40 of its most-viewed videos. Read every hook's captions and decide whether
+   its videos are about the category (a "pov _" video at a nail salon is; one about a car is not),
+   count how many of the captions read are, and say why in one line. Name the hook's dated event as
+   at B3, when it is tied to one (else `null`). Write `03_wip/hook_use_v01.json`, every shortlisted
+   hook:
+
+   ```json
+   {"<hook id>": {"in_category": true, "category_videos": 6,
+     "why": "6 of 40 captions are salon nail sets; the rest are cooking and pets", "event": null}}
+   ```
+
+   `in_category` is true exactly when `category_videos` is at least 1. Record it, then **`tm research
+   hooks --run R --file 03_wip/hook_use_v01.json --json`**. It keeps every shortlisted hook, in fit
+   order, with your judgement as information, never as a gate: a hook whose videos are in the
+   category is **used in the category**, one with none is a **transfer** (it fits, nobody in the
+   category uses it yet). Each carries its Ad Library verdict (step 7). Exit 2 lists each problem (a
+   shortlisted hook with no judgement, a count above the captions read, no `why`, an event without
+   its date): fix it as a new version. A stop names the shortlisted hooks with no saved videos
+   (fetch them), hooks saved after the fit scores (score them in a new version, `hook-fit` again),
+   or Ad Library checks that no longer cover the shortlist (check the new ones, `hook-ads` again).
 9. Prepare the G1 card (`checkin-cards.md`): the sub-categories with counts, what was kept and
    dropped and why, the weak matches, the shortlisted hooks in two lists (used in the category, with
-   "used in your category: N videos", and transfers), each with its fit and its Ad Library verdict.
+   "used in your category: N of the M captions read" and your line on why, and transfers), each
+   with its fit and its Ad Library verdict.
    `tm done B4 --run R`. The report shows the same two lists under "Hooks for <category>".
 
 <a id="c1"></a>
@@ -490,7 +511,9 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   are the `report`, `common` and `run_page` keys; when the working language's table lacks any,
   the page is in English and the answer's `language_warning` says what to translate.
 - Look at the page's text once (the act now cards, the sample line): numbers relative to the
-  sample first, raw counts under "Raw counts in the sample".
+  sample first, raw counts under "Raw counts in the sample". The hooks' two lists ("Hooks for
+  <category>") follow your B4 judgement, and a seasonal trend's note names its event as you did at
+  B3 or B4; a run made before those judgements keeps its word-matched lists and English event names.
 - `tm done E1 --run R`. G3 follows: on its own at Check every step (the local path and the views);
   at Just the big calls the card **"Approve the picks and the page"** is shown once, here, for G2
   and G3 together, and each is recorded on its own: `tm decide G2 accept --run R`, then `tm

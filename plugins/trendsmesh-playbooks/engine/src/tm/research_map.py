@@ -10,7 +10,10 @@ TrendsMesh searches (`tm.trends`) instead of the original's REST calls.
 The split is the agent's (B1): `03_wip/split_vNN.json` = `{"root", "queries": [{"query", "parent",
 "depth", "source"}]}`. A search belongs to a query by the `_input.about` saved with it, never by its
 file name (names are capped and hashed). The agent's relevance review (G1) is `03_wip/map_review_vNN.json`
-= `{"drop": {name: reason}, "retag": {name: sub_category}}`.
+= `{"drop": {name: reason}, "retag": {name: sub_category}, "events": {name: {"name", "date"}}}`. `events`
+(issue #3, item 5) names each kept trend's dated event in the market language, with the date of the
+occurrence the trend is about; a review with it gives every kept row an `event` (None: no event), which
+growth's seasonal guard reads. A review without it (written before) leaves the rows without one.
 
 Added to the original map: `pool_ids` (every trend id the searches returned, for the weekly digest) and
 `weak_match` (V7: when the map stays thin after the last split, the five closest trends below the
@@ -209,17 +212,32 @@ def _reasons(card: dict, exclude: list[str]) -> list[str]:
     return reasons
 
 
-def _review(review: object) -> tuple[dict, dict]:
+def _review(review: object) -> tuple[dict, dict, dict | None]:
+    """The review's drops, re-tags and events (None: a review without `events`, written before issue #3)."""
     if review is None:
-        return {}, {}
+        return {}, {}, None
     drops = review.get("drop", {}) if isinstance(review, dict) else None
     retags = review.get("retag", {}) if isinstance(review, dict) else None
     for part in (drops, retags):
         if not isinstance(part, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in part.items()):
             raise Stop("The review file is {\"drop\": {trend name: reason}, \"retag\": {trend name: "
-                       "sub-category}}; correct it, save it as a new map_review_vNN.json and build the map again. The "
-                       "run continues from the same place.")
-    return drops, retags
+                       "sub-category}, \"events\": {trend name: {\"name\": event, \"date\": YYYY-MM-DD}}}; correct "
+                       "it, save it as a new map_review_vNN.json and build the map again. The run continues from the "
+                       "same place.")
+    events = review.get("events")
+    if events is None:
+        return drops, retags, None
+    from tm import research_growth            # it imports this module
+    wrong = ([] if isinstance(events, dict) else ["events is not one table {trend name: event}"]) or [
+        f"{name!r}: {'; '.join(p)}" for name, ev in events.items()
+        if (p := (["it names no event: leave the trend out of events"] if ev is None
+                  else research_growth.event_problems(ev)))]
+    if wrong:
+        raise Stop("The review's events do not hold: " + "; ".join(wrong) + ". Each is {\"name\": <the event, in "
+                   "the market language>, \"date\": \"YYYY-MM-DD\", the day of the occurrence the trend is about}. "
+                   "Correct it, save it as a new map_review_vNN.json and build the map again. The run continues "
+                   "from the same place.")
+    return drops, retags, events
 
 
 def _thin(split: dict, saved: dict[str, dict], cfg: dict) -> bool:
@@ -252,14 +270,14 @@ def build(run: RunFolder, split: dict, review: dict | None, cfg: dict) -> dict:
     problems = _unsearched(split, saved)
     if problems:
         raise Stop(" ".join(problems) + " The run continues from the same place.")
-    drops, retags = _review(review)
+    drops, retags, events = _review(review)
     root = split["root"]
     rk = key(root)
     min_match, min_relevant = cfg["trends"]["min_match"], cfg["trends"]["min_relevant"]
     exclude = [w.strip() for w in cfg["trends"]["exclude_terms"] if w.strip()]
     parents = {key(r["query"]): r.get("parent") for r in split["queries"]}
     pool = trends.pool(run)
-    missing = [n for n in [*drops, *retags] if n not in {e["card"].get("name") for e in pool.values()}]
+    missing = [n for n in [*drops, *retags, *(events or {})] if n not in {e["card"].get("name") for e in pool.values()}]
     if missing:
         raise Stop(f"The review names {', '.join(map(repr, missing))}, which no saved search returned, so "
                    "the map was not built. Copy the names exactly from the map, write the review again as "
@@ -292,6 +310,8 @@ def build(run: RunFolder, split: dict, review: dict | None, cfg: dict) -> dict:
         if r["name"] in retags:
             r["sub_category_search"] = r["sub_category"]
             r["sub_category"] = retags[r["name"]]
+        if events is not None:                 # issue #3: the event the agent named, in any language
+            r["event"] = events.get(r["name"])
         still.append(r)
     kept = still
 
@@ -321,6 +341,12 @@ def build(run: RunFolder, split: dict, review: dict | None, cfg: dict) -> dict:
     return out
 
 
+def _seasonal(r: dict) -> str:
+    """A kept row's Seasonal cell: the event the review named with its date, else the card's seasonal tag."""
+    ev = r.get("event")
+    return f"{ev['name']} ({ev['date']})" if ev else r.get("seasonal") or ""
+
+
 def _markdown(m: dict) -> str:
     """The original's category_map.md, plus the weak matches of a thin map."""
     kept, dropped = m["kept"], m["dropped"]
@@ -338,7 +364,7 @@ def _markdown(m: dict) -> str:
     for r in kept:
         rc = r.get("reach") or {}
         lines.append(f"| {r['group']} | {r['sub_category']} | {r['kind']} | {r['name']} | {r['match']:.0f} | "
-                     f"{rc.get('creators', '?')} | {rc.get('videos', '?')} | {r['status']} | {r.get('seasonal') or ''} |")
+                     f"{rc.get('creators', '?')} | {rc.get('videos', '?')} | {r['status']} | {_seasonal(r)} |")
     if m["weak_match"]:
         lines += ["", "## Weak match", "",
                   "The map stayed thin after the last split, so these are the closest trends below the match "

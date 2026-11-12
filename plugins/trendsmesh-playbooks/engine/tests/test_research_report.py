@@ -91,10 +91,10 @@ def test_report_json_rebuilds_report_v05(beauty_run, tmp_path):
     folder = _build_beauty(run)
     assert folder == run.path / "04_final" / "report_v01"
     got = _read(folder / "report.json")
-    expected, changed = beauty.as_whole_words(_strip(_read(REPORT_V05 / "report.json")), run)
+    expected = beauty.as_judged(_strip(_read(REPORT_V05 / "report.json")), run)   # issue #3: judged hooks
     # issue #58: hooks by their rising place; the digest is the reference's own, copied in
     expected = {**beauty.as_rising_bands(expected, run), "digest": expected["digest"]}
-    assert _strip(got) == expected and changed == beauty.WHOLE_WORDS      # issue #8: whole words
+    assert _strip(got) == expected
     assert research_report.schema_problems(got) == []
     # F7b: the weighted total goes under each pick's plugin key (the reference picks have no score table)
     assert got["act_now"][0]["plugin"] == {"weighted_total": None, "scale": [7.0, 35.0]}

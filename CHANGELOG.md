@@ -298,6 +298,16 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Create an ad no longer installs Remotion.** Its edit is built with the plugin's ffmpeg, so its check no longer
   asks for the video editing tools (about 0.5 GB). It now says when Chrome or Edge is missing: without one, the site's
   captures, logo and font come from you as files.
+- **Trend research judges in any language whether your category uses a hook.** The report's "already used in
+  your category" and "transfer" lists came from searching each hook's videos for the category's words, as whole
+  words. In a language that changes word endings (Polish "makijażu", "makijażem") or has no spaces (Japanese,
+  Chinese), the search missed, and a hook your category already uses was shown as a transfer. Claude now reads the
+  captions of each shortlisted hook's most-viewed videos (`tm research hook-captions`) and records whether they are
+  about the category, how many are, and why, in one line; `tm research hooks --file` checks that every shortlisted
+  hook has that judgement. A trend's holiday is named the same way: Claude names it in the market language, with
+  its date, when it reviews the map, so the seasonal guard puts a trend past its peak after Wszystkich Świętych or
+  ハロウィン too, not only after the English holidays it knew. Runs made before keep their lists and still build
+  their report.
 
 ## 0.12.0
 

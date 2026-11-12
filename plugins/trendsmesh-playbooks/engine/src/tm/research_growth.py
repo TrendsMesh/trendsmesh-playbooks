@@ -5,8 +5,9 @@ instead of the original's REST calls.
     hook_fit the hook trends of the saved rising hook lists and searches, ranked by the agent's fit
              scores (Creative brief's CB3 criteria, read from the cards), and the top `hooks.shortlist`
              of them: 02_research/hooks_shortlist_vNN.json (issue #8)
-    hooks    the shortlisted hooks, each with how many of its evidence videos are in the category
-             (information, not a gate): 02_research/hooks_candidates_vNN.json and
+    hook_captions  the shortlisted hooks' captions, for the agent to judge: 03_wip/hook_captions_vNN.md
+    hooks    the shortlisted hooks, each with the agent's judgement of whether its videos are in the
+             category (information, not a gate): 02_research/hooks_candidates_vNN.json and
              hooks_in_category_vNN.json
     compute  growth, position in the sample, bucket and confidence of every mapped trend and kept
              hook, read at one date: 02_research/<stem>_vNN.json/.md and the snapshot for the next
@@ -35,9 +36,9 @@ for the weekly digest).
 The hooks path differs from the original (issue #8): the original kept a hook only when enough of
 its videos carried a category word (matched on word starts), so it fetched every rising hook's
 videos and, in a niche, kept none. Here the agent scores every hook candidate for fit from its card,
-`hook_fit` keeps the top `hooks.shortlist`, only those are fetched, and `hooks` counts their category
-videos on whole words as information (a kept hook's `plugin.use`: `in_category` with any match,
-else `transfer`), with its Ad Library verdict from the shortlisted hooks' checks (issue #58,
+`hook_fit` keeps the top `hooks.shortlist`, only those are fetched, and `hooks` records the agent's
+judgement of their captions as information (issue #3, item 5: no word matching, so any language; a
+kept hook's `plugin.use`: `in_category` or `transfer`, with `plugin.use_why`), with its Ad Library verdict from the shortlisted hooks' checks (issue #58,
 `research_checks.check_hook_ads`; `plugin.ad_library`, None when not checked). A hook's band and
 percentile are its place in the saved rising hook lists (`relative.rising_position` of
 `relative.rising_of`, the owner's choice on issue #58: it compares a hook with every rising hook,
@@ -301,23 +302,26 @@ def shortlist(run: RunFolder) -> dict | None:
     return None if path is None else {**trends.read(path), "path": path.relative_to(run.path).as_posix()}
 
 
-def term_matcher(terms: list[str]):
-    """Whether a text holds one of `terms` as whole words, case-blind, in any script ("art" never in
-    "start" or "artist"; "nail art" as the two words). Issue #8, the matching side of issue #3."""
-    rx = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(t) for t in terms) + r")(?!\w)", re.I)
-    return lambda text: rx.search(text) is not None
+# The agent's judgement of each shortlisted hook (issue #3, item 5, the owner's option b): no word matching,
+# which misses inflected words ("makijażu") and languages without spaces. `hook_captions` writes a sheet of
+# each shortlisted hook's captions; the agent reads it and records, per hook, whether its videos are about
+# the category, how many of the captions read are, and one line on why (03_wip/hook_use_vNN.json, checked
+# by `check_hook_use`), and may name a dated event the hook is tied to, in the market language.
+
+CAPTIONS = 40            # the captions of a shortlisted hook the agent reads: its most-viewed videos
+CAPTION_CHARS = 200
+USE_STEM = "hook_use"
+CAPTIONS_STEM = "hook_captions"
+SOURCE_CAPTIONS = "tm research hook-captions"
+USE_SHAPE = ('{"<hook id>": {"in_category": true|false, "category_videos": <how many of the captions read>, '
+             '"why": "<one line>", "event": null|{"name": "<the event, in the market language>", '
+             '"date": "YYYY-MM-DD"}}}')
 
 
-def hooks(run: RunFolder, terms: list[str], cfg: dict) -> Path:
-    """The shortlisted hooks (the latest `hook_fit`), in fit order, each with its evidence videos in the
-    category: a video holding a term as whole words in its excerpt, hook_text or slot_fill. Any match
-    marks the hook `in_category`, none marks it a `transfer`; no hook is dropped for it (issue #8).
-    Writes hooks_candidates_vNN.json (every hook card) and hooks_in_category_vNN.json with one NN;
-    returns the latter. Stops, writing nothing, without a shortlist, with one made before a hook
-    candidate was saved, or when a shortlisted hook has no saved videos."""
-    terms = [t.strip() for t in terms if t.strip()]
-    if not terms:
-        raise ValueError("Give the category's words for the hooks path (--terms \"makeup,hair,nail,...\").")
+def _shortlisted(run: RunFolder) -> tuple[dict, list[tuple[dict, dict]], list[dict]]:
+    """The latest shortlist, its hooks in fit order as (shortlist row, card) and every hook card. Stops
+    without a saved hook, without a shortlist, with one made before a hook candidate was saved, or when a
+    shortlisted hook has no saved videos."""
     cards = _candidates(run)
     if not cards:
         raise _no_hooks()
@@ -334,29 +338,152 @@ def hooks(run: RunFolder, terms: list[str], cfg: dict) -> Path:
     by_id = {c["id"]: c for c in cards}
     picked = [(r, by_id[r["id"]]) for r in short["shortlist"] if r["id"] in by_id]
     _need_videos(run, [c for _, c in picked], "shortlisted hooks")
+    return short, picked, cards
+
+
+def caption(video: dict) -> str:
+    """A video's caption as the agent reads it: its excerpt, hook text and slot fill, each once, on one line."""
+    parts: list[str] = []
+    for k in ("excerpt", "hook_text", "slot_fill"):
+        text = " ".join(str(video.get(k) or "").split())
+        if text and not any(text in p for p in parts):
+            parts.append(text)
+    out = " · ".join(parts)
+    return out if len(out) <= CAPTION_CHARS else out[:CAPTION_CHARS - 1] + "…"
+
+
+def captions_read(videos: list[dict]) -> list[dict]:
+    """The videos of a hook whose captions the agent reads: up to CAPTIONS with a caption, most-viewed first,
+    one per caption (a repost of the same words counts once)."""
+    out, seen = [], set()
+    for v in sorted(videos, key=lambda v: -(v.get("views") or 0)):
+        text = caption(v)
+        if text and text.casefold() not in seen:
+            seen.add(text.casefold())
+            out.append(v)
+        if len(out) == CAPTIONS:
+            break
+    return out
+
+
+def hook_captions(run: RunFolder) -> tuple[Path, dict[str, int]]:
+    """03_wip/hook_captions_vNN.md: each shortlisted hook (fit order), its card, and the captions of the
+    videos `captions_read` picks, numbered, for the agent's judgement. Returns the file and each hook's
+    number of captions. Stops as `hooks` does."""
+    short, picked, _ = _shortlisted(run)
+    lines = [f"# The shortlisted hooks' captions ({SOURCE_CAPTIONS})", "",
+             f"Shortlist: {short['path']}. Up to {CAPTIONS} captions per hook, its most-viewed videos. For each "
+             f"hook, record whether its videos are about the category, how many of these captions are, and one "
+             f"line on why: 03_wip/{USE_STEM}_vNN.json = {USE_SHAPE}.", ""]
+    counts = {}
+    for r, c in picked:
+        shown = captions_read(trends.load_videos(run, c["id"]))
+        counts[c["id"]] = len(shown)
+        lines += [f"## {r['rank']}. {c.get('name')} (`{c['id']}`)", "", f"{c.get('what_it_is') or ''}".strip(), "",
+                  f"{len(shown)} captions:", ""]
+        lines += [f"{i}. {caption(v)}" for i, v in enumerate(shown, 1)] + [""]
+    target = run.next_version(WIP, CAPTIONS_STEM, "md")
+    _write(run, target, "\n".join(lines), {"shortlist": short["path"], "captions": CAPTIONS}, SOURCE_CAPTIONS)
+    return target, counts
+
+
+def event_problems(event: object) -> list[str]:
+    """What is wrong with an event the agent named: null, or {"name": <in the market language>, "date":
+    "YYYY-MM-DD", the day of the occurrence the trend is about}."""
+    if event is None:
+        return []
+    if not isinstance(event, dict) or set(event) != {"name", "date"}:
+        return ['event is null or {"name": "<the event, in the market language>", "date": "YYYY-MM-DD"}']
+    out = []
+    if not (isinstance(event["name"], str) and event["name"].strip()):
+        out.append("the event's name is empty")
+    try:
+        date.fromisoformat(event["date"])
+    except (TypeError, ValueError):
+        out.append(f"the event's date {event['date']!r} is not YYYY-MM-DD")
+    return out
+
+
+def check_hook_use(run: RunFolder, data: object) -> list[Problem]:
+    """Everything wrong in the agent's judgement of the shortlisted hooks (`USE_SHAPE`); empty when every
+    shortlisted hook has one that holds. Stops as `hooks` does."""
+    _, picked, _ = _shortlisted(run)
+    wanted = {c["id"]: c for _, c in picked}
+    if not isinstance(data, dict) or not data:
+        return [Problem("hook_use", f"The judgement must be one table {USE_SHAPE}.",
+                        "Read the captions (tm research hook-captions), write a row per shortlisted hook, then "
+                        "check again.")]
+    out = []
+    for hid, row in data.items():
+        if hid not in wanted:
+            out.append(Problem(hid, f"{hid} is not a hook of the latest shortlist.",
+                               "Judge the shortlisted hooks only (tm research hook-captions lists them)."))
+            continue
+        name = wanted[hid].get("name")
+        if not isinstance(row, dict):
+            out.append(Problem(hid, f"{hid} ({name!r}) is not {USE_SHAPE}.", "Write it as one object."))
+            continue
+        read = len(captions_read(trends.load_videos(run, hid)))
+        wrong = []
+        used, n = row.get("in_category"), row.get("category_videos")
+        if not isinstance(used, bool):
+            wrong.append("in_category is not true or false")
+        if isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= read:
+            wrong.append(f"category_videos is not a whole number from 0 to {read} (the captions read)")
+        elif isinstance(used, bool) and used != (n > 0):
+            wrong.append("in_category is true exactly when at least one caption read is about the category")
+        if not (isinstance(row.get("why"), str) and row["why"].strip()):
+            wrong.append("why is not one line on why")
+        wrong += event_problems(row.get("event"))
+        unknown = sorted(set(row) - {"in_category", "category_videos", "why", "event"})
+        if unknown:
+            wrong.append(f"{', '.join(unknown)} is not a field of the judgement")
+        if wrong:
+            out.append(Problem(hid, f"{hid} ({name!r}): {'; '.join(wrong)}.", f"Write it as {USE_SHAPE}."))
+    missing = [c for hid, c in wanted.items() if hid not in data]
+    if missing:
+        shown = ", ".join(f"{c.get('name')!r} ({c['id']})" for c in missing)
+        out.append(Problem("hook_use", f"{len(missing)} shortlisted hooks have no judgement: {shown}.",
+                           "Read each one's captions (tm research hook-captions) and judge it: a hook no category "
+                           "video uses is a transfer, never left out."))
+    return out
+
+
+def hooks(run: RunFolder, use: object, cfg: dict, *, use_file: str | None = None) -> Path:
+    """The shortlisted hooks (the latest `hook_fit`), in fit order, each with the agent's judgement of its
+    videos (`use`, checked by `check_hook_use`): `in_category` marks the hook used in the category, else it
+    is a `transfer`; no hook is dropped for it (issue #8). `category_videos` of `videos_checked` are the
+    captions the agent read (`captions_read`) and found about the category. Writes hooks_candidates_vNN.json
+    (every hook card) and hooks_in_category_vNN.json with one NN; returns the latter. Stops, writing nothing,
+    as `_shortlisted` does, when the judgement does not hold, or when the Ad Library checks no longer cover
+    the shortlist."""
+    short, picked, cards = _shortlisted(run)
+    problems = check_hook_use(run, use)
+    if problems:
+        raise Stop(" ".join(f"{p.what} {p.todo}" for p in problems)
+                   + f" Fix the file, save it as a new version and run this again; {AGAIN}.")
     from tm import research_checks                # it imports this module
     verdicts, ads_file = research_checks.hook_verdicts(run)     # issue #58; None: not checked
-    match = term_matcher(terms)
     kept = []
     for r, c in picked:
-        vids = trends.load_videos(run, c["id"])
-        hits = [v for v in vids if match(" ".join(str(v.get(k) or "") for k in ("excerpt", "hook_text", "slot_fill")))]
-        share = len(hits) / len(vids) if vids else 0
+        j = use[c["id"]]
+        read = len(captions_read(trends.load_videos(run, c["id"])))
         kept.append({"id": c["id"], "kind": "hook_trend", "name": c["name"], "sub_category": "hooks",
                      "group": "hooks", "status": c.get("status"), "reach": c.get("reach"), "since": c.get("since"),
                      "active_for_days": c.get("active_for_days"), "momentum": c.get("momentum"),
-                     "what_it_is": c.get("what_it_is"), "category_videos": len(hits), "videos_checked": len(vids),
-                     "category_share": round(share, 2),
-                     "category_examples": [{"url": v.get("url"), "excerpt": (v.get("excerpt") or "")[:140],
-                                            "slot_fill": v.get("slot_fill")} for v in hits[:5]],
-                     "plugin": {"fit": r["fit"], "fit_rank": r["rank"], "in_category": bool(hits),
-                                "use": "in_category" if hits else "transfer", "why": r.get("why"),
-                                "ad_library": (verdicts or {}).get(c["id"])}})
-    out = {"terms": terms, "shortlist": short["path"], "ad_library": ads_file, "kept": kept,
+                     "what_it_is": c.get("what_it_is"), "category_videos": j["category_videos"],
+                     "videos_checked": read,
+                     "category_share": round(j["category_videos"] / read, 2) if read else 0,
+                     "event": j.get("event"),
+                     "plugin": {"fit": r["fit"], "fit_rank": r["rank"], "in_category": j["in_category"],
+                                "use": "in_category" if j["in_category"] else "transfer", "why": r.get("why"),
+                                "use_why": j["why"].strip(), "ad_library": (verdicts or {}).get(c["id"])}})
+    out = {"judgement": use_file, "shortlist": short["path"], "ad_library": ads_file, "kept": kept,
            "not_shortlisted": [{k: r[k] for k in ("id", "name", "fit")} for r in short["not_shortlisted"]]}
     nn = _versioned(run, [(CANDIDATES_STEM, "json"), (HOOKS_STEM, "json")])
     target = run.path / trends.RESEARCH / f"{HOOKS_STEM}_v{nn:02d}.json"
-    params = {"terms": terms, "shortlist": short["path"], **({"ad_library": ads_file} if ads_file else {})}
+    params = {"shortlist": short["path"], **({"judgement": use_file} if use_file else {}),
+              **({"ad_library": ads_file} if ads_file else {})}
     _write(run, candidates_of(target), _dump(cards), params, SOURCE_HOOKS)
     _write(run, target, _dump(out), params, SOURCE_HOOKS)
     return target
@@ -434,8 +561,11 @@ def script_language(text: str) -> str | None:
 
 # Seasonal guard (dry run 2026-11-04): a creator-growth window always lags a dated event, so on
 # 4 Nov every Halloween trend still looked "act now". A trend tied to an event whose date has passed
-# (within `SEASON_AFTER` days) is past its peak whatever its growth says. Month-day of each event;
-# movable feasts are approximated by their earliest date and should be refined per year.
+# (within `SEASON_AFTER` days) is past its peak whatever its growth says. The agent names a trend's
+# event, in the market language and with the date of the occurrence the trend is about, in the map
+# review (B3) or a hook's judgement (B4): a row's `event` (issue #3, item 5), in any language.
+# EVENTS, English words and their month-day (movable feasts by their earliest date), is read only for
+# a row written before that: one without an `event` key, from an older map or hooks file.
 EVENTS = {
     "halloween": (10, 31), "costume": (10, 31), "día de los muertos": (11, 2), "dia de los muertos": (11, 2),
     "día de muertos": (11, 2), "dia de muertos": (11, 2), "catrina": (11, 2), "thanksgiving": (11, 22),
@@ -445,15 +575,26 @@ EVENTS = {
 SEASON_AFTER = 60
 
 
+def _over(name: str, ev: date, ref: date, season_after: int) -> str | None:
+    return f"seasonal: {name} ({ev.isoformat()}) is over" if 0 <= (ref - ev).days <= season_after else None
+
+
 def event_passed(t: dict, ref: date, season_after: int = SEASON_AFTER) -> str | None:
+    """"seasonal: <event> (<date>) is over" when the trend's event passed within `season_after` days of
+    `ref`, else None. The event is the row's `event` the agent named ({"name", "date"}, or None: no event);
+    a row from before issue #3 has no `event` key and is read against EVENTS."""
+    if "event" in t:
+        ev = t["event"]
+        return _over(ev["name"], date.fromisoformat(ev["date"]), ref, season_after) if ev else None
     text = " ".join([t.get("name") or "", t.get("what_it_is") or ""]).lower()
     for word, (m, day) in EVENTS.items():
         if re.search(rf"\b{re.escape(word)}", text):
             ev = date(ref.year, m, day)
             if ev > ref:
                 ev = date(ref.year - 1, m, day)
-            if 0 <= (ref - ev).days <= season_after:
-                return f"seasonal: {word} ({ev.isoformat()}) is over"
+            over = _over(word, ev, ref, season_after)
+            if over:
+                return over
     return None
 
 
@@ -534,15 +675,16 @@ def _inputs(run: RunFolder) -> tuple[dict, list[dict], list[dict] | None]:
     lists = run.path / trends.RESEARCH / "lists"
     if path is None and lists.is_dir() and any(f.is_file() for f in lists.glob(HOOK_LISTS)):
         raise Stop("This run has saved rising hook lists but no hooks path yet, so its hooks would be left out. Run "
-                   "tm research hooks --terms \"<the category's words>\" first, then this again; the run continues "
-                   "from the same place.")
+                   "the hooks path (tm research hook-captions, then tm research hooks --file) first, then this "
+                   "again; the run continues from the same place.")
     if path is not None:              # a hook the map already keeps is not listed twice
         kept = {r.get("id"): r for r in trends.read(path)["kept"]}
         mapped = {r.get("id") for r in rows}
         # ... but the map's row carries the hooks path's fit, use and category videos (issue #58)
         rows = [{**r, "plugin": {**(r.get("plugin") or {}), **(kept[r["id"]].get("plugin") or {}),
                                  "category_videos": kept[r["id"]].get("category_videos"),
-                                 "videos_checked": kept[r["id"]].get("videos_checked")}}
+                                 "videos_checked": kept[r["id"]].get("videos_checked")},
+                 **({"event": kept[r["id"]]["event"]} if kept[r["id"]].get("event") and not r.get("event") else {})}
                 if r.get("id") in kept else r for r in rows]
         rows += [r for hid, r in kept.items() if hid not in mapped]
     path = run.latest(trends.RESEARCH, CANDIDATES_STEM, "json")

@@ -25,7 +25,6 @@ REF = AS_OF - timedelta(days=2)
 
 
 _cfg = beauty.cfg
-_terms = beauty.terms
 _mapped = beauty.mapped_run
 
 
@@ -59,24 +58,25 @@ def _by_name(rows: list[dict], name: str) -> dict:
 # --- hooks path (TR1) -------------------------------------------------------------------------
 
 @pytest.mark.private_data
-def test_hooks_path_keeps_the_shortlist_with_its_category_counts(tmp_path, capsys):
+def test_hooks_path_keeps_the_shortlist_with_the_agents_judgement(tmp_path, capsys):
     """Issue #8: the fit scores shortlist the reference's five kept hooks; the hooks path keeps all five,
-    in fit order, with the reference's category counts on whole words (beauty.WHOLE_WORDS)."""
+    in fit order. Issue #3: whether the category uses each is the agent's judgement of its captions (made
+    here from the reference's counts, `beauty.hook_use`), never word matching."""
     run = beauty.make_run(tmp_path)
     reference = beauty.handoff("02_research/hooks_in_category.json")
     research_growth.hook_fit(run, beauty.fit_scores(reference), _cfg(hooks={"shortlist": 5}))
-    path = research_growth.hooks(run, _terms(), _cfg())
+    use = beauty.hook_use(run)
+    path = research_growth.hooks(run, use, _cfg())
     assert path == run.path / "02_research" / "hooks_in_category_v01.json"
     out = _read(path)
     assert [r["id"] for r in out["kept"]] == [r["id"] for r in reference["kept"]]
     assert [r["plugin"]["fit_rank"] for r in out["kept"]] == [1, 2, 3, 4, 5]
     assert {r["plugin"]["use"] for r in out["kept"]} == {"in_category"}      # each has category videos
     for mine, his in zip(out["kept"], reference["kept"]):
-        same = {k: v for k, v in his.items() if k not in beauty.CATEGORY_KEYS}
+        same = {k: v for k, v in his.items() if k not in beauty.JUDGED_KEYS + beauty.OLD_ONLY}
         assert {k: mine[k] for k in same} == same
-        if mine["name"] not in beauty.WHOLE_WORDS:
-            assert {k: mine[k] for k in beauty.CATEGORY_KEYS} == {k: his[k] for k in beauty.CATEGORY_KEYS}
-    assert {r["name"]: r["category_videos"] for r in out["kept"]}["day _ of _"] == 2
+        assert 0 < mine["videos_checked"] <= research_growth.CAPTIONS
+        assert mine["category_videos"] == use[mine["id"]]["category_videos"] and mine["event"] is None
     assert len(out["not_shortlisted"]) == 96
     candidates = _read(run.path / "02_research" / "hooks_candidates_v01.json")
     # the rising hooks (the derived list), then the searches' hooks, de-duplicated by id: the searches'
@@ -85,25 +85,28 @@ def test_hooks_path_keeps_the_shortlist_with_its_category_counts(tmp_path, capsy
     assert all(c["kind"] == "hook_trend" for c in candidates) and len(candidates) == 101
 
     # the command: the same files again as _v02, never over the first
-    assert main(["research", "hooks", "--run", str(run.path), "--terms", ",".join(_terms()), "--json"]) == 0
+    (run.path / "03_wip" / "hook_use_v01.json").write_text(json.dumps(use), encoding="utf-8")
+    assert main(["research", "hooks", "--run", str(run.path), "--file", "03_wip/hook_use_v01.json", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "done" and payload["json"] == "02_research/hooks_in_category_v02.json"
     assert payload["candidates"] == "02_research/hooks_candidates_v02.json"
     assert (payload["kept"], payload["in_category"], payload["checked"]) == (5, 5, 101)
-    assert _read(run.path / payload["json"]) == _read(path)
-    assert main(["research", "hooks", "--run", str(run.path), "--terms", " , ", "--json"]) == 1
+    assert _read(run.path / payload["json"]) == {**_read(path), "judgement": "03_wip/hook_use_v01.json"}
 
     # a hook only a search found is a candidate too, after the listed ones: it needs a fit score first
     card = {"id": "hnew", "kind": "hook_trend", "name": "glow check _", "status": "confirmed"}
     trends.save_answer(run, "search_trends", {"about": "glow"}, {"data": [card, {**card, "id": "t", "kind": "topic_trend"}]})
     with pytest.raises(Stop, match="glow check _"):
-        research_growth.hooks(run, _terms(), _cfg())
-    videos = [{"asset_id": f"tiktok:{i}", "creator": f"c{i}", "excerpt": "glow serum", "published": "2026-10-30T10:00:00Z"}
-              for i in range(3)]
+        research_growth.hooks(run, use, _cfg())
+    videos = [{"asset_id": f"tiktok:{i}", "creator": f"c{i}", "excerpt": f"glow serum {i}",
+               "published": "2026-10-30T10:00:00Z"} for i in range(3)]
     (run.path / "02_research" / "videos" / "hnew_p01.json").write_text(json.dumps({"data": videos}), encoding="utf-8")
     scores = {**beauty.fit_scores(reference), "hnew": {k: 5 for k in brief_config.CRITERIA}}
     research_growth.hook_fit(run, scores, _cfg(hooks={"shortlist": 6}))
-    third = _read(research_growth.hooks(run, _terms(), _cfg()))
+    with pytest.raises(Stop, match="glow check _"):                       # judged before the hooks path
+        research_growth.hooks(run, use, _cfg())
+    use["hnew"] = {"in_category": True, "category_videos": 3, "why": "serum videos", "event": None}
+    third = _read(research_growth.hooks(run, use, _cfg()))
     assert third["kept"][0]["id"] == "hnew" and third["kept"][0]["category_videos"] == 3
     assert [c["id"] for c in _read(run.path / "02_research" / "hooks_candidates_v03.json")][-1] == "hnew"
 
@@ -115,12 +118,13 @@ def test_hooks_need_the_shortlisted_videos_only(tmp_path, capsys):
     for row in reference["not_in_category"]:          # never shortlisted: never fetched
         for f in trends.video_files(run, row["id"]):
             f.unlink()
-    assert main(["research", "hooks", "--run", str(run.path), "--terms", "makeup", "--json"]) == 0
+    use = json.dumps(beauty.hook_use(run))
+    assert main(["research", "hooks", "--run", str(run.path), "--file", use, "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["json"] == "02_research/hooks_in_category_v02.json"
     missing = reference["kept"][2]["id"]
     for f in trends.video_files(run, missing):
         f.unlink()
-    assert main(["research", "hooks", "--run", str(run.path), "--terms", "makeup", "--json"]) == 2
+    assert main(["research", "hooks", "--run", str(run.path), "--file", use, "--json"]) == 2
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "stop" and missing in payload["message"]
     assert "continues from the same place" in payload["message"]
@@ -136,9 +140,9 @@ def test_growth_rebuilds_beauty_growth_and_snapshot(tmp_path, capsys):
     assert path == run.path / "02_research" / "growth_v01.json"
     growth, snapshot = _read(path), _read(run.path / "02_research" / "snapshot_v01.json")
 
-    expected, changed = beauty.as_whole_words(beauty.handoff("02_research/growth.json"), run)
+    expected = beauty.as_judged(beauty.handoff("02_research/growth.json"), run)   # issue #3: judged hooks
     expected = beauty.as_rising_bands(expected, run)                    # issue #58: hooks by rising place
-    assert _strip(growth) == expected and changed == beauty.WHOLE_WORDS   # issue #8: whole words
+    assert _strip(growth) == expected
     assert _strip(snapshot) == beauty.as_rising_bands(beauty.handoff("02_research/snapshot.json"), run)
     md = (run.path / "02_research" / "growth_v01.md").read_text(encoding="utf-8")
     his_md = (beauty.BEAUTY / "02_research" / "growth.md").read_text(encoding="utf-8").replace("\r\n", "\n")
@@ -173,9 +177,8 @@ def test_growth_rebuilds_beauty_growth_and_snapshot(tmp_path, capsys):
     assert prev.name == "growth_2026-10-29_rebuilt_v01.json"
     prev_snap = _read(run.path / "02_research" / "snapshot_growth_2026-10-29_rebuilt_v01.json")
     assert prev_snap["rebuilt"] is True
-    original, changed = beauty.as_whole_words(beauty.handoff("02_research/growth_2026-10-29_reconstructed.json"), run)
+    original = beauty.as_judged(beauty.handoff("02_research/growth_2026-10-29_reconstructed.json"), run)
     original = beauty.as_rising_bands(original, run)
-    assert changed == beauty.WHOLE_WORDS
     assert _strip(_read(prev))["params"] == original["params"]
     assert no_confidence(_strip(_read(prev))["trends"]) == no_confidence(original["trends"])
     original_snap = beauty.as_rising_bands(beauty.handoff("02_research/snapshot_growth_2026-10-29_reconstructed.json"), run)

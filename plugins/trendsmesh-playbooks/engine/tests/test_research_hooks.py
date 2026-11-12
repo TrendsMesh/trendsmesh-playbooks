@@ -3,8 +3,9 @@
 A small "nails" run built here: a category map of two topics, one saved rising hook list of five hooks
 (one contradicted), and videos for the hooks the tests fetch. `tm research hook-fit` checks the agent's
 fit scores (Creative brief's seven CB3 criteria, from the cards) and writes the shortlist; the fetch
-plan then names only the shortlisted hooks; `tm research hooks` counts each shortlisted hook's videos in
-the category (whole words, any match) as information, never as a gate.
+plan then names only the shortlisted hooks; `tm research hook-captions` lists their captions and `tm research
+hooks` records the agent's judgement of each one (issue #3: in the category or a transfer, never word
+matching) as information, never as a gate.
 """
 
 import json
@@ -65,6 +66,22 @@ def _fit(run: RunFolder, rows: dict, nn: int = 1) -> str:
     rel = f"03_wip/hook_fit_v{nn:02d}.json"
     (run.path / rel).write_text(json.dumps(rows), encoding="utf-8")
     return rel
+
+
+def _judge(run: RunFolder, counts: dict | None = None, **events) -> dict:
+    """The agent's judgement of every shortlisted hook: `counts` (hook id -> its captions about the category,
+    by default every caption read), each with a made-up line on why, and `events` by hook id."""
+    out = {}
+    for r in research_growth.shortlist(run)["shortlist"]:
+        read = len(research_growth.captions_read(trends.load_videos(run, r["id"])))
+        n = (counts or {}).get(r["id"], read)
+        out[r["id"]] = {"in_category": n > 0, "category_videos": n, "why": f"{n} of {read} are nail videos",
+                        "event": events.get(r["id"])}
+    return out
+
+
+def _texts(word: str, n: int) -> list[str]:
+    return [f"{word} {i}" for i in range(n)]
 
 
 FIT = {"h1": _row(3), "h2": _row(5), "h3": _row(4, why="the blank takes a nail step"), "h4": _row(5), "h5": _row(2)}
@@ -165,41 +182,125 @@ def test_fetch_plan_of_a_run_whose_hooks_path_read_every_hook(tmp_path):
     assert research_digest.fetch_plan(run, {})["fetch"] == ["h1", "h2", "h3", "h4", "h5", "t1", "t2"]
 
 
-# --- tm research hooks: the shortlist's category presence, whole words -----------------------
+# --- tm research hooks: the agent's judgement of each shortlisted hook (issue #3, item 5) ----------
 
-def test_hooks_count_whole_words_and_keep_every_shortlisted_hook(tmp_path, capsys):
+def _views(run: RunFolder, trend_id: str, rows: list[tuple[str, int]]) -> None:
+    """Videos of `trend_id` with these (excerpt, views)."""
+    _videos(run, trend_id, [t for t, _ in rows])
+    path = run.path / "02_research" / "videos" / f"{trend_id}_p01.json"
+    data = _read(path)
+    for v, (_, views) in zip(data["data"], rows):
+        v["views"] = views
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_hook_captions_list_each_shortlisted_hooks_most_viewed_captions(tmp_path, capsys, monkeypatch):
     run = _run(tmp_path)
-    research_growth.hook_fit(run, FIT, _cfg(3))       # h2, h3, h1
-    _videos(run, "h2", ["start the day", "my artist friend", "smart move"])          # "art" in parts only
-    _videos(run, "h3", ["nail art in 5 minutes", "NAILS done", "a nail-polish haul", "unrelated"])
-    _videos(run, "h1", ["day 3 of my nails"])
-    # the hooks not shortlisted have no videos: nothing asks for them
-    path = research_growth.hooks(run, ["art", "nail", "nail art"], _cfg())
+    research_growth.hook_fit(run, FIT, _cfg(2))                          # h2, h3
+    _views(run, "h2", [("pov: twój manicure", 10), ("POV: robię paznokcie", 900), ("pov: twój manicure", 50),
+                       ("", 5000)])
+    _videos(run, "h3", _texts("start your day with nails", 5))
+    monkeypatch.setattr(research_growth, "CAPTIONS", 3)
+    path, counts = research_growth.hook_captions(run)
+    assert path == run.path / "03_wip" / "hook_captions_v01.md" and counts == {"h2": 2, "h3": 3}
+    text = path.read_text(encoding="utf-8")
+    # most-viewed first, the same words once, a video without a caption left out; capped at CAPTIONS
+    assert "1. POV: robię paznokcie\n2. pov: twój manicure\n\n" in text
+    assert text.index("pov _") < text.index("start your _ with _")         # fit order
+    assert "start your day with nails 2" in text and "start your day with nails 3" not in text
+    assert "hooks_shortlist_v01.json" in text and '"in_category"' in text   # what to write next
+    v = {"excerpt": "  nail\nart ", "hook_text": "nail art", "slot_fill": "chrome"}
+    assert research_growth.caption(v) == "nail art · chrome"
+    assert len(research_growth.caption({"excerpt": "x" * 500})) == research_growth.CAPTION_CHARS
+
+    assert main(["research", "hook-captions", "--run", str(run.path), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["file"] == "03_wip/hook_captions_v02.md" and payload["captions"] == {"h2": 2, "h3": 3}
+    assert "tm research hooks --file" in payload["message"]
+
+
+def test_hooks_keep_every_shortlisted_hook_with_the_agents_judgement(tmp_path, capsys):
+    """A Polish category ("makijaż") whose captions inflect the word: whole-word matching found no
+    category video in "makijażu" or "makijażem" and called the hook a transfer. The agent's judgement
+    says it is used in the category, in any language."""
+    run = _run(tmp_path)
+    research_growth.hook_fit(run, FIT, _cfg(3))                          # h2, h3, h1
+    _videos(run, "h2", ["pov: mój codzienny makijażu krok", "pov: z makijażem do pracy", "pov: mój pies"])
+    _videos(run, "h3", ["朝のメイクを始めよう", "start your day with coffee"])
+    _videos(run, "h1", ["day 3 of my car build"])
+    use = _judge(run, {"h2": 2, "h3": 1, "h1": 0})
+    use["h2"]["why"] = "two of three captions are makeup (makijaż in its forms), one is a dog"
+    path = research_growth.hooks(run, use, _cfg())
     out = _read(path)
     kept = {r["id"]: r for r in out["kept"]}
     assert [r["id"] for r in out["kept"]] == ["h2", "h3", "h1"]          # in fit order, none dropped
-    assert kept["h2"]["category_videos"] == 0 and kept["h2"]["plugin"]["use"] == "transfer"
-    assert kept["h3"]["category_videos"] == 2 and kept["h3"]["videos_checked"] == 4   # "nails" is another word
-    assert kept["h3"]["plugin"] == {"fit": 4.0, "fit_rank": 2, "in_category": True, "use": "in_category",
-                                    "why": "the blank takes a nail step", "ad_library": None}
-    assert kept["h1"]["category_videos"] == 0                               # "nails" is not "nail"
+    assert (kept["h2"]["category_videos"], kept["h2"]["videos_checked"]) == (2, 3)
+    assert kept["h2"]["plugin"] == {"fit": 5.0, "fit_rank": 1, "in_category": True, "use": "in_category",
+                                    "why": None, "use_why": use["h2"]["why"], "ad_library": None}
+    assert kept["h3"]["plugin"]["use"] == "in_category" and kept["h3"]["category_share"] == 0.5
+    assert kept["h1"]["plugin"]["use"] == "transfer" and kept["h1"]["category_videos"] == 0
+    assert all(r["event"] is None for r in out["kept"]) and out["judgement"] is None
+    assert "terms" not in out
     assert [r["id"] for r in out["not_shortlisted"]] == ["h5"]
     assert out["shortlist"] == "02_research/hooks_shortlist_v01.json"
     assert [c["id"] for c in _read(research_growth.candidates_of(path))] == ["h1", "h2", "h3", "h4", "h5"]
 
-    assert main(["research", "hooks", "--run", str(run.path), "--terms", "nail,nails", "--json"]) == 0
+    (run.path / "03_wip" / "hook_use_v01.json").write_text(json.dumps(use), encoding="utf-8")
+    assert main(["research", "hooks", "--run", str(run.path), "--file", "03_wip/hook_use_v01.json", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["kept"] == 3 and payload["in_category"] == 2 and payload["transfer"] == 1
     assert "start your _ with _" in payload["message"]
+    assert _read(run.path / payload["json"])["judgement"] == "03_wip/hook_use_v01.json"
+    long = {hid: {**row, "why": row["why"] + " " + "x" * 400} for hid, row in use.items()}   # the JSON itself
+    assert main(["research", "hooks", "--run", str(run.path), "--file", json.dumps(long), "--json"]) == 0
+    assert _read(run.path / json.loads(capsys.readouterr().out)["json"])["judgement"] is None
+
+
+def test_hooks_need_a_judgement_of_every_shortlisted_hook_that_holds(tmp_path, capsys):
+    run = _run(tmp_path)
+    research_growth.hook_fit(run, FIT, _cfg(2))                          # h2, h3
+    _videos(run, "h2", _texts("nail", 3))
+    _videos(run, "h3", _texts("nail", 2))
+    good = _judge(run)
+
+    def problems(**rows):
+        return " ".join(p.what for p in research_growth.check_hook_use(
+            run, {k: v for k, v in ({**good, **rows}).items() if v is not None}))
+
+    assert problems() == ""
+    assert "no judgement" in problems(h3=None) and "start your _ with _" in problems(h3=None)
+    assert "not a hook of the latest shortlist" in problems(h5=good["h2"])
+    assert "from 0 to 3" in problems(h2={**good["h2"], "category_videos": 4})        # above the captions read
+    assert "from 0 to 3" in problems(h2={**good["h2"], "category_videos": True})
+    assert "exactly when" in problems(h2={**good["h2"], "in_category": False})
+    assert "true or false" in problems(h2={**good["h2"], "in_category": "yes"})
+    assert "why" in problems(h2={**good["h2"], "why": " "})
+    assert "not YYYY-MM-DD" in problems(h2={**good["h2"], "event": {"name": "Andrzejki", "date": "30.11"}})
+    assert "name is empty" in problems(h2={**good["h2"], "event": {"name": "", "date": "2026-11-30"}})
+    assert "event is null or" in problems(h2={**good["h2"], "event": "Andrzejki"})
+    assert "matches is not a field" in problems(h2={**good["h2"], "matches": 3})
+    assert research_growth.check_hook_use(run, {})[0].field == "hook_use"
+    # the command: exit 2 with each problem, nothing written
+    bad = json.dumps({"h2": good["h2"]})
+    assert main(["research", "hooks", "--run", str(run.path), "--file", bad, "--json"]) == 2
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "stop" and "start your _ with _" in payload["message"]
+    assert not list((run.path / "02_research").glob("hooks_in_category_v*.json"))
+    with pytest.raises(Stop, match="no judgement"):
+        research_growth.hooks(run, {"h2": good["h2"]}, _cfg())
 
 
 def test_hooks_stop_without_a_shortlist_or_with_a_stale_one(tmp_path):
     run = _run(tmp_path)
     with pytest.raises(Stop, match="hook-fit"):
-        research_growth.hooks(run, ["nail"], _cfg())
+        research_growth.hooks(run, {}, _cfg())
+    with pytest.raises(Stop, match="hook-fit"):
+        research_growth.hook_captions(run)
     research_growth.hook_fit(run, FIT, _cfg(2))
     with pytest.raises(Stop, match="no saved evidence videos"):           # the shortlist needs its videos
-        research_growth.hooks(run, ["nail"], _cfg())
+        research_growth.hooks(run, {}, _cfg())
+    with pytest.raises(Stop, match="no saved evidence videos"):
+        research_growth.hook_captions(run)
     trends.save_answer(run, "list_trends", {"sort": "rising", "trend_type": "hook_trend", "page": 2},
                        {"data": [{"id": "h9", "kind": "hook_trend", "name": "new _"}], "has_more": False})
     with pytest.raises(Stop, match="h9"):                                  # a hook listed after the fit
@@ -207,13 +308,7 @@ def test_hooks_stop_without_a_shortlist_or_with_a_stale_one(tmp_path):
     _videos(run, "h2", ["nail"])
     _videos(run, "h3", ["nail"])
     with pytest.raises(Stop, match="new _"):
-        research_growth.hooks(run, ["nail"], _cfg())
-
-
-def test_matcher_is_whole_word_and_case_blind():
-    match = research_growth.term_matcher(["art", "nail art", "make-up", "ślub"])
-    assert match("Nail Art tips") and match("ART!") and match("my make-up") and match("ŚLUB w maju")
-    assert not match("start") and not match("artist") and not match("smart") and not match("ślubny")
+        research_growth.hooks(run, {}, _cfg())
 
 
 # --- growth: the hooks' pool is the hooks with videos ---------------------------------------------
@@ -223,9 +318,9 @@ def test_growth_ranks_hooks_among_those_read_and_never_stops_on_the_rest(tmp_pat
     for tid in ("t1", "t2"):
         _videos(run, tid, ["nails"] * 3)
     research_growth.hook_fit(run, FIT, _cfg(2))
-    _videos(run, "h2", ["nail"] * 4)
-    _videos(run, "h3", ["nail"] * 2)
-    research_growth.hooks(run, ["nail"], _cfg())
+    _videos(run, "h2", _texts("nail", 4))
+    _videos(run, "h3", _texts("nail", 2))
+    research_growth.hooks(run, _judge(run), _cfg())
     path = research_growth.compute(run, AS_OF, _cfg())
     out = _read(path)
     assert out["params"]["category"]["hooks_pool"] == 2
@@ -235,6 +330,64 @@ def test_growth_ranks_hooks_among_those_read_and_never_stops_on_the_rest(tmp_pat
     assert out["plugin"]["hooks_not_read"] == ["h1", "h4", "h5"]  # listed, never fetched: not in the pool
     assert sorted(_read(run.path / "02_research" / "snapshot_v01.json")["pool_ids"]) == \
         ["h1", "h2", "h3", "h4", "h5", "t1", "t2"]
+
+
+# --- the seasonal guard reads the event the agent named (issue #3, item 5) ---------------------
+
+def test_growth_puts_a_trend_past_its_peak_by_the_event_the_agent_named(tmp_path):
+    """The agent names each trend's event in the market language (the map review, a hook's judgement), so
+    the guard works in any language; a row from before (no `event` key) still reads the English list."""
+    run = _run(tmp_path)
+    cmap = _read(run.path / "02_research" / "category_map_v01.json")
+    cmap["kept"][0] |= {"name": "Paznokcie na Wszystkich Świętych",
+                        "event": {"name": "Wszystkich Świętych", "date": "2026-11-01"}}
+    cmap["kept"][1] |= {"name": "Halloween velvet nails", "event": None}        # the agent: no dated event
+    cmap["kept"].append({"id": "t3", "name": "Halloween chrome nails", "kind": "topic_trend", "group": "nails",
+                         "sub_category": "nails", "status": "confirmed"})       # a map from before: no key
+    cmap["kept"].append({"id": "t4", "name": "Andrzejki nails", "kind": "topic_trend", "group": "nails",
+                         "sub_category": "nails", "status": "confirmed",
+                         "event": {"name": "Andrzejki", "date": "2026-11-29"}})  # still ahead
+    (run.path / "02_research" / "category_map_v01.json").write_text(json.dumps(cmap), encoding="utf-8")
+    for tid in ("t1", "t2", "t3", "t4"):
+        _videos(run, tid, _texts("nails", 3))
+    research_growth.hook_fit(run, FIT, _cfg(2))
+    _videos(run, "h2", _texts("ネイル", 2))
+    _videos(run, "h3", _texts("nails", 2))
+    research_growth.hooks(run, _judge(run, h2={"name": "ハロウィン", "date": "2026-10-31"}), _cfg())
+    rows = {r["id"]: r for r in _read(research_growth.compute(run, AS_OF, _cfg()))["trends"]}
+    assert rows["t1"]["seasonal_over"] == "seasonal: Wszystkich Świętych (2026-11-01) is over"
+    assert rows["h2"]["seasonal_over"] == "seasonal: ハロウィン (2026-10-31) is over"
+    assert rows["t1"]["bucket"] == rows["h2"]["bucket"] == "past_peak"
+    assert rows["t2"]["seasonal_over"] is None and rows["t4"]["seasonal_over"] is None
+    assert rows["h3"]["seasonal_over"] is None
+    assert rows["t3"]["seasonal_over"] == "seasonal: halloween (2026-10-31) is over"   # the English list
+    ref = date(2026, 11, 2)
+    assert research_growth.event_passed({"event": {"name": "Ōmisoka", "date": "2026-12-31"}}, date(2027, 1, 5)) \
+        == "seasonal: Ōmisoka (2026-12-31) is over"
+    assert research_growth.event_passed({"event": {"name": "x", "date": "2026-11-01"}}, ref, 0) is None
+    assert research_growth.event_passed({"name": "Halloween nails", "event": None}, ref) is None
+
+
+def test_growth_of_a_hooks_file_from_before_the_judgement(tmp_path):
+    """A run whose hooks path matched words (before issue #3) still computes: its hook rows have no `event`
+    key, so the English list guards them, and their use stays as written."""
+    run = _run(tmp_path)
+    for tid in ("t1", "t2"):
+        _videos(run, tid, _texts("nails", 3))
+    research_growth.hook_fit(run, FIT, _cfg(2))
+    _videos(run, "h2", _texts("nail", 2))
+    _videos(run, "h3", _texts("nail", 2))
+    path = research_growth.hooks(run, _judge(run, {"h3": 0}), _cfg())
+    old = _read(path)
+    old["terms"] = ["nail"]
+    for r in old["kept"]:
+        r.pop("event")
+        r["plugin"].pop("use_why")
+        r["name"] = "pov: halloween " + r["name"]
+    path.write_text(json.dumps(old), encoding="utf-8")
+    rows = {r["id"]: r for r in _read(research_growth.compute(run, AS_OF, _cfg()))["trends"]}
+    assert rows["h2"]["seasonal_over"] == "seasonal: halloween (2026-10-31) is over"
+    assert (rows["h2"]["plugin"]["use"], rows["h3"]["plugin"]["use"]) == ("in_category", "transfer")
 
 
 # --- the config ---------------------------------------------------------------------------------
@@ -277,10 +430,10 @@ def _grown_hooks(tmp_path, shortlist: int = 3) -> RunFolder:
     card = {"id": "h6", "kind": "hook_trend", "name": "glow check _", "status": "confirmed"}
     trends.save_answer(run, "search_trends", {"about": "glow"}, {"data": [card]})
     research_growth.hook_fit(run, {**FIT, "h6": _row(4)}, _cfg(shortlist))      # h2, h3, then h6 (a tie)
-    _videos(run, "h2", ["nail"] * 4)
-    _videos(run, "h3", ["nail"] * 2)
-    _videos(run, "h6", ["nail"] * 2)
-    research_growth.hooks(run, ["nail"], _cfg())
+    _videos(run, "h2", _texts("nail", 4))
+    _videos(run, "h3", _texts("nail", 2))
+    _videos(run, "h6", _texts("nail", 2))
+    research_growth.hooks(run, _judge(run), _cfg())
     return run
 
 
@@ -373,12 +526,12 @@ def test_hooks_carry_their_ad_library_verdict(tmp_path):
     research_growth.hook_fit(run, FIT, _cfg(2))
     _videos(run, "h2", ["nail"])
     _videos(run, "h3", ["nail"])
-    out = _read(research_growth.hooks(run, ["nail"], _cfg()))
+    out = _read(research_growth.hooks(run, _judge(run), _cfg()))
     assert {r["plugin"]["ad_library"] for r in out["kept"]} == {None} and out["ad_library"] is None  # not checked
     _ads(run, "pov nail salon", [{"page_name": "Salon A"}])
     _ads(run, "start your manicure with")
     _hook_ads(run, HOOK_ADS)
-    out = _read(research_growth.hooks(run, ["nail"], _cfg()))
+    out = _read(research_growth.hooks(run, _judge(run), _cfg()))
     kept = {r["id"]: r["plugin"]["ad_library"] for r in out["kept"]}
     assert kept["h2"] == {"verdict": "competitor_found", "query": "pov nail salon", "advertisers": ["Salon A (2 ads)"]}
     assert kept["h3"] == {"verdict": "none_found", "query": "start your manicure with", "advertisers": []}
@@ -387,10 +540,10 @@ def test_hooks_carry_their_ad_library_verdict(tmp_path):
     research_growth.hook_fit(run, FIT, _cfg(3))                           # h1 is shortlisted now
     _videos(run, "h1", ["nail"])
     with pytest.raises(Stop, match="day _ of _"):
-        research_growth.hooks(run, ["nail"], _cfg())
+        research_growth.hooks(run, _judge(run), _cfg())
     assert not (run.path / "02_research" / "hooks_in_category_v03.json").exists()
     _hook_ads(run, {"checked": False, "checks": []}, nn=2)                # Meta went away: not checked
-    out = _read(research_growth.hooks(run, ["nail"], _cfg()))
+    out = _read(research_growth.hooks(run, _judge(run), _cfg()))
     assert {r["plugin"]["ad_library"] for r in out["kept"]} == {None}
 
 
