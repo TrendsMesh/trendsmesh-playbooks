@@ -299,10 +299,12 @@ def published(run: RunFolder, page: str) -> dict | None:
 # --- decisions taken on a page ------------------------------------------------------------------
 
 READ_AGAIN = ("Read the decisions again with one unfiltered ArtifactData list (the page's url, collection {collection}, "
-              "query.limit 1000, and no cursor, where or order_by, nor out_dir; with the older tools, one db_list "
-              "on its slug, limit 1000), so every saved decision is in one answer, then run this again. The run "
-              "continues from the same place.")
-_PARTIAL = ("cursor", "where", "orderBy", "order_by", "out_dir")     # a db read that holds part of the decisions
+              "query.limit 1000, and no cursor, where, order_by or as_level, nor out_dir; with the older tools, one "
+              "db_list on its slug, limit 1000), so every saved decision is in one answer. When the run does not save "
+              "that read by itself (a Refresh an ad run, or when a note says it was not saved), save it with tm trends "
+              "ingest --run <run> --tool ArtifactData --input <a file with the call's input> --file <a file with its "
+              "whole answer>. Then run this again. The run continues from the same place.")
+_PARTIAL = ("cursor", "where", "orderBy", "order_by", "out_dir", "as_level")   # a db read that holds part of the decisions
 _JSON_START = re.compile(r'\{\s*"')
 # ArtifactData's text answer: its summary line, and the line it adds when more pages exist
 _COUNT_LINE = re.compile(r'^(\d+) documents? from collection "', re.M)
@@ -451,7 +453,8 @@ def _partial(given: dict) -> list[str]:
 
 def saved_answer(run: RunFolder, page: str, collection: str) -> Path | None:
     """The newest saved db_list/db_query answer on this run's `page` (its slug) and `collection`, by
-    its `_at`; None when there is none (or the page's publish is not recorded). A saved answer that
+    its `_at`; None when there is none (or the page's publish is not recorded). A read made as a viewer
+    (`as_level`) is never one: it shows what a viewer sees, not the decisions. A saved answer that
     cannot be read and is newer than it (by the file's time) is a Stop: it may be this page's newest
     read, and an older one is never read in its place."""
     slug = _slug(run, page)
@@ -469,6 +472,8 @@ def saved_answer(run: RunFolder, page: str, collection: str) -> Path | None:
                 damaged.append(f)
                 continue
             given = data.get("_input") if isinstance(data, dict) else None
+            if isinstance(given, dict) and mcp_saves.viewer_check(given):
+                continue                              # a viewer's check (as_level, saved by 0.11.0), never the decisions
             if (slug is not None and isinstance(given, dict) and _artifact_of(given) == slug
                     and str(given.get("collection", "")).strip("/") == collection):
                 at = _when(data.get("_at"))

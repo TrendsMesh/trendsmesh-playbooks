@@ -402,3 +402,36 @@ def test_review_build_now_builds_the_run_page_locally(run, capsys):
     html = Path(out["path"]).read_text(encoding="utf-8")
     assert "Before: 01_base/orig.mp4" in html and 'class="play"' in html and "<input class=\"seek\"" in html
     assert review.pairs(run) == [("01_base/orig.mp4", "03_wip/edit_v02.mp4")]
+
+
+# --- issue #54's live check ---------------------------------------------------------------------------
+
+def test_a_viewer_check_saved_after_the_read_is_never_taken_as_the_decisions(run):
+    """0.11.0's collector saved the `as_level` read the Artifact tool suggests after a publish; when it is the newest
+    read, the owner's read before it still holds the choice."""
+    run_page.build(run, _ask(run))
+    _publish(run)
+    _read(run, _doc())
+    _read(run, at="2999-01-02T00:00:00+00:00", as_level="interact")      # sees nothing: owner-only
+    assert run_page.decision(run, "G1")["choice"] == "ad1"
+
+
+def test_no_saved_read_names_the_command_that_saves_one(run):
+    run_page.build(run, _ask(run))
+    _publish(run)
+    with pytest.raises(Stop) as stop:
+        run_page.decision(run, "G1")
+    assert "tm trends ingest --run" in str(stop.value) and "--tool ArtifactData" in str(stop.value)
+
+
+def test_the_pages_own_title_is_the_runs_language_and_the_build_gives_it(polish_run, tmp_path, capsys):
+    """The Artifact tool takes the HTML's <title> over its `title`: the <title> is the localized one, the playbook's
+    name included, and the build gives it for the publish."""
+    words.reset()
+    english = run_page.build(polish_run)
+    assert english["title"] == f"Refresh an ad: {polish_run.path.name}"
+    assert f"<title>{english['title']}</title>" in _html(polish_run, english)
+    _translate(tmp_path)
+    built = run_page.build(polish_run)
+    assert built["lang"] == "pl" and built["title"] == f"PL·{_pseudo('Refresh an ad')}: {polish_run.path.name}"
+    assert f"<title>{built['title']}</title>" in _html(polish_run, built)

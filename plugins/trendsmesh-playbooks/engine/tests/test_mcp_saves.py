@@ -283,3 +283,61 @@ def test_the_hook_matcher_takes_the_artifact_tools():
     matcher = hooks["hooks"]["PostToolUse"][0]["matcher"]
     for name in ("Artifact", "ArtifactData", "mcp__claude-artifacts__db_list", "mcp__claude-artifacts__publish_files"):
         assert re.fullmatch(matcher, name), name
+
+
+# --- issue #54's live check: what the app adds to a call, the viewer check, a run without the collector ----------
+
+PINS = {"__artifactConsentPin": "pin-1", "__artifactDbReadTargetPin": {"url": ART_URL},
+        "__artifactPublishSourcePin": {"path": "/Users/someone/ws/04_final/run_page_v01/index.html",
+                                       "sha256": "0" * 64}}
+
+
+def test_the_apps_own_keys_are_never_saved(ws):
+    """The desktop app adds `__artifact*` keys to the built-in tools' input (one holds a local path and a hash):
+    they are not the call's, so neither the saved file nor the manifest keeps them."""
+    run = ws / BRIEF_REL
+    whole = {"action": "list", "url": ART_URL, "collection": "decisions", "query": {"limit": 1000}}
+    trend_spool.handle(_builtin(ws, "ArtifactData", {**whole, **PINS}, ART_LIST), ws)
+    publish = {"file_path": "/w/index.html", "files": {}, "capabilities": {"db": {}}}
+    trend_spool.handle(_builtin(ws, "Artifact", {**publish, **PINS, "files": {"a.css": "/w/a.css", **PINS}},
+                                ART_PUBLISHED), ws)
+    assert _read(run / "03_wip" / "decisions" / "db_list_v01.json")["_input"] == whole
+    assert _read(run / "03_wip" / "publish" / "artifact_publish_v01.json")["_input"] == {
+        **publish, "files": {"a.css": "/w/a.css"}}
+    text = "".join(p.read_text(encoding="utf-8") for p in RunFolder.open(run).path.rglob("*") if p.is_file())
+    assert "__artifact" not in text and "/Users/someone" not in text and "0" * 64 not in text
+
+
+def test_an_as_level_read_is_never_saved(ws, tmp_path, capsys):
+    """The read the Artifact tool suggests after a publish (`as_level`: what a viewer sees) is not the owner's read
+    of the decisions: the hook does not save it, and `ingest` says why it does not."""
+    whole = {"action": "list", "url": ART_URL, "collection": "decisions", "query": {"limit": 1000}}
+    assert not mcp_saves.kept_by(CREATIVE_BRIEF, "ArtifactData", {**whole, "as_level": "interact"})
+    assert trend_spool.handle(_builtin(ws, "ArtifactData", {**whole, "as_level": "interact"}, "0 documents"), ws) is None
+    assert _files(ws) == []
+    answer = tmp_path / "answer.txt"
+    answer.write_text("0 documents", encoding="utf-8")
+    assert main(["trends", "ingest", "--run", str(ws / BRIEF_REL), "--tool", "ArtifactData", "--input",
+                 json.dumps({**whole, "as_level": "view"}), "--file", str(answer), "--json"]) != 0
+    assert "as_level" in json.loads(capsys.readouterr().out)["message"]
+    assert _files(ws) == []
+
+
+def test_ingest_files_a_page_read_under_decisions_in_a_run_without_the_collector(tmp_path, monkeypatch, capsys):
+    """Refresh an ad has no collector, so its page's read reaches the run with `ingest`: where `tm page decision`
+    looks (03_wip/decisions), never 02_research/other. Its Meta reads still go where they went."""
+    from tm.playbooks import REFRESH_AD
+    monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "data"))
+    run = RunFolder.create(tmp_path / "ws", "ad 3", date(2026, 11, 7), playbook=REFRESH_AD)
+    answer = tmp_path / "answer.txt"
+    answer.write_text(ART_LIST, encoding="utf-8")
+    whole = {"action": "list", "url": ART_URL, "collection": "decisions", "query": {"limit": 1000}}
+    assert main(["trends", "ingest", "--run", str(run.path), "--tool", "ArtifactData", "--input",
+                 json.dumps({**whole, **PINS}), "--file", str(answer), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["file"] == "03_wip/decisions/db_list_v01.json"
+    assert _read(run.path / "03_wip" / "decisions" / "db_list_v01.json")["_input"] == whole
+    meta = tmp_path / "meta.json"
+    meta.write_text('{"data": []}', encoding="utf-8")
+    assert main(["trends", "ingest", "--run", str(run.path), "--tool", "ads_get_creatives", "--input", "{}",
+                 "--file", str(meta), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["file"].startswith("02_research/other/")

@@ -793,3 +793,23 @@ def test_marker_still_refused_after_the_wait(ws, capsys, monkeypatch):
     monkeypatch.setattr(trend_spool.os, "replace", refused)
     with pytest.raises(PermissionError):
         trend_spool.collect_on(ws, ws / RUN_REL, "s1")
+
+
+def test_the_live_trends_envelope_is_summarised(ws, capsys):
+    """Issue #54: the live search answers `{"trends": [...], "total": N}`. It is replaced by the summary, which says
+    the total and whether more pages follow; an error in that envelope is still never replaced."""
+    _on(ws, capsys)
+    cards = [{"id": f"t{n}", "kind": "topic_trend", "name": f"T{n}", "status": "confirmed"} for n in range(3)]
+    assert trend_spool.summarisable("search_trends", {"trends": cards, "total": 7})
+    assert trend_spool.summarisable("list_trends", {"trends": [], "total": 0})
+    assert not trend_spool.summarisable("search_trends", {"trends": cards, "error": "x"})
+    assert not trend_spool.summarisable("get_trend_videos", {"trends": cards})
+    got = _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "glass skin", "limit": 3},
+                                             {"trends": cards, "total": 7}), ws))
+    assert (got["results"], got["total"], got["has_more"]) == (3, 7, True)
+    assert [c["id"] for c in got["cards"]] == ["t0", "t1", "t2"]
+    last = _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "glass skin", "limit": 3, "page": 3},
+                                              {"trends": cards[:1], "total": 7}), ws))
+    assert (last["page"], last["results"], last["has_more"]) == (3, 1, False)
+    assert trend_spool.handle(_event(ws, "search_trends", {"about": "nails"},
+                                     {"error": "not_in_plan", "trends": []}), ws) is None

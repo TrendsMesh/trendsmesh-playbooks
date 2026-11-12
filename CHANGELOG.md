@@ -12,6 +12,23 @@ What changed in each version of the TrendsMesh playbooks plugin.
   quoted cut short, with "[passage omitted]" where a sentence asking Claude to do something stood. `tm brief
   decisions` now hands over each note as it was written, an approval's note too, in lines ready to quote, and
   Claude pastes them into its reply unchanged and tells you nothing was done with them.
+- **A choice saved on Refresh an ad's run page is read.** `tm page decision` used to stop with "Read the decisions
+  again…" even after a fresh read, because nothing put a Refresh an ad run's read where it looks. Now
+  `tm trends ingest` files a page's database read under `03_wip/decisions/` in any run, the playbook saves the read
+  that way (Refresh an ad has no collector), and the stop message names the command.
+- **A viewer's check of a page is never taken as its decisions.** The read the Artifact tool suggests after a
+  publish (`as_level`, which sees none of the owner-only choices) is no longer saved by the collector, `ingest`
+  refuses it and says why, and one saved by 0.11.0 is skipped, so `tm page decision` no longer says no choice is
+  saved.
+- **The desktop app's own keys stay out of the run.** The `__artifact…` keys the app adds to the Artifact and
+  ArtifactData tools' input (one holds a local path and a file hash) are no longer copied into the saved answers or
+  the manifest.
+- **Live trend searches are summarised again.** The live server's `{"trends": [...], "total": N}` answer is now
+  replaced by the short summary, which also gives the `total` and, from it, whether more pages follow; an error is
+  still shown whole.
+- **The run page carries its title in the run's language.** The Artifact tool keeps a page's own `<title>` over the
+  title it is given, so the run page's `<title>` now names the playbook in the page's language, and `tm page build`
+  gives that title for the publish.
 
 ## 0.11.0
 

@@ -576,6 +576,9 @@ run_page:
   top:
     brand: TrendsMesh
     title: '{playbook}: {run}'
+  # The playbook's name on its run page: the page's <title>, which the Artifact tool keeps over its own `title`.
+  playbook:
+    refresh_ad: Refresh an ad
   footer:
     built: Built from the run {run} on {when}. Every number shows its source when you hover over it.
   from_page: (from the page)

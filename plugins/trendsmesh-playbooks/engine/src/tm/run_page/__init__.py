@@ -308,7 +308,9 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     settled.reverse()                                   # newest first
     pb = playbooks.get(s.playbook)
     updated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
-    m = {"lang": i18n.html_lang(lang), "warning": pl.warning, "title": t("top.title", lang, playbook=pb.name, run=run.path.name), "playbook": pb.name,
+    named = "playbook." + pb.skill.replace("-", "_")     # the playbook's name in the page's language
+    pb_name = t(named, lang) if words.has(named, lang) else pb.name
+    m = {"lang": i18n.html_lang(lang), "warning": pl.warning, "title": t("top.title", lang, playbook=pb_name, run=run.path.name), "playbook": pb_name,
          "run": run.path.name, "updated": updated, "local": local, "build": folder.name if folder else "",
          "now": now, "settled": settled, "datasets": ctx.ds}
     built = {"page": PAGE, "local": local, "lang": lang, "built_at": _now(),
@@ -347,7 +349,7 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
                                                           "local": local or None})
     return {"folder": rel, "index": str((folder / "index.html").resolve()), "open": list(built["open"]),
             "settled": len(m["settled"]), "ask": saved["_id"] if saved else None, "local": local,
-            "lang": m["lang"], **({"language_warning": m["warning"]} if m["warning"] else {}), "artifact": page.artifact_args(listed),
+            "lang": m["lang"], "title": m["title"], **({"language_warning": m["warning"]} if m["warning"] else {}), "artifact": page.artifact_args(listed),
             **({} if local else {"capabilities": CAPABILITIES}),
             "published": page.published(run, PAGE) if not local else None}
 

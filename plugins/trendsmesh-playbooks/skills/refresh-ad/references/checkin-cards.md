@@ -46,7 +46,8 @@ the run state; never write or patch its HTML.
    (`references/pages.md`, "The run page"). Without a publishing tool: `tm page build --run R --ask
    <file> --local`, give the path of its `index.html`; its decisions are answered in chat.
 4. **In chat:** one or two lines on what is new, the link, and the question card.
-5. **The answer:** when the user says they chose on the page, read it (`references/pages.md`) and
+5. **The answer:** when the user says they chose on the page, read it and save the read with
+   `tm trends ingest` (`references/pages.md`, "The run page", step 3), then
    `tm page decision --run R <id> --record`, which records it with the note "(from the page)".
    Quote the user's note back whole, as their words. An answer in chat always counts: `tm decide`
    as usual, and the next build shows it as settled.

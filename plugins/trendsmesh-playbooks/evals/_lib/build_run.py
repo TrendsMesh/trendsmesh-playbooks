@@ -14,6 +14,8 @@ Scenarios (every one of them: a run `2026-11-05_ad`, Hands-off unless said, answ
                  before A5 done, run at A5 (the trends), with nothing recorded about TrendsMesh yet
   at_g1a_every_step  the creative brief only, Check every step; ranking and diagnosis (hook), G1 decided, A1a
                  done; at the "Accept the diagnosis" check-in (G1a), asked
+  ra_g1a_on_page  at_g1a_every_step, with G1a put on the run page (ask G1a_v01), built and published as
+                 art_mock_7 (issue #54: Refresh an ad has no collector, so the page's read is saved with ingest)
   at_e3_hands_off_launch  brief + live test (picked, 150 a day for 7 days), Hands-off; R4's plan from the
                  ranking, the paused ads recorded (made-up ids) and a green R8 check; run at E3, where
                  "Approve the launch" (G11) waits for the user (issue #22: never by rule)
@@ -1813,7 +1815,7 @@ def main(scn: str, ws: Path) -> int:
            "--run", str(run))
         n = tm(ws, "next", "--run", str(run), ok=(0, 2))
         assert n["action"] == "ask" and n["checkin"]["ids"] == ["G11"], n
-    elif scn == "at_g1a_every_step":
+    elif scn in ("at_g1a_every_step", "ra_g1a_on_page"):
         run = new_run(ws, ["creative_brief"], level="every_step")
         drive(ws, run, "A1a", scn="hook")                    # stops after the ranking, before the diagnosis
         ranking = json.loads((run / "01_base" / "winner_ranking_v01.json").read_text(encoding="utf-8"))
@@ -1821,6 +1823,16 @@ def main(scn: str, ws: Path) -> int:
         tm(ws, "done", "A1a", "--run", str(run))
         n = tm(ws, "next", "--run", str(run), ok=(0, 2))
         assert n["action"] == "ask" and n["checkin"]["ids"] == ["G1a"], n
+        if scn == "ra_g1a_on_page":
+            ask = place(ws, run, "03_wip/ask_G1a.json", {
+                "checkin": "G1a", "title": "Reklama traci widzów w pierwszych sekundach",
+                "question": "Odświeżamy początek tej reklamy?",
+                "options": [{"choice": "refresh", "label": "Tak, odśwież początek", "recommended": True},
+                            {"choice": "do_not_refresh", "label": "Nie, zostaw ją"}]}, "the agent's ask (eval fixture)")
+            built = tm(ws, "page", "build", "--run", str(run), "--ask", str(ask))
+            assert built["open"] == ["G1a"], built
+            tm(ws, "page", "published", "--run", str(run), "--page", "run_page", "--slug", "art_mock_7",
+               "--version", "ver_mock_1", "--url", "https://claude.ai/artifact/art_mock_7")
     elif scn == "at_a5_hook":
         run = new_run(ws, ["creative_brief"], level="every_step")
         n = drive(ws, run, "A5", scn="hook")

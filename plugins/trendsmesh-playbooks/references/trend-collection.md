@@ -65,7 +65,7 @@ the Meta reads and the page tools' answers, and in an organic video run the page
 
 | Tool | Saved to (`02_research/`) | You see |
 |---|---|---|
-| `search_trends` | `search/search_<about>[_<type>][_pNN].json` | `{saved_to, results, has_more, page, cards: [{id, kind, name, match, creators, status}]}` |
+| `search_trends` | `search/search_<about>[_<type>][_pNN].json` | `{saved_to, results, has_more, page, cards: [{id, kind, name, match, creators, status}]}`, and `total` when the answer gives one (then `has_more` says whether the pages so far hold fewer cards than it) |
 | `list_trends` | `lists/list_<sort>_<type>_pNN.json` | the same summary as a search; with `sort` `updated` also `oldest_updated_at`, the oldest `updated_at` on the page (null when no card has one), to page back to the previous run's date |
 | `get_trend_videos` | `videos/<trend_id>_pNN.json` | `{saved_to, trend_id, page, videos, has_more, newest, oldest, creators_on_page}` |
 | `get_trend` | `trend_<trend_id>.json` | the whole card (it is small) |
@@ -82,8 +82,9 @@ tool's input and the time it was saved, and you see the answer unchanged:
 | `Artifact` publish (saved as `artifact_publish`); the older `publish_files`, `read_declaration`, `declare_capabilities` | `03_wip/publish/` |
 
 Only these actions of the built-in `Artifact` and `ArtifactData` tools are saved: an `Artifact`
-read or file listing, an asset upload, a database write is not, and Claude sees every answer
-whole. **In an organic video run** only the page tools' answers are saved this way (the same two
+read or file listing, an asset upload, a database write is not, nor a read with `as_level` (it shows
+what a viewer sees, not the decisions), and Claude sees every answer whole. The keys the desktop app
+adds to their input (`__artifact…`) are not saved. **In an organic video run** only the page tools' answers are saved this way (the same two
 folders); a Meta read is never saved to it, and none is needed.
 
 The engine finds them by their input, not their file name (the audience order at B1, the
@@ -106,7 +107,8 @@ content (the evidence videos at D1: `tm research evidence` gives the top five pe
   `tm trends ingest --run R --tool <tool> --input 03_wip/ingest_input.json --file
   03_wip/ingest_answer.json --json`. The engine names the file as the hook would have (in a
   creative brief run a Meta or page answer, and in an organic video run a page answer, goes where
-  the collector keeps it).
+  the collector keeps it; a page's database read goes to `03_wip/decisions/` in any run, also a
+  Refresh an ad run, which has no collector).
 - **The answer was not JSON** (the hook says "it is not JSON"): Claude Code showed its notice that
   the output was too large and saved it to a file, so nothing reached the run. Save that file whole:
   `tm trends ingest … --file <the file the notice names>`, with the input as above. A tool's own

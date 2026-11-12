@@ -5,7 +5,10 @@ The artifacts answers come from the Claude desktop app's built-in `Artifact` too
 publish) and `ArtifactData` tool (a read of its database: `list` and `query` are saved as `db_list`
 and `db_query`, where the page's reader looks), or from the older artifacts MCP tools
 (`publish_files`, `db_list`, ...), which some hosts still have. Only these actions are kept (`where`):
-an `Artifact` read or list, an asset upload, a database write is never saved.
+an `Artifact` read or list, an asset upload, a database write is never saved, nor an `ArtifactData` read
+with `as_level` (the check the Artifact tool suggests after a publish: what a viewer sees, not the decisions).
+The keys the desktop app adds to these tools' input (`__artifact*`: its consent and target pins, one with a
+local path and a hash) are not the call's: `save` drops them (`own_input`) before anything is written.
 
 HANDOFF §4 asks for every MCP response to be saved (plan Decision 10). `trend_spool.handle` hands
 each answer of a `SAVES` tool that the run's playbook keeps (`SAVED_BY`) to `save`, under the run's
@@ -14,6 +17,9 @@ lock, and returns nothing, so Claude sees the answer unchanged. Any other run ig
 Each answer is written in PB04's envelope `{"_tool", "_input", "_at", "answer"}` as a new version
 `<folder>/<tool>_vNN.json`, never over an earlier one, with a manifest row. Later steps read them
 by their `_input` (the audience order, the near-duplicate check, the page's decisions).
+
+A run whose playbook has no collector (Refresh an ad) gets its page's reads with `tm trends ingest`, which
+files a database read (`page_read`) under `DECISIONS` in any run, where `tm page decision` looks.
 """
 
 from __future__ import annotations
@@ -60,6 +66,24 @@ SAVED_BY: dict[str, tuple[str, ...]] = {
 }
 
 _SERVERS = {META: "Meta Ads", DECISIONS: "claude.ai artifacts", PUBLISH: "claude.ai artifacts"}
+APP_KEYS = "__artifact"          # the desktop app's own keys in a built-in tool's input, never the call's
+
+
+def own_input(value: Any) -> Any:
+    """The tool's input without the keys the desktop app adds (`__artifact*`, at any depth)."""
+    if isinstance(value, dict):
+        return {k: own_input(v) for k, v in value.items() if not str(k).startswith(APP_KEYS)}
+    if isinstance(value, list):
+        return [own_input(v) for v in value]
+    return value
+
+
+def viewer_check(tool_input: Any) -> bool:
+    """A database read made as another access level (`as_level`, at the top or in its `query`): it shows what a
+    viewer sees, not the owner's decisions, so it is never saved, nor read as the decisions."""
+    given = tool_input if isinstance(tool_input, dict) else {}
+    query = given.get("query") if isinstance(given.get("query"), dict) else {}
+    return given.get("as_level") not in (None, "") or query.get("as_level") not in (None, "")
 
 
 def where(tool: str, tool_input: Any = None) -> tuple[str, str] | None:
@@ -72,6 +96,8 @@ def where(tool: str, tool_input: Any = None) -> tuple[str, str] | None:
     given = tool_input if isinstance(tool_input, dict) else {}
     if tool_input is None or (tool == "Artifact" and given.get("asset")):
         return None
+    if tool == "ArtifactData" and viewer_check(given):
+        return None
     stem = ACTIONS[tool].get(given.get("action"))
     return (found[0], stem) if stem else None
 
@@ -80,6 +106,13 @@ def kept_by(playbook: str | None, tool: str, tool_input: Any = None) -> bool:
     """Whether a run of `playbook` keeps this answer of `tool` (`SAVED_BY`, and `where` for a
     built-in tool's action)."""
     return tool in SAVED_BY.get(playbook or "", ()) and where(tool, tool_input) is not None
+
+
+def page_read(tool: str, tool_input: Any = None) -> bool:
+    """Whether this is a read of a page's database that is kept (`where`: under `DECISIONS`): `ingest` files it
+    there in any run, also one whose playbook has no collector (Refresh an ad)."""
+    found = where(tool, tool_input)
+    return found is not None and found[0] == DECISIONS
 
 
 def server_of(tool_name: str) -> str | None:
@@ -101,6 +134,7 @@ def save(run: RunFolder, tool: str, tool_input: dict, answer: Any, *, at: str | 
     reserved: the caller holds the run's lock."""
     if tool in SAVES and not isinstance(tool_input, dict):
         raise ValueError(f"{tool}'s input must be a JSON object.")
+    tool_input = own_input(tool_input)
     found = where(tool, tool_input)
     if found is None:
         return None

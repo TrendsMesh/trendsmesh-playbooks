@@ -375,10 +375,11 @@ def parse_answer(response: Any) -> tuple[Any, bool]:
 
 def summarisable(tool: str, answer: Any) -> bool:
     """Only a known envelope is ever replaced, and never an error: a search or list holds a `data`
-    list (or the legacy `items`), a video page a `data` or `videos` list."""
+    list, the live server's `trends` list (with its `total`) or the legacy `items`, a video page a
+    `data` or `videos` list."""
     if tool not in SUMMARISED or not isinstance(answer, dict) or "error" in answer:
         return False
-    keys = ("data", "videos") if tool == "get_trend_videos" else ("data", "items")
+    keys = ("data", "videos") if tool == "get_trend_videos" else ("data", "trends", "items")
     return any(isinstance(answer.get(k), list) for k in keys)
 
 
@@ -396,6 +397,21 @@ def _card(card: dict) -> dict:
             "status": card.get("status")}
 
 
+def _more(answer: dict, tool_input: dict, page: Any, results: int) -> bool:
+    """Whether a search or list has more pages: its `has_more`, else, in the live `{trends, total}`
+    envelope, whether the pages so far (of the call's `limit`, else of this page's size) hold fewer
+    cards than `total`. A page with no cards is the last."""
+    if "has_more" in answer:
+        return answer["has_more"] is True
+    total = _number(answer.get("total"))
+    if total is None or not results:
+        return False
+    size = tool_input.get("limit")
+    size = size if isinstance(size, int) and not isinstance(size, bool) and size > 0 else results
+    done = (page - 1) * size if isinstance(page, int) and not isinstance(page, bool) and page > 1 else 0
+    return done + results < total
+
+
 def summary(tool: str, tool_input: dict, answer: dict, saved_to: str) -> dict:
     """What Claude sees of a search, a list or a video page: where it is saved and the gist."""
     page = answer.get("page") if isinstance(answer.get("page"), int) else tool_input.get("page", 1)
@@ -409,7 +425,10 @@ def summary(tool: str, tool_input: dict, answer: dict, saved_to: str) -> dict:
                 "creators_on_page": len({c for c in map(trends.creator_of, vids) if c})}
     cards = [c for c in trends.items(answer) if isinstance(c, dict)]
     out = {"saved_to": saved_to, "page": page, "results": len(cards),
-           "has_more": answer.get("has_more") is True, "cards": [_card(c) for c in cards]}
+           "has_more": _more(answer, tool_input, page, len(cards)), "cards": [_card(c) for c in cards]}
+    total = _number(answer.get("total"))
+    if total is not None:
+        out = {**out, "total": total}
     if tool == "list_trends" and tool_input.get("sort") == "updated":
         out["oldest_updated_at"] = trends.oldest_updated_at(cards)   # page on until the previous run's date
     return out
@@ -504,7 +523,7 @@ def handle(event: dict, workspace: Path) -> dict | None:
     given = event.get("tool_input") if event.get("tool_input") is not None else {}
     if kept and not mcp_saves.kept_by(state.load(run).playbook, tool, given):
         return None                                   # not this playbook's (a trend research run keeps no Meta read)
-    tool_input = event.get("tool_input") if event.get("tool_input") is not None else {}
+    tool_input = mcp_saves.own_input(given)            # never the desktop app's own keys (`__artifact*`)
     response = event.get("tool_response")
     try:
         answer, parsed = parse_answer(response)
@@ -657,6 +676,11 @@ def _collect(args: argparse.Namespace) -> int:
         return cli.fail(args, str(exc))
 
 
+VIEWER_CHECK = ("This ArtifactData read was made with as_level, so it shows what a viewer sees, not the decisions saved "
+                "on the page, and nothing was saved. Read the decisions with one unfiltered ArtifactData list without "
+                "as_level, then save that read.")
+
+
 def _ingest(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
@@ -664,12 +688,15 @@ def _ingest(args: argparse.Namespace) -> int:
         tool_input = cli.json_arg(given if given[:1] in ("{", "[") else str(run.given(given)))
         if not isinstance(tool_input, dict):
             raise ValueError("--input must be a JSON object, for example '{\"trend_id\": \"t1\"}'.")
+        tool_input = mcp_saves.own_input(tool_input)
         answer, _ = parse_answer(run.given(args.file).read_text(encoding="utf-8-sig"))   # PowerShell writes a BOM
         tool = short_name(args.tool)
         playbook = state.load(run).playbook
-        if mcp_saves.kept_by(playbook, tool, tool_input):
-            path = _keep(run, tool, tool_input, answer,     # where the collector would have kept it
-                         server=mcp_saves.server_of(args.tool))
+        if tool == "ArtifactData" and mcp_saves.viewer_check(tool_input):
+            raise ValueError(VIEWER_CHECK)
+        if mcp_saves.kept_by(playbook, tool, tool_input) or mcp_saves.page_read(tool, tool_input):
+            path = _keep(run, tool, tool_input, answer,     # where the collector would have kept it; a page's
+                         server=mcp_saves.server_of(args.tool))   # read in any run, where its reader looks
         elif tool in mcp_saves.SAVES and playbook in mcp_saves.SAVED_BY:
             raise ValueError(f"{run.path.name} does not keep {tool} answers (a run of this playbook keeps "
                              f"{', '.join(mcp_saves.SAVED_BY[playbook])}), so nothing was saved.")
