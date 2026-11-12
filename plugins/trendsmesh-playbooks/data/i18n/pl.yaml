@@ -573,6 +573,7 @@ strings:
         final_edit: Gotowy film i zestaw do publikacji
     footer:
       built: Zbudowane z runu {run} {when}. Każda liczba pokazuje swoje źródło po najechaniu kursorem.
+      built_from: Zbudowane z runu {run} {when}.
     from_page: (ze strony)
     now:
       new: Nowe

@@ -69,8 +69,9 @@ def _brief_keys() -> dict[str, str]:
 
 
 def _run_page_keys() -> dict[str, str]:
-    """The shared run page's words, which the brief's page shows too (issue #60): its top bar, "Now", the settled."""
-    return {k: v for k, v in i18n.english().items() if k.startswith("run_page.")}
+    """The shared run page's words, which the brief's page shows too (issue #60): its top bar, "Now", the settled,
+    with Polish's count forms (one, few, many) where English has one and other."""
+    return i18n.wanted("pl", ["run_page"])
 
 
 def _pseudo(text: str) -> str:
