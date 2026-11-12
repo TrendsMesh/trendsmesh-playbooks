@@ -156,11 +156,23 @@ def test_every_organic_page_word_is_in_both_tables():
     src = Path(organic_video.__file__).read_text(encoding="utf-8")
     literal = {"organic." + k for k in re.findall(r'_w\((?:ctx|lang), "([a-z_.]+)"', src) if not k.endswith(".")}
     assert literal <= organic_video.keys()                   # every word it reads is listed
-    for key in organic_video.keys():
+    for key in organic_video.keys() | organic_video.stage_keys():
         assert key in en and key in pl, key
     for key in words.TEMPLATE:
         assert any(k.startswith(f"run_page.{key}") for k in pl), key
     assert "run_page.playbook.organic_video" in pl
+
+
+def test_its_stages_are_named_in_its_own_words_never_another_playbooks(tmp_path):
+    """Its `plan` card is not Create an ad's `run_page.stage.plan`, which the Polish table does not have: the page's
+    own name is read first, and the other is never looked up."""
+    assert words.has("stage.plan") and "run_page.stage.plan" not in i18n.table("pl")
+    run = _new(tmp_path, lang="pl")
+    ask = run.path / "03_wip" / "my_ask_plan.json"
+    ask.write_text(json.dumps({"checkin": "plan", "title": "Plan", "question": "Q?",
+                               "options": [{"choice": "accept", "label": "Tak"}]}), encoding="utf-8")
+    html = _html(run, run_page.build(run, ask))
+    assert "Plan tego filmu" in html and "Production plan" not in html
 
 
 def test_a_polish_run_builds_a_polish_page_from_the_plugins_own_words(tmp_path):

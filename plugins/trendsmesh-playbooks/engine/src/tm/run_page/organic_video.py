@@ -1,7 +1,6 @@
 """Organic AI video's stages on the run page (issue #60): its check-in pages as stages of the one page per run.
 
     materials(ctx, checkin)             the blocks a check-in's stage shows (images, video, final_edit, taste)
-    stage_name(ctx, key, default)       a stage's name in the page's language (`organic.stage.<id>`)
     outcome(ctx, checkin, choice)       a decided choice in words, when no ask labels it
     note_lines(run, checkin, got, lang) what the answer saved on the page adds to its recorded note; it checks the
                                         whole answer first, so a Stop here refuses it before anything is recorded
@@ -50,7 +49,7 @@ from tm import json_schema, kit as kits, manifest, organic_gates, page as pages,
 from tm.organic_pages import choices, gate as gate_page, taste
 from tm.run_page.context import Context
 from tm.run_page.template import E, media_tag, register_block
-from tm.run_page.words import has_key, tx
+from tm.run_page.words import tx
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -60,7 +59,8 @@ ACTIONS = organic_gates.ACTIONS
 SEP = organic_gates.FRAME_SEP                  # "<item id>~<frame id>", "<item id>~<platform>", "<section>~<line>"
 PLATFORMS = gate_page.PLATFORMS
 # The organic keys this module reads (`keys()`): organic.gate.<GATE_UI>, organic.<SHARED_UI>, organic.kit.<KIT_UI>,
-# organic.page.<PAGE_UI>, organic.choices.<CHOICES_UI>, organic.taste.<TASTE_UI>, organic.stage.<each check-in, card>
+# organic.page.<PAGE_UI>, organic.choices.<CHOICES_UI>, organic.taste.<TASTE_UI>. The stages' names are the run
+# page's: `run_page.organic_video.stage.<each check-in, card>` (`stage_keys()`).
 GATE_UI = ("accept", "redo", "drop", "agent_pick", "accept_rest", "note_label", "download", "make_thumbnail",
            "frame_note", "frame_open", "frames", "frame_line", "frame_overlay", "frame_scene", "sum_accepted",
            "sum_redo", "sum_dropped", "sum_open", "blocked")
@@ -74,14 +74,18 @@ TASTE_UI = ("no_track", "trending", "style", "voice", "music")
 
 
 def keys() -> set[str]:
-    """Every key of the string table this module reads."""
+    """Every organic key of the string table this module reads."""
+    return ({f"organic.gate.{k}" for k in GATE_UI} | {f"organic.{k}" for k in SHARED_UI}
+            | {f"organic.kit.{k}" for k in KIT_UI} | {f"organic.page.{k}" for k in PAGE_UI}
+            | {f"organic.choices.{k}" for k in CHOICES_UI} | {f"organic.taste.{k}" for k in TASTE_UI})
+
+
+def stage_keys() -> set[str]:
+    """The stages' names on the run page (`run_page.model` reads them first): one per check-in and card."""
     from tm import checkins
     from tm.playbooks import ORGANIC_VIDEO
     cat = checkins.load(playbook=ORGANIC_VIDEO)
-    return ({f"organic.gate.{k}" for k in GATE_UI} | {f"organic.{k}" for k in SHARED_UI}
-            | {f"organic.kit.{k}" for k in KIT_UI} | {f"organic.page.{k}" for k in PAGE_UI}
-            | {f"organic.choices.{k}" for k in CHOICES_UI} | {f"organic.taste.{k}" for k in TASTE_UI}
-            | {f"organic.stage.{k}" for k in [*cat.checkins, *cat.cards]})
+    return {f"run_page.organic_video.stage.{k}" for k in [*cat.checkins, *cat.cards]}
 
 
 def _w(where: Context | str, _key: str, **values: object) -> str:
@@ -98,11 +102,7 @@ def _path(*parts: object) -> str:
     return E(json.dumps([str(p) for p in parts], ensure_ascii=False))
 
 
-# --- the stage's name and outcome ----------------------------------------------------------------
-
-def stage_name(ctx: Context, key: str, default: object) -> str:
-    return _w(ctx, "stage." + key) if has_key("organic.stage." + key) else str(default)
-
+# --- the stage's outcome ----------------------------------------------------------------
 
 def outcome(ctx: Context, checkin: str, choice: object) -> str | None:
     return _w(ctx, "gate." + choice) if choice in ACTIONS else None

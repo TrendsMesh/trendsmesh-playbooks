@@ -1016,21 +1016,7 @@ organic:
     production_animation: an animation
     production_stills_motion: stills with motion graphics
     production_sections: a video in sections
-  # Organic AI video's stages on the run page (engine/src/tm/run_page/organic_video.py, issue #60): their names,
-  # and the words around the check-in pages' items there
-  stage:
-    reuse_profile: Saved channel profile
-    profile: Channel profile
-    proposals: What to make
-    week: The week
-    schedule: Weekly pack
-    taste: Style, voice and music
-    pack: Generation pack and its cost
-    plan: The plan for this video
-    script: Script to film
-    images: Images
-    video: Takes
-    final_edit: Final video and posting kit
+  # the words around the check-in pages' items on the run page (engine/src/tm/run_page/organic_video.py, issue #60)
   page:
     how_gate: "For each item pick an option where there is a choice, then Accept, Redo (write what to change) or Drop. Your choices save as you click; then answer the question at the bottom."
     how_taste: "The suggested options are already ticked. Change what you want: your choices save as you click. Then answer the question at the bottom."
@@ -1057,6 +1043,21 @@ run_page:
     create_ad: Create an ad
     trend_research: Trend research
     organic_video: Organic AI video
+  # Organic AI video's stages: their names on its run page (issue #60), read before `stage` below
+  organic_video:
+    stage:
+      reuse_profile: Saved channel profile
+      profile: Channel profile
+      proposals: What to make
+      week: The week
+      schedule: Weekly pack
+      taste: Style, voice and music
+      pack: Generation pack and its cost
+      plan: The plan for this video
+      script: Script to film
+      images: Images
+      video: Takes
+      final_edit: Final video and posting kit
   footer:
     built: Built from the run {run} on {when}. Every number shows its source when you hover over it.
     built_from: Built from the run {run} on {when}.

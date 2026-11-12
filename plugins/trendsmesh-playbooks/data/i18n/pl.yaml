@@ -534,20 +534,7 @@ strings:
       production_animation: animacji
       production_stills_motion: grafikach z animacją
       production_sections: filmie z części
-    # Organic AI video's stages on the run page (issue #60)
-    stage:
-      reuse_profile: Zapisany profil kanału
-      profile: Profil kanału
-      proposals: Co nagrać
-      week: Tydzień
-      schedule: Pakiet tygodniowy
-      taste: Styl, głos i muzyka
-      pack: Pakiet generowania i jego koszt
-      plan: Plan tego filmu
-      script: Scenariusz do nagrania
-      images: Obrazy
-      video: Ujęcia
-      final_edit: Gotowy film i zestaw do publikacji
+    # the words around the check-in pages' items on the run page (issue #60)
     page:
       how_gate: "Przy każdym elemencie wybierz opcję tam, gdzie jest wybór, potem Akceptuj, Popraw (napisz, co zmienić) albo Odrzuć. Wybory zapisują się od razu; potem odpowiedz na pytanie na dole."
       how_taste: "Proponowane opcje są już zaznaczone. Zmień, co chcesz: wybory zapisują się od razu. Potem odpowiedz na pytanie na dole."
@@ -568,6 +555,20 @@ strings:
       title: '{playbook}: {run}'
     playbook:
       organic_video: Organiczne wideo AI
+    organic_video:
+      stage:
+        reuse_profile: Zapisany profil kanału
+        profile: Profil kanału
+        proposals: Co nagrać
+        week: Tydzień
+        schedule: Pakiet tygodniowy
+        taste: Styl, głos i muzyka
+        pack: Pakiet generowania i jego koszt
+        plan: Plan tego filmu
+        script: Scenariusz do nagrania
+        images: Obrazy
+        video: Ujęcia
+        final_edit: Gotowy film i zestaw do publikacji
     footer:
       built: Zbudowane z runu {run} {when}. Każda liczba pokazuje swoje źródło po najechaniu kursorem.
     from_page: (ze strony)
