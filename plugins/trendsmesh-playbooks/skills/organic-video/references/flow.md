@@ -1136,10 +1136,11 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
    by hand.
 3. **The video check-in**:
    - **Check every step**: the takes, a stage of the run page as in F1 (the ask's `checkin`
-     `video`, its options `accept`, `redo`, `drop` and `fails_qa`; `tm page build --run R --ask
-     03_wip/ask_video.json --json`, the same publish, wait and read, then `tm page decision --run R
-     video --record --json`, which writes `03_wip/decisions_gate_video_vNN.json`; in chat, `tm
-     organic decisions --page gate_video --text`), each take with
+     `video`, its options `accept`, `redo`, `drop` and `fails_qa`;
+     `tm page build --run R --ask 03_wip/ask_video.json --json`, the same publish, wait and read,
+     then `tm page decision --run R video --record --json`, which writes
+     `03_wip/decisions_gate_video_vNN.json`; in chat,
+     `tm organic decisions --page gate_video --text`), each take with
      its QA findings and, for a narrator or an animation, **played with the voiceover laid under it**
      at the pack's times and the take's own sound turned down (a mux on this computer, free, into
      `showcase/<take>__<voiceover>_vo.mp4`; no edit, the music comes in G1), each animation's renders and each stills item's motion-graphics renders,

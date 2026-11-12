@@ -38,7 +38,7 @@ ROUTED_RECIPES = {   # every model the engine itself sends a take to (a tier, a 
     "bytedance/seedance-2.5": "seedance-2.5.md",
     "prunaai/p-video-upscale": "p-video-upscale.md",
 }
-GATE_CAPABILITIES_AT = ("f1", "g4")   # the check-in pages (F1, F2) and the delivery page (G4) declare CAPABILITIES["gate"]
+RUN_PAGE_AT = ("f1", "g4")   # the check-ins on the run page (F1, F2; G4's delivery stage) declare the build's (issue #60)
 
 
 def _text(path) -> str:
@@ -194,14 +194,19 @@ def test_tool_commands_use_the_tools_own_flags():
 def test_flow_declares_what_the_engine_declares():
     """The capabilities flow.md tells the agent to declare are organic_pages.CAPABILITIES, verbatim."""
     flow_md = _text(SKILL / "references" / "flow.md")
-    for page, anchor in (("proposals", "c2"), ("script", "e3"), *(("gate", a) for a in GATE_CAPABILITIES_AT)):
+    for page, anchor in (("proposals", "c2"), ("script", "e3")):
         found = re.search(r"`(\{.*?\})`", _section(flow_md, anchor).split("`capabilities` =", 1)[1], re.S)
         assert found, anchor
         assert json.loads(found.group(1)) == CAPABILITIES[page], anchor
-    for anchor in ("c2", "e3", *GATE_CAPABILITIES_AT):
+    for anchor in ("c2", "e3"):
         section = re.sub(r"\s+", " ", _section(flow_md, anchor))
         assert "`Artifact` publish" in section and "declaration" in section, anchor   # declared in the publish, checked
         assert "read_declaration" in section, anchor                                 # and the older tools' way
+    for anchor in RUN_PAGE_AT:                    # the run page's: the build's capabilities, at every publish
+        section = re.sub(r"\s+", " ", _section(flow_md, anchor))
+        assert "`Artifact` publish" in section and "declaration" in section, anchor
+        assert "`capabilities` = the build's `capabilities`" in section, anchor
+        assert "tm page published --run R --page run_page" in section, anchor
 
 
 def test_flow_a0_and_d1_mirror_the_doctor():
@@ -235,20 +240,23 @@ def test_ai_video_steps_name_the_engine_commands():
                "Approve the generation pack and its cost", "tm decide pack approve", "tm budget approve ai_usd",
                "tm budget approve voice_credits", "tm decide pack approve --change", "tm decide pack reject"],
         "f1": ["tm tool replicate_run --run R", "--cost", "--resume", "tm organic dashboard-checked",
-               "tm tool elevenlabs tts", "--timestamps", "tm organic page gate --gate images", "tm page await",
-               "gate_images", "tm organic decisions --run R --page gate_images", "tm organic pick", "tm organic redo",
+               "tm tool elevenlabs tts", "--timestamps", "tm page build --run R --ask 03_wip/ask_images.json",
+               "tm page await", "gate_images", "tm page decision --run R images --record",
+               "tm organic decisions --run R --page gate_images", "tm organic pick", "tm organic redo",
                "input_images", "tm decide images accept", "tm organic text look", "tm organic text approve"],
         "f2": ["timed shot list", "a brisk, energetic TikTok pace, no pauses between sentences", "ratio: \"9:16\"",
-               "Seedance 2.0", "kwaivgi/kling-avatar-v2", "burned-in text", "tm tool take_qa", "--gate video",
+               "Seedance 2.0", "kwaivgi/kling-avatar-v2", "burned-in text", "tm tool take_qa",
+               "tm page decision --run R video --record",
                "tm organic pick --run R --stage takes", "fails_qa", "tm tool deliver speed"],
         "g1": ["OrganicCaptions", "keepAudio", "volume", "zoom", "audioTracks", "music", "word groups",
                "tm organic captions", "overlays", "--keep-shot-audio", "02_research/music/",
                "tm tool cover_fit", "tm tool deliver measure", "tm render video", "tm tool deliver finish",
                "tm tool deliver upload", "tm tool deliver cover", "before `tm done G1`"],
         "g2": ["audience language", "tm kit check", "tm kit md"],
-        "g4": ["tm trends collect on --run R", "tm organic page delivery", "tm page published --run R --page delivery",
-               "tm page await --run R --page delivery", "collection `gate_edit`", "tm organic decisions --run R --page "
-               "delivery", "tm kit check", "tm decide final_edit"],
+        "g4": ["tm trends collect on --run R", "tm page build --run R --ask 03_wip/ask_final_edit.json",
+               "tm page published --run R --page run_page", "tm page await --run R --page run_page",
+               "collection `decisions`", "tm page decision --run R final_edit --record",
+               "tm organic decisions --run R --page delivery", "tm kit check", "tm decide final_edit"],
         "h1": ["upload copy", "AI label", "tm tool deliver nosound", "tm done H1"],
     }
     for anchor, words in named.items():
@@ -259,7 +267,7 @@ def test_ai_video_steps_name_the_engine_commands():
     done = g1.rindex("`tm done G1")
     assert g1.index("tm tool deliver upload") < done and g1.index("tm tool deliver cover") < done
     gate = re.sub(r"\s+", " ", _section(flow_md, "f1"))
-    assert gate.index("tm page await") < gate.index("`ArtifactData` list") < gate.index("tm organic decisions")
+    assert gate.index("tm page await") < gate.index("`ArtifactData` list") < gate.index("tm page decision")
 
 
 def test_week_steps_name_the_engine_commands():
