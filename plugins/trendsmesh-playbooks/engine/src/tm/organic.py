@@ -700,8 +700,10 @@ def _pack(args: argparse.Namespace) -> int:
                         "approve --change): nothing is generated or paid before their yes.")
         else:
             message += "It makes the same items for no more than the plan the user said yes to: that yes still holds."
+    message = _built(message, got)                  # the Markdown is in English when the table has no translation
     cli.emit(args, {"status": "done", "file": rel, "stage": args.stage, "md": got["md"], "planned": got["planned"],
-                    "replanned": got["replanned"], "message": message}, message)
+                    "replanned": got["replanned"], "message": message,
+                    **({"language_warning": got["language_warning"]} if got["language_warning"] else {})}, message)
     return 0
 
 

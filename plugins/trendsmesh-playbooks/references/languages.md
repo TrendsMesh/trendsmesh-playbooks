@@ -38,6 +38,10 @@ translated once, by you, and kept in the plugin data folder for every later run 
    still missing, in English.
 3. Translate each value in that file into the working language, for the people who read the pages. Keep every
    `{placeholder}` and every `<tag>` exactly; never change a key.
+   A count's words come as one key per form the language uses for whole numbers, its CLDR plural category
+   (`report.lede.one`, `report.lede.few`, `report.lede.many` in Polish; `.other` alone in Japanese), each given in
+   the English of its kind; the file's `how` says which numbers each form is for (Polish few: 2–4, 22–24 …).
+   Write each form as the language says that count; a form may say the number where the English leaves it out.
 4. `tm i18n import --lang <tag> i18n_<tag>.yaml` checks every key, placeholder and tag and keeps the translation
    (all or nothing: it names what to correct). Build the page again: it is in the working language, with its
    `lang` attribute.
@@ -46,7 +50,13 @@ translated once, by you, and kept in the plugin data folder for every later run 
 translation counts as missing again, so a page never mixes an old translation with new English silently. The table
 also holds `checks.creator_words` (CB13, below) and `trends.weekly_phrase`; translate them like the rest.
 
-The plugin ships Polish for Organic AI video's pages (`data/i18n/pl.yaml`); a translation you import wins over it.
+The plugin ships Polish for Organic AI video's pages, the pack's and the posting kit's Markdown included
+(`data/i18n/pl.yaml`); a translation you import wins over it.
+
+Values a run stores (a trend's band, confidence and status on the trend report; the product level, a trend's status
+and the risk items on Organic AI video's pages and pack) are shown in the working language from the same table.
+The run files keep the stored value, so older runs and the checks read them as before; a value the table does not
+list is shown as stored.
 
 ## What the checks do in other languages
 
@@ -86,5 +96,13 @@ Other modules switch their own English strings onto the table the same way:
 - `tr = i18n.translator(pl.lang)`; `tr("<area>.<key>", **values)`. `i18n.t(key, lang, **values)` is the same for
   one string. Both raise `i18n.Missing` (a missing translation, never a silent English) and KeyError (a key the
   English table lacks).
+- A count: write its English as a mapping of CLDR categories, `one` and `other` (`report.lede: {one: …, other:
+  …}`), and read it with `tr.plural("<area>.<key>", count, **values)`, which picks the form `count` takes in the
+  language (`i18n.category`, CLDR's rule for each language: Polish one, few for 2–4 but not 12–14, many, and other
+  for a fraction). Another language's table needs the forms its whole numbers take (`i18n.count_forms`), each
+  translated from the English `other` (`one` from `one`); `i18n.wanted(lang)` lists them. Never pick a form with
+  `n == 1` in code.
+- A stored value shown on a page: translate it when the page is built (a key per value, the English being the
+  stored value), never in the run's files.
 - Escape a translated value for where it goes (HTML text, attribute, JS string): translations are text.
 - `i18n.transliterate(text)` before a file name drops letters; `i18n.tag`/`i18n.name` read and name a language.

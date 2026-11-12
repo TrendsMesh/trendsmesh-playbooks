@@ -39,6 +39,7 @@ from __future__ import annotations
 import copy
 import html
 import json
+import re
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -70,6 +71,18 @@ PAID_KEY = {"none": "report.paid_none", "found": "report.paid_found", "crowded":
 VIEW_KEY = {"report": "report.view_report", "digest": "report.view_digest", "paid": "report.view_paid"}
 NUMBER_KEY = {2: "report.number_2", 3: "report.number_3", 4: "report.number_4", 5: "report.number_5",
               6: "report.number_6"}
+# A trend's data as the run stores it (research_growth, the card), shown in the page language; a value not
+# listed is shown as stored, and the run files keep the stored value (issue #3).
+_V = "report.value."
+BAND_KEY = {"top 10%": _V + "band_top_10", "top 25%": _V + "band_top_25", "top half": _V + "band_top_half",
+            "lower half": _V + "band_lower_half"}
+CONFIDENCE_KEY = {c: _V + f"confidence_{c}" for c in ("high", "medium", "low")}
+STATUS_KEY = {s: _V + f"status_{s}" for s in ("confirmed", "unconfirmed", "contradicted")}
+KIND_KEY = {k: _V + f"kind_{k}" for k in ("hook", "topic", "sound", "format")}
+WHY_KEY = {"views come mostly from one account": _V + "why_one_account",
+           "broad creator base, no dominant account, confirmed": _V + "why_broad",
+           "some limits: see the risk line": _V + "why_some_limits"}
+_FEW_CREATORS = re.compile(r"only (\d+) creators in evidence")
 _EN = i18n.english()
 BUCKET_NOTE = {b: _EN[k] for b, k in NOTE_KEY.items()}
 PAID_LABEL = {c: _EN[k] for c, k in PAID_KEY.items()}
@@ -139,6 +152,30 @@ def fmt(n) -> str:
 
 def kind(t: dict) -> str:
     return (t.get("kind") or "").replace("_trend", "")
+
+
+def shown(value, keys: dict, tr: i18n.Translator | None = None):
+    """A stored value (`keys`: the stored English -> its key) in `tr`'s language, else as it is stored."""
+    return (tr or _en())(keys[value]) if isinstance(value, str) and value in keys else value
+
+
+def why(text, tr: i18n.Translator | None = None):
+    """A trend's confidence_why (research_growth.confidence's words) in `tr`'s language, else as stored."""
+    tr = tr or _en()
+    few = _FEW_CREATORS.fullmatch(text) if isinstance(text, str) else None
+    if few:
+        return tr.plural(_V + "why_few_creators", int(few.group(1)), n=int(few.group(1)))
+    return shown(text, WHY_KEY, tr)
+
+
+def first_up(text: str) -> str:
+    """The first letter upper case, the rest as it is."""
+    return text[:1].upper() + text[1:]
+
+
+def count(value) -> int | float:
+    """A count for the form of its words (`tr.plural`): the number, else 0 (a count the data does not give)."""
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else 0
 
 
 def spread(g: dict, tr: i18n.Translator | None = None) -> tuple[str, str]:
@@ -292,7 +329,11 @@ class _Page:
         if t.get("kind") == "hook_trend" and "rising_of" in rel:      # issue #58: its place in the rising list
             hooks = "report.band_rising" if rel.get("band") else "report.band_not_rising"
         pool = hooks if t.get("kind") == "hook_trend" else "report.band_topics"
-        return (tr(pool, band=rel.get('band', '—').capitalize(), category=self.category, n=rel.get("rising_of")),
+        band = first_up(shown(rel.get('band') or '—', BAND_KEY, tr))
+        n = rel.get("rising_of")                                          # a count only in band_rising
+        said = (tr.plural(pool, count(n), band=band, category=self.category, n=n) if pool in tr.counts
+                else tr(pool, band=band, category=self.category, n=n))
+        return (said,
                 tr("report.velocity", index=rel.get('velocity_index', 0), category=self.category))
 
     def hooks_section(self) -> str:
@@ -348,16 +389,17 @@ class _Page:
             ("report.glance_momentum", m, msub),
             ("report.spread", sp, spsub),
             ("report.glance_reach", tr("report.reach_views", views=fmt(g.get('views_total'))),
-             tr("report.reach_videos", videos=g.get('videos_known', 0))),
+             tr.plural("report.reach_videos", count(g.get('videos_known', 0)), videos=g.get('videos_known', 0))),
             ("report.glance_freshness", tr("report.fresh_new_video", days=g.get('last_seen_days', '—')),
              tr("report.fresh_seen", days=g.get('age_days', '—'))),
-            ("report.confidence", (t.get("confidence") or "—").capitalize(),
-             tr("report.confidence_sub", why=t.get('confidence_why', ''), status=t.get('status'))),
+            ("report.confidence", first_up(shown(t.get("confidence") or "—", CONFIDENCE_KEY, tr)),
+             tr("report.confidence_sub", why=why(t.get('confidence_why', ''), tr),
+                status=shown(t.get('status'), STATUS_KEY, tr))),
             ("report.glance_ad_library", (paid or {}).get("verdict", tr("report.not_checked")),
              (paid or {}).get("query_note", "")),
         ]
         raw = (f"<details class='raw'><summary>{tr('report.raw_summary')}</summary><p>"
-               + tr("report.raw_counts", new_recent=g.get('new_recent', 0), active=ctx.get('creators_active'),
+               + tr.plural("report.raw_counts", count(g.get('new_recent', 0)), new_recent=g.get('new_recent', 0), active=ctx.get('creators_active'),
                     category=E(self.category), new_base=g.get('new_base', 0), creators=g.get('creators', 0),
                     median=fmt(g.get('median_views')))
                + "</p></details>")
@@ -370,7 +412,7 @@ class _Page:
         t, tr = self.trends[p["id"]], self.tr
         th = self.thumbs(t["id"], 3 if big else 2)
         strip = self.strip_html(th, "report.evidence_video_by")
-        tags = f"<span class='pill k-{E(kind(t))}'>{E(kind(t))}</span><span class='pill'>{E(t.get('group') or '')}</span>"
+        tags = f"<span class='pill k-{E(kind(t))}'>{E(shown(kind(t), KIND_KEY, tr))}</span><span class='pill'>{E(t.get('group') or '')}</span>"
         if p.get("maturity"):
             tags += f"<span class='pill soft'>{E(p['maturity'])}</span>"
         body = "".join(f"<p><b>{tr(lab)}</b> {E(p[k])}</p>" for lab, k in
@@ -396,11 +438,12 @@ class _Page:
             g, rel = t["growth"], t.get("relative") or {}
             note = t.get("seasonal_over") or moved.get(t["id"], "")
             name = f"<a href='#t-{_short_id(t)}'>{E(t['name'])}</a>" if t["id"] in picked else E(t["name"])
-            body.append(f"<tr><td>{name}</td><td>{E(kind(t))}</td><td>{E(t.get('group') or '')}</td>"
-                        f"<td>{E(rel.get('band', '—'))}</td><td class='r num'>{rel.get('velocity_index', '—')}</td>"
+            body.append(f"<tr><td>{name}</td><td>{E(shown(kind(t), KIND_KEY, tr))}</td><td>{E(t.get('group') or '')}</td>"
+                        f"<td>{E(shown(rel.get('band') or '—', BAND_KEY, tr))}</td><td class='r num'>{rel.get('velocity_index', '—')}</td>"
                         f"<td>{E(spread(g, tr)[0])}</td><td class='r num'>{fmt(g.get('views_total'))}</td>"
                         f"<td class='r num'>{g.get('last_seen_days', '—')}</td><td><span class='conf "
-                        f"conf-{E(t.get('confidence') or '')}'>{E(t.get('confidence') or '')}</span></td>"
+                        f"conf-{E(t.get('confidence') or '')}'>{E(shown(t.get('confidence') or '', CONFIDENCE_KEY, tr))}"
+                        f"</span></td>"
                         f"<td class='note'>{E(note)}</td><td class='r num raw'>{g.get('new_recent', 0)} / "
                         f"{g.get('new_base', 0)}</td></tr>")
         return f"<div class='tw'><table>{head}{''.join(body)}</table></div>"
@@ -429,7 +472,8 @@ class _Page:
             pd = self.paid.get(tid)
             th = self.thumbs_since(tid, since, th_n)
             chips = (f"<span class='pill b-{E(str(t.get('bucket')))}'>{E(_label(t.get('bucket') or '', tr))}</span>"
-                     f"<span class='pill'>{E(rel.get('band', '—'))}</span><span class='pill'>{E(kind(t))} · "
+                     f"<span class='pill'>{E(shown(rel.get('band') or '—', BAND_KEY, tr))}</span><span class='pill'>"
+                     f"{E(shown(kind(t), KIND_KEY, tr))} · "
                      f"{E(t.get('group') or '')}</span>" + (f"<span class='pill'>{E(pd['verdict'])}</span>" if pd else ""))
             vids = f"<div class='strip'>{self.strip_html(th)}</div>" if th else \
                 f"<p class='sub'>{tr('report.no_new_video')}</p>"
@@ -511,14 +555,17 @@ class _Page:
         kept = sum(c['held'] is True for c in held)
         stats = [(f"{kept}/{a_n}", tr("report.stat_calls_unknown", unknown=unknown) if unknown
                   else tr("report.stat_calls")),
-                 (str(len(dg["up"])), tr("report.stat_moved_up")), (str(len(new_live)), tr("report.stat_new_rising")),
-                 (str(len(cooled)), tr("report.stat_seasonal")), (str(len(slowing)), tr("report.stat_slowing")),
-                 (str(len(dg["ended"])) if ended_checked else "—", tr("report.stat_ended"))]
+                 (str(len(dg["up"])), tr.plural("report.stat_moved_up", len(dg["up"]))),
+                 (str(len(new_live)), tr.plural("report.stat_new_rising", len(new_live))),
+                 (str(len(cooled)), tr.plural("report.stat_seasonal", len(cooled))),
+                 (str(len(slowing)), tr.plural("report.stat_slowing", len(slowing))),
+                 (str(len(dg["ended"])) if ended_checked else "—",
+                  tr.plural("report.stat_ended", len(dg["ended"]) if ended_checked else 0))]
         strip = "".join(f"<div class='count'><b>{E(a)}</b><span>{E(b)}</span></div>" for a, b in stats)
         if prev.get("rebuilt") is True:
-            compared = tr("report.compared_rebuilt", then=E(then), days=days)
+            compared = tr.plural("report.compared_rebuilt", days, then=E(then), days=days)
         else:
-            compared = tr("report.compared", then=E(then), days=days)
+            compared = tr.plural("report.compared", days, then=E(then), days=days)
         also = ("<p class=small-print>" + tr("report.also_new", names=E(", ".join(
             trends_[x["id"]]["name"] + " (" + _label(trends_[x["id"]]["bucket"], tr).lower() + ")" for x in new_other)))
             + "</p>" if new_other else "")
@@ -565,7 +612,7 @@ class _Page:
                 adv = ", ".join(str(a).split(" (")[0] for a in (pd["advertisers"] or [])[:3])
                 items.append(f"<li><b>{E(t['name'])}</b> <span class='pill b-{E(t['bucket'])}'>"
                              f"{E(_label(t['bucket'], tr))}</span>"
-                             f"<span class='sub'>{E((t.get('relative') or {}).get('band', ''))}"
+                             f"<span class='sub'>{E(shown((t.get('relative') or {}).get('band') or '', BAND_KEY, tr))}"
                              f"{' · ' + E(adv) if adv else ''}</span></li>")
             return "<ul class='cell'>" + "".join(items) + "</ul>" if items else f"<p class='sub'>{none}</p>"
 
@@ -727,7 +774,6 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
     digest_html = pg.digest_section(digest, prev_snap, picks.get("digest_reading") or {}) if digest is not None else ""
     lens = pg.lens_section(picks["lens"]) if isinstance(picks.get("lens"), dict) else ""
     n_act = tr(NUMBER_KEY[len(act)]) if len(act) in NUMBER_KEY else str(len(act))
-    one = len(act) == 1
     other = "".join(f"<li><b>{E(trends_[o['id']]['name'])}</b>: {E(o.get('note') or '')}</li>"
                     for o in picks.get("act_now_other") or [])
     moves = "".join(f"<li><b>{E(trends_[m['id']]['name'])}</b>: {E(_label(m.get('from') or '', tr))} → "
@@ -747,9 +793,8 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
     root = cmap.get("root") or category
     root_relevant = next((x["relevant"] for x in q if x["query"] == root), 0)
     split = any(x.get("parent") for x in q)
-    mapped = tr(("report.mapped_split_one" if root_relevant == 1 else "report.mapped_split_many") if split else
-                ("report.mapped_whole_one" if root_relevant == 1 else "report.mapped_whole_many"),
-                root=E(root), n=root_relevant)
+    mapped = tr.plural("report.mapped_split" if split else "report.mapped_whole", count(root_relevant),
+                       root=E(root), n=root_relevant)
 
     bt_rows = ""
     for b in backtest_data:
@@ -766,11 +811,12 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
         f"<section id='{b.replace('_', '-')}' style='--c:var(--{colour[b]})'><div class='sec-head'><h2>{_label(b, tr)} · "
         f"{len(by[b])}</h2><p>{tr(NOTE_KEY[b])}</p></div>{pg.table(by[b], moved, picked)}</section>" for b in LABEL)
     n_hooks = sum(1 for t in gj["trends"] if t.get("kind") == "hook_trend")
+    n_topics = len(gj["trends"]) - n_hooks
     pool = ctx.get("hooks_pool", "")
     hook_pool = (tr("report.hook_pool_read", pool=pool, listed=pool + pg.hooks_not_read) if pg.hooks_not_read
                  else tr("report.hook_pool_all", pool=pool))
     if ctx.get("hooks_rising"):                   # issue #58: a growth file that placed hooks in the rising list
-        hook_pool = tr("report.hook_pool_rising", n=ctx["hooks_rising"])
+        hook_pool = tr.plural("report.hook_pool_rising", count(ctx["hooks_rising"]), n=ctx["hooks_rising"])
     outputs = report["outputs"]
     nav = "".join(f"<a href='#{o}'>{E(tr(VIEW_KEY[o]))}</a>" for o in outputs)
     cat = E(category)
@@ -782,9 +828,9 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
     others = (f"<div class='small-print'><b>{tr('report.others')}</b><ul>{other}</ul>"
               "</div>" if other else "")
     if act:
-        lede = tr("report.lede_one") if one else tr("report.lede_many", n=n_act.capitalize())
+        lede = tr.plural("report.lede", len(act), n=first_up(n_act))
         act_html = (f'<section style="--c:var(--act)"><div class="sec-head"><h2>'
-                    f'{tr("report.act_on_one") if one else tr("report.act_on_these", n=n_act)}</h2>'
+                    f'{tr.plural("report.act_on", len(act), n=n_act)}</h2>'
                     f'<p>{tr(NOTE_KEY["act_now"])} {tr("report.act_order", market=E(market))}</p>'
                     f'</div><div class="cards">{big}</div>{others}</section>')
         lead = act_html + lens + still + watch
@@ -804,14 +850,16 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
     paid_note = (tr("report.paid_note_checked", market=E(market)) if pg.paid_checked else
                  tr("report.paid_note_unchecked"))
     title = tr("report.page_title", category=E(category[:1].upper() + category[1:]))
+    topics, hooks = tr.plural("report.meta_topics", n_topics, n=n_topics), tr.plural("report.meta_hooks", n_hooks, n=n_hooks)
     meta = (f"<span>{tr('report.meta_market', market=E(picks['market']))}</span>"
             f"<span>{tr('report.meta_as_of', date=E(day(picks['as_of'], tr)))}</span>"
-            f"<span>{tr('report.meta_mapped', topics=len(gj['trends']) - n_hooks, hooks=n_hooks)}</span>"
+            f"<span>{tr('report.meta_mapped', topics=topics, hooks=hooks)}</span>"
             f"<span>{tr('report.meta_source')}</span>")
-    sample = tr("report.sample", window=p['window'], ref=E(day(p['ref'], tr)), active=ctx.get('creators_active'),
-                trends=ctx.get('trends'), category=cat,
-                platforms=E(', '.join(report['sample']['platforms']) or tr('report.unknown_platform')),
-                median=ctx.get('median_new'), hook_pool=hook_pool)
+    sample = tr.plural("report.sample", count(ctx.get('creators_active')), window=p['window'],
+                       ref=E(day(p['ref'], tr)), active=ctx.get('creators_active'), trends=ctx.get('trends'),
+                       category=cat,
+                       platforms=E(', '.join(report['sample']['platforms']) or tr('report.unknown_platform')),
+                       median=ctx.get('median_new'), hook_pool=hook_pool)
     mapped_note = tr("report.mapped_note", mapped=mapped, min_match=format(cmap['min_match'], "g"), category=cat)
     footer = tr("report.footer", date=E(day(p['as_of'], tr)), paid_note=paid_note, valid_until=E(valid_until))
     return f"""<!DOCTYPE html><html lang="{E(i18n.html_lang(tr.lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

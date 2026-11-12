@@ -1020,106 +1020,94 @@ def record(run: RunFolder, path: Path, pack: dict, *, stage: Literal["recipe", "
             s.planned_at = flow._now()
         state.save(run, s)
     stepchecks.mark(run, stage, path, extra=extra)
-    return {"md": md_rel, "planned": planned, "replanned": replanned}
+    return {"md": md_rel, "planned": planned, "replanned": replanned, "language_warning": md_lang(pack["lang"]).warning}
 
 
 # --- the Markdown beside the pack ------------------------------------------------------------------
 
-# templates/pack_template.md's sections, in the page language (a test compares the English with the template).
-HEADINGS = {
-    "en": {"script": "Script ({n} words, ~{s} s at ~2.8–3 words/s)", "picture": "Picture", "sound": "Sound",
-           "models": "Model and production", "facts": "Facts and sources (for the pack only, never in the post text)",
-           "checkins": "Check-ins", "cost": "Cost"},
-    "pl": {"script": "Scenariusz ({n} słów, ~{s} s przy ~2,8–3 słowach/s)", "picture": "Obraz", "sound": "Dźwięk",
-           "models": "Model i produkcja", "facts": "Fakty i źródła (tylko w paczce, nigdy w tekście posta)",
-           "checkins": "Punkty kontrolne", "cost": "Koszt"},
-}
-LABELS = {
-    "en": {"pack": "pack", "channel": "Channel", "product": "Product", "taste": "Taste picks", "none": "none",
-           "hook": "hook", "line": "Line / time", "see": "What we see", "voice": "Voice", "music": "Music",
-           "trending": "Trending sound", "loudness": "Target loudness: −14 LUFS.", "recipe": "recipe",
-           "stages": "Stages", "resolution": "Resolution", "chosen": "chosen", "step": "Step", "tool": "Model / tool",
-           "total": "Total", "budget": "of the budget", "credits": "voice credits", "risk": "Risk",
-           "levels": {"low": "low", "medium": "medium", "high": "high"},
-           "checkin_lines": ["Pack + cost (at every level).", "Images (or storyboard + VO).", "Video.",
-                             "Final edit + posting kit."],
-           "routes": {"h3_native": "native speech in the H3 prompt", "h3_narrator": "H3 narrator from the prompt",
-                      "elevenlabs_narrator": "ElevenLabs narrator", "elevenlabs_lipsync": "ElevenLabs voice + lip sync",
-                      "none": "no speech"}},
-    "pl": {"pack": "paczka", "channel": "Kanał", "product": "Produkt", "taste": "Wybory smaku", "none": "brak",
-           "hook": "hak", "line": "Kwestia / czas", "see": "Co widać", "voice": "Głos", "music": "Muzyka",
-           "trending": "Trendujący dźwięk", "loudness": "Docelowa głośność: −14 LUFS.", "recipe": "przepis",
-           "stages": "Etapy", "resolution": "Rozdzielczość", "chosen": "wybrana", "step": "Krok",
-           "tool": "Model / narzędzie", "total": "Razem", "budget": "z budżetu", "credits": "kredytów głosu",
-           "risk": "Ryzyko", "levels": {"low": "niskie", "medium": "średnie", "high": "wysokie"},
-           "checkin_lines": ["Paczka + koszt (na każdym poziomie).", "Obrazy (albo storyboard + lektor).", "Wideo.",
-                             "Montaż końcowy + zestaw do publikacji."],
-           "routes": {"h3_native": "mowa natywna w prompcie H3", "h3_narrator": "lektor H3 z promptu",
-                      "elevenlabs_narrator": "lektor ElevenLabs", "elevenlabs_lipsync": "głos ElevenLabs + synchronizacja ust",
-                      "none": "bez mowy"}},
-}
+# templates/pack_template.md's sections, in the page language: the string table's `organic.pack_md.*` (a test
+# compares the English with the template), the run's stored values shown in it (`organic_pages.value`).
+_M = "organic.pack_md."
+ROUTE_KEY = {r: f"{_M}route_{r}" for r in ("h3_native", "h3_narrator", "elevenlabs_narrator", "elevenlabs_lipsync",
+                                           "none")}
+RISK_KEY = {r: f"{_M}risk_{r}" for r in ("low", "medium", "high")}
+CHECKIN_KEYS = tuple(f"{_M}checkin_{c}" for c in ("pack", "images", "video", "edit"))
 
 
 def _secs(at: list) -> str:
     return f"{at[0]:g}–{at[1]:g} s"
 
 
+def md_lang(lang: str | None) -> i18n.PageLang:
+    """The language the pack's Markdown is written in: `lang` (the pack's, the run's working language) when its
+    table has every organic string, else English, with `.warning` (`i18n.page_lang`)."""
+    return i18n.page_lang(lang, "organic")
+
+
 def render_md(pack: dict, lang: str, *, version: str | None = None) -> str:
-    """templates/pack_template.md's sections, filled from the pack, with headings in `lang` (en or pl).
+    """templates/pack_template.md's sections, filled from the pack, its words in `lang` (`md_lang`).
     A recipe (no pack keys yet) gets the sections it has."""
-    h = HEADINGS.get(lang, HEADINGS["en"])
-    t = LABELS.get(lang, LABELS["en"])
+    from tm import organic_pages   # its pages import the kit, which reads this module
+
+    tr = i18n.translator(md_lang(lang).lang)
+
+    def t(key: str, **values) -> str:
+        return tr(_M + key, **values)
+
     taste = pack.get("taste") or {}
     picks = [str(taste[k]) for k in ("style", "voice", "music") if taste.get(k)]
     script = pack["script"]
-    lines = [f"# {pack['id']}, {t['pack']}{' ' + version if version else ''}: “{pack['title']}”", "",
-             f"{t['channel']}: {pack['channel']}. {t['product']}: {pack['product']['level']}. "
-             f"{t['taste']}: {', '.join(picks) or t['none']}.", "",
-             "## " + h["script"].format(n=script["words"], s=f"{script['seconds']:g}")]
+    product = organic_pages.value(pack["product"]["level"], "product", tr)
+    lines = [f"# {pack['id']}, {t('pack')}{' ' + version if version else ''}: “{pack['title']}”", "",
+             f"{t('channel')}: {pack['channel']}. {t('product')}: {product}. "
+             f"{t('taste')}: {', '.join(picks) or t('none')}.", "",
+             "## " + tr.plural(_M + "h_script", script["words"], n=script["words"], s=f"{script['seconds']:g}")]
     for i, line in enumerate(script["lines"]):
-        lines.append(f"{line['n']}. “{line['text']}”" + (f" ({t['hook']})" if i == 0 else ""))
-    lines += ["", "## " + h["picture"], f"| {t['line']} | {t['see']} |", "|---|---|"]
+        lines.append(f"{line['n']}. “{line['text']}”" + (f" ({t('hook')})" if i == 0 else ""))
+    lines += ["", "## " + t("h_picture"), f"| {t('line')} | {t('see')} |", "|---|---|"]
     lines += [f"| {line['n']} ({_secs(line['at'])}) | {line['shot']} |" for line in script["lines"]]
     speech, sound = pack.get("speech"), pack.get("sound")
     if speech or sound:
-        lines += ["", "## " + h["sound"]]
+        lines += ["", "## " + t("h_sound")]
         if speech:
-            lines.append(f"- {t['voice']}: {t['routes'].get(speech['route'], speech['route'])}"
-                         + (f", {speech['voice']}" if speech.get("voice") else "") + ".")
+            route = tr(ROUTE_KEY[speech["route"]]) if speech["route"] in ROUTE_KEY else speech["route"]
+            lines.append(f"- {t('voice')}: {route}" + (f", {speech['voice']}" if speech.get("voice") else "") + ".")
         music = taste.get("music") or (sound or {}).get("track")
-        lines.append(f"- {t['music']}: {music or t['none']}.")
+        lines.append(f"- {t('music')}: {music or t('none')}.")
         if (sound or {}).get("trending"):
-            lines.append(f"- {t['trending']}: {sound['trending']}.")
-        lines.append(f"- {t['loudness']}")
+            lines.append(f"- {t('trending')}: {sound['trending']}.")
+        lines.append(f"- {t('loudness')}")
     if pack.get("models"):
-        lines += ["", "## " + h["models"]]
+        lines += ["", "## " + t("h_models")]
         for m in pack["models"]:
             lines.append(f"- {m['component']}: `{m['model']}`, {m['why']} ({m['ranking']['source']}, "
-                         f"{m['ranking']['date']}); {t['recipe']} `{m['recipe']}`.")
+                         f"{m['ranking']['date']}); {t('recipe')} `{m['recipe']}`.")
         if pack.get("stages"):
-            lines.append(f"- {t['stages']}: " + " → ".join(st["stage"] for st in pack["stages"]) + ".")
+            lines.append(f"- {t('stages')}: " + " → ".join(st["stage"] for st in pack["stages"]) + ".")
         res = pack.get("resolution")
         if res:
-            lines.append(f"- {t['resolution']}: " + " / ".join(f"{o['id']} {_usd(o['cost'])}" for o in res["options"])
-                         + f" ({t['chosen']}: {res['choice']}).")
+            lines.append(f"- {t('resolution')}: " + " / ".join(f"{o['id']} {_usd(o['cost'])}" for o in res["options"])
+                         + f" ({t('chosen')}: {res['choice']}).")
     if pack.get("facts"):
-        lines += ["", "## " + h["facts"]] + [f"- {f['claim']}: {f['source']}." for f in pack["facts"]]
-    lines += ["", "## " + h["checkins"]] + [f"{i}. {text}" for i, text in enumerate(t["checkin_lines"], 1)]
+        lines += ["", "## " + t("h_facts")] + [f"- {f['claim']}: {f['source']}." for f in pack["facts"]]
+    lines += ["", "## " + t("h_checkins")] + [f"{i}. {tr(key)}" for i, key in enumerate(CHECKIN_KEYS, 1)]
     cost = pack.get("cost")
     if cost:
-        lines += ["", "## " + h["cost"], f"| {t['step']} | {t['tool']} | {h['cost']} |", "|---|---|---|"]
+        lines += ["", "## " + t("h_cost"), f"| {t('step')} | {t('tool')} | {t('h_cost')} |", "|---|---|---|"]
         for line in cost["lines"]:
-            amount = _usd(line["cost"]) if line["kind"] == "ai_usd" else f"{line['cost']:g} {t['credits']}"
+            amount = (_usd(line["cost"]) if line["kind"] == "ai_usd" else
+                      tr.plural(_M + "credits", f"{line['cost']:g}", n=f"{line['cost']:g}"))
             lines.append(f"| {line['what']} | {line['model']} | {amount} |")
         credits = cost["totals"].get("voice_credits") or 0
-        lines.append(f"| **{t['total']}** | | **{_usd(cost['totals']['ai_usd'])}**"
-                     + (f" + {credits:g} {t['credits']}" if credits else "") + " |")
+        lines.append(f"| **{t('total')}** | | **{_usd(cost['totals']['ai_usd'])}**"
+                     + (f" + {tr.plural(_M + 'credits', f'{credits:g}', n=f'{credits:g}')}" if credits else "") + " |")
         if cost.get("currency_note"):
             lines += ["", cost["currency_note"]]
     risk = pack.get("risk")
     if risk:
-        hits = "; ".join(f"{x['item']}: {x['mitigation']}" for x in risk["hits"])
-        lines += ["", f"**{t['risk']}:** {t['levels'].get(risk['level'], risk['level'])}." + (f" {hits}." if hits else "")]
+        hits = "; ".join(f"{organic_pages.value(x['item'], 'risk', tr)}: {x['mitigation']}" for x in risk["hits"])
+        level = tr(RISK_KEY[risk["level"]]) if risk["level"] in RISK_KEY else risk["level"]
+        lines += ["", f"**{t('risk')}:** {level}." + (f" {hits}." if hits else "")]
     return "\n".join(lines) + "\n"
 
 

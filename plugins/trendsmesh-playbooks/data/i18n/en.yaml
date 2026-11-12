@@ -176,26 +176,40 @@ report:
   h1: "What is moving in {category}"
   meta_market: "Market: {market}"
   meta_as_of: "As of {date}"
-  meta_mapped: "{topics} topics + {hooks} hooks mapped"
+  meta_mapped: "{topics} + {hooks} mapped"
+  # a count: each language writes the forms its numbers take (one, few, many …; tm.i18n count_forms)
+  meta_topics:
+    one: "{n} topic"
+    other: "{n} topics"
+  meta_hooks:
+    one: "{n} hook"
+    other: "{n} hooks"
   meta_source: "Source: TrendsMesh evidence videos, Meta Ad Library"
   number_2: two
   number_3: three
   number_4: four
   number_5: five
   number_6: six
-  lede_one: One trend to act on now, what is still rising, and what to leave out.
-  lede_many: "{n} trends to act on now, what is still rising, and what to leave out."
+  # {n} is the count in words (number_2 …), the form follows the count
+  lede:
+    one: One trend to act on now, what is still rising, and what to leave out.
+    other: "{n} trends to act on now, what is still rising, and what to leave out."
   no_act_now: "No trend reaches 'act now' this time."
   lede_sample: "Each trend is placed against the rest of the {category} sample: how fast new creators join it compared with a typical {category} trend, how widely its views are spread, and how much reach its evidence has."
   sample_head: The sample.
-  sample: 'In the {window} days to {ref}, {active} creators joined one of the {trends} mapped {category} trends in TrendsMesh evidence ({platforms} only). A typical active trend gained {median} of them; "2×" means twice that. Bands rank a topic among {category} topics and {hook_pool}. Raw counts sit under each card.'
+  sample:
+    one: 'In the {window} days to {ref}, {active} creator joined one of the {trends} mapped {category} trends in TrendsMesh evidence ({platforms} only). A typical active trend gained {median} of them; "2×" means twice that. Bands rank a topic among {category} topics and {hook_pool}. Raw counts sit under each card.'
+    other: 'In the {window} days to {ref}, {active} creators joined one of the {trends} mapped {category} trends in TrendsMesh evidence ({platforms} only). A typical active trend gained {median} of them; "2×" means twice that. Bands rank a topic among {category} topics and {hook_pool}. Raw counts sit under each card.'
   unknown_platform: unknown platform
   hook_pool_read: "a hook among the {pool} rising hooks whose videos were read (the shortlist; {listed} listed)"
   hook_pool_all: "a hook among all {pool} rising hooks"
-  hook_pool_rising: "a hook by its place among the {n} rising hooks TrendsMesh lists"
+  hook_pool_rising:
+    one: "a hook by its place among the {n} rising hook TrendsMesh lists"
+    other: "a hook by its place among the {n} rising hooks TrendsMesh lists"
   # the picks
-  act_on_one: Act on this one
-  act_on_these: "Act on these {n}"
+  act_on:
+    one: Act on this one
+    other: "Act on these {n}"
   act_order: "Ordered by fit to the {market} market and room left in paid."
   others: "Also in 'act now' by the numbers, not recommended yet:"
   still_heading: "Still rising: worth watching"
@@ -203,7 +217,9 @@ report:
   # a trend's card
   band_all_hooks: "{band} of all rising hooks"
   band_hooks_read: "{band} of the rising hooks read"
-  band_rising: "{band} of TrendsMesh's {n} rising hooks"
+  band_rising:
+    one: "{band} of TrendsMesh's {n} rising hook"
+    other: "{band} of TrendsMesh's {n} rising hooks"
   band_not_rising: "Not in TrendsMesh's rising hooks"
   band_topics: "{band} of {category} topics"
   velocity: "{index}× the new creators of a typical {category} trend"
@@ -217,7 +233,9 @@ report:
   spread: Spread
   glance_reach: Reach of the evidence
   reach_views: "{views} views"
-  reach_videos: "across {videos} videos"
+  reach_videos:
+    one: "across {videos} video"
+    other: "across {videos} videos"
   glance_freshness: Freshness
   fresh_new_video: "new video {days} d ago"
   fresh_seen: "trend seen for {days} d"
@@ -225,7 +243,9 @@ report:
   confidence_sub: "{why}; status {status}"
   glance_ad_library: "Meta Ad Library ({market})"
   raw_summary: Raw counts in the sample
-  raw_counts: "{new_recent} new creators in the last 14 days (of {active} creators who joined any mapped {category} trend in that window), {new_base} in the 28 days before; {creators} creators in all; median {median} views per video. TrendsMesh evidence is a collected sample, not platform totals."
+  raw_counts:
+    one: "{new_recent} new creator in the last 14 days (of {active} creators who joined any mapped {category} trend in that window), {new_base} in the 28 days before; {creators} creators in all; median {median} views per video. TrendsMesh evidence is a collected sample, not platform totals."
+    other: "{new_recent} new creators in the last 14 days (of {active} creators who joined any mapped {category} trend in that window), {new_base} in the 28 days before; {creators} creators in all; median {median} views per video. TrendsMesh evidence is a collected sample, not platform totals."
   thumb_views: "{views} views · {date}"
   video_by: "Video by {creator}"
   evidence_video_by: "Evidence video by {creator}"
@@ -234,6 +254,29 @@ report:
   card_risk: Risk.
   fit_score: "Fit score {total} on a scale of {low}–{high} (TR5: {criteria} criteria scored 1–5, weighted)"
   card_valid: "Valid until {date} · trend id {id}"
+  # a trend's data as the run stores it (research_growth, the trend's card), shown in the page language; the run
+  # files keep the stored English. A value not listed here is shown as stored.
+  value:
+    band_top_10: top 10%
+    band_top_25: top 25%
+    band_top_half: top half
+    band_lower_half: lower half
+    confidence_high: high
+    confidence_medium: medium
+    confidence_low: low
+    why_few_creators:
+      one: "only {n} creator in evidence"
+      other: "only {n} creators in evidence"
+    why_one_account: views come mostly from one account
+    why_broad: broad creator base, no dominant account, confirmed
+    why_some_limits: "some limits: see the risk line"
+    status_confirmed: confirmed
+    status_unconfirmed: unconfirmed
+    status_contradicted: contradicted
+    kind_hook: hook
+    kind_topic: topic
+    kind_sound: sound
+    kind_format: format
   # the stage tables
   col_trend: Trend
   col_type: Type
@@ -248,10 +291,12 @@ report:
   moved_heading: Moved by review
   moved_note: The numbers put these in one stage; reading the evidence moved them.
   mapped_heading: How the category was mapped
-  mapped_split_one: 'One phrase in: "{root}" matched only {n} trend strongly, so it was split into sub-categories, and thin ones split once more'
-  mapped_split_many: 'One phrase in: "{root}" matched only {n} trends strongly, so it was split into sub-categories, and thin ones split once more'
-  mapped_whole_one: 'One phrase in: "{root}" matched {n} trend strongly, so it was not split'
-  mapped_whole_many: 'One phrase in: "{root}" matched {n} trends strongly, so it was not split'
+  mapped_split:
+    one: 'One phrase in: "{root}" matched only {n} trend strongly, so it was split into sub-categories, and thin ones split once more'
+    other: 'One phrase in: "{root}" matched only {n} trends strongly, so it was split into sub-categories, and thin ones split once more'
+  mapped_whole:
+    one: 'One phrase in: "{root}" matched {n} trend strongly, so it was not split'
+    other: 'One phrase in: "{root}" matched {n} trends strongly, so it was not split'
   mapped_note: "{mapped} (relevant = search match score ≥ {min_match}). Hooks have their own path, from TrendsMesh's rising hook list."
   col_search: Search
   col_parent: Parent
@@ -289,15 +334,30 @@ report:
   # the digest view
   digest_title: "Weekly digest: {category}"
   digest_meta: this week vs the previous run
-  compared: "Compared with the report of {then} ({days} days of evidence)."
-  compared_rebuilt: 'Compared with {then} ({days} days of evidence). This digest uses a snapshot of that week rebuilt from the evidence dates, so "new" means no creators then and ended trends are left out; from next week it compares with the stored snapshot.'
+  compared:
+    one: "Compared with the report of {then} ({days} day of evidence)."
+    other: "Compared with the report of {then} ({days} days of evidence)."
+  compared_rebuilt:
+    one: 'Compared with {then} ({days} day of evidence). This digest uses a snapshot of that week rebuilt from the evidence dates, so "new" means no creators then and ended trends are left out; from next week it compares with the stored snapshot.'
+    other: 'Compared with {then} ({days} days of evidence). This digest uses a snapshot of that week rebuilt from the evidence dates, so "new" means no creators then and ended trends are left out; from next week it compares with the stored snapshot.'
   stat_calls: "last week's 'act now' calls kept adding creators"
   stat_calls_unknown: "last week's 'act now' calls kept adding creators ({unknown} unknown)"
-  stat_moved_up: moved up
-  stat_new_rising: new and rising
-  stat_seasonal: seasonal, now over
-  stat_slowing: slowing
-  stat_ended: ended or merged
+  # what the number above it counts (a count: the form follows that number; English says the same for both)
+  stat_moved_up:
+    one: moved up
+    other: moved up
+  stat_new_rising:
+    one: new and rising
+    other: new and rising
+  stat_seasonal:
+    one: seasonal, now over
+    other: seasonal, now over
+  stat_slowing:
+    one: slowing
+    other: slowing
+  stat_ended:
+    one: ended or merged
+    other: ended or merged
   week_in_a_minute: The week in one minute
   todo_heading: What to do this week
   moved_up: Moved up
@@ -447,10 +507,11 @@ organic:
     output_for: Output for
     trend_hook: hook
     trend_id: id
-    # the lede's start for 1, for 2–4 (22–24 …) and for 5 or more ideas; English says the same for all three
-    lede_ideas_one: "{n} video ideas for"
-    lede_ideas_few: "{n} video ideas for"
-    lede_ideas_many: "{n} video ideas for"
+    # the lede's start, a count of ideas (one, other: each language writes its own forms); English says the
+    # same for both, as the reference page does
+    lede_ideas:
+      one: "{n} video ideas for"
+      other: "{n} video ideas for"
     lede_rest: each built on trends rising now, with the evidence videos behind it. Pick the ones to produce; nothing is generated or paid until you approve a pack and its cost.
   # the check-in and delivery pages (organic_pages/gate.py) and their data (organic_gates.py)
   gate:
@@ -586,6 +647,97 @@ organic:
     dl_script: script (.md)
     plan: Posting plan
     none: nothing to post
+  # the takes rubric's fails and findings (organic_qa), shown on the video check-in under each take; the numbers
+  # come formatted
+  qa:
+    fail_transcript: "the transcript matches {score} of the script, under {least}"
+    fail_no_transcript: "the transcript matches no transcript match (QA without --script) of the script, under {least}"
+    fail_loudness: "the loudness is {lufs} LUFS, outside the usable {low} to {high} LUFS"
+    fail_no_sound: the take has no measurable sound, and it carries the spoken lines
+    finding_no_cut: "no cut near {at} s"
+    finding_cut_off: "the cut at {cut} s is {off} s off its bracket at {bracket} s (more than {flag} s)"
+    finding_slow: "the pace is {wps} words a second, under {least}: speed it up ×{speed} in the edit (pitch kept) before any redo"
+  # the pack's Markdown beside pack_vNN.json (organic_pack.render_md; a test compares the English headings with
+  # templates/pack_template.md)
+  pack_md:
+    h_script:
+      one: "Script ({n} word, ~{s} s at ~2.8–3 words/s)"
+      other: "Script ({n} words, ~{s} s at ~2.8–3 words/s)"
+    h_picture: Picture
+    h_sound: Sound
+    h_models: Model and production
+    h_facts: Facts and sources (for the pack only, never in the post text)
+    h_checkins: Check-ins
+    h_cost: Cost
+    pack: pack
+    channel: Channel
+    product: Product
+    taste: Taste picks
+    none: none
+    hook: hook
+    line: Line / time
+    see: What we see
+    voice: Voice
+    music: Music
+    trending: Trending sound
+    loudness: "Target loudness: −14 LUFS."
+    recipe: recipe
+    stages: Stages
+    resolution: Resolution
+    chosen: chosen
+    step: Step
+    tool: Model / tool
+    total: Total
+    credits:
+      one: "{n} voice credit"
+      other: "{n} voice credits"
+    risk: Risk
+    risk_low: low
+    risk_medium: medium
+    risk_high: high
+    checkin_pack: Pack + cost (at every level).
+    checkin_images: Images (or storyboard + VO).
+    checkin_video: Video.
+    checkin_edit: Final edit + posting kit.
+    route_h3_native: native speech in the H3 prompt
+    route_h3_narrator: H3 narrator from the prompt
+    route_elevenlabs_narrator: ElevenLabs narrator
+    route_elevenlabs_lipsync: ElevenLabs voice + lip sync
+    route_none: no speech
+  # the posting kit's Markdown beside its JSON (kit.to_md); its ## headings are the platforms' names
+  kit_md:
+    title: Posting kit
+    video: Video
+    cover: Cover
+    product: Product
+    caption: Caption
+    hashtags: Hashtags
+    name: Title
+    description: Description
+    ai: AI label
+    sound: Sound
+    trending: Trending sound
+    alternative: Business account alternative
+  # the run's data as it is stored (the product level OV5, a trend's status, the OV4 risk items), shown in the
+  # page language; the run files keep the stored value. A value not listed here is shown as stored.
+  value:
+    product_not_shown: not shown
+    product_incidental: incidental
+    product_featured: featured
+    product_soft_mention: soft mention
+    product_hero: hero
+    status_confirmed: confirmed
+    status_unconfirmed: unconfirmed
+    status_contradicted: contradicted
+    risk_hands_on_objects: hands on objects
+    risk_product_shape: the product's shape
+    risk_same_character: the same character in every shot
+    risk_fast_motion: fast motion
+    risk_physics: physics
+    risk_model_text: text drawn by the model
+    risk_speech: speech
+    risk_long_takes: long takes
+    risk_several_characters: several characters
 
 # --- Refresh an ad's run page: engine/src/tm/run_page/ (issue #19) ---
 # decision.saved_at's {time} and decision.save_error's {error} are filled on the page itself.

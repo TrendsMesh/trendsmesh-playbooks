@@ -107,9 +107,10 @@ strings:
       output_for: Output dla
       trend_hook: hook
       trend_id: id
-      lede_ideas_one: "{n} pomysł na filmy dla"
-      lede_ideas_few: "{n} pomysły na filmy dla"
-      lede_ideas_many: "{n} pomysłów na filmy dla"
+      lede_ideas:
+        one: "{n} pomysł na filmy dla"
+        few: "{n} pomysły na filmy dla"
+        many: "{n} pomysłów na filmy dla"
       lede_rest: każdy oparty na trendach, które rosną teraz, z filmami-dowodami. Wybierz te do produkcji; nic nie jest generowane ani opłacane, dopóki nie zatwierdzisz paczki i jej kosztu.
     # the check-in and delivery pages (organic_pages/gate.py) and their data (organic_gates.py)
     gate:
@@ -244,3 +245,93 @@ strings:
       dl_script: skrypt (.md)
       plan: Plan publikacji
       none: nic do publikacji
+    # the takes rubric's fails and findings (organic_qa)
+    qa:
+      fail_transcript: "transkrypcja zgadza się ze scenariuszem w {score}, poniżej {least}"
+      fail_no_transcript: "brak transkrypcji do porównania ze scenariuszem (QA bez --script), wymagane {least}"
+      fail_loudness: "głośność to {lufs} LUFS, poza użytecznym zakresem od {low} do {high} LUFS"
+      fail_no_sound: ujęcie nie ma mierzalnego dźwięku, a niesie kwestie mówione
+      finding_no_cut: "brak cięcia w okolicy {at} s"
+      finding_cut_off: "cięcie w {cut} s jest {off} s od swojego znacznika w {bracket} s (więcej niż {flag} s)"
+      finding_slow: "tempo: {wps} sł./s, poniżej {least}: przyspiesz ujęcie ×{speed} w montażu (bez zmiany wysokości głosu), zanim poprosisz o nowe"
+    # the pack's Markdown (organic_pack.render_md)
+    pack_md:
+      h_script:
+        one: "Scenariusz ({n} słowo, ~{s} s przy ~2,8–3 słowach/s)"
+        few: "Scenariusz ({n} słowa, ~{s} s przy ~2,8–3 słowach/s)"
+        many: "Scenariusz ({n} słów, ~{s} s przy ~2,8–3 słowach/s)"
+      h_picture: Obraz
+      h_sound: Dźwięk
+      h_models: Model i produkcja
+      h_facts: Fakty i źródła (tylko w paczce, nigdy w tekście posta)
+      h_checkins: Punkty kontrolne
+      h_cost: Koszt
+      pack: paczka
+      channel: Kanał
+      product: Produkt
+      taste: Wybory smaku
+      none: brak
+      hook: hak
+      line: Kwestia / czas
+      see: Co widać
+      voice: Głos
+      music: Muzyka
+      trending: Trendujący dźwięk
+      loudness: "Docelowa głośność: −14 LUFS."
+      recipe: przepis
+      stages: Etapy
+      resolution: Rozdzielczość
+      chosen: wybrana
+      step: Krok
+      tool: Model / narzędzie
+      total: Razem
+      credits:
+        one: "{n} kredyt głosu"
+        few: "{n} kredyty głosu"
+        many: "{n} kredytów głosu"
+      risk: Ryzyko
+      risk_low: niskie
+      risk_medium: średnie
+      risk_high: wysokie
+      checkin_pack: Paczka + koszt (na każdym poziomie).
+      checkin_images: Obrazy (albo storyboard + lektor).
+      checkin_video: Wideo.
+      checkin_edit: Montaż końcowy + zestaw do publikacji.
+      route_h3_native: mowa natywna w prompcie H3
+      route_h3_narrator: lektor H3 z promptu
+      route_elevenlabs_narrator: lektor ElevenLabs
+      route_elevenlabs_lipsync: głos ElevenLabs + synchronizacja ust
+      route_none: bez mowy
+    # the posting kit's Markdown (kit.to_md)
+    kit_md:
+      title: Zestaw do publikacji
+      video: Wideo
+      cover: Okładka
+      product: Produkt
+      caption: Opis posta
+      hashtags: Hashtagi
+      name: Tytuł
+      description: Opis filmu
+      ai: Etykieta AI
+      sound: Dźwięk
+      trending: Trendujący dźwięk
+      alternative: Alternatywa dla konta firmowego
+    # the run's data as stored, shown in Polish
+    value:
+      product_not_shown: nie występuje
+      product_incidental: w tle
+      product_featured: wyeksponowany
+      product_soft_mention: delikatna wzmianka
+      product_hero: w roli głównej
+      status_confirmed: potwierdzony
+      status_unconfirmed: niepotwierdzony
+      status_contradicted: podważony
+      risk_hands_on_objects: dłonie na przedmiotach
+      risk_product_shape: kształt produktu
+      risk_same_character: ta sama postać w każdym ujęciu
+      risk_fast_motion: szybki ruch
+      risk_physics: fizyka
+      risk_model_text: tekst rysowany przez model
+      risk_speech: mowa
+      risk_long_takes: długie ujęcia
+      risk_several_characters: kilka postaci

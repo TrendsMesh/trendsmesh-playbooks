@@ -58,6 +58,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
   now comes from its place in TrendsMesh's rising list, not from the roughly 8 shortlisted hooks whose videos
   were read. Its stage still comes from how fast new creators join it. A hook only a search found has no band.
   Reports built before keep their wording.
+- **Counts read right in every language.** The trend report and the Organic AI video pages now choose the form of
+  each count the way your language does, not just English one-or-many: in Polish "1 trend", "3 trendy", "5
+  trendów", "22 trendy". Claude translates each form your language uses once, with the numbers each one is for.
+- **The pack and the posting kit in your language.** Organic AI video's pack and posting kit Markdown files have
+  their headings and labels in your working language, like the pages, and the QA findings under each take on the
+  video check-in are in that language too, instead of English on a Polish page.
+- **Stored values in your language.** Words the run keeps as data, such as "top 10%" or "medium" on the trend
+  report and "soft mention", "confirmed" or "long_takes" on Organic AI video's pages and pack, are shown in your
+  working language. The run's files keep them as they are, so earlier runs open and check as before.
 
 ## 0.11.0
 

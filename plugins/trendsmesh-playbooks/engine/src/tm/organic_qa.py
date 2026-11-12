@@ -9,7 +9,8 @@ contact_sheet}. Here:
 - `rubric_takes(qa, cfg, *, speech=True)`: the takes rubric (PLAYBOOK.md OV9) against the run's `qa.*` thresholds
   (defaults `organic_config.DEFAULTS`). `fails`: the transcript under `qa.transcript_min`, the loudness outside
   `qa.lufs_usable`; `findings`: a cut more than `qa.cut_flag_s` off its bracket, a bracket with no cut, a slow
-  pace; `speed`: what a slow take (under `qa.wps_min`) is sped up to in the edit, `min(qa.speed_max, 2.9 / wps)`,
+  pace (each a sentence of the string table `organic.qa.*`: English here, `rubric_words` in a page's language);
+  `speed`: what a slow take (under `qa.wps_min`) is sped up to in the edit, `min(qa.speed_max, 2.9 / wps)`,
   before any redo is suggested. The transcript and pace rules apply only to a take that carries the spoken lines
   (`speech`: the pack's route speaks in the model, `SPEECH_IN_TAKE`). A narrated or silent take gets its voice in
   the edit, so it is judged on its cuts and its loudness, and a take with no sound at all does not fail.
@@ -59,7 +60,8 @@ import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
-from tm import audience, config, library, manifest, organic_config, organic_pack, organic_specs, render, state
+from tm import (audience, config, i18n, library, manifest, organic_config, organic_pack, organic_specs, render,
+                state)
 from tm.playbooks import ORGANIC_VIDEO
 from tm.r2 import run_config
 from tm.review import VIDEO_EXT
@@ -120,35 +122,54 @@ def _number(value: object) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
-def rubric_takes(qa: dict, cfg: dict | None, *, speech: bool = True) -> dict:
-    """{fails, findings, speed} of a take's QA (the module docstring). `speech`: the take carries the spoken lines."""
+_Q = "organic.qa."   # the rubric's sentences in the string table (issue #3): English here, a page's language there
+
+
+def _rubric(qa: dict, cfg: dict | None, speech: bool) -> tuple[list, list, float | None]:
+    """The takes rubric as (fails, findings, speed), each fail and finding a key of the string table and its
+    values."""
     fails, findings = [], []
     if speech:
         least = _setting(cfg, "transcript_min")
         score = qa.get("match")
         if not _number(score) or score < least:
-            heard = f"{score:.0%}" if _number(score) else "no transcript match (QA without --script)"
-            fails.append(f"the transcript matches {heard} of the script, under {least:.0%}")
+            fails.append((_Q + "fail_transcript", {"score": f"{score:.0%}", "least": f"{least:.0%}"}) if _number(score)
+                         else (_Q + "fail_no_transcript", {"least": f"{least:.0%}"}))
     low, high = _setting(cfg, "lufs_usable")
     lufs = qa.get("lufs")
     if _number(lufs) and not low <= lufs <= high:
-        fails.append(f"the loudness is {lufs:.1f} LUFS, outside the usable {low:g} to {high:g} LUFS")
+        fails.append((_Q + "fail_loudness", {"lufs": f"{lufs:.1f}", "low": f"{low:g}", "high": f"{high:g}"}))
     elif not _number(lufs) and speech:
-        fails.append("the take has no measurable sound, and it carries the spoken lines")
+        fails.append((_Q + "fail_no_sound", {}))
     flag = _setting(cfg, "cut_flag_s")
     for o in qa.get("cut_offsets") or []:
         if o.get("cut") is None:
-            findings.append(f"no cut near {o['bracket']:g} s")
+            findings.append((_Q + "finding_no_cut", {"at": f"{o['bracket']:g}"}))
         elif abs(o["offset"]) > flag:
-            findings.append(f"the cut at {o['cut']:g} s is {abs(o['offset']):.2f} s off its bracket at "
-                            f"{o['bracket']:g} s (more than {flag:g} s)")
+            findings.append((_Q + "finding_cut_off", {"cut": f"{o['cut']:g}", "off": f"{abs(o['offset']):.2f}",
+                                                       "bracket": f"{o['bracket']:g}", "flag": f"{flag:g}"}))
     speed = None
     wps = qa.get("wps")
     if speech and _number(wps) and 0 < wps < _setting(cfg, "wps_min"):
         speed = round(min(_setting(cfg, "speed_max"), BRISK_WPS / wps), 2)
-        findings.append(f"the pace is {wps:g} words a second, under {_setting(cfg, 'wps_min'):g}: speed it up "
-                        f"×{speed:g} in the edit (pitch kept) before any redo")
-    return {"fails": fails, "findings": findings, "speed": speed}
+        findings.append((_Q + "finding_slow", {"wps": f"{wps:g}", "least": f"{_setting(cfg, 'wps_min'):g}",
+                                               "speed": f"{speed:g}"}))
+    return fails, findings, speed
+
+
+def rubric_takes(qa: dict, cfg: dict | None, *, speech: bool = True) -> dict:
+    """{fails, findings, speed} of a take's QA (the module docstring), in English. `speech`: the take carries the
+    spoken lines."""
+    fails, findings, speed = _rubric(qa, cfg, speech)
+    tr = i18n.translator(i18n.ENGLISH)
+    return {"fails": [tr(k, **v) for k, v in fails], "findings": [tr(k, **v) for k, v in findings], "speed": speed}
+
+
+def rubric_words(qa: dict, cfg: dict | None, lang: str | i18n.Translator, *, speech: bool = True) -> dict:
+    """`rubric_takes` with its fails and findings in `lang` (a page's language), for the check-in pages."""
+    fails, findings, speed = _rubric(qa, cfg, speech)
+    tr = lang if isinstance(lang, i18n.Translator) else i18n.translator(lang)
+    return {"fails": [tr(k, **v) for k, v in fails], "findings": [tr(k, **v) for k, v in findings], "speed": speed}
 
 
 def speaks(pack: dict) -> bool:

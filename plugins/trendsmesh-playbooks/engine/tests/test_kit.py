@@ -403,7 +403,7 @@ def test_md_headings_are_the_templates():
 
 @pytest.mark.private_data
 def test_polish_labels_are_capitalised_and_distinct():
-    pl = kit.LABELS["pl"]
+    pl = kit.labels("pl")
     assert all(v[0].isupper() for v in pl.values())
     assert pl["caption"] != pl["description"]
     text = kit.to_md(_m1(), "pl")

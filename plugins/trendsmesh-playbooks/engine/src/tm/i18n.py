@@ -20,10 +20,17 @@ English string changes, its translation counts as missing again. The plugin may 
 
     t(key, lang="en", **values)    one string, filled; `Missing` when `lang` has no translation of it (never
                                    a silent English); KeyError for a key the English table does not have
-    translator(lang)               the same, the table read once (a page build)
+    translator(lang)               the same, the table read once (a page build); `tr.plural(key, count,
+                                   **values)` the form of a count (below)
     page_lang(wanted, *areas)      the language to build a page in: `wanted` when its table has every key of the
                                    areas, else English, with `.warning` saying so and what to run (loud, never
                                    silent)
+
+A count's words are a group of forms keyed by CLDR plural category (`report.lede.one`, `report.lede.other`):
+the English table writes `one` and `other`, and another language's table writes the forms its whole numbers take
+(`count_forms`: Polish one, few, many; Japanese other alone), each translated from the English `other` (`one`
+from the English `one`). `category(count, lang)` is the CLDR rule; a form may say the count where the English
+leaves it out (Russian's one is 1, 21, 31 …).
 
 `transliterate` keeps file names readable: é -> e, ß -> ss, ł -> l, ś -> s; other scripts stay as they are.
 """
@@ -37,6 +44,7 @@ import re
 import string
 import unicodedata
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
@@ -240,6 +248,252 @@ def language_problems(cfg: dict) -> list:
     return out
 
 
+# --- counts: CLDR plural categories ------------------------------------------------------------------
+
+CATEGORIES = ("zero", "one", "two", "few", "many", "other")     # CLDR's order
+
+
+class _Count(NamedTuple):
+    """CLDR's operands of a count: n the absolute value, i its whole digits, v how many fraction digits it shows,
+    f those digits, t them without trailing zeros ("1.50": n 1.5, i 1, v 2, f 50, t 5)."""
+    n: Decimal
+    i: int
+    v: int
+    f: int
+    t: int
+
+
+def _operands(count) -> _Count:
+    try:
+        d = abs(Decimal(str(count).strip()))
+    except (InvalidOperation, ValueError):
+        raise ValueError(f"{count!r} is not a count.") from None
+    whole, _, frac = format(d, "f").partition(".")
+    return _Count(d, int(whole), len(frac), int(frac or 0), int(frac.rstrip("0") or 0))
+
+
+def _in(x, low: int, high: int) -> bool:
+    """CLDR's `x = low..high`: a whole number in the range."""
+    return x == int(x) and low <= x <= high
+
+
+def _million(o: _Count) -> bool:          # CLDR's `e = 0 and i != 0 and i % 1000000 = 0 and v = 0`
+    return o.i != 0 and o.i % 1_000_000 == 0 and o.v == 0
+
+
+def _slavic(o: _Count) -> str:            # ru, uk
+    if o.v:
+        return "other"
+    if o.i % 10 == 1 and o.i % 100 != 11:
+        return "one"
+    if 2 <= o.i % 10 <= 4 and not 12 <= o.i % 100 <= 14:
+        return "few"
+    return "many"
+
+
+def _polish(o: _Count) -> str:
+    if o.v:
+        return "other"
+    if o.i == 1:
+        return "one"
+    return "few" if 2 <= o.i % 10 <= 4 and not 12 <= o.i % 100 <= 14 else "many"
+
+
+def _belarusian(o: _Count) -> str:
+    if o.n % 10 == 1 and o.n % 100 != 11:
+        return "one"
+    if _in(o.n % 10, 2, 4) and not _in(o.n % 100, 12, 14):
+        return "few"
+    if o.n % 10 == 0 or _in(o.n % 10, 5, 9) or _in(o.n % 100, 11, 14):
+        return "many"
+    return "other"
+
+
+def _czech(o: _Count) -> str:             # cs, sk
+    if o.v:
+        return "many"
+    return "one" if o.i == 1 else "few" if 2 <= o.i <= 4 else "other"
+
+
+def _bosnian(o: _Count) -> str:           # hr, sr, bs
+    if (not o.v and o.i % 10 == 1 and o.i % 100 != 11) or (o.f % 10 == 1 and o.f % 100 != 11):
+        return "one"
+    if (not o.v and 2 <= o.i % 10 <= 4 and not 12 <= o.i % 100 <= 14) or \
+            (2 <= o.f % 10 <= 4 and not 12 <= o.f % 100 <= 14):
+        return "few"
+    return "other"
+
+
+def _slovenian(o: _Count) -> str:
+    if not o.v and o.i % 100 == 1:
+        return "one"
+    if not o.v and o.i % 100 == 2:
+        return "two"
+    return "few" if o.v or 3 <= o.i % 100 <= 4 else "other"
+
+
+def _lithuanian(o: _Count) -> str:
+    if o.f:
+        return "many"
+    if o.n % 10 == 1 and not _in(o.n % 100, 11, 19):
+        return "one"
+    return "few" if _in(o.n % 10, 2, 9) and not _in(o.n % 100, 11, 19) else "other"
+
+
+def _latvian(o: _Count) -> str:
+    if o.n % 10 == 0 or _in(o.n % 100, 11, 19) or (o.v == 2 and 11 <= o.f % 100 <= 19):
+        return "zero"
+    if (o.n % 10 == 1 and o.n % 100 != 11) or (o.v == 2 and o.f % 10 == 1 and o.f % 100 != 11) or \
+            (o.v != 2 and o.f % 10 == 1):
+        return "one"
+    return "other"
+
+
+def _romanian(o: _Count) -> str:
+    if o.i == 1 and not o.v:
+        return "one"
+    return "few" if o.v or o.n == 0 or (o.n != 1 and _in(o.n % 100, 1, 19)) else "other"
+
+
+def _arabic(o: _Count) -> str:
+    if o.n in (0, 1, 2):
+        return ("zero", "one", "two")[int(o.n)]
+    if _in(o.n % 100, 3, 10):
+        return "few"
+    return "many" if _in(o.n % 100, 11, 99) else "other"
+
+
+def _hebrew(o: _Count) -> str:
+    if (o.i == 1 and not o.v) or (o.i == 0 and o.v):
+        return "one"
+    return "two" if o.i == 2 and not o.v else "other"
+
+
+def _irish(o: _Count) -> str:
+    if o.n in (1, 2):
+        return ("one", "two")[int(o.n) - 1]
+    return "few" if _in(o.n, 3, 6) else "many" if _in(o.n, 7, 10) else "other"
+
+
+def _macedonian(o: _Count) -> str:
+    one = (not o.v and o.i % 10 == 1 and o.i % 100 != 11) or (o.f % 10 == 1 and o.f % 100 != 11)
+    return "one" if one else "other"
+
+
+def _filipino(o: _Count) -> str:
+    one = (not o.v and (o.i in (1, 2, 3) or o.i % 10 not in (4, 6, 9))) or (o.v and o.f % 10 not in (4, 6, 9))
+    return "one" if one else "other"
+
+
+def _icelandic(o: _Count) -> str:
+    one = (o.t == 0 and o.i % 10 == 1 and o.i % 100 != 11) or (o.t % 10 == 1 and o.t % 100 != 11)
+    return "one" if one else "other"
+
+
+def _rule(one, million: bool = False):
+    """one/other by `one` (and many for a round million, the Romance languages' `de`)."""
+    return lambda o: "one" if one(o) else "many" if million and _million(o) else "other"
+
+
+_ONE_WHOLE = _rule(lambda o: o.i == 1 and not o.v)              # CLDR `i = 1 and v = 0`
+_ONE_N = _rule(lambda o: o.n == 1)                              # CLDR `n = 1`
+_ONE_ZERO = _rule(lambda o: o.i == 0 or o.n == 1)               # CLDR `i = 0 or n = 1`
+_NONE = lambda o: "other"                                       # noqa: E731  (no forms)
+
+PLURAL_RULES = {
+    **dict.fromkeys(("en", "de", "nl", "sv", "et", "fi", "ur"), _ONE_WHOLE),
+    **dict.fromkeys(("nb", "no", "el", "bg", "hu", "tr", "kk"), _ONE_N),
+    **dict.fromkeys(("hi", "fa"), _ONE_ZERO),
+    **dict.fromkeys(("ja", "ko", "zh", "th", "vi", "id", "ms"), _NONE),
+    **dict.fromkeys(("it", "ca", "pt-PT"), _rule(lambda o: o.i == 1 and not o.v, million=True)),
+    "es": _rule(lambda o: o.n == 1, million=True),
+    "fr": _rule(lambda o: o.i in (0, 1), million=True),
+    "pt": _rule(lambda o: o.i in (0, 1), million=True),
+    "da": _rule(lambda o: o.n == 1 or (o.t != 0 and o.i in (0, 1))),
+    "is": _icelandic, "pl": _polish, "ru": _slavic, "uk": _slavic, "be": _belarusian, "cs": _czech, "sk": _czech,
+    "hr": _bosnian, "sr": _bosnian, "bs": _bosnian, "sl": _slovenian, "lt": _lithuanian, "lv": _latvian,
+    "ro": _romanian, "ar": _arabic, "he": _hebrew, "ga": _irish, "mk": _macedonian, "fil": _filipino,
+}
+_SAMPLE = (*range(0, 1001), 1_000_000)        # the whole numbers that show each language's forms
+
+
+def _plural_rule(lang: str | None):
+    """`lang`'s CLDR cardinal rule, its region's first (pt-PT); a language CLDR's table here lacks counts like
+    English (one: 1)."""
+    for code in reversed(_candidates(tag(lang) or ENGLISH)):
+        if code in PLURAL_RULES:
+            return PLURAL_RULES[code]
+    return _ONE_WHOLE
+
+
+def category(count, lang: str | None = ENGLISH) -> str:
+    """The CLDR plural category of `count` (a number, or its text: "1.50" keeps its fraction digits) in `lang`:
+    zero, one, two, few, many or other."""
+    return _plural_rule(lang)(_operands(count))
+
+
+@lru_cache(maxsize=64)
+def _examples(lang: str) -> dict[str, tuple[int, ...]]:
+    rule, out = _plural_rule(lang), {}
+    for n in _SAMPLE:
+        out.setdefault(rule(_operands(n)), []).append(n)
+    return {c: tuple(out[c]) for c in CATEGORIES if c in out}
+
+
+def count_forms(lang: str | None) -> tuple[str, ...]:
+    """The forms a count of whole things takes in `lang`, in CLDR's order: what its table writes for each count
+    (a fraction form only where whole numbers take it too)."""
+    return tuple(_examples(tag(lang) or ENGLISH))
+
+
+def _form_hint(lang: str) -> str:
+    """"one: 1; few: 2, 3, 4, 22, 23, 24, …; many: 0, 5, …": the numbers each form of `lang` is for."""
+    parts = []
+    for cat, nums in _examples(lang).items():
+        shown = [f"{n:,}".replace(",", " ") for n in nums[:6]]
+        parts.append(f"{cat}: {', '.join(shown)}{', …' if len(nums) > 6 else ''}")
+    return "; ".join(parts)
+
+
+def groups(en: dict | None = None) -> dict[str, dict[str, str]]:
+    """The English table's counts: each group's key (`report.lede`) -> its forms ({"one": …, "other": …}). A
+    group is a mapping of CLDR categories with an `other`."""
+    en = english() if en is None else en
+    found: dict[str, dict[str, str]] = {}
+    for key, text in en.items():
+        base, _, cat = key.rpartition(".")
+        if cat in CATEGORIES and base:
+            found.setdefault(base, {})[cat] = text
+    return {base: forms for base, forms in found.items() if "other" in forms}
+
+
+def _source_of(key: str, en: dict, counts: dict) -> str | None:
+    """The English a key of a table is translated from: its own, or for a form of a count the English form of
+    that category, else the English `other`; None for a key that is neither."""
+    base, _, cat = key.rpartition(".")
+    if base in counts and cat in CATEGORIES:
+        return counts[base].get(cat) or counts[base]["other"]
+    return en.get(key)
+
+
+def wanted(lang: str, areas: tuple[str, ...] | list[str] = ()) -> dict[str, str]:
+    """Each key `lang`'s table needs (of `areas`, else all), with the English it is translated from, in the
+    table's order: every string, and for each count the forms `lang` takes (`count_forms`)."""
+    en = english()
+    if is_english(lang):
+        return {k: v for k, v in en.items() if not areas or k.split(".")[0] in areas}
+    counts, forms, out = groups(en), count_forms(lang), {}
+    for key, text in en.items():
+        if areas and key.split(".")[0] not in areas:
+            continue
+        base = key.rpartition(".")[0]
+        if base in counts:
+            out.update({f"{base}.{c}": counts[base].get(c) or counts[base]["other"] for c in forms})
+        else:
+            out[key] = text
+    return out
+
+
 # --- the tables -------------------------------------------------------------------------------------------
 
 def _flat(node: object, prefix: str = "") -> dict[str, str]:
@@ -315,21 +569,32 @@ def _markup(text: str) -> list[str]:
 
 
 def problems(strings: dict, en: dict | None = None) -> list[str]:
-    """What is wrong in a translation: a key the English table lacks, an empty string, other placeholders or
-    other markup than the English."""
+    """What is wrong in a translation: a key the English table lacks (a form of a count is `<count>.<category>`,
+    a CLDR category), an empty string, other placeholders or other markup than the English. A form of a count
+    may leave out or say any of its count's placeholders (Russian's one is 1, 21 …, where the English one is 1)."""
     en = english() if en is None else en
-    out = []
-    for key, text in strings.items():
-        if key not in en:
-            out.append(f"{key}: not a key of the English table")
-        elif not isinstance(text, str) or not text.strip():
-            out.append(f"{key}: empty")
-        elif placeholders(text) != placeholders(en[key]):
-            want = ", ".join(sorted("{" + p + "}" for p in placeholders(en[key]))) or "none"
-            out.append(f"{key}: placeholders must be {want}, exactly as in English")
-        elif _markup(text) != _markup(en[key]):
-            out.append(f"{key}: keep the English markup ({' '.join(_markup(en[key])) or 'none'})")
-    return out
+    counts = groups(en)
+    return [bad for key, text in strings.items() if (bad := _problem(key, text, en, counts))]
+
+
+def _problem(key: str, text: object, en: dict, counts: dict) -> str | None:
+    source = _source_of(key, en, counts)
+    if source is None:
+        return f"{key}: not a key of the English table"
+    if not isinstance(text, str) or not text.strip():
+        return f"{key}: empty"
+    base = key.rpartition(".")[0]
+    if base in counts:
+        allowed = set().union(*(placeholders(v) for v in counts[base].values()))
+        if not placeholders(text) <= allowed:
+            want = ", ".join(sorted("{" + p + "}" for p in allowed)) or "none"
+            return f"{key}: placeholders must be among {want}, as in English"
+    elif placeholders(text) != placeholders(source):
+        want = ", ".join(sorted("{" + p + "}" for p in placeholders(source))) or "none"
+        return f"{key}: placeholders must be {want}, exactly as in English"
+    if _markup(text) != _markup(source):
+        return f"{key}: keep the English markup ({' '.join(_markup(source)) or 'none'})"
+    return None
 
 
 def table(lang: str) -> dict[str, str]:
@@ -338,21 +603,25 @@ def table(lang: str) -> dict[str, str]:
     if is_english(lang):
         return english()
     en = english()
+    counts = groups(en)
     out: dict[str, str] = {}
     for code in _candidates(lang):
         shipped = _shipped(code)
-        out.update({k: v for k, v in shipped.items() if not problems({k: v}, en)})
+        out.update({k: v for k, v in shipped.items() if not _problem(k, v, en, counts)})
         kept = _kept(code)
         strings, sources = kept.get("strings") or {}, kept.get("sources") or {}
-        out.update({k: v for k, v in strings.items()
-                    if k in en and sources.get(k) == _source(en[k]) and not problems({k: v}, en)})
+        for k, v in strings.items():
+            source = _source_of(k, en, counts)
+            if source is not None and sources.get(k) == _source(source) and not _problem(k, v, en, counts):
+                out[k] = v
     return out
 
 
 def missing(lang: str, areas: tuple[str, ...] | list[str] = ()) -> list[str]:
-    """The English keys (of `areas`, else all) that `lang` has no translation of, in the table's order."""
+    """The keys `lang`'s table needs (of `areas`, else all, `wanted`) that it has no translation of, in the
+    table's order."""
     have = table(lang)
-    return [k for k in english() if k not in have and (not areas or k.split(".")[0] in areas)]
+    return [k for k in wanted(lang, areas) if k not in have]
 
 
 @dataclass
@@ -361,6 +630,10 @@ class Translator:
     lang: str
     strings: dict[str, str] = field(repr=False)
     en: dict[str, str] = field(repr=False)
+    counts: dict[str, dict[str, str]] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self):
+        self.counts = self.counts or groups(self.en)
 
     def __call__(self, key: str, **values) -> str:
         if key not in self.en:
@@ -369,6 +642,21 @@ class Translator:
         if text is None:
             raise Missing(f"{name(self.lang)} ({self.lang}) has no translation of {key}. Translate the table once: "
                           f"tm i18n export --lang {self.lang} --out i18n_{self.lang}.yaml, then tm i18n import.")
+        return text.format(**values) if values else text
+
+    def plural(self, key: str, count, **values) -> str:
+        """The form of the count `key` (a group of the English table, `report.lede`) that `count` takes in
+        `lang` (`category`), filled from `values`. A fraction in a language whose table has no fraction form
+        takes `other`, else the last form (Polish many)."""
+        if key not in self.counts:
+            raise KeyError(f"{key} is not a count of the English table (data/i18n/en.yaml: {key}.one, {key}.other).")
+        cat = category(count, self.lang)
+        if f"{key}.{cat}" not in self.strings and (is_english(self.lang) or cat not in count_forms(self.lang)):
+            cat = "other" if f"{key}.other" in self.strings else count_forms(self.lang)[-1]
+        text = self.strings.get(f"{key}.{cat}")
+        if text is None:
+            raise Missing(f"{name(self.lang)} ({self.lang}) has no translation of {key}.{cat}. Translate the table "
+                          f"once: tm i18n export --lang {self.lang} --out i18n_{self.lang}.yaml, then tm i18n import.")
         return text.format(**values) if values else text
 
 
@@ -437,6 +725,9 @@ def offered(text: str, lang: str | None) -> str:
 _HOW = ("Translate each string into {name}, for the people who read the pages (the run's working language). Keep "
         "every {{placeholder}} and every <tag> exactly as it is; change nothing else in this file. Then: tm i18n "
         "import --lang {lang} <this file>.")
+_FORMS = (" A key ending in .zero, .one, .two, .few, .many or .other is one form of a count, given in the English "
+          "of its kind: write the form {name} uses for these numbers ({forms}). A form may say the count where the "
+          "English leaves it out.")
 
 
 def export(lang: str, out: Path, areas: tuple[str, ...] | list[str] = ()) -> Path:
@@ -444,8 +735,12 @@ def export(lang: str, out: Path, areas: tuple[str, ...] | list[str] = ()) -> Pat
     translate in place."""
     lang = _lang_arg(lang)
     en = english()
-    body = {"lang": lang, "how": _HOW.format(name=name(lang), lang=lang),
-            "strings": {k: en[k] for k in missing(lang, areas)}}
+    source = wanted(lang, areas)
+    strings = {k: source[k] for k in missing(lang, areas)}
+    how = _HOW.format(name=name(lang), lang=lang)
+    if any(k.rpartition(".")[0] in groups(en) for k in strings):
+        how += _FORMS.format(name=name(lang), forms=_form_hint(lang))
+    body = {"lang": lang, "how": how, "strings": strings}
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(yaml.safe_dump(body, allow_unicode=True, sort_keys=False, width=1000), encoding="utf-8")
@@ -483,7 +778,8 @@ def import_file(lang: str, path: Path) -> dict:
     kept = _kept(lang)
     have, sources = dict(kept.get("strings") or {}), dict(kept.get("sources") or {})
     have.update(strings)
-    sources.update({k: _source(en[k]) for k in strings})
+    counts = groups(en)
+    sources.update({k: _source(_source_of(k, en, counts)) for k in strings})
     folder.mkdir(parents=True, exist_ok=True)
     target, tmp = folder / f"{lang}.yaml", folder / f"{lang}.yaml.tmp"
     tmp.write_text(yaml.safe_dump({"lang": lang, "strings": have, "sources": sources}, allow_unicode=True,

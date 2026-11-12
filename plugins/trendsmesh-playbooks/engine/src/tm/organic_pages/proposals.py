@@ -12,6 +12,8 @@ Its changes, plan Decision 10:
   (`organic_pages.levels`); the original's "Gates" row is gone, since the level decides the check-ins. The page reads
   the original's `mode`/`gates` documents too (`levelOf`, as `organic_proposals._level`). The run's level
   (run.json `level`, never `mode.variant`) is ticked first.
+- The product level and a trend's status are shown in the page language (`organic_pages.value`, issue #3), not
+  as stored; the files keep the stored value.
 - Trends come from the run's saved answers (`organic_research.resolve`, `trends.load_videos`), not
   the original's `card_<id8>.json` files; a thumbnail is an asset file beside index.html
   (`assets/<asset_id>.jpg`, `page.fetch_image`), not a data URI; one that cannot be had leaves an
@@ -53,7 +55,7 @@ from typing import NamedTuple
 
 from tm import (checkins, i18n, manifest, organic_pages, organic_proposals, organic_research, page, state, stepchecks,
                 trends)
-from tm.organic_pages import CSS, Frag, levels as level_names
+from tm.organic_pages import CSS, Frag, levels as level_names, value as shown
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -260,15 +262,9 @@ FRAGS: list[Frag] = [
 ]
 
 
-def plural(n: int) -> str:
-    """The form a count of n takes: `one`, `few` (2–4, 22–24 …, not 12–14) or `many` (Polish's rule; a language
-    with two forms gives `few` and `many` the same words)."""
-    return "one" if n == 1 else "few" if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14) else "many"
-
-
 def lede_frags(n: int) -> list[Frag]:
-    """The lede's words around the store, for n proposals."""
-    return [Frag('<p class="lede">§ ', f"{_P}lede_ideas_{plural(n)}", values={"n": n}),
+    """The lede's words around the store, for n proposals (the count's form in each language, `i18n.category`)."""
+    return [Frag('<p class="lede">§ ', f"{_P}lede_ideas", values={"n": n}, count=n),
             Frag("), §</p>", _P + "lede_rest")]
 
 
@@ -304,7 +300,7 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
         c = chan[p["channel"]]
         out.append(f"""<a class="card" href="#{esc(p['id'])}"><span class="id">{esc(p['id'].upper())} · {esc(c['name'])}</span>
 <span class="t">{esc(p['video_type'])}</span><span class="k">“{esc(p['title'])}”</span>
-<span class="meta"><span class="chip risk {esc(p['risk']['level'])}">Risk: {RISK[p['risk']['level']]}</span><span class="chip">{esc(p['approach'])}</span><span class="chip">Product: <b>{esc(p['product']['level'])}</b></span><span class="chip cost">${p['cost']['low']:.2f}–{p['cost']['high']:.2f}</span><span class="chip dpill" data-pill="{esc(p['id'])}">Not decided</span></span></a>""")
+<span class="meta"><span class="chip risk {esc(p['risk']['level'])}">Risk: {RISK[p['risk']['level']]}</span><span class="chip">{esc(p['approach'])}</span><span class="chip">Product: <b>{esc(shown(p['product']['level'], "product", tr))}</b></span><span class="chip cost">${p['cost']['low']:.2f}–{p['cost']['high']:.2f}</span><span class="chip dpill" data-pill="{esc(p['id'])}">Not decided</span></span></a>""")
     out.append("</nav>")
 
     for p in data["proposals"]:
@@ -317,7 +313,7 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
 <div class="cols"><div class="block" style="gap:16px">
 <p class="why">{esc(p['why'])}</p>
 <div class="block"><h3>The video</h3><ol class="beats">{''.join(f'<li>{esc(b)}</li>' for b in p['beats'])}</ol></div>
-<div class="block"><h3>Recipe</h3><dl class="recipe"><dt>Production</dt><dd>{esc(r['production'])}</dd><dt>Voice</dt><dd>{esc(r['voice'])}</dd><dt>Music / sound</dt><dd>{esc(r['music'])}</dd><dt>Text</dt><dd>{esc(r['text'])}</dd><dt>Product</dt><dd><b>{esc(p['product']['level'])}</b>: {esc(p['product']['note'])}</dd></dl></div>
+<div class="block"><h3>Recipe</h3><dl class="recipe"><dt>Production</dt><dd>{esc(r['production'])}</dd><dt>Voice</dt><dd>{esc(r['voice'])}</dd><dt>Music / sound</dt><dd>{esc(r['music'])}</dd><dt>Text</dt><dd>{esc(r['text'])}</dd><dt>Product</dt><dd><b>{esc(shown(p['product']['level'], "product", tr))}</b>: {esc(p['product']['note'])}</dd></dl></div>
 <div class="block"><h3>Risks</h3><ul class="plain">{''.join(f'<li>{esc(x)}</li>' for x in p['risk']['items'])}</ul></div>
 <div class="block"><h3>Cost</h3><p style="margin:0" class="cost">${p['cost']['low']:.2f}–{p['cost']['high']:.2f}</p><p style="margin:0;color:var(--muted);font-size:14px">{esc(p['cost']['note'])}</p></div>""")
         if p.get("facts"):
@@ -332,7 +328,7 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
                     hs[v["hook_source"]] = hs.get(v["hook_source"], 0) + 1
             hs_txt = (" · hook " + ", ".join(f"{k} {n}/{len(vids)}" for k, n in sorted(hs.items(), key=lambda x: -x[1]))) if hs else ""
             out.append(f"""<div class="trend"><div class="tname"><span class="kind">{esc(KIND.get(card.get('kind'), card.get('kind')))}</span><strong>{esc(card.get('name'))}</strong></div>
-<div class="tstats">{compact(reach.get('creators'))} creators · {compact(reach.get('videos'))} videos · {compact(reach.get('views'))} views · {esc(card.get('status'))}{esc(hs_txt)} · id {esc(t['id'])}</div>
+<div class="tstats">{compact(reach.get('creators'))} creators · {compact(reach.get('videos'))} videos · {compact(reach.get('views'))} views · {esc(shown(card.get('status'), "status", tr))}{esc(hs_txt)} · id {esc(t['id'])}</div>
 <p class="role">Used for: {esc(t['role'])}</p><div class="ev">""")
             for i in t.get("pick", [0, 1]):
                 if i >= len(vids):

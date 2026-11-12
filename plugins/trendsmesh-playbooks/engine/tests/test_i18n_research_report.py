@@ -42,7 +42,7 @@ def _pseudo(text: str) -> str:
 
 
 def _translate(tmp_path, drop: tuple[str, ...] = ()) -> dict:
-    strings = {k: _pseudo(v) for k, v in i18n.english().items() if k.split(".")[0] in AREAS and k not in drop}
+    strings = {k: _pseudo(v) for k, v in i18n.wanted("pl", AREAS).items() if k not in drop}   # Polish's forms too
     path = tmp_path / "i18n_pl.yaml"
     path.write_text(yaml.safe_dump({"lang": "pl", "strings": strings}, allow_unicode=True), encoding="utf-8")
     i18n.import_file("pl", path)
@@ -97,12 +97,16 @@ def _build(run, picks_path=None, **kw) -> str:
 # --- the table and the code -------------------------------------------------------------------------
 
 def _keys_in_code() -> set[str]:
-    found = re.findall(r"""["']((?:report|common)\.[a-z0-9_]+)["']""", SOURCE.read_text(encoding="utf-8"))
-    return set(found) - {"report.json"}                                          # a file name, not a key
+    found = re.findall(r"""["']((?:report|common)\.[a-z0-9_.]*[a-z0-9_])["']""", SOURCE.read_text(encoding="utf-8"))
+    values = (research_report.BAND_KEY, research_report.CONFIDENCE_KEY, research_report.STATUS_KEY,
+              research_report.KIND_KEY, research_report.WHY_KEY)
+    return (set(found) - {"report.json"} | {k for keys in values for k in keys.values()}  # report.json: a file name
+            | {research_report._V + "why_few_creators"})
 
 
 def test_every_key_the_page_uses_is_in_the_table_and_every_report_key_is_used():
-    en = i18n.english()
+    counts = i18n.groups()
+    en = {k.rpartition(".")[0] if k.rpartition(".")[0] in counts else k for k in i18n.english()}   # a count once
     used = _keys_in_code() | {f"common.month_{m}" for m in range(1, 13)}
     assert sorted(used - set(en)) == []
     assert sorted(k for k in en if k.startswith("report.") and k not in used) == []
@@ -186,3 +190,75 @@ def test_a_table_without_the_month_names_builds_in_english(tmp_path):
     text = _build(run)
     assert '<html lang="en">' in text and "As of 4 Nov 2026" in text
     assert len(_english_left(text)) > 50                       # the check above finds English where there is some
+
+
+# --- counts and stored values (issue #3, items 3 and 4) ------------------------------------------------
+
+def _translate_forms(tmp_path) -> None:
+    """The pseudo-translation with each form of a count marked by its category (ONE·, FEW·, MANY·)."""
+    strings = {k: (k.rpartition(".")[2].upper() + "·" if k.rpartition(".")[0] in i18n.groups() else "") + _pseudo(v)
+               for k, v in i18n.wanted("pl", AREAS).items()}
+    path = tmp_path / "i18n_pl.yaml"
+    path.write_text(yaml.safe_dump({"lang": "pl", "strings": strings}, allow_unicode=True), encoding="utf-8")
+    i18n.import_file("pl", path)
+
+
+def test_the_counts_take_the_polish_form_of_their_number(tmp_path):
+    run, _ = _uroda(tmp_path)
+    _translate_forms(tmp_path)
+    tr = i18n.translator("pl")
+    text = _build(run)
+    # 1 trend to act on (one), 3 topics (few), 0 hooks (many), 30 creators (many), 20 videos (many), 4 relevant (few)
+    for key, n, values, form in (("report.lede", 1, {"n": "1"}, "ONE·"),
+                                 ("report.meta_topics", 3, {"n": 3}, "FEW·"),
+                                 ("report.meta_hooks", 0, {"n": 0}, "MANY·"),
+                                 ("report.reach_videos", 20, {"videos": 20}, "MANY·"),
+                                 ("report.mapped_split", 4, {"n": 4, "root": "Uroda"}, "FEW·")):
+        shown = tr.plural(key, n, **values)
+        assert shown.startswith(form), key
+        assert shown in text or research_report.E(shown) in text, key
+    assert "FEW·" in tr.plural("report.act_on", 3, n="trzy") and "MANY·" in tr.plural("report.act_on", 5, n="pięć")
+    assert "MANY·" in tr.plural("report.act_on", 12, n="12") and "FEW·" in tr.plural("report.act_on", 22, n="22")
+
+
+def test_stored_values_are_shown_in_the_page_language_and_stay_stored(tmp_path):
+    run, _ = _uroda(tmp_path)
+    _translate(tmp_path)
+    tr = i18n.translator("pl")
+    text = _build(run)
+    for key in ("report.value.band_top_10", "report.value.confidence_medium", "report.value.status_confirmed",
+                "report.value.kind_topic"):
+        assert research_report.E(tr(key)) in text, key
+    assert ">top 10%<" not in text and ">medium<" not in text and "status confirmed" not in text
+    assert "k-topic" in text and "conf-medium" in text                     # the classes keep the stored value
+    growth = _read(run.path / "02_research" / "growth_v01.json")
+    assert growth["trends"][0]["relative"]["band"] == "top 10%" and growth["trends"][0]["confidence"] == "medium"
+
+
+def test_a_stored_value_shows_translated_or_as_it_is():
+    tr = i18n.translator("en")
+    assert research_report.shown("top 25%", research_report.BAND_KEY, tr) == "top 25%"
+    assert research_report.shown("Top 5%", research_report.BAND_KEY, tr) == "Top 5%"        # not a known value
+    assert research_report.shown(None, research_report.STATUS_KEY, tr) is None
+    assert research_report.why("only 1 creators in evidence", tr) == "only 1 creator in evidence"
+    assert research_report.why("only 4 creators in evidence", tr) == "only 4 creators in evidence"
+    assert research_report.why("12 twórców", tr) == "12 twórców"
+    assert research_report.why("some limits: see the risk line", tr) == "some limits: see the risk line"
+
+
+def test_the_english_value_words_are_the_stored_values():
+    """English pages show what they always showed: each value's English is the value research_growth stores."""
+    en = i18n.translator("en")
+    for keys in (research_report.BAND_KEY, research_report.CONFIDENCE_KEY, research_report.STATUS_KEY,
+                 research_report.KIND_KEY, research_report.WHY_KEY):
+        assert {v: en(k) for v, k in keys.items()} == {v: v for v in keys}
+    th = research_growth.Thresholds.from_config({})
+    for g, status in (({"creators": 1}, None), ({"creators": 99, "top_creator_share": 0.99}, None),
+                      ({"creators": 99, "top_creator_share": 0.0}, "confirmed"),
+                      ({"creators": 99, "top_creator_share": 0.0}, None)):
+        level, said = research_growth.confidence(g, status, th)
+        assert level in research_report.CONFIDENCE_KEY
+        assert said in research_report.WHY_KEY or research_report._FEW_CREATORS.fullmatch(said), said
+    for below in (95, 80, 60, 10):                         # the share of the pool below the trend
+        pool = [0] * below + [9] * (100 - below)
+        assert research_growth.relative({"new_recent": 1}, {"median_new": 1}, pool)["band"] in research_report.BAND_KEY

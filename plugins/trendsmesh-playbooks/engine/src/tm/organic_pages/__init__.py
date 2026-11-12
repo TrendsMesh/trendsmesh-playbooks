@@ -19,21 +19,24 @@ Shared here:
   language, which the checks hold it to) when its table has every organic key, else English with a `warning`
   (`i18n.page_lang`), which each page command shows as `language_warning`. `lang_of(data)` is that language.
   `levels(lang)` names the levels (plan Global Constraints), `gate_words(lang)` the titles, ledes, questions,
-  labels and captions `tm.organic_gates` writes into the check-in and delivery pages.
+  labels and captions `tm.organic_gates` writes into the check-in and delivery pages. `value(stored, kind, lang)`
+  shows the run's data in the page language (the product level, a trend's status, OV4's risk items); the run
+  files keep the stored value.
 - `WORDING`: the original's visible English strings -> the plugin's (plan Decision 10: "check-in", never "gate";
   the levels in place of its "A–Z"; issue #2: a page that cannot save says to choose in chat), each as the key
   whose English it becomes. The builders of the proposals and check-in pages make the original's English page;
   `localize` applies `WORDING`, then, in another language, puts each `Frag`'s text in that language in place of
   its English (escaped for where it sits).
 - `worded(page, lang)`: a page of the reference tool (`tools/pb3/`) as the plugin builds it: `WORDING`, then the
-  reference tool's own Polish words (`REFERENCE`) -> the plugin's Polish. Only the equality tests use it, on the
-  goldens the reference tool made.
+  reference tool's own Polish words (`REFERENCE`) -> the plugin's Polish, and the stored values it shows in the
+  plugin's words (`value`). Only the equality tests use it, on the goldens the reference tool made.
 - `CSS` (pages.css): the reference pages' stylesheet, verbatim.
 """
 
 from __future__ import annotations
 
 import html
+import re
 from pathlib import Path
 from typing import NamedTuple
 
@@ -97,6 +100,38 @@ def gate_words(lang: str | i18n.Translator) -> dict[str, str]:
     return {name: tr(key) for name, key in GATE_WORDS.items()}
 
 
+# --- the run's data as stored, in the page language -----------------------------------------------------
+
+_V = "organic.value."
+STATUS_KEY = {s: f"{_V}status_{s}" for s in ("confirmed", "unconfirmed", "contradicted")}
+
+
+def value_keys(kind: str) -> dict[str, str]:
+    """The stored values of `kind` (`product`: OV5's product levels; `status`: a trend's; `risk`: OV4's items)
+    -> their keys of the string table."""
+    from tm import organic_proposals   # it reads the pages' data, not their words
+
+    if kind == "product":
+        return {level: _V + "product_" + level.replace(" ", "_") for level in organic_proposals.PRODUCT_LEVELS}
+    if kind == "risk":
+        return {item: f"{_V}risk_{item}" for item in organic_proposals.RISK_ITEMS}
+    if kind == "status":
+        return dict(STATUS_KEY)
+    raise KeyError(kind)
+
+
+def value(stored, kind: str, lang: str | i18n.Translator):
+    """A value of the run's data (`value_keys(kind)`) in `lang`, else as it is stored. The run files keep the
+    stored value; a product level is read as the checks read it (`soft_mention`, ExampleEdu's "nie występuje")."""
+    keys = value_keys(kind)
+    if kind == "product" and isinstance(stored, str):
+        from tm import organic_proposals
+        key = keys.get(organic_proposals.PRODUCT_WORDS.get(stored.strip().lower().replace("_", " "), ""))
+    else:
+        key = keys.get(stored) if isinstance(stored, str) else None
+    return translator(lang)(key) if key else stored
+
+
 # --- the words on a built page ---------------------------------------------------------------------------
 
 def escape(text: str, where: str) -> str:
@@ -115,16 +150,19 @@ class Frag(NamedTuple):
     """A fixed fragment of a built page: `template` with SLOT where the text of `keys` sits (§0, §1 … for several
     keys), escaped for `where` (`escape`). `english` is the English page's own fragment where its code differs from
     the template's (filled from the keys, it is used for the other languages only); `values` fill the keys'
-    placeholders."""
+    placeholders. With a `count`, each key is a count of the table (`tr.plural`), in the form that count takes."""
     template: str
     keys: str | tuple[str, ...]
     where: str = "html"
     english: str | None = None
     values: dict | None = None
+    count: int | None = None
 
     def fill(self, tr: i18n.Translator) -> str:
         keys = (self.keys,) if isinstance(self.keys, str) else self.keys
-        words = [escape(tr(k, **(self.values or {})), self.where) for k in keys]
+        values = self.values or {}
+        words = [escape(tr(k, **values) if self.count is None else tr.plural(k, self.count, **values), self.where)
+                 for k in keys]
         if len(words) == 1:
             return self.template.replace(SLOT, words[0])
         out = self.template
@@ -199,5 +237,30 @@ def worded(page: str, lang: str) -> str:
              *((f.english or f.fill(en), f.fill(tr)) for n in range(1, 10) for f in proposals.lede_frags(n))]
     for old, new in pairs:
         page = page.replace(old, new)
-    return page
+    return _stored_values(page, tr)
+
+
+_CHIP = re.compile(r'(<span class="chip">[^<]*<b>)([^<]*)(</b></span>)')
+_RECIPE = re.compile(r"(<dd><b>)([^<]*)(</b>: )")
+_TSTATS = re.compile(r'(<div class="tstats">)([^<]*)(</div>)')
+
+
+def _stored_values(page: str, tr: i18n.Translator) -> str:
+    """A reference page's stored values as the plugin shows them (`value`): the product level of a card's chip and
+    of the recipe, a trend's status (the fourth part of its stats line)."""
+    def shown(text: str, kind: str) -> str:            # as the page has it, unless the plugin translates it
+        stored = html.unescape(text)
+        got = value(stored, kind, tr)
+        return text if got == stored else escape(str(got), "html")
+
+    def product(m: re.Match) -> str:
+        return m.group(1) + shown(m.group(2), "product") + m.group(3)
+
+    def stats(m: re.Match) -> str:
+        parts = m.group(2).split(" · ")
+        if len(parts) > 3:
+            parts[3] = shown(parts[3], "status")
+        return m.group(1) + " · ".join(parts) + m.group(3)
+
+    return _TSTATS.sub(stats, _RECIPE.sub(product, _CHIP.sub(product, page)))
 

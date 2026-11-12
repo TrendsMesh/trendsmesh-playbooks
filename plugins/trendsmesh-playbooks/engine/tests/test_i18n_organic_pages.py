@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tm import i18n, organic, organic_pages, organic_week_delivery
+from tm import i18n, kit, organic, organic_pack, organic_pages, organic_qa, organic_week_delivery
 from tm.organic_pages import gate, proposals, script, week
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
@@ -49,7 +49,23 @@ def _used() -> set[str]:
             | _frag_keys(proposals.FRAGS) | _frag_keys(f for n in (1, 2, 5) for f in proposals.lede_frags(n))
             | set(proposals._DECISION_KEYS.values()) | set(proposals._FIELD_KEYS.values())
             | _frag_keys(gate.FRAGS) | _week_keys(week.LABELS) | {f"organic.week.day_{d}" for d in week.DAYS}
-            | {"organic.output"} | set(script.WORDS.values()) | set(organic_week_delivery.WORDS.values()))
+            | {"organic.output"} | set(script.WORDS.values()) | set(organic_week_delivery.WORDS.values())
+            | {f"organic.kit_md.{label}" for label in kit.LABELS} | _pack_md_keys() | _qa_keys()
+            | {k for kind in ("product", "risk", "status") for k in organic_pages.value_keys(kind).values()})
+
+
+def _qa_keys() -> set[str]:
+    """The rubric's sentences organic_qa reads: _Q + "<key>"."""
+    code = Path(organic_qa.__file__).read_text(encoding="utf-8")
+    return {organic_qa._Q + n for n in re.findall(r"""_Q \+ ["']([a-z_]+)["']""", code)}
+
+
+def _pack_md_keys() -> set[str]:
+    """The keys organic_pack.render_md reads: t("<key>") and _M + "<key>", its tables of routes, risks, check-ins."""
+    code = Path(organic_pack.__file__).read_text(encoding="utf-8")
+    names = re.findall(r"""\bt\(["']([a-z_]+)["']""", code) + re.findall(r"""_M \+ ["']([a-z_]+)["']""", code)
+    return ({organic_pack._M + n for n in names} | set(organic_pack.ROUTE_KEY.values())
+            | set(organic_pack.RISK_KEY.values()) | set(organic_pack.CHECKIN_KEYS))
 
 
 def _literals() -> set[str]:
@@ -138,7 +154,8 @@ def _pages(lang):
 # --- the table ------------------------------------------------------------------------------------------
 
 def test_every_key_the_pages_read_is_in_the_english_table_and_every_organic_key_is_read():
-    en = _organic(i18n.english())
+    counts = i18n.groups()
+    en = {k.rpartition(".")[0] if k.rpartition(".")[0] in counts else k for k in _organic(i18n.english())}
     used = _used() | _literals()
     assert sorted(used - set(en)) == []                       # a key the code reads that the table lacks
     assert sorted(set(en) - used) == []                       # a string no page reads
@@ -146,7 +163,7 @@ def test_every_key_the_pages_read_is_in_the_english_table_and_every_organic_key_
 
 
 def test_the_plugin_ships_every_organic_string_in_polish():
-    en = _organic(i18n.english())
+    en = i18n.wanted("pl", ["organic"])                         # with Polish's forms of each count
     shipped = i18n._shipped("pl")
     assert sorted(set(en) - set(shipped)) == []
     assert i18n.problems({k: shipped[k] for k in en}) == []   # the same placeholders and markup as the English
@@ -266,3 +283,131 @@ def test_the_script_file_name_takes_any_language_tag(lang):
     assert script.NAME.fullmatch(f"03_wip/script_M5_{lang}_v01.json")["lang"] == lang
     assert script.NAME.fullmatch("03_wip/script_M5_pt-BR_v02.json")["lang"] == "pt-BR"
     assert script.NAME.fullmatch("03_wip/script_my_id_de_v01.json")["id"] == "my_id"
+
+
+# --- the pack's and the kit's Markdown, the QA's words, the run's stored values (issue #3) ------------------
+
+FIXTURES = Path(__file__).parent / "fixtures" / "organic"
+
+
+def _pack():
+    import json
+    return json.loads((FIXTURES / "m5_pl_pack.json").read_text(encoding="utf-8"))
+
+
+def _md_left(md: str, prefix: str) -> list[str]:
+    """English labels of `prefix` (organic.pack_md. / organic.kit_md.) still in a Markdown in another language."""
+    out = []
+    for key, value in i18n.english().items():
+        if not key.startswith(prefix):
+            continue
+        for part in re.split(r"\{[^}]*\}", value):
+            part = part.strip(" :·()–~/.+")
+            if len(part) >= 5 and re.search(rf"(?<![A-Za-z·]){re.escape(part)}(?![A-Za-z])", md):
+                out.append(f"{key}: {part!r}")
+    return out
+
+
+def test_the_packs_markdown_is_in_the_page_language(tmp_path):
+    pack = _pack()
+    english = organic_pack.render_md(pack, "en")
+    assert english.startswith(f"# {pack['id']}, pack") and "## Picture" in english
+    polish = organic_pack.render_md(pack, "pl")
+    assert f"# {pack['id']}, paczka" in polish and "## Obraz" in polish and "## Punkty kontrolne" in polish
+    words = pack["script"]["words"]
+    form = i18n.category(words, "pl")
+    assert f"## Scenariusz ({words} " + {"one": "słowo", "few": "słowa", "many": "słów"}[form] + "," in polish
+    assert _md_left(polish, "organic.pack_md.") == []
+    _german(tmp_path)
+    german = organic_pack.render_md(pack, "de")
+    assert "## DE·Picture" in german and "DE·long takes: " in german
+    assert organic_pack.render_md(pack, "fr") == english                    # no French table: English
+    assert organic_pack.md_lang("fr").warning and organic_pack.md_lang("pl").warning is None
+
+
+def test_the_packs_stored_values_are_shown_in_the_page_language():
+    pack = _pack()
+    pack["risk"] = {"level": "medium", "hits": [{"item": "long_takes", "mitigation": "mq"},
+                                                {"item": "custom", "mitigation": "cq"}]}
+    pack["product"]["level"] = "soft mention"
+    english, polish = organic_pack.render_md(pack, "en"), organic_pack.render_md(pack, "pl")
+    assert "**Risk:** medium. long takes: mq; custom: cq." in english and "long_takes" not in english
+    assert "**Ryzyko:** średnie. długie ujęcia: mq; custom: cq." in polish
+    assert "Product: soft mention." in english and "Produkt: delikatna wzmianka." in polish
+    assert pack["risk"]["hits"][0]["item"] == "long_takes"                 # the data keeps the stored value
+
+
+def test_a_stored_value_shows_in_the_page_language_or_as_stored():
+    assert organic_pages.value("soft mention", "product", "pl") == "delikatna wzmianka"
+    assert organic_pages.value("soft_mention", "product", "pl") == "delikatna wzmianka"     # the profile's form
+    assert organic_pages.value("nie występuje", "product", "en") == "not shown"           # ExampleEdu's Polish
+    assert organic_pages.value("confirmed", "status", "pl") == "potwierdzony"
+    assert organic_pages.value("long_takes", "risk", "en") == "long takes"
+    assert organic_pages.value("as typed", "product", "pl") == "as typed"
+    assert organic_pages.value(None, "status", "pl") is None
+    en = i18n.translator("en")
+    for level, key in organic_pages.value_keys("product").items():
+        assert en(key) == level                                         # English shows the stored level itself
+    for status, key in organic_pages.STATUS_KEY.items():
+        assert en(key) == status
+
+
+def test_the_proposals_page_shows_the_product_level_and_status_in_its_language():
+    data = _proposals("pl")
+    data["proposals"][0]["product"]["level"] = "soft mention"
+    card, vids = _trends("t1")
+    page = proposals.render(data, lambda tid: ({**card, "status": "confirmed"}, vids), lambda v: "",
+                            level="hands_off")
+    assert "<b>delikatna wzmianka</b>" in page and "· potwierdzony" in page
+    assert "soft mention" not in page and "· confirmed" not in page
+    english = proposals.render({**data, "lang": "en"}, lambda tid: ({**card, "status": "confirmed"}, vids),
+                               lambda v: "", level="hands_off")
+    assert "<b>soft mention</b>" in english and "views · confirmed" in english
+
+
+def test_the_reference_pages_stored_values_are_worded_as_the_plugin_shows_them():
+    ref = ('<span class="chip">Produkt: <b>soft mention</b></span><span class="chip">Długość <b>15 s</b></span>'
+           '<dt>Produkt</dt><dd><b>hero</b>: nq</dd><div class="tstats">12 twórców · 3.4K filmów · 5.6M wyświetleń · '
+           'confirmed · hook sq 2/2 · id t1</div>')
+    got = organic_pages.worded(ref, "pl")
+    assert "<b>delikatna wzmianka</b>" in got and "<b>15 s</b>" in got and "<dd><b>w roli głównej</b>: nq" in got
+    assert "wyświetleń · potwierdzony · hook sq 2/2 · id t1" in got
+
+
+def test_the_proposals_lede_counts_ideas_in_polish():
+    tr = i18n.translator("pl")
+    assert [proposals.lede_frags(n)[0].fill(tr) for n in (1, 3, 5, 12, 22)] == [
+        '<p class="lede">1 pomysł na filmy dla ', '<p class="lede">3 pomysły na filmy dla ',
+        '<p class="lede">5 pomysłów na filmy dla ', '<p class="lede">12 pomysłów na filmy dla ',
+        '<p class="lede">22 pomysły na filmy dla ']
+
+
+def test_the_kits_markdown_labels_are_in_the_page_language(tmp_path):
+    k = {"id": "M1", "version": "v01", "channel": "Zorbo", "video": "v.mp4", "cover": {"file": "c.jpg"},
+         "product": "pq", "language": "pl",
+         "platforms": {"tiktok": {"caption": "caq", "hashtags": ["#a"], "ai_label": "alq", "cover": "coq"},
+                       "youtube": {"title": "tiq", "description": "deq"}},
+         "plugin": {"trending_sound": {"name": "snq", "evidence": "evq"}, "business_alternative": "baq"}}
+    english, polish = kit.to_md(k, "en"), kit.to_md(k, "pl")
+    assert english.startswith("# Posting kit M1 v01 (Zorbo)") and "**Caption:**" in english
+    assert polish.startswith("# Zestaw do publikacji M1 v01 (Zorbo)") and "**Opis posta:**" in polish
+    assert "okładka: `c.jpg`" in polish and "**Alternatywa dla konta firmowego:** baq" in polish
+    assert _md_left(polish, "organic.kit_md.") == []
+    _german(tmp_path)
+    assert kit.to_md(k, "de").startswith("# DE·Posting kit M1 v01")
+    assert kit.to_md(k, "fr") == english
+
+
+def test_the_qa_findings_are_in_the_page_language():
+    cfg = None
+    qa = {"match": 0.5, "lufs": -3.0, "wps": 2.0, "cut_offsets": [{"bracket": 3.0, "cut": None},
+                                                                  {"bracket": 6.0, "cut": 7.5, "offset": 1.5}]}
+    english = organic_qa.rubric_takes(qa, cfg)
+    assert english == organic_qa.rubric_words(qa, cfg, "en")
+    assert english["fails"][0].startswith("the transcript matches 50% of the script, under ")
+    polish = organic_qa.rubric_words(qa, cfg, "pl")
+    assert polish["speed"] == english["speed"] and len(polish["fails"]) == 2 and len(polish["findings"]) == 3
+    assert polish["fails"][0].startswith("transkrypcja zgadza się ze scenariuszem w 50%")
+    assert all("take" not in t and "cut " not in t for t in polish["fails"] + polish["findings"])
+    silent = organic_qa.rubric_words({"lufs": None, "match": 1.0}, cfg, "pl")
+    assert silent["fails"] == ["ujęcie nie ma mierzalnego dźwięku, a niesie kwestie mówione"]

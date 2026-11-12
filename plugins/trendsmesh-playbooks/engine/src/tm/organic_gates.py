@@ -175,7 +175,7 @@ def _qa(run: RunFolder, take: str, pack: dict, t: dict) -> tuple[str, str | None
     if path is None:
         return t["qa_none"], None
     qa = organic_qa.read_qa(run, path)
-    found = organic_qa.rubric_takes(qa, run_config(run), speech=organic_qa.speaks(pack))
+    found = organic_qa.rubric_words(qa, run_config(run), lang_of(pack), speech=organic_qa.speaks(pack))
     words = [t["qa_fails"].format(fails="; ".join(found["fails"])) if found["fails"] else t["qa_pass"]]
     if found["findings"]:
         words.append(t["qa_findings"].format(findings="; ".join(found["findings"])))

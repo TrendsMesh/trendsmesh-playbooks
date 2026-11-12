@@ -40,7 +40,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from tm import (brand, cli, config, json_schema, manifest, organic_final, organic_proposals, state, stepchecks,
+from tm import (brand, cli, config, i18n, json_schema, manifest, organic_final, organic_proposals, state, stepchecks,
                 trend_spool)
 from tm.config import Problem
 from tm.runfolder import ReadOnlyError, RunFolder
@@ -245,15 +245,15 @@ def check(kit: dict, ctx: KitContext) -> list[Problem]:
 
 # --- the .md beside the JSON ------------------------------------------------------------------------
 
-LABELS = {
-    "en": {"title": "Posting kit", "video": "Video", "cover": "Cover", "product": "Product", "caption": "Caption",
-           "hashtags": "Hashtags", "name": "Title", "description": "Description", "ai": "AI label",
-           "sound": "Sound", "trending": "Trending sound", "alternative": "Business account alternative"},
-    "pl": {"title": "Zestaw do publikacji", "video": "Wideo", "cover": "Okładka", "product": "Produkt",
-           "caption": "Opis posta", "hashtags": "Hashtagi", "name": "Tytuł", "description": "Opis filmu",
-           "ai": "Etykieta AI", "sound": "Dźwięk", "trending": "Trendujący dźwięk",
-           "alternative": "Alternatywa dla konta firmowego"},
-}
+LABELS = ("title", "video", "cover", "product", "caption", "hashtags", "name", "description", "ai", "sound", "trending",
+          "alternative")             # the string table's organic.kit_md.<label>
+
+
+def labels(lang: str | None) -> dict[str, str]:
+    """The .md's labels in `lang` (the run's working language) when its table has every organic string, else in
+    English (`i18n.page_lang`)."""
+    tr = i18n.translator(i18n.page_lang(lang, "organic").lang)
+    return {label: tr(f"organic.kit_md.{label}") for label in LABELS}
 
 
 def _fence(text: str) -> list[str]:
@@ -262,8 +262,8 @@ def _fence(text: str) -> list[str]:
 
 def to_md(kit: dict, lang: str) -> str:
     """templates/posting_kit_template.md's sections (its `## ` headings are `PLATFORM_NAMES`, which a test
-    compares to the template), filled: one per platform in the kit."""
-    t = LABELS.get(lang, LABELS["en"])
+    compares to the template), filled: one per platform in the kit, its labels in `lang` (`labels`)."""
+    t = labels(lang)
     plugin = kit.get("plugin") or {}
     cover = (kit.get("cover") or {}).get("file")
     head = [f"# {t['title']} {kit.get('id')} {kit.get('version')} ({kit.get('channel')})", ""]
@@ -415,7 +415,8 @@ def _md(args: argparse.Namespace) -> int:
                    f"tm kit check --run {args.run} --file {rel}, then write its .md; {AGAIN}.")
     out = path.with_suffix(".md")
     done = out.relative_to(run.path.resolve()).as_posix()
-    text = to_md(data, str(data.get("language") or "en"))
+    lang = i18n.page_lang(i18n.run_languages(run).working, "organic")   # the labels: what the user reads
+    text = to_md(data, lang.lang)
     run.assert_writable(out)
     try:
         with open(out, "x", encoding="utf-8", newline="\n") as fh:   # never over an earlier .md (OV13)
@@ -424,7 +425,9 @@ def _md(args: argparse.Namespace) -> int:
         raise Stop(f"{done} is already written and is never written over. To change it, write the kit as a new "
                    f"version, check it, then write its .md; {AGAIN}.") from None
     manifest.record(run, done, done.split("/", 1)[0], "tm kit md", parent=rel)
-    cli.emit(args, {"status": "done", "file": done, "message": f"Wrote {done}."}, f"Wrote {done}.")
+    message = f"Wrote {done}." + (f" {lang.warning}" if lang.warning else "")
+    cli.emit(args, {"status": "done", "file": done, "message": message,
+                    **({"language_warning": lang.warning} if lang.warning else {})}, message)
     return 0
 
 
