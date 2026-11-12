@@ -47,11 +47,12 @@ def _used() -> set[str]:
     return (set(organic_pages.LEVELS.values()) | set(organic_pages.GATE_WORDS.values())
             | {k for _, k in organic_pages.WORDING} | {k for _, k in organic_pages.REFERENCE["pl"]}
             | _frag_keys(proposals.FRAGS) | _frag_keys(f for n in (1, 2, 5) for f in proposals.lede_frags(n))
-            | set(proposals._DECISION_KEYS.values()) | set(proposals._FIELD_KEYS.values()) | set(proposals.LEAD_KEYS.values())
+            | set(proposals._DECISION_KEYS.values()) | set(proposals._FIELD_KEYS.values()) | set(proposals.LEAD_KEYS.values()) | set(proposals.ADDED.values())
             | _frag_keys(gate.FRAGS) | _week_keys(week.LABELS) | {f"organic.week.day_{d}" for d in week.DAYS}
             | {"organic.output"} | set(script.WORDS.values()) | set(organic_week_delivery.WORDS.values())
             | {f"organic.kit_md.{label}" for label in kit.LABELS} | _pack_md_keys() | _qa_keys()
-            | {k for kind in ("product", "risk", "status") for k in organic_pages.value_keys(kind).values()})
+            | {k for kind in ("product", "risk", "status", "production")
+               for k in organic_pages.value_keys(kind).values()})
 
 
 def _qa_keys() -> set[str]:

@@ -5,8 +5,16 @@ C1. The agent writes `03_wip/proposals_vNN.json` in the handoff's schema (`schem
 the handoff's, copied) with the plugin's block on each proposal:
 
     plugin = {"production": ai_footage|talking_character|animation|stills_motion|sections,
-              "output": video|script, "risk_hits": [{"item": <one of RISK_ITEMS>, "mitigation": str}],
-              "transfer": bool, "weak_link": str|null, "series": str|null, "seed": str|null}
+              "output": video|script, "risk_hits": [{"item": <one of RISK_ITEMS>, "mitigation": str,
+              "case"?: <one of the item's cases>}], "transfer": bool, "weak_link": str|null, "series": str|null,
+              "seed": str|null, "aesthetic"?: str, "styles"?: [{"style": <number or styleId>, "why": str}]}
+
+Issue #87: `aesthetic` is how the video looks ("realistic, 1990s home camcorder"), kept through production;
+`styles` are an animation's (or a video in sections') 2 to 3 suggested catalogue styles (`tm organic
+atlas-styles`), the agent's pick first; a channel whose profile has its own `video_style` gets it first on the
+page, picked in advance (`style_options`). The risk level is the highest weight of the named risks for the
+production type (`risk_level`, the weights in data/organic-video/risks.yaml), never their count. A file written
+before these keys still checks.
 
 `tm organic proposals check --run R --file F` runs `check` and marks the file it passed on
 (`stepchecks.mark`, key `proposals`); C1's step check `proposals_checked` (`checked_gap`) asks that the
@@ -16,7 +24,7 @@ C2. The page saves one document per proposal (`decisions/<pid>`, with `updated_a
 (`page.db_docs`) into `03_wip/decisions_proposals_vNN.json` through `decisions`:
 
     {"page": "proposals", "proposals": "03_wip/proposals_vNN.json" (the file the page was built from),
-     "decisions": {pid: {decision, level, output, platforms, answers, note, carried}}}
+     "decisions": {pid: {decision, level, output, platforms, answers, note, carried, aesthetic, style}}}
 
 A row equal to an earlier page version's is `carried` (PB02's rule, preflight P3-F4).
 
@@ -42,8 +50,11 @@ import shutil
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from tm import atlas, brand, brief_config, checkins, config, flow, i18n, json_schema, library, manifest, organic, \
-    organic_config, organic_research, playbooks, runfolder, state, stepchecks, trend_spool
+import yaml
+
+from tm import atlas, atlas_prompt, brand, brief_config, checkins, config, envtiers, flow, i18n, json_schema, \
+    library, manifest, organic, organic_config, organic_research, paths, playbooks, runfolder, state, stepchecks, \
+    trend_spool
 from tm.config import Problem
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
@@ -80,6 +91,11 @@ NEEDS = {  # a production type the stack hides -> (the stack key, what it needs)
     "talking_character": ("replicate", "a Replicate key (REPLICATE_API_TOKEN) for the video models"),
     "animation": ("browser", "Chrome or Edge on this computer (the animation is drawn in it)"),
 }
+RISK_LEVELS = ("none", "low", "medium", "high")                     # a risk's weight, from none to high
+LEVELS = ("low", "medium", "high")                                  # a proposal's risk level (the schema's)
+RISKS_FILE = ("organic-video", "risks.yaml")                        # the weights, in the plugin's data/
+STYLED = ("animation", "sections")                                  # the production types a style is picked for
+CHANNEL_STYLE = "channel"                                           # the style value of the channel's own style
 _TEXT_OR_NULL = {"type": ["string", "null"]}
 PLUGIN: dict = {
     "type": "object",
@@ -89,11 +105,16 @@ PLUGIN: dict = {
         "output": {"enum": list(PAGE_OUTPUTS)},
         "risk_hits": {"type": "array", "items": {"type": "object", "required": ["item", "mitigation"],
                                                  "properties": {"item": {"enum": list(RISK_ITEMS)},
-                                                                "mitigation": {"type": "string"}}}},
+                                                                "mitigation": {"type": "string"},
+                                                                "case": {"type": "string"}}}},
         "transfer": {"type": "boolean"},
         "weak_link": _TEXT_OR_NULL,
         "series": _TEXT_OR_NULL,
         "seed": _TEXT_OR_NULL,
+        "aesthetic": {"type": "string"},
+        "styles": {"type": "array", "items": {"type": "object", "required": ["style", "why"],
+                                              "properties": {"style": {"type": ["string", "integer"]},
+                                                             "why": {"type": "string"}}}},
     },
 }
 _SHAPE_TODO = (f"Write the proposals in the handoff's schema (schemas/{SCHEMA.name}) with the plugin block on each "
@@ -207,13 +228,84 @@ def _approach(p: dict, pid: str, found: dict[str, list[int]], out: list[Problem]
                            "Say in plugin.weak_link where the trend and the channel meet loosely."))
 
 
+@functools.lru_cache(maxsize=None)
+def _weights(path: Path) -> dict:
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if tuple(data.get("levels") or ()) != RISK_LEVELS:
+        raise ValueError(f"{path.name}: levels must be {', '.join(RISK_LEVELS)}, in that order.")
+    risks = data.get("risks") or {}
+    if set(risks) != set(RISK_ITEMS):
+        raise ValueError(f"{path.name}: risks must be exactly OV4's nine: {', '.join(RISK_ITEMS)}.")
+    for item, row in risks.items():
+        weight, cases = row.get("weight") or {}, row.get("cases") or {}
+        if set(weight) != set(PRODUCTIONS) or not set(weight.values()) | set(cases.values()) <= set(RISK_LEVELS):
+            raise ValueError(f"{path.name}: {item} needs a weight of {', '.join(RISK_LEVELS)} for each of "
+                             f"{', '.join(PRODUCTIONS)}, and each case one of those levels.")
+    return data
+
+
+def risk_weights() -> dict:
+    """data/organic-video/risks.yaml, checked: `{levels, risks: {item: {weight: {production: level}, cases?:
+    {case: level}}}}`. A ValueError names what is wrong with the file."""
+    return _weights(paths.bundled_data().joinpath(*RISKS_FILE))
+
+
+def cases(item: str) -> dict[str, str]:
+    """The named cases in which `item` weighs less (case -> level)."""
+    return dict(risk_weights()["risks"][item].get("cases") or {})
+
+
+def weight(item: str, production: str, case: str | None = None) -> str:
+    """A risk's weight in this production type, or in its named case."""
+    row = risk_weights()["risks"][item]
+    return (row.get("cases") or {}).get(case) or row["weight"][production]
+
+
+def risk_level(p: dict) -> tuple[str, dict | None]:
+    """The proposal's risk level from its hits' weights (OV4, issue #87): the highest weight, low when that is none
+    or no risk is named; and the hit that sets it (None without one). A hit naming a case the risk does not have
+    weighs as the risk does."""
+    production = p["plugin"]["production"]
+    top, top_weight = None, "none"
+    for hit in p["plugin"]["risk_hits"]:
+        w = weight(hit["item"], production, hit.get("case"))
+        if top is None or RISK_LEVELS.index(w) > RISK_LEVELS.index(top_weight):
+            top, top_weight = hit, w
+    return ("low" if top_weight in ("none", "low") else top_weight), top
+
+
+def risk_words(item: str, lang: str | i18n.Translator = i18n.ENGLISH) -> str:
+    """A risk item in the user's words (the pages' value table)."""
+    from tm import organic_pages   # it reads this module's data
+
+    return organic_pages.value(item, "risk", lang)
+
+
 def _risk(p: dict, pid: str, out: list[Problem]) -> None:
     hits = p["plugin"]["risk_hits"]
     level = p["risk"]["level"]
-    if (level == "low") != (len(hits) <= 1):
-        out.append(Problem(f"{pid}.risk.level", f"{_name(p)}: the risk is {level} with {len(hits)} named "
-                                                f"risk{'' if len(hits) == 1 else 's'} (OV4: low is at most one).",
-                           "Set the level from the hits: low for none or one, medium or high for more."))
+    production = p["plugin"]["production"]
+    for k, hit in enumerate(hits):
+        case = hit.get("case")
+        if case is not None and case not in cases(hit["item"]):
+            known = cases(hit["item"])
+            out.append(Problem(f"{pid}.plugin.risk_hits[{k}].case",
+                               f"{_name(p)}: the risk {hit['item']} has no case {case!r}.",
+                               (f"Name one of its cases ({', '.join(known)}), or leave case out." if known
+                                else "Leave case out: this risk has no named case.")))
+    wanted, top = risk_level(p)
+    if level != wanted:
+        if top is None:
+            why = "names no risk"
+        else:
+            w = weight(top["item"], production, top.get("case"))
+            why = (f"its highest risk is {risk_words(top['item'])}, which weighs {w} in "
+                   f"{PRODUCTION_WORDS[production]}" + (f" ({top['case']})" if top.get("case") else ""))
+        out.append(Problem(f"{pid}.risk.level", f"{_name(p)}: the risk is {level}, and the proposal {why} (OV4: "
+                                                "the level is the highest risk left after its mitigation, never the "
+                                                "number of risks).",
+                           f"Set the level to {wanted} (the weights are in data/organic-video/risks.yaml), or name "
+                           "the risks again."))
     texts = [(f"{pid}.risk.items[{k}]", x) for k, x in enumerate(p["risk"]["items"])]
     for k, hit in enumerate(hits):
         where = f"{pid}.plugin.risk_hits[{k}].mitigation"
@@ -226,6 +318,88 @@ def _risk(p: dict, pid: str, out: list[Problem]) -> None:
             out.append(Problem(where, f"{_name(p)}: the risk is given as a percentage ({text!r}).",
                                "Name the risk and its mitigation without percentages: there are not enough "
                                "videos of each type yet (OV4)."))
+
+
+def style_value(key: object) -> str | None:
+    """A catalogue style as the page and the pack's `taste.style` keep it: `<number> <name>` (for example `7 Paper
+    Layers`), from its number, styleId or that value itself; None when it is not one of ours."""
+    if isinstance(key, bool) or not isinstance(key, (str, int)):
+        return None
+    text = str(key).strip()
+    head = text.split(" ", 1)[0] if text[:1].isdigit() else text
+    try:
+        s = atlas_prompt.find_style(head)
+    except ValueError:
+        return None
+    return f"{s['order']} {s['name']}"
+
+
+def _video_style(profile: dict | None) -> str | None:
+    style = (profile or {}).get("video_style")
+    return style.strip() if _text(style) else None
+
+
+def style_options(p: dict, profile: dict | None) -> list[dict]:
+    """The styles an animation (or a video in sections) is offered on the page, in order: the channel's own style
+    (`video_style` of its profile, or the defaults `profile_defaults` gives) first, then the proposal's suggested
+    catalogue styles. `{value, text, why, style}`: `value` is CHANNEL_STYLE or `style_value`, `style` the catalogue
+    card (None for the channel's). Empty for any other production type."""
+    plugin = p.get("plugin") if isinstance(p.get("plugin"), dict) else {}
+    if plugin.get("production") not in STYLED:
+        return []
+    out = []
+    own = _video_style(profile)
+    if own:
+        out.append({"value": CHANNEL_STYLE, "text": own, "why": "", "style": None})
+    for entry in plugin.get("styles") or []:
+        value = style_value(entry.get("style")) if isinstance(entry, dict) else None
+        if value and value not in [o["value"] for o in out]:
+            card = atlas_prompt.find_style(value.split(" ", 1)[0])
+            out.append({"value": value, "text": card["name"], "why": str(entry.get("why") or ""), "style": card})
+    return out
+
+
+def default_style(p: dict, profile: dict | None) -> str | None:
+    """The style picked in advance: the channel's own when it has one, else the agent's first suggestion."""
+    options = style_options(p, profile)
+    return options[0]["value"] if options else None
+
+
+def _look(p: dict, pid: str, out: list[Problem]) -> None:
+    """The look (`aesthetic`) is words; an animation's suggested styles are 2 to 3 different catalogue styles,
+    each with its why (issue #87). Both are optional, so a file written before them still checks."""
+    plugin = p["plugin"]
+    if "aesthetic" in plugin and not _text(plugin["aesthetic"]):
+        out.append(Problem(f"{pid}.plugin.aesthetic", f"{_name(p)}: plugin.aesthetic is blank.",
+                           "Write how the video looks, in a few words (for example \"realistic, 1990s home "
+                           "camcorder\"), or leave it out."))
+    styles = plugin.get("styles")
+    if styles is None:
+        return
+    if plugin["production"] not in STYLED:
+        out.append(Problem(f"{pid}.plugin.styles", f"{_name(p)} is {PRODUCTION_WORDS[plugin['production']]}, and "
+                                                   "a style is suggested only for an animation.",
+                           "Leave plugin.styles out: the look goes in plugin.aesthetic."))
+        return
+    if not 2 <= len(styles) <= 3:
+        out.append(Problem(f"{pid}.plugin.styles", f"{_name(p)} suggests {len(styles)} style"
+                                                   f"{'' if len(styles) == 1 else 's'}.",
+                           "Suggest 2 to 3 of our styles (tm organic atlas-styles), your pick first."))
+    seen: set[str] = set()
+    for k, entry in enumerate(styles):
+        value = style_value(entry["style"])
+        if value is None:
+            out.append(Problem(f"{pid}.plugin.styles[{k}].style", f"{_name(p)}: {entry['style']!r} is not one of "
+                                                                  "our styles.",
+                               "Name it by its number or styleId (tm organic atlas-styles lists them)."))
+        elif value in seen:
+            out.append(Problem(f"{pid}.plugin.styles[{k}].style", f"{_name(p)} suggests {value} twice.",
+                               "Suggest 2 to 3 different styles."))
+        else:
+            seen.add(value)
+        if not _text(entry["why"]):
+            out.append(Problem(f"{pid}.plugin.styles[{k}].why", f"{_name(p)}: the style {entry['style']} has no why.",
+                               "Say in one line why it fits this idea."))
 
 
 def _cost(p: dict, pid: str, out: list[Problem]) -> None:
@@ -247,6 +421,45 @@ def makeable(stack: dict | None) -> list[str]:
         words = PRODUCTION_WORDS[kind]
         out.append(f"{words} on the user's own pictures" if kind == "stills_motion"
                    and (stack or {}).get("replicate") != "ok" else words)
+    return out
+
+
+def route_installs(production: str) -> list[dict]:
+    """What an AI video of this production type needs installed and is not (issue #87): the tiers D1's doctor asks
+    for on its route (`doctor.route_tiers`, `--production`), in install order, then Chrome or Edge for an animation.
+    `{tier, what, size, minutes}` (a browser has no tier, size or minutes); empty when all is there."""
+    from tm import doctor   # it reads the run's step words, which import this module
+
+    out: list[dict] = []
+    for tier in doctor.route_tiers(ORGANIC_VIDEO, {"organic_video"}, production=production):
+        if not envtiers.installed(tier):
+            mb = envtiers.TIERS[tier].approx_mb
+            out.append({"tier": tier, "what": i18n.t(f"organic.proposals.install_{tier}"), "size": doctor._size(mb),
+                        "minutes": doctor._minutes(mb)})
+    if production == "animation" and atlas.find_browser() is None:
+        out.append({"tier": None, "what": i18n.t("organic.proposals.install_browser"), "size": None, "minutes": None})
+    return out
+
+
+def installs_text(needs: list[dict], lang: str | i18n.Translator = i18n.ENGLISH) -> str:
+    """`route_installs` in words: "the animatic tools (about 150 MB, about 1 min) and Chrome or Edge"."""
+    tr = lang if isinstance(lang, i18n.Translator) else i18n.translator(lang)
+    parts = []
+    for n in needs:
+        what = tr(f"organic.proposals.install_{n['tier'] or 'browser'}") if "tier" in n else n["what"]
+        parts.append(tr("organic.proposals.install_sized", what=what, size=n["size"], minutes=n["minutes"])
+                     if n.get("size") else what)
+    if len(parts) < 2:
+        return "".join(parts)
+    return tr("organic.proposals.install_and", first=", ".join(parts[:-1]), last=parts[-1])
+
+
+def install_steps(needs: list[dict]) -> str:
+    """How `route_installs` is installed, after the user's one yes: each tier's command, and the browser theirs."""
+    steps = [f"tm env install {n['tier']} --yes" for n in needs if n.get("tier")]
+    out = f"after that one yes: {'; '.join(steps)}" if steps else ""
+    if any(not n.get("tier") for n in needs):
+        out += ("; " if out else "") + "Chrome or Edge is the user's to install (both free)"
     return out
 
 
@@ -428,6 +641,7 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
         _blank(p, pid, out)
         _approach(p, pid, found, out)
         _risk(p, pid, out)
+        _look(p, pid, out)
         _cost(p, pid, out)
         _production(p, pid, stack, out)
         _product(p, pid, profiles.get(slug) if slug else None, out)
@@ -478,9 +692,11 @@ def newest_docs(docs: list[tuple[str, dict]], data: dict) -> dict[str, dict]:
 
 def decisions(docs: list[tuple[str, dict]], data: dict, defaults: dict[str, dict] | None = None) -> dict[str, dict]:
     """Each proposal's decision from the page's documents (`newest_docs`): `{pid: {decision:
-    produce|later|skip|None, level, output, platforms, answers, note, carried}}`. A value the document
-    does not give comes from `defaults[<the proposal's channel>]` (`profile_defaults`), else None; the
-    output first from the proposal's plugin.output, then the file's default_output (`_output`)."""
+    produce|later|skip|None, level, output, platforms, answers, note, carried, aesthetic, style}}`. A value the
+    document does not give comes from `defaults[<the proposal's channel>]` (`profile_defaults`), else None; the
+    output first from the proposal's plugin.output, then the file's default_output (`_output`). The look
+    (`aesthetic`) is the document's words, else the proposal's; the style one of the page's `style_options`,
+    else the one picked in advance (`default_style`), None where no style is offered."""
     proposals = [p for p in data.get("proposals") or [] if isinstance(p, dict) and isinstance(p.get("id"), str)]
     newest = newest_docs(docs, data)
     out: dict[str, dict] = {}
@@ -498,14 +714,30 @@ def decisions(docs: list[tuple[str, dict]], data: dict, defaults: dict[str, dict
             "answers": {str(k): v for k, v in answers.items() if isinstance(v, str)},
             "note": doc.get("note") if isinstance(doc.get("note"), str) else "",
             "carried": doc.get("carried") is True,
+            "aesthetic": _aesthetic(doc, p),
+            "style": _style(doc, p, base),
         }
     return out
+
+
+def _aesthetic(doc: dict, p: dict) -> str | None:
+    for value in (doc.get("aesthetic"), (p.get("plugin") or {}).get("aesthetic")):
+        if _text(value):
+            return value.strip()
+    return None
+
+
+def _style(doc: dict, p: dict, base: dict) -> str | None:
+    offered = [o["value"] for o in style_options(p, base)]
+    given = doc.get("style")
+    given = given if given == CHANNEL_STYLE else style_value(given)
+    return given if given in offered else (offered[0] if offered else None)
 
 
 def profile_defaults(run: RunFolder, data: dict) -> dict[str, dict]:
     """What a proposal's decision takes when the page leaves it out, per channel named in the file:
     the run's level (run.json, never mode.variant), its config's output, the channel profile's
-    platforms."""
+    platforms and its own style (`video_style`)."""
     try:
         cfg = config.load(run)
     except ValueError:
@@ -526,7 +758,8 @@ def profile_defaults(run: RunFolder, data: dict) -> dict[str, dict]:
             profile = None
         platforms = (profile or {}).get("platforms")
         out[name] = {"level": level, "output": output,
-                     "platforms": list(platforms) if isinstance(platforms, list) and platforms else None}
+                     "platforms": list(platforms) if isinstance(platforms, list) and platforms else None,
+                     "video_style": _video_style(profile)}
     return out
 
 
@@ -788,8 +1021,11 @@ def start(run: RunFolder, *, keep_carried: bool = False, today: date | None = No
         todo = "it can be a script to film (switch the output on the page or in chat, then read the decisions again)"
         if hidden:
             todo += ", or set the tool up and record the stack again (tm organic stack), then start"
-        if undrawn:
-            todo += f", or for the animation: {drawing()[2]}, then start again"
+        if undrawn:   # everything the animation's route needs, asked once (issue #87)
+            needs = route_installs("animation")
+            todo += (f", or for the animation, in one question, everything it needs: {installs_text(needs)} "
+                     f"({install_steps(needs)}), then start again" if needs
+                     else f", or for the animation: {drawing()[2]}, then start again")
         raise Stop(f"Marked to produce as an AI video, which this run cannot make: {'; '.join(why)}. Ask the user: "
                    f"{todo}. Nothing was started; {AGAIN}.")
     if carried:
@@ -815,7 +1051,21 @@ def start(run: RunFolder, *, keep_carried: bool = False, today: date | None = No
     return {"started": made, "already_started": [{"proposal": p["id"], "title": p.get("title"),
                                                   "run": started[idea_key(p)]["run"]} for p in again],
             "kept_carried": [p["id"] for p, r in new if r.get("carried")],
-            "decisions": decisions_rel, "proposals": proposals_rel, "decisions_recorded": recorded}
+            "decisions": decisions_rel, "proposals": proposals_rel, "decisions_recorded": recorded,
+            "installs": _installs(new)}
+
+
+def _installs(started: list[tuple[dict, dict]]) -> list[dict]:
+    """What the started AI videos' routes need installed and is not, each once (C3 asks for all of it in one
+    question, issue #87): `route_installs` per production type, with the ideas that need it."""
+    out: dict[str, dict] = {}
+    for p, row in started:
+        if row.get("output") != "video":
+            continue
+        for need in route_installs(p["plugin"]["production"]):
+            key = need["tier"] or "browser"
+            out.setdefault(key, {**need, "for": []})["for"].append(p["id"])
+    return list(out.values())
 
 
 def _record_decisions(run: RunFolder, workspace: Path, data: dict, rows: dict, defaults: dict, started: dict,

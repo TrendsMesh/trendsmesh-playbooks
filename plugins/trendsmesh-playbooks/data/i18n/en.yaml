@@ -84,6 +84,16 @@ budget:
 
 # --- The doctor (issue 76): engine/src/tm/doctor.py. The general check runs when no playbook is chosen; {playbooks}
 # is the list of the playbooks this plugin version has, by name.
+env:
+  # tm env install (tm/envtiers.py): the tier it installed, by name (issue 87: an animatic install said "video")
+  installed: "Installed the {what} (the '{tier}' tier)."
+  tier:
+    base: base tools
+    breakdown: video breakdown tools
+    video: video editing tools
+    voice: voice tools
+    ai: AI video tools
+    animatic: animatic tools
 doctor:
   general:
     ready: "**Ready to go.** The base tools are in place."
@@ -598,6 +608,28 @@ organic:
       one: "{n} video ideas for"
       other: "{n} video ideas for"
     lede_rest: each built on trends rising now, with the evidence videos behind it. Pick the ones to produce; nothing is generated or paid until you approve a pack and its cost.
+    # issue 87: the look, an animation's styles, what an AI video installs, where the risk level comes from
+    look: Look
+    look_label: Look (how the video looks; change it if you want another)
+    style: Style
+    channel_style: Your channel’s style
+    risk_from: "Highest risk: {risk}, in {production} ({weight})"
+    risk_from_none: No risk is left once the named ones are covered
+    weight_low: low
+    weight_medium: medium
+    weight_high: high
+    needs: "An AI video of this idea needs, installed after your yes: {installs}."
+    install_sized: "{what} (about {size}, about {minutes} min)"
+    install_and: "{first} and {last}"
+    install_base: the base tools
+    install_breakdown: the video breakdown tools
+    install_video: the video editing tools
+    install_voice: the voice tools
+    install_ai: the AI video tools
+    install_animatic: the animatic tools
+    install_browser: Chrome or Edge
+    summary_look: look
+    summary_style: style
   # the check-in and delivery pages (organic_pages/gate.py) and their data (organic_gates.py)
   gate:
     eyebrow_images: "Organic AI video · check-in: images"
@@ -831,6 +863,11 @@ organic:
     risk_speech: speech
     risk_long_takes: long takes
     risk_several_characters: several characters
+    production_ai_footage: AI footage
+    production_talking_character: a talking-character video
+    production_animation: an animation
+    production_stills_motion: stills with motion graphics
+    production_sections: a video in sections
 
 # --- Refresh an ad's run page: engine/src/tm/run_page/ (issue #19) ---
 # decision.saved_at's {time} and decision.save_error's {error} are filled on the page itself.

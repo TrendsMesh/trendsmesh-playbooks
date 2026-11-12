@@ -1,0 +1,32 @@
+# OV4's nine risks, each weighted by the production type (tm/organic_proposals.py reads it; no weight is in code).
+# A weight is the risk left once the risk's usual mitigation is applied: none < low < medium < high. A proposal's
+# risk level is its highest weight: low when it names no risk, or when every risk it names weighs none or low
+# (`tm organic proposals check`). A video in sections (`sections`) weighs as the riskiest type it could hold, since
+# its sections are written only at D1.
+#
+# cases: a named case in which the risk weighs less, whatever the production type; a risk hit says it is that
+# case with `case` (for example a still image whose text is all added in the edit: model_text, text_in_edit).
+
+levels: [none, low, medium, high]
+
+risks:
+  hands_on_objects:
+    weight: {ai_footage: medium, talking_character: medium, animation: low, stills_motion: low, sections: medium}
+  product_shape:
+    weight: {ai_footage: medium, talking_character: medium, animation: low, stills_motion: low, sections: medium}
+  same_character:
+    weight: {ai_footage: medium, talking_character: medium, animation: low, stills_motion: low, sections: medium}
+  fast_motion:
+    weight: {ai_footage: high, talking_character: medium, animation: low, stills_motion: low, sections: high}
+  physics:
+    weight: {ai_footage: medium, talking_character: low, animation: low, stills_motion: low, sections: medium}
+  model_text:
+    weight: {ai_footage: medium, talking_character: medium, animation: none, stills_motion: low, sections: medium}
+    cases:
+      text_in_edit: none     # no text in any prompt: every word on screen is added in the edit
+  speech:
+    weight: {ai_footage: medium, talking_character: medium, animation: low, stills_motion: low, sections: medium}
+  long_takes:
+    weight: {ai_footage: medium, talking_character: medium, animation: low, stills_motion: low, sections: medium}
+  several_characters:
+    weight: {ai_footage: medium, talking_character: high, animation: low, stills_motion: low, sections: high}

@@ -1649,6 +1649,9 @@ def ov_main(scn: str, ws: Path) -> tuple[Path | None, dict | None]:
     if scn == "ov_no_replicate":
         run = ov_run(ws, "every_step", ["proposals"], stack={"replicate": "missing", "artifacts": "missing"}, chat="en")
         return run, ov_drive(ws, run, "C1")
+    if scn == "ov_at_c1":   # issue 87: research done, the proposals not written yet; English pages, no artifacts
+        run = ov_run(ws, "every_step", ["proposals"], stack={"artifacts": "missing"}, chat="en")
+        return run, ov_drive(ws, run, "C1")
     if scn == "ov_at_c2_published":
         run = ov_run(ws, "every_step", ["proposals"])
         ov_drive(ws, run, "C2")

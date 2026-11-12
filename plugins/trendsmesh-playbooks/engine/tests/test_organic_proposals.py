@@ -295,7 +295,8 @@ def test_decisions_map_original_modes_to_levels():
     assert got["m5"]["output"] == "video" and got["m5"]["platforms"] == ["tiktok", "youtube"]   # plugin.output
     assert got["m1"]["platforms"] == ["tiktok", "instagram", "youtube", "facebook"]
     assert got["m6"] == {"decision": None, "level": "big_calls", "output": "video", "platforms": ["tiktok", "youtube"],
-                         "answers": {"q1": "blue"}, "note": "ask me", "carried": False}
+                         "answers": {"q1": "blue"}, "note": "ask me", "carried": False, "aesthetic": None,
+                         "style": None}                                 # issue #87: no look, no style offered
     del data["proposals"][5]["plugin"]["output"]                        # no output of its own: the file's default
     data["default_output"] = "script"
     assert organic_proposals.decisions(docs, data, {"exampleedu": {"output": "video"}})["m6"]["output"] == "script"
@@ -635,3 +636,22 @@ def test_page_without_output_takes_the_proposals_own(tmp_path, capsys):
     _decided(run, {"m1": {k: v for k, v in _doc().items() if k != "output"}})
     code, out = _start(capsys, run)
     assert code == 0 and out["started"][0]["output"] == "script"
+
+
+def test_start_asks_once_for_what_the_picked_ai_videos_install(tmp_path, capsys, monkeypatch):
+    """Issue #87: the start lists, once, what the started AI videos' routes need installed (each install once, with
+    the ideas that need it), so D1's check asks for nothing new; a script to film needs none. The decided look and
+    style go into 00_raw/proposal.json."""
+    breakdown = {"tier": "breakdown", "what": "the video breakdown tools", "size": "2.5 GB", "minutes": 5}
+    monkeypatch.setattr(organic_proposals, "route_installs", lambda production: [breakdown])
+    run = _idea_run(tmp_path)
+    _checked(run, capsys)
+    _decided(run, {"m3": _doc(output="video", aesthetic="grainy home video"), "m6": _doc(output="video"),
+                   "m5": _doc(output="script")})
+    code, out = _start(capsys, run)
+    assert code == 0, out
+    assert out["installs"] == [{**breakdown, "for": ["m3", "m6"]}]
+    assert "ask the user once" in out["message"] and "tm env install breakdown --yes" in out["message"]
+    m3 = next(x for x in out["started"] if x["proposal"] == "m3")
+    kept = json.loads((run.path.parent / m3["run"] / "00_raw" / "proposal.json").read_text(encoding="utf-8"))
+    assert kept["decision"]["aesthetic"] == "grainy home video" and kept["decision"]["style"] is None

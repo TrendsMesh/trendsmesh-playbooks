@@ -146,6 +146,23 @@ What changed in each version of the TrendsMesh playbooks plugin.
   rules more than 3 months old. Kits saved before still load, show and pass the earlier checks; checking one again
   asks for the two new fields.
 
+- **Each Organic AI video idea says how it will look.** A proposal now suggests its look from the trend and the idea
+  (for example "realistic, 1990s home camcorder"), and you can change it on the proposals page. The recipe keeps it,
+  and every scene's prompt follows it, so the look stays the same from the first shot to the last.
+- **An animation says up front what it needs, and suggests its styles.** On the proposals page, an AI video lists
+  what it still needs installed, with the size and time, before you pick it. Once you pick, Claude asks once for
+  everything the chosen videos need. An animation asks only for its own tools, not the video breakdown or AI video
+  tools it never uses. An animation idea also suggests 2 to 3 of our styles, each with its colours and one line on
+  why, and the one you pick is already selected when the style is chosen. `tm env install` now names the tools it
+  installed (it said "video" for the animation tools).
+- **Your channel's own style is kept.** At the start you can describe the style your channel's videos are made in
+  (for example "paper cut-out collage, old engravings, flat colour"). It is saved in the channel profile, and every
+  later run puts it first on an animation's style list as "Your channel's style", already selected.
+- **A video idea's risk level counts what can really go wrong.** The level is now the highest risk left after its
+  mitigation, not the number of risks: several characters are a low risk on still images and a medium one in AI
+  footage, and text the model would draw is no risk when all the text is added in the edit. The proposals page says
+  where the level comes from, for example "Highest risk: several characters, in AI footage (medium)".
+
 ## 0.12.0
 
 - **Creative brief's PDFs print when the run is given by a relative path.** `tm brief page --run <relative path>`

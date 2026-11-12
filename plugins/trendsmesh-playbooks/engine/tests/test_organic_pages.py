@@ -2,7 +2,8 @@
 
 The proposals page is proven against the reference tool: fixtures/organic/proposals_golden.html is its
 `proposals_page.py` on the ExampleEdu walkthrough's proposals_v02.json with the level radio put in (its
-README), and the page built here equals it once `organic_pages.WORDING` is applied to it."""
+README), and the page built here equals it once `organic_pages.WORDING` is applied to it, and issue #87's
+additions: its script's (`proposals.JS_ADDED`) put in, the elements it adds (`data-plugin`) taken out."""
 
 import copy
 import json
@@ -43,8 +44,18 @@ ALLOWED_EN = {"Output": ('<span class="lbl">Output</span>', 'aria-label="Output 
 
 @pytest.fixture(autouse=True)
 def no_downloads(monkeypatch):
-    """No thumbnail is downloaded (the golden's videos have no thumbnail_url, so the reference page has none)."""
+    """No thumbnail is downloaded (the golden's videos have no thumbnail_url, so the reference page has none), and
+    nothing is missing for an AI video, whatever this computer has installed (issue #87's hint)."""
     monkeypatch.setattr(page, "fetch_image", lambda url, dest, timeout=30: False)
+    monkeypatch.setattr(organic_proposals, "route_installs", lambda production: [])
+
+
+def _with_issue_87(worded: str, built: str, lang: str = "pl") -> tuple[str, str]:
+    """The reference page with issue #87's script additions put in, and the built page without the elements #87
+    adds (`data-plugin`: here only where the risk level comes from, as ExampleEdu's proposals have no look or style)."""
+    for anchor, text in proposals.JS_ADDED:
+        worded = worded.replace(anchor, anchor + proposals.localize(text, lang), 1)
+    return worded, re.sub(r'<p class="hint" data-plugin>[^<]*</p>', "", built)
 
 
 def _cli(capsys, *argv):
@@ -139,7 +150,8 @@ def test_proposals_page_matches_original_after_wording_table(tmp_path, capsys):
     golden = GOLDEN.read_text(encoding="utf-8").replace("\r", "")
     worded = organic_pages.worded(golden, "pl")
     assert worded != golden                                                # the table changes the original's words
-    assert built == worded
+    worded, built = _with_issue_87(worded, built)
+    assert 'data-plugin' not in built and built == worded
     assert "A–Z" not in re.sub(r"<script>.*?</script>", "", built, flags=re.S)
     assert stepchecks.run("proposals_page_built", run) is None
     # a new proposals version checked: the page is no longer built from the checked proposals

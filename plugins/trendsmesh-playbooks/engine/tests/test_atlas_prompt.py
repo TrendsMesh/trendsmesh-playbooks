@@ -384,6 +384,9 @@ def test_animation_ai_video_starts_only_where_it_can_be_drawn(tmp_path, capsys, 
     assert "is an animation, and it cannot be drawn here" in out["message"] and NOT_INSTALLED in out["message"]
     assert "tm env install animatic --yes" in out["message"] and "script to film" in out["message"]
     assert "later version" not in out["message"]
+    # issue #87: everything the animation's route needs, in one question, and no breakdown or AI video tools
+    assert "everything it needs" in out["message"] and "tm env install video --yes" in out["message"]
+    assert "breakdown" not in out["message"] and "tm env install ai " not in out["message"]
     monkeypatch.setattr(atlas.envtiers, "installed", lambda t: True)
     monkeypatch.setattr(atlas, "find_browser", lambda: Path("/Apps/Google Chrome"))
     code, out = _start(capsys, run)
@@ -876,3 +879,26 @@ def test_real_render_of_a_style(request, tmp_path, tmp_path_factory, monkeypatch
     assert (info["width"], info["height"], info["has_audio"]) == (*size, True)
     stills = sorted(p.name for p in out.parent.glob("anim_v01_still_*.png"))
     assert stills == [f"anim_v01_still_{n}.png" for n in ("006", "030", "055", "080", "095")]
+
+
+@pytest.mark.private_data
+def test_the_decided_look_is_kept_in_the_recipe_and_the_prompt(tmp_path, capsys, animatic_ready):
+    """Issue #87: the look decided on the proposals page (00_raw/proposal.json decision.aesthetic) must be in the
+    recipe, and the animation's build prompt carries it, so every scene keeps it. A pack without a decided look, as
+    before, needs none."""
+    run = _m1_run(tmp_path, capsys)
+    kept = json.loads((run.path / "00_raw" / "proposal.json").read_text(encoding="utf-8"))
+    kept["decision"] = {"aesthetic": "paper cut-out collage, flat colour"}
+    (run.path / "00_raw" / "proposal.json").write_text(json.dumps(kept), encoding="utf-8")
+    today = datetime(2026, 11, 7).date()
+    problems = organic_pack.check(run, _m1_pack(), config.load(run), stage="recipe", today=today)
+    assert [p.field for p in problems] == ["aesthetic"] and "paper cut-out collage" in problems[0].what
+    pack = {**_m1_pack(), "aesthetic": "paper cut-out collage, flat colour"}
+    assert organic_pack.check(run, pack, config.load(run), stage="recipe", today=today) == []
+    assert [p.field for p in organic_pack.check(run, {**pack, "aesthetic": " "}, config.load(run), stage="recipe",
+                                                today=today)] == ["aesthetic"]
+    _check(run, capsys, pack, 2)
+    code, out = _cli(capsys, "organic", "atlas-prompt", "--run", str(run.path), "--item", "m1", "--style", "7",
+                     "--aspect", "9:16")
+    assert code == 0, out
+    assert "kept in every scene: paper cut-out collage, flat colour." in _text(run.path / out["file"])

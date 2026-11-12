@@ -187,9 +187,10 @@ check, and what it passes decides what is installed:
   `weekly_plan`). That asks for the base tools and TrendsMesh only, so a user who wants ideas
   installs nothing heavy.
 - **D1 of a production run** passes `--outputs organic_video` (or `script_to_film`, which makes no
-  media and asks for the base tools alone), before any media step. That also asks for the video
-  breakdown, video editing, voice and AI video tools, which you install after the user's yes, with
-  their size and time from the card.
+  media and asks for the base tools alone), before any media step, with `--production <the
+  proposal's production type>`. That also asks for the tools its route needs: the video breakdown,
+  video editing, voice and AI video tools, or for an animation the video editing, voice and
+  animatic tools. Install them after the user's yes, with their size and time from the card.
 
 1. Check, never guessing a result (a call you could not make is `missing`):
    - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`; a
@@ -202,7 +203,7 @@ check, and what it passes decides what is installed:
 2. Run:
 
    ```
-   tm doctor --playbook organic-video --outputs <proposals|weekly_plan|script_to_film|organic_video> --mcp trendsmesh=<result>,artifacts=<result> --report --json
+   tm doctor --playbook organic-video --outputs <proposals|weekly_plan|script_to_film|organic_video> [--production <type>] --mcp trendsmesh=<result>,artifacts=<result> --report --json
    ```
 
    Exit codes and the first `tm` call are as in step 3 above.

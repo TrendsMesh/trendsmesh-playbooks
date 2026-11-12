@@ -18,7 +18,7 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tm import cli, paths
+from tm import cli, i18n, paths
 
 
 @dataclass(frozen=True)
@@ -173,6 +173,7 @@ def install(tier: str, yes: bool) -> int:
         except (_common.ToolError, OSError, RuntimeError, ValueError) as exc:
             print(f"The animatic tools are installed, but their setup did not finish: {exc}")
             return 1
+    print(i18n.t("env.installed", what=i18n.t(f"env.tier.{tier}"), tier=tier))
     return 0
 
 

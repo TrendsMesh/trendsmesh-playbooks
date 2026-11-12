@@ -367,6 +367,10 @@ def _start(args: argparse.Namespace) -> int:
     if got["already_started"]:
         message += " Already started, not again: " + ", ".join(f"“{x['title']}” ({x['run']})"
                                                                  for x in got["already_started"]) + "."
+    if got.get("installs"):   # issue #87: every install the picked routes need, asked once, here at C3
+        message += (" Before their D1, ask the user once for everything their AI videos need: "
+                    + organic_proposals.installs_text(got["installs"]) + " ("
+                    + organic_proposals.install_steps(got["installs"]) + ").")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -808,6 +812,11 @@ CAPTION_BAND = ("Caption band: this animation is an insert in a captioned 9:16 e
                 "carries the edit's captions, so nothing the story needs goes there.")
 
 
+# The recipe's look (issue #87: the proposal's aesthetic, or the channel's own style), kept in every scene.
+LOOK_RULE = ("The video's look, decided with the user and kept in every scene: {look}. Draw the style's rendering in "
+             "this look; where the two differ, the look wins.")
+
+
 def _atlas_prompt(args: argparse.Namespace) -> int:
     from tm import atlas_prompt, organic_qa   # they read the pack, which imports this module
 
@@ -822,9 +831,12 @@ def _atlas_prompt(args: argparse.Namespace) -> int:
                          "(the prompt then keeps the caption band, below y 1260, free).")
     style = atlas_prompt.find_style(args.style)
     given = {k: audience.inside(run, getattr(args, k)) if getattr(args, k) else None for k in ("content", "srt")}
+    look = pack.get("aesthetic")
+    rules = [CAPTION_BAND if insert else "", LOOK_RULE.format(look=look.strip()) if isinstance(look, str) and look.strip()
+             else ""]
     text = atlas_prompt.build(style, args.voiceover, args.storyboard,
                               *(g[0].read_text(encoding="utf-8-sig") if g else None for g in given.values()),
-                              args.aspect, CAPTION_BAND if insert else None)
+                              args.aspect, "\n\n".join(r for r in rules if r) or None)
     out = run.next_version(f"03_wip/{item}", "prompt", "txt")
     _write_new(run, out, text)
     rel = out.relative_to(run.path).as_posix()

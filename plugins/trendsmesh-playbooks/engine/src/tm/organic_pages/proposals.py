@@ -22,9 +22,16 @@ Its changes, plan Decision 10:
   built in any language whose table has them (`organic_pages.page_lang`), else in English with a warning.
 - No backslash inside an f-string expression (Python 3.11); the page's script data cannot be ended by
   `</` or turned by `<!--`.
+- Issue #87, shown only where the proposals file or the run has it, so a page of older proposals is the
+  original's: the look (`plugin.aesthetic`) in the recipe and as a field the user may change (document key
+  `aesthetic`); an animation's styles, the channel's own style first and picked in advance (`style`); what an AI
+  video of the idea needs installed (`organic_proposals.route_installs`); where the risk level comes from
+  (`risk_from`). Each added element carries `data-plugin`; the script's additions are `JS_ADDED`, inserted into the
+  original's script (`REFERENCE_JS`).
 
 Decisions. The page saves one document per proposal in its db collection `decisions`
-(`decisions/<pid>`: decision, level, output, platforms, answers, note, updated_at). `take_decisions`
+(`decisions/<pid>`: decision, level, output, platforms, answers, note, updated_at; aesthetic and style where the
+proposal offers them). `take_decisions`
 reads the newest saved db read (ArtifactData list), whole and read after the page was published and awaited
 (`page.saved_answer`, `page.whole_answer`, `page.db_docs`), or the page's "Copy summary" text that the
 user sent or the agent wrote from their words in chat (`--text`), into
@@ -96,7 +103,55 @@ def _script(value, *, ascii_only: bool = False) -> str:
     return json.dumps(value, ensure_ascii=ascii_only).replace("</", "<\\/").replace("<!--", "<\\u0021--")
 
 
-def decision_panel(p: dict, levels: dict[str, str], level: str) -> str:
+def _swatch(card: dict | None) -> str:
+    """A style's thumbnail: its palette (the package ships no style posters, references/animation-styles.md)."""
+    if not card:
+        return ""
+    cells = "".join(f'<span style="display:inline-block;width:14px;height:28px;background:{esc(c["hex"])}"></span>'
+                    for c in card.get("palette", [])[:6] if isinstance(c, dict) and c.get("hex"))
+    return f'<span style="display:inline-flex;border-radius:6px;overflow:hidden;margin-right:8px">{cells}</span>'
+
+
+def _styles_row(p: dict, options: list[dict], picked: str | None, tr) -> str:
+    pid = esc(p["id"])
+    items = []
+    for o in options:
+        name = tr(_P + "channel_style") if o["value"] == organic_proposals.CHANNEL_STYLE else o["text"]
+        words = o["text"] if o["value"] == organic_proposals.CHANNEL_STYLE else o["why"]
+        items.append(f'<label style="display:flex;align-items:center;margin:4px 0"><input type="radio" name="s-{pid}" '
+                     f'value="{esc(o["value"])}"{" checked" if o["value"] == picked else ""}>{_swatch(o["style"])}'
+                     f'<span><b>{esc(name)}</b> {esc(words)}</span></label>')
+    return (f'<div class="row" data-plugin id="sty-{pid}"><span class="lbl">{esc(tr(_P + "style"))}</span>'
+            f'<span>{"".join(items)}</span></div>')
+
+
+def _added(p: dict, tr, *, options: list[dict], picked: str | None, needs: list[dict]) -> tuple[str, str, str]:
+    """Issue #87's parts of the decision panel: after the output, after the level, before the notes."""
+    pid = esc(p["id"])
+    after_output = (f'<p class="hint" data-plugin id="needs-{pid}">'
+                    f'{esc(tr(_P + "needs", installs=organic_proposals.installs_text(needs, tr)))}</p>' if needs else "")
+    after_level = _styles_row(p, options, picked, tr) if options else ""
+    look = (p.get("plugin") or {}).get("aesthetic")
+    before_notes = (f'<div class="q" data-plugin><label for="look-{pid}">{esc(tr(_P + "look_label"))}</label>'
+                    f'<textarea id="look-{pid}" rows="1">{esc(look)}</textarea></div>' if isinstance(look, str) else "")
+    return after_output, after_level, before_notes
+
+
+def risk_from(p: dict, tr) -> str | None:
+    """Where the proposal's risk level comes from, in words (issue #87), or None when it names no risk."""
+    plugin = p.get("plugin") if isinstance(p.get("plugin"), dict) else {}
+    if not plugin.get("risk_hits") or plugin.get("production") not in organic_proposals.PRODUCTIONS:
+        return None
+    _, top = organic_proposals.risk_level(p)
+    w = organic_proposals.weight(top["item"], plugin["production"], top.get("case"))
+    if w == "none":
+        return tr(_P + "risk_from_none")
+    return tr(_P + "risk_from", risk=shown(top["item"], "risk", tr), production=shown(plugin["production"],
+                                                                                    "production", tr),
+              weight=tr(f"{_P}weight_{w}"))
+
+
+def decision_panel(p: dict, levels: dict[str, str], level: str, added: tuple[str, str, str] = ("", "", "")) -> str:
     pid = esc(p["id"])
     seg = "".join(
         f'<label><input type="radio" name="d-{pid}" id="d-{pid}-{v}" value="{v}"><span>{t}</span></label>'
@@ -118,15 +173,15 @@ def decision_panel(p: dict, levels: dict[str, str], level: str) -> str:
     return f"""<div class="decide" id="dec-{pid}" data-pid="{pid}">
 <div class="row"><span class="lbl">Decision</span><span class="seg" role="radiogroup" aria-label="Decision for {pid.upper()}">{seg}</span></div>
 <div class="row"><span class="lbl">Output</span><span class="seg" role="radiogroup" aria-label="Output for {pid.upper()}">{outs}</span></div>
-<div class="row"><span class="lbl">How</span><span class="seg" role="radiogroup" aria-label="Production mode for {pid.upper()}">{how}</span></div>
-<div class="row" id="pfs-{pid}"><span class="lbl">Posting kit for</span>{pfs}<p class="hint">{organic_pages.POST_NOTE}</p></div>
+{added[0]}<div class="row"><span class="lbl">How</span><span class="seg" role="radiogroup" aria-label="Production mode for {pid.upper()}">{how}</span></div>
+{added[1]}<div class="row" id="pfs-{pid}"><span class="lbl">Posting kit for</span>{pfs}<p class="hint">{organic_pages.POST_NOTE}</p></div>
 <p class="hint" id="auto-{pid}" hidden>A–Z: Claude produces the whole video without stopping. While we test, the exact cost is still confirmed once before anything is paid.</p>
 {qs}
-<div class="q"><label for="n-{pid}">Notes for Claude (optional)</label><textarea id="n-{pid}" rows="1" placeholder="e.g. use a golden retriever instead of the husky"></textarea></div>
+{added[2]}<div class="q"><label for="n-{pid}">Notes for Claude (optional)</label><textarea id="n-{pid}" rows="1" placeholder="e.g. use a golden retriever instead of the husky"></textarea></div>
 </div>"""
 
 
-JS = r"""
+REFERENCE_JS = r"""
 (function(){
   const P = window.__PROPOSALS__;
   const LEVELS = window.__LEVELS__ || {};
@@ -210,6 +265,41 @@ JS = r"""
 })();
 """
 
+# Issue #87's additions to the original's script, each inserted once right after its anchor (`JS`): the look and the
+# style kept per proposal, painted, saved, read back from the page's storage and written in the Copy summary. The
+# anchors hold no words, so the reference page's script in another language takes the same insertions.
+JS_ADDED: list[tuple[str, str]] = [
+    ("output: window.__DEFAULT_OUTPUT__ || 'video'}; });",
+     "\n  P.forEach(p => { if (p.look !== undefined) state[p.id].aesthetic = p.look; "
+     "if (p.style !== undefined) state[p.id].style = p.style; });"),
+    ("if (document.activeElement !== note) note.value = s.note || '';",
+     "\n      const look = document.getElementById(`look-${p.id}`); "
+     "if (look && document.activeElement !== look) look.value = s.aesthetic || '';"
+     "\n      document.querySelectorAll(`input[name=\"s-${p.id}\"]`).forEach(r => { r.checked = s.style === r.value; });"),
+    ("state[pid].note = e.target.value; saveSoon(pid); });",
+     "\n    const look = document.getElementById(`look-${pid}`); "
+     "if (look) look.addEventListener('input', e => { state[pid].aesthetic = e.target.value; saveSoon(pid); });"
+     "\n    document.querySelectorAll(`input[name=\"s-${pid}\"]`).forEach(r => r.addEventListener('change', () => "
+     "{ state[pid].style = r.value; paint(); save(pid); }));"),
+    ("output: v.output || state[d.id].output});",
+     " if (typeof v.aesthetic === 'string') state[d.id].aesthetic = v.aesthetic;"
+     " if (typeof v.style === 'string') state[d.id].style = v.style;"),
+    ("${s.output || 'video'}`",
+     " + (s.aesthetic !== undefined ? `; look: ${s.aesthetic}` : '') + (s.style ? `; style: ${s.style}` : '')"),
+]
+
+
+def insert(script: str, added: list[tuple[str, str]]) -> str:
+    """`script` with each of `added` right after its anchor, which must be in it once."""
+    for anchor, text in added:
+        if script.count(anchor) != 1:
+            raise ValueError(f"The anchor {anchor!r} is not in the script once.")
+        script = script.replace(anchor, anchor + text, 1)
+    return script
+
+
+JS = insert(REFERENCE_JS, JS_ADDED)
+
 
 # The page's fixed fragments in another language (the original's Polish table, keyed, in its order; its entries
 # for the gates row, the "A–Z" mode and the risk words alone matched nothing on the page and are gone). Each is
@@ -267,6 +357,8 @@ FRAGS: list[Frag] = [
     Frag("`; §: ", _P + "summary_note", "text"),
     Frag('<span class="lbl">§</span>', "organic.output"), Frag(">§<", _P + "out_video"), Frag(">§<", _P + "out_script"),
     Frag('aria-label="§', _P + "output_for"), Frag("`; §: ", _P + "summary_output", "text"),
+    # issue #87's Copy summary parts
+    Frag("`; §: ", _P + "summary_look", "text"), Frag("`; §: ", _P + "summary_style", "text"),
     # English the original's Polish table leaves as it is (the trend's stats line)
     Frag(" · § ", _P + "trend_hook"), Frag(" · § ", _P + "trend_id"),
 ]
@@ -284,11 +376,16 @@ def localize(text: str, lang) -> str:
     return organic_pages.localize(text, lang, FRAGS + (lede_frags(int(found.group(1))) if found else []))
 
 
-def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = None, leads=()) -> str:
+def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = None, leads=(),
+           profile: dict | None = None, needs: dict | None = None) -> str:
     """The page in `lang` (else the language it is built in, `organic_pages.lang_of`): the original's `render`,
     then `localize`. `trends_of(id)` gives a proposal trend's (card, videos); `thumb_of(video)` its thumbnail's src.
-    `leads`: the lines on why each channel's proposals lead with one kind (`channel_leads`), already in `lang`."""
+    `leads`: the lines on why each channel's proposals lead with one kind (`channel_leads`), already in `lang`.
+    `profile`: per proposal channel (as the file names it), what its profile gives (`video_style`); `needs`: per
+    proposal id, what an AI video of it needs installed (`organic_proposals.route_installs`)."""
     tr = i18n.translator(lang or organic_pages.lang_of(data))
+    profile, needs = profile or {}, needs or {}
+    picked = {p["id"]: organic_proposals.default_style(p, profile.get(p["channel"])) for p in data["proposals"]}
     levels = level_names(tr)
     chan = {c["id"]: c for c in data["channels"]}
     out = []
@@ -320,12 +417,13 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
         out.append(f"""<section class="p" id="{esc(p['id'])}"><div class="phead"><div class="eyebrow">{esc(p['id'].upper())} · {esc(c['name'])} · {esc(c['niche'])}</div>
 <h2>{esc(p['video_type'])}: “{esc(p['title'])}”</h2>
 <div class="meta"><span class="chip risk {esc(p['risk']['level'])}">Risk: {RISK[p['risk']['level']]}</span><span class="chip">{esc(p['approach'])}</span><span class="chip">Length <b>{esc(p['length'])}</b></span><span class="chip cost">${p['cost']['low']:.2f}–{p['cost']['high']:.2f}</span></div></div>
-{decision_panel(p, levels, level)}
+{decision_panel(p, levels, level, _added(p, tr, options=organic_proposals.style_options(p, profile.get(p["channel"])),
+                                         picked=picked[p["id"]], needs=needs.get(p["id"]) or []))}
 <div class="cols"><div class="block" style="gap:16px">
 <p class="why">{esc(p['why'])}</p>
 <div class="block"><h3>The video</h3><ol class="beats">{''.join(f'<li>{esc(b)}</li>' for b in p['beats'])}</ol></div>
-<div class="block"><h3>Recipe</h3><dl class="recipe"><dt>Production</dt><dd>{esc(r['production'])}</dd><dt>Voice</dt><dd>{esc(r['voice'])}</dd><dt>Music / sound</dt><dd>{esc(r['music'])}</dd><dt>Text</dt><dd>{esc(r['text'])}</dd><dt>Product</dt><dd><b>{esc(shown(p['product']['level'], "product", tr))}</b>: {esc(p['product']['note'])}</dd></dl></div>
-<div class="block"><h3>Risks</h3><ul class="plain">{''.join(f'<li>{esc(x)}</li>' for x in p['risk']['items'])}</ul></div>
+<div class="block"><h3>Recipe</h3><dl class="recipe"><dt>Production</dt><dd>{esc(r['production'])}</dd>{_look_row(p, tr)}<dt>Voice</dt><dd>{esc(r['voice'])}</dd><dt>Music / sound</dt><dd>{esc(r['music'])}</dd><dt>Text</dt><dd>{esc(r['text'])}</dd><dt>Product</dt><dd><b>{esc(shown(p['product']['level'], "product", tr))}</b>: {esc(p['product']['note'])}</dd></dl></div>
+<div class="block"><h3>Risks</h3><ul class="plain">{''.join(f'<li>{esc(x)}</li>' for x in p['risk']['items'])}</ul>{_risk_line(p, tr)}</div>
 <div class="block"><h3>Cost</h3><p style="margin:0" class="cost">${p['cost']['low']:.2f}–{p['cost']['high']:.2f}</p><p style="margin:0;color:var(--muted);font-size:14px">{esc(p['cost']['note'])}</p></div>""")
         if p.get("facts"):
             out.append(f'<div class="box"><p><b>Facts to source:</b> {esc(p["facts"])}</p></div>')
@@ -351,7 +449,8 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
             out.append("</div></div>")
         out.append("</div></div></section>")
 
-    meta = [{"id": p["id"], "title": p["title"], "cost": [p["cost"]["low"], p["cost"]["high"]]} for p in data["proposals"]]
+    meta = [{"id": p["id"], "title": p["title"], "cost": [p["cost"]["low"], p["cost"]["high"]], **_meta(p, picked)}
+            for p in data["proposals"]]
     run_id = Path(data["run"]).name
     proposals_js, run_js = _script(meta), _script(run_id, ascii_only=True)
     output_js, level_js = _script(data.get("default_output", "video"), ascii_only=True), _script(level, ascii_only=True)
@@ -359,6 +458,27 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
 <script>window.__PROPOSALS__ = {proposals_js}; window.__RUN_ID__ = {run_js}; window.__DEFAULT_OUTPUT__ = {output_js}; window.__DEFAULT_LEVEL__ = {level_js}; window.__LEVELS__ = {_script(levels)};</script>
 <script>{JS}</script></body></html>""")
     return localize("".join(out), tr)
+
+
+def _look_row(p: dict, tr) -> str:
+    look = (p.get("plugin") or {}).get("aesthetic")
+    return f'<dt data-plugin>{esc(tr(_P + "look"))}</dt><dd data-plugin>{esc(look)}</dd>' if isinstance(look, str) else ""
+
+
+def _risk_line(p: dict, tr) -> str:
+    line = risk_from(p, tr)
+    return f'<p class="hint" data-plugin>{esc(line)}</p>' if line else ""
+
+
+def _meta(p: dict, picked: dict) -> dict:
+    """Issue #87's per-proposal script data, only where the proposal has it: the look and the style picked in advance."""
+    out = {}
+    look = (p.get("plugin") or {}).get("aesthetic")
+    if isinstance(look, str):
+        out["look"] = look
+    if picked.get(p["id"]):
+        out["style"] = picked[p["id"]]
+    return out
 
 
 # --- building it in the run ------------------------------------------------------------------------
@@ -456,6 +576,19 @@ def channel_leads(run: RunFolder, data: dict, lang: str) -> list[str]:
     return out
 
 
+def _needs(data: dict) -> dict[str, list[dict]]:
+    """Per proposal, what an AI video of it needs installed and is not (issue #87), each production type read once."""
+    by_type: dict[str, list[dict]] = {}
+    out = {}
+    for p in data["proposals"]:
+        production = (p.get("plugin") or {}).get("production")
+        if production in organic_proposals.PRODUCTIONS:
+            if production not in by_type:
+                by_type[production] = organic_proposals.route_installs(production)
+            out[p["id"]] = by_type[production]
+    return out
+
+
 def build(run: RunFolder, file: Path | None = None) -> dict:
     """Build the page from the checked proposals into a new `04_final/proposals_vNN/` (index.html,
     assets/<asset_id>.jpg). Nothing is written while people decide on the page (`page.Deciding`),
@@ -481,7 +614,8 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
                 missing.append(str(v.get("asset_id") or v.get("url")))
         try:
             text = render(data, lambda tid: found[tid], lambda v: f"assets/{_asset(v)}" if _asset(v) in thumbs else "",
-                          level=level, lang=built.lang, leads=channel_leads(run, data, built.lang))
+                          level=level, lang=built.lang, leads=channel_leads(run, data, built.lang),
+                          profile=organic_proposals.profile_defaults(run, data), needs=_needs(data))
         except (KeyError, ValueError) as exc:   # the file's shape; anything else is the engine's, not the user's file
             raise Stop(f"{rel} is not in the page's shape ({type(exc).__name__}: {exc}); check it again (tm organic "
                        f"proposals check); {AGAIN}.") from None
@@ -550,7 +684,13 @@ def decided_page(run: RunFolder) -> dict:
 _DECISION_KEYS = {"produce": _P + "summary_produce", "later": _P + "summary_later", "skip": _P + "summary_skip",
                   None: _P + "summary_not_decided"}
 _FIELD_KEYS = {"output": _P + "summary_output", "platforms": _P + "summary_platforms",
-               "answers": _P + "summary_answers", "note": _P + "summary_note"}
+               "answers": _P + "summary_answers", "note": _P + "summary_note",
+               "aesthetic": _P + "summary_look", "style": _P + "summary_style"}
+# the plugin's own words of issue #87's additions (the look, the styles, the installs, the risk's origin)
+ADDED = {k: _P + k for k in ("look", "look_label", "style", "channel_style", "risk_from", "risk_from_none",
+                             "weight_low", "weight_medium", "weight_high", "needs", "install_sized", "install_and",
+                             "install_base", "install_breakdown", "install_video", "install_voice", "install_ai",
+                             "install_animatic", "install_browser")}
 
 
 class _Words(NamedTuple):
@@ -625,12 +765,16 @@ def _line(rest: str, line: str, words: _Words | None = None) -> dict:
         doc["answers"] = {str(i): a for i, a in enumerate(values["answers"].split(" | "))}
     if "note" in values:
         doc["note"] = values["note"]
+    for key in ("aesthetic", "style"):
+        if key in values:
+            doc[key] = values[key].strip()
     return doc
 
 
 def parse_summary(text: str, data: dict) -> list[tuple[str, dict]]:
     """The page's "Copy summary" text as page documents `(pid, document)`: one line per proposal,
-    `<ID> <title>: <decision>[, <level>]; output: …; platforms: …[; answers: a | b][; note: …]`, in
+    `<ID> <title>: <decision>[, <level>]; output: …[; look: …][; style: …]; platforms: …[; answers: a | b][; note:
+    …]`, in
     English, Polish or the page's language. A line for a proposal is known by its id and title; a line with a proposal's
     id and another title, or two lines for one proposal, is a Stop, and so is a text with none."""
     proposals = [p for p in data.get("proposals") or [] if isinstance(p, dict) and isinstance(p.get("id"), str)]

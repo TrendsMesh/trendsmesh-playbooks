@@ -28,11 +28,16 @@ A channel profile (`channel/1`, organic video's A1, drafted as `03_wip/channel_<
      "content_rules": ["..."], "voice": {"narrator_elevenlabs_id", "host_description", "host_image"},
      "music": {"folder", "index"}, "assumptions": ["..."], "confirmed": "YYYY-MM-DD" | null,
      "type": "news_explainers|howto_education|entertainment_skits|music_dance|lifestyle_vlog|shop_product|other",
-     "type_note": "<one sentence>" | null}
+     "type_note": "<one sentence>" | null,
+     "video_style"?: "<the style the channel's videos are made in, in the user's words>" | null}
 
 `type` (issue #85) sets how many cards of each kind B3 pulls (`CHANNEL_TYPES`); "other" needs `type_note`,
 the user's one sentence about the channel, which the trend fit is judged against. A draft must have it; a
 profile saved before it existed has none and still passes the saved-profile checks (the even split is used).
+
+`video_style` is optional (issue #87; a profile saved before it has none): the look the user described at A0,
+for example "paper cut-out collage, old engravings, flat colour". Organic video's proposals offer it first, as
+"Your channel's style", picked in advance. `context.style` is the channel's tone and style of speaking.
 
 `context.films`, `topic` and `audience` are the bubble the trend search starts from (OV1). A
 channel that sells nothing (`store: null`) never shows a product; a named store must have a saved
@@ -221,6 +226,9 @@ def _check_channel(profile: dict, workspace: Path | None, bad, *, type_required:
         if not _list_of_text(context.get("performed_links", [])):
             bad("context.performed_links", "performed_links must be a list of links ([] when none is given).",
                 "Write the links, or [].")
+    if not _text_or_none(profile.get("video_style")):
+        bad("video_style", "video_style must be the channel's own style in words, or null.",
+            "Write the style the channel's videos are made in, as the user described it, or null.")
     role = profile.get("product_role")
     store = profile.get("store")
     if role not in PRODUCT_ROLES:

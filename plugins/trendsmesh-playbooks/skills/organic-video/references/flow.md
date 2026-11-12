@@ -98,6 +98,9 @@ posts.
      to trending sounds);
    - the bubble: what the channel films, about what, for whom, its style, and what performed (2 to
      3 links, or "none yet");
+   - **the channel's own look**, if its videos have one (optional; "none" by default): the style
+     they are made in, in the user's words, for example "paper cut-out collage, old engravings,
+     flat colour". It is kept in the profile and offered first in every later run;
    - the company and its catalogue (products and the problems they solve), or "nothing sold"; the
      product role per channel, from "not shown" to "hero" (OV5);
    - the market language (the audience's, derived from the channel, confirmed) and the working
@@ -155,7 +158,8 @@ channel with none needs a new one (`new`). At Hands-off the rule decides it the 
 The profile (OV1, `channel/1`, `../../references/brand-and-audience.md`, "Channel profile"):
 
 1. **Draft it from A0's answers**, one per channel, as `03_wip/channel_<slug>_v01.json`, the
-   assumptions marked in `assumptions`, `confirmed: null`. A store with several channels has one
+   assumptions marked in `assumptions`, `confirmed: null`. The channel's own look goes in
+   `video_style`, in the user's words (null when they gave none; a profile saved before it has none). A store with several channels has one
    profile per channel sharing one catalogue: the store's brand profile (`brand/1` with
    `catalog.products`) is saved first (`tm brand check`, `tm brand save`), and each channel names
    it in `store`. A channel that sells nothing has `store: null` and its videos show no product.
@@ -298,24 +302,38 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      the beats, the length, the recipe (production, voice, music, text);
    - the product level, in the five words (OV5), suggested from the channel's product role, the
      format and the risk; "not shown" for a channel that sells nothing;
+   - **the look** (`plugin.aesthetic`): how the video looks, in a few words, suggested from the
+     trend and the idea (for example "realistic, 1990s home camcorder", "archival footage", "flat
+     cartoon"); the user may change it on the page, and every prompt of every scene follows it;
+   - **an animation's styles** (`plugin.styles`, for `animation`, or `sections` with an animation
+     insert): 2 to 3 of our styles (`tm organic atlas-styles --json`), each `{"style": <number>,
+     "why": "<one line>"}`, your pick first. A channel whose profile has its own look
+     (`video_style`) gets it first on the page as "Your channel's style", picked in advance;
    - the risk level with each hit of OV4's nine items named with its mitigation, **never a
-     percentage**; the cost range in USD (a script to film is $0); the facts to source; the taste
-     questions (style, voice, music) only where needed;
+     percentage**. **The level is the highest risk left after its mitigation, never the number of
+     risks**: each risk has a weight per production type (`data/organic-video/risks.yaml`; for
+     example several characters weigh low on stills, medium in AI footage, high for a talking
+     character), and a hit may name a case in which it weighs less (`"case": "text_in_edit"` for
+     `model_text` when no prompt holds text and every word is added in the edit: none). Low when
+     every weight is none or low, or nothing is named. The cost range in USD (a script to film is
+     $0); the facts to source; the taste questions (voice, music) only where needed;
    - **the plugin block on each proposal** (`plugin`): `production` (`ai_footage`,
      `talking_character`, `animation`, `stills_motion` or `sections`), `output` (`script` or
      `video`), `risk_hits` (`[{item, mitigation}]`, the items `hands_on_objects`,
      `product_shape`, `same_character`, `fast_motion`, `physics`, `model_text`, `speech`,
-     `long_takes`, `several_characters`), `transfer`, `weak_link` (an Inspire or a transfer names
-     it), `series` (a used trend continues a series), `seed` (the run's seed id, or null). For
+     `long_takes`, `several_characters`; `case` where the risk has one), `transfer`, `weak_link` (an
+     Inspire or a transfer names it), `series` (a used trend continues a series), `seed` (the run's
+     seed id, or null), `aesthetic`, and `styles` for an animation. For
      example, ExampleEdu's talking-host idea: `{"production": "talking_character", "output": "script",
      "risk_hits": [{"item": "speech", "mitigation": "one 15 s take, the script sized at 2.8 to 3
      words a second"}], "transfer": false, "weak_link": "the evidence is English kids asking a
      parent; the channel answers in Polish", "series": null, "seed": null}`.
 3. `tm organic proposals check --run R --file 03_wip/proposals_v01.json --json`. It checks the
    schema, the count, the language, every trend resolving to a saved card and every pick to a
-   saved video, the approach and its picks, the risk, the production types the stack hides (for
-   an AI video only), the product level against the channel's store, used trends without a
-   series, the seed, and that the file never says "no trend found". Exit 2 lists the problems: fix them in the next `_vNN`.
+   saved video, the approach and its picks, the risk level against the weights, the look and an
+   animation's styles, the production types the stack hides (for an AI video only), the product
+   level against the channel's store, used trends without a series, the seed, and that the file
+   never says "no trend found". Exit 2 lists the problems: fix them in the next `_vNN`.
 4. `tm done C1 --run R`.
 
 <a id="c2"></a>
@@ -327,7 +345,11 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    with one kind ("A news and explainer channel, so topics come first."; none for a profile
    without a type). Per idea the page asks produce / maybe later / skip, the output, how
    involved (the three levels), the platforms, the taste answers and a note, with a sticky bar
-   and "Copy summary".
+   and "Copy summary". It also shows the look (a field the user may change), an animation's styles
+   (each with its palette as a thumbnail and its why; the channel's own style first, picked in
+   advance), under the output what an AI video of the idea needs installed (size and time) when
+   anything is missing, and where the risk level comes from ("Highest risk: several characters,
+   in AI footage (medium)").
 2. **Publish it** (`../../references/pages.md`, "Pages that take decisions"): `tm page files
    --run R --page proposals --json` gives the `Artifact` tool's `file_path` and `files`; one
    `Artifact` publish of them with a title in the chat language ("Video ideas: <channel>"), the
@@ -359,8 +381,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    empty store stops with "nothing was saved on the page": ask in chat.
 6. **A decision in chat always counts.** Write the user's words as the page's "Copy summary"
    lines, one per idea, its id in capitals and its title exactly as on the page (`<ID> <title>:
-   <produce|later|skip>[, <level by name>]; output: <script|video>; platforms: <tiktok, …>[;
-   answers: a | b][; note: …]`, for example `M1 <title>: produce, Check every step; output:
+   <produce|later|skip>[, <level by name>]; output: <script|video>[; look: …][; style: <number
+   name> or channel]; platforms: <tiktok, …>[; answers: a | b][; note: …]`, for example `M1 <title>: produce, Check every step; output:
    script; platforms: tiktok, youtube`), to `03_wip/decisions_text_vNN.txt` with the Write tool, and
    read them with `tm organic decisions --run R --page proposals --text
    03_wip/decisions_text_vNN.txt --json`. Pasted "Copy summary" text is read the same way.
@@ -384,9 +406,16 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      let them switch the output on the page, read the decisions again, then start; or they set the
      tool up, you record the stack again (`tm organic stack`), then start.
    - **An animation as an AI video** is drawn on this computer by the Atlas renderer: without its
-     tools or a browser the start stops in the renderer's words. Offer the install once (after a
-     yes, `tm env install animatic --yes`, about 150 MB, no browser) or Chrome or Edge, then start
-     again; or switch the idea to a script to film as above.
+     tools or a browser the start stops in the renderer's words, naming **everything the
+     animation's route needs** with its size and time (the animatic tools, `tm env install
+     animatic --yes`, about 150 MB; the video editing and voice tools when missing; Chrome or
+     Edge). Ask once for all of it; after the yes, install each, then start again; or switch the
+     idea to a script to film as above.
+   - **Every install the started AI videos need, asked once here**: the answer's `installs` (and
+     its message) lists what their routes need and is missing (an animation needs no video
+     breakdown or AI video tools), each with its size and time and the ideas it is for. Ask the
+     user once, in one question; after the yes, `tm env install <tier> --yes` for each, so D1's
+     check asks for nothing new. Nothing to install: say nothing.
    - **Stills with motion graphics** start without a Replicate key too: their pictures are then
      the user's own (an images item with no model at E2), and GPT Image 2 cards need the key. **A
      video in sections** starts whatever the stack: each section's type is checked at D1 as a
@@ -550,10 +579,11 @@ marker is per run), and again at every resume.
    - **A script to film**: `tm doctor --playbook organic-video --outputs script_to_film --mcp
      trendsmesh=<s>,artifacts=<s> --json` asks for the base tools alone: a script makes no media,
      so nothing heavy is installed.
-   - **An AI video**: `tm doctor --playbook organic-video --outputs organic_video --mcp
-     trendsmesh=<s>,artifacts=<s> --json`, before any media step. It adds the video breakdown,
-     video editing, voice and AI video tools: say their size and time from the card, and install
-     them only after the user's yes. Once the ElevenLabs key is set (the voice tools are not needed
+   - **An AI video**: `tm doctor --playbook organic-video --outputs organic_video --production
+     <the proposal's plugin.production> --mcp trendsmesh=<s>,artifacts=<s> --json`, before any
+     media step. It adds the tools its route needs: the video breakdown, video editing, voice and
+     AI video tools, or for an animation the video editing, voice and animatic tools. C3 asked for
+     them once: install only what is still missing, after the user's yes, with its size and time. Once the ElevenLabs key is set (the voice tools are not needed
      for this read), read the credits: `tm tool elevenlabs credits --run R --json` (free; the plan, the credits
      used, the limit and `left`). Then **record this run's own stack** (the idea run's is not
      copied): `tm organic stack --run R --replicate <ok|missing> --elevenlabs <ok|no_credits|missing>
@@ -565,6 +595,10 @@ marker is per run), and again at every resume.
    - **An animation** is also drawn by the Atlas renderer (`../../references/animation-styles.md`):
      its tools are the doctor's animatic tier (offer `tm env install animatic --yes` once, after a
      yes) and Chrome or Edge. The recipe check refuses an animation without them.
+   - **The look**: the decision's `aesthetic` (`00_raw/proposal.json`; the user's change to it in
+     chat wins) goes into the pack's `aesthetic`, and the recipe check refuses a pack without it
+     when one was decided. Every prompt of every scene follows it (F1, F2): write it into each image
+     and video prompt; an animation's build prompt carries it (`tm organic atlas-prompt`).
 3. **The production type from the evidence** (OV4, `rules.md`), as the proposal named it, checked
    against what its evidence videos show on screen:
 
@@ -599,8 +633,8 @@ marker is per run), and again at every resume.
    and the seconds, sized at 2.8 to 3 words a second with 1.5 s after the last line. An
    animation's storyboard rests on the shots, the on-screen text and the style: a word changed in
    the spoken `text` alone, for the voice to read it right, keeps its accept), `taste`
-   (style, voice and music `null` until D2, `by`, `why`) and `style_spec` (see "The copied look"
-   below; a Recreate needs one). Then `tm organic pack check --run R --file
+   (style, voice and music `null` until D2, `by`, `why`), `aesthetic` (the look, above) and
+   `style_spec` (see "The copied look" below; a Recreate needs one). Then `tm organic pack check --run R --file
    03_wip/pack_v01.json --stage recipe --json`: it checks the idea and channel, the production
    types the stack hides, the sections, the product and its packshots, the style spec and the
    taste. Exit 2 lists the problems: fix them in the next `_vNN`.
@@ -640,10 +674,14 @@ carries a bed. A style is asked only for an animation.
    --json` (length, loudness, tempo, mood), or a Mixkit track with a free commercial licence
    (give the user the link; they download the track they pick into the folder, then index it). A
    trending sound is added in the app per the kit, never in the edit.
-4. **A style**, for an animation only: 2 to 3 of our styles by number, name and description
-   (`tm organic atlas-styles --json`: each says what it suits), each with a one-line why,
-   your pick first; no posters (`../../references/animation-styles.md`, "The taste card"). The pick
-   goes into `taste.style` as `<number> <name>`.
+4. **A style**, for an animation only: the one picked on the proposals page (`00_raw/proposal.json`
+   `decision.style`) is offered first, selected; else 2 to 3 of our styles by number, name and
+   description (`tm organic atlas-styles --json`: each says what it suits), each with a one-line
+   why, your pick first; no posters (`../../references/animation-styles.md`, "The taste card"). The
+   pick goes into `taste.style` as `<number> <name>`. **The channel's own style** (`channel`, from
+   the profile's `video_style`) is drawn on the catalogue style closest to it: `taste.style` is that
+   style as `<number> <name>` (say which and why), and the pack's `aesthetic` holds the channel's
+   own words, which the build prompt puts first.
 5. **The picks go into the profile**: write a new version of the channel profile with the voice
    and the music, `tm brand check --run R --file 03_wip/channel_<slug>_vNN.json --json`, then `tm brand
    save --run R --file 03_wip/channel_<slug>_vNN.json --json` (it carries the date the user

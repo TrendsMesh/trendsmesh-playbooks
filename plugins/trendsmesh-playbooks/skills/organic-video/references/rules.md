@@ -33,8 +33,8 @@ What the engine checks, so you never do it by hand: the channel profile and its 
 (`tm brand check`, `tm brand save --confirmed`: OV1); the shortlist with its anchors, the fit
 scores and sound relevance (`tm trends shortlist`: OV2); the used trends and series (`tm organic used`); the
 proposals (`tm organic proposals check`: 4 to 6, every trend a saved card, Recreate's two picks,
-Inspire's weak link, the nine risk items with mitigations and no percentages, the production
-types the stack hides, the product level, used trends, never "no trend found": OV2 to OV5); one
+Inspire's weak link, the nine risk items with mitigations and no percentages, the risk level from
+their weights, the look and an animation's styles, the production types the stack hides, the product level, used trends, never "no trend found": OV2 to OV5); one
 production run per idea, for one channel, once (`tm organic start`: OV1); the script (`tm organic
 script check`: a source per fact, the words a second, the hook on screen, the kit: OV7, OV11,
 OV14); the posting kit (`tm kit check`: OV11); the pages and the decisions read from them (`tm

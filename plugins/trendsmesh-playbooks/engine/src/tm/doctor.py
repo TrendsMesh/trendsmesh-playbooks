@@ -168,19 +168,26 @@ def _fix_text(entry: dict, **vars: object) -> str:
     return fixes.get(_os_key(), fixes.get("any", "")).format(**vars)
 
 
-def _applies(entry: dict, outputs: set[str], voice: bool, caption_removal: bool, tiers: list[str]) -> bool:
+def _applies(entry: dict, outputs: set[str], voice: bool, caption_removal: bool, tiers: list[str],
+             production: str | None = None) -> bool:
     if entry["kind"] == "env_tier":
         return entry["tier"] in tiers
-    return _holds(entry.get("when"), outputs, voice, caption_removal, tiers)
+    return _holds(entry.get("when"), outputs, voice, caption_removal, tiers, production)
 
 
 def _holds(alts: list[dict] | None, outputs: set[str], voice: bool, caption_removal: bool,
-           tiers: list[str]) -> bool:
-    """True when the `when` alternatives are absent or one of them holds."""
+           tiers: list[str], production: str | None = None) -> bool:
+    """True when the `when` alternatives are absent or one of them holds. `production` is organic video's
+    production type (`--production`): an alternative with `production` holds only for one of its types, one with
+    `not_production` for any other (or none given)."""
     if not alts:
         return True
     for alt in alts:
         if "outputs" in alt and not set(alt["outputs"]) & outputs:
+            continue
+        if "production" in alt and production not in alt["production"]:
+            continue
+        if "not_production" in alt and production in alt["not_production"]:
             continue
         if "voice" in alt and alt["voice"] != voice:
             continue
@@ -194,11 +201,27 @@ def _holds(alts: list[dict] | None, outputs: set[str], voice: bool, caption_remo
     return False
 
 
-def _tier_wanted(entry: dict, tier: str, outputs: set[str], voice: bool, caption_removal: bool) -> bool:
+def _tier_wanted(entry: dict, tier: str, outputs: set[str], voice: bool, caption_removal: bool,
+                 production: str | None = None) -> bool:
     """For a playbook other than refresh-ad: an env_tier row names a tier it needs, when its `when`
     is absent or holds for the run (a `tier` key in it is not looked at)."""
     return (entry["kind"] == "env_tier" and entry["tier"] == tier
-            and _holds(entry.get("when"), outputs, voice, caption_removal, list(envtiers.TIERS)))
+            and _holds(entry.get("when"), outputs, voice, caption_removal, list(envtiers.TIERS), production))
+
+
+def _tiers(pb: str, entries: list[dict], outputs: set[str], voice: bool, caption_removal: bool,
+           production: str | None) -> list[str]:
+    if pb == REFRESH_AD:
+        return envtiers.tiers_for(outputs, voice)
+    return [t for t in envtiers.TIERS if any(_tier_wanted(e, t, outputs, voice, caption_removal, production)
+                                             for e in entries)]
+
+
+def route_tiers(playbook: str, outputs: set[str], *, voice: bool = False, production: str | None = None) -> list[str]:
+    """The tiers the doctor asks for on this route (in install order), installed or not: what `check` would show
+    as its tier rows. Organic video's C3 asks for the missing ones once, before D1's check."""
+    pb = playbooks.get(playbook).id
+    return _tiers(pb, _for_playbook(pb), set(outputs), voice, False, production)
 
 
 def _for_playbook(playbook: str) -> list[dict]:
@@ -208,21 +231,21 @@ def _for_playbook(playbook: str) -> list[dict]:
 
 def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
           caption_removal: bool = False, facts: dict[str, str] | None = None,
-          playbook: str = REFRESH_AD) -> Readiness:
-    """`playbook` is its id or skill name, or GENERAL for the general check."""
+          playbook: str = REFRESH_AD, production: str | None = None) -> Readiness:
+    """`playbook` is its id or skill name, or GENERAL for the general check. `production`: organic video's
+    production type for a production run (an animation needs the animatic tools, and no breakdown or AI video
+    tools)."""
     facts = facts or {}
     outputs = set(outputs)
     pb = GENERAL if playbook == GENERAL else playbooks.get(playbook).id
     entries = _for_playbook(pb)
-    tiers = (envtiers.tiers_for(outputs, voice) if pb == REFRESH_AD
-             else [t for t in envtiers.TIERS if any(_tier_wanted(e, t, outputs, voice, caption_removal)
-                                                    for e in entries)])
+    tiers = _tiers(pb, entries, outputs, voice, caption_removal, production)
     present = {t: envtiers.installed(t) for t in tiers}
     items: list[Item] = []
     skipped_key: set[str] = set()
     checked: dict[str, providers.Check] = {}   # one free call per provider, however many rows name it
     for e in entries:
-        if not _applies(e, outputs, voice, caption_removal, tiers):
+        if not _applies(e, outputs, voice, caption_removal, tiers, production):
             continue
         kind, id_, name, fixer = e["kind"], e["id"], e["name"], e["fixer"]
         ok, unchecked, size, vars, key_state, key_fix = False, False, 0, {}, "", ""
@@ -425,6 +448,9 @@ def _setup(p: argparse.ArgumentParser) -> None:
                    "(an idea or week run's A0), script_to_film or organic_video (a production run's D1)")
     p.add_argument("--voice", action="store_true")
     p.add_argument("--caption-removal", action="store_true")
+    p.add_argument("--production", metavar="TYPE", help="organic-video's production type at a production run's D1 (00_raw/proposal.json "
+                                        "plugin.production): an animation asks for the animatic tools, not the video "
+                                        "breakdown or AI video tools")
     p.add_argument("--mcp", help="trendsmesh=<ok|free|inactive|skipped|no_agents|missing|no_plan>,"
                                  "meta=<ok|not_enabled|missing>,artifacts=<ok|missing>")
     p.add_argument("--fact", help="elevenlabs_plan=cloning|no_cloning|unknown")
@@ -459,9 +485,16 @@ def _run(args: argparse.Namespace) -> int:
             raise ValueError("The general check takes TrendsMesh only (--mcp trendsmesh=<state>): each playbook's own "
                              "check looks at Meta Ads and shared page links.")
         facts = _pairs(args.fact, FACT_VALUES, "fact")
+        production = args.production
+        if production is not None:
+            from tm import organic_proposals   # it imports the doctor's neighbours: imported where it is used
+
+            if general or playbook != playbooks.get("organic-video").id or production not in organic_proposals.PRODUCTIONS:
+                raise ValueError(f"--production is organic video's production type, one of "
+                                 f"{', '.join(organic_proposals.PRODUCTIONS)}.")
         envtiers.clean_stale()  # free the disk an earlier plugin version's tiers still hold
         r = check(outputs, args.voice, mcp, caption_removal=args.caption_removal, facts=facts,
-                  playbook=playbook)
+                  playbook=playbook, production=production)
     except (ValueError, RuntimeError) as exc:
         return cli.fail(args, str(exc))
     report = None

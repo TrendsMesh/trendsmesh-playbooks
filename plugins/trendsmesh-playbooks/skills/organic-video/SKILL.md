@@ -230,7 +230,8 @@ an anchor from the channel's subjects next to a topic's activity term, hooks and
 for fit, sounds for relevance, the cards split by the channel type, used trends skipped and
 series continued, never "no trend found"; OV3 Recreate (at least 2 evidence videos with the same
 structure, the look copied too) or Inspire (the weaker link said); OV4 the format decides the
-production type, risk named item by item with its mitigation, no percentages; OV5 the product
+production type, risk named item by item with its mitigation, no percentages, its level the
+highest risk left after mitigation by its weight for the production type, never the count; OV5 the product
 level, and a product only from an image; OV6 to OV10 the models (each recipe read first), speech,
 cost (every price with its check date, every paid call approved), stages (never an automatic video
 redo) and edit (−14 LUFS, the safe zone, QA per take); OV11 the posting kit per platform in the audience language, no sources and
@@ -252,6 +253,7 @@ R3: every number has a source, and a hypothesis is never a finding.
 | "The same idea fits both channels" | One idea, one channel, one video (OV1). The other channel gets its own take from its own proposal. |
 | "I'll count the views and pick the evidence myself" | The picks are indexes from `tm organic videos`; the shortlist ranks with `tm trends shortlist`. Never a number by hand. |
 | "A 30 % risk sounds about right" | Risk is named item by item with its mitigation, never a percentage (OV4). |
+| "Two risks named, so it can't be low" | The level is the highest risk left after its mitigation, by its weight for the production type (`tm organic proposals check` says it), never the count. |
 | "Make it an AI video, they'll like it more" | The output is the user's choice, on the page or in chat. |
 | "That take is close; I'll regenerate it, there's budget left" | Never. A video is never regenerated without the user's request: show them the take and its QA findings and ask, with the redo's cost (`tm organic redo`, then the pack re-planned with its line and their yes, `flow.md#e2`). |
 | "About $1.20" | Never a cost from memory. Every cost comes from the saved price file and its date (`tm tool replicate_price`, in the pack): "$1.20 (MiniMax H3, $0.08 a second, checked on <date>)". |

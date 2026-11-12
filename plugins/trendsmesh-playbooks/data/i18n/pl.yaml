@@ -132,6 +132,27 @@ strings:
         few: "{n} pomysły na filmy dla"
         many: "{n} pomysłów na filmy dla"
       lede_rest: każdy oparty na trendach, które rosną teraz, z filmami-dowodami. Wybierz te do produkcji; nic nie jest generowane ani opłacane, dopóki nie zatwierdzisz paczki i jej kosztu.
+      look: Wygląd
+      look_label: Wygląd (jak wygląda film; zmień, jeśli chcesz inny)
+      style: Styl
+      channel_style: Styl Twojego kanału
+      risk_from: "Największe ryzyko: {risk}, w {production} ({weight})"
+      risk_from_none: Po zabezpieczeniu wymienionych ryzyk nie zostaje żadne
+      weight_low: niskie
+      weight_medium: średnie
+      weight_high: wysokie
+      needs: "Wideo AI z tego pomysłu potrzebuje instalacji, po Twojej zgodzie: {installs}."
+      install_sized: "{what} (około {size}, około {minutes} min)"
+      install_and: "{first} i {last}"
+      install_base: narzędzia podstawowe
+      install_breakdown: narzędzia do rozbioru wideo
+      install_video: narzędzia do montażu wideo
+      install_voice: narzędzia głosowe
+      install_ai: narzędzia wideo AI
+      install_animatic: narzędzia do animacji
+      install_browser: Chrome lub Edge
+      summary_look: wygląd
+      summary_style: styl
     # the check-in and delivery pages (organic_pages/gate.py) and their data (organic_gates.py)
     gate:
       eyebrow_images: "Organiczne wideo AI · punkt kontrolny: obraz"
@@ -362,3 +383,8 @@ strings:
       risk_speech: mowa
       risk_long_takes: długie ujęcia
       risk_several_characters: kilka postaci
+      production_ai_footage: materiale AI
+      production_talking_character: filmie z mówiącą postacią
+      production_animation: animacji
+      production_stills_motion: grafikach z animacją
+      production_sections: filmie z części

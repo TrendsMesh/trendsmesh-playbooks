@@ -110,8 +110,8 @@ STATUS_KEY = {s: f"{_V}status_{s}" for s in ("confirmed", "unconfirmed", "contra
 
 
 def value_keys(kind: str) -> dict[str, str]:
-    """The stored values of `kind` (`product`: OV5's product levels; `status`: a trend's; `risk`: OV4's items)
-    -> their keys of the string table."""
+    """The stored values of `kind` (`product`: OV5's product levels; `status`: a trend's; `risk`: OV4's items;
+    `production`: a production type) -> their keys of the string table."""
     from tm import organic_proposals   # it reads the pages' data, not their words
 
     if kind == "product":
@@ -120,6 +120,8 @@ def value_keys(kind: str) -> dict[str, str]:
         return {item: f"{_V}risk_{item}" for item in organic_proposals.RISK_ITEMS}
     if kind == "status":
         return dict(STATUS_KEY)
+    if kind == "production":   # after "in" (the risk's origin, issue #87)
+        return {t: f"{_V}production_{t}" for t in organic_proposals.PRODUCTIONS}
     raise KeyError(kind)
 
 

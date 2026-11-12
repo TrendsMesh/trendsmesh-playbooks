@@ -9,7 +9,9 @@
 #        screen: no commands or flags in any text.
 # when:  a list of alternatives; the check applies if ANY alternative holds, and an alternative
 #        holds when ALL its keys hold: outputs (any of), voice, caption_removal, os, tier
-#        (that tier is chosen). No `when` means the check always applies.
+#        (that tier is chosen), production (organic video's production type is one of these:
+#        `tm doctor --production`), not_production (it is none of these, or none is given). No
+#        `when` means the check always applies.
 # unchecked: what the card says when the fact was not passed in (mcp and plan checks).
 # fix_by_state: for mcp and plan checks, the fix text for one MCP state (in place of `fix`).
 # plan_of: for plan checks on an MCP, the MCP states that mean the plan is missing (one or a list).
@@ -36,7 +38,8 @@ checks:
   - id: tier_breakdown
     name: Video breakdown tools (transcription and scene detection)
     playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
-    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
+    # an animation is drawn, not generated: no take to break down (issue 87)
+    when: [{outputs: [organic_video], not_production: [animation]}, {outputs: [video_ad]}]
     outputs: [creative_brief, edited_video, ai_video]
     kind: env_tier
     tier: breakdown
@@ -63,7 +66,7 @@ checks:
   - id: tier_ai
     name: AI video tools
     playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
-    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
+    when: [{outputs: [organic_video], not_production: [animation]}, {outputs: [video_ad]}]
     outputs: [ai_video]
     kind: env_tier
     tier: ai
@@ -71,8 +74,8 @@ checks:
     fix: {any: "I install the AI video tools (about {size}, about {minutes} min). Say yes and I start."}
   - id: tier_animatic
     name: Animatic tools (the animatic renderer)
-    playbooks: [02-creative-brief]
-    when: [{outputs: [animatics]}]
+    playbooks: [02-creative-brief, 03-organic-ai-video]
+    when: [{outputs: [animatics]}, {outputs: [organic_video], production: [animation]}]
     kind: env_tier
     tier: animatic
     fixer: agent

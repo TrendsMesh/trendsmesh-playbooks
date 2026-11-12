@@ -84,6 +84,10 @@ A later run starts from the latest saved version (`tm brand show --name <channel
   posted on two of the store's channels: each gets its own take.
 - **Content rules** for a sensitive niche (children, health, money): offered at the intake, kept
   in `content_rules` (no real children's faces, a source for every claim, no medical claims).
+- **The channel's own look** (`video_style`, optional): the style its videos are made in, in the
+  user's words ("paper cut-out collage, old engravings, flat colour"), asked at A0 with the other
+  channel questions, or null. Organic video's proposals offer it first, as "Your channel's style",
+  picked in advance, so it is never described again. `context.style` is the tone, not the look.
 - The voice and the music folder are asked when first needed, then saved in a new version.
 - `assumptions` lists what you assumed rather than heard; the card marks each one.
 - `tm brand check --run R --file 03_wip/channel_<slug>_vNN.json --json` (exit 2 lists what to fix),

@@ -56,6 +56,10 @@ id name folders (`03_wip/<id>/`), so each is ASCII letters, digits, '_' and '-',
 and no two section ids differ only in case (PR D review I2). G1's `sections_covered`
 (`organic_final.sections_gap`) checks the edit against them.
 
+The look (issue #87): `aesthetic`, optional in the schema, is how the video looks in a few words; when the
+proposals page decided one (00_raw/proposal.json `decision.aesthetic`), the recipe keeps it, and every prompt of
+every scene follows it (`tm organic atlas-prompt` puts it in an animation's build prompt).
+
 The copied look (OV3, lesson 21): a `style_spec` (needed for a Recreate) is `{layout, font_class, colours,
 number_style, extras, evidence}`, its `evidence` at least 2 distinct URLs of saved videos of the idea's own trends;
 the images check-in shows them beside a still of the composition (`organic_gates`).
@@ -300,6 +304,20 @@ def _recipe(run: RunFolder, pack: dict, cfg: dict, out: list[Problem]) -> None:
     elif pack["style_spec"]:
         _style_spec(run, pack["style_spec"], idea, out)
     _taste(pack, out)
+    _aesthetic(run, pack, out)
+
+
+def _aesthetic(run: RunFolder, pack: dict, out: list[Problem]) -> None:
+    """The look decided on the proposals page is kept in the recipe (issue #87); a pack written before it has none."""
+    look = pack.get("aesthetic")
+    if look is not None and not _text(look):
+        _bad(out, "aesthetic", "The pack's aesthetic is blank.", "Write how the video looks, or leave it out.")
+        return
+    decision = _proposal(run).get("decision")
+    decided = decision.get("aesthetic") if isinstance(decision, dict) else None
+    if _text(decided) and look is None:
+        _bad(out, "aesthetic", f"The look was decided on the proposals page ({decided!r}), and the recipe has none.",
+             "Write it in the pack's aesthetic (the user's change to it in chat wins), so every prompt follows it.")
 
 
 def _sections(pack: dict, out: list[Problem]) -> None:

@@ -9,6 +9,7 @@ Source: the user's intake answers (<date>). Assumptions are marked (A) and confi
 - **Channel type** (A, proposed from the channel's videos and what performed): News and explainers / How-to and education / Entertainment and skits / Music and dance / Lifestyle and vlog / Shop and product / Other (the user's one sentence about the channel). It sets how many trends of each kind are pulled: "A news channel, so topics come first."
 - **Audience:** who watches (A).
 - **Tone and style:** (A).
+- **The channel's own look:** the style its videos are made in, in the user's words, or "none" (offered first as "Your channel's style").
 - **What performed:** 2–3 links, or "none yet".
 - **Products:** <catalog with packshots and the problems they solve>, or "nothing sold".
 - **Product role:** not shown / incidental / featured / soft mention / hero.
