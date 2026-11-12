@@ -38,7 +38,8 @@ posts.
   saved…", save it with `tm trends ingest` as it says. `tm trends collect off --run R` at the end
   of each run (C3, H1).
 - **JSON you write goes into a file** with the Write tool, a new `_vNN` for every change, never
-  inline: inline JSON breaks on Windows. Record each file you write with `tm record --run R --file
+  inline: inline JSON breaks on Windows. **Every `tm` command with `--run` reads a relative path in
+  the run folder first** (`03_wip/edit_v01.props.json`), whatever the working folder. Record each file you write with `tm record --run R --file
   <path> --stage <stage> --source "<what it rests on>"`; the `tm` commands record their own.
 - Every number you write has its source next to it (R3). Pages and summaries in the chat
   language; post text and speech in the audience language.
@@ -768,7 +769,7 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
    `03_wip/<item>_vNN.json` (`{"model": "<owner/name>", "input": {...}}`, inputs as paths in the run,
    relative to the spec), then `tm tool replicate_run --run R 03_wip/<item>_vNN.json --name <item>
    --cost <that item's line cost> --json`. The spec's path may be the run's own (`03_wip/…`, read in
-   the run when the working folder has no such file) or a full path. The item is the pack's (`stages[].items[].name`), the
+   the run whatever the working folder) or a full path. The item is the pack's (`stages[].items[].name`), the
    model its own, and `--cost` its cost line. The engine refuses a spec that breaks the model's
    rules, an item the checked pack does not make, a second paid run without the user's request,
    and any spend past the approved budget (exit 2: nothing ran, nothing was spent).
@@ -925,8 +926,9 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
    --script 03_wip/pack_vNN.json --brackets <the cut times, e.g. 3,7,11> --json` (leave `--script`
    out for a take with no spoken lines). It measures the cuts, the transcript against the script,
    the pace, the loudness and makes a contact sheet; look at the sheet (consistency, artefacts,
-   burned-in text). Make a 720p preview for the page: `tm tool deliver preview --run R
-   03_wip/<take>.mp4 --json`.
+   burned-in text). The page build makes the 720p preview of each video over 15 MB itself, as
+   `tm tool deliver preview --run R <video> --json` does, and shows it (free, local; its answer
+   lists them in `previews`): no preview by hand.
 3. **The video check-in**:
    - **Check every step**: the takes page, as F1 with `--gate video` and the page `gate_video`
      (`tm organic page gate --gate video --run R --json`; collection `gate_video`), each take with
@@ -1022,8 +1024,8 @@ A Remotion render takes about 1 minute.
 
 Read `rules.md` (OV11) and `../../references/posting-kit.md` first.
 
-1. The cover and the upload copy are made in G1. A preview of the final for the pages: `tm tool
-   deliver preview --run R 04_final/<id>_final_vNN.mp4 --json`.
+1. The cover and the upload copy are made in G1. The delivery page makes the final's 720p
+   preview itself, as every page does for a video over 15 MB.
 2. **The posting kit**, as `04_final/kits/<id>_kit_v01.json` (the handoff's kit shape,
    `templates/posting_kit_template.md`), **in the audience language**, per ticked platform: TikTok
    line 1 = hook + search phrase, 3 to 5 hashtags, the cover frame with 2 to 7 words, the AI label,

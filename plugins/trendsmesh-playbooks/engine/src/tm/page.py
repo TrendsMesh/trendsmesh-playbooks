@@ -25,7 +25,10 @@ its artifact's db, one collection; the collector saves each `ArtifactData` list/
 `db_list`/`db_query`) answer in `03_wip/decisions/` (`mcp_saves`).
 - `await_(run, page, version)` marks that people decide on the published page
   (`pages[page]["awaiting"]`); `new_folder` refuses to build that page (`Deciding`) until it is
-  cleared (`clear_await`, done when the decisions are read).
+  cleared (`clear_await`, done when the decisions are read). `record_published` and `await_` refuse
+  another version of it as well (`_new_version`, issue #90), unless the newest saved read of the
+  page's store (`collection_of`), made since the wait began, holds no decision: then they say so and
+  allow it, and the wait moves to the new version. Every playbook's page goes through them.
 - `saved_answer` finds the newest saved answer on the page's slug and collection; `whole_answer`
   refuses one that may hold part of the decisions (a cursor, a filter, a sort, another artifact or
   collection) or was saved before the page was published or awaited; `db_docs` reads its documents,
@@ -252,22 +255,26 @@ def _built(run: RunFolder, page: str) -> Path:
 
 def record_published(run: RunFolder, page: str, slug: str | None, version: str, url: str | None = None) -> dict:
     """Store where the latest build of `page` was published (`state.pages[page]`) and add a manifest
-    row. Returns the record. The Artifact tool's page has no slug of its own: it is the URL's id
-    (`artifact_id`). A wait for decisions on the page (`awaiting`) is kept."""
+    row. Returns the record (with `note` when the store was empty, `_new_version`). The Artifact tool's page has
+    no slug of its own: it is the URL's id (`artifact_id`). A wait for decisions on the page (`awaiting`) is kept;
+    a new version while it waits is refused (`_new_version`)."""
     slug = slug or artifact_id(url)
     if not all(isinstance(v, str) and v.strip() for v in (slug, version)):
         raise ValueError("A published page needs the artifact's slug and version: the claude.ai URL (--url) and "
                          "the version id the Artifact tool's publish returned, or the slug and version the older "
                          "publish_files returned.")
     folder = _built(run, page).relative_to(run.path).as_posix()
+    note = _new_version(run, page, version, "recorded")
     record = {"slug": slug, "version": version, "url": url or None, "folder": folder,
               "published_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     s = state.load(run)
     waiting = (s.pages.get(page) or {}).get("awaiting")
+    if waiting is not None and note:   # the store was empty: people decide on the new version from now on
+        waiting = {**waiting, "version": version, "at": record["published_at"]}
     s.pages[page] = record if waiting is None else {**record, "awaiting": waiting}
     state.save(run, s)
     manifest.record(run, folder, FINAL, SOURCE, params={"slug": slug, "version": version, "url": record["url"]})
-    return record
+    return {**record, **({"note": note} if note else {})}
 
 
 def published(run: RunFolder, page: str) -> dict | None:
@@ -323,7 +330,8 @@ def awaiting(run: RunFolder, page: str) -> dict | None:
 
 def await_(run: RunFolder, page: str, version: str, stage: str | None = None) -> dict:
     """Mark that people decide on the published `page` (artifact version `version`) from now on. Stop
-    when its publish is not recorded in this run."""
+    when its publish is not recorded in this run, or while people decide on another version of it and their
+    decisions are not read (`_new_version`; `note` in the answer when its store was empty)."""
     _check_name(page)
     if not (isinstance(version, str) and version.strip()):
         raise ValueError("--version is the artifact version people decide on, the version id the last publish returned.")
@@ -331,12 +339,59 @@ def await_(run: RunFolder, page: str, version: str, stage: str | None = None) ->
     if not (s.pages.get(page) or {}).get("slug"):
         raise Stop(f"The page's publish is not recorded: publish it, then record it with tm page published --page "
                    f"{page}, before waiting for decisions on it. The run continues from the same place.")
+    note = _new_version(run, page, version, "awaited")
     waiting = {"version": version, "at": _now()}
     if stage is not None:
         waiting = {"stage": stage, **waiting}
     s.pages[page] = {**s.pages[page], "awaiting": waiting}
     state.save(run, s)
-    return waiting
+    return {**waiting, **({"note": note} if note else {})}
+
+
+def collection_of(page: str) -> str:
+    """The db collection the page's decisions are saved in, for every playbook's page people decide on (the creative
+    brief, the run page, organic video's proposals, week and check-in pages); `decisions` for any other."""
+    from tm import brief_page, run_page   # they import this module
+    from tm.organic_pages import gate, proposals, week
+
+    known = {brief_page.PAGE: brief_page.COLLECTION, run_page.PAGE: run_page.COLLECTION,
+             proposals.PAGE: proposals.COLLECTION, week.PAGE: week.COLLECTION, **gate.COLLECTIONS}
+    return known.get(page, "decisions")
+
+
+def _store_empty(run: RunFolder, page: str, collection: str) -> bool:
+    """The newest saved read of the page's store, whole and made since people were asked to decide, holds no
+    decision. False when there is no such read, or it holds any."""
+    try:
+        source = saved_answer(run, page, collection)
+        return source is not None and not db_docs(whole_answer(run, page, source, collection), collection=collection)
+    except Stop:
+        return False
+
+
+NEW_VERSION = ("People are deciding on the {page} page (version {old}, since {at}), and their decisions are not read "
+               "yet, so version {new} is not {doing}: a new version changes the page under them. Read their decisions "
+               "first (one unfiltered ArtifactData list of its collection {collection}, then the playbook's decisions "
+               "command), and build and publish the new version after that. If nobody has decided yet, that read "
+               "shows the store empty, and the new version is allowed. If the team decided another way (in chat, "
+               "say), record it and stop waiting with `tm page await --run <run> --page {page} --clear`. The run "
+               "continues from the same place.")
+
+
+def _new_version(run: RunFolder, page: str, version: str, doing: str) -> str | None:
+    """Refuse (`Deciding`) another version of `page` while people decide on an earlier one and their decisions are
+    not read (issue #90); None when nobody waits on it, or it is the version they decide on. When the page's store
+    is still empty (`_store_empty`) it is allowed, and the note says so."""
+    waiting = awaiting(run, page)
+    if waiting is None or waiting.get("version") == version:
+        return None
+    collection = collection_of(page)
+    if _store_empty(run, page, collection):
+        return (f"The {page} page's store ({collection}) is still empty: nobody has decided on version "
+                f"{waiting.get('version')} yet, so version {version} replaces no decision. People decide on version "
+                f"{version} now.")
+    raise Deciding(page, NEW_VERSION.format(page=page, old=waiting.get("version"), at=waiting.get("at"), new=version,
+                                            doing=doing, collection=collection))
 
 
 def clear_await(run: RunFolder, page: str) -> None:
@@ -609,9 +664,10 @@ def _files(args: argparse.Namespace, run: RunFolder) -> int:
 def _published(args: argparse.Namespace, run: RunFolder) -> int:
     record = record_published(run, args.page, args.slug, args.version, args.url)
     where = f" at {record['url']}" if record["url"] else ""
-    cli.emit(args, {"status": "done", **record},
-             f"Recorded: the {args.page} page ({record['folder']}) is published as {record['slug']}, "
-             f"version {record['version']}{where}.")
+    note = f" {record['note']}" if record.get("note") else ""
+    message = (f"Recorded: the {args.page} page ({record['folder']}) is published as {record['slug']}, "
+               f"version {record['version']}{where}.{note}")
+    cli.emit(args, {"status": "done", **record, "message": message}, message)
     return 0
 
 
@@ -644,7 +700,7 @@ def _await(args: argparse.Namespace, run: RunFolder) -> int:
         return 0
     got = await_(run, args.page, args.version)
     message = (f"Waiting for decisions on the {args.page} page (version {got['version']}): a new version of it is "
-               "refused until they are read.")
+               "refused until they are read." + (f" {got['note']}" if got.get("note") else ""))
     cli.emit(args, {"status": "done", "awaiting": got, "message": message}, message)
     return 0
 

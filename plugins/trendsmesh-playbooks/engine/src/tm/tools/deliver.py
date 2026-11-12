@@ -265,16 +265,29 @@ def upload(run: RunFolder, a: argparse.Namespace) -> tuple[dict, str]:
 
 # --- preview, cover, nosound --------------------------------------------------------------------------
 
-def preview(run: RunFolder, a: argparse.Namespace) -> tuple[dict, str]:
-    src = _input(run, a.input, "video")
-    out = _new(run, run.path / "showcase" / f"{src.stem}_720p.mp4")
+def preview_of(run: RunFolder, src: Path) -> Path:
+    """Where a video's 720p preview is kept: `showcase/<stem>_720p.mp4`."""
+    return run.path / "showcase" / f"{Path(src).stem}_720p.mp4"
+
+
+def make_preview(run: RunFolder, src: Path) -> Path:
+    """The 720p preview of `src` (free, local, never over another file), with its manifest row: what `tm tool deliver
+    preview` writes, and what a page build makes itself for a video over the page's limit (issue #90)."""
+    out = _new(run, preview_of(run, src))
     crf = int(organic_final.setting(run, "preview_crf"))
     _write(run, out, lambda part: _ffmpeg(
         ["-i", c.media(src), "-map", "0:v:0", "-map", "0:a?", "-vf", f"scale={PREVIEW_WIDTH}:-2:flags=lanczos",
          *VIDEO, "-crf", str(crf), "-c:a", "aac", "-b:a", "128k", *FASTSTART, str(part)]))
-    rel = c.rel(run, out)
     c.record(run, out, "tm tool deliver preview", c.parent_ref(run, src), params={"crf": crf},
              model="ffmpeg libx264", cost="0 (local)")
+    return out
+
+
+def preview(run: RunFolder, a: argparse.Namespace) -> tuple[dict, str]:
+    src = _input(run, a.input, "video")
+    out = make_preview(run, src)
+    rel = c.rel(run, out)
+    crf = int(organic_final.setting(run, "preview_crf"))
     return {"outputs": [rel]}, f"Wrote {rel}: {PREVIEW_WIDTH} wide, CRF {crf}."
 
 

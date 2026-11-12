@@ -381,3 +381,66 @@ def test_saved_artifact_data_answer_is_tied_to_the_page_by_its_url(tmp_path):
                                  {"raw": _artifact_list()}, at="2999-01-03T00:00:00+00:00")
         with pytest.raises(page.Stop, match=why):
             page.whole_answer(run, "report", partial, "decisions")
+
+
+# --- issue #90: no new page version while people decide on the last one ------------------------------------------
+
+PAGES = [  # every playbook's page people decide on, and its db collection
+    ("trend-research", "report", "decisions"), ("creative-brief", "brief_pack", "decisions"),
+    ("organic-video", "proposals", "decisions"), ("organic-video", "week", "week"),
+    ("organic-video", "gate_images", "gate_images"), ("organic-video", "gate_video", "gate_video"),
+    ("organic-video", "delivery", "gate_edit"), ("refresh-ad", "run_page", "decisions"),
+]
+
+
+def _awaited(tmp_path, playbook, name):
+    from tm import playbooks
+    run = RunFolder.create(tmp_path, "x", date(2026, 11, 12), playbook=playbooks.get(playbook).id)
+    _built(run, name)
+    page.record_published(run, name, page.artifact_id(ART_URL), "v1", ART_URL)
+    page.await_(run, name, "v1")
+    return run
+
+
+def _read(run, collection, *docs, at="2999-01-01T00:00:00+00:00"):
+    from tm import mcp_saves
+    whole = {"action": "list", "url": ART_URL, "collection": collection, "query": {"limit": 1000}}
+    return mcp_saves.save(run, "ArtifactData", whole, {"raw": _artifact_list(*docs)}, at=at)
+
+
+@pytest.mark.parametrize("playbook, name, collection", PAGES)
+def test_a_new_version_is_refused_while_decisions_are_awaited(tmp_path, capsys, playbook, name, collection):
+    run = _awaited(tmp_path, playbook, name)
+    assert page.collection_of(name) == collection
+    for argv in (["published", "--url", ART_URL], ["await"]):
+        code = main(["page", *argv, "--run", str(run.path), "--page", name, "--version", "v2", "--json"])
+        out = json.loads(capsys.readouterr().out)
+        assert code == 2 and "version v2 is not" in out["message"] and collection in out["message"], out
+    assert state.load(run).pages[name]["version"] == "v1" and page.awaiting(run, name)["version"] == "v1"
+    assert page.record_published(run, name, None, "v1", ART_URL)["version"] == "v1"   # the same version again
+    _read(run, collection, {"id": "u1", "data": {"x": {"d": "accept"}}})            # someone has decided
+    with pytest.raises(page.Deciding):
+        page.record_published(run, name, None, "v2", ART_URL)
+
+
+@pytest.mark.parametrize("playbook, name, collection", PAGES)
+def test_a_new_version_is_allowed_when_the_store_is_still_empty(tmp_path, capsys, playbook, name, collection):
+    run = _awaited(tmp_path, playbook, name)
+    _read(run, "another_collection")                                                 # not this page's store
+    with pytest.raises(page.Deciding):
+        page.record_published(run, name, None, "v2", ART_URL)
+    _read(run, collection)                                                           # its store: empty
+    assert main(["page", "published", "--run", str(run.path), "--page", name, "--url", ART_URL, "--version", "v2",
+                 "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "is still empty" in out["message"] and "People decide on version v2 now" in out["note"], out
+    assert page.awaiting(run, name)["version"] == "v2"
+    assert main(["page", "await", "--run", str(run.path), "--page", name, "--version", "v2", "--json"]) == 0
+    capsys.readouterr()
+
+
+def test_a_new_version_is_allowed_once_the_decisions_are_read(tmp_path):
+    run = _awaited(tmp_path, "trend-research", "report")
+    page.clear_await(run, "report")                                                  # what reading them does
+    assert page.record_published(run, "report", None, "v2", ART_URL)["version"] == "v2"
+    assert page.await_(run, "report", "v2")["version"] == "v2"

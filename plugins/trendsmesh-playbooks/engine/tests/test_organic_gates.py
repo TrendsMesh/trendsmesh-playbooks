@@ -277,20 +277,36 @@ def test_images_and_video_pages(tmp_path, capsys):
 
 
 @pytest.mark.private_data
-def test_video_option_over_15mb_refused(tmp_path, capsys):
+def test_a_video_over_15mb_is_shown_as_its_720p_preview(tmp_path, capsys, monkeypatch):
+    """Issue #90: the page build makes the 720p preview itself (tm tool deliver preview's, free and local) for every
+    video it shows over 15 MB, and shows the preview; the option still picks the take."""
+    from tm.tools import deliver
+
     run = _m5(tmp_path, final=False)
     with open(run.path / "03_wip" / "take_v01_0.mp4", "r+b") as fh:
         fh.truncate(gate.VIDEO_MAX_BYTES + 1)
-    code, out = _cli(capsys, "organic", "page", "gate", "--gate", "video", "--run", str(run.path))
-    assert (code, out["status"]) == (2, "stop")
-    assert "03_wip/take_v01_0.mp4" in out["message"] and "over 15 MB" in out["message"]
-    assert "tm tool deliver preview" in out["message"] and out["message"].endswith(AGAIN + ".")
-    assert not list((run.path / "04_final").glob("gate_video_v*")) and not (run.path / gate.DATA).exists()
-    preview = run.path / "showcase" / "take_v01_0_720p.mp4"
-    preview.parent.mkdir(parents=True, exist_ok=True)
-    preview.write_bytes(b"720p, CRF 27")
+    made = []
+
+    def make(run_, src):
+        out = deliver.preview_of(run_, src)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"720p, CRF 27")
+        made.append(Path(src).name)
+        return out
+    monkeypatch.setattr(deliver, "make_preview", make)
     out = _build(run, capsys, "gate_video", "video")
+    assert made == ["take_v01_0.mp4"] and out["previews"] == ["showcase/take_v01_0_720p.mp4"], out
+    assert "made the 720p preview it shows" in out["message"]
     assert [f["as"] for f in out["files"] if f["as"].endswith(".mp4")] == ["media/take_v01_0_720p.mp4"]
+    data = json.loads((run.path / out["data"]).read_text(encoding="utf-8"))
+    assert data["plugin"]["items"]["takes-take"]["files"] == {"take_v01_0": "03_wip/take_v01_0.mp4"}
+    out = _build(run, capsys, "gate_video", "video")                     # made once, then shown again
+    assert made == ["take_v01_0.mp4"] and out["previews"] == []
+    with open(run.path / "showcase" / "take_v01_0_720p.mp4", "r+b") as fh:   # a preview still over the limit
+        fh.truncate(gate.VIDEO_MAX_BYTES + 1)
+    code, out = _cli(capsys, "organic", "page", "gate", "--gate", "video", "--run", str(run.path))
+    assert (code, out["status"]) == (2, "stop") and "over 15 MB even as a 720p preview" in out["message"], out
+    assert out["message"].endswith(AGAIN + ".")
 
 
 @pytest.mark.private_data

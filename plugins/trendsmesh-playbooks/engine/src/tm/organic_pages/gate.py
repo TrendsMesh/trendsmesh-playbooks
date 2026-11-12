@@ -348,6 +348,29 @@ def _shown_videos(data: dict) -> list[str]:
             if e["src"].lower().endswith(VIDEO)]
 
 
+def _with_previews(run: RunFolder, data: dict) -> list[str]:
+    """Each video the page shows over `VIDEO_MAX_BYTES` is shown as its 720p preview (`showcase/<stem>_720p.mp4`),
+    made here when it is not made yet, as `tm tool deliver preview` makes it (free, local; issue #90). The data's
+    `src` is changed to the preview; what an option picks (its plugin entry's file) stays the video. Returns the
+    previews made. A preview that is itself over the limit is left for the size check."""
+    from tm.tools import deliver   # ffmpeg is reached only for a video over the limit
+
+    made = []
+    for it in data["items"]:
+        for entry in [*it.get("options", []), *it.get("refs", [])]:
+            src = entry["src"]
+            path = _resolve(run, src)
+            if (not src.lower().endswith(VIDEO) or not path.is_file() or path.stat().st_size <= VIDEO_MAX_BYTES
+                    or path.stem.endswith("_720p")):
+                continue
+            preview = deliver.preview_of(run, path)
+            if not preview.is_file():
+                deliver.make_preview(run, path)
+                made.append(preview.relative_to(run.path).as_posix())
+            entry["src"] = preview.relative_to(run.path).as_posix()
+    return made
+
+
 def _resolve(run: RunFolder, src: str) -> Path:
     """A src: run-relative, or an absolute path (a packshot in the library)."""
     p = Path(src)
@@ -391,13 +414,14 @@ def build(run: RunFolder, data: dict, *, page: str) -> dict:
     if problems:
         raise Stop(f"The {page} page's data is not in the page's shape ({'; '.join(problems[:5])}). Build it again "
                    f"with tm organic page; {AGAIN}.")
+    previews = _with_previews(run, data)
     names = _names(run, data)
     big = [f"{src} ({names[src][1].stat().st_size / 1e6:.1f} MB)" for src in dict.fromkeys(_shown_videos(data))
            if names[src][1].stat().st_size > VIDEO_MAX_BYTES]
     if big:
-        raise Stop(f"{', '.join(big)} {'is' if len(big) == 1 else 'are'} over 15 MB, too big to play on the page. "
-                   "Make a 720p preview first (tm tool deliver preview --run <run> <video>), then build the page "
-                   f"again: it shows the preview. Nothing was written; {AGAIN}.")
+        raise Stop(f"{', '.join(big)} {'is' if len(big) == 1 else 'are'} over 15 MB even as a 720p preview, too big "
+                   "to play on the page. Show a shorter cut of it, or leave it out of the page and give its path in "
+                   f"chat. Nothing was written; {AGAIN}.")
     text, built = page_html(data, lambda src: f"media/{names[src][0]}")
     lang = built.lang
     planned = {"index.html": len(text.encode("utf-8"))} | {f"media/{n}": p.stat().st_size for n, p in names.values()}
@@ -422,4 +446,4 @@ def build(run: RunFolder, data: dict, *, page: str) -> dict:
         params |= {"final": final, "final_sha256": stepchecks.sha256(run.path / final)}
     manifest.record(run, out_rel, pages.FINAL, f"{SOURCE} {page}", parent=kept_rel, params=params)
     return {"folder": out_rel, "files": pages.files(out), "data": kept_rel, "lang": lang,
-            "language_warning": built.warning}
+            "language_warning": built.warning, "previews": previews}

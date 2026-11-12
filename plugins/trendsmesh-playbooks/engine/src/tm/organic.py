@@ -520,6 +520,8 @@ def _gate_page(args: argparse.Namespace, run: RunFolder) -> int:
     message = (f"Built the {name} page in {got['folder']} ({got['items']} item{'' if got['items'] == 1 else 's'}, "
                f"{len(got['files'])} files"
                + (f"; {missing} evidence thumbnail{'' if missing == 1 else 's'} could not be had" if missing else "")
+               + (f"; made the 720p preview{'' if len(got['previews']) == 1 else 's'} it shows of each video over "
+                  f"15 MB, free: {', '.join(got['previews'])}" if got.get("previews") else "")
                + f"). Publish it: tm page files --run {args.run} --page {name} gives the Artifact tool's "
                f"file_path and files, with organic_pages.CAPABILITIES[\"gate\"] as its capabilities (its db collection "
                f"is {gate.COLLECTIONS[name]}); record it with tm page published --page {name}, and wait with tm page await "

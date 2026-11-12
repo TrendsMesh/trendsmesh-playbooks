@@ -116,7 +116,9 @@ the publish result says are stored (step 2), and say plainly if they are missing
    (step 2). Record the version of that publish.
 5. **Never republish while deciding.** Before people decide: `tm brief await --run R --stage
    <G2|G3|G4> --version <the recorded version> --json`. From then on `tm brief page` refuses a new
-   version, until the decisions are read.
+   version, until the decisions are read, and so do `tm page published` and `tm page await` for any
+   other version of the page, in every playbook. When nobody has decided yet, one unfiltered read of
+   the page's store (step 6) that shows it empty lets the new version through: the answer says so.
 6. **Reading the decisions**, only after the page was published and the wait began, when the user
    says the team has decided: **one unfiltered `ArtifactData` read**: `action: "list"`, the page's
    `url`, `collection: "decisions"`, `query: {"limit": 1000}`, and no `cursor`, `where`,
