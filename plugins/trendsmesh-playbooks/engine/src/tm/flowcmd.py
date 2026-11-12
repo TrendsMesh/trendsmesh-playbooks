@@ -7,7 +7,7 @@ from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
-from tm import checkins, cli, flow, i18n, paths, state, stops
+from tm import checkins, cli, flow, i18n, paths, state, stops, trend_age
 from tm.runfolder import RunFolder
 
 STOP = 2
@@ -151,9 +151,11 @@ def _resume(args: argparse.Namespace) -> int:
 @_guard
 def _status(args: argparse.Namespace) -> int:
     run = _open(args)
-    s = asdict(state.load(run))
-    cli.emit(args, {**s, "path": str(run.path)},
-             "\n".join(f"{k}: {v}" for k, v in s.items()))
+    s = {**asdict(state.load(run)), "trend_data": trend_age.of(run)}   # the resume question says when it expired
+    text = "\n".join(f"{k}: {v}" for k, v in s.items() if k != "trend_data")
+    if s["trend_data"]:
+        text += f"\ntrend_data: {s['trend_data']['message']}"
+    cli.emit(args, {**s, "path": str(run.path)}, text)
     return 0
 
 

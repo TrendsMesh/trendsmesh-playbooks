@@ -225,6 +225,41 @@ def test_cli_save_confirmed_and_show_channel(ws, capsys, today):
     assert out["message"].startswith("The channel profile needs fixing")
 
 
+def test_show_names_the_run_a_profile_was_saved_from(ws, capsys, today):
+    """Issue 59: a profile offered for reuse names the run it was saved from and that run's date, so the user can
+    tell whether it is still theirs and current."""
+    run = _run(ws)
+    _decide_profile(run)
+    brand.save(ws, EXAMPLEEDU, run=run, confirmed=True)
+    code, out = _cli(capsys, "brand", "show", "--name", "ExampleEdu", "--kind", "channel")
+    assert code == 0 and out["file"] == "library/channels/exampleedu/channel_v01.json"
+    assert out["saved_from"] == {"run": run.path.name, "folder": f"runs/{ORGANIC_VIDEO}/{run.path.name}",
+                                 "created": "2026-11-07", "saved": date.today().isoformat()}
+    assert f"saved from the run {run.path.name} (started 2026-11-07)" in out["message"]
+    assert f"the user confirmed it on {today}" in out["message"]
+    # a later version saved without a run names none: the card says so, never the earlier version's run
+    brand.save(ws, _channel(confirmed=today, voice={"narrator_elevenlabs_id": "v1"}), run=None)
+    code, out = _cli(capsys, "brand", "show", "--name", "ExampleEdu", "--kind", "channel")
+    assert out["file"].endswith("channel_v02.json") and out["saved_from"] is None
+    assert "saved without a run this workspace still has" in out["message"]
+    # the text answer says it first, before the profile
+    capsys.readouterr()
+    assert main(["brand", "show", "--name", "ExampleEdu", "--kind", "channel"]) == 0
+    assert capsys.readouterr().out.startswith("library/channels/exampleedu/channel_v02.json was saved without")
+
+
+def test_show_finds_the_run_of_a_profile_saved_before_it_was_asked(ws, capsys):
+    """A profile saved by an earlier version is found by its run's manifest row; a run whose folder is gone is
+    no run."""
+    run = _run(ws)
+    brand.save(ws, EXAMPLEEDU, run=run)
+    code, out = _cli(capsys, "brand", "show", "--name", "exampleedu", "--kind", "channel")
+    assert out["saved_from"]["run"] == run.path.name and "has not confirmed it" in out["message"]
+    (run.path / "manifest.md").unlink()
+    code, out = _cli(capsys, "brand", "show", "--name", "exampleedu", "--kind", "channel")
+    assert code == 0 and out["saved_from"] is None
+
+
 # --- packshots ---------------------------------------------------------------------------
 
 def test_packshot_saved_once_per_store_never_overwrites(ws, capsys):

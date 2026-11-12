@@ -372,9 +372,10 @@ def channel_key(name: str) -> str:
     return _slug(name).lower()
 
 
-def _newest(workspace: Path, kind: str, folder_name: str, same, skipped: list[str] | None = None) -> dict | None:
-    """The newest profile of `kind` in the kind's folder for `folder_name` for which `same(profile)` holds. A
-    file whose own `kind` is another is never read as this kind: it is skipped, and named in `skipped`."""
+def _newest(workspace: Path, kind: str, folder_name: str, same,
+            skipped: list[str] | None = None) -> tuple[dict, Path] | None:
+    """The newest profile of `kind` in the kind's folder for `folder_name` for which `same(profile)` holds, and its
+    file. A file whose own `kind` is another is never read as this kind: it is skipped, and named in `skipped`."""
     for _, path in reversed(_versions(_folder(workspace, folder_name, kind), kind)):
         rel = path.relative_to(Path(workspace)).as_posix()
         try:
@@ -389,12 +390,19 @@ def _newest(workspace: Path, kind: str, folder_name: str, same, skipped: list[st
                 skipped.append(f"{rel} is not a {kind} profile (its kind is {profile.get('kind')!r})")
             continue
         if same(profile):
-            return profile
+            return profile, path
     return None
 
 
 def latest(workspace: Path, name: str, kind: str = "brand", skipped: list[str] | None = None) -> dict | None:
-    """The latest saved profile of a brand (or, with kind="channel", a channel), else None. A brand is
+    """The latest saved profile of a brand or a channel, else None (`latest_saved`, without its file)."""
+    found = latest_saved(workspace, name, kind, skipped)
+    return found[0] if found else None
+
+
+def latest_saved(workspace: Path, name: str, kind: str = "brand",
+                 skipped: list[str] | None = None) -> tuple[dict, Path] | None:
+    """The latest saved profile of a brand (or, with kind="channel", a channel) and its file, else None. A brand is
     matched by its name: names that share a folder (\"A&B\", \"A B\") are told apart by the profile's
     own `brand`. A channel is matched by its key (`channel_key`), as config.yaml names it, so "Cat Corner"
     and "cat-corner" are the same channel. Files of the other kind are skipped (named in `skipped`)."""
@@ -405,6 +413,41 @@ def latest(workspace: Path, name: str, kind: str = "brand", skipped: list[str] |
         return _newest(workspace, kind, key, lambda p: channel_key(str(p.get("channel", ""))) == key, skipped)
     want = name.strip().casefold()
     return _newest(workspace, kind, name, lambda p: str(p.get(kind, "")).strip().casefold() == want, skipped)
+
+
+def saved_from(workspace: Path, saved: Path) -> dict | None:
+    """The run a saved profile came from (issue 59: a profile offered for reuse names its run and date): the run
+    whose manifest has the row `tm brand save` wrote for this library file, so a profile saved before this was
+    asked is found too. None for a profile saved without a run, or whose run is no longer in the workspace."""
+    workspace = Path(workspace)
+    rel = saved.relative_to(workspace).as_posix()
+    for man in sorted((workspace / "runs").glob("*/*/manifest.md")):
+        run = RunFolder(man.parent)
+        for row in manifest.rows(run):
+            if row["source"] != SOURCE:
+                continue
+            try:
+                params = json.loads(row["params"] or "{}")
+            except ValueError:
+                continue
+            if isinstance(params, dict) and params.get("library") == rel:
+                try:
+                    created = state.load(run).created
+                except (OSError, ValueError):
+                    created = None
+                return {"run": run.path.name, "folder": run.path.relative_to(workspace).as_posix(),
+                        "created": created, "saved": row["date"] or None}
+    return None
+
+
+def _origin_line(profile: dict, rel: str, origin: dict | None) -> str:
+    """One sentence for the reuse card: where the profile was saved from, and when the user confirmed it."""
+    confirmed = (f"; the user confirmed it on {profile['confirmed']}" if profile.get("confirmed")
+                 else "; the user has not confirmed it")
+    if origin is None:
+        return f"{rel} was saved without a run this workspace still has{confirmed}."
+    return (f"{rel} was saved from the run {origin['run']} (started {origin['created']}) on "
+            f"{origin['saved']}{confirmed}.")
 
 
 # --- a store's packshots (OV5: made once per store, shared by its channels) -----------------------
@@ -559,12 +602,17 @@ def _run(args: argparse.Namespace) -> int:
         if args.action == "show":
             workspace = Path(args.workspace) if args.workspace else paths.workspace()
             skipped: list[str] = []
-            profile = latest(workspace, args.name, kind=args.kind, skipped=skipped)
-            if profile is None:
+            found = latest_saved(workspace, args.name, kind=args.kind, skipped=skipped)
+            if found is None:
                 not_read = f" Not read: {'; '.join(skipped)}." if skipped else ""
                 return cli.fail(args, f"No {args.kind} profile named {args.name!r} in "
                                       f"{DIRS[args.kind].as_posix()}/.{not_read}")
-            cli.emit(args, {"status": "done", "profile": profile}, json.dumps(profile, ensure_ascii=False, indent=2))
+            profile, path = found
+            origin = saved_from(workspace, path)
+            line = _origin_line(profile, path.relative_to(workspace).as_posix(), origin)
+            cli.emit(args, {"status": "done", "profile": profile, "file": path.relative_to(workspace).as_posix(),
+                            "saved_from": origin, "message": line},
+                     f"{line}\n{json.dumps(profile, ensure_ascii=False, indent=2)}")
             return 0
         run = RunFolder.open(Path(args.run)) if args.run else None
         workspace = trend_spool.workspace_of(run) if run else paths.workspace()

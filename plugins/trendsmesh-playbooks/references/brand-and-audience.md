@@ -8,8 +8,8 @@ adds the **channel profile** (OV1), which names a store's brand profile for its 
 
 Drafted by you, confirmed by the user, saved in the workspace library:
 `<workspace>/library/brands/<brand>/brand_vNN.json`. A later run of the same brand starts from the
-latest saved version (`tm brand show --name <brand> --json`): show it on the card and ask only
-what may have changed.
+latest saved version (`tm brand show --name <brand> --json`): show it on the card, with the run it was
+saved from and that run's date (`saved_from`, said in `message`), and ask only what may have changed.
 
 - **Draft it** from the landing page (saved in `00_raw/`) and the running ads' copy; when the user
   points to a brand guide (a file, a link), read it and set `guide`. The short brand intake's five
@@ -48,7 +48,7 @@ batch at A0), confirmed by the user, saved in the workspace library:
 `<workspace>/library/channels/<slug>/channel_vNN.json`, where the slug is the channel's name in
 lower case with dashes ("Cat Corner" → `cat-corner`), as the run's config names it (`channels`).
 A later run starts from the latest saved version (`tm brand show --name <channel> --kind channel
---json`) after the "Reuse the saved channel profile" check-in.
+--json`, which names the run it was saved from) after the "Reuse the saved channel profile" check-in.
 
 - The shape (`channel/1`), written as `03_wip/channel_<slug>_vNN.json`:
 

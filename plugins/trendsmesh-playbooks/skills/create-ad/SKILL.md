@@ -64,8 +64,9 @@ for Hands-off, the generation budget in USD. Then `tm config write`, `tm config 
 ## 3. The loop
 
 When the user names a run or asks to continue, run `tm next` on it **before you answer**. An unfinished run under
-`runs/05-create-ad/` and a request that does not plainly continue it: ask first whether to continue it or start a
-new one. Before you do, plan or describe a step's work, read its section in `references/flow.md` (the `ref`).
+`runs/05-create-ad/` and a request that does not plainly continue it: ask first whether to continue it or start a new
+one; when `tm status --run R --json` gives `trend_data.expired`, say that its trend data has expired (`message`).
+Before you do, plan or describe a step's work, read its section in `references/flow.md` (the `ref`).
 
 `tm next --run R --json` → act on `action`, then `tm next` again. Always.
 

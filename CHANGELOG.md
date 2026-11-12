@@ -43,6 +43,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   take, a note per scene, the copy's edits) or in chat: both count the same. Without a way to publish pages, Claude
   gives you the page as a file and you answer in chat. Nothing on the page spends money or switches anything on:
   the upload page only records "go ahead" or "skip".
+- **A saved profile says which run it comes from.** When Organic AI video offers to reuse a channel profile (or any
+  playbook a brand profile), it now names the run the profile was saved from and that run's date, and when you
+  confirmed it, so you can tell whether it is still yours and current. `tm brand show` gives it as `saved_from`; a
+  profile saved by an earlier version is found too.
+- **The resume question says when the trend data has expired.** When you have an unfinished run and ask for
+  something else, Claude still asks whether to continue it, and now also says when that run's trend data is past
+  its valid-until date, offering a new run with fresh data or to continue on the old data. `tm status` gives it as
+  `trend_data`.
 
 ## 0.12.0
 

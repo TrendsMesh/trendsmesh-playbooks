@@ -31,9 +31,11 @@ needs `tm decide <id> <choice> --change --run R`.
 ## The cards
 
 **Reuse the saved channel profile** (`reuse_profile`, before A1). For each channel of the run, the
-latest saved profile (`tm brand show --name <channel> --kind channel --json`): the channel, its
-platforms, account type, audience language, bubble, product role, content rules, and the date
-the user confirmed it. Ask: "Use this profile as it is, or update it?" Choices: `reuse` (A1 is
+latest saved profile (`tm brand show --name <channel> --kind channel --json`): **where it comes
+from first**, the run it was saved from and that run's date (`saved_from`, said in `message`; "saved
+without a run" when there is none), so the user can tell whether it is still theirs and current;
+then the channel, its platforms, account type, audience language, bubble, product role, content
+rules, and the date the user confirmed it. Ask: "Use this profile as it is, or update it?" Choices: `reuse` (A1 is
 skipped) or `new` (A1 drafts a new version). The engine refuses `reuse` unless every channel of
 the run has a saved profile the user confirmed. **When a channel has no saved profile**, there is
 nothing to reuse: say so in one line ("No saved profile for <channel> yet: I'll draft one from

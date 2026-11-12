@@ -87,11 +87,13 @@ answer**, and answer from what it says. When a run under `runs/04-trend-research
 the request does not plainly continue it (it asks for something new, or does not say), **ask one
 short question before anything else**, with enough to recognise the run: "You have an unfinished
 trend research run <run folder name> from <created>, stopped at <step>. Continue it, or start a new
-one?" (`tm status --run R --json` gives `created` and `step`, and changes nothing). Then `tm next`
-on that run, or a new run (`tm run new`). On every resume (a new session, after a stop), run `tm
-trends collect on --run R` again before the next TrendsMesh or Ad Library call (`ads_library_search`
-is saved too). Before you do, plan or describe a step's work, read its section in
-`references/flow.md` (the `ref`): never from memory.
+one?" (`tm status --run R --json` gives `created`, `step` and `trend_data`, and changes nothing).
+When `tm status` gives `trend_data` with `expired` true, say so in the question, from its `message`:
+"Its trend data expired on <valid_until>. Start a new run with fresh data, or continue this one on
+the old data?" Then `tm next` on that run, or a new run (`tm run new`). On every resume (a new
+session, after a stop), run `tm trends collect on --run R` again before the next TrendsMesh or Ad
+Library call (`ads_library_search` is saved too). Before you do, plan or describe a step's work,
+read its section in `references/flow.md` (the `ref`): never from memory.
 
 `tm next --run R --json` → act on `action`, then `tm next` again. Always.
 

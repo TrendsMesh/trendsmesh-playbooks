@@ -50,6 +50,8 @@ English): the beauty dry run, anonymised (gen_mocks.py --pb04), built with the e
 commands and no MCP; the saved answers are written as the collector writes them. Outputs the category
 report and the paid view unless said:
   tr_at_b3       Check every step; searches saved, the map built, no review yet; run at B3
+  tr_stale_at_b3 the same, made and fetched on 1 Sep (`runs/04-trend-research/2026-09-01_beauty`): its trend
+                 data expired on 15 Sep (issue 59)
   tr_at_d2       Check every step; the dry run's review, the hooks path, growth, backtests and the evidence
                  dumps done; run at D2 (the Ad Library)
   tr_at_d3       the same, with the Ad Library not read (Meta not connected: `checked: false`, the
@@ -740,6 +742,11 @@ def tr_main(scn: str, ws: Path) -> tuple[Path, dict]:
             raise SystemExit(f"run 1 did not finish: {end}")
         run = tr_run(ws, "2026-11-04", "hands_off", [], after=first)
         return run, tr_drive(ws, run, stop_at="F2")
+    if scn == "tr_stale_at_b3":
+        global TR_AT
+        TR_AT = "2026-09-01T10:00:00+00:00"    # tr_save's date: the answers are as old as the run
+        run = tr_run(ws, "2026-09-01", "every_step", TR_OUTPUTS)
+        return run, tr_drive(ws, run, stop_at="B3")
     level, stop = {"tr_at_b3": ("every_step", {"stop_at": "B3"}),
                    "tr_at_d2": ("every_step", {"stop_at": "D2"}),
                    "tr_at_d3": ("every_step", {"stop_at": "D3"}),

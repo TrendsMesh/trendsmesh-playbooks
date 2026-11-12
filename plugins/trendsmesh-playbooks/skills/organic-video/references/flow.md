@@ -145,7 +145,7 @@ posts.
 
 **Before A1: `reuse_profile`** ("Reuse the saved channel profile", `checkin-cards.md`). `tm brand
 show --name <channel> --kind channel --json` for each of the run's channels. A confirmed saved
-profile is shown and reused (`tm decide reuse_profile reuse --run R`): A1 is skipped. The engine
+profile is shown, the run it was saved from and its date first (`saved_from`, `message`), and reused (`tm decide reuse_profile reuse --run R`): A1 is skipped. The engine
 refuses a reuse unless **every** channel of the run has a saved profile the user confirmed; a
 channel with none needs a new one (`new`). At Hands-off the rule decides it the same way.
 
