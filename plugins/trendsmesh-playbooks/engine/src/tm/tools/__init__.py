@@ -123,6 +123,9 @@ TOOLS: dict[str, Tool] = {
                         "music-compose": "voice_credits", "music-compose:--resume": None,
                         "credits": None, "voices": None}, light=("credits",)),
     "music_index": Tool("breakdown", (), "index a music folder: length, loudness, tempo estimate, mood"),
+    "music_fetch": Tool("breakdown", (), "a Mixkit track found, fetched after the user's yes and indexed; the "
+                        "offered tracks copied into the run"),
+    "cover_fit": Tool("breakdown", (), "the cover's text moved or made smaller until a face in the frame is clear"),
     "take_qa": Tool("breakdown", (), "QA of a generated take: cuts, transcript, pace, loudness, contact sheet"),
     "replicate_price": Tool("base", (), "live prices from Replicate's public model pages (billingConfig)"),
     "deliver": Tool("base", (), "finish, speed, upload copy, preview, cover, no-sound export, loudness"),

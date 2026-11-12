@@ -200,6 +200,7 @@ strings:
       cap_host: Obraz prowadzącej osoby
       cap_evidence: Film-dowód od @{creator}
       cap_still: Skopiowany wygląd, wyrenderowany ({comp}, klatka {frame})
+      cap_text_style: "Napisy i nakładki tak, jak narysuje je montaż: zaakceptuj albo napisz, co zmienić"
       cap_contact: Arkusz kontroli jakości {take}
       dl_video: wideo (1080p)
       dl_cover: okładkę

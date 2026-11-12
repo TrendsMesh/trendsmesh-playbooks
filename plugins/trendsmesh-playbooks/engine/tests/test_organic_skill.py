@@ -185,7 +185,8 @@ def test_tool_commands_use_the_tools_own_flags():
             for flag in re.findall(r"(?<![\w-])(--[a-z][a-z-]*)", " ".join(rest)):
                 assert flag in options, f"{f.name}: `{cmd}`: {flag} is not an option of tm tool {name} ({sorted(options)})"
             seen.add(" ".join([name, *actions[:1]]))
-    assert {"replicate_price", "replicate_run", "take_qa", "music_index", "elevenlabs credits", "elevenlabs voices",
+    assert {"replicate_price", "replicate_run", "take_qa", "music_index", "music_fetch", "cover_fit",
+            "elevenlabs credits", "elevenlabs voices",
             "elevenlabs tts", "deliver finish", "deliver measure", "deliver speed", "deliver upload", "deliver cover",
             "deliver preview", "deliver nosound"} <= seen, sorted(seen)
 
@@ -227,7 +228,8 @@ def test_ai_video_steps_name_the_engine_commands():
     named = {
         "d1": ["tm tool elevenlabs credits", "tm organic stack", "tm brand packshot", "tm organic pack check",
                "--stage recipe"],
-        "d2": ["tm tool elevenlabs voices", "--language", "tm tool music_index", "Mixkit", "tm brand save"],
+        "d2": ["tm tool elevenlabs voices", "--language", "tm tool music_index", "Mixkit", "tm brand save",
+               "tm tool music_fetch --run R --search", "--mixkit", "--yes", "tm tool music_fetch --run R --copy"],
         "e1": ["model-prompting/", "tm tool replicate_price", "the date", "kling-avatar-v2"],
         "e2": ["tm organic pack check", "--stage pack", "pack_vNN.md", "the resolution question",
                "Approve the generation pack and its cost", "tm decide pack approve", "tm budget approve ai_usd",
@@ -235,12 +237,13 @@ def test_ai_video_steps_name_the_engine_commands():
         "f1": ["tm tool replicate_run --run R", "--cost", "--resume", "tm organic dashboard-checked",
                "tm tool elevenlabs tts", "--timestamps", "tm organic page gate --gate images", "tm page await",
                "gate_images", "tm organic decisions --run R --page gate_images", "tm organic pick", "tm organic redo",
-               "input_images", "tm decide images accept"],
+               "input_images", "tm decide images accept", "tm organic text look", "tm organic text approve"],
         "f2": ["timed shot list", "a brisk, energetic TikTok pace, no pauses between sentences", "ratio: \"9:16\"",
                "Seedance 2.0", "kwaivgi/kling-avatar-v2", "burned-in text", "tm tool take_qa", "--gate video",
                "tm organic pick --run R --stage takes", "fails_qa", "tm tool deliver speed"],
         "g1": ["OrganicCaptions", "keepAudio", "volume", "zoom", "audioTracks", "music", "word groups",
-               "phrases", "tm tool deliver measure", "tm render video", "tm tool deliver finish",
+               "tm organic captions", "overlays", "--keep-shot-audio", "02_research/music/",
+               "tm tool cover_fit", "tm tool deliver measure", "tm render video", "tm tool deliver finish",
                "tm tool deliver upload", "tm tool deliver cover", "before `tm done G1`"],
         "g2": ["audience language", "tm kit check", "tm kit md"],
         "g4": ["tm trends collect on --run R", "tm organic page delivery", "tm page published --run R --page delivery",

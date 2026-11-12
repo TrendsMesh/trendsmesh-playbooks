@@ -13,7 +13,7 @@ from tm.tools import music_index
 
 pytest.importorskip("numpy")
 
-COLUMNS = ["file", "title", "duration_s", "lufs", "bpm_est", "mood", "licence", "source"]
+COLUMNS = ["file", "title", "duration_s", "lufs", "bpm_est", "mood", "licence", "source", "author"]
 
 
 def _sine(path, seconds=15):

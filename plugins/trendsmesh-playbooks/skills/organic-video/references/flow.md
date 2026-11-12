@@ -670,10 +670,19 @@ carries a bed. A style is asked only for an animation.
    --language <audience language> --use-case social_media --json`, plus the user's own voices:
    `tm tool elevenlabs voices --run R --mine --json` lists the voices on their account (their clones
    and the voices they saved, with previews; free). Send the previews; ask in the chat language.
-3. **Music**: from the user's folder, indexed with `tm tool music_index --run R <the folder>
-   --json` (length, loudness, tempo, mood), or a Mixkit track with a free commercial licence
-   (give the user the link; they download the track they pick into the folder, then index it). A
-   trending sound is added in the app per the kit, never in the edit.
+3. **Music**: from the channel's music folder (the profile's `music.folder`, else
+   `library/channels/<channel>/music/`), indexed with `tm tool music_index --run R <the folder>
+   --json` (length, loudness, tempo, mood, licence, source, author), or a Mixkit track (the Mixkit
+   Stock Music Free License: commercial use, no credit needed), which the plugin fetches, never the
+   user: `tm tool music_fetch --run R --search "<the mood, in English>" --json` lists tracks (id,
+   title, author, length, tags, the preview to send); for the one you suggest, `tm tool music_fetch
+   --run R --mixkit <id> --page <the search page it printed> --json` shows its title, author,
+   length, size and licence and stops. Ask the user; after their yes, the same command with `--yes`
+   downloads it into the channel's music folder and indexes the folder, every field filled. The 2
+   to 3 tracks you offer are copied into the run by the engine, never by hand: `tm tool music_fetch
+   --run R --copy <file> --copy <file> --json` (into `02_research/music/`; a page shows only the
+   run's own files, and it cannot play a sound from another site). A trending sound is added in the
+   app per the kit, never in the edit.
 4. **A style**, for an animation only: the one picked on the proposals page (`00_raw/proposal.json`
    `decision.style`) is offered first, selected; else 2 to 3 of our styles by number, name and
    description (`tm organic atlas-styles --json`: each says what it suits), each with a one-line
@@ -914,6 +923,19 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      --frame <a frame with the title and the cards> --json`, free), so the images page shows it
      beside the evidence videos.
 3. **The images check-in**:
+   - **The text style** (the edit's two text layers, [G1](#g1)) is shown at this check-in: once
+     the first frame (or the host image, or a storyboard panel) is made, draw the suggested style
+     on it, free: `tm organic text look --run R --picture 03_wip/<the frame> --caption "<a line of
+     the voiceover>" --overlay "<the hook>" --json`, both lines in the audience language. It writes
+     `03_wip/text_style_vNN.json` and the still `03_wip/text_look_vNN.png`, which the images page
+     shows beside every item (build the page after it; in chat, send the PNG). Ask: the captions and
+     the overlays will look like this; accept, or say what to change. A change is a new version of
+     the style (sizes in px at 1080×1920, `offsetY` negative moves the text up, `width` up to 790, the
+     safe zone's, `highlight` a colour that lights the spoken word, `words` [min, max] per
+     caption), drawn again with `--style 03_wip/text_style_vNN.json` and shown again. Their yes:
+     `tm organic text approve --run R --style 03_wip/text_style_vNN.json --note "<their words>"
+     --json`; by rule (Just the big calls, Hands-off) the suggested style, `--by rule --note "the
+     suggested style"`.
    - **Check every step**: the images page side by side.
      `tm organic page gate --gate images --run R --json` builds `04_final/gate_images_vNN/`;
      `tm trends collect on --run R --json` right before its publish; then
@@ -1064,12 +1086,26 @@ A Remotion render takes about 1 minute.
 
 1. **The edit**: `03_wip/edit_vNN.props.json` for `OrganicCaptions`: `segments` (each take's `src`,
    `start`, `end`, and per segment `volume` to level the native sound and `zoom`, for example to
-   crop burned-in text out), `keepAudio: true` for native sound, `audioTracks` (the voiceover at
-   its `from`), `music` (a bed under speech, low, with its fades) and `captions`: **by word groups
-   for a talking take** (from the take's transcript) and **by phrases for a narrated one** (the
-   ElevenLabs `.phrases.srt`), inside the safe zone (x 90 to 880, y 260 to 1540). Measure first:
-   `tm tool deliver measure --run R 03_wip/<take>.mp4 --json` gives each file's loudness for its
-   `volume`. A slow take is sped up first (`tm tool deliver speed`, at most 1.25).
+   crop burned-in text out), `keepAudio: true` for a talking take's own speech, `audioTracks` (the
+   voiceover at its `from`), `music` (a bed under speech, low, with its fades) and the text on
+   screen in **two layers**, inside the safe zone (x 90 to 880, y 260 to 1540):
+   - **overlays** at the top, in a box (`"style": "hook"`): only the hook, the key number and the
+     closing question, at most 3, written by you in the props with their `from` and `to`;
+   - **captions** under the voiceover, TikTok style, made by the engine, never by hand: `tm organic
+     captions --run R --props 03_wip/edit_vNN.props.json --words 03_wip/<voiceover>.words.json
+     --json` writes a new version of the props with word groups of 2 to 4 from the recording's word
+     times, at the bottom, and the overlays, both in the approved text style (F1). A talking take's
+     word groups come from its transcript (`tm tool transcribe`), with `--source
+     03_wip/<take>.mp4`: they are placed through the edit's cuts.
+   - **The AI shot's own sound is muted under a voiceover** (`keepAudio: false`; MiniMax H3 always
+     makes sound): `tm render video` refuses an AI take's own sound under the voiceover. Keep it
+     only when the user asks for it: `tm render video ... --keep-shot-audio`.
+   - **The music** is the picked track, the run's copy D2 made in `02_research/music/` (`tm tool
+     music_fetch --run R --copy <its file name> --json` for a track picked later): the props'
+     `music.src` names it.
+
+   Measure first: `tm tool deliver measure --run R 03_wip/<take>.mp4 --json` gives each file's
+   loudness for its `volume`. A slow take is sped up first (`tm tool deliver speed`, at most 1.25).
    - **A video in sections**: the segments cut the sections **in their order** (S1, S2, S3), each
      from its own section's outputs: a footage section's takes (or a sped-up copy), an insert's
      `03_wip/<section id>/renders/anim_vNN.mp4`, a stills section's motion-graphics render (the
@@ -1090,13 +1126,17 @@ A Remotion render takes about 1 minute.
      MB for the page's download (still over at the last setting: the stop says so, and the video
      stays a local file);
    - the cover: a frame without captions plus 2 to 7 words in the hook's style, clear of the face
-     and inside the 3:4 crop: `tm render still --run R --comp OrganicCaptions --props
-     03_wip/cover_<id>_vNN.props.json --frame <n> --out 04_final/kits/cover_<id>_vNN.png --json`,
-     then `tm tool deliver cover --run R 04_final/kits/cover_<id>_vNN.png --json` (the JPG). A cover
-     is made for the latest final: after a new final, make its cover again.
+     and inside the 3:4 crop: `tm tool cover_fit --run R --props 03_wip/cover_<id>_vNN.props.json
+     --frame <n> --json` finds the faces in the frame, moves or shrinks the text until every face is
+     clear (writing a new version of the props when it changed them) and draws
+     `04_final/kits/cover_<id>_vNN.png`. When it finds no face, look at the cover: a face it missed
+     is given with `--face X,Y,W,H` (px at 1080×1920). Then `tm tool deliver cover --run R
+     04_final/kits/cover_<id>_vNN.png --json` (the JPG). A cover is made for the latest final: after
+     a new final, make its cover again.
 4. `tm done G1 --run R` (refused until the latest final is 1080×1920, H.264, AAC at 48 kHz, within
-   1 LU of its target, with its upload copy and the cover JPG made for it; for a video in sections,
-   until the edit it was made from cuts every section in order, each from its own outputs).
+   1 LU of its target, with its upload copy and the cover JPG made for it; until the edit it was
+   made from has captions under its voiceover and its text in the approved style; for a video in
+   sections, until that edit cuts every section in order, each from its own outputs).
 
 <a id="g2"></a>
 ## G2 Cover, upload copy and posting kit

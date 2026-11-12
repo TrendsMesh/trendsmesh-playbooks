@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Audio, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, Easing, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { compFont, loadFor } from "./fonts";
 
 // PB3 organic edit: source segments cut back to back (always muted: the trending sound is attached
@@ -8,16 +8,33 @@ import { compFont, loadFor } from "./fonts";
 // (PB3 decision 12; values and sources in playbook-03-organic-ai-video/ANALYSIS.md). Scaled to other sizes.
 export const SAFE_1080 = { top: 260, bottom: 380, left: 90, right: 200 };
 
+// A segment is a video cut (`start` to `end` seconds of it), or a still picture (.png, .jpg, .webp) shown for
+// `end - start` seconds: the text look and a cover are drawn over a first frame (issue 89).
 export type Segment = { src: string; start: number; end: number; volume?: number; zoom?: number; zoomOrigin?: string }; // volume used only with keepAudio (0 mutes this segment)
+// One spoken word and its seconds in the video (tm organic captions writes them from the voiceover's word times).
+export type Word = { text: string; from: number; to: number };
 export type Caption = {
   from: number;
   to: number;
   text: string;
-  // "hook" = white box with black text (TikTok background style); "note" = white text with a dark outline
-  style?: "hook" | "note";
-  // anchor inside the safe zone
+  // "hook" = a box with dark text (TikTok background style): the overlays (the hook, the key number, the closing
+  // question); "caption" = the captions under the voiceover, TikTok style: white with a black outline, at the bottom;
+  // "note" = white text with a dark outline
+  style?: "hook" | "note" | "caption";
+  // anchor inside the safe zone (default: top, bottom for a caption)
   place?: "top" | "middle" | "bottom";
+  // the lines follow the size and the width; a line break in the text is kept
   fontSize?: number;
+  // px at 1080×1920 from the anchor: negative moves the text up (off a face), positive down
+  offsetY?: number;
+  // the text column's width, px at 1080 (default 680, centred on the frame; at most 790, the safe zone's width)
+  width?: number;
+  color?: string;
+  background?: string; // the box of a hook
+  stroke?: string; // the outline of a caption or a note
+  // the spoken word's colour, when `words` are given (a caption)
+  highlight?: string;
+  words?: Word[];
 };
 export type Music = { src: string; volume: number; fadeInSec?: number; fadeOutSec?: number };
 export type OrganicCaptionsProps = {
@@ -48,20 +65,46 @@ export const organicCaptionsDefaults: OrganicCaptionsProps = {
 
 export const totalSeconds = (segments: Segment[]) => segments.reduce((s, x) => s + (x.end - x.start), 0);
 
+export const COLUMN_1080 = 680; // the default column: the larger side margin on both sides
+export const IMAGE = /\.(png|jpe?g|webp)$/i;
+
+// The text column, px in the output frame: `width` (default COLUMN_1080) centred on the frame, moved left as far as
+// the safe zone allows when it is wider than the centred column can be.
+export const column = (c: Caption, k: number, width: number) => {
+  const usable = 1080 - SAFE_1080.left - SAFE_1080.right;
+  const w = Math.min(Math.max(c.width ?? COLUMN_1080, 120), usable) * k;
+  const left = Math.min(Math.max(width / 2 - w / 2, SAFE_1080.left * k), width - SAFE_1080.right * k - w);
+  return { left, w };
+};
+
+const Words: React.FC<{ c: Caption; t: number }> = ({ c, t }) => (
+  <>
+    {(c.words ?? []).map((w, i) => (
+      <React.Fragment key={i}>
+        {i > 0 ? " " : null}
+        <span style={{ color: t >= w.from && t < w.to ? c.highlight : undefined }}>{w.text}</span>
+      </React.Fragment>
+    ))}
+  </>
+);
+
 const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string }> = ({ c, k, fontFamily }) => {
   const frame = useCurrentFrame();
-  const { width, height } = useVideoConfig();
+  const { width, height, fps } = useVideoConfig();
   const pop = interpolate(frame, [0, 5], [0.9, 1], { extrapolateRight: "clamp", easing: Easing.out(Easing.back(2)) });
-  const top = SAFE_1080.top * k;
-  const bottom = SAFE_1080.bottom * k;
-  // Text is centered on the frame, not on the (asymmetric) safe zone: the column uses the larger
+  const shift = (c.offsetY ?? 0) * k;
+  const top = SAFE_1080.top * k + shift;
+  const bottom = SAFE_1080.bottom * k - shift;
+  // Text is centered on the frame, not on the (asymmetric) safe zone: the default column uses the larger
   // side margin on both sides, so it stays inside the safe zone and looks centered (user, round 6).
-  const side = Math.max(SAFE_1080.left, SAFE_1080.right) * k;
-  const left = side;
-  const boxW = width - 2 * side;
-  const justify = c.place === "bottom" ? "flex-end" : c.place === "middle" ? "center" : "flex-start";
-  const size = (c.fontSize ?? (c.style === "note" ? 52 : 58)) * k;
-  const hook = c.style !== "note";
+  const { left, w: boxW } = column(c, k, width);
+  const caption = c.style === "caption";
+  const place = c.place ?? (caption ? "bottom" : "top");
+  const justify = place === "bottom" ? "flex-end" : place === "middle" ? "center" : "flex-start";
+  const size = (c.fontSize ?? (caption ? 64 : c.style === "note" ? 52 : 58)) * k;
+  const hook = c.style !== "note" && !caption;
+  const outline = caption ? 9 : 6;
+  const lit = caption && c.highlight && (c.words ?? []).length > 0;
   return (
     <div style={{ position: "absolute", top, left, width: boxW, height: height - top - bottom, display: "flex", flexDirection: "column", justifyContent: justify, alignItems: "center" }}>
       <div
@@ -72,19 +115,20 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string }> = ({ 
           fontSize: size,
           lineHeight: 1.18,
           textAlign: "center",
-          color: hook ? "#111" : "#fff",
-          background: hook ? "#fff" : "transparent",
+          color: c.color ?? (hook ? "#111" : "#fff"),
+          background: hook ? c.background ?? "#fff" : "transparent",
           borderRadius: 14 * k,
           padding: hook ? `${10 * k}px ${22 * k}px` : 0,
-          WebkitTextStroke: hook ? undefined : `${6 * k}px #111`,
+          WebkitTextStroke: hook ? undefined : `${outline * k}px ${c.stroke ?? (caption ? "#000" : "#111")}`,
           paintOrder: "stroke fill",
-          textShadow: hook ? undefined : `0 ${3 * k}px ${8 * k}px rgba(0,0,0,0.45)`,
+          textShadow: hook ? undefined : `0 ${3 * k}px ${8 * k}px rgba(0,0,0,${caption ? 0.6 : 0.45})`,
           maxWidth: boxW,
           whiteSpace: "pre-line",
+          textWrap: "balance",
           boxDecorationBreak: "clone",
-        }}
+        } as React.CSSProperties}
       >
-        {c.text}
+        {lit ? <Words c={c} t={c.from + frame / fps} /> : c.text}
       </div>
     </div>
   );
@@ -103,7 +147,11 @@ export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, capt
         cursor += s.end - s.start;
         return (
           <Sequence key={`s${i}`} from={from} durationInFrames={dur}>
-            <OffthreadVideo src={staticFile(s.src)} startFrom={Math.round(s.start * fps)} muted={!keepAudio || s.volume === 0} volume={s.volume ?? 1} style={{ width: "100%", height: "100%", objectFit: "cover", transform: s.zoom ? `scale(${s.zoom})` : undefined, transformOrigin: s.zoomOrigin ?? "50% 50%" }} />
+            {IMAGE.test(s.src) ? (
+              <Img src={staticFile(s.src)} style={{ width: "100%", height: "100%", objectFit: "cover", transform: s.zoom ? `scale(${s.zoom})` : undefined, transformOrigin: s.zoomOrigin ?? "50% 50%" }} />
+            ) : (
+              <OffthreadVideo src={staticFile(s.src)} startFrom={Math.round(s.start * fps)} muted={!keepAudio || s.volume === 0} volume={s.volume ?? 1} style={{ width: "100%", height: "100%", objectFit: "cover", transform: s.zoom ? `scale(${s.zoom})` : undefined, transformOrigin: s.zoomOrigin ?? "50% 50%" }} />
+            )}
           </Sequence>
         );
       })}

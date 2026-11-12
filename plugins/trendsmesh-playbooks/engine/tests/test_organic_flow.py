@@ -84,7 +84,7 @@ REQUIRES = {"A0": ("organic_intake_written", "stack_recorded"), "A1": ("profile_
             "E3": ("script_checked", "script_page_built"),   # Task 9
             "D1": ("credits_recorded", "recipe_written"), "E2": ("pack_checked",),   # Tasks 18 and 12
             "F1": ("images_picked",), "F2": ("takes_checked",),   # Task 15
-            "G1": ("final_checked", "sections_covered"), "G2": ("kit_checked",),   # Tasks 16 and 20
+            "G1": ("final_checked", "sections_covered", "text_followed"), "G2": ("kit_checked",),   # Tasks 16, 20, issue 89
             "G4": ("final_page_built",),   # Task 17
             "I2": ("week_checked", "week_page_built"), "I3": ("slots_started",), "I4": ("week_delivered",)}   # Task 21
 

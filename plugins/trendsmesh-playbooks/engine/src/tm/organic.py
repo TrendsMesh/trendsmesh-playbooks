@@ -284,6 +284,9 @@ def _setup(p: argparse.ArgumentParser) -> None:
     a.add_argument("--page", required=True, help="the animation page in the run (window.seek, window.DURATION)")
     a.add_argument("--fps", type=int, help="frames a second (default: the config's animation.fps, 30)")
     a.add_argument("--json", action="store_true")
+    from tm import organic_edit   # it reads organic_final, which reads modules that import this one
+
+    organic_edit.add_parsers(sub)   # tm organic text look|approve, tm organic captions (issue 89)
 
 
 def _videos(args: argparse.Namespace) -> int:
@@ -1059,13 +1062,19 @@ def _stack(args: argparse.Namespace) -> int:
     return 0
 
 
+def _edit(args: argparse.Namespace) -> int:
+    from tm import organic_edit
+
+    return organic_edit.ACTIONS[args.action](args)
+
+
 _ACTIONS = {"stack": _stack, "videos": _videos, "used": _used, "history": _history, "seed-check": _seed_check,
             "proposals": _proposals, "page": _page, "script": _script, "decisions": _decisions, "start": _start,
             "week": _week, "flexible": _flexible, "deliver-week": _deliver_week, "drop-slot": _drop_slot,
             "pack": _pack, "redo": _redo, "pick": _pick, "upscale": _upscale,
             "dashboard-checked": _dashboard_checked, "atlas-styles": _atlas_styles, "atlas-prompt": _atlas_prompt,
             "atlas-page": _atlas_page,
-            "storyboard": _storyboard, "animate": _animate, "vo-sync": _vo_sync}
+            "storyboard": _storyboard, "animate": _animate, "vo-sync": _vo_sync, "text": _edit, "captions": _edit}
 
 
 def _run(args: argparse.Namespace) -> int:

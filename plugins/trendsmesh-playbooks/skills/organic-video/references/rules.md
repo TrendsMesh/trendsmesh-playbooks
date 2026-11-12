@@ -235,10 +235,11 @@ The agent may not skip them. The config changes only thresholds and defaults, no
 - **Safe zone** (most restrictive across platforms, at 1080×1920): text and key action inside x 90–880, y 260–1540.
   - Text is centred on the frame, never on the safe zone.
   - An Atlas animation in 9:16 keeps text and key action **above y 1260**, leaving the caption band free (round 32).
-- **Captions:**
-  - talking: word groups from the transcript;
-  - narrated: phrase by phrase from the TTS timestamps;
+- **Text on screen, two layers** (issue 89), in a style the user approves at the images check-in:
+  - **captions** under the voiceover, TikTok style: 2 to 4 words at a time from the recording's word times (talking: from the transcript), white with a black outline, at the bottom, made by `tm organic captions`;
+  - **overlays** at the top, in a box: only the hook, the key number and the closing question;
   - formats with a known caption style: the copied style (OV3).
+- **An AI shot's own sound is muted under a voiceover** (MiniMax H3 always makes sound); kept only when the user asks.
 - **QA per take:**
   - scene detection for cut times;
   - Whisper transcript in the audio language against the script (a hint; the user's listen is final; quiet lines need a level envelope);
@@ -266,7 +267,7 @@ Written for every final video and script, per the rules in `resources/posting-ki
   - **no sources in any post text** (round 38);
   - the product is a soft line, never the lead.
 - **AI label:** on for any photoreal AI person, animal or scene; mandatory for an AI human host; not required for stylised animation.
-- **Cover:** a caption-free frame + 2–4 words, clear of the face, inside the 3:4 crop. A **YouTube thumbnail** is optional (tick on the final gate; only outside the Shorts feed; YPP).
+- **Cover:** a caption-free frame + 2–4 words, clear of the face (`tm tool cover_fit` checks it and moves or shrinks the text), inside the 3:4 crop. A **YouTube thumbnail** is optional (tick on the final gate; only outside the Shorts feed; YPP).
 - **Sound hand-off** (no API can attach library sounds):
   - the kit gives the sound name, an evidence link, the in-app steps and the volume split (original 100%, added 10–15% under speech or ASMR);
   - a `_nosound` export when the trending sound replaces the track;

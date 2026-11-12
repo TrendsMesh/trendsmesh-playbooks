@@ -162,6 +162,21 @@ What changed in each version of the TrendsMesh playbooks plugin.
   mitigation, not the number of risks: several characters are a low risk on still images and a medium one in AI
   footage, and text the model would draw is no risk when all the text is added in the edit. The proposals page says
   where the level comes from, for example "Highest risk: several characters, in AI footage (medium)".
+- **Organic AI video's text on screen is two layers, in a style you approve.** Under a voiceover, captions now read
+  like the platform's own: 2 to 4 words at a time from the recording's word times, white with a black outline, at
+  the bottom, made by the plugin (`tm organic captions`), with the spoken word lit if you like. Only the hook, the
+  key number and the closing question go on top, in a box. Before the edit, the images check-in shows both drawn
+  on your first frame (free): accept it or say what to change. The text can now move up or down off a face, use the
+  whole width of the safe zone, and wraps to its size.
+- **No AI shot sound under a voiceover.** A generated shot always comes with its own sound; with a voiceover it is
+  now muted in the edit, and the render refuses to keep it unless you asked for it.
+- **The cover's text stays clear of the face.** The plugin finds the face in the cover's frame and moves the words
+  above or below it, or makes them smaller, inside the 3:4 crop (`tm tool cover_fit`).
+- **The plugin fetches the music.** A Mixkit track (free for commercial use, no credit needed) is found with
+  `tm tool music_fetch`, shown with its title, author, length, size and licence, and downloaded into your channel's
+  music folder only after your yes, indexed with every field filled in. The tracks offered to you are copied into
+  the run, where the page plays them and the edit uses the one you pick: you never download or copy a music file by
+  hand.
 
 ## 0.12.0
 

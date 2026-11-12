@@ -57,7 +57,7 @@ steps:
   - {id: F1, title: "First stage: images, character or storyboard", outputs: [organic_video], checkins: [images], checkin_first: true, spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [images_picked], ref: "skills/organic-video/references/flow.md#f1"}
   - {id: F2, title: "Second stage: takes, animation or render", outputs: [organic_video], checkins: [video], checkin_first: true, spends: true, budget: ai_usd, skip_when: {pack: reject}, requires: [takes_checked], ref: "skills/organic-video/references/flow.md#f2"}
   # G. Edit, kit, delivery (step 7)
-  - {id: G1, title: "Edit, mix, captions", outputs: [organic_video], spends: false, skip_when: {pack: reject}, requires: [final_checked, sections_covered], ref: "skills/organic-video/references/flow.md#g1"}
+  - {id: G1, title: "Edit, mix, captions", outputs: [organic_video], spends: false, skip_when: {pack: reject}, requires: [final_checked, sections_covered, text_followed], ref: "skills/organic-video/references/flow.md#g1"}
   - {id: G2, title: "Cover, upload copy and posting kit", outputs: [organic_video], spends: false, skip_when: {pack: reject}, requires: [kit_checked], ref: "skills/organic-video/references/flow.md#g2"}
   - {id: G4, title: Final page, outputs: [organic_video], checkins: [final_edit], spends: false, skip_when: {pack: reject}, requires: [final_page_built], ref: "skills/organic-video/references/flow.md#g4"}
   # H. Publish (step 8)

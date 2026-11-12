@@ -69,9 +69,14 @@ def _final(run: RunFolder, version: int = 1) -> Path:
 
 @pytest.mark.private_data
 def test_organic_captions_registered():
-    """The handoff's OrganicCaptions.tsx, as text, and its <Composition> from the handoff's Root.tsx; refresh-ad's two
-    stay (the handoff's quiz and rankings follow, Task 20: test_organic_sections)."""
-    assert _text(REMOTION / "OrganicCaptions.tsx") == _text(HANDOFF_REMOTION / "OrganicCaptions.tsx")
+    """The handoff's OrganicCaptions.tsx, grown in the plugin (the fonts of issue 3, the two text layers of issue 89)
+    with the handoff's safe zone and every prop it had, and its <Composition> from the handoff's Root.tsx; refresh-ad's
+    two stay (the handoff's quiz and rankings follow, Task 20: test_organic_sections)."""
+    ours, handoff = _text(REMOTION / "OrganicCaptions.tsx"), _text(HANDOFF_REMOTION / "OrganicCaptions.tsx")
+    safe = next(line for line in handoff.splitlines() if line.startswith("export const SAFE_1080"))
+    assert safe in ours.splitlines()
+    for prop in re.findall(r"^  (\w+)\??:", handoff, re.M):
+        assert re.search(rf"^  {prop}\??:", ours, re.M), prop
     root, original = _text(REMOTION / "Root.tsx"), _text(HANDOFF_REMOTION / "Root.tsx")
     ours, theirs = _blocks(root), _blocks(original)
     assert list(ours)[:3] == ["HookSwap", "WordCaptions", "OrganicCaptions"]
@@ -251,7 +256,7 @@ def test_kit_checked_is_the_kit_check_mark(ov):
 
 def test_steps_require_the_checks():
     steps = {s.id: s for s in flow.steps(ORGANIC_VIDEO)}
-    assert steps["G1"].requires == ("final_checked", "sections_covered") and steps["G2"].requires == ("kit_checked",)
+    assert steps["G1"].requires == ("final_checked", "sections_covered", "text_followed") and steps["G2"].requires == ("kit_checked",)
     assert stepchecks.NAMES["final_checked"] == "tm.organic_final:final_gap"
     assert stepchecks.NAMES["kit_checked"] == "tm.kit:kit_gap"
 

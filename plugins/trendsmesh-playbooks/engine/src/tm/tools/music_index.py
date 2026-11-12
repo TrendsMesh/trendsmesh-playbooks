@@ -5,7 +5,8 @@
 For every audio file in DIR (not its sub-folders): duration (ffprobe), integrated loudness in LUFS
 (ffmpeg ebur128), an estimated tempo in BPM (onset autocorrelation on a 60 s excerpt, numpy only;
 an estimate, and it may be half or double the felt tempo), and mood / licence / source from
-MOODS.json {"file.mp3": {"mood", "licence", "source"}}, else the file's genre tag, else empty (the
+MOODS.json {"file.mp3": {"mood", "licence", "source"}}, else the file's own tags (genre; licence or
+copyright; source; artist for the author: `tm tool music_fetch` writes them all), else empty (the
 agent then asks the user once). The agent cannot listen: it picks by this index and the user confirms.
 
 The index is written into the run, `02_research/music_index_vNN.csv` (the next version, never an
@@ -24,13 +25,14 @@ from pathlib import Path
 from tm.tools import _common as c
 
 AUDIO = {".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg"}
-COLUMNS = ["file", "title", "duration_s", "lufs", "bpm_est", "mood", "licence", "source"]
+COLUMNS = ["file", "title", "duration_s", "lufs", "bpm_est", "mood", "licence", "source", "author"]
 TEMPO_SR = 11025
 
 
 def _probe(path: Path) -> dict:
-    out = subprocess.run([c.ffprobe_bin(), "-v", "error", "-show_entries",
-                          "format=duration:format_tags=title,artist,genre,comment", "-of", "json", c.media(path)],
+    tags = "title,artist,genre,comment,copyright,licence,source"
+    out = subprocess.run([c.ffprobe_bin(), "-v", "error", "-show_entries", f"format=duration:format_tags={tags}",
+                          "-of", "json", c.media(path)],
                          capture_output=True, check=True).stdout
     fmt = json.loads(out.decode("utf-8", "replace")).get("format", {})
     return {"duration": float(fmt.get("duration") or 0),
@@ -69,18 +71,11 @@ def tempo(path: Path, duration: float) -> float | None:
     return round(float(bpm[ok][np.argmax(ac[ok])]), 1)
 
 
-@c.guarded
-def main(argv: list[str] | None = None) -> int:
-    p = c.parser("music_index", "Index a music folder: length, loudness, tempo estimate, mood.")
-    p.add_argument("music_dir", help="the folder with the music (only read)")
-    p.add_argument("--moods", default=None, help="a JSON file {\"file.mp3\": {mood, licence, source}}")
-    a = p.parse_args(argv)
-    run = c.open_run(a.run)
-    c.inputs(run, a, "music_dir")   # a run-relative input, whatever the working folder
-    folder = Path(a.music_dir)
+def index(run, folder: Path, moods: dict | None = None, out: str | None = None) -> tuple[Path, list[dict], list[str]]:
+    """Index `folder` into the run's next music_index_vNN.csv (or `out`): (that file, its rows, the skipped files)."""
     if not folder.is_dir():
         raise c.ToolError(f"The music folder {c.name_of(folder)} does not exist. Nothing was written.")
-    moods = c.read_json(run, a.moods, "moods file") or {}
+    moods = moods or {}
     files = sorted((f for f in folder.iterdir() if f.is_file() and f.suffix.lower() in AUDIO), key=lambda f: f.name)
     if not files:
         raise c.ToolError(f"The music folder {c.name_of(folder)} holds no audio files "
@@ -94,20 +89,34 @@ def main(argv: list[str] | None = None) -> int:
             skipped.append(f.name)
             continue
         extra = moods.get(f.name) if isinstance(moods.get(f.name), dict) else {}
-        rows.append({"file": f.name, "title": info["tags"].get("title", ""),
+        tags = info["tags"]
+        rows.append({"file": f.name, "title": tags.get("title", ""),
                      "duration_s": round(info["duration"], 1), "lufs": loudness(f), "bpm_est": bpm,
-                     "mood": extra.get("mood", info["tags"].get("genre", "")),
-                     "licence": extra.get("licence", ""), "source": extra.get("source", "")})
+                     "mood": extra.get("mood", tags.get("genre", "")),
+                     "licence": extra.get("licence", tags.get("licence", tags.get("copyright", ""))),
+                     "source": extra.get("source", tags.get("source", "")), "author": tags.get("artist", "")})
     if not rows:
         raise c.ToolError(f"No audio file in {c.name_of(folder)} could be read ({', '.join(skipped)}). "
                           "Nothing was written.")
-    out = c.output(run, a.out, "research", "music_index", "csv")
-    with out.open("w", newline="", encoding="utf-8") as fh:
+    target = c.output(run, out, "research", "music_index", "csv")
+    with target.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=COLUMNS, lineterminator="\n")
         w.writeheader()
         w.writerows({k: ("" if v is None else v) for k, v in r.items()} for r in rows)
-    c.record(run, out, "music folder index", c.parent_ref(run, folder), params={"files": len(rows)},
+    c.record(run, target, "music folder index", c.parent_ref(run, folder), params={"files": len(rows)},
              cost="free")
+    return target, rows, skipped
+
+
+@c.guarded
+def main(argv: list[str] | None = None) -> int:
+    p = c.parser("music_index", "Index a music folder: length, loudness, tempo estimate, mood.")
+    p.add_argument("music_dir", help="the folder with the music (only read)")
+    p.add_argument("--moods", default=None, help="a JSON file {\"file.mp3\": {mood, licence, source}}")
+    a = p.parse_args(argv)
+    run = c.open_run(a.run)
+    c.inputs(run, a, "music_dir")   # a run-relative input, whatever the working folder
+    out, rows, skipped = index(run, Path(a.music_dir), c.read_json(run, a.moods, "moods file"), a.out)
     note = f" Skipped (unreadable): {', '.join(skipped)}." if skipped else ""
     return c.finish(a, {"tool": "music_index", "outputs": [c.rel(run, out)], "files": len(rows),
                         "skipped": skipped},

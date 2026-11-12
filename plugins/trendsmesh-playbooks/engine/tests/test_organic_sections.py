@@ -388,7 +388,7 @@ def test_segment_paths_in_any_spelling(tmp_path, animatic_ready):
 def test_g1_requires_sections_covered():
     """Preflight P3-F7: an edit that drops or swaps a section does not pass G1."""
     g1 = next(st for st in flow.steps(ORGANIC_VIDEO) if st.id == "G1")
-    assert g1.requires == ("final_checked", "sections_covered")
+    assert g1.requires == ("final_checked", "sections_covered", "text_followed")
     assert stepchecks.NAMES["sections_covered"] == "tm.organic_final:sections_gap"
 
 

@@ -93,8 +93,8 @@ GATE_WORDS = {name: f"organic.gate.{name}" for name in (
     "title_images", "title_video", "title_edit", "lede_images", "lede_video", "lede_edit", "proposal", "label_final",
     "q_final", "label_images", "q_images", "label_takes", "q_takes", "label_voiceover", "q_voiceover",
     "label_storyboard", "q_storyboard", "label_animation", "q_animation", "label_motion", "q_motion", "cap_final",
-    "cap_cover", "cap_packshot", "cap_host", "cap_evidence", "cap_still", "cap_contact", "dl_video", "dl_cover",
-    "cover_file", "qa_pass", "qa_fails", "qa_findings", "qa_none")}
+    "cap_cover", "cap_packshot", "cap_host", "cap_evidence", "cap_still", "cap_text_style", "cap_contact", "dl_video",
+    "dl_cover", "cover_file", "qa_pass", "qa_fails", "qa_findings", "qa_none")}
 
 
 def gate_words(lang: str | i18n.Translator) -> dict[str, str]:

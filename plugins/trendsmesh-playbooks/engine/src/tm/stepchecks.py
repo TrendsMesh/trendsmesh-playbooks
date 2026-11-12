@@ -57,6 +57,7 @@ NAMES: dict[str, str] = {
     "takes_checked": "tm.organic_qa:takes_gap",
     "final_checked": "tm.organic_final:final_gap",
     "sections_covered": "tm.organic_final:sections_gap",
+    "text_followed": "tm.organic_edit:text_gap",
     "kit_checked": "tm.kit:kit_gap",
     "final_page_built": "tm.organic_gates:delivery_gap",
     "week_checked": "tm.organic_week:checked_gap",

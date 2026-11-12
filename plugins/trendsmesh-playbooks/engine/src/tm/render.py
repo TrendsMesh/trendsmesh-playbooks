@@ -6,7 +6,10 @@
 HookSwap and WordCaptions are refresh-ad's. OrganicCaptions is the handoff's organic edit (playbook 03, FLOWS.md G1):
 source segments cut back to back, the native sound kept per segment with `keepAudio`, an optional music bed and
 voice tracks, and native-style captions inside the platforms' common safe zone. Its loudness is levelled after
-the render by `tm tool deliver finish`. The handoff's motion graphics (`MOTION_COMPS`, FLOWS.md F4): `QuizGrid` (a "Guess the
+the render by `tm tool deliver finish`. In an organic run, `tm render video` refuses an edit that keeps an AI shot's own
+sound under the voiceover (`organic_edit.shot_audio_gap`, issue 89) unless the user asked for it (`--keep-shot-audio`).
+`draft_still` draws a frame of props given as data to a scratch file, never recorded (`tm tool cover_fit` measures its
+drafts). The handoff's motion graphics (`MOTION_COMPS`, FLOWS.md F4): `QuizGrid` (a "Guess the
 _" quiz: its `options[].img` pictures in a 2×2 grid, a countdown, the reveal, an optional `music`), `RankingList` and
 `RankingSplit` (a countdown ranking: one clip per `items[].src`, cut back to back and muted; RankingSplit is the look
 copied from the evidence, lesson 21).
@@ -272,6 +275,12 @@ def _organic(run: RunFolder) -> bool:
 def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra: list[str], params: dict) -> Path:
     props, out = run.given(props).resolve(), Path(out)   # a run-relative props file, whatever the working folder
     data = _check_props(run, comp, props)
+    if kind == "render" and comp == "OrganicCaptions" and not params.get("keep_shot_audio") and _organic(run):
+        from tm import organic_edit   # it imports organic_final, which imports this module
+
+        gap = organic_edit.shot_audio_gap(run, data)
+        if gap:
+            raise c.ToolError(gap)
     run.assert_writable(out)
     if out.exists():
         raise c.ToolError(f"{out.name} already exists, and files are never overwritten.")
@@ -322,14 +331,40 @@ def _with_language(run: RunFolder, comp: str, data: dict, props: Path) -> tuple[
     return data, filled
 
 
+def draft_still(run: RunFolder, comp: Comp, data: dict, frame: int, dest: Path) -> Path:
+    """One frame of props given as data, drawn to `dest`, a scratch file outside the run that is never recorded: a
+    tool that measures a still draws its drafts with it (`tm tool cover_fit`, issue 89). The props are checked as a
+    render's are; the language is filled in the same way."""
+    work_dir().mkdir(parents=True, exist_ok=True)
+    props = work_dir() / f".draft-{os.getpid()}-{Path(dest).stem}.json"
+    props.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    try:
+        data = _check_props(run, comp, props)
+        _need_setup()
+        data, props_arg = _with_language(run, comp, data, props)
+        _sync_src()
+        _sh([_node_tool("npx"), "remotion", "still", "src/index.ts", comp, str(Path(dest).resolve()),
+             f"--props={props_arg}", f"--public-dir={run.path.resolve()}", "--log=warn", f"--frame={int(frame)}"],
+            work_dir(), "remotion still")
+        if props_arg != props:
+            props_arg.unlink(missing_ok=True)
+    finally:
+        props.unlink(missing_ok=True)
+    if not Path(dest).is_file():
+        raise c.ToolError(f"Remotion finished but {Path(dest).name} was not written.")
+    return Path(dest)
+
+
 def still(run: RunFolder, comp: Comp, props: Path, frame: int, out: Path) -> Path:
     """One frame of a composition as a PNG."""
     return _render(run, "still", comp, props, out, [f"--frame={int(frame)}"], {"frame": int(frame)})
 
 
-def video(run: RunFolder, comp: Comp, props: Path, out: Path) -> Path:
-    """The whole composition as an H.264 MP4."""
-    return _render(run, "render", comp, props, out, ["--codec=h264"], {})
+def video(run: RunFolder, comp: Comp, props: Path, out: Path, *, keep_shot_audio: bool = False) -> Path:
+    """The whole composition as an H.264 MP4. `keep_shot_audio`: the user asked to keep an AI shot's own sound under
+    the voiceover (`organic_edit.shot_audio_gap`, issue 89), recorded in the render's params."""
+    return _render(run, "render", comp, props, out, ["--codec=h264"],
+                   {"keep_shot_audio": True} if keep_shot_audio else {})
 
 
 # CLI ---------------------------------------------------------------------------------------
@@ -345,6 +380,9 @@ def _setup_cli(p: argparse.ArgumentParser) -> None:
         s.add_argument("--json", action="store_true")
         if name == "still":
             s.add_argument("--frame", type=int, required=True)
+        else:
+            s.add_argument("--keep-shot-audio", action="store_true",
+                           help="keep an AI shot's own sound under the voiceover (only when the user asks for it)")
 
 
 def _run_cli(a: argparse.Namespace) -> int:
@@ -359,7 +397,7 @@ def _run_cli(a: argparse.Namespace) -> int:
             done = still(run, a.comp, Path(a.props), a.frame, out)
         else:
             out = c.output(run, a.out, "wip", f"{stem}_{a.comp.lower()}", "mp4")
-            done = video(run, a.comp, Path(a.props), out)
+            done = video(run, a.comp, Path(a.props), out, keep_shot_audio=a.keep_shot_audio)
         return c.finish(a, {"tool": "render", "kind": a.kind, "outputs": [c.rel(run, done)]},
                         f"Rendered {c.rel(run, done)}.")
     except c.ToolStop as exc:

@@ -242,10 +242,31 @@ def _still(run: RunFolder, pack: dict, t: dict) -> dict | None:
         under = params.get("made_under") if isinstance(params.get("made_under"), dict) else {}
         made = organic_specs.when(under.get("at"))
         if (params.get("composition") not in compositions(pack) or made is None
-                or (checked is not None and made < checked)):
+                or (checked is not None and made < checked) or _is_text_look(params)):
             continue
         return {"src": row["file"], "caption": t["cap_still"].format(comp=params["composition"],
                                                                      frame=params.get("frame", "?"))}
+    return None
+
+
+def _is_text_look(params: dict) -> bool:
+    props = params.get("props")
+    return isinstance(props, dict) and isinstance(props.get("textStyle"), dict)
+
+
+def _text_look(run: RunFolder, t: dict) -> dict | None:
+    """The latest still of the edit's text style (`tm organic text look`, issue 89) as a ref: the images check-in shows
+    it beside every item, for the user to accept or change."""
+    for row in reversed(manifest.rows(run)):
+        if (row["model"] != "remotion still" or not row["file"].startswith(f"{WIP}/")
+                or not (run.path / row["file"]).is_file()):
+            continue
+        try:
+            params = json.loads(row["params"]) if row["params"] else {}
+        except ValueError:
+            continue
+        if isinstance(params, dict) and _is_text_look(params):
+            return {"src": row["file"], "caption": t["cap_text_style"]}
     return None
 
 
@@ -357,7 +378,8 @@ def gate_json(run: RunFolder, gate: str) -> dict:
     t = _ui(lang_of(pack))
     refs, missing = _refs(run, pack, t)
     still = _still(run, pack, t) if gate == "images" and pack.get("style_spec") else None
-    items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + ([still] if still else []))
+    look = _text_look(run, t) if gate == "images" else None
+    items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + [r for r in (still, look) if r])
     if gate == "video" and organic_pack.stills(pack):
         extra, entries = _motions(run, pack, t)
         items += extra
