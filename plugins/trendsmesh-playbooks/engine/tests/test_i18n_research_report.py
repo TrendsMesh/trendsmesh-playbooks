@@ -262,3 +262,21 @@ def test_the_english_value_words_are_the_stored_values():
     for below in (95, 80, 60, 10):                         # the share of the pool below the trend
         pool = [0] * below + [9] * (100 - below)
         assert research_growth.relative({"new_recent": 1}, {"median_new": 1}, pool)["band"] in research_report.BAND_KEY
+
+
+def test_a_hooks_band_by_its_rising_place_counts_the_rising_hooks_in_polish(tmp_path):
+    """Issue #58's band ("Top 10% of TrendsMesh's 101 rising hooks") on the plural forms and the stored band."""
+    _translate_forms(tmp_path)
+    tr = i18n.translator("pl")
+    pg = research_report._Page(None, tmp_path, category="Uroda", market="PL", as_of=None, sample={},
+                               trends_by_id={}, paid={}, paid_checked=False, tr=tr)
+    for n, form in ((22, "FEW·"), (101, "MANY·"), (1, "ONE·")):
+        hook = {"kind": "hook_trend", "relative": {"band": "top 10%", "rising_of": n, "velocity_index": 1}}
+        said = pg.momentum(hook)[0]
+        assert said.startswith(form) and str(n) in said and tr("report.value.band_top_10")[:4] in said, said
+    no_band = pg.momentum({"kind": "hook_trend", "relative": {"band": None, "rising_of": 40}})[0]
+    assert no_band == tr("report.band_not_rising")
+    en = research_report._Page(None, tmp_path, category="Uroda", market="PL", as_of=None, sample={},
+                               trends_by_id={}, paid={}, paid_checked=False)
+    assert en.momentum({"kind": "hook_trend", "relative": {"band": "top 10%", "rising_of": 101}})[0] == \
+        "Top 10% of TrendsMesh's 101 rising hooks"
