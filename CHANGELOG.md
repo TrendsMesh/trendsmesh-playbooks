@@ -2,7 +2,7 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
-## Unreleased
+## 0.11.0
 
 - **New playbook: Create an ad (first build).** Makes a new Meta video ad from zero for a product with a website:
   a short intake, concepts built on a proven ad format and rising trends, the claims, a script-board, a production
