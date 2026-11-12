@@ -71,8 +71,9 @@ LABELS = {"risk": {"low": _W + "risk_low", "medium": _W + "risk_medium", "high":
           "reserve": (_W + "reserve", " ({})"), "video": _W + "video", "script": _W + "script", "ok": _W + "ok",
           "skip": _W + "skip", "decision": "organic.decision", "swap": _W + "swap", "note": _W + "note",
           "note_l": _W + "note_label", "empty": _W + "empty", "res_cost": _W + "reserve_cost",
-          "eyebrow": (_W + "eyebrow", "{} · "), "meta": _W + "meta", "bar": _W + "bar", "over": _W + "over",
+          "eyebrow": (_W + "eyebrow", "{} · "), "bar": _W + "bar", "over": _W + "over",
           "help": _W + "help", "cal": _W + "calendar", "res": _W + "reserves", "run": ("organic.run_folder", "{} ")}
+META = _W + "meta"          # "{n} videos this week …": a count of the table, in the form the number takes (issue #3)
 
 
 def labels(lang) -> dict:
@@ -246,7 +247,7 @@ def render(week: dict, lang: str | None = None) -> str:
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class="wrap">
 <header style="display:grid;gap:8px"><div class="eyebrow">{esc(L['eyebrow'])}{esc(w['channel'])}</div><h1>{esc(w['title'])}</h1>
-<p class="meta">{esc(L['meta'].format(n=len(w['slots']), pf=pfs, rh=w['rhythm'], b=format(w['budget'], '.2f')))}</p>
+<p class="meta">{esc(tr.plural(META, len(w['slots']), n=len(w['slots']), pf=pfs, rh=w['rhythm'], b=format(w['budget'], '.2f')))}</p>
 <p class="meta" style="font-size:14px">{esc(w.get('note',''))}</p></header>
 <div class="bar" role="region" aria-label="{esc(L['bar'])}"><div class="brow"><span class="sum" id="sum"></span><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="approve" type="button">{esc(L['approve'])}</button><span class="status" id="st" aria-live="polite"></span></span></div>
 <div class="meter" id="meter"><i></i></div><p class="small" id="over" hidden>{esc(L['over'])}</p>

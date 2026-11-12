@@ -891,7 +891,9 @@ organic:
     note_label: Note
     empty: no post
     reserve_cost: "Cost: video ${v} · script ${s}. Pick it in “Swap idea” on any day."
-    meta: "{n} videos this week · posting to: {pf} · production: {rh} · budget ${b} for the whole week."
+    meta:
+      one: "{n} video this week · posting to: {pf} · production: {rh} · budget ${b} for the whole week."
+      other: "{n} videos this week · posting to: {pf} · production: {rh} · budget ${b} for the whole week."
     bar: Budget and approval
     over: "The plan is over budget: switch a video to a script, swap it for a cheaper idea, or skip it."
     help: For each day pick “AI video” or “Script” (you film it, $0), swap the idea for another one from the list, or skip it. “Approve the week” starts production of the whole week; then you get one page with the finished videos, scripts and posting kits.

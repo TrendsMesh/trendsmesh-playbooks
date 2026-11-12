@@ -49,7 +49,7 @@ def _used() -> set[str]:
             | {k for _, k in organic_pages.WORDING} | {k for _, k in organic_pages.REFERENCE["pl"]}
             | _frag_keys(proposals.FRAGS) | _frag_keys(f for n in (1, 2, 5) for f in proposals.lede_frags(n))
             | set(proposals._DECISION_KEYS.values()) | set(proposals._FIELD_KEYS.values()) | set(proposals.LEAD_KEYS.values()) | set(proposals.ADDED.values())
-            | _frag_keys(gate.FRAGS) | _week_keys(week.LABELS) | {f"organic.week.day_{d}" for d in week.DAYS}
+            | _frag_keys(gate.FRAGS) | _week_keys(week.LABELS) | {week.META} | {f"organic.week.day_{d}" for d in week.DAYS}
             | {"organic.output"} | set(script.WORDS.values()) | set(organic_week_delivery.WORDS.values())
             | {f"organic.kit_md.{label}" for label in kit.LABELS} | _pack_md_keys() | _qa_keys()
             | {k for kind in ("product", "risk", "status", "production")
@@ -265,6 +265,17 @@ def test_a_translated_language_builds_every_page_in_it(tmp_path):
     assert all(v.startswith(PSEUDO) for v in organic_pages.gate_words("de").values())
     assert all(v.startswith(PSEUDO) for v in organic_week_delivery.words("de").values())
     assert week.labels("de")["run"] == "DE·Run folder: " and week.labels("de")["reserve"] == " (DE·reserve)"
+
+
+@pytest.mark.parametrize("lang,count,said", [("en", 1, "1 video this week"), ("en", 2, "2 videos this week"),
+                                             ("pl", 1, "1 film w tygodniu"), ("pl", 3, "3 filmy w tygodniu"),
+                                             ("pl", 5, "5 filmów w tygodniu")])
+def test_the_weeks_count_of_videos_takes_the_form_its_number_takes(lang, count, said):
+    w = _week(lang)
+    w["slots"] = [{**w["slots"][0], "id": f"w{n}", "day": day} for n, day in enumerate(("mon", "tue", "wed", "thu",
+                                                                                         "fri")[:count])]
+    meta = re.search(r'<p class="meta">([^<]*)</p>', week.render(w)).group(1)
+    assert meta.startswith(said + " · ")
 
 
 def test_the_copy_summary_is_read_in_the_page_language(tmp_path):

@@ -214,6 +214,8 @@ What changed in each version of the TrendsMesh playbooks plugin.
   platform ticks and the YouTube thumbnail, and the kit's texts still come one per platform with their Copy
   buttons. Large videos are still shown as 720p previews, and the page is in Polish for a Polish run. The
   proposals, the week, the script, the intake and the models pages are unchanged for now.
+- **The week page counts its videos in your language.** Its summary said "1 videos this week", and in Polish
+  "filmów" for every number; it now says "1 video", "2 videos", and in Polish "1 film", "3 filmy", "5 filmów".
 
 ## 0.12.0
 

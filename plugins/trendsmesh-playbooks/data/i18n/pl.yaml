@@ -410,7 +410,10 @@ strings:
       note_label: Uwaga
       empty: bez publikacji
       reserve_cost: "Koszt: wideo ${v} · skrypt ${s}. Wybierz go w „Zamień pomysł” przy dowolnym dniu."
-      meta: "{n} filmów w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień."
+      meta:
+        one: "{n} film w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień."
+        few: "{n} filmy w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień."
+        many: "{n} filmów w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień."
       bar: Budżet i zatwierdzenie
       over: "Plan przekracza budżet: zmień jakiś film na skrypt, zamień go na tańszy pomysł albo pomiń."
       help: Przy każdym dniu wybierz „Wideo AI” albo „Skrypt” (nagrasz sam, $0), zamień pomysł na inny z listy albo go pomiń. „Zatwierdź tydzień” uruchamia produkcję całego tygodnia; potem dostaniesz jedną stronę z gotowymi filmami, skryptami i zestawami do publikacji.
