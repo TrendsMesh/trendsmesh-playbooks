@@ -331,6 +331,21 @@ What changed in each version of the TrendsMesh playbooks plugin.
   in Refresh an ad, Claude offers it once, at the winner breakdown, when the ad's on-screen text is to be removed or
   replaced and the teardown is unsure of it. Say no, and Claude checks the frames by eye as before.
 
+- **No command stops on "partially initialized module" any more.** Trend research's report imported the run page at
+  its top, and the run page loads every playbook's page code, so `tm tool deliver`, `tm kit`, the Organic AI video
+  pages and nine other commands stopped when they were the first thing loaded. A test now loads every part of the
+  engine first, on its own.
+- **Organic AI video's ideas in chat say how each will look.** The "Choose what to make" message restates each
+  idea's look, an animation's 2 to 3 styles with a one-line why each, and the risk level from its highest risk, as
+  the ideas file and page already did.
+- **An accept with a note stays an accept.** On Organic AI video's images page, a picked image with a note on it is
+  recorded as the pick, the note is quoted and carried into the takes' prompts, and a redo is only offered.
+- **Trend research asks about an unfinished run first**, before its readiness checks.
+- **Create an ad's production plan is asked on the run page**, with each line's cost and the price's date, like
+  every other check-in, even when the user says not to ask about prices.
+- **Creative brief, publishing with the older tools:** the declaration is read once, before it is declared; the
+  declare answer is the check.
+
 ## 0.12.0
 
 - **Creative brief's PDFs print when the run is given by a relative path.** `tm brief page --run <relative path>`

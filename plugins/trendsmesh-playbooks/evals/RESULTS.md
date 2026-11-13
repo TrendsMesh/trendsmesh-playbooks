@@ -56,6 +56,45 @@ name in a comment. A result folder from before the rename carries the old name.
 | `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
 | `vo_shortened_with_bridging_line` | `vo_bridging_line` |
 
+## The 0.13.0 release run (all cases, 2026-11-12 and 13)
+
+Every case once (`evals/run.sh --report-issue --ablation none -j 3`), on `dev` at 84e6467 plus the fixes below.
+`claude plugin eval` now runs a no-plugin baseline arm by default (`--ablation with-without`), which doubles the run
+and is not needed for a release check, so `--ablation none` is passed. The private cases (`cb_*`) and the private
+fixtures folder (`_lib/fixtures/ld`) are links in the main checkout, and the runner refuses any linked folder under
+`evals/`, so they were copied in for the run and linked back after.
+
+**First run: 64 of 78 passed.** After the fixes, each failing case was run again on its own: **77 of 78 pass.**
+
+What the run found, and the fix:
+
+| Found | Kind | Fix |
+|---|---|---|
+| Five `case.yaml` files held their front matter and prompt behind a `---`, and the runner refused the whole run | cases | split back into `case.yaml` and `prompt.md`; `test_eval_cases.py` checks every case loads |
+| `ov_intake_two_languages` had no front matter (no harness notes, no tool limits) | case | its sibling's front matter |
+| `tm tool deliver`, `tm kit` and ten more modules stopped on an import cycle when loaded first (`research_report` imported the run page at its top) | **plugin** | the run page imported where it is used; `test_imports.py` loads every module first |
+| Fixture Replicate records were `succeeded`, not `done` as `replicate_run` writes, so the images page found nothing (`ov_page`) | fixture | `done` |
+| The Create an ad walk approved only the casting at Check every step (`ca_weak_voice_change`) | fixture | it approves the paid video too |
+| Three graders used Python's inline regex flags, which the runner's JavaScript regex refuses (`doctor_general`, `ra_g12_paused`) | graders | `flags: 'i'`, `[\s\S]`; `test_eval_cases.py` names any inline flag |
+| Organic's idea card in chat did not restate each idea's look, the styles' whys and the risk by its highest (`ov_c1_look`) | **plugin** | `checkin-cards.md` |
+| An accept with a note on the images page was asked again (`ov_page`) | **plugin** | F1: an accept with a note is recorded as the accept |
+| Trend research ran the readiness checks before an unfinished run's question (`tr_expired_run_says_so`) | **plugin** | SKILL.md section 1; the case also gets the sandbox's base-tools note |
+| Create an ad's S5 did not say the plan's check-in goes on the run page (`ca_plan_cost_needs_yes`) | **plugin** | S5 names the ask and the page build; the case may Write its ask |
+| Creative brief read its declaration again after declaring it with the older tools (`cb_page_decisions_from_db`) | **plugin** | C1: `declare_capabilities`' answer is the check |
+| Graders behind the skill: the intake's quality tier (gone), resolution prices as the take or the pack's total, the guess label read as the notice again, the bubble question read as a voice question, the untouched test campaign read as "running", the run's Polish "(ze strony)" | graders | each says what it meant |
+| `hands_off_no_budget`'s run had no creative brief from B1 | fixture | B1 writes it |
+| `ra_g12_paused`'s agent called the engine through a shell variable | grader | matches `tm.sh` or a variable |
+| `ca_caption_on_face`, `ca_quiet_line_not_missing`, `cb_no_trendsmesh_guess`: the agent slipped once (a file path given, a re-take offered before Scribe, a split judge) | variance | passed on the rerun |
+
+**Not passing: `cb_page_decisions_from_db`.** Its scaffold builds the brief page, whose PDFs Chrome prints; in the
+runner's sandbox the scaffold's home folder is empty, and macOS Chrome does not finish printing that page without a
+home folder (it does in a second with one, and a plain page prints either way), so the PDF step waits its 120 s and
+the scaffold runs over the runner's limit. A user's machine always has a home folder. The case got past its
+scaffold once in the reruns, and its failure then (the declaration read again) is fixed above.
+
+The runner's grader votes come without the judge's reasons; for the unclear ones the message and the rubric were
+given to Haiku, the default judge, for its reasons.
+
 ## Wave 1 fixes (`dev` at 8191ef6, 2026-11-11)
 
 Run on 2026-11-11 with Claude Code 2.1.319, from a worktree of `dev` after wave 1's 23 issues (67d6885..8191ef6),
