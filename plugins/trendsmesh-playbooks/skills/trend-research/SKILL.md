@@ -43,6 +43,8 @@ saved), `schedule.md` (the weekly schedule).
 
 ## 1. Readiness first (also `/trendsmesh-playbooks:doctor`)
 
+One thing comes before it: an unfinished run's question (section 3), asked before any check.
+
 Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin):
 
 1. **TrendsMesh**: sign-in first, then the plan (`../refresh-ad/references/trendsmesh-sign-in.md`,

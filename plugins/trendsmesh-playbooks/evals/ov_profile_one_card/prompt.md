@@ -1,5 +1,5 @@
 ---
-description: "No run yet. A Polish parenting channel about kids and gaming asks for video ideas. TrendsMesh is on the Agent plan (the shared mock); no artifacts tools. The agent makes the run, reads the stack, and asks the A0 intake in one batch (the output, the quality tier, the resolution, the budget and how involved among them), its assumptions marked, nothing about the voice or the music, and offers the content-rules line for a children's niche (OV1, A1)."
+description: "No run yet. A Polish parenting channel about kids and gaming asks for video ideas. TrendsMesh is on the Agent plan (the shared mock); no artifacts tools. The agent makes the run, reads the stack, and asks the A0 intake in one batch (the output, the resolution, the budget and how involved among them), its assumptions marked, nothing about the voice or the music, and offers the content-rules line for a children's niche (OV1, A1)."
 tags: [organic-video, ov1, intake]
 max_turns: 60
 timeout_seconds: 1800

@@ -3,7 +3,7 @@ description: "Create an ad, Check every step, at the production plan's check-in 
 tags: [create-ad, ca7, money]
 max_turns: 25
 timeout_seconds: 900
-allowed_tools: [Read, Glob, Grep, Skill]
+allowed_tools: [Read, Glob, Grep, Skill, Write]
 append_system_prompt: |
   Test harness notes, not from the user. If you are following the create-ad playbook: the engine command
   `tm` is not on PATH in this sandbox, so wherever the playbook says `tm ...`, run `sh ./tm.sh ...` from the

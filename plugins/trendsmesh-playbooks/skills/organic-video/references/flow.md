@@ -1046,7 +1046,9 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      images --json` (what they saved) and `tm page decision --run R images --record --json`: it
      records the check-in (`tm decide images <their choice>`, the note "(from the page)") and
      writes `03_wip/decisions_gate_images_vNN.json`, as the images page did: each accept is that
-     item's pick; each redo with a note is the user's request, paid for as in
+     item's pick, also with a note on it (record it, quote the note, say how it goes into the
+     takes' prompts, and offer a redo with its cost only as an option: never ask them to choose
+     again); each redo with a note is the user's request, paid for as in
      [E2](#paying-for-a-redo) and then run once. A choice made on an earlier question, or one the
      page did not offer, is refused (its message says what to do). An answer in chat is one line
      per item (`<item id>: accept|redo|drop[; choice: <option id>][; note: <their words>]`) in a

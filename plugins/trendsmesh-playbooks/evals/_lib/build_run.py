@@ -2070,7 +2070,9 @@ def main(scn: str, ws: Path) -> int:
         # Hands-off cannot be chosen at intake without the AI budget (tm config check says so), so the
         # run starts at Check every step and the user switches level later, as the case's prompt says.
         run = new_run(ws, ["creative_brief", "ai_video"], level="every_step")
-        n = drive(ws, run, "D2", scn="hook")
+        n = drive(ws, run, "D2", scn="hook", hooks={"B1": lambda ws, run: place(
+            ws, run, "04_final/creative_brief_v01.md", "# Creative brief\n\nOne card: the new opening card.\n",
+            "the creative brief (eval fixture)")})
     elif scn == "at_e3_hands_off_launch":
         run = new_run(ws, ["creative_brief", "live_test"],
                       budget={"test_per_day": 150, "test_days": 7})

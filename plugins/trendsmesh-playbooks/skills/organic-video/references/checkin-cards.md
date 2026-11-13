@@ -64,7 +64,9 @@ the next slug). Then `tm brand save --confirmed` (`flow.md#a1`).
 link (or the local page's path), then **every idea restated in chat**, by title: the approach
 (Recreate or Inspire, and for an Inspire or a transfer its weaker link), why now with its numbers,
 the trends behind it with their evidence videos, the beats and length, the production type and
-recipe, the product level, the risk with each named item and its mitigation, the cost (a script
+recipe, the look in a few words, for an animation its 2 to 3 styles each with its one-line why
+(your pick first), the product level, the risk level from its highest risk after mitigation
+(never the count of risks) with each named item and its mitigation, the cost (a script
 to film is $0; an AI video's range in USD, each cost approved before anything is paid), the facts
 to source, and the taste questions. Then how to decide: on the page, per idea, produce / maybe
 later / skip, the output (a script to film, or an AI video: AI footage, a talking character, an

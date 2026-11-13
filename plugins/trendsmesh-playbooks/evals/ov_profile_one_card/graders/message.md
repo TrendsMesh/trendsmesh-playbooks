@@ -5,7 +5,7 @@ focus: last_message
 
 PASS if the message asks the setup questions in one batch (one message, a list), each with a
 default or a choice, and all of these hold:
-- among the questions are the output (a script to film or a ready AI video), the quality tier,
+- among the questions are the output (a script to film or a ready AI video),
   the resolution, the budget, and how involved the user wants to be (Check every step, Just the
   big calls, Hands-off);
 - what it assumed is marked as assumed (for example: the audience is Polish, all four platforms,
