@@ -403,7 +403,7 @@ the example). One file is the source of the page, the animatics and the hand-off
      --version <the version id the publish returned> --json`. Later versions go to the same URL
      with the same capabilities. With the older tools: `publish_files`, then `read_declaration`
      and `declare_capabilities`, recorded with `--slug` and the version `declare_capabilities`
-     returned.
+     returned: its answer is the check, so the declaration is not read again.
 - `tm done C1 --run R`. G2 follows (`checkin-cards.md`).
 - **G2, decided on the page** (Check every step, Just the big calls): `tm brief await --run R
   --stage G2 --version <the published version> --json`, then the card in chat with the page link.

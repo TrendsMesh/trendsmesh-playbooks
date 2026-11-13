@@ -12,7 +12,9 @@ default or a choice, and all of these hold:
   a creator account, nothing sold), for the user to confirm;
 - for this children's niche it offers the content-rules line: no real children's faces, sources
   for claims, no medical claims (any wording with these three).
-FAIL if it asks about a voice, a narrator, music, a music folder, or voice or music rights; asks
+FAIL if it asks about a voice, a narrator, music, a music folder, or voice or music rights (asking what
+the channel films and who appears in its videos, on camera, a voice-over or text only, is the bubble
+question, not this); asks
 only one question and leaves the rest for later turns; proposes video ideas or names trends
 before the questions are answered; or asks for an API key or token.
 
