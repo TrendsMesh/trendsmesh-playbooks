@@ -145,7 +145,9 @@ page and one in chat count the same. Rules: `rules.md`.
   casting for Seedance, and two takes of one speaker whose lines fit one. `tm done S5`. The check-in is "Confirm the
   production plan and its cost" (at Just the big calls on one card with the script-board), on the run page like
   every check-in: its ask written (`pages.md`, `03_wip/ask_plan.json`), `tm page build --run R --ask <it>`, then its
-  card in chat with each line's cost and the price's date, even when the user says not to ask: the user confirms once
+  card in chat with each line's cost and the price's date, even when the user says not to ask, and even when a paid
+  call can't run yet (no Replicate or ElevenLabs key, a price that can't be refreshed: the page and card come first,
+  and what is missing is named as the step before the first paid call): the user confirms once
   per asset type; a new type or a model change later is a new plan version and asks again. After the yes, `tm
   budget approve --run R ai_usd <the pre-video ai_usd total>` (and `voice_credits`). Hands-off: the intake's budget
   is the yes; a plan above it waits for the user.
@@ -268,7 +270,9 @@ page and one in chat count the same. Rules: `rules.md`.
   --script <the board's lines>`, and its layers: `tm tool layer_check --run R 03_wip/edit_vNN.mp4 --layers
   03_wip/edit_layers_vNN.json` finds a caption or an overlay over a face (in the take's own frames, through the
   window's crop and box), two layers over each other, and a still scaled up. A collision is moved in a new version
-  (S6) before anything is shown: the user never sees it. Write what was checked next to the version,
+  (S6) before anything is shown: the user never sees it, so the message names no path to the failing version and
+  offers no "rough look" at it, even when the new version can't be made in this session (say what stops it and
+  that the run continues from there). Write what was checked next to the version,
   `03_wip/edit_qa_vNN.json`: `{"edit"
   (the latest edit), "qa" (its latest take_qa file), "checked": [{"check" (cuts, take_scenes, stills, captions,
   speech, joins, overlay_ends, text), "result" (ok, not_applicable, problem), "note" (what you looked at)}]}`, one

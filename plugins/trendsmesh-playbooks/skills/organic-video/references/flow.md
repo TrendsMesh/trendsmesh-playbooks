@@ -384,7 +384,11 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    publishing tool**: `tm page build --run R --ask 03_wip/ask_proposals.json --local --json`; its path
    goes in the message that restates the ideas, and the decisions are taken in chat.
 3. `tm done C2 --run R`; the `proposals` check-in comes next (`checkin-cards.md`): the link, and every
-   idea restated in chat, with the reply button.
+   idea restated in chat, with the reply button. The chat card holds what the stage shows, since the user
+   may answer in chat (and must, with a local page): for **every** idea its look in a few words, for an
+   animation (or an animated part) its 2 to 3 styles **each with its one-line why**, and its risk level
+   with the one risk it comes from ("Risk: medium, from the host speaking in one long take"), never a
+   level made from counting risks.
 4. **When the user says they are done** ("ready", "gotowe"): **one unfiltered `ArtifactData` list**:
    `action: "list"`, the run page's `url`, collection `decisions`, `query: {"limit": 1000}`, no `cursor`
    (the older tools: one `db_list` on the slug, `limit` 1000). The collector saves it; then `tm page

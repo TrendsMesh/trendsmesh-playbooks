@@ -56,6 +56,29 @@ name in a comment. A result folder from before the rename carries the old name.
 | `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
 | `vo_shortened_with_bridging_line` | `vo_bridging_line` |
 
+## The 0.13.1 release run (all cases, 2026-11-13)
+
+Every case once (`evals/run.sh --report-issue --ablation none -j 3 --max-cost-usd 500`), on `dev` at cfacbb6 (wave 7)
+plus the fixes below. `run.sh` caps a run at $15, which stops a full run about halfway (the first try ended at 37 of
+79 cases), so a release run passes a higher ceiling; on the subscription the run costs nothing. Each failing case was
+then run again on its own (`--case`, `--keep-temp` for its trace).
+
+**First run: 57 of 79 passed.** After the fixes and the reruns: **77 of 79 pass.**
+
+| Found | Kind | Fix |
+|---|---|---|
+| Seven Organic cases stopped on "Failed to authenticate. API Error: 403" from Cloudflare (five agents, two judges), and `missing_video_stops` on its first rerun | infrastructure | run again: six passed; `ov_c1_look` then failed for the reason below |
+| Nine cases failed once and passed on their own (`ri_inbox_down_email_fallback`, `tr_no_trendsmesh`, `ra_page`, `cut_in_shot`, `hands_off_no_ai_budget`, `talking_head_cuts`, `middle_recuts`, `missing_video_stops`, `cb_no_trendsmesh_guess`) | variance | passed on the rerun |
+| The whole-run Refresh an ad cases mocked only weekly and daily rows, while A1a's structural check always asks for every ad's creative and video and each ad's whole life; a whole-life request with no `time_increment` broke the mock's file name, and the agent rightly paused (`hook_fade_only_hook`) | mock | `gen_mocks.py`: creatives, videos and a whole-life answer (`time_increment: all`) for `account_drop`, `hook_fade_only_hook` and `no_trendsmesh_guess` (its case map also had the names from before the 90-character rename) |
+| Organic's ideas in chat lost each idea's look, the styles' whys and the risk's source once the ideas moved onto the run page: C2 listed them for the page, not for the chat card (`ov_c1_look`) | **plugin** | C2 step 3: the chat card holds what the stage shows |
+| Create an ad held back an edit with a caption over the face, then offered its path "for a rough look" (`ca_caption_on_face`) | **plugin** | S7: no path to the failing version, no rough look |
+| Create an ad stopped at the readiness check (no Replicate key in the sandbox) before the plan's page and card (`ca_plan_cost_needs_yes`) | **plugin** | S5: the plan's check-in comes first; a missing key is the step before the first paid call |
+| Graders read a recommendation as a pick (`ca_presenter_page`), wanted the video's prompt named at the plan (`ca_plan_cost_needs_yes`), and wanted two directions where a new opening is the only one (`no_trendsmesh_guess`) | graders | each says what it meant |
+
+**Not passing: `cb_page_decisions_from_db` and `cb_no_artifacts_local_page`**, both at their scaffold, for the reason
+under the 0.13.0 run: macOS Chrome prints the brief's PDFs slowly without a home folder (136 s for
+`cb_at_c1_no_artifacts` with an empty home, 27 s with one), and the runner's scaffold limit is about 120 s.
+
 ## The 0.13.0 release run (all cases, 2026-11-12 and 13)
 
 Every case once (`evals/run.sh --report-issue --ablation none -j 3`), on `dev` at 84e6467 plus the fixes below.

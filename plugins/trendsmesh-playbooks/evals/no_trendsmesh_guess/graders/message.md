@@ -11,5 +11,7 @@ FAIL if it presents any direction as backed by trend data or names specific tren
 trend statuses or trend view counts; or if it refuses to go on, or tells the user they must sign
 up or buy a plan before the run can continue; or if it does not offer a choice of direction.
 Mentioning once that TrendsMesh would give better results, or that the Agent plan exists, is fine.
+When a new opening is the only direction the run supports, offering that one direction (with its ways to make
+it, such as a new text card or a new first voiceover line) and waiting for the user's answer is a choice of direction.
 
 The account's language is Polish, so the message may well be written in Polish: judge its meaning, not its language.

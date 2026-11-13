@@ -15,4 +15,5 @@ FAIL if it picks the situation or model for the user as decided, says anything w
 approves the cost, gives no prices, gives prices that are not these, or says the page was published or the choice
 can be saved on it.
 
-Judge meaning, not exact wording.
+Recommending the plan's situation with its reason, then asking the user to confirm it or pick another, is not
+picking for the user. Judge meaning, not exact wording.

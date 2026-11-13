@@ -4,6 +4,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Organic AI video's ideas in chat say how each video will look.** With the ideas on the run page, the chat
+  card again gives every idea its look, an animation's styles each with its reason, and the risk level with the
+  one risk it comes from, so an answer in chat has everything the page shows.
+- **Create an ad never offers an edit that failed its check.** An edit with a caption over a face is held back
+  until the fixed version passes, and the message no longer gives its path for a rough look.
+- **Create an ad asks for the plan's yes even before a key is set.** The plan's page and card come first, with
+  each cost and its date; a missing Replicate or ElevenLabs key is named as the step before the first paid call.
 - **The README starts with a 72-second film of what the playbooks do.** Under the first paragraph, a 6-second
   preview links to the whole film, with sound and English captions.
 - **Organic AI video asks what to make and approves the week on the run page.** The video ideas and the week plan

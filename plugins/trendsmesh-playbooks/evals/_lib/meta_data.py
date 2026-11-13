@@ -187,7 +187,7 @@ AD3_UPLOADS = {
 OTHER_UPLOAD = {AD_B: ("2026-08-01", (48210, 14463, 7810, 4686, 2999, 2699))}
 # RC4's ad: its file runs in this ad only (no other upload: R2b says "not structural").
 MIDDLE_UPLOADS = {AD_A: ("2026-08-07", (61420, 19654, 11399, 6338, 3910, 3507))}
-LENGTHS = {"ad3": 24.149, "middle_ladder": 30.0}
+LENGTHS = {"ad3": 24.149, "middle_ladder": 30.0, "hook": 30.0, "account_drop": 30.0}   # AD_A's file: 30 s
 NAMES = {AD_A: NAME_A, AD_B: NAME_B, AD_C: "Example ebook (traffic)", AD_D: "Example ebook (sales)",
          AD_E: "Example ebook (checkout)"}
 
