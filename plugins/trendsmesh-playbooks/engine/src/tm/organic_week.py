@@ -500,13 +500,23 @@ def budget_gap(run: RunFolder) -> str | None:
     week's budget. Reads only."""
     try:
         rel, body, _, week = _current(run)
-        conflicts = _conflicts(run, week, body["decisions"])
+    except Stop as exc:                       # m3: a step check gives its gap, never raises
+        return f"the week's decisions and its started days can be read ({exc})"
+    return choices_gap(run, week, body["decisions"], rel)
+
+
+def choices_gap(run: RunFolder, week: dict, rows: dict, rel: str) -> str | None:
+    """Why the week's yes cannot be given on `rows` (as `choices` makes them, read from `rel`): a started day they
+    change, or a cost over the week's budget (the dropped days' spend counted); None when it can. Reads only (the
+    run page checks an answer with it before anything is recorded, `tm.run_page.organic_plan`)."""
+    try:
+        conflicts = _conflicts(run, week, rows)
         gone = dropped_spend(run)
     except Stop as exc:                       # m3: a step check gives its gap, never raises
         return f"the week's decisions and its started days can be read ({exc})"
     if conflicts:
         return f"no started day is changed ({'; '.join(conflicts)}): {_drop_todo(run)}"
-    spent = round(chosen_cost(week, body["decisions"]) + gone, 2)
+    spent = round(chosen_cost(week, rows) + gone, 2)
     if spent > week["budget"] + TOL:
         with_dropped = f", with {_usd(gone)} already spent on dropped days" if gone else ""
         return (f"the week's choices cost no more than its budget ({_usd(spent)} of {_usd(week['budget'])} in {rel}"

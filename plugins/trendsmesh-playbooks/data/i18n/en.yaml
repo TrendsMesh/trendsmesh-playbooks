@@ -1053,6 +1053,12 @@ organic:
     rec_platforms: "{item}, posting kit for: {platforms}"
     rec_thumbnail: "{item}: make a YouTube thumbnail"
     rec_pick: "{section}: {choice}"
+    # the proposals (C2) and the week (I2) as stages of the run page (engine/src/tm/run_page/organic_plan.py)
+    how_proposals: "For each idea pick Produce, Maybe later or Skip; for the ones to produce, how involved you want to be, the output and the platforms. Your choices save as you click; then answer the question at the bottom."
+    how_week: "For each day pick AI video or Script (you film it, $0), swap the idea for another one from the list, or skip it. Your choices save as you click; then approve the week at the bottom. The approval spends nothing: each video's cost is approved in its own run."
+    total: Total
+    week_cost: "{total} of {budget}"
+    rec_total: "The week's choices cost {total} of {budget}"
 
 # --- Refresh an ad's run page: engine/src/tm/run_page/ (issue #19) ---
 # decision.saved_at's {time} and decision.save_error's {error} are filled on the page itself.

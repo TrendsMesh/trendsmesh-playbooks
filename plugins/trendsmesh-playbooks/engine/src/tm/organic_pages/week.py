@@ -326,10 +326,11 @@ def built_gap(run: RunFolder) -> str | None:
 
 # --- decisions ----------------------------------------------------------------------------------------
 
-def decided_page(run: RunFolder) -> dict:
-    """The page people decide on and the week plan it was built from: the published folder (`state.pages["week"]`),
-    else the latest build. `{folder, week, data}`; a Stop when that file is gone or changed since."""
-    target = (state.load(run).pages.get(PAGE) or {}).get("folder")
+def decided_page(run: RunFolder, folder: str | None = None) -> dict:
+    """The page people decide on and the week plan it was built from: `folder` (the run page's published build,
+    `tm.run_page.organic_plan`), else the published folder (`state.pages["week"]`), else the latest build. `{folder,
+    week, data}`; a Stop when that file is gone or changed since."""
+    target = folder or (state.load(run).pages.get(PAGE) or {}).get("folder")
     rows = [r for r in manifest.rows(run) if r["source"] == SOURCE and (target is None or r["file"] == target)]
     if not rows:
         where = f"the published folder {target}" if target else "this run"
@@ -433,17 +434,31 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
         if not docs:
             raise Stop(EMPTY)
     try:
-        rows = organic_week.choices(week, docs)
-        total = organic_week.total(week, docs)
+        organic_week.choices(week, docs)
     except ValueError as exc:
         raise Stop(f"The week page's decisions cannot be used: {exc} Let the user choose again on the page, or write "
                    f"their answer in chat form and read it with --text; {AGAIN}.") from None
+    got = write_decisions(run, decided, docs, source=source, how="chat" if text is not None else "page", slug=slug,
+                          carried_from_earlier=text is None)
+    head = ("file", "from", "page", "folder", "week", "source", "decisions", "carried")   # the keys in their old order
+    return {**{k: got[k] for k in head}, "docs": len(docs), **{k: v for k, v in got.items() if k not in head}}
+
+
+def write_decisions(run: RunFolder, decided: dict, docs: list[tuple[str, dict]], *, source: Path, how: str,
+                    slug: str | None, carried_from_earlier: bool) -> dict:
+    """Write the page's documents (`docs`, read on the build `decided`; checked by `organic_week.choices`) as the next
+    decisions file (the module docstring), record it and stop waiting on the week page. `how`: page or chat;
+    `carried_from_earlier`: mark a day equal to an earlier build's read as carried (a read of this page's db; never the
+    run page, which asks anew)."""
+    week = decided["data"]
+    rows = organic_week.choices(week, docs)
+    total = organic_week.total(week, docs)
     newest = organic_week.newest_docs(week, docs)
     read = {day: {k: v for k, v in doc.items() if k != "updated_at"} for day, doc in newest.items()
             if day != WEEK_DOC}
     week_doc = newest.get(WEEK_DOC) or {}
     carried = []
-    if text is None:
+    if carried_from_earlier:
         earlier = page.earlier_decisions(run, _decisions_files(run), decided["folder"], built="folder",
                                          rows="read", command=DECISIONS_SOURCE, shape=dict) or {}
         carried = page.mark_carried(copy.deepcopy(read), earlier)
@@ -455,7 +470,7 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
     out.parent.mkdir(parents=True, exist_ok=True)
     body = {"page": PAGE, "week": decided["week"], "folder": decided["folder"], "from": rel, "slug": slug or None,
             "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "source": "chat" if text is not None else "page", "decisions": rows, "read": read, "carried": carried,
+            "source": how, "decisions": rows, "read": read, "carried": carried,
             "approved": week_doc.get("approved") is True, "total": total, "page_total": page_total}
     with open(out, "x", encoding="utf-8") as fh:
         json.dump(body, fh, ensure_ascii=False, indent=2)
@@ -464,5 +479,5 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
                     params={"page": PAGE, "folder": decided["folder"], "week": decided["week"]})
     page.clear_await(run, PAGE)
     return {"file": out_rel, "from": rel, "page": PAGE, "folder": decided["folder"], "week": decided["week"],
-            "source": body["source"], "decisions": rows, "carried": carried, "docs": len(docs),
+            "source": body["source"], "decisions": rows, "carried": carried,
             "approved": body["approved"], "total": total, "budget": week["budget"]}

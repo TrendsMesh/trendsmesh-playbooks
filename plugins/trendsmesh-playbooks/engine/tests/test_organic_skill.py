@@ -39,7 +39,8 @@ ROUTED_RECIPES = {   # every model the engine itself sends a take to (a tier, a 
     "bytedance/seedance-2.5": "seedance-2.5.md",
     "prunaai/p-video-upscale": "p-video-upscale.md",
 }
-RUN_PAGE_AT = ("f1", "g4")   # the check-ins on the run page (F1, F2; G4's delivery stage) declare the build's (issue #60)
+RUN_PAGE_AT = ("c2", "f1", "g4")   # check-ins on the run page (C2's ideas, F1, F2; G4's delivery) declare the build's
+                                   # capabilities (issue #60)
 
 
 def _text(path) -> str:
@@ -200,7 +201,7 @@ def test_tool_commands_use_the_tools_own_flags():
 def test_flow_declares_what_the_engine_declares():
     """The capabilities flow.md tells the agent to declare are organic_pages.CAPABILITIES, verbatim."""
     flow_md = _text(SKILL / "references" / "flow.md")
-    for page, anchor in (("proposals", "c2"), ("script", "e3")):
+    for page, anchor in (("script", "e3"),):
         found = re.search(r"`(\{.*?\})`", _section(flow_md, anchor).split("`capabilities` =", 1)[1], re.S)
         assert found, anchor
         assert json.loads(found.group(1)) == CAPABILITIES[page], anchor
@@ -213,6 +214,18 @@ def test_flow_declares_what_the_engine_declares():
         assert "`Artifact` publish" in section and "declaration" in section, anchor
         assert "`capabilities` = the build's `capabilities`" in section, anchor
         assert "tm page published --run R --page run_page" in section, anchor
+
+
+def test_c2_asks_what_to_make_on_the_run_page():
+    """Issue #60: the proposals check-in is a stage of the run page, recorded with tm page decision, the chat route
+    and the old standalone page kept."""
+    c2 = re.sub(r"\s+", " ", _section(_text(SKILL / "references" / "flow.md"), "c2"))
+    for words in ("tm page build --run R --ask 03_wip/ask_proposals.json", "tm page await --run R --page run_page",
+                  "collection `decisions`", "tm page decision --run R proposals --record",
+                  "03_wip/decisions_proposals_vNN.json", "tm organic decisions --run R --page proposals --text",
+                  "tm decide proposals accept", "tm organic page proposals", "`proposals_page_built`"):
+        assert words in c2, words
+    assert c2.index("tm page await") < c2.index("`ArtifactData` list") < c2.index("tm page decision")
 
 
 def test_flow_a0_and_d1_mirror_the_doctor():
@@ -282,8 +295,10 @@ def test_week_steps_name_the_engine_commands():
     flow_md = _text(SKILL / "references" / "flow.md")
     named = {
         "i2": ["pb3_week.schema.json", "`flexible`", "tm organic week check",
-               "tm organic page week", "CAPABILITIES[\"week\"]", "tm page await --run R --page week",
-               "collection `week`", "tm organic decisions --run R --page week", "--text", "tm decide week approve",
+               "tm page build --run R --ask 03_wip/ask_week.json", "`capabilities` = the build's `capabilities`",
+               "tm page await --run R --page run_page", "collection `decisions`", "tm page decision --run R week --record",
+               "03_wip/decisions_week_vNN.json", "refused before anything is written or recorded",
+               "tm organic decisions --run R --page week", "--text", "tm decide week approve",
                "The week is over its budget: switch a video to a script, swap it for a cheaper idea, or skip it."],
         "i3": ["tm organic start --run R", "except the flexible day", "one after another", "--keep-carried",
                "One run per day", "tm organic drop-slot --run R --day", "tm decide week approve --run R --change",

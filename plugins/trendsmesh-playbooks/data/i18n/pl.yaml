@@ -552,6 +552,12 @@ strings:
       rec_platforms: "{item}, zestaw do publikacji dla: {platforms}"
       rec_thumbnail: "{item}: zrób miniaturę YouTube"
       rec_pick: "{section}: {choice}"
+      # the proposals (C2) and the week (I2) as stages of the run page
+      how_proposals: "Przy każdym pomyśle wybierz Produkuj, Może później albo Pomiń; przy tych do produkcji także, jak bardzo chcesz się angażować, wynik i platformy. Wybory zapisują się od razu; potem odpowiedz na pytanie na dole."
+      how_week: "Przy każdym dniu wybierz „Wideo AI” albo „Skrypt” (nagrasz sam, $0), zamień pomysł na inny z listy albo go pomiń. Wybory zapisują się od razu; potem zatwierdź tydzień na dole. Zatwierdzenie niczego nie wydaje: koszt każdego filmu zatwierdzasz w jego własnym runie."
+      total: Razem
+      week_cost: "{total} z {budget}"
+      rec_total: "Wybory tygodnia kosztują {total} z {budget}"
   # the run page's own words (engine/src/tm/run_page/template.py), which an Organic AI video page needs in Polish
   run_page:
     top:

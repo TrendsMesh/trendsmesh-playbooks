@@ -1,6 +1,6 @@
 # Pages: built locally, published as a link when the session can (shared: PB04, PB02, PB03)
 
-Every page a playbook makes (PB04's trend report, PB02's brief pack, PB03's proposals page and
+Every page a playbook makes (PB04's trend report, PB02's brief pack, PB03's run page and
 script page) is
 built by the engine into a versioned local folder, `04_final/<page>_vNN/` (`index.html` and
 `assets/`), never overwritten. Publishing it as a link is the skill's step, by these rules
@@ -104,13 +104,14 @@ PB02's brief pack lets the people who decide click Approve or Ask for changes pe
 note, on the page itself. Their decisions are saved in the artifact's own database. These rules
 come on top of the ones above.
 
-**Organic video (PB03)** follows the same rules with its own commands, given step by step in its
-skill (`skills/organic-video/references/flow.md#c2`): the proposals page is built by `tm organic
-page proposals`, its declaration is written in that section, the wait is `tm page await --run R
---page proposals --version <V>`, the read is `tm organic decisions --run R --page proposals`
-(`--text <file>` for a decision in chat), and carried-over picks are kept with `tm organic start
---keep-carried` after the user's yes. Its database rules are not proven live yet: check the rules
-the publish result says are stored (step 2), and say plainly if they are missing.
+**Organic video (PB03)** asks what to make and the week on the run page (below; its skill's
+`skills/organic-video/references/flow.md#c2`, `#i2`). A run that published its own proposals or week
+page before 0.13.1 follows these rules with its own commands: the page is built by `tm organic page
+proposals|week`, the wait is `tm page await --run R --page proposals|week --version <V>`, the read is
+`tm organic decisions --run R --page proposals|week` (`--text <file>` for a decision in chat), and
+carried-over picks are kept with `tm organic start --keep-carried` after the user's yes. Its database
+rules are not proven live yet: check the rules the publish result says are stored (step 2), and say
+plainly if they are missing.
 
 1. **Build and publish** as above (`tm page files --run R --page brief_pack --json` for the
    files; a title in the user's language, the icon `document`), with **the database declared in
@@ -179,14 +180,14 @@ the publish result says are stored (step 2), and say plainly if they are missing
     HTML file with the videos inside). The decisions are taken in chat: the local page says so
     itself, and never that choices are saved on it.
 
-## The run page (PB01 and PB05; the other playbooks later)
+## The run page (PB01, PB03 and PB05; the other playbooks later)
 
 Refresh an ad's and Create an ad's one page per run (`skills/refresh-ad/references/checkin-cards.md`, "The run
 page"; `skills/create-ad/references/pages.md`):
 `tm page build --run R --ask <file> --json` builds `04_final/run_page_vNN/` from the run state, the page
-`run_page`. Organic AI video's images, takes, delivery and taste check-ins are stages of it too
-(`skills/organic-video/references/flow.md#f1`, `#f2`, `#g4`, `#d2`): there `tm page await --page run_page`
-holds the publish while the user chooses, and `tm page decision --record` lifts it. Its decisions take the
+`run_page`. Organic AI video's proposals, week, images, takes, delivery and taste check-ins are stages of it
+too (`skills/organic-video/references/flow.md#c2`, `#i2`, `#f1`, `#f2`, `#g4`, `#d2`): there `tm page await
+--page run_page` holds the publish while the user chooses, and `tm page decision --record` lifts it. Its decisions take the
 rules above, with these calls:
 
 1. **Publish** with the Artifact tool as above: `file_path` and `files` = the build's `artifact`, and

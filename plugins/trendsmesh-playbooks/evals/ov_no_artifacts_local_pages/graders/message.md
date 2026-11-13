@@ -3,8 +3,8 @@ type: llm
 focus: last_message
 ---
 
-PASS if the message gives the local proposals page (the path of its index.html in the run's
-04_final folder) and takes the user's choices from the chat: the ChatGPT age-limit idea as a script
+PASS if the message gives the local page with the ideas (the path of its index.html in the run's
+04_final folder: the proposals page, or the run page) and takes the user's choices from the chat: the ChatGPT age-limit idea as a script
 to film at Check every step for TikTok and YouTube, the other ideas later (maybe later, not
 skipped or started). It may say once that this session can't publish claude.ai pages, so the
 choices are taken in chat.

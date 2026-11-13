@@ -658,11 +658,12 @@ def built_gap(run: RunFolder) -> str | None:
 
 # --- decisions ---------------------------------------------------------------------------------------
 
-def decided_page(run: RunFolder) -> dict:
-    """The page people decide on and the proposals it was built from: the published folder
-    (`state.pages["proposals"]`), else the latest build; its manifest row gives the file and its
-    sha256. `{folder, proposals, data}`. Stop when that file is gone or changed since."""
-    target = (state.load(run).pages.get(PAGE) or {}).get("folder")
+def decided_page(run: RunFolder, folder: str | None = None) -> dict:
+    """The page people decide on and the proposals it was built from: `folder` (the run page's published build,
+    `tm.run_page.organic_plan`), else the published folder (`state.pages["proposals"]`), else the latest build; its
+    manifest row gives the file and its sha256. `{folder, proposals, data}`. Stop when that file is gone or changed
+    since."""
+    target = folder or (state.load(run).pages.get(PAGE) or {}).get("folder")
     rows = [r for r in manifest.rows(run) if r["source"] == SOURCE and (target is None or r["file"] == target)]
     if not rows:
         where = f"the published folder {target}" if target else "this run"
@@ -834,11 +835,22 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
         docs = page.db_docs(page.whole_answer(run, PAGE, source, COLLECTION), collection=COLLECTION)
         if not docs:
             raise Stop(EMPTY)
+    got = write_decisions(run, decided, docs, source=source, how="chat" if text is not None else "page", slug=slug,
+                          carried_from_earlier=text is None)
+    return {**got, "docs": len(docs)}
+
+
+def write_decisions(run: RunFolder, decided: dict, docs: list[tuple[str, dict]], *, source: Path, how: str,
+                    slug: str | None, carried_from_earlier: bool) -> dict:
+    """Write the page's documents (`docs`, read on the build `decided`) as the next decisions file (the module
+    docstring), record it and stop waiting on the proposals page. `how`: page or chat; `carried_from_earlier`: mark a
+    row equal to an earlier build's read as carried (a read of this page's db; never the run page, which asks anew)."""
+    data = decided["data"]
     rows = organic_proposals.decisions(docs, data, organic_proposals.profile_defaults(run, data))
     read = {pid: {k: v for k, v in doc.items() if k != "updated_at"}
             for pid, doc in organic_proposals.newest_docs(docs, data).items()}
     carried = []
-    if text is None:
+    if carried_from_earlier:
         earlier = page.earlier_decisions(run, _decisions_files(run), decided["folder"], built="folder",
                                          rows="read", command=DECISIONS_SOURCE, shape=dict) or {}
         carried = page.mark_carried(copy.deepcopy(read), earlier)
@@ -849,7 +861,7 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
     out.parent.mkdir(parents=True, exist_ok=True)
     body = {"page": PAGE, "proposals": decided["proposals"], "folder": decided["folder"], "from": rel,
             "slug": slug or None, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "source": "chat" if text is not None else "page", "decisions": rows, "read": read, "carried": carried}
+            "source": how, "decisions": rows, "read": read, "carried": carried}
     with open(out, "x", encoding="utf-8") as fh:
         json.dump(body, fh, ensure_ascii=False, indent=2)
     out_rel = out.relative_to(run.path).as_posix()
@@ -857,4 +869,4 @@ def take_decisions(run: RunFolder, *, file: Path | None = None, text: Path | Non
                     params={"page": PAGE, "folder": decided["folder"], "proposals": decided["proposals"]})
     page.clear_await(run, PAGE)
     return {"file": out_rel, "from": rel, "page": PAGE, "folder": decided["folder"], "proposals": decided["proposals"],
-            "source": body["source"], "decisions": rows, "carried": carried, "docs": len(docs)}
+            "source": body["source"], "decisions": rows, "carried": carried}

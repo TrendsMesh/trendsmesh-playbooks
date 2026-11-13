@@ -4,6 +4,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## 0.13.0
 
+- **Organic AI video asks what to make and approves the week on the run page.** The video ideas and the week plan
+  are now stages of the one page per run, like the images, takes, final video and taste. Per idea you pick
+  Produce, Maybe later or Skip, how involved to be, the output, the platforms, the taste answers, the look and a
+  note, with "Produce all" and a live count with the estimated cost. Per day of the week you pick AI video or
+  Script, OK or Skip, swap the idea for another from the list, and add a note, with a live budget bar: over budget
+  it says so and the week cannot be approved. Once recorded, each stage shows what was decided, read-only, under
+  "Already settled". Claude writes the same files as before, so starting the videos and producing the week work
+  unchanged, and a week over its budget, or one idea on two days, is refused before anything is recorded.
+  Answering in chat still counts, and a run that published the old proposals or week page reads it as before.
 - **Organic AI video's other pages have the TrendsMesh look too.** The proposals, the week plan, the script to film,
   the intake, the models page and the week's delivery now have the run page's top bar, with an "Organic AI video"
   pill, and its colours and font, light on every screen. The old look's colours and Source Sans font are gone. Each

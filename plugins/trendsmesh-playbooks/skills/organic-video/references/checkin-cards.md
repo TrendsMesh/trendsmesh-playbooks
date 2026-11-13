@@ -60,8 +60,8 @@ with `tm decide profile accept --run R --note "<their words>"`; in a run of seve
 decision per channel, the note naming the channel's slug (`--note <slug>`, then `--change` with
 the next slug). Then `tm brand save --confirmed` (`flow.md#a1`).
 
-**Choose what to make** (`proposals`, after C2; at every level: what to make is taste). The page
-link (or the local page's path), then **every idea restated in chat**, by title: the approach
+**Choose what to make** (`proposals`, after C2; at every level: what to make is taste). The run
+page's link (the ideas' stage; or the local page's path), then **every idea restated in chat**, by title: the approach
 (Recreate or Inspire, and for an Inspire or a transfer its weaker link), why now with its numbers,
 the trends behind it with their evidence videos, the beats and length, the production type and
 recipe, the look in a few words, for an animation its 2 to 3 styles each with its one-line why
@@ -74,8 +74,9 @@ animation, stills with motion graphics or a video in sections), how involved to 
 video (Check every step, Just the big calls, Hands-off), the platforms, the taste answers and a
 note, then save, and tell me "ready". Or answer
 here: a decision in chat always counts. Without the page tools, the local page's path, and the
-decision here. Choice: `accept`, after the decisions are read (`tm organic decisions`) and
-restated, every note quoted whole.
+decision here. Choice: `accept`: on the page, `tm page decision --run R proposals --record` records
+it with every idea's decision; from chat, after the decisions are read (`tm organic decisions
+--text`) and restated, every note quoted whole.
 
 **Accept the script to film** (`script`, after E3). The script page link (and the Markdown
 download), then in chat: the goal, the hook and its on-screen text, the shot list in short, the
@@ -152,18 +153,14 @@ check-in again.
 
 ## Decisions taken on the page
 
-For `proposals`, after the page is published, follow `flow.md#c2` and the plugin's
-`references/pages.md`, "Pages that take decisions": the wait (`tm page await --page proposals`),
-one unfiltered `ArtifactData` list (or `db_list`) when the user says they are done, `tm organic
-decisions --page
-proposals`, and a decision in chat (`--text`). The images, takes, delivery and taste check-ins are
-stages of the run page (`flow.md#f1`, `#f2`, `#g4`, `#d2`; the plugin's `references/pages.md`, "The
-run page"): the same wait (`tm page await --page run_page`), one unfiltered `ArtifactData` list of
+The proposals, week, images, takes, delivery and taste check-ins are stages of the run page
+(`flow.md#c2`, `#i2`, `#f1`, `#f2`, `#g4`, `#d2`; the plugin's `references/pages.md`, "The run
+page"): the same wait (`tm page await --page run_page`), one unfiltered `ArtifactData` list of
 `decisions`, then `tm page decision --run R <check-in> --record`, which records the check-in and its
 items as the page's message says. Each question there is asked anew, so nothing is carried over: a
 choice saved on an earlier question is refused, and the user chooses again. **Picks carried over
-from an earlier page version** (the proposals page, or a check-in page a run published before the
-run page: the page shows the earlier choice until the person saves again) are asked about once: on
+from an earlier page version** (the proposals or week page, or a check-in page a run published before
+the run page: the page shows the earlier choice until the person saves again) are asked about once: on
 the proposals page at the start of the picked videos ("These N picks were carried over from the
 earlier page. Keep them?"; on a yes, `tm organic start --keep-carried`), on such a check-in page
 when its decisions are read (on a yes, `tm organic decisions --page <page> --keep-carried`); on a
@@ -208,7 +205,7 @@ next check-in the user sees. `profile`, `proposals` and `pack` are never decided
 
 | Check-in | Asked when | The card |
 |---|---|---|
-| Approve the week (`week`) | after I2, at every level: the user approves the week once | The week page's link, then every day restated in chat: the day and date, the idea by title, AI video or script, its cost; the skipped days; the swaps; the total against the week's budget. "Approve the week as it stands, or change a day?" Record it with `tm decide week approve --run R`, only after the week's decisions are read: the engine refuses a week over its budget in the page's words, so offer what the page offers (a script, a cheaper idea, a skip). The approval spends nothing: each video's own pack is approved in its own run. |
+| Approve the week (`week`) | after I2, at every level: the user approves the week once | The run page's link (the week's stage), then every day restated in chat: the day and date, the idea by title, AI video or script, its cost; the skipped days; the swaps; the total against the week's budget. "Approve the week as it stands, or change a day?" On the page, `tm page decision --run R week --record` records it with the week's decisions; from chat, `tm decide week approve --run R`, only after the week's decisions are read (`tm organic decisions --page week --text`): the engine refuses a week over its budget in the page's words, so offer what the page offers (a script, a cheaper idea, a skip). The approval spends nothing: each video's own pack is approved in its own run. |
 | Set up the weekly pack (`schedule`) | before I5; Hands-off by rule | When it runs (the run day, 09:00 local), what runs (next week's research, week page and approval; nothing is made before the user approves the week), what it costs (nothing to start; each video is approved in its run), how to stop it ("stop the weekly pack"), and that it works only while the Claude desktop app is open. `schedule` with `create_scheduled_task` in the session and the user's yes, else `by_hand` (`flow.md#i5`). |
 
 ## Stops the user must clear

@@ -12,6 +12,8 @@ The stages and their data (the same data as the pages they replace, made by the 
     video       the takes check-in (F2): `organic_gates.gate_json(run, "video")`, the page `gate_video`
     final_edit  the delivery page with every step (G4): `organic_gates.delivery_json(run)`, the page `delivery`
     taste       the style, voice and music (D2): `organic_pages.taste.page_json(run)`, the page `taste`
+    proposals   what to make (C2) and the week to approve (I2): `tm.run_page.organic_plan`, on the checked
+    week        proposals and the checked week plan, written as `organic_pages.proposals` and `.week` write them
 
 An open stage's data is made at each build of the run page from the run's files (each video shown over 15 MB as its
 720p preview, made here when it is missing: `organic_pages.gate._with_previews`, issue #90), kept as the page's data
@@ -30,9 +32,9 @@ reader against the data the published run page was built from: `organic_gates.ac
 question anew (`ask`), so a choice made on an earlier question is never taken.
 
 A settled stage shows what was decided, read-only: each item with its decision and the file it took (the latest
-decisions file), or the picks (the latest taste file). The pages not moved (the proposals, the week, the
-script, the intake, the models, the week's delivery) are still `tm.organic_pages`', in the run page's look and top
-bar (`organic_pages.look`).
+decisions file), or the picks (the latest taste file). The pages that are not check-ins (the script, the intake, the
+models, the week's delivery) are still `tm.organic_pages`', in the run page's look and top bar (`organic_pages.look`);
+so are the proposals and week pages `tm organic page proposals|week` still builds.
 
 The page's fixed words are `organic.*` keys (the plugin ships them in Polish); its language is the run page's
 (`words.page_lang`: the template's words and the organic area). The run's own words (labels, captions, the kit's
@@ -48,6 +50,7 @@ from pathlib import Path
 
 from tm import json_schema, kit as kits, manifest, organic_gates, page as pages, state, stepchecks
 from tm.organic_pages import choices, gate as gate_page, taste
+from tm.run_page import organic_plan
 from tm.run_page.context import Context
 from tm.run_page.template import E, media_tag, register_block
 from tm.run_page.words import tx
@@ -106,7 +109,7 @@ def _path(*parts: object) -> str:
 # --- the stage's outcome ----------------------------------------------------------------
 
 def outcome(ctx: Context, checkin: str, choice: object) -> str | None:
-    return _w(ctx, "gate." + choice) if choice in ACTIONS else None
+    return _w(ctx, "gate." + choice) if choice in ACTIONS and checkin not in organic_plan.STAGES else None
 
 
 def _open_ask(ctx: Context, checkin: str) -> dict | None:
@@ -122,7 +125,7 @@ def materials(ctx: Context, checkin: str) -> list[dict]:
         return _gate(ctx, checkin) if _open_ask(ctx, checkin) else _gate_settled(ctx, checkin)
     if checkin == TASTE:
         return _taste(ctx) if _open_ask(ctx, checkin) else _taste_settled(ctx)
-    return []
+    return organic_plan.materials(ctx, checkin)
 
 
 # --- putting the run's files on the page ---------------------------------------------------------
@@ -549,7 +552,12 @@ def note_lines(run: RunFolder, checkin: str, got: dict, lang: str) -> list[str]:
         return _gate_lines(run, checkin, got, lang)
     if checkin == TASTE:
         return _taste_lines(run, got, lang)
-    return []
+    return organic_plan.note_lines(run, checkin, got, lang)
+
+
+def prepare(run: RunFolder, checkin: str, got: dict) -> dict:
+    """What the answer writes before its choice is recorded (the week's decisions, which its yes checks)."""
+    return organic_plan.prepare(run, checkin, got)
 
 
 def write_files(run: RunFolder, checkin: str, got: dict) -> dict:
@@ -557,7 +565,7 @@ def write_files(run: RunFolder, checkin: str, got: dict) -> dict:
         return _gate_write(run, checkin, got)
     if checkin == TASTE:
         return _taste_write(run, got)
-    return {}
+    return organic_plan.write_files(run, checkin, got)
 
 
 # --- the blocks ------------------------------------------------------------------------------------

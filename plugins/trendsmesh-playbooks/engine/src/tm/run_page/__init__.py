@@ -62,6 +62,9 @@ OUTCOMES = {playbooks.REFRESH_AD: refresh_ad.outcome,     # a decided choice in 
 # before anything is recorded), and the files it writes (with `then`, a line for the agent)
 RECORDED = {playbooks.CREATE_AD: (create_ad.note_lines, create_ad.write_files),
             playbooks.ORGANIC_VIDEO: (organic_video.note_lines, organic_video.write_files)}
+# the files a stage's answer writes before its choice is recorded, when the choice checks them (Organic AI video's
+# week: its yes requires the week's decisions file, `week_in_budget`, and covers it)
+PREPARED = {playbooks.ORGANIC_VIDEO: organic_video.prepare}
 ANSWER_SOURCE = "tm page decision --record"
 
 _ASK_KEYS = {"checkin", "title", "lede", "question", "context", "options", "points", "media", "data"}
@@ -451,8 +454,11 @@ def record(run: RunFolder, checkin: str) -> dict:
     note = from_page_note("\n".join(x for x in [got["note"].strip(), *lines] if x), lang)
     decided = _latest_decisions(run)
     change = any(cid in decided for cid in _members(run, checkin))
+    prepare = PREPARED.get(state.load(run).playbook)
+    prepared = prepare(run, checkin, got) if prepare else {}
     flow.decide(run, checkin, got["choice"], by="user", note=note, change=change)
     files = {"answer": _save_answer(run, checkin, got)} if got["detail"] else {}
+    files.update(prepared)
     if files_of:
         files.update(files_of(run, checkin, got))
     return {**got, "recorded_note": note, "change": change, "files": files}
