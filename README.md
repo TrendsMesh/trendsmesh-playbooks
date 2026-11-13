@@ -5,6 +5,10 @@ trend data from [TrendsMesh](https://trendsmesh.com) into finished work: refresh
 briefs and short videos. You talk to Claude as usual; the playbook decides the steps, checks its own work, and stops
 for your yes at the points you choose.
 
+[![Watch the 72-second film: what TrendsMesh Playbooks do](https://image.mux.com/knPtLWEiB6IZIxgXWIfdRD5zVRV5gK02tXDyIouT6SkA/animated.gif?start=5&end=11&width=480&fps=10)](https://player.mux.com/knPtLWEiB6IZIxgXWIfdRD5zVRV5gK02tXDyIouT6SkA)
+
+A 6-second preview: click it for the whole 72-second film, with sound and English captions.
+
 ## The playbooks
 
 - **Refresh an ad.** Give it an ad that is losing steam. It finds what is rising on TikTok and similar places, then

@@ -4,6 +4,8 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **The README starts with a 72-second film of what the playbooks do.** Under the first paragraph, a 6-second
+  preview links to the whole film, with sound and English captions.
 - **Organic AI video asks what to make and approves the week on the run page.** The video ideas and the week plan
   are now stages of the one page per run, like the images, takes, final video and taste. Per idea you pick
   Produce, Maybe later or Skip, how involved to be, the output, the platforms, the taste answers, the look and a
