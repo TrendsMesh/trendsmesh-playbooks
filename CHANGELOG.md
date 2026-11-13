@@ -2,7 +2,7 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
-## Unreleased
+## 0.13.1
 
 - **Organic AI video's ideas in chat say how each video will look.** With the ideas on the run page, the chat
   card again gives every idea its look, an animation's styles each with its reason, and the risk level with the
