@@ -131,7 +131,9 @@ page and one in chat count the same. Rules: `rules.md`.
 - `tm ad check plan` re-plans the money: its pre-video lines; it refuses a talking person without its situation, a
   take on another model than the row's (unless the user chose it), the fallback without what the review showed, a
   casting for Seedance, and two takes of one speaker whose lines fit one. `tm done S5`. The check-in is "Confirm the
-  production plan and its cost" (at Just the big calls on one card with the script-board): the user confirms once
+  production plan and its cost" (at Just the big calls on one card with the script-board), on the run page like
+  every check-in: its ask written (`pages.md`, `03_wip/ask_plan.json`), `tm page build --run R --ask <it>`, then its
+  card in chat with each line's cost and the price's date, even when the user says not to ask: the user confirms once
   per asset type; a new type or a model change later is a new plan version and asks again. After the yes, `tm
   budget approve --run R ai_usd <the pre-video ai_usd total>` (and `voice_credits`). Hands-off: the intake's budget
   is the yes; a plan above it waits for the user.
