@@ -2,7 +2,7 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
-## Unreleased
+## 0.13.0
 
 - **Creative brief's page has the TrendsMesh look of every playbook page.** The brief page now has the TrendsMesh
   top bar with the playbook's name, the theme, and the run page's layout. The brief sits under the check-in it is
