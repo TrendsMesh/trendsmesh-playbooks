@@ -39,7 +39,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tm import manifest, organic_proposals, organic_week, page as pages, state, stepchecks
+from tm import manifest, organic_guesses, organic_proposals, organic_week, page as pages, state, stepchecks
 from tm.organic_pages import levels as level_names, proposals as prop_page, value as shown, week as week_page
 from tm.run_page.context import Context
 from tm.run_page.template import E, media_tag, register_block
@@ -62,7 +62,9 @@ PROPOSAL_UI = ("produce", "later", "skip", "not_decided", "how", "notes_label", 
                "risks", "cost", "facts", "trends_behind", "creators", "videos", "views", "used_for", "evidence_by",
                "views_short", "watch_on", "kind_hook", "kind_topic", "kind_sound", "kind_format", "out_video",
                "out_script", "risk_low", "risk_medium", "risk_high", "look", "look_label", "style", "channel_style",
-               "product_chip", "needs")
+               "product_chip", "needs", "based_on_guess", "guess", "seen_trending_tab", "seen_creative_center",
+               "seen_ad_library", "seen_own_channel", "seen_web_search", "seen_own_knowledge", "with_tm", "with_tm_stats",
+               "with_tm_videos", "recreate_needs", "free_banner", "free_sources")
 WEEK_UI = (*(f"day_{d}" for d in DAYS), "risk_low", "risk_medium", "risk_high", "production", "trend", "risk", "reserve",
            "of", "sum_video", "sum_scripts", "sum_skipped", "video", "script", "ok", "skip", "swap", "note",
            "note_label", "empty", "reserve_cost", "over", "calendar", "reserves", "meta", "bar")
@@ -150,6 +152,14 @@ def _trend_rows(ctx: Context, p: dict, found: dict) -> list[dict]:
     out = []
     for t in p["trends"]:
         card, vids = found[t["id"]]
+        g = card.get("guess")
+        if g:   # Free (issue #106): where the guess was seen, never a stage or a count of TrendsMesh's
+            kind = KIND.get(g.get("kind"))
+            words = {src: _w(lang, f"proposals.seen_{src}") for src in organic_guesses.SOURCES}
+            out.append({"kind": _w(lang, "proposals." + kind) if kind else str(g.get("kind") or ""),
+                        "name": g.get("name") or "", "stats": organic_guesses.source_line(g, words),
+                        "role": t.get("role") or "", "videos": [], "guess": True, "url": g.get("url") or ""})
+            continue
         reach = card.get("reach") or {}
         stats = (f"{_compact(reach.get('creators'))} {_w(lang, 'proposals.creators')} · {_compact(reach.get('videos'))} "
                  f"{_w(lang, 'proposals.videos')} · {_compact(reach.get('views'))} {_w(lang, 'proposals.views')} · "
@@ -243,6 +253,8 @@ def _proposals(ctx: Context) -> list[dict]:
     words = {k: _w(lang, "proposals." + k) for k in PROPOSAL_UI if k != "needs"} | \
             {k: _w(lang, k) for k in SHARED_UI}
     leads = prop_page.channel_leads(run, data, lang)
+    if organic_guesses.is_free(run):   # Free (issue #106): the page says first that these are guesses
+        leads = [_w(lang, "proposals.free_banner", sources=_w(lang, "proposals.free_sources")), *leads]
     return [{"kind": "ov_proposals", "items": items, "levels": levels, "words": words, "leads": leads,
              "how": _w(lang, "page.how_proposals"), "assets": _first(ctx), "offer": offer}]
 
@@ -604,9 +616,22 @@ def _proposal_body(it: dict, w: dict) -> str:
             + f'<span class="small"><b>@{E(v["creator"])}</b> · {E(v["views"])} {E(w["views_short"])}</span>'
               f'<span class="small soft">{E(v["hook"])}</span><span class="small">{E(w["watch_on"])} {E(v["platform"])} ↗</span></a>'
             for v in t["videos"])
+        if t.get("guess"):   # Free (issue #106): the guess, its source, and what TrendsMesh would show in its place
+            seen = (f'<a href="{E(t["url"])}" target="_blank" rel="noopener">{E(t["stats"])} ↗</a>' if t["url"]
+                    else E(t["stats"]))
+            trends.append(f'<div class="ovp-trend"><p><span class="pill">{E(t["kind"])}</span> <span class="pill">'
+                          f'{E(w["guess"])}</span> <b>{E(t["name"])}</b></p><p class="small soft">{seen}</p>'
+                          f'<p class="small">{E(w["used_for"])} {E(t["role"])}</p></div>')
+            continue
         trends.append(f'<div class="ovp-trend"><p><span class="pill">{E(t["kind"])}</span> <b>{E(t["name"])}</b></p>'
                       f'<p class="small soft">{E(t["stats"])}</p><p class="small">{E(w["used_for"])} {E(t["role"])}</p>'
                       f'<div class="ovp-vids">{vids}</div></div>')
+    guessed = any(t.get("guess") for t in it["trends"])
+    if guessed:   # one box per idea, where the stats and evidence videos would be
+        trends.append(f'<div class="ovp-trend ovp-with-tm" style="border:1px dashed currentColor;padding:8px;'
+                      f'border-radius:8px"><p class="small"><b>{E(w["with_tm"])}</b></p>'
+                      f'<p class="small soft">{E(w["with_tm_stats"])}</p><p class="small soft">+ {E(w["with_tm_videos"])}'
+                      f'</p><p class="small soft">{E(w["recreate_needs"])}</p></div>')
     facts = f'<p class="small"><b>{E(w["facts"])}</b> {E(it["facts"])}</p>' if it["facts"] else ""
     risk_line = f'<p class="small soft">{E(it["risk_line"])}</p>' if it["risk_line"] else ""
     return (f'<details class="ovp-more"><summary>{E(w["the_video"])} · {E(w["recipe"])} · {E(w["risks"])} · '
@@ -615,7 +640,7 @@ def _proposal_body(it: dict, w: dict) -> str:
             + f'</ol><h4>{E(w["recipe"])}</h4><div class="record"><dl>{recipe}</dl></div><h4>{E(w["risks"])}</h4><ul>'
             + "".join(f"<li>{E(x)}</li>" for x in it["risks"])
             + f'</ul>{risk_line}<h4>{E(w["cost"])}</h4><p class="num">{_usd(it["cost"][0])}–{it["cost"][1]:.2f}</p>'
-              f'<p class="small soft">{E(it["cost_note"])}</p>{facts}<h4>{E(w["trends_behind"])}</h4>'
+              f'<p class="small soft">{E(it["cost_note"])}</p>{facts}<h4>{E(w["based_on_guess"] if guessed else w["trends_behind"])}</h4>'
             + "".join(trends) + "</details>")
 
 

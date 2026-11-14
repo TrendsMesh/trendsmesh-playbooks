@@ -609,6 +609,21 @@ organic:
     kind_topic: Topic
     kind_sound: Sound
     kind_format: Format
+    # Free (issue #106): a proposal built on the agent's guesses, not on TrendsMesh
+    based_on_guess: "What it's based on (my guess)"
+    guess: Guess
+    seen_trending_tab: Seen on the platform's trending tab
+    seen_creative_center: Seen on TikTok Creative Center
+    seen_ad_library: Seen in the Meta Ad Library
+    seen_own_channel: Seen on your own channel
+    seen_web_search: Found in a web search
+    seen_own_knowledge: My own knowledge, no source
+    with_tm: With TrendsMesh
+    with_tm_stats: "— creators · — videos · stage —"
+    with_tm_videos: two real videos repeating right now, to copy the structure from
+    recreate_needs: "Recreate needs TrendsMesh: two videos repeating right now"
+    free_banner: "These ideas are my guesses from {sources}. Connect TrendsMesh to see which are actually repeating across creators, and how early."
+    free_sources: what I could see
     mode_for: Production mode for
     nav: Proposals
     summary_produce: produce

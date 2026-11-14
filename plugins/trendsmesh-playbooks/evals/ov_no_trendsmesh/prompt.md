@@ -1,5 +1,5 @@
 ---
-description: "No run yet. A Polish parenting channel asks for video ideas. TrendsMesh is signed in on the free Human plan (get_usage answers plan_code human; every data tool answers not_in_plan) while an offer makes the Agent plan's first month free. Organic video stops: every idea rests on trend evidence, so there is no guess mode. The agent says so, gives the Agent-plan offer once and invents no trend (decisions section 4)."
+description: "No run yet. A Polish parenting channel asks for video ideas. TrendsMesh is signed in on the free Human plan (get_usage answers plan_code human; every data tool answers not_in_plan) while an offer makes the Agent plan's first month free. No Free/Paid choice yet (issue #106): the agent asks one question, Free (ideas built on its guesses, labelled) or Paid (the Agent-plan offer, once, inside that answer), makes no ideas before the answer and invents no trend."
 tags: [organic-video, readiness]
 max_turns: 30
 timeout_seconds: 900

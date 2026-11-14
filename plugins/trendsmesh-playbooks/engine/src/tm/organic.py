@@ -149,6 +149,12 @@ def _setup(p: argparse.ArgumentParser) -> None:
     k = sub.add_parser("seed-check", help="re-check the trend research seed this run started from")
     k.add_argument("--run", required=True, help="the run folder")
     k.add_argument("--json", action="store_true")
+    g = sub.add_parser("guesses", help="on Free: the trends an idea run guesses, each with its source (B2, issue #106)")
+    gs = g.add_subparsers(dest="guesses_action", required=True)
+    c = gs.add_parser("check", help="check a guess_trends file and mark it checked")
+    c.add_argument("--run", required=True, help="the run folder")
+    c.add_argument("--file", required=True, help="the guesses file, 03_wip/guess_trends_vNN.json")
+    c.add_argument("--json", action="store_true")
     p = sub.add_parser("proposals", help="the proposals of an idea run (C1)")
     ps = p.add_subparsers(dest="proposals_action", required=True)
     c = ps.add_parser("check", help="check a proposals file and mark it checked")
@@ -333,6 +339,32 @@ def _history(args: argparse.Namespace) -> int:
 def _seed_check(args: argparse.Namespace) -> int:
     result = organic_research.seed_check(RunFolder.open(Path(args.run)))
     cli.emit(args, {"status": "done", "seed_check": result}, f"{result['verdict']}: {result['why']}")
+    return 0
+
+
+def _guesses(args: argparse.Namespace) -> int:
+    from tm import organic_guesses
+
+    run = RunFolder.open(Path(args.run))
+    if not organic_guesses.is_free(run):
+        raise ValueError("This run is not on Free: its trends come from TrendsMesh (tm trends shortlist). On Free, the "
+                         "user's choice, record tm evidence guess first.")
+    path, rel = audience.inside(run, args.file)
+    if not organic_guesses.NAME.fullmatch(rel):
+        raise ValueError(f"The guesses are written as {organic_guesses.FILE_PATTERN}; {rel} is not.")
+    try:
+        data = json.loads(path.resolve().read_text(encoding="utf-8-sig"))
+    except ValueError as exc:
+        raise Stop(f"{rel} is not valid JSON ({exc}). Write it again as one JSON object, then check it again; "
+                   f"{AGAIN}.") from None
+    problems = organic_guesses.check(data)
+    if problems:
+        return cli.refuse_problems(args, rel, problems)
+    stepchecks.mark(run, organic_guesses.KEY, path.resolve())
+    n = len(data["guesses"])
+    message = (f"{rel} holds {n} guessed trends, each with where it was seen. Proposals name them by id (g1, ...), "
+               "without picks, Inspire only; every idea says it is a guess and what TrendsMesh would add.")
+    cli.emit(args, {"status": "done", "file": rel, "guesses": n, "message": message}, message)
     return 0
 
 
@@ -1163,7 +1195,7 @@ def _edit(args: argparse.Namespace) -> int:
 
 
 _ACTIONS = {"stack": _stack, "videos": _videos, "used": _used, "history": _history, "seed-check": _seed_check,
-            "proposals": _proposals, "page": _page, "script": _script, "decisions": _decisions, "start": _start,
+            "guesses": _guesses, "proposals": _proposals, "page": _page, "script": _script, "decisions": _decisions, "start": _start,
             "week": _week, "flexible": _flexible, "deliver-week": _deliver_week, "drop-slot": _drop_slot,
             "pack": _pack, "redo": _redo, "pick": _pick, "upscale": _upscale,
             "dashboard-checked": _dashboard_checked, "atlas-styles": _atlas_styles, "atlas-prompt": _atlas_prompt,

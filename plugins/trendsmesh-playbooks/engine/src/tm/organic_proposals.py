@@ -53,8 +53,8 @@ from pathlib import Path
 import yaml
 
 from tm import atlas, atlas_prompt, brand, brief_config, checkins, config, envtiers, flow, i18n, json_schema, \
-    library, manifest, organic, organic_config, organic_research, paths, playbooks, runfolder, state, stepchecks, \
-    trend_spool
+    library, manifest, organic, organic_config, organic_guesses, organic_research, paths, playbooks, runfolder, state, \
+    stepchecks, trend_spool
 from tm.config import Problem
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
@@ -179,13 +179,18 @@ def _trends(run: RunFolder, p: dict, pid: str, out: list[Problem]) -> dict[str, 
     found: dict[str, list[int]] = {}
     for j, t in enumerate(p["trends"]):
         try:
-            tid, _ = organic_research.resolve(run, t["id"])
+            tid, got = organic_research.resolve(run, t["id"])
         except ValueError as exc:  # a Stop too: no card (an error answer is none)
             out.append(Problem(f"{pid}.trends[{j}].id", f"{_name(p)}: {_plain(exc)}.",
-                               "Give the id of a trend whose card is saved in this run (fetch it with get_trend)."))
+                               "Give the id of a trend whose card is saved in this run (fetch it with get_trend), "
+                               "or on Free one of the run's guesses (g1, g2, ...)."))
             continue
         picks = t.get("pick") or []
         found[tid] = picks
+        if picks and "guess" in got:   # Free (issue #106): a guess has no evidence videos
+            out.append(Problem(f"{pid}.trends[{j}].pick", f"{_name(p)}: {t['id']} is a guess on Free, which has no "
+                                                          "evidence videos to pick.", "Drop the picks."))
+            continue
         if not picks:
             continue
         try:
@@ -218,7 +223,11 @@ def _approach(p: dict, pid: str, found: dict[str, list[int]], out: list[Problem]
     if approach is None:
         out.append(Problem(f"{pid}.approach", f"{_name(p)}: the approach is {p['approach']!r}.",
                            "Write Recreate or Inspire (Odtworzenie or Inspiracja on a Polish page)."))
-    if approach == "Recreate" and not any(len(set(picks)) >= 2 for picks in found.values()):
+    if approach == "Recreate" and any(organic_guesses.is_guess_key(tid) for tid in found):
+        out.append(Problem(f"{pid}.approach", f"{_name(p)} is a Recreate on Free: a Recreate needs two real videos "
+                                              "repeating right now, which only TrendsMesh gives (OV3, issue #106).",
+                           "Make it an Inspire, naming its weak link."))
+    elif approach == "Recreate" and not any(len(set(picks)) >= 2 for picks in found.values()):
         out.append(Problem(f"{pid}.trends", f"{_name(p)} is a Recreate, which needs two evidence videos with the "
                                             "same structure, and no trend has two picks (OV3).",
                            "Pick two of one trend's videos (tm organic videos), or make it an Inspire."))

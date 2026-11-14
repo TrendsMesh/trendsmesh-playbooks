@@ -63,7 +63,8 @@ the next slug). Then `tm brand save --confirmed` (`flow.md#a1`).
 **Choose what to make** (`proposals`, after C2; at every level: what to make is taste). The run
 page's link (the ideas' stage; or the local page's path), then **every idea restated in chat**, by title: the approach
 (Recreate or Inspire, and for an Inspire or a transfer its weaker link), why now with its numbers,
-the trends behind it with their evidence videos, the beats and length, the production type and
+the trends behind it with their evidence videos (on Free: each trend labelled a guess with where it
+was seen, no numbers of yours, and the `notice` from `tm next` on what TrendsMesh would show), the beats and length, the production type and
 recipe, the look in a few words, for an animation its 2 to 3 styles each with its one-line why
 (your pick first), the product level, the risk level from its highest risk after mitigation
 (never the count of risks) with each named item and its mitigation, the cost (a script

@@ -78,9 +78,10 @@ posts.
    this session's tools, then
    `tm doctor --playbook organic-video --outputs proposals --mcp trendsmesh=<s>,artifacts=<s>
    --json` (a week run: `--outputs weekly_plan`). An idea run asks for the base tools and TrendsMesh only, so a user who wants ideas
-   installs nothing heavy. **Without TrendsMesh the run stops** (exit 2): no guess mode, never
-   guesses; the sign-in (once) or the offer (once, in the words of `tm offer --json`), and the run
-   continues from the same place once TrendsMesh is ready. The Replicate token, the ElevenLabs key,
+   installs nothing heavy. **Without TrendsMesh and without the user's choice the run stops** (exit
+   2): ask Free or Paid once (`trendsmesh-sign-in.md`, section 4). Paid: the sign-in (once) or the
+   offer (once, in the words of `tm offer --json`), and the run continues from the same place once
+   TrendsMesh is ready. Free (`tm mode free`): the run goes on, B1 to C1 as in "On Free" below. The Replicate token, the ElevenLabs key,
    the browser and shared page links are warnings: say each once, as what it takes away (AI
    footage and talking characters; the narrator; animations; the pages as files).
 3. **Record the stack**, so the run and its pages know what is available: `tm organic stack --run R
@@ -202,8 +203,42 @@ The profile (OV1, `channel/1`, `../../references/brand-and-audience.md`, "Channe
    the library's version carries the date the user confirmed it. Never `--confirmed` before the
    user's yes.
 
+## On Free (the user's choice, no TrendsMesh)
+
+The user chose Free at readiness (issue #106). B1 to C1 then rest on your guesses, never on
+TrendsMesh; every later step (D1 on) is the same as on Paid.
+
+1. **First, at B1:** `tm evidence guess --run R --why "the user chose Free"` (refused without the
+   choice; a Paid run records `tm evidence trendsmesh` here). No switch once B1 is done: if the user
+   connects TrendsMesh later, a new run uses it.
+2. **B1, look at what you can see:** the platforms' trending tabs and public trend lists (TikTok
+   Creative Center: hashtags, songs, creators), the Meta Ad Library (when connected), the channel's
+   own videos (what worked), web search (where this session has it), and your own knowledge. Search in
+   the audience language and in English, from the bubble (OV2), as on Paid. No `tm trends collect`:
+   nothing comes from TrendsMesh.
+3. **B2, write the guesses:** `03_wip/guess_trends_v01.json` (the schema in `tm.organic_guesses`):
+   3 to 12 trends, each `{id: g1.., kind (hook_trend, topic_trend, format_trend, sound_trend), name,
+   what, source (trending_tab, creative_center, ad_library, own_channel, web_search, own_knowledge),
+   url, seen_on, quote}`. **Say where you saw it, never how far along it is:** no lifecycle stage
+   ("rising", "too late") and no count (creators, views, videos) except in `quote`, exactly as the
+   linked source shows it. Your own knowledge has no link and no number. Then `tm organic guesses
+   check --run R --file 03_wip/guess_trends_v01.json --json`; exit 2 lists what to fix in the next
+   `_vNN`. `tm done B2`, then `tm done B3` (nothing to pull on Free).
+4. **C1, the proposals:** as below, with these differences: each proposal's `trends[].id` is a guess
+   id (g1, ...) with its `role` and **no `pick`** (a guess has no evidence videos); the approach is
+   **Inspire** only (a Recreate needs two real videos repeating now, which only TrendsMesh gives),
+   its weak link named; "why now" says where the trend was seen, never a stage or a number of yours.
+   `tm organic proposals check` refuses picks and a Recreate on Free.
+5. **C2, the ideas page** shows at the top that the ideas are guesses, each trend with a Guess label
+   and where it was seen, and one "With TrendsMesh" box per idea: what TrendsMesh would show instead
+   (creators, how early, two real videos to copy). Say the `notice` from `tm next` with the card. The
+   week (I2) works the same way; its flexible day needs fresh guesses (a new `guess_trends_vNN`,
+   checked) instead of fresh searches.
+
 <a id="b1"></a>
 ## B1 Trend search in the bubble
+
+On Free: "On Free" above instead.
 
 Read `rules.md` (OV1 to OV3) first. `tm done B1` is refused until every channel of the run has a
 saved profile that passes the check (a reuse skips A1, so B1 asks the same).

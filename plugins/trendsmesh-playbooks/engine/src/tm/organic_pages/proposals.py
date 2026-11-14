@@ -529,6 +529,9 @@ def _trends(run: RunFolder, data: dict) -> dict[str, tuple[dict, list[dict]]]:
             if t["id"] in found:
                 continue
             tid, card = organic_research.resolve(run, t["id"])
+            if "guess" in card:   # Free (issue #106): a guess has no evidence videos
+                found[t["id"]] = (card, [])
+                continue
             try:
                 found[t["id"]] = (card, trends.load_videos(run, tid))
             except ValueError as exc:

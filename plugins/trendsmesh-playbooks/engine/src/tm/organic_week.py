@@ -56,7 +56,7 @@ import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from tm import (brand, brief_research, checkins, config, i18n, json_schema, organic, organic_config,
+from tm import (brand, brief_research, checkins, config, i18n, json_schema, organic, organic_config, organic_guesses,
                 organic_proposals, organic_research, playbooks, state, stepchecks, trend_spool)
 from tm.config import Problem
 from tm.playbooks import ORGANIC_VIDEO
@@ -193,6 +193,11 @@ def _idea_problems(run: RunFolder, week: dict, idea: dict, where: str, used: dic
                            "Write the series, or null."))
     view = {**idea, "trends": plugin["trends"]}
     found = organic_proposals._trends(run, view, f"{where}.plugin", out)
+    if (organic_proposals.APPROACHES.get(str(plugin["approach"]).strip().lower()) == "Recreate"
+            and any(organic_guesses.is_guess_key(tid) for tid in found)):
+        out.append(Problem(f"{where}.plugin.approach", f"{_name(idea)} is a Recreate on Free: a Recreate needs two real "
+                                                       "videos repeating right now, which only TrendsMesh gives (OV3, "
+                                                       "issue #106).", "Make it an Inspire."))
     key = organic_proposals.idea_key(as_proposal(week, idea, {"output": "video"}))
     organic_proposals._used(view, where, found, used, own.get(key), out)
 
@@ -830,12 +835,20 @@ def flexible(run: RunFolder, file: Path, *, today: date | None = None) -> dict:
     if out:
         raise Stop(f"{file_rel} needs fixing:\n" + "\n".join(f"- {p.field}: {p.what} {p.todo}" for p in out)
                    + f"\nFix the file (a new version), then start the flexible day again; {AGAIN}.")
-    searched = [_when(_saved_at(p)) for p in (run.path / "02_research" / "search").glob("*.json")]
-    if not any(w is not None and w > approved for w in searched):   # after it: one in the approval's second is not
+    if organic_guesses.is_free(run):   # Free (issue #106): fresh guesses, checked since the week was approved
+        checked = _when((state.load(run).checked.get(organic_guesses.KEY) or {}).get("at"))
+        if checked is None or checked <= approved:
+            raise Stop("The flexible day's idea comes from fresh trends: on Free, look again at what you can see, write "
+                       f"the guesses ({organic_guesses.FILE_PATTERN}) and check them (tm organic guesses check), then "
+                       f"start it; {AGAIN}.")
+        searched = None
+    else:
+        searched = [_when(_saved_at(p)) for p in (run.path / "02_research" / "search").glob("*.json")]
+    if searched is not None and not any(w is not None and w > approved for w in searched):   # after it: one in the approval's second is not
         raise Stop("The flexible day's idea comes from fresh trends: no search was saved since the week was approved. "
                    f"Search again (collection on), save the cards of the trends it builds on, then start it; {AGAIN}.")
     stale = []
-    for t in idea["plugin"]["trends"]:
+    for t in idea["plugin"]["trends"] if searched is not None else ():
         tid, _ = organic_research.resolve(run, t["id"])
         when = _when(_saved_at(brief_research.card_file(run, tid)))
         if when is None or when <= approved:

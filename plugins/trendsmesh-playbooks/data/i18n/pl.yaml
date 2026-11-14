@@ -118,6 +118,21 @@ strings:
       kind_topic: Temat
       kind_sound: Dźwięk
       kind_format: Format
+      # Free (issue #106): propozycja oparta na domysłach agenta, nie na TrendsMesh
+      based_on_guess: "Na czym to stoi (mój domysł)"
+      guess: Domysł
+      seen_trending_tab: Widziane na karcie trendów platformy
+      seen_creative_center: Widziane w TikTok Creative Center
+      seen_ad_library: Widziane w Bibliotece reklam Meta
+      seen_own_channel: Widziane na Twoim kanale
+      seen_web_search: Znalezione w wyszukiwarce
+      seen_own_knowledge: Moja wiedza, bez źródła
+      with_tm: Z TrendsMesh
+      with_tm_stats: "— twórców · — filmów · etap —"
+      with_tm_videos: dwa prawdziwe filmy, które powtarzają się teraz, do odtworzenia struktury
+      recreate_needs: "Odtworzenie wymaga TrendsMesh: dwóch filmów, które powtarzają się teraz"
+      free_banner: "Te pomysły to moje domysły z {sources}. Połącz TrendsMesh, żeby zobaczyć, które naprawdę powtarzają się u wielu twórców i jak wcześnie."
+      free_sources: tego, co mogłem zobaczyć
       mode_for: Tryb produkcji dla
       nav: Propozycje
       summary_produce: produkuj
