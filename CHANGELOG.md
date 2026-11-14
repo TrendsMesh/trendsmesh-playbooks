@@ -2,6 +2,26 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## Unreleased
+
+- **Free or Paid: you choose how the playbooks find trends.** When TrendsMesh isn't connected, a playbook asks one
+  question: Paid (sign in to TrendsMesh, or the plan offer) or Free (Claude guesses the trends from what it can see,
+  each guess labelled). Claude remembers the choice for the folder you work in and opens each Free run with one line
+  on what TrendsMesh would add; say "connect TrendsMesh" any time. Free never starts on its own: the engine refuses a
+  guess run until you chose it, and a sign-in skipped in an earlier version is asked about once. On Free the plan
+  offer comes back at most once a month. The doctor shows Free as "Free mode, your choice", not as a warning.
+- **Guesses say what they missed.** On Free, the notices with the direction of changes, the concepts and the ideas
+  say what TrendsMesh would have shown (whether a hook is repeating across creators right now, and how early), and
+  each Free run's final report ends with a short "What TrendsMesh would have changed" box about its own guesses.
+- **Organic AI videos run on Free.** Without TrendsMesh, the ideas are built on trends Claude saw on trending tabs and
+  public trend lists, your channel and web search, each with where it was seen and labelled a guess: no lifecycle
+  stage and no number without its source, Inspire ideas only. The ideas page says so at the top and shows, for
+  each idea, what TrendsMesh would add in its place. The week plan works on Free too.
+- **Trend research stays Paid only,** and says why: its calls rest on what repeats across creators over time.
+- **When TrendsMesh stops mid-run,** Claude says what stopped and how to get it back, and waits; going on as
+  guesses needs your yes, as before.
+- **The README shows Free and Paid side by side,** and why TrendsMesh sees more than Claude alone.
+
 ## 0.13.1
 
 - **Organic AI video's ideas in chat say how each video will look.** With the ideas on the run page, the chat

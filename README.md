@@ -1,9 +1,11 @@
 # TrendsMesh Playbooks
 
 A plugin for [Claude Code](https://claude.com/claude-code) with ready-made marketing workflows ("playbooks") that turn
-trend data from [TrendsMesh](https://trendsmesh.com) into finished work: refreshed ads, trend reports, creative
-briefs and short videos. You talk to Claude as usual; the playbook decides the steps, checks its own work, and stops
-for your yes at the points you choose.
+trends into finished work: refreshed ads, trend reports, creative briefs and short videos. You talk to Claude as
+usual; the playbook decides the steps, checks its own work, and stops for your yes at the points you choose.
+
+It works in two modes, and you choose: **Free**, where Claude guesses the trends from what it can see and labels
+every guess, or **Paid**, where it reads [TrendsMesh](https://trendsmesh.com)'s always-on trend analysis.
 
 [![Watch the 72-second film: what TrendsMesh Playbooks do](https://image.mux.com/knPtLWEiB6IZIxgXWIfdRD5zVRV5gK02tXDyIouT6SkA/animated.gif?start=5&end=11&width=480&fps=10)](https://player.mux.com/knPtLWEiB6IZIxgXWIfdRD5zVRV5gK02tXDyIouT6SkA)
 
@@ -21,16 +23,49 @@ A 6-second preview: click it for the whole 72-second film, with sound and Englis
 - **Creative brief.** Give it a product, or a trend you picked in a trend report. It writes a brief for new ads: who
   the ad speaks to, in their own words, what the trend adds, and a short animatic of each idea, on a page you can
   share with your team or a client.
-- **Organic AI videos.** Give it your channel. It proposes videos from real trends on a page you can share; you
+- **Organic AI videos.** Give it your channel. It proposes videos built on trends on a page you can share; you
   choose what to make: a script to film yourself, or an AI video. Or say "plan my week of videos" for a weekly pack.
   Each video comes with a posting kit for every platform.
 - **Create an ad.** Give it a product with a website. It makes a new video ad for Meta from zero: a concept built on
   a proven ad format and rising trends, the script, the paid stills and video, the edit and the Meta copy, with a
   check-in after each stage. Then it offers to create the campaign, ad set and ad in your account, **paused**; it
-  never switches them on. It needs the Meta Ads connector, and Replicate and ElevenLabs for the paid parts;
-  TrendsMesh is optional (without it, the trends are labelled as guesses).
+  never switches them on. It needs the Meta Ads connector, and Replicate and ElevenLabs for the paid parts.
 - **Report an issue.** Say "report this problem" or "I'd like a change": Claude writes it up without your account
   details, shows you the exact text, and after your yes files it on GitHub or sends it privately to TrendsMesh.
+
+## Free or Paid
+
+You choose once, the first time a playbook needs trends, and Claude remembers it for the folder you work in. Free
+never starts on its own: Claude asks first. Say "connect TrendsMesh" any time to move to Paid.
+
+| Playbook | Free: Claude guesses | Paid: TrendsMesh |
+|---|---|---|
+| Refresh an ad | The new hook is a guess from your own past winners and the Meta Ad Library, labelled as one. | The new hook rides one that is repeating across creators right now, with its videos as evidence. |
+| Creative brief | Each concept's hook is a guess from your customers' words, your ads and the Ad Library. | Each concept rides a hook or topic that is repeating across creators right now. |
+| Create an ad | Model ads from the Ad Library and formats Claude knows; trends are guesses. | Model ads and trends that are rising now: hooks, sounds and formats, with evidence. |
+| Organic AI videos | Ideas built on what Claude can see (trending tabs and public trend lists, your channel, web search), each trend labelled a guess with where it was seen. | Ideas built on hooks, topics, sounds and formats repeating across creators, how early each is, and real videos to copy the structure from. |
+| Trend research | Not available: a report built on guesses would tell you nothing. | Which trends to act on now and which are too late, and every week whether last week's calls held. |
+
+On Free, every guess says what TrendsMesh would have shown, and no number or lifecycle stage appears without a
+source.
+
+## Why TrendsMesh, not Claude alone
+
+- **Claude alone sees the surface.** It can read a platform's trending tab, TikTok Creative Center's lists, the Meta
+  Ad Library and a web search. Those show what is already big, as lists, without evidence across creators.
+- **TrendsMesh watches below the surface, always on and in real time.** It collects creator videos all day, every
+  day, reads their speech, on-screen text and frames, and groups the same pattern across many creators. Each
+  ingredient is its own trend: hook, topic, sound and format. Trends update as the videos come in, so a hook that
+  keeps coming back is visible while it is still early.
+- **History Claude can't rebuild.** Every day is kept. Claude starts from zero on every run, and last week can't be
+  collected later: it can't see that a hook appeared in a few creators' videos last Tuesday, more on Thursday and
+  many more today. That repetition over time is what TrendsMesh catches.
+- **Proof, not a one-off guess.** Every trend comes with evidence (creators, views, days running) and a lifecycle
+  stage: worth acting on, or too late.
+- **Cost.** TrendsMesh processes the videos once and every agent reads the result; Claude alone would have to process
+  thousands of videos for each answer.
+- **In progress: linking organic trends and ads,** so a pattern in organic posts shows before brands pick it up in
+  ads.
 
 ## What you need
 
@@ -41,10 +76,9 @@ A 6-second preview: click it for the whole 72-second film, with sound and Englis
   https://git-scm.com/downloads/win), then restart Claude Code. With Git installed you also no longer see the notice
   at the start of each session that Git Bash wasn't found and a hook ran in PowerShell. That notice is harmless:
   the plugin's hooks work in PowerShell too.
-- A **TrendsMesh** account on the **Agent** or **Swarm** plan, so Claude can read the trends. The plugin brings the
-  TrendsMesh connector; sign in once with `/mcp` → trendsmesh → Authenticate (the doctor walks you through it).
-  Trend research and organic video need it. Refresh an ad and creative briefs run without it, and label their trend
-  claims as guesses.
+- **For Paid only:** a **TrendsMesh** account on the **Agent** or **Swarm** plan. The plugin brings the TrendsMesh
+  connector; sign in once with `/mcp` → trendsmesh → Authenticate (the doctor walks you through it). Trend research
+  needs it; every other playbook also runs on Free, without an account.
 - The **Meta Ads connector** in Claude Code, signed in to your ad account: needed for refresh an ad and creative
   briefs. Trend research uses it, when it is there, to check the public Meta Ad Library.
 - **Chrome or Edge**, to draw the animatics and animation videos.
