@@ -1,0 +1,1 @@
+{{file:fixtures/creatives.json}}

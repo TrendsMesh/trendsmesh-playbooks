@@ -165,7 +165,7 @@ def test_the_doctor_warns_without_trendsmesh_and_meta():
                 "replicate_api_token_create", "elevenlabs_api_key_create"):
         assert row in ids(r)
     assert item(r, "mcp_trendsmesh_create").warn and item(r, "mcp_meta_create").warn
-    assert "best guess" in item(r, "mcp_trendsmesh_create").note
+    assert item(r, "mcp_trendsmesh_create").note == evidence.CHOOSE_NOTE
     assert "paused ad" in item(r, "mcp_meta_create").note
     assert {"tier_base", "tier_ai", "tier_voice", "tier_breakdown"} <= set(ids(r))
     assert "tier_video" not in ids(r)        # the edit is the plugin's ffmpeg, never Remotion (issue 96)
@@ -174,7 +174,7 @@ def test_the_doctor_warns_without_trendsmesh_and_meta():
 def test_the_guess_notice_comes_with_the_concept():
     s = state.RunState(run_id="x", playbook=CREATE_AD, created="2026-11-11", evidence=evidence.GUESS)
     text = evidence.notice_for(s, ["concept"])
-    assert text and "best guess" in text and "Ad Library" in text
+    assert text and "my guesses" in text and "Ad Library" in text and "repeating across creators" in text
     assert evidence.notice_for(s, ["plan"]) is None
 
 

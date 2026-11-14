@@ -27,8 +27,9 @@ and that the acceptance continues from the same place.
 1. **Readiness.** Run the doctor's checks for the suite's playbook (`commands/doctor.md`: steps
    1 to 4 for Refresh an ad, its "Trend research" steps 1 to 3 for trend research, its "Creative brief" steps for creative brief, its "Organic video" steps for organic video, its "Create an ad" steps for create an ad) with two
    changes: TrendsMesh is checked without a question (its state if its tools answer, otherwise
-   `missing`: for Refresh an ad and Create an ad a warning only, the playbook runs on as guesses; for trend
-   research the case that needs it asks for it), and Meta Ads is `missing` when its tools are
+   `missing`: for Refresh an ad and Create an ad a warning only, and the playbook runs on as guesses only
+   after the tester chooses Free, asked once (`skills/refresh-ad/references/trendsmesh-sign-in.md`, section
+   4); for trend research the case that needs it asks for it), and Meta Ads is `missing` when its tools are
    not in this session (a case's `meta` need asks for it); when they are, the doctor's Meta check
    may ask for the ad account, its one question here. Show the card
    in a few plain lines; it is a statement, not a question. What is missing is asked for when a

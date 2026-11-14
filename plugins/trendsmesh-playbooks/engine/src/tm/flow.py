@@ -49,7 +49,7 @@ from typing import Literal
 import yaml
 
 from tm import changes, checkins, evidence, i18n, library, playbooks, state, stepchecks, stops
-from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, REFRESH_AD
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD
 from tm.runfolder import RunFolder
 
 Action = Literal["work", "ask", "auto", "stop", "done"]
@@ -110,7 +110,9 @@ _EVIDENCE_STEPS = ("A5", "A6", "A7")  # a run resumed without evidence (an older
 # until the second is done. Creative brief: B3 finds the trends (its `trends_or_guess` check),
 # C1 makes the concepts that rest on them. Create an ad: S1 finds the model ads and trends and makes the
 # concepts (its `ad_concepts_checked` check), S3 the claims that rest on them.
-_EVIDENCE_WINDOW = {REFRESH_AD: (TREND_STEP, REGISTER_STEP), CREATIVE_BRIEF: ("B3", "C1"), CREATE_AD: ("S1", "S3")}
+# Organic AI video: B1 searches the trends; no switch once it is done (issue #106: a lapse waits, or a new Free run).
+_EVIDENCE_WINDOW = {REFRESH_AD: (TREND_STEP, REGISTER_STEP), CREATIVE_BRIEF: ("B3", "C1"), CREATE_AD: ("S1", "S3"),
+                    ORGANIC_VIDEO: ("B1", "B1")}
 # Playbooks whose level and outputs are chosen on a later step's card, not in A0's intake batch:
 # the steps before it are done without them (creative brief: the user gives only the product, and
 # A1's card, checked by `intake_written`, holds the level and the outputs). The message per step.
@@ -123,8 +125,9 @@ _LATE_INTAKE = {CREATIVE_BRIEF: ("A1", {
 })}
 _EVIDENCE_FIRST = ("First record what this run's changes rest on: `tm evidence trendsmesh --run R "
                    "--why <reason>` when TrendsMesh answers with trend data, or `tm evidence guess "
-                   "--run R --why <reason>` when it does not (no Agent plan, not signed in, or the user "
-                   "said no). A guess run goes on, with the changes labelled as guesses.")
+                   "--run R --why <reason>` when the user chose Free (it is refused without that choice: "
+                   "ask Free or Paid first, never fall into guessing). A Free run goes on, with the changes "
+                   "labelled as guesses.")
 _PLAN_TODO = ("Tell Claude which way to go: raise the daily budget, allow more days, test fewer "
               "variants (Claude plans again with `tm r4`), or skip the live test.")
 _ESTIMATE_TODO = ("Tell Claude which way to go: a higher daily budget or more days (Claude records them with "
@@ -184,6 +187,7 @@ class NextStep:
     checkin: CheckinView | None
     message: str | None
     notice: str | None = None  # show it to the user, in their words: a run without TrendsMesh data
+    free_box: str | None = None  # a Free run's final report: how to end it (evidence.FREE_BOX), issue #106
 
 
 # --- data ---------------------------------------------------------------------
@@ -1108,6 +1112,7 @@ def _with_notice(s: state.RunState, result: NextStep) -> NextStep:
     ids = result.checkin.ids if result.checkin and result.action == "ask" else None
     done = result.action == "done" and not _ended_early(s)
     result.notice = evidence.notice_for(s, ids, done=done)
+    result.free_box = evidence.free_box_for(s, done=done)
     return result
 
 
@@ -1141,12 +1146,21 @@ def set_evidence(run: RunFolder, value: str, why: str) -> state.RunState:
                          f"{skill}`); this run goes on from the same place.")
     if value == evidence.TRENDSMESH and at > order.index(first):
         _need_trends(run, f"Switching to TrendsMesh after {first}")
+    if value == evidence.GUESS and not _chose_free(run):
+        raise ValueError(evidence.NOT_CHOSEN)
     if _pb01(s) and value != s.evidence:
         s.register = None  # checked against the old evidence: check it again
     s.evidence_log.append({"evidence": value, "why": why.strip(), "at_step": s.step})
     s.evidence = value
     state.save(run, s)
     return s
+
+
+def _chose_free(run: RunFolder) -> bool:
+    """Issue #106: a run guesses only after the user chose Free, for this run (`tm mode free --run R`) or for the
+    workspace (`tm mode free`). Never a fallback."""
+    from tm import offer, trend_spool   # offer is a leaf; trend_spool imports this module
+    return offer.chosen_free(run.path, trend_spool.workspace_of(run))
 
 
 def _other_playbook(s: state.RunState, what: str) -> str | None:
@@ -1171,7 +1185,7 @@ def _evidence_window(s: state.RunState) -> tuple[str, str]:
         guessing = [p.name for p in playbooks.all_playbooks()
                     if p.guess and p.id in _EVIDENCE_WINDOW and playbooks.bundled(p)]
         names = " and ".join([", ".join(guessing[:-1]), guessing[-1]] if len(guessing) > 1 else guessing)
-        raise ValueError(f"Guess mode is part of {names}, not of {pb.name}.")
+        raise ValueError(f"Free mode (the AI guesses) is part of {names}, not of {pb.name}.")
     return window
 
 

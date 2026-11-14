@@ -7,11 +7,13 @@ reported fact (`--fact elevenlabs_plan=cloning|no_cloning|unknown`). Anything no
 TrendsMesh and the artifacts connector for creative brief; the Meta Ad Library and the artifacts
 connector for trend research; the keys, the artifacts connector and the browser for organic video)
 never makes the run not ready: the card shows it as a warning with
-its own note (refresh-ad's guess-mode notice unless the check names another). The ElevenLabs
+its own note (a TrendsMesh row: `evidence.CHOOSE_NOTE`, the choice being the user's; else the row's `warn_note`). The ElevenLabs
 plan row is left out while the key is missing, since the key row already says what to do.
 
 Each check names the playbooks it is for (`playbooks`, refresh-ad when absent), and `--playbook`
-picks them: trend research has no guess mode, so there TrendsMesh and its Agent plan block;
+picks them: trend research is Paid only, so there TrendsMesh and its Agent plan block; organic video's block until
+the user chooses Free or Paid (issue #106), and on Free (`--mode free`, else the workspace's `tm mode`) a playbook with
+a Free mode shows TrendsMesh as one line, "Free mode, your choice", with what Free misses (`evidence.NOTICES` short);
 Meta Ads blocks refresh-ad and creative brief. A playbook other than refresh-ad needs the tiers of
 its env_tier rows whose `when` holds (creative brief's animatic tier only with animatics), and a
 `browser` row asks `tm.atlas` for the user's own Chrome or Edge.
@@ -44,7 +46,7 @@ from typing import Literal
 
 import yaml
 
-from tm import __version__, atlas, cli, envtiers, evidence, flow, i18n, paths, playbooks, providers, secrets
+from tm import __version__, atlas, cli, envtiers, evidence, flow, i18n, offer, paths, playbooks, providers, secrets
 from tm.playbooks import REFRESH_AD
 
 # ok, missing (not connected or not signed in), not_enabled (Meta refuses the ad account), no_plan
@@ -80,9 +82,10 @@ class Item:
     size_mb: int = 0  # download size for agent installs
     unchecked: bool = False
     warn: bool = False  # the run can go on without it (requirements.yaml `warn`)
-    note: str = ""  # a warning's line on the card (`warn_note`, else the guess-mode notice)
+    note: str = ""  # a warning's line on the card (`warn_note`; TrendsMesh: CHOOSE_NOTE), or what Free misses
     later: bool = False  # a warning that matters only at a later step, if the run gets there (the cloning plan)
     state: str = ""  # a key row: works, unusable (connected but unusable), missing, unchecked (#66)
+    free: bool = False  # the TrendsMesh row of a run on Free, the user's choice (issue #106): shown, not a warning
 
 
 @dataclass(frozen=True)
@@ -229,15 +232,24 @@ def _for_playbook(playbook: str) -> list[dict]:
     return [e for e in _catalogue() if playbook in e.get("playbooks", [REFRESH_AD])]
 
 
+FREE_ROW = "TrendsMesh: Free mode, your choice (say \"connect TrendsMesh\" any time)"
+_FREE_GENERAL = ("Free mode: I guess trends from what I can see, each labelled a guess. TrendsMesh would show which "
+                 "hooks, topics, sounds and formats are repeating across creators right now, and how early.")
+
+
 def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
           caption_removal: bool = False, facts: dict[str, str] | None = None,
-          playbook: str = REFRESH_AD, production: str | None = None) -> Readiness:
+          playbook: str = REFRESH_AD, production: str | None = None, mode: str | None = None) -> Readiness:
     """`playbook` is its id or skill name, or GENERAL for the general check. `production`: organic video's
     production type for a production run (an animation needs the animatic tools, and no breakdown or AI video
-    tools)."""
+    tools). `mode`: the user's choice, free or paid (None: not chosen). On Free, in a playbook that has it, the
+    TrendsMesh rows are one line, "Free mode, your choice", and TrendsMesh is not checked (issue #106); not
+    chosen or Paid, a TrendsMesh warning says the choice is the user's (`evidence.CHOOSE_NOTE`)."""
     facts = facts or {}
     outputs = set(outputs)
     pb = GENERAL if playbook == GENERAL else playbooks.get(playbook).id
+    on_free = mode == "free" and (pb == GENERAL or playbooks.get(pb).guess) and mcp.get("trendsmesh") != "ok"
+    free_shown = False
     entries = _for_playbook(pb)
     tiers = _tiers(pb, entries, outputs, voice, caption_removal, production)
     present = {t: envtiers.installed(t) for t in tiers}
@@ -248,6 +260,13 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
         if not _applies(e, outputs, voice, caption_removal, tiers, production):
             continue
         kind, id_, name, fixer = e["kind"], e["id"], e["name"], e["fixer"]
+        if on_free and e.get("mcp") == "trendsmesh":
+            if not free_shown:
+                said = evidence.NOTICES.get(pb)
+                items.append(Item(id_, FREE_ROW, True, fixer, "", free=True,
+                                  note=said.short if said else _FREE_GENERAL))
+                free_shown = True
+            continue
         ok, unchecked, size, vars, key_state, key_fix = False, False, 0, {}, "", ""
         if kind == "env_tier":
             t = envtiers.TIERS[e["tier"]]
@@ -305,7 +324,9 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
         fact = kind == "plan" and "mcp" not in e
         later = fact and not ok and bool(e.get("unknown_warns") if unchecked else e.get("short_warns"))
         warn = bool(e.get("warn")) or later
-        note = e.get("short_note") if later and not unchecked else e.get("warn_note") or evidence.NOTICE_SHORT
+        note = e.get("short_note") if later and not unchecked else e.get("warn_note") or ""
+        if e.get("mcp") == "trendsmesh":
+            note = evidence.CHOOSE_NOTE   # not chosen yet, or Paid and not ready: never a guess notice
         items.append(Item(id_, name, ok, "agent" if unchecked and "mcp" in e else fixer, fix, size if not ok else 0,
                           unchecked, warn, note if warn else "", later, key_state))
     return Readiness(items, all(i.ok or i.warn for i in items))
@@ -332,7 +353,8 @@ def card(r: Readiness, *, general: bool = False) -> str:
     else:
         head = "**Not ready yet.** Here is what is in place and what is not."
     lines = [head, ""]
-    lines += [f"- ✅ {i.name}" for i in r.items if i.ok]
+    lines += [f"- ✅ {i.name}" for i in r.items if i.ok and not i.free]
+    lines += [f"- ℹ️ {i.name}. {i.note}" for i in r.items if i.free]
     lines += [f"- ⚠️ {i.name}" for i in warned]
     for i in bad:
         lines.append(f"- ❌ {i.name}" + (" (not checked yet)" if i.unchecked else ""))
@@ -454,6 +476,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     p.add_argument("--mcp", help="trendsmesh=<ok|free|inactive|skipped|no_agents|missing|no_plan>,"
                                  "meta=<ok|not_enabled|missing>,artifacts=<ok|missing>")
     p.add_argument("--fact", help="elevenlabs_plan=cloning|no_cloning|unknown")
+    p.add_argument("--mode", choices=offer.MODES, help="the user's choice, Free or Paid (default: the workspace's, "
+                                                       "`tm mode status`; a run's own choice is passed here)")
     p.add_argument("--report", action="store_true", help="also write the support report")
     p.add_argument("--log-file", help="file whose last lines go into the report")
     p.add_argument("--json", action="store_true")
@@ -493,8 +517,9 @@ def _run(args: argparse.Namespace) -> int:
                 raise ValueError(f"--production is organic video's production type, one of "
                                  f"{', '.join(organic_proposals.PRODUCTIONS)}.")
         envtiers.clean_stale()  # free the disk an earlier plugin version's tiers still hold
+        mode = args.mode or offer.mode_status(paths.workspace())["mode"]
         r = check(outputs, args.voice, mcp, caption_removal=args.caption_removal, facts=facts,
-                  playbook=playbook, production=production)
+                  playbook=playbook, production=production, mode=mode)
     except (ValueError, RuntimeError) as exc:
         return cli.fail(args, str(exc))
     report = None
@@ -509,7 +534,7 @@ def _run(args: argparse.Namespace) -> int:
     shown = card(r, general=general)
     text = shown + (f"\n\nSupport report written to: {report}\n{i18n.t('doctor.report.send')}" if report else "")
     payload = {"status": "ready" if r.ready else "stop", "ready": r.ready,
-               "playbook": None if general else playbook,
+               "playbook": None if general else playbook, "mode": mode,
                "items": [asdict(i) for i in r.items], "card": shown,
                "warnings": [i.id for i in r.items if i.warn and not i.ok],
                "report": str(report) if report else None}

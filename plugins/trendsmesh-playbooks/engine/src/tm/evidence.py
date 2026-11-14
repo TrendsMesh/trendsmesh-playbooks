@@ -1,13 +1,14 @@
 """What a run's changes rest on: TrendsMesh data, or the agent's guess.
 
-A run without TrendsMesh (no Agent plan, not signed in, or the user said no) still goes to the
-end, in a playbook with a guess mode (`guess: true` in data/playbooks.yaml: Refresh an ad and
-Creative brief). Its new hooks and topics are the agent's judgement, not proof from what is
-rising now. The engine records that choice in run state (`tm evidence`), and while it is `guess`:
+A run on Free (issue #106: the user's choice, never a fallback; `tm mode`) goes to the end in a
+playbook with a Free mode (`guess: true` in data/playbooks.yaml: Refresh an ad, Creative brief,
+Create an ad, Organic AI video; Trend research is Paid only). Its hooks, topics and ideas are the
+agent's guesses. The engine records it in run state (`tm evidence`, refused until the user chose
+Free: `NOT_CHOSEN`), and while it is `guess`:
 
 - `tm next` gives the playbook's notice (`NOTICES`) on its check-ins in `Notice.at` when they are
   shown to the user (Refresh an ad: the direction G2 and the launch G11; Creative brief: the
-  concepts G2; Create an ad: the concept), and in the final report of a run that made its changes (so Hands-off hears it
+  concepts G2; Create an ad: the concept; Organic AI video: the ideas page and the week), and in the final report of a run that made its changes (so Hands-off hears it
   at the end, and at the launch, which every level asks). Creative brief's final report carries it only when G2 was not asked
   (`Notice.repeat_at_end`), so every level hears it once; the doctor's readiness card shows its
   short form;
@@ -21,21 +22,30 @@ import argparse
 from dataclasses import dataclass
 
 from tm import cli, state
-from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, REFRESH_AD
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD
 from tm.runfolder import RunFolder
 
 EVIDENCE = ("trendsmesh", "guess")
 TRENDSMESH, GUESS = EVIDENCE
 NOTICE_AT = frozenset({"G2", "G11"})  # the direction of changes, the launch; and the final report
 
-NOTICE = ("Without live trend data, the new hook is my best guess from your own past winners and "
-          "the Ad Library, not proof from what is rising now. With TrendsMesh (the Agent plan) I "
-          "pick hooks that are rising right now, which is where refreshes work best.")
+NOT_CHOSEN = ("The user has not chosen Free, so this run cannot go on as guesses. Guessing is never a fallback "
+              "(issue #106): ask Free or Paid (references/trendsmesh-sign-in.md). On Free, record it with `tm mode free` "
+              "(remembered for the workspace) or `tm mode free --run R` (this run only), then record the evidence again.")
+
+# The notices say what the guess missed, not only that it is a guess (issue #106). No numbers: a Free run has none
+# from TrendsMesh, and an example number would read as one.
+NOTICE = ("This new hook is my guess from your own past winners and the Ad Library. TrendsMesh would show whether it "
+          "is repeating across creators right now, and how early it is, which is where refreshes work best.")
 
 
 # The readiness card's form: no plan name, since the offer (if any) was already made apart.
-NOTICE_SHORT = ("Without live trend data, the new hook is my best guess from your own past winners "
-                "and the Ad Library, not proof from what is rising now.")
+NOTICE_SHORT = ("Free mode: the new hook will be my guess from your own past winners and the Ad Library. TrendsMesh "
+                "would show whether it is repeating across creators right now, and how early.")
+
+# The readiness card's line for a TrendsMesh row that isn't ready while the user hasn't chosen yet (or chose Paid).
+CHOOSE_NOTE = ("Free or Paid is your choice: Paid reads TrendsMesh's trends, with evidence across creators; Free goes "
+               "on with my guesses, each labelled as one. Nothing starts on guesses until you say Free.")
 
 
 @dataclass(frozen=True)
@@ -49,21 +59,41 @@ class Notice:
     repeat_at_end: bool = True
 
 
-_BRIEF_SHORT = ("Without live trend data, the hooks in these concepts are my best guess from your "
-                "customers' own words, your ads and the Ad Library, not proof from what is rising now.")
-_AD_SHORT = ("Without live trend data, the model ads and trends in these concepts are my best guess: ads from the "
-             "Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats I "
-             "know, not proof from what is rising now.")
+_BRIEF_SHORT = ("Free mode: the hooks in these concepts will be my guesses from your customers' own words, your ads and "
+                "the Ad Library. TrendsMesh would show which hooks and topics are repeating across creators right now, "
+                "and how early.")
+_AD_SHORT = ("Free mode: the model ads and trends in these concepts will be my guesses: ads from the Meta Ad Library "
+             "where it returns any (its search covers mainly ads shown in the EU) and formats I know. TrendsMesh would "
+             "show which hooks, sounds and formats are repeating across creators right now, and how early.")
+_ORGANIC_SHORT = ("Free mode: the ideas will be my guesses from what I can see (trending tabs and public trend lists, "
+                  "your channel, web search). TrendsMesh would show which are actually repeating across creators, and "
+                  "how early.")
 NOTICES = {
     REFRESH_AD: Notice(NOTICE_AT, NOTICE, NOTICE_SHORT),
     CREATIVE_BRIEF: Notice(frozenset({"G2"}),  # choosing the concepts
-                           _BRIEF_SHORT + " With TrendsMesh (the Agent plan) each concept rides a "
-                           "hook or topic that is rising right now.", _BRIEF_SHORT,
+                           "The hooks in these concepts are my guesses from your customers' own words, your ads and the "
+                           "Ad Library. TrendsMesh would show which hooks and topics are repeating across creators right "
+                           "now, and how early, so each concept could ride one that is still rising.", _BRIEF_SHORT,
                            repeat_at_end=False),
     CREATE_AD: Notice(frozenset({"concept"}),  # picking the concept
-                      _AD_SHORT + " With TrendsMesh (the Agent plan) each concept rests on ads and trends that are "
-                      "rising right now.", _AD_SHORT, repeat_at_end=False),
+                      "The model ads and trends in these concepts are my guesses: ads from the Meta Ad Library where it "
+                      "returns any and formats I know. TrendsMesh would show which hooks, sounds and formats are "
+                      "repeating across creators right now, and how early, so the concept rests on one that is still "
+                      "rising.", _AD_SHORT, repeat_at_end=False),
+    ORGANIC_VIDEO: Notice(frozenset({"proposals", "week"}),  # the ideas page, the week's plan
+                          "These ideas are my guesses from what I could see: trending tabs and public trend lists, your "
+                          "channel and web search. TrendsMesh would show which of them are actually repeating across "
+                          "creators, how early each is, and two real videos to copy the structure from.",
+                          _ORGANIC_SHORT, repeat_at_end=False),
 }
+
+# A Free run's final report ends with this box (`tm next` gives it as `free_box`): what TrendsMesh would have changed,
+# for this run's own guesses. It is an instruction to the agent, never shown as it is.
+FREE_BOX = ("End the final report with a short box titled \"What TrendsMesh would have changed\": two or three lines "
+            "about this run's own guesses (name the hooks, topics or ideas it guessed), each saying what TrendsMesh "
+            "would have shown: whether it repeats across creators right now, how early it is, and real videos to "
+            "learn from. Specific to this run, in the user's language; no numbers, no price, no link but "
+            "'say \"connect TrendsMesh\" any time'.")
 
 
 def record(run: RunFolder, value: str, why: str) -> state.RunState:
@@ -82,6 +112,11 @@ def notice_for(s: state.RunState, checkin_ids: list[str] | None, done: bool = Fa
     if done and (notice.repeat_at_end or not _asked(s, notice)):
         return notice.text
     return None
+
+
+def free_box_for(s: state.RunState, done: bool) -> str | None:
+    """`FREE_BOX` for the final report of a Free run of a playbook with a notice, else None."""
+    return FREE_BOX if done and s.evidence == GUESS and s.playbook in NOTICES else None
 
 
 def _asked(s: state.RunState, notice: Notice) -> bool:

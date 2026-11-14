@@ -157,6 +157,15 @@ def _no_real_pdf_print(request, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _free_was_chosen(request, monkeypatch):
+    """A guess run needs the user's Free choice (issue #106, `flow._chose_free`). Tests of other things take it as
+    made; a test of the choice itself is marked `free_choice` and gets the real check."""
+    if request.node.get_closest_marker("free_choice") is None:
+        from tm import flow
+        monkeypatch.setattr(flow, "_chose_free", lambda run: True)
+
+
+@pytest.fixture(autouse=True)
 def _no_real_ocr(monkeypatch):
     """`tm tool teardown` asks pixi whether the optional ocr tier is installed (`_ocr.reader`, issue 57): in the
     tests it is not, whatever this computer has. A test of the OCR route patches `_ocr.reader` again."""

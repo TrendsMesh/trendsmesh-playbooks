@@ -33,6 +33,7 @@ class RunState:
     ended: str | None = None        # the plain message of a run that ended early (not supported)
     evidence: str | None = None     # trendsmesh | guess: what the changes rest on, `tm evidence`
     evidence_log: list[dict] = field(default_factory=list)  # each change of `evidence`, with why
+    trendsmesh_mode: str | None = None  # free | paid for this run only (`tm mode free --run R`), else the workspace's
     register: dict | None = None    # the checked change register: {file, proof, guess}
     recut: dict | None = None       # re-cut edit lists, `tm recut check`: {"checked": [...]}
     previous_run: str | None = None  # the run this one follows (`tm run new --after`), workspace-relative

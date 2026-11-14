@@ -1,5 +1,5 @@
 ---
-type: tool_used
-tool: Bash
-input_match: 'tm\.sh\s+signin\s+skip'
+type: regex
+target: { source: file, path: .trendsmesh/prefs.json }
+pattern: '"trendsmesh_mode":\s*"free"'
 ---

@@ -257,7 +257,7 @@ def test_trendsmesh_missing_warns_but_the_run_can_go_on(state):
     card = doctor.card(r)
     assert card.startswith("**Ready to go.**")
     assert "You can go on without these" in card
-    assert "my best guess" in card  # the guess-mode warning
+    assert doctor.evidence.CHOOSE_NOTE in card  # Free or Paid is the user's choice, never a slide into guessing
     assert "❌" not in card
 
 
@@ -312,7 +312,7 @@ def test_skipped_sign_in_says_it_was_the_users_choice():
     r = doctor.check({"creative_brief"}, False, {"trendsmesh": "skipped", "meta": "ok"})
     assert r.ready
     it = item(r, "mcp_trendsmesh")
-    assert not it.ok and it.warn and "You chose to go on without TrendsMesh" in it.fix
+    assert not it.ok and it.warn and "You skipped the TrendsMesh sign-in in an earlier version" in it.fix
     assert "trendsmesh_agent_plan" not in ids(r)  # nothing to check about a plan nobody signed in to
 
 
@@ -331,7 +331,7 @@ def test_cli_takes_the_new_states(capsys):
 def test_the_card_never_names_the_plan_after_a_skip():
     r = doctor.check({"creative_brief"}, False, {"trendsmesh": "skipped", "meta": "ok"})
     card = doctor.card(r)
-    assert "my best guess" in card and "Agent plan" not in card and "trendsmesh.com" not in card
+    assert doctor.evidence.CHOOSE_NOTE in card and "Agent plan" not in card and "trendsmesh.com" not in card
 
 
 def test_free_plan_card_does_not_pitch_the_plan_again():
@@ -393,10 +393,10 @@ def test_trend_research_needs_the_base_tools(monkeypatch):
 
 
 @pytest.mark.parametrize("state,says", [
-    ("missing", "Open /mcp, choose trendsmesh, and sign in. Trend research reads every number from "
-                "TrendsMesh, so it can't run without it."),
-    ("skipped", "You chose to go on without TrendsMesh, but trend research has nothing to report "
-                "without it. Say so when you want to sign in."),
+    ("missing", "Trend research is Paid only: it reports what repeats across creators over time, which I can't see "
+                "on my own. Open /mcp, choose trendsmesh, and sign in."),
+    ("skipped", "You chose to go on without TrendsMesh, but trend research is Paid only: on guesses it has nothing "
+                "worth reporting. Say so when you want to sign in."),
 ])
 def test_trend_research_not_ready_without_trendsmesh(_tr_cli, state, says):
     code, out = _tr_cli(f"trendsmesh={state},meta=ok,artifacts=ok")
@@ -498,7 +498,7 @@ REFRESH_AD_CARD_030 = """**Not ready yet.** Here is what is in place and what is
 
 **You can go on without these:**
 - You're on the free TrendsMesh plan: it has no trend data.
-- Without live trend data, the new hook is my best guess from your own past winners and the Ad Library, not proof from what is rising now.
+- Free or Paid is your choice: Paid reads TrendsMesh's trends, with evidence across creators; Free goes on with my guesses, each labelled as one. Nothing starts on guesses until you say Free.
 
 **I can fix these for you, once you say yes:**
 - I install the video editing tools (about 500 MB, about 1 min). Say yes and I start.
@@ -529,8 +529,6 @@ def test_refresh_ad_card_unchanged(monkeypatch):
 
 CB = "02-creative-brief"
 CB_OUTPUTS = "review_pack,briefs,animatics,page"
-CB_NOTE = ("Without live trend data, the hooks in these concepts are my best guess from your "
-           "customers' own words, your ads and the Ad Library, not proof from what is rising now.")
 CB_ARTIFACTS_NOTE = ("Without shared page links you get the page as a local file, and "
                      "decisions are taken here in chat.")
 CB_ROWS = ["tier_base", "tier_animatic", "disk_free", "mcp_trendsmesh_brief", "trendsmesh_agent_plan_brief",
@@ -558,12 +556,12 @@ def test_creative_brief_ready_without_trendsmesh_with_its_notice(_cb_cli, state,
     assert code == 0 and out["ready"] is True and out["status"] == "ready"
     assert out["warnings"] == [warned]
     it = next(i for i in out["items"] if i["id"] == warned)
-    assert it["warn"] and it["note"] == CB_NOTE == doctor.evidence.NOTICES[CB].short
+    assert it["warn"] and it["note"] == doctor.evidence.CHOOSE_NOTE
     assert it["fixer"] == "user"
     card = out["card"]
     assert card.startswith("**Ready to go.** You can start now. One thing would make the results "
                            "better.\n")
-    assert card.endswith(f"\n- {CB_NOTE}") and card.count(CB_NOTE) == 1
+    assert card.endswith(f"\n- {doctor.evidence.CHOOSE_NOTE}") and card.count(doctor.evidence.CHOOSE_NOTE) == 1
     assert doctor.evidence.NOTICE_SHORT not in card and "❌" not in card
     assert "With TrendsMesh (the Agent plan)" not in card  # the card's form has no plan name
 
@@ -601,10 +599,10 @@ def test_artifacts_warning_uses_brief_note(_cb_cli):
     card = out["card"]
     assert "- ⚠️ Shared page links (claude.ai artifacts)\n" in card
     assert card.endswith(f"- {ARTIFACTS_FIX}\n- {CB_ARTIFACTS_NOTE}")
-    assert ARTIFACTS_NOTE not in card and CB_NOTE not in card
+    assert ARTIFACTS_NOTE not in card and doctor.evidence.CHOOSE_NOTE not in card
     code, out = _cb_cli("trendsmesh=free,meta=ok,artifacts=missing")  # two warnings, two notes
     assert code == 0 and out["warnings"] == ["trendsmesh_agent_plan_brief", "artifacts_pages_brief"]
-    assert out["card"].endswith(f"- {CB_NOTE}\n- {CB_ARTIFACTS_NOTE}")
+    assert out["card"].endswith(f"- {doctor.evidence.CHOOSE_NOTE}\n- {CB_ARTIFACTS_NOTE}")
 
 
 # --- the catalogue refuses a typo -----------------------------------------------------------
@@ -761,3 +759,47 @@ def test_create_ad_without_a_browser_is_a_warning(monkeypatch):
     it = item(r, "browser_for_create")
     assert r.ready and not it.ok and it.warn
     assert "logo" in doctor.card(r)
+
+
+# --- Free or Paid, the user's choice (issue #106) ---------------------------------------------
+
+@pytest.mark.parametrize("state", ["missing", "skipped", "free", "no_agents", "inactive", None])
+def test_on_free_trendsmesh_is_one_line_with_what_free_misses(state):
+    mcp = {"meta": "ok", "artifacts": "ok", **({"trendsmesh": state} if state else {})}
+    r = doctor.check({"creative_brief"}, False, mcp, mode="free")
+    rows = [i for i in r.items if "trendsmesh" in i.id]
+    assert r.ready and len(rows) == 1 and rows[0].ok and rows[0].free and not rows[0].warn
+    card = doctor.card(r)
+    assert f"- ℹ️ {doctor.FREE_ROW}. {doctor.evidence.NOTICE_SHORT}" in card
+    assert "⚠️" not in card and "✅ TrendsMesh" not in card and "trendsmesh.com" not in card
+    assert card.startswith("**Ready to go.** Everything this run needs is in place.")
+
+
+def test_on_free_a_working_trendsmesh_is_used():
+    r = doctor.check({"creative_brief"}, False, {"meta": "ok", "trendsmesh": "ok"}, mode="free")
+    assert not any(i.free for i in r.items) and item(r, "mcp_trendsmesh").ok
+
+
+def test_paid_without_trendsmesh_says_the_choice_is_the_users():
+    r = doctor.check({"creative_brief"}, False, {"meta": "ok", "trendsmesh": "free"}, mode="paid")
+    it = item(r, "trendsmesh_agent_plan")
+    assert it.warn and it.note == doctor.evidence.CHOOSE_NOTE and not any(i.free for i in r.items)
+
+
+def test_trend_research_is_paid_only_even_on_free():
+    r = doctor.check({"category_report"}, False, {"meta": "ok", "artifacts": "ok", "trendsmesh": "missing"},
+                     playbook="trend-research", mode="free")
+    assert not r.ready and not item(r, "mcp_trendsmesh_research").ok and not any(i.free for i in r.items)
+
+
+def test_the_cli_reads_the_workspace_choice(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("TM_WORKSPACE", str(tmp_path))
+    from tm import offer
+    offer.mode_set(tmp_path, "free")
+    assert cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "trendsmesh=missing,meta=ok", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["mode"] == "free" and out["warnings"] == []
+    assert cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "trendsmesh=missing,meta=ok", "--mode", "paid",
+                     "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["mode"] == "paid" and "mcp_trendsmesh" in out["warnings"]

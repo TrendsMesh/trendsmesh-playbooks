@@ -1,7 +1,7 @@
 # TrendsMesh MCP
 
-Bundled with the plugin (`.mcp.json`, server `trendsmesh`). The user signs in from `/mcp`
-(`trendsmesh-sign-in.md`: ask once, the offer once). **Trend data needs the paid Agent plan.** A
+Bundled with the plugin (`.mcp.json`, server `trendsmesh`). The user chooses Free or Paid and, on
+Paid, signs in from `/mcp` (`trendsmesh-sign-in.md`). **Trend data needs the paid Agent plan.** A
 free account can sign in, but its data tools answer `not_in_plan` (with `plan_code` and
 `upgrade_url`). Until free accounts can finish connecting, the sign-in page refuses them and
 says their plan doesn't include agents. The plans page is `https://trendsmesh.com/plans`.
@@ -48,18 +48,21 @@ reach, confidence, status, since, active for days, visible until, languages and
 - Rate limits: check `get_usage` before a long pull; if a meter runs out, say so plainly and
   continue when it resets, from the same place.
 
-## Without TrendsMesh (guess mode)
+## Without TrendsMesh (Free, the user's choice)
 
-The playbook still runs without TrendsMesh: no Agent plan, not signed in, or the user said no.
-It is never a stop. Then:
+The playbook runs without TrendsMesh only on Free: the user chose it at readiness
+(`trendsmesh-sign-in.md`). Without that choice it never starts guessing on its own, and the engine
+refuses `tm evidence guess`. Then:
 
-- At A5 record `tm evidence guess --run R --why "<reason>"`. The candidates come from the
+- At A5 record `tm evidence guess --run R --why "the user chose Free"`. The candidates come from the
   account's own winners and the Meta Ad Library (`flow.md#a5`), never from a trend you invent.
 - Every change is a **guess** in the change register (`tm register check` refuses a proof).
 - Say the `notice` from `tm next` when it comes (the direction of changes, the launch, the final
-  report): without live trend data, the new hook is a best guess, not proof from what is rising
-  now. Say it as a statement, once per card; don't ask about it and don't repeat it in between.
-- A data tool refused with `not_in_plan` mid-run (the plan lapsed): say so, and switch to
-  `guess` only after the user says yes, and only until the change register (A7) is done. After
-  it the changes are decided: tell the user, and write what you have (a trend status you can't
-  fetch is `unknown`). A rate limit: wait for the reset, as above.
+  report): the new hook is a guess, and what TrendsMesh would have shown. Say it as a statement,
+  once per card; don't ask about it and don't repeat it in between. End the final report with the
+  `free_box` `tm next` gives.
+- A data tool refused with `not_in_plan` mid-run (the plan lapsed): say what stopped, give the way
+  back (the `upgrade_url`) and wait; switch to Free for this run only after the user says yes, and
+  only until the change register (A7) is done (`trendsmesh-sign-in.md`, section 6). After it the
+  changes are decided: tell the user, and write what you have (a trend status you can't fetch is
+  `unknown`). A rate limit: wait for the reset, as above.

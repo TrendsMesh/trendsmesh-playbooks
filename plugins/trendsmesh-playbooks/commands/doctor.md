@@ -23,12 +23,12 @@ name none, a short general check; and write a support report they can read and s
      at the end instead.
 
 1. Check both MCP connections:
-   - TrendsMesh: if the user has clearly said no to it (not a "not now"), run `tm signin skip
-     --json` (it keeps their no for this workspace), say in one line that you won't ask again,
-     use `skipped`, and don't mention the plan.
-     Otherwise follow `skills/refresh-ad/references/trendsmesh-sign-in.md` (sign-in first,
-     unless the user said no before; then the plan, and the offer once). It gives `ok`, `free`,
-     `no_agents`, `inactive`, `skipped` or `missing`.
+   - TrendsMesh: Free or Paid is the user's choice. Follow
+     `skills/refresh-ad/references/trendsmesh-sign-in.md`: `tm mode status --json` first; on Free
+     (chosen before) its one line; otherwise `get_usage`, and when TrendsMesh isn't ready, one
+     question, Free or Paid (the sign-in, or the plan offer once). Free only after the user's yes
+     (`tm mode free --json`). It gives `ok`, `free`, `no_agents`, `inactive` or `missing`, and the
+     choice.
    - Meta Ads: `ads_get_ad_entities` for one ad on the user's ad account (ask which ad account,
      if you don't know it). It answers → `ok`. Not connected or not signed in → `missing`.
      It refuses this ad account → `not_enabled`.
@@ -63,10 +63,11 @@ name none, a short general check; and write a support report they can read and s
    and id: the user never needs to see `--mcp` or `--fact`. Things you can install, you offer
    with their size and time and do only after the user's yes (`tm env install <tier> --yes`).
    Things only the user can do (sign in, a plan, a key in `/plugin` → **Installed** →
-   trendsmesh-playbooks → **Configure options**, the one `sudo` line on Linux), you explain step by step. A warning (TrendsMesh) is
-   not a to-do that blocks: say the card's guess-mode warning in plain words, once, and say the
-   playbook still runs without it, with its changes as best guesses. The sign-in question and
-   the plan offer were made in step 1: don't make them again. The voice-cloning warning needs
+   trendsmesh-playbooks → **Configure options**, the one `sudo` line on Linux), you explain step by step. TrendsMesh
+   never blocks Refresh an ad, and never slides into guessing: on Free the card shows one line, "Free mode,
+   your choice", with what Free misses (say it once); not chosen yet, its row says the choice is the user's
+   (ask the question of step 1, once). The question and the plan offer were made in step 1: don't make
+   them again. The voice-cloning warning needs
    nothing from the user now: say in one line that it is checked later, only if it is needed (or,
    for a plan with no cloning, that cloning isn't available and matters only if a clone is needed).
 5. Tell the user where the support report was saved (`report` in the answer), in the report's own
@@ -86,9 +87,9 @@ name none, a short general check; and write a support report they can read and s
 tools, the Replicate and ElevenLabs keys, the TrendsMesh sign-in). It never looks at Meta Ads: call
 no Meta Ads tool and don't wait for its tools to load. Each playbook's own check does that.
 
-1. TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`; a clear no
-   is `tm signin skip --json` and `skipped`). It gives `ok`, `free`, `no_agents`, `inactive`,
-   `skipped` or `missing`. The keys are read by the doctor itself (one free call each).
+1. TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`: Free or Paid,
+   the user's choice). It gives `ok`, `free`, `no_agents`, `inactive`
+   or `missing`, and the choice. The keys are read by the doctor itself (one free call each).
 2. Run:
 
    ```
@@ -107,9 +108,8 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
 **Trend research.** The outputs are the category report, the weekly digest and the paid view.
 
 1. Check three connections, never guessing a result (a call you could not make is `missing`):
-   - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`; a
-     clear no is `tm signin skip --json` and `skipped`). It gives `ok`, `free`, `no_agents`,
-     `inactive`, `skipped` or `missing`.
+   - TrendsMesh: Paid only (`skills/refresh-ad/references/trendsmesh-sign-in.md`, section 7, with its
+     sections 2, 3 and 5; no Free question). It gives `ok`, `free`, `no_agents`, `inactive` or `missing`.
    - Meta Ads: one `ads_library_search` call (any short phrase, such as the user's category).
      It answers → `ok`. Not connected or not signed in → `missing`. It refuses the account →
      `not_enabled`.
@@ -128,27 +128,27 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
    blockers: say each one's line from the card once (without Meta the paid check says "not
    checked"; without a publishing tool the page is a file they can open and share instead of a
    link) and that the report still runs.
-4. **Without TrendsMesh, trend research stops** (exit 2). It reads every number from
-   TrendsMesh, so there is no guess mode: never offer to run it on guesses, and leave out the
-   sign-in reference's guess-mode lines. Say plainly that the report can't be made without it,
-   then:
+4. **Without TrendsMesh, trend research stops** (exit 2): it is Paid only, even for a user who
+   chose Free for the other playbooks. Its stages, its "act now" and "too late" calls and the
+   weekly check of last week's calls are TrendsMesh numbers: never offer to run it on guesses.
+   Say plainly why (it reports what repeats across creators over time, which the AI alone can't
+   see), then:
    - not signed in (`missing`): how to sign in, once (the reference's step 3, with the card's
      reason in place of its first sentence);
    - signed in without trend data (`free`, `no_agents`): the offer, once, in the words of
      `tm offer --upgrade-url <upgrade_url, if TrendsMesh gave one> --json` (its `text`), and not
      again in this session;
    - `inactive`: the card's line;
-   - `skipped` (the user's no): one line, that trend research needs TrendsMesh and they can sign
-     in whenever they want. Don't ask again.
+   - the user chose Free for the other playbooks: one line, that trend research is Paid only and
+     they can sign in whenever they want. Don't ask again.
    The run continues from the same place once TrendsMesh is ready: run the doctor again then.
 5. Tell the user where the support report was saved, as in step 5 above.
 
 **Creative brief.** The outputs are the review pack, the briefs, the animatics and the page.
 
 1. Check three connections, never guessing a result (a call you could not make is `missing`):
-   - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`; a
-     clear no is `tm signin skip --json` and `skipped`). It gives `ok`, `free`, `no_agents`,
-     `inactive`, `skipped` or `missing`.
+   - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`: Free or Paid, the user's choice). It gives `ok`, `free`, `no_agents`,
+     `inactive` or `missing`, and the choice.
    - Meta Ads: as in step 1 above (`ads_get_ad_entities` for one ad on the user's ad account),
      but find the account with `ads_get_ad_accounts` rather than asking: the brief's intake asks
      only which product. It answers → `ok`. Not connected or not signed in → `missing`. It refuses this ad account
@@ -166,10 +166,11 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
 3. Show the `card` as in step 4 above.
    - Meta Ads is required: the brief reads the user's own ad account, so without it the run
      can't start (exit 2). Explain the card's step for it, as for Refresh an ad.
-   - TrendsMesh is a warning, never a blocker: say the card's note once, in plain words (without
-     live trend data the concepts' hooks are best guesses from the customers' own words, the
-     user's ads and the Ad Library, labelled as guesses), and that the brief still runs. The
-     sign-in question and the plan offer were made in step 1: don't make them again.
+   - TrendsMesh never blocks, and never slides into guessing: on Free the card shows one line,
+     "Free mode, your choice", with what Free misses (the concepts' hooks are guesses from the
+     customers' own words, the user's ads and the Ad Library); say it once. Not chosen yet, ask
+     the question of step 1, once. The question and the plan offer were made in step 1: don't
+     make them again.
    - Shared page links are a warning too: say the card's line once (without a publishing tool the
      page is a local file, and the team's decisions are taken here in chat).
    - The animatic tools and a browser (Chrome or Edge) are needed only for the animatics, late in
@@ -193,9 +194,8 @@ check, and what it passes decides what is installed:
   animatic tools. Install them after the user's yes, with their size and time from the card.
 
 1. Check, never guessing a result (a call you could not make is `missing`):
-   - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`; a
-     clear no is `tm signin skip --json` and `skipped`). It gives `ok`, `free`, `no_agents`,
-     `inactive`, `skipped` or `missing`.
+   - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`: Free or Paid, the user's choice). It gives `ok`, `free`, `no_agents`,
+     `inactive` or `missing`, and the choice.
    - Artifacts: `ok` when `Artifact` (or the older `publish_files`) is among this session's tools,
      else `missing`, as for trend research.
    - The Replicate token, the ElevenLabs key and the browser (Chrome or Edge) are read by the
@@ -207,8 +207,10 @@ check, and what it passes decides what is installed:
    ```
 
    Exit codes and the first `tm` call are as in step 3 above.
-3. Show the `card` as in step 4 above. TrendsMesh is required: without it organic video stops
-   (exit 2), as trend research does. There is no guess mode, so never offer one. The Replicate
+3. Show the `card` as in step 4 above. TrendsMesh stops organic video (exit 2) until the user
+   chooses: Paid (the sign-in, or the plan offer once) or Free (ideas guessed from trending tabs
+   and public trend lists, the channel and web search, each labelled a guess). Ask the question
+   once (step 1); on Free the card shows one line, "Free mode, your choice". The Replicate
    token, the ElevenLabs key, the browser and shared page links are warnings, never blockers:
    say each one's line once, in plain words, as what it takes away (AI footage and talking
    characters; the narrator; animations; the pages as files).
@@ -248,8 +250,9 @@ its PAUSED upload.
    ```
 
    Exit codes and the first `tm` call are as in step 3 above.
-3. Show the `card` as in step 4 above. Nothing but the tools and the disk blocks: TrendsMesh is a warning (the
-   run goes on as labelled guesses, and the concepts say so), and so are Meta Ads (no Ad Library search and no
+3. Show the `card` as in step 4 above. Nothing but the tools and the disk blocks: TrendsMesh never blocks and
+   never slides into guessing (on Free, the user's choice, the run goes on as labelled guesses, and the concepts
+   say so; not chosen yet, ask the question of step 1, once), and Meta Ads is a warning too (no Ad Library search and no
    upload: the ad and its copy are delivered as files), the Replicate token (no generated stills or video), the
    ElevenLabs key (the video model's own voice, a fallback transcription), shared page links (each step in
    chat) and Chrome or Edge (no captures of the product's site, and its logo and font come from the user as files).

@@ -1,5 +1,5 @@
 ---
-description: "No run yet, TrendsMesh not signed in. The user says up front they don't want TrendsMesh. The agent records the skip (tm signin skip), doesn't ask them to sign in or pitch the plan, and says the playbook runs without it with its changes as best guesses."
+description: "No run yet, TrendsMesh not signed in. The user says up front they don't want TrendsMesh: that is the Free choice (issue #106). The agent records it (tm mode free, or the older tm signin skip), doesn't ask them to sign in or pitch the plan, and says the playbook runs on Free with its changes as labelled guesses."
 tags: [readiness, sign-in]
 max_turns: 25
 timeout_seconds: 900

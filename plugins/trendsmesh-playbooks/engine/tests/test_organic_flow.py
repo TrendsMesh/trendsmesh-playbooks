@@ -181,7 +181,7 @@ def _worked(timeline):
 def test_organic_video_is_registered():
     pb = playbooks.get("organic-video")
     assert (pb.id, pb.name, pb.skill, pb.guess, pb.budgets) == (
-        ORGANIC_VIDEO, "Organic AI video", "organic-video", False, ("ai_usd", "voice_credits"))
+        ORGANIC_VIDEO, "Organic AI video", "organic-video", True, ("ai_usd", "voice_credits"))  # Free: issue #106
     assert ORGANIC_VIDEO == "03-organic-ai-video"
     assert pb.data_dir == paths.bundled_data() / "organic-video"
     assert playbooks.get("trend-research").budgets == ()   # no budgets row: none

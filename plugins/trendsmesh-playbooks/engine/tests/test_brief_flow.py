@@ -91,7 +91,7 @@ def test_creative_brief_is_registered():
     assert (pb.id, pb.name, pb.skill, pb.guess) == (CREATIVE_BRIEF, "Creative brief", "creative-brief", True)
     assert pb.data_dir == paths.bundled_data() / "creative-brief"
     assert {p.id: p.guess for p in playbooks.all_playbooks()} == {
-        REFRESH_AD: True, CREATIVE_BRIEF: True, ORGANIC_VIDEO: False, TREND_RESEARCH: False, CREATE_AD: True}
+        REFRESH_AD: True, CREATIVE_BRIEF: True, ORGANIC_VIDEO: True, TREND_RESEARCH: False, CREATE_AD: True}
 
 
 def test_creative_brief_steps_match_the_plan():
@@ -426,11 +426,13 @@ def test_the_first_gap_of_several_stops_the_step(tmp_path, monkeypatch):
 
 # --- guess mode: the evidence window B3 to C1 and the notice at G2 (Task 4) -------------------
 
-CB_NOTICE = ("Without live trend data, the hooks in these concepts are my best guess from your "
-             "customers' own words, your ads and the Ad Library, not proof from what is rising now. "
-             "With TrendsMesh (the Agent plan) each concept rides a hook or topic that is rising "
-             "right now.")
-CB_NOTICE_SHORT = CB_NOTICE[:CB_NOTICE.index("rising now.") + len("rising now.")]
+# Issue #106: the notice says what the guess missed, not only that it is a guess.
+CB_NOTICE = ("The hooks in these concepts are my guesses from your customers' own words, your ads and the Ad Library. "
+             "TrendsMesh would show which hooks and topics are repeating across creators right now, and how early, "
+             "so each concept could ride one that is still rising.")
+CB_NOTICE_SHORT = ("Free mode: the hooks in these concepts will be my guesses from your customers' own words, your ads "
+                   "and the Ad Library. TrendsMesh would show which hooks and topics are repeating across creators "
+                   "right now, and how early.")
 
 
 def test_brief_notice_is_the_plans_text():

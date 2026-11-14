@@ -80,6 +80,12 @@ def test_cli_refuses_a_non_https_upgrade_url(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out)["upgrade_url"] == offer.PLANS_PAGE
 
 
+@pytest.fixture(autouse=True)
+def _workspace(tmp_path, monkeypatch):
+    """`tm offer` notes the offer in the workspace: here a throw-away one, never the folder the tests run from."""
+    monkeypatch.setenv("TM_WORKSPACE", str(tmp_path / "ws"))
+
+
 def test_cli_reads_the_api_envelope_and_survives_no_network(monkeypatch, capsys):
     class Resp:
         def __init__(self, body): self.body = body
@@ -101,11 +107,13 @@ def test_cli_reads_the_api_envelope_and_survives_no_network(monkeypatch, capsys)
 # --- the sign-in choice ----------------------------------------------------------------------
 
 def test_signin_skip_is_kept_per_workspace(tmp_path):
-    assert offer.signin_status(tmp_path) == {"skipped": False, "at": None}
+    assert offer.signin_status(tmp_path) == {"skipped": False, "at": None, "legacy_skip": False}
     assert offer.signin_set(tmp_path, "skip")["skipped"] is True
     assert offer.signin_status(tmp_path)["skipped"] is True
+    assert offer.mode_status(tmp_path)["mode"] == "free"   # a "no" to TrendsMesh is the Free choice (issue #106)
     assert offer.signin_status(tmp_path / "other")["skipped"] is False
     assert offer.signin_set(tmp_path, "ask")["skipped"] is False
+    assert offer.mode_status(tmp_path)["mode"] is None
 
 
 def test_signin_survives_a_broken_prefs_file(tmp_path):
@@ -183,3 +191,84 @@ def test_a_broken_answer_never_crashes_fetch(monkeypatch):
         raise http.client.IncompleteRead(b"{")
     monkeypatch.setattr(offer.urllib.request, "urlopen", broken)
     assert offer.fetch() is None
+
+
+# --- Free or Paid, the user's choice (issue #106) ---------------------------------------------
+
+def test_no_choice_is_none_never_free(tmp_path):
+    st = offer.mode_status(tmp_path)
+    assert st["mode"] is None and st["legacy_skip"] is False and st["offer_due"] is True
+
+
+def test_a_skip_from_an_earlier_version_is_not_a_choice(tmp_path):
+    (tmp_path / ".trendsmesh").mkdir()
+    (tmp_path / ".trendsmesh" / "prefs.json").write_text(
+        json.dumps({"trendsmesh_sign_in": "skipped", "at": "2026-10-01T10:00:00+00:00"}), encoding="utf-8")
+    st = offer.mode_status(tmp_path)
+    assert st["mode"] is None and st["legacy_skip"] is True
+    assert offer.signin_status(tmp_path)["skipped"] is False
+    assert not offer.chosen_free(tmp_path / "runs" / "x" / "y", tmp_path)
+
+
+def test_free_and_paid_are_kept_and_ask_forgets(tmp_path):
+    assert offer.mode_set(tmp_path, "free")["mode"] == "free"
+    assert offer.mode_status(tmp_path)["mode"] == "free"
+    assert offer.mode_set(tmp_path, "paid")["mode"] == "paid"
+    assert offer.mode_set(tmp_path, "ask")["mode"] is None
+    with pytest.raises(ValueError):
+        offer.mode_set(tmp_path, "maybe")
+
+
+def test_on_free_the_offer_comes_back_after_30_days(tmp_path):
+    from datetime import datetime, timedelta, timezone
+    offer.mode_set(tmp_path, "free")
+    assert offer.mode_status(tmp_path)["offer_due"] is True        # never offered
+    offer.record_offer(tmp_path)
+    now = datetime.now(timezone.utc)
+    assert offer.mode_status(tmp_path, now=now)["offer_due"] is False
+    assert offer.mode_status(tmp_path, now=now + timedelta(days=29))["offer_due"] is False
+    assert offer.mode_status(tmp_path, now=now + timedelta(days=30))["offer_due"] is True
+    offer.mode_set(tmp_path, "paid")
+    assert offer.mode_status(tmp_path, now=now)["offer_due"] is True  # Paid and not ready: the offer is the way in
+    offer.mode_set(tmp_path, "free")
+    assert offer.mode_status(tmp_path, now=now)["offer_due"] is False   # a new choice keeps the last offer's date
+
+
+def test_tm_offer_notes_the_offer(tmp_path, capsys):
+    ws = tmp_path / "ws"
+    f = tmp_path / "plans.json"
+    f.write_text(json.dumps(PLANS), encoding="utf-8")
+    assert main(["offer", "--plans-file", str(f), "--json"]) == 0
+    assert offer.mode_status(ws)["offered_at"]
+
+
+def test_a_runs_own_choice_wins(tmp_path):
+    from datetime import date
+    from tm import state
+    from tm.runfolder import RunFolder
+    run = RunFolder.create(tmp_path, "r", date(2026, 11, 14), playbook="01-refresh-ad")
+    assert not offer.chosen_free(run.path, tmp_path)
+    offer.mode_set(tmp_path, "free")
+    assert offer.chosen_free(run.path, tmp_path)
+    s = state.load(run)
+    s.trendsmesh_mode = "paid"
+    state.save(run, s)
+    assert not offer.chosen_free(run.path, tmp_path)
+    offer.mode_set(tmp_path, "paid")
+    s.trendsmesh_mode = "free"
+    state.save(run, s)
+    assert offer.chosen_free(run.path, tmp_path)
+
+
+def test_mode_cli(tmp_path, capsys):
+    from datetime import date
+    from tm.runfolder import RunFolder
+    assert main(["mode", "status", "--workspace", str(tmp_path), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["mode"] is None
+    assert main(["mode", "free", "--workspace", str(tmp_path), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["mode"] == "free"
+    run = RunFolder.create(tmp_path, "r", date(2026, 11, 14), playbook="01-refresh-ad")
+    assert main(["mode", "paid", "--run", str(run.path), "--workspace", str(tmp_path), "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["mode"] == "paid" and out["this_run_only"] is True
+    assert offer.mode_status(tmp_path)["mode"] == "free"     # the workspace's choice is untouched

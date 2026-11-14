@@ -259,13 +259,13 @@ discussions on the web."). Collect in this order, and **stop when there is enoug
 CB2, CB7, CB8, CB9. Collection is on (a resume: `collect on` right before the next call).
 
 1. **What the run rests on, first:** `tm evidence trendsmesh --run R --why "<reason>"` when
-   TrendsMesh answers with trend data, `tm evidence guess --run R --why "<free plan | skipped
-   sign-in | not signed in | account not active | limit reached>"` when it does not: a plan without
-   trend data is a guess run at once, never a question to the user (it was already said with the
-   readiness card's note: don't say it again here; the notice comes with G2). Waiting, or asking
-   before guessing, is only for a plan with trend data that stops answering (a usage limit or an
-   outage), whether on the run's very first trend call or after it gave this run trend data
-   (SKILL.md section 3): `limit reached` only after the user's yes. A guess run searches nothing
+   TrendsMesh answers with trend data, `tm evidence guess --run R --why "<the user chose Free |
+   limit reached; the user chose Free for this run>"` on Free: the user's choice at readiness
+   (`trendsmesh-sign-in.md`; the engine refuses a guess without it). Don't say Free again here: the
+   readiness card said it, and the notice comes with G2. A plan with trend data that stops
+   answering (a usage limit, a lapse or an outage), whether on the run's very first trend call or
+   after it gave this run trend data (SKILL.md section 3): say what stopped and wait, or Free for
+   this run only after the user's yes (`tm mode free --run R`). A guess run searches nothing
    (only step 5, for a trend pick, then B4): its candidates are your own hook ideas from the
    customers' words, the account and the Ad Library (`guess:<slug>` at B4), never a trend name.
 2. **The searches.** How the dry run's trend API calls map onto the TrendsMesh MCP:

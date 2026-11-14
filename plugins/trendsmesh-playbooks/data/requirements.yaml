@@ -133,7 +133,7 @@ checks:
     fixer: user
     fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find what's rising right now."}
     fix_by_state:
-      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      skipped: "You skipped the TrendsMesh sign-in in an earlier version. Choose Free (I guess trends, each labelled a guess) or Paid (TrendsMesh's trends, with evidence across creators)."
       no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
     warn: true
     unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
@@ -151,8 +151,8 @@ checks:
       inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
     warn: true
     unchecked: "Can't be checked until TrendsMesh is connected and signed in."
-  # Creative brief (02) runs as labelled guesses without TrendsMesh (decisions §4), so its two
-  # TrendsMesh rows warn with its own notice (tm/evidence.py NOTICES; one warn_note per row).
+  # Creative brief (02) runs as labelled guesses on Free (decisions §4, issue #106), so its two
+  # TrendsMesh rows warn; their note is the doctor's (evidence.CHOOSE_NOTE, or the Free line).
   - id: mcp_trendsmesh_brief
     name: TrendsMesh connected and signed in
     playbooks: [02-creative-brief]
@@ -162,10 +162,9 @@ checks:
     fixer: user
     fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find what's rising right now."}
     fix_by_state:
-      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      skipped: "You skipped the TrendsMesh sign-in in an earlier version. Choose Free (I guess trends, each labelled a guess) or Paid (TrendsMesh's trends, with evidence across creators)."
       no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
     warn: true
-    warn_note: "Without live trend data, the hooks in these concepts are my best guess from your customers' own words, your ads and the Ad Library, not proof from what is rising now."
     unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
   - id: trendsmesh_agent_plan_brief
     name: TrendsMesh Agent plan
@@ -181,7 +180,6 @@ checks:
       no_plan: "You're on the free TrendsMesh plan: it has no trend data."
       inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
     warn: true
-    warn_note: "Without live trend data, the hooks in these concepts are my best guess from your customers' own words, your ads and the Ad Library, not proof from what is rising now."
     unchecked: "Can't be checked until TrendsMesh is connected and signed in."
   # Meta Ads is required for refresh-ad and creative brief (its PLAYBOOK manifest): no warn.
   - id: mcp_meta
@@ -213,9 +211,9 @@ checks:
     kind: mcp
     mcp: trendsmesh
     fixer: user
-    fix: {any: "Open /mcp, choose trendsmesh, and sign in. Trend research reads every number from TrendsMesh, so it can't run without it."}
+    fix: {any: "Trend research is Paid only: it reports what repeats across creators over time, which I can't see on my own. Open /mcp, choose trendsmesh, and sign in."}
     fix_by_state:
-      skipped: "You chose to go on without TrendsMesh, but trend research has nothing to report without it. Say so when you want to sign in."
+      skipped: "You chose to go on without TrendsMesh, but trend research is Paid only: on guesses it has nothing worth reporting. Say so when you want to sign in."
       no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
     unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
   - id: trendsmesh_agent_plan_research
@@ -283,8 +281,8 @@ checks:
       macos: "Install Google Chrome (free), then say continue. I draw the animatics in it, on your computer."
       linux: "Install Google Chrome (free), then say continue. I draw the animatics in it, on your computer."
 
-  # Organic video (03): TrendsMesh is required, as in trend research (every idea rests on what is
-  # rising now), so its two rows do not warn. The keys, the artifacts tools and the browser are
+  # Organic video (03): its two TrendsMesh rows stop the run until the user chooses Free or Paid (issue
+  # #106); on Free the doctor shows one "Free mode, your choice" line instead (tm/doctor.py `check`). The keys, the artifacts tools and the browser are
   # warnings: what they hide, `tm organic stack` records (tm/organic.py). An idea run (A0) asks for
   # the base tier alone; a production run's D1 adds the media tiers through the `when` of the
   # tier rows above. The animatic tier has no row: Task 19's pack check refuses an animation
@@ -296,10 +294,10 @@ checks:
     kind: mcp
     mcp: trendsmesh
     fixer: user
-    fix: {any: "Open /mcp, choose trendsmesh, and sign in. Organic video builds every idea on trends that are rising now, so it can't run without TrendsMesh."}
+    fix: {any: "Choose Free or Paid. Paid: open /mcp, choose trendsmesh, and sign in, and every idea rests on trends repeating across creators right now. Free: I guess from trending tabs, your channel and web search, each idea labelled a guess."}
     fix_by_state:
-      skipped: "You chose to go on without TrendsMesh, but organic video has nothing to build on without it. Say so when you want to sign in."
-      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+      skipped: "You skipped the TrendsMesh sign-in in an earlier version. Choose Free (I guess trends, each idea labelled a guess) or Paid (TrendsMesh's trends, with evidence across creators)."
+      no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data. Choose Paid (the Agent plan at https://trendsmesh.com/plans), or go on with Free, where I guess trends."
     unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
   - id: trendsmesh_agent_plan_organic
     name: TrendsMesh Agent plan
@@ -311,8 +309,8 @@ checks:
     fixer: user
     fix: {any: "Trend data needs the TrendsMesh Agent plan: https://trendsmesh.com/plans"}
     fix_by_state:
-      free: "You're on the free TrendsMesh plan: it has no trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
-      no_plan: "You're on the free TrendsMesh plan: it has no trend data. Choose the Agent plan at https://trendsmesh.com/plans, then say continue."
+      free: "You're on the free TrendsMesh plan: it has no trend data. Choose Paid (the Agent plan at https://trendsmesh.com/plans), or go on with Free, where I guess trends."
+      no_plan: "You're on the free TrendsMesh plan: it has no trend data. Choose Paid (the Agent plan at https://trendsmesh.com/plans), or go on with Free, where I guess trends."
       inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
     unchecked: "Can't be checked until TrendsMesh is connected and signed in."
   - id: artifacts_pages_organic
@@ -359,8 +357,8 @@ checks:
     warn: true
     warn_note: "Without Chrome or Edge, animations are hidden."
 
-  # Create an ad (05): it runs without TrendsMesh as labelled guesses (the owner's decision 4), so its two
-  # TrendsMesh rows warn with its own notice (tm/evidence.py NOTICES). Meta Ads is a warning too: without it the
+  # Create an ad (05): it runs on Free as labelled guesses (the owner's decision 4, issue #106), so its two
+  # TrendsMesh rows warn (their note: evidence.CHOOSE_NOTE, or the doctor's Free line). Meta Ads is a warning too: without it the
   # Ad Library fallback and the PAUSED upload are left out, and the ad and its copy are delivered as files. The
   # Replicate token and the ElevenLabs key are warnings (the spec's "No ElevenLabs" edge case: native voice only).
   - id: mcp_trendsmesh_create
@@ -372,10 +370,9 @@ checks:
     fixer: user
     fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find the ads and trends rising right now."}
     fix_by_state:
-      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      skipped: "You skipped the TrendsMesh sign-in in an earlier version. Choose Free (I guess trends, each labelled a guess) or Paid (TrendsMesh's trends, with evidence across creators)."
       no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
     warn: true
-    warn_note: "Without live trend data, the model ads and trends in these concepts are my best guess: ads from the Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats I know, not proof from what is rising now."
     unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
   - id: trendsmesh_agent_plan_create
     name: TrendsMesh Agent plan
@@ -391,7 +388,6 @@ checks:
       no_plan: "You're on the free TrendsMesh plan: it has no trend data."
       inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
     warn: true
-    warn_note: "Without live trend data, the model ads and trends in these concepts are my best guess: ads from the Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats I know, not proof from what is rising now."
     unchecked: "Can't be checked until TrendsMesh is connected and signed in."
   - id: mcp_meta_create
     name: Meta Ads connected and signed in
@@ -494,10 +490,9 @@ checks:
     fixer: user
     fix: {any: "Open /mcp, choose trendsmesh, and sign in. It's free and takes a minute: it's how I find what's rising right now."}
     fix_by_state:
-      skipped: "You chose to go on without TrendsMesh. Say so any time and I'll help you sign in."
+      skipped: "You skipped the TrendsMesh sign-in in an earlier version. Choose Free (I guess trends, each labelled a guess) or Paid (TrendsMesh's trends, with evidence across creators)."
       no_agents: "Your TrendsMesh plan doesn't include connecting an agent yet, so I can't read trend data."
     warn: true
-    warn_note: "What each of these changes depends on the playbook: check that playbook to see what it needs."
     unchecked: "Not checked yet: I check it with one quick TrendsMesh call, then look again."
   - id: trendsmesh_agent_plan_general
     name: TrendsMesh Agent plan
@@ -513,5 +508,4 @@ checks:
       no_plan: "You're on the free TrendsMesh plan: it has no trend data."
       inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
     warn: true
-    warn_note: "What each of these changes depends on the playbook: check that playbook to see what it needs."
     unchecked: "Can't be checked until TrendsMesh is connected and signed in."

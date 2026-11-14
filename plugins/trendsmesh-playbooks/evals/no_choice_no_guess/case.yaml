@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: no_choice_no_guess
+context:
+  scaffold_script: fixture.sh

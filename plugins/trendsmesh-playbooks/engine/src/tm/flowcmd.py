@@ -43,6 +43,10 @@ def _next(args: argparse.Namespace) -> int:
         lines.append(f"check-in: {nxt.checkin.name} ({', '.join(nxt.checkin.ids)})")
     if nxt.message:
         lines.append(nxt.message)
+    if nxt.notice:
+        lines.append(f"notice: {nxt.notice}")
+    if nxt.free_box:
+        lines.append(f"free_box: {nxt.free_box}")
     cli.emit(args, asdict(nxt), "\n".join(lines))
     return STOP if nxt.action == "stop" else 0
 

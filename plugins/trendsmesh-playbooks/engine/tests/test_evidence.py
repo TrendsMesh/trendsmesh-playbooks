@@ -431,7 +431,8 @@ def test_every_guess_playbook_has_an_evidence_window():
     for pb in guessing:
         first, last = flow._EVIDENCE_WINDOW[pb]
         order = [st.id for st in flow.steps(pb)]
-        assert first in order and last in order and order.index(first) < order.index(last), pb
+        # Organic AI video's window is B1 alone: no switch once the trend search is done (issue #106)
+        assert first in order and last in order and order.index(first) <= order.index(last), pb
         cat = checkins.load(playbook=pb)
         assert evidence.NOTICES[pb].at <= set(cat.checkins), pb   # the notice sits on real check-ins
 
@@ -442,7 +443,8 @@ def test_trend_research_still_refuses_evidence(tmp_path, capsys, monkeypatch):
     with pytest.raises(ValueError) as no:
         evidence.record(tr, "guess", "no Agent plan")
     # only playbooks whose skill ships are named: the plugin ships refresh-ad and creative-brief
-    assert str(no.value) == "Guess mode is part of Refresh an ad, Creative brief and Create an ad, not of Trend research."
+    assert str(no.value) == ("Free mode (the AI guesses) is part of Refresh an ad, Creative brief, Organic AI video and "
+                             "Create an ad, not of Trend research.")
     with monkeypatch.context() as m:
         root = tmp_path / "skills"
         for skill in ("refresh-ad", "trend-research"):
@@ -451,10 +453,73 @@ def test_trend_research_still_refuses_evidence(tmp_path, capsys, monkeypatch):
         m.setattr(playbooks, "skills_root", lambda: root)
         with pytest.raises(ValueError) as no:
             evidence.record(tr, "guess", "no Agent plan")
-        assert str(no.value) == "Guess mode is part of Refresh an ad, not of Trend research."
+        assert str(no.value) == "Free mode (the AI guesses) is part of Refresh an ad, not of Trend research."
     assert main(["evidence", "guess", "--run", str(tr.path), "--why", "no plan", "--json"]) == 1
     capsys.readouterr()
     s = state.load(tr)
     assert s.evidence is None and s.evidence_log == []
     s.evidence = "guess"   # even a hand-edited run.json gets no notice
     assert evidence.notice_for(s, ["G2"], done=True) is None
+
+
+# --- Free is the user's choice, never a fallback (issue #106) ---------------------------------
+
+@pytest.mark.free_choice
+def test_guessing_is_refused_until_the_user_chose_free(run, capsys):
+    from tm import offer
+    ws = run.path.resolve().parents[2]
+    with pytest.raises(ValueError) as no:
+        evidence.record(run, "guess", "no Agent plan")
+    assert str(no.value) == evidence.NOT_CHOSEN and state.load(run).evidence is None
+    assert main(["evidence", "guess", "--run", str(run.path), "--why", "no plan", "--json"]) == 1
+    capsys.readouterr()
+    offer.mode_set(ws, "free")
+    assert evidence.record(run, "guess", "the user chose Free").evidence == "guess"
+
+
+@pytest.mark.free_choice
+def test_a_skip_from_an_earlier_version_does_not_start_guessing(run):
+    ws = run.path.resolve().parents[2]
+    (ws / ".trendsmesh").mkdir()
+    (ws / ".trendsmesh" / "prefs.json").write_text(json.dumps({"trendsmesh_sign_in": "skipped"}), encoding="utf-8")
+    with pytest.raises(ValueError):
+        evidence.record(run, "guess", "skipped sign-in")
+
+
+@pytest.mark.free_choice
+def test_free_for_this_run_only(run, capsys):
+    from tm import offer
+    ws = run.path.resolve().parents[2]
+    offer.mode_set(ws, "paid")
+    with pytest.raises(ValueError):
+        evidence.record(run, "guess", "the plan offer was declined")
+    assert main(["mode", "free", "--run", str(run.path), "--json"]) == 0
+    capsys.readouterr()
+    assert evidence.record(run, "guess", "Free for this run, the user's yes").evidence == "guess"
+    assert offer.mode_status(ws)["mode"] == "paid"      # the next run asks again
+
+
+@pytest.mark.free_choice
+def test_trendsmesh_needs_no_choice(run):
+    (run.path / "02_research" / "trend_42.json").write_text("{}", encoding="utf-8")
+    assert evidence.record(run, "trendsmesh", "Agent plan").evidence == "trendsmesh"
+
+
+def test_a_free_runs_final_report_ends_with_the_box():
+    for pb in evidence.NOTICES:
+        s = state.RunState(run_id="x", playbook=pb, created="2026-11-14", evidence=evidence.GUESS)
+        assert evidence.free_box_for(s, done=True) == evidence.FREE_BOX
+        assert evidence.free_box_for(s, done=False) is None
+        s.evidence = evidence.TRENDSMESH
+        assert evidence.free_box_for(s, done=True) is None
+    tr = state.RunState(run_id="x", playbook=TREND_RESEARCH, created="2026-11-14", evidence=evidence.GUESS)
+    assert evidence.free_box_for(tr, done=True) is None
+
+
+def test_notices_say_what_was_missed_without_numbers():
+    import re
+    for n in evidence.NOTICES.values():
+        for text in (n.text, n.short):
+            assert "TrendsMesh would show" in text and "repeating across creators" in text
+            assert not re.search(r"\d", text) and "$" not in text and "Agent plan" not in text
+    assert not re.search(r"\d", evidence.FREE_BOX)

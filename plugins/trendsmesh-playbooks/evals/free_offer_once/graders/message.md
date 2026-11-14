@@ -4,17 +4,16 @@ focus: last_message
 ---
 
 PASS if the final message tells the user all of these:
-- TrendsMesh is connected, but their plan doesn't include trend data, and that does not stop
-  them: the missing Agent plan is not listed as something they must fix before starting
-  (other missing pieces, such as tools to install, may still be listed as needed);
-- the Agent plan gives it, and right now its first month is $0 (they add a card, nothing is
-  charged for the first month, then $99 a month). The message asks them once whether they want
-  to try it, or offers the link;
-- without it, the playbook still runs, with the new hook as a best guess rather than proof from
-  rising trends.
+- TrendsMesh is connected, but their plan doesn't include trend data;
+- they choose, in one question: Paid (the Agent plan, which right now has its first month at $0:
+  they add a card, nothing is charged for the first month, then $99 a month; or the link to it)
+  or Free (the playbook goes on with the new hook as a guess, labelled as one);
+- with one sentence on what Paid adds (for example hooks repeating across creators right now).
+Other missing pieces, such as tools to install, may still be listed as needed.
 
 FAIL if any of these:
 - it says the run can't start without TrendsMesh, or that they must buy the plan first;
+- it says the run will go on with guesses (or starts it) without asking them to choose;
 - it invents a price, a number of free months or a discount other than "first month $0, then
   $99 a month";
 - it asks for payment details in chat;

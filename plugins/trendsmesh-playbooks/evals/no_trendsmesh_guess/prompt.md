@@ -1,5 +1,5 @@
 ---
-description: "Check-every-step run at A5 (trends). The user has no TrendsMesh account and doesn't want one. The run goes on as a guess run (evidence guess), and the direction card says the changes are best guesses, not proof from rising trends."
+description: "Check-every-step run at A5 (trends). The user has no TrendsMesh account and doesn't want one: that is the Free choice (issue #106), remembered for the workspace (tm mode free). The run goes on as a Free run (evidence guess), and the direction card says the changes are guesses and what TrendsMesh would have shown, with no trend stage or trend numbers."
 tags: [whole-run, guess-mode]
 max_turns: 40
 timeout_seconds: 900

@@ -41,14 +41,18 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
 
 ## 1. Readiness first (also `/trendsmesh-playbooks:doctor`)
 
-1. Find each connector's state without guessing: TrendsMesh (sign-in, then the plan), Meta Ads (one cheap
-   `ads_get_ad_entities` call), and artifacts (`ok` when the `Artifact` tool is among this session's tools).
-2. `tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> --json`, and show
-   its `card` in plain words. The media tools are installed after the user's yes, with their size and time.
-3. **Without TrendsMesh the run goes on as labelled guesses** (`tm evidence guess`): model ads from the Meta Ad
-   Library where it returns any (its search covers mainly ads shown in the EU) and formats you know; trends are your
-   guess. Say it once at readiness and again with the concepts (`tm next` gives the notice). Never present a guess
-   as a TrendsMesh trend. **Meta Ads, Replicate, ElevenLabs and shared pages are warnings**, never stops: say each
+1. Find each connector's state without guessing: TrendsMesh (Free or Paid, the user's choice:
+   `../refresh-ad/references/trendsmesh-sign-in.md`; `tm mode status --json` first, and when TrendsMesh isn't ready
+   and no Free was chosen, one question, Free or Paid), Meta Ads (one cheap `ads_get_ad_entities` call), and
+   artifacts (`ok` when the `Artifact` tool is among this session's tools).
+2. `tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> [--mode free]
+   --json`, and show its `card` in plain words. The media tools are installed after the user's yes, with their size
+   and time.
+3. **On Free the run goes on as labelled guesses** (`tm evidence guess`, refused until the user chose Free): model
+   ads from the Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats you
+   know; trends are your guess. Say it once at readiness (the card's Free line) and again with the concepts (`tm
+   next` gives the notice); the final report ends with the `free_box` `tm next` gives. Never present a guess as a
+   TrendsMesh trend, and never start guessing without the user's choice. **Meta Ads, Replicate, ElevenLabs and shared pages are warnings**, never stops: say each
    once, as what it takes away.
 4. **Keys never appear in chat.** Never search for, read, print or ask for a key or token.
 

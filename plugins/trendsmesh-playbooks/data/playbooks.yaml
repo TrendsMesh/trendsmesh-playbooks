@@ -5,13 +5,13 @@
 # name   the name users see
 # skill  the plugin skill that runs it; `tm run new --playbook` accepts the id or this
 # data   its folder under data/, holding steps.yaml and checkins.yaml ("." is data/ itself)
-# guess  optional, true or false (the default): it may run without live trend data, its trend
-#        evidence then the agent's guess (decisions §4)
+# guess  optional, true or false (the default): it may run on Free, without live trend data, its trend
+#        evidence then the agent's guess (decisions §4), once the user chose Free (issue #106)
 # budgets  optional, a list of budget kinds (flow.BUDGET_KINDS) the playbook spends from, which
 #        its money check-ins' `yes_for` may name; none by default (refresh-ad keeps its own rules)
 playbooks:
   - {id: 01-refresh-ad, name: Refresh an ad, skill: refresh-ad, data: ., guess: true}
   - {id: 02-creative-brief, name: Creative brief, skill: creative-brief, data: creative-brief, guess: true}
-  - {id: 03-organic-ai-video, name: Organic AI video, skill: organic-video, data: organic-video, budgets: [ai_usd, voice_credits]}
+  - {id: 03-organic-ai-video, name: Organic AI video, skill: organic-video, data: organic-video, guess: true, budgets: [ai_usd, voice_credits]}
   - {id: 04-trend-research, name: Trend research, skill: trend-research, data: trend-research}
   - {id: 05-create-ad, name: Create an ad, skill: create-ad, data: create-ad, guess: true, budgets: [ai_usd, voice_credits]}

@@ -4,16 +4,19 @@
 same data as the pricing table) and gives the one sentence the agent says to a signed-in user
 whose plan has no trend data: the free months while an offer covers Agent, otherwise the price.
 Sales are always open, so there is no "not on sale" answer. When the plans can't be read, it falls
-back to the plans page. The agent says it once, at the start of a run, never mid-run.
+back to the plans page. The agent says it at the start of a run, never mid-run: with the Free/Paid
+question, then on Free at most once every OFFER_EVERY_DAYS days (`tm offer` notes when, issue #106).
 
     {"plans": [{"code": "agent", "name": "Agent", "monthlyPriceUsd": 99}, ...],
      "offer": {"plans": ["agent", "swarm"], "freeMonths": 1} | null}
 
 Fields it doesn't use are ignored, and a field missing or of the wrong type reads as unknown.
 
-`tm signin skip|ask|status` keeps the user's "no" to signing in to TrendsMesh, per workspace
-(`<workspace>/.trendsmesh/prefs.json`), so later runs mention it in one line instead of asking
-again.
+`tm mode free|paid|ask|status [--run R]` keeps the user's choice, Free (the AI guesses) or Paid
+(TrendsMesh), per workspace (`<workspace>/.trendsmesh/prefs.json`) or for one run, so later runs say it
+in one line instead of asking again. Free is never a default: the engine refuses a guess run without
+the choice (`flow.set_evidence`). `tm signin skip|ask|status` (0.13 and earlier) is kept: a skip is
+the Free choice.
 """
 
 from __future__ import annotations
@@ -124,8 +127,19 @@ def fetch(url: str = PLANS_URL, timeout: float = TIMEOUT_S) -> object | None:
     return body
 
 
-# --- the sign-in choice ----------------------------------------------------------------------
+# --- the user's choice: Free (the AI guesses) or Paid (TrendsMesh), issue #106 -----------------
+#
+# `<workspace>/.trendsmesh/prefs.json` keeps it per workspace:
+#     {"trendsmesh_mode": "free" | "paid", "at": <when chosen>, "offered_at": <the last plan offer>,
+#      "trendsmesh_sign_in": "skipped" | "ask"}   (the last key: 0.13 and earlier, read only)
+# A run can carry its own choice instead (run.json `trendsmesh_mode`, `tm mode free --run R`): Free for
+# this run only, when the user who chose Paid says no to the offer and yes to going on with guesses.
+# Nothing is ever Free by default: no choice reads as None, and a skipped sign-in from 0.13 or earlier
+# is reported (`legacy_skip`) but is not a choice, so the next run asks once.
 
+MODES = ("free", "paid")
+MODE_CHOICES = (*MODES, "ask")   # ask: forget the choice, so the next run asks again
+OFFER_EVERY_DAYS = 30            # after a Free choice, the plan offer comes back at most this often
 SIGNIN_CHOICES = ("skip", "ask")
 
 
@@ -133,23 +147,88 @@ def _prefs_file(workspace: Path) -> Path:
     return Path(workspace) / ".trendsmesh" / "prefs.json"
 
 
-def signin_status(workspace: Path) -> dict:
+def _prefs(workspace: Path) -> dict:
     try:
         data = json.loads(_prefs_file(workspace).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        data = {}
-    skipped = isinstance(data, dict) and data.get("trendsmesh_sign_in") == "skipped"
-    return {"skipped": skipped, "at": data.get("at") if skipped else None}
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_prefs(workspace: Path, data: dict) -> None:
+    f = _prefs_file(workspace)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _when(value: object) -> datetime | None:
+    try:
+        when = datetime.fromisoformat(value) if isinstance(value, str) else None
+    except ValueError:
+        return None
+    return when.replace(tzinfo=when.tzinfo or timezone.utc) if when else None
+
+
+def mode_status(workspace: Path, *, now: datetime | None = None) -> dict:
+    """The workspace's choice: `mode` free, paid or None (not chosen); `offer_due` whether the plan offer may be
+    made now (no choice yet, Paid, or Free with no offer in the last OFFER_EVERY_DAYS days)."""
+    data = _prefs(workspace)
+    mode = data.get("trendsmesh_mode") if data.get("trendsmesh_mode") in MODES else None
+    offered = _when(data.get("offered_at"))
+    due = mode != "free" or offered is None or ((now or _now()) - offered).days >= OFFER_EVERY_DAYS
+    return {"mode": mode, "at": data.get("at") if mode else None,
+            "legacy_skip": mode is None and data.get("trendsmesh_sign_in") == "skipped",
+            "offered_at": data.get("offered_at"), "offer_due": due}
+
+
+def mode_set(workspace: Path, choice: str) -> dict:
+    if choice not in MODE_CHOICES:
+        raise ValueError(f"Choose one of {', '.join(MODE_CHOICES)}, not {choice!r}.")
+    data = {k: v for k, v in _prefs(workspace).items() if k in ("offered_at",)}
+    if choice in MODES:
+        data.update({"trendsmesh_mode": choice, "at": _now().isoformat(timespec="seconds")})
+    _write_prefs(workspace, data)
+    return mode_status(workspace)
+
+
+def record_offer(workspace: Path) -> None:
+    """The plan offer was made now (`tm offer`), so a Free workspace hears it again only after OFFER_EVERY_DAYS."""
+    data = _prefs(workspace)
+    data["offered_at"] = _now().isoformat(timespec="seconds")
+    _write_prefs(workspace, data)
+
+
+def run_mode(run_path: Path) -> str | None:
+    """A run's own choice (run.json `trendsmesh_mode`), else None."""
+    try:
+        data = json.loads((Path(run_path) / "run.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    value = data.get("trendsmesh_mode") if isinstance(data, dict) else None
+    return value if value in MODES else None
+
+
+def chosen_free(run_path: Path, workspace: Path) -> bool:
+    """Whether the user chose Free for this run: its own choice, else the workspace's."""
+    own = run_mode(run_path)
+    return own == "free" if own else mode_status(workspace)["mode"] == "free"
+
+
+# `tm signin` (0.13 and earlier): a "no" to TrendsMesh is now the Free choice.
+def signin_status(workspace: Path) -> dict:
+    st = mode_status(workspace)
+    skipped = st["mode"] == "free"
+    return {"skipped": skipped, "at": st["at"] if skipped else None, "legacy_skip": st["legacy_skip"]}
 
 
 def signin_set(workspace: Path, choice: str) -> dict:
     if choice not in SIGNIN_CHOICES:
         raise ValueError(f"Choose one of {', '.join(SIGNIN_CHOICES)}, not {choice!r}.")
-    f = _prefs_file(workspace)
-    f.parent.mkdir(parents=True, exist_ok=True)
-    data = {"trendsmesh_sign_in": "skipped" if choice == "skip" else "ask",
-            "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    f.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    mode_set(workspace, "free" if choice == "skip" else "ask")
     return signin_status(workspace)
 
 
@@ -159,6 +238,7 @@ def _setup_offer(p: argparse.ArgumentParser) -> None:
     p.add_argument("--plans-file", help="a saved plans answer, instead of reading it from TrendsMesh")
     p.add_argument("--upgrade-url", default=PLANS_PAGE,
                    help="the upgrade_url TrendsMesh gave (get_usage, or a not_in_plan refusal)")
+    p.add_argument("--workspace", help="where the offer is noted (default: the current folder)")
     p.add_argument("--json", action="store_true")
 
 
@@ -171,7 +251,50 @@ def _run_offer(args: argparse.Namespace) -> int:
     else:
         data = fetch()
     o = from_plans(data, safe_upgrade_url(args.upgrade_url))
+    try:  # noted, so a Free workspace hears it again only after OFFER_EVERY_DAYS; a note that fails changes nothing
+        record_offer(Path(args.workspace) if args.workspace else paths.workspace())
+    except OSError:
+        pass
     cli.emit(args, {"status": "done", **asdict(o)}, o.text)
+    return 0
+
+
+def _setup_mode(p: argparse.ArgumentParser) -> None:
+    p.add_argument("choice", choices=(*MODE_CHOICES, "status"))
+    p.add_argument("--run", help="this run only (run.json), not the workspace: Free for one run")
+    p.add_argument("--workspace")
+    p.add_argument("--json", action="store_true")
+
+
+_MODE_TEXT = {
+    "free": ("The user chose Free: the AI guesses trends, each labelled a guess. Open each run with one line saying so, "
+             "and what TrendsMesh would add to this run; they can say 'connect TrendsMesh' any time."),
+    "paid": "The user chose Paid: the run reads TrendsMesh. If TrendsMesh isn't ready, ask Free or Paid again.",
+    None: "No choice yet: when TrendsMesh isn't ready, ask Free or Paid (trendsmesh-sign-in.md). Never start guessing on your own.",
+}
+
+
+def _run_mode(args: argparse.Namespace) -> int:
+    ws = Path(args.workspace) if args.workspace else paths.workspace()
+    try:
+        if args.run:
+            from tm import state   # the run's own choice
+            from tm.runfolder import RunFolder
+            run = RunFolder.open(Path(args.run))
+            s = state.load(run)
+            if args.choice != "status":
+                s.trendsmesh_mode = args.choice if args.choice in MODES else None
+                state.save(run, s)
+            st = {**mode_status(ws), "mode": s.trendsmesh_mode, "run": str(args.run), "this_run_only": True}
+        else:
+            st = mode_status(ws) if args.choice == "status" else mode_set(ws, args.choice)
+    except (OSError, ValueError) as exc:
+        return cli.fail(args, str(exc))
+    text = _MODE_TEXT[st["mode"]]
+    if st.get("legacy_skip"):
+        text += (" This workspace skipped the TrendsMesh sign-in in an earlier version: that was not a choice of Free, so "
+                 "ask Free or Paid once.")
+    cli.emit(args, {"status": "done", **st}, text)
     return 0
 
 
@@ -187,11 +310,11 @@ def _run_signin(args: argparse.Namespace) -> int:
         st = signin_status(ws) if args.choice == "status" else signin_set(ws, args.choice)
     except (OSError, ValueError) as exc:
         return cli.fail(args, str(exc))
-    text = ("The user chose to go on without TrendsMesh in this workspace: say so in one line, "
-            "don't ask again." if st["skipped"] else "Ask the user to sign in to TrendsMesh.")
+    text = _MODE_TEXT["free" if st["skipped"] else None]
     cli.emit(args, {"status": "done", **st}, text)
     return 0
 
 
 cli.register("offer", _setup_offer, _run_offer)
+cli.register("mode", _setup_mode, _run_mode)
 cli.register("signin", _setup_signin, _run_signin)

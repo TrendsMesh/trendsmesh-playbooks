@@ -25,12 +25,13 @@ def _check(outputs, mcp=OK, **kw):
     return doctor.check(set(outputs), False, mcp, playbook=OV, **kw)
 
 
-def test_organic_not_ready_without_trendsmesh_and_no_guess_notice():
+def test_organic_not_ready_without_trendsmesh_until_the_user_chooses():
     r = _check(IDEA, {"trendsmesh": "missing", "artifacts": "ok"})
     it = item(r, "mcp_trendsmesh_organic")
     assert not r.ready and not it.ok and not it.warn
-    assert it.fix == ("Open /mcp, choose trendsmesh, and sign in. Organic video builds every idea on trends "
-                      "that are rising now, so it can't run without TrendsMesh.")
+    assert it.fix == ("Choose Free or Paid. Paid: open /mcp, choose trendsmesh, and sign in, and every idea rests on "
+                      "trends repeating across creators right now. Free: I guess from trending tabs, your channel and "
+                      "web search, each idea labelled a guess.")
     assert item(r, "trendsmesh_agent_plan_organic").unchecked   # waits for the connection, as in trend research
     gone = _check(IDEA, {"trendsmesh": "no_agents", "artifacts": "ok"})
     assert not gone.ready and "trendsmesh_agent_plan_organic" not in ids(gone)  # the connection row says it all
@@ -38,6 +39,9 @@ def test_organic_not_ready_without_trendsmesh_and_no_guess_notice():
     free = _check(IDEA, {"trendsmesh": "free", "artifacts": "ok"})
     assert not free.ready and not item(free, "trendsmesh_agent_plan_organic").warn
     assert evidence.NOTICE_SHORT not in doctor.card(free)
+    chosen = _check(IDEA, {"trendsmesh": "missing", "artifacts": "ok"}, mode="free")   # issue #106: Free, chosen
+    assert chosen.ready and [i.id for i in chosen.items if i.free] == ["mcp_trendsmesh_organic"]
+    assert evidence.NOTICES[ORGANIC_VIDEO].short in doctor.card(chosen)
 
 
 def test_missing_replicate_is_a_warning_with_its_note():
