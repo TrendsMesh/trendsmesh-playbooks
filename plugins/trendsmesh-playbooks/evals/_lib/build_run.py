@@ -1150,6 +1150,8 @@ def cb_main(scn: str, ws: Path) -> tuple[Path, dict]:
         "cb_at_c1_no_artifacts": ("every_step", ["review_pack", "page"], "C1"),
     }[scn]
     run = cb_run(ws, level, outputs)
+    if scn == "cb_at_b3_guess":   # a guess run is the user's Free choice (issue #106), made at readiness
+        tm(ws, "mode", "free")
     if scn == "cb_at_a1":
         n = cb_drive(ws, run, "A1")
         cb_landing(ws, run)
@@ -1870,7 +1872,8 @@ def _ca_files(ws: Path, run: Path, upto: str, presenter_prices: bool = False) ->
              "alternative": "seedance-2.0", "cost": 1.5, "budget": "ai_usd", **price}]}),
     ]
     names = {"concepts": "concepts", "claims": "claims", "board": "board", "plan": "production_plan"}
-    tm(ws, "evidence", "guess", "--run", str(run), "--why", "the user is not on the TrendsMesh Agent plan")
+    tm(ws, "mode", "free")   # the user chose Free (issue #106): the engine refuses a guess run without it
+    tm(ws, "evidence", "guess", "--run", str(run), "--why", "the user chose Free")
     for what, data in checks:
         rel = _ca_write(run, f"03_wip/{names[what]}_v01.json", data)
         tm(ws, "ad", "check", what, "--run", str(run), "--file", rel)
