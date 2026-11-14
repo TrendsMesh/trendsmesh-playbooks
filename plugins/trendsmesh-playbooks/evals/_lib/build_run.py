@@ -95,6 +95,8 @@ proposals page's decisions and renamed `2026-11-07_exampleedu-m5`; its price fil
   ov_at_profile  English pages, the profile v01 drafted and saved (its type how-to and education); at the
                  profile check-in
   ov_at_b2       English pages, the walkthrough's 17 searches saved (B1 done); run at B2 (the shortlist and its fit)
+  ov_free_at_b1  English pages, Just the big calls, the profile confirmed, and the user's Free choice in the
+                 workspace (issue #106, tm mode free); run at B1, nothing searched
   ov_week_at_i2  a week run (Just the big calls, $5 a week): a made-up week plan with the plugin blocks, dated the
                  coming week, the reserve r2 priced $3.26, checked, its page built, published as art_mock_5 and
                  awaited; run at I2
@@ -1712,6 +1714,11 @@ def ov_main(scn: str, ws: Path) -> tuple[Path | None, dict | None]:
     if scn == "ov_at_b2":
         run = ov_run(ws, "every_step", ["proposals"], chat="en")
         return run, ov_drive(ws, run, "B2")
+    if scn == "ov_free_at_b1":   # issue #106: an idea run on Free, past the profile check-in
+        run = ov_run(ws, "big_calls", ["proposals"], chat="en")
+        n = ov_drive(ws, run, "B1")
+        tm(ws, "mode", "free")
+        return run, n
     if scn == "ov_no_replicate":
         run = ov_run(ws, "every_step", ["proposals"], stack={"replicate": "missing", "artifacts": "missing"}, chat="en")
         return run, ov_drive(ws, run, "C1")

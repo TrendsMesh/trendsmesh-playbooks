@@ -27,7 +27,8 @@ name none, a short general check; and write a support report they can read and s
      `skills/refresh-ad/references/trendsmesh-sign-in.md`: `tm mode status --json` first; on Free
      (chosen before) its one line; otherwise `get_usage`, and when TrendsMesh isn't ready, one
      question, Free or Paid (the sign-in, or the plan offer once). Free only after the user's yes
-     (`tm mode free --json`). It gives `ok`, `free`, `no_agents`, `inactive` or `missing`, and the
+     (`tm mode free --json`); a clear no to TrendsMesh is that yes: record it before the doctor, and
+     don't ask them to confirm it. It gives `ok`, `free`, `no_agents`, `inactive` or `missing`, and the
      choice.
    - Meta Ads: `ads_get_ad_entities` for one ad on the user's ad account (ask which ad account,
      if you don't know it). It answers → `ok`. Not connected or not signed in → `missing`.

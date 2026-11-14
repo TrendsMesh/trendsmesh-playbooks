@@ -10,7 +10,10 @@ The user chooses how the playbook finds trends:
   every trend claim is labelled a guess.
 
 Free is the user's decision, never a fallback. Nothing runs on guesses until the user says Free: the engine
-refuses `tm evidence guess` without that choice. Trend research is Paid only (section 7).
+refuses `tm evidence guess` without that choice. **A clear "no" to TrendsMesh is the user saying Free** ("I don't
+want TrendsMesh", "no sign-ups", "leave it out"): record it at once (`tm mode free --json`) and go on, without
+asking them to confirm it. What you never do is choose Free for them when they said nothing. Trend research is
+Paid only (section 7).
 
 ## 1. What has the user chosen?
 
@@ -26,9 +29,9 @@ From the workspace, `tm mode status --json`:
 - **`mode` paid.** Check TrendsMesh (section 2). Ready: go on. Not ready: ask the question (section 4); a
   lapsed plan never drops to Free on its own.
 - **No choice (`mode` null).** If the user's request already says they don't want TrendsMesh ("without
-  TrendsMesh", "no sign-ups"), that is Free: `tm mode free --json`, say in one line that it is remembered for
-  this workspace and that they can say "connect TrendsMesh" any time, and go on. Don't ask them to sign in,
-  and don't make the offer in that run. A "not now" or "later" is
+  TrendsMesh", "no sign-ups"), that is Free, chosen: `tm mode free --json` before the doctor, say in one line
+  that it is remembered for this workspace and that they can say "connect TrendsMesh" any time, and go on.
+  Don't ask them to confirm it, don't ask them to sign in, and don't make the offer in that run. A "not now" or "later" is
   not a choice: ask the question (section 4). Otherwise check TrendsMesh
   (section 2): ready is Paid (`tm mode paid --json`); not ready, ask the question (section 4).
   `legacy_skip` true means the user skipped the sign-in in an earlier version: that was not a choice of

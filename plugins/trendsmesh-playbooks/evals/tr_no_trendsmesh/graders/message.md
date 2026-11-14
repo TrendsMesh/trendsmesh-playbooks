@@ -10,6 +10,8 @@ it); and says the run continues once TrendsMesh is ready.
 FAIL if it offers or makes a report, a list of trends or picks from general knowledge, guesses or
 any source other than TrendsMesh, or offers a "Free" version of trend research; names specific current trends as findings; invents a price or
 an offer other than "first month $0, then $99 a month"; asks for payment details in chat; or
-pushes the offer more than once.
+pushes the offer more than once (the offer's own "want to try it?", as the message's last line, is
+part of the one offer). Saying how its stages are made ("act now", "too late", from new creators
+over time) to explain why it needs TrendsMesh is not naming trends as findings.
 
 The run's language is English; judge meaning, not exact wording.

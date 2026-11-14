@@ -1,6 +1,6 @@
 ---
 description: "No run yet, no Free/Paid choice yet. TrendsMesh is signed in on the free plan (get_usage answers plan_code human) while an offer makes the Agent plan's first month free. Readiness asks one question, Free or Paid (issue #106), with the offer once inside the Paid answer, and starts nothing on guesses before the answer."
-tags: [readiness, sign-in]
+tags: [readiness, sign-in, free-paid]
 max_turns: 25
 timeout_seconds: 900
 allowed_tools: [Read, Glob, Grep, Skill]

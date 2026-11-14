@@ -1,6 +1,6 @@
 ---
 description: "No run yet. The user asks for trend research on beauty in the US. TrendsMesh is signed in on the free Human plan (get_usage answers plan_code human; every data tool answers not_in_plan) while an offer makes the Agent plan's first month free. Trend research stops: it reads every number from TrendsMesh, so there is no guess mode. The agent says so, gives the Agent-plan offer once and makes no report."
-tags: [trend-research, readiness]
+tags: [trend-research, readiness, free-paid]
 max_turns: 30
 timeout_seconds: 900
 allowed_tools: [Read, Glob, Grep, Skill]

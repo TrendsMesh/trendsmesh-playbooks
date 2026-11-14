@@ -35,7 +35,8 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    check TrendsMesh with `get_usage`. When it isn't ready, ask one question, Free (you guess, each change
    labelled a guess) or Paid (TrendsMesh: the sign-in, or the plan offer once, `tm offer`), with one
    sentence on what Paid adds here. Free starts only after the user's yes (`tm mode free`), never on its
-   own: the engine refuses a guess run without it. It gives the state: `ok`, `free`, `no_agents`,
+   own: the engine refuses a guess run without it. A clear no to TrendsMesh in the request is that yes:
+   record `tm mode free` before the doctor and don't ask again. It gives the state: `ok`, `free`, `no_agents`,
    `inactive` or `missing`, and the choice.
    **Meta Ads:** `ads_get_ad_entities` for one ad on the user's ad account (ask for the ad
    account first if you don't know it): `ok`, `missing` (not connected or not signed in) or

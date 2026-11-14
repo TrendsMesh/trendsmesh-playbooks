@@ -1,5 +1,5 @@
 ---
-description: "No run yet. The user chose Free earlier (the workspace's tm mode is free) and asks for video ideas for a Polish parenting channel. The run goes on Free (issue #106): it records evidence guess, writes and checks its guessed trends (tm organic guesses check), and its ideas name where each trend was seen, are labelled guesses, are Inspire only, say what TrendsMesh would add, and never give a lifecycle stage or a count of their own."
+description: "An idea run at B1, its profile confirmed. The user chose Free earlier (the workspace's tm mode is free) and asks for video ideas for a Polish parenting channel. The run goes on Free (issue #106): it records evidence guess, writes and checks its guessed trends (tm organic guesses check), and its ideas name where each trend was seen, are labelled guesses, are Inspire only, say what TrendsMesh would add, and never give a lifecycle stage or a count of their own."
 tags: [organic-video, free-paid]
 max_turns: 90
 timeout_seconds: 1800
@@ -15,4 +15,4 @@ append_system_prompt: |
   2026-11-14. Write final answers for the user in plain words.
 ---
 
-I run ExampleEdu, a Polish channel for parents about kids and gaming (TikTok and Instagram, short videos, we film ourselves, no store). Give me 4 short video ideas for this week. Just show me the ideas here in chat when you have them; skip any page and stop there.
+My ExampleEdu idea run is already set up in runs/03-organic-ai-video/ and its channel profile is confirmed. Carry on and give me the video ideas. Just show me the ideas here in chat when you have them; skip any page and stop there.

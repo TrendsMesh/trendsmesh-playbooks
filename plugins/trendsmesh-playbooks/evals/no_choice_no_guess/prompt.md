@@ -1,5 +1,5 @@
 ---
-description: "Check-every-step run at A5 (trends), TrendsMesh not connected, and the user has said nothing about it (no Free/Paid choice in the workspace). The run must not start guessing on its own (issue #106): it asks one question, Free or Paid, with what Paid adds, and records no evidence before the answer."
+description: "Check-every-step run at A5 (trends). TrendsMesh is signed in on the free plan, with no trend data (get_usage answers plan_code human), and the user has said nothing about it (no Free/Paid choice in the workspace). The run must not start guessing on its own (issue #106): it asks one question, Free or Paid, with what Paid adds, and records no evidence before the answer."
 tags: [whole-run, guess-mode, free-paid]
 max_turns: 40
 timeout_seconds: 900

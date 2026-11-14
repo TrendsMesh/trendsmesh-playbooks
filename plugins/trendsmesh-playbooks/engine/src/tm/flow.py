@@ -1069,7 +1069,8 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
     else:
         message = (f"Do the work of {st.id} ({st.title}) as described at the ref, record every "
                    f"file with `tm record`, then run `tm done {st.id}`.")
-    if _pb01(s) and s.evidence is None and st.id in _EVIDENCE_STEPS:
+    if s.evidence is None and ((_pb01(s) and st.id in _EVIDENCE_STEPS)
+                               or (s.playbook == ORGANIC_VIDEO and st.id == _EVIDENCE_WINDOW[ORGANIC_VIDEO][0])):
         message = _EVIDENCE_FIRST + " " + message
     if (_pb01(s) and st.id == ESTIMATE_STEP and "live_test" in s.outputs and not s.test_plan
             and (s.test_estimate or {}).get("basis") != "ad"):
