@@ -56,6 +56,32 @@ name in a comment. A result folder from before the rename carries the old name.
 | `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
 | `vo_shortened_with_bridging_line` | `vo_bridging_line` |
 
+## The #106 run, Free or Paid (all cases, 2026-11-14 and 15)
+
+Not a release run: #106 (Free or Paid) on `claude/free-paid-mode-c63388` at ef95d94, before the release candidate
+that will also carry #108. First the eight #106 cases (`evals/run.sh --tag free-paid --ablation none -j 4
+--max-cost-usd 500`), then every case once (`evals/run.sh --report-issue --ablation none -j 3 --max-cost-usd 500`),
+then each failing case again on its own.
+
+**The #106 cases, first run: 3 of 8 passed.** After the fixes below: **8 of 8.**
+
+| Found | Kind | Fix |
+|---|---|---|
+| Every Create an ad fixture records `tm evidence guess` itself, which the engine now refuses without the Free choice: all `ca_*` cases would fail at their scaffold (found before the run, running the fixtures) | fixture | `build_run.py`: `tm mode free` first; `cb_at_b3_guess` too |
+| The user said plainly they don't want TrendsMesh, and the agent asked them to confirm going on without it instead of recording Free (`skip_sign_in_once`) | **plugin** | trendsmesh-sign-in.md, refresh-ad SKILL.md, doctor.md: a clear no is the Free choice, recorded before the doctor, never asked again |
+| The shared mocks answer TrendsMesh as a paid plan, so the agent rightly went on with trend data (`no_choice_no_guess`) | case | the free-plan TrendsMesh mocks of `free_offer_once` |
+| The agent rightly stopped at the channel profile, which is always asked (`ov_free_ideas`) | case | new scenario `ov_free_at_b1`: the profile confirmed, Free chosen, run at B1 |
+| Organic video's B1 did not remind the agent to record Free or Paid first | **plugin** | `tm next` at B1 says it, as Refresh an ad's A5 does |
+| Graders: the offer's own "want to try it?" read as a second push (`tr_no_trendsmesh`); "not in the user's plan" asked of a run on Free (`cb_no_trendsmesh_guess`) | graders | each says what it meant (the `cb_*` grader lives in the private repo) |
+
+**All cases, first run: 70 of 81 passed** (3034 s). Each of the nine failures that reached the agent passed on its
+own rerun (`ca_quiet_line_not_missing`, `ca_upload`, `middle_recuts`, `ov_no_replicate`, `ov_profile_type`,
+`ov_week`, `ra_page`, `ri_acceptance_private`, `tr_paid_wording`): variance, none of it about Free or Paid. **79 of
+81 pass.**
+
+**Not passing: `cb_page_decisions_from_db` and `cb_no_artifacts_local_page`**, both at their scaffold, for the reason
+under the 0.13.0 run (Chrome prints the brief's PDFs slowly without a home folder, past the scaffold limit).
+
 ## The 0.13.1 release run (all cases, 2026-11-13)
 
 Every case once (`evals/run.sh --report-issue --ablation none -j 3 --max-cost-usd 500`), on `dev` at cfacbb6 (wave 7)
