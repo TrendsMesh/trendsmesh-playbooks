@@ -21,6 +21,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **When TrendsMesh stops mid-run,** Claude says what stopped and how to get it back, and waits; going on as
   guesses needs your yes, as before.
 - **The README shows Free and Paid side by side,** and why TrendsMesh sees more than Claude alone.
+- **The plugin has a README of its own, with what it sends where:** every outside service it reaches, when, and what
+  goes there, what each hook does, and a privacy policy link. It is the listing text for Anthropic's plugin
+  directory. The plugin's description now names Create an ad too.
+- **A smaller install.** The tests and the evals moved out of the plugin folder, to `tests/` and `evals/` at the
+  repository root, so the plugin ships about 350 files instead of 1,700.
 
 ## 0.13.1
 

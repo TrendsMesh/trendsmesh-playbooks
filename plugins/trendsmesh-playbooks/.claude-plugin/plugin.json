@@ -1,11 +1,12 @@
 {
   "name": "trendsmesh-playbooks",
   "version": "0.13.1",
-  "description": "TrendsMesh playbooks: refresh a fading Meta ad with rising trends; trend research for a category; creative briefs for new ads; organic AI videos for your channels",
+  "description": "TrendsMesh playbooks: refresh a fading Meta ad with rising trends; trend research for a category; creative briefs for new ads; new Meta video ads from zero; organic AI videos for your channels",
   "author": {
     "name": "TrendsMesh"
   },
   "license": "MIT",
+  "privacyPolicyUrl": "https://trendsmesh.com/privacy",
   "userConfig": {
     "replicate_api_token": {
       "type": "string",

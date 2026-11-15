@@ -101,6 +101,6 @@ ocr = { features = ["ocr", "opencv"], solve-group = "default" }
 dev-full = { features = ["dev", "breakdown", "opencv-full", "voice", "ai", "video"], solve-group = "dev-full" }
 
 [tasks]
-test = "pytest ../engine/tests -q"
-test-tools = "pytest ../engine/tests/tools -q"
-test-video = "pytest ../engine/tests -q -m video"
+test = "pytest ../../../tests/engine -q"
+test-tools = "pytest ../../../tests/engine/tools -q"
+test-video = "pytest ../../../tests/engine -q -m video"

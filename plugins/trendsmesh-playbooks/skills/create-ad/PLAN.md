@@ -106,7 +106,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 `engine/src/tm/create_config.py` (new), `engine/src/tm/config.py` (`_for_playbook`), `data/requirements.yaml`,
 `engine/src/tm/evidence.py` (`NOTICES[CREATE_AD]`), `engine/src/tm/flow.py` (`_EVIDENCE_WINDOW[CREATE_AD] =
 ("S1", "S3")`), `skills/create-ad/SKILL.md`, `skills/create-ad/references/{flow,rules,pages}.md`,
-`data/i18n/en.yaml` (the `ad` area), tests `engine/tests/test_create_config.py`, `test_create_doctor.py`,
+`data/i18n/en.yaml` (the `ad` area), tests `tests/engine/test_create_config.py`, `test_create_doctor.py`,
 `test_playbooks.py`.
 
 - Config schema (spec "Config" plus the plugin's): `brand.{product,url,persona,language}`,
@@ -125,7 +125,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 
 ### Task 2: Steps, check-ins, levels
 
-**Files:** `data/create-ad/steps.yaml`, `data/create-ad/checkins.yaml`, test `engine/tests/test_create_flow.py`.
+**Files:** `data/create-ad/steps.yaml`, `data/create-ad/checkins.yaml`, test `tests/engine/test_create_flow.py`.
 
 - The table above. `concept` carries the guess notice. `takes`' `fails_qa` stops ("a video is never
   regenerated automatically"). `upload` is `money: true` (refused while the run is stopped).
@@ -135,7 +135,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 ### Task 3: Plan, storyboard, money and the paid guard
 
 **Files:** `engine/src/tm/create_plan.py` (new, `tm ad check ...`, `tm ad redo`), `engine/src/tm/tools/__init__.py`
-(`PRECHECK[CREATE_AD]`), `engine/src/tm/stepchecks.py`, test `engine/tests/test_create_plan.py`.
+(`PRECHECK[CREATE_AD]`), `engine/src/tm/stepchecks.py`, test `tests/engine/test_create_plan.py`.
 
 - `check_concepts`, `check_claims`, `check_board`, `check_plan`, `check_storyboard(run, path) ->
   list[Problem]`; a clean check marks the file (`stepchecks.mark`) and, for the plan and the storyboard, sets
@@ -152,7 +152,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 ### Task 4: Meta copy
 
 **Files:** `engine/src/tm/create_copy.py` (new, `tm ad copy check`, `tm ad copy accept`), test
-`engine/tests/test_create_copy.py`.
+`tests/engine/test_create_copy.py`.
 
 - The draft `03_wip/copy_vNN.json`: per ad key, 5 / 5 / 5 texts with their claims, CTA, display link, URL,
   ad name, video title. Problems: counts, lengths, CTA not Meta's, URL host not the brand's, UTM missing or
@@ -164,7 +164,7 @@ nothing spends it in this playbook, and the ad set's amount comes from the user'
 ### Task 5: The PAUSED upload
 
 **Files:** `engine/src/tm/create_upload.py` (new, `tm ad upload check|record`), test
-`engine/tests/test_create_upload.py`.
+`tests/engine/test_create_upload.py`.
 
 - Proposal `05_results/upload_proposal_vNN.json` checked against CA14: pages and pixel checks saved; objective
   and event among 1–2 options with reasons, the user's pick in their words; conversion events only from a pixel

@@ -57,7 +57,7 @@ def versions(root: Path) -> dict[str, str | None]:
         PLUGIN / ".claude-plugin/plugin.json": plugin_json,
         PLUGIN / "engine/pyproject.toml": pyproject,
         PLUGIN / "engine/src/tm/__init__.py": init,
-        PLUGIN / "engine/tests/test_cli.py": test_cli,
+        Path("tests/engine/test_cli.py"): test_cli,
     }
     found = {}
     for rel, parse in places.items():

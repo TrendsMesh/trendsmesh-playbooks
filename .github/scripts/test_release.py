@@ -26,18 +26,18 @@ CHANGELOG_RELEASE = CHANGELOG_RC.replace("## Unreleased", "## 0.10.0")
 
 
 def make_root(tmp_path, version="0.10.0-rc.1", changelog=CHANGELOG_RC, skip=()):
-    plugin = tmp_path / "plugins/trendsmesh-playbooks"
+    plugin = "plugins/trendsmesh-playbooks/"
     files = {
-        ".claude-plugin/plugin.json": json.dumps({"name": "trendsmesh-playbooks", "version": version}, indent=2),
-        "engine/pyproject.toml": f'[project]\nname = "tm"\nversion = "{version}"\n',
-        "engine/src/tm/__init__.py": f'"""tm."""\n\n__version__ = "{version}"\n',
-        "engine/tests/test_cli.py": f'def test_version(capsys):\n    assert out == "tm {version}"\n',
+        plugin + ".claude-plugin/plugin.json": json.dumps({"name": "trendsmesh-playbooks", "version": version}, indent=2),
+        plugin + "engine/pyproject.toml": f'[project]\nname = "tm"\nversion = "{version}"\n',
+        plugin + "engine/src/tm/__init__.py": f'"""tm."""\n\n__version__ = "{version}"\n',
+        "tests/engine/test_cli.py": f'def test_version(capsys):\n    assert out == "tm {version}"\n',
     }
     for rel, text in files.items():
-        if rel in skip:
+        if rel.removeprefix(plugin) in skip or rel in skip:
             continue
-        (plugin / rel).parent.mkdir(parents=True, exist_ok=True)
-        (plugin / rel).write_text(text, encoding="utf-8")
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(text, encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
     return tmp_path
 
@@ -119,7 +119,7 @@ def test_prepare_names_each_wrong_place(tmp_path):
 
 
 def test_prepare_missing_place_is_wrong(tmp_path):
-    root = make_root(tmp_path, skip=("engine/tests/test_cli.py",))
+    root = make_root(tmp_path, skip=("tests/engine/test_cli.py",))
     with pytest.raises(ReleaseError, match=r"test_cli.py \(None\)"):
         prepare("v0.10.0-rc.1", root)
 

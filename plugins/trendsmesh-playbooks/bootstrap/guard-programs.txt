@@ -1,5 +1,5 @@
 # The programs the plugin runs: the one list the key guard (guard-secrets.sh and guard-secrets.ps1)
-# and its test (engine/tests/test_guard_programs.py) read.
+# and its test (tests/engine/test_guard_programs.py in the repository) read.
 #
 # A path is a program in the plugin's data folder ($TM_PLUGIN_DATA), where secrets.env (the keys)
 # is kept too. These programs are the only things there a call may name, by their full path and

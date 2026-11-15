@@ -370,7 +370,7 @@ the example). One file is the source of the page, the animatics and the hand-off
   "licensed_equivalent"} | null, "thumbnail": "…", "directional": true|false}`. `awareness` is
   one of `unaware`, `problem_aware`, `solution_aware`, `product_aware`, `most_aware`. A
   contradiction needs its `why` (CB7). The engine test fixture
-  `engine/tests/fixtures/creative_brief/ld_plugin_blocks.json` holds the dry run's.
+  `tests/engine/fixtures/creative_brief/ld_plugin_blocks.json` (in the repository) holds the dry run's.
 - **CB6:** every two concepts differ on at least 2 of the five axes; none is a near-duplicate of
   an ad already running (the creatives read at B1). **CB5:** at least one language-bank phrase per
   concept, verbatim or minimally adapted (`adapted_from` naming the bank phrase), used in the hook,

@@ -161,8 +161,9 @@ your runs: read it first, and send it privately to contact@trendsmesh.com rather
 
 The plugin is `plugins/trendsmesh-playbooks/`: skills, the `doctor` and `acceptance` commands, hooks,
 `bootstrap/`, the Python engine in `engine/src/tm/`, the pixi environments in `env/`, the video card templates in
-`remotion/`, the animation style library in `data/styles/` and the evals in `evals/`. The marketplace file is
-`.claude-plugin/marketplace.json`.
+`remotion/` and the animation style library in `data/styles/`. Its own `README.md` is the listing text for
+Anthropic's plugin directory, with what the plugin sends where. The tests (`tests/`) and the evals (`evals/`) sit
+outside the plugin folder, so the plugin ships without them. The marketplace file is `.claude-plugin/marketplace.json`.
 
 Try it from a local folder, without installing:
 
@@ -173,16 +174,16 @@ claude --plugin-dir plugins/trendsmesh-playbooks
 Run the tests (needs [pixi](https://pixi.sh)):
 
 ```
-cd plugins/trendsmesh-playbooks/env
-pixi run --frozen -e dev test                            # engine tests
-sh ../bootstrap/test-bootstrap.sh && sh ../bootstrap/test-guard-secrets.sh   # macOS, Linux, Windows (Git Bash)
-../bootstrap/test-bootstrap.ps1                          # Windows (PowerShell)
-pixi run --frozen -e dev-full test-tools                 # heavy tiers: breakdown, video, voice
+pixi run --frozen --manifest-path plugins/trendsmesh-playbooks/env/pixi.toml -e dev test       # engine tests (tests/engine/)
+sh tests/bootstrap/test-bootstrap.sh && sh tests/bootstrap/test-guard-secrets.sh                # macOS, Linux, Windows (Git Bash)
+tests/bootstrap/test-bootstrap.ps1                                                              # Windows (PowerShell)
+pixi run --frozen --manifest-path plugins/trendsmesh-playbooks/env/pixi.toml -e dev-full test-tools   # heavy tiers
 ```
 
 Some engine tests check the plugin against reference runs that are not published; they are marked `private_data`
 and skip here. The evals (`evals/run.sh`) drive Claude through scripted scenarios with mocked services; they call the
-Claude API and cost a little. CI runs the engine and bootstrap tests on Ubuntu, Windows and macOS for every push.
+Claude API and cost a little. `claude plugin eval` reads cases only from inside the plugin it tests, so `run.sh` copies
+the plugin and `evals/` into a temporary folder, runs there, and copies the results back to `evals/results/`. CI runs the engine and bootstrap tests on Ubuntu, Windows and macOS for every push.
 
 Changes per version: [CHANGELOG.md](CHANGELOG.md).
 
