@@ -46,7 +46,8 @@ import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from tm import audience, checkins, cli, config, manifest, organic_research, paths, state, stepchecks
+from tm import atlas_prompt, audience, brand, checkins, cli, config, manifest, organic_research, paths, state, \
+    stepchecks
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import ReadOnlyError, RunFolder
 from tm.stops import AGAIN, Stop
@@ -255,7 +256,14 @@ def _setup(p: argparse.ArgumentParser) -> None:
     dw = sub.add_parser("deliver-week", help="one delivery page for the week and the posting plan (I4)")
     dw.add_argument("--run", required=True, help="the week run folder")
     dw.add_argument("--json", action="store_true")
-    a = sub.add_parser("atlas-styles", help="our animation styles: number, id, name, family, description, what each suits")
+    a = sub.add_parser("atlas-styles", help="our animation styles: number, id, name, family, description, what each "
+                                            "suits, tags and previews; in the order to suggest them (issue #116)")
+    a.add_argument("--channel", help="the channel's name or key: its profile's type and own style, and the styles it "
+                                     "picked 3 times or more (first) or rejected (last) in its earlier runs")
+    a.add_argument("--channel-type", help="the channel's type (the profile's type): its styles first")
+    a.add_argument("--tone", help="the topic's tone words, comma-separated (" + ", ".join(atlas_prompt.TONES) + ")")
+    a.add_argument("--numbers", action="store_true", help="the idea carries a key number: styles that show numbers well "
+                                                          "first among equals")
     a.add_argument("--json", action="store_true")
     a = sub.add_parser("atlas-prompt", help="an animation's build prompt in one of our styles, 03_wip/<item>/prompt_vNN.txt (free)")
     a.add_argument("--run", required=True, help="the run folder")
@@ -903,13 +911,36 @@ def _upscale(args: argparse.Namespace) -> int:
 
 
 def _atlas_styles(args: argparse.Namespace) -> int:
-    from tm import atlas_prompt
-
-    rows = [{k: s[k] for k in ("order", "styleId", "name", "category", "description", "suits")}
-            for s in atlas_prompt.styles()]
-    text = "\n".join(f"{r['order']:>2}  {r['styleId']:<16} {r['name']} ({r['category']}): {r['description']} "
-                     f"Suits: {r['suits']}" for r in rows)
-    cli.emit(args, {"status": "done", "styles": rows}, text)
+    """The styles with their tags and previews (issue #116); with --channel, --channel-type, --tone or --numbers in
+    the order to suggest them (`atlas_prompt.ranked`), each with its `reason` and `shared_tone`."""
+    tone = [w for w in (args.tone or "").split(",") if w.strip()]
+    channel = None
+    if args.channel:
+        workspace = paths.workspace()
+        key = organic_research.known_channel(workspace, args.channel)
+        profile = brand.latest(workspace, key, kind="channel") or {}
+        history = organic_research.style_history(workspace, key)
+        own_words = profile.get("video_style") if isinstance(profile.get("video_style"), str) else None
+        channel = {"channel": key, "type": profile.get("type"), "video_style": own_words,
+                   "own": None if own_words else organic_research.habit_style(history), **history}
+    ordered = bool(channel or args.channel_type or tone or args.numbers)
+    cards = (atlas_prompt.ranked(channel_type=args.channel_type or (channel or {}).get("type"), tone=tone,
+                                 numbers=args.numbers, own=(channel or {}).get("own"),
+                                 rejected=(channel or {}).get("rejected") or ()) if ordered else atlas_prompt.styles())
+    rows = []
+    for s in cards:
+        poster, loop = atlas_prompt.preview_files(s)
+        rows.append({**{k: s[k] for k in ("order", "styleId", "name", "category", "description", "suits", "tags")},
+                     "poster": str(poster), "loop": str(loop),
+                     **({"reason": s["reason"], "shared_tone": s["shared_tone"]} if ordered else {})})
+    words = {"channel": "the channel's own style", "type": "the channel's type", "tone": "shares the tone",
+             "other": "", "rejected": "rejected for this channel before"}
+    lines = [f"{r['order']:>2}  {r['styleId']:<18} {r['name']} ({r['category']}): {r['description']} Suits: "
+             f"{r['suits']}" + (f" [{words[r['reason']]}]" if ordered and words[r["reason"]] else "") for r in rows]
+    if channel and channel["video_style"]:
+        lines.insert(0, f"The channel's own style, in its words: {channel['video_style']}. Name the closest style as "
+                        "plugin.channel_style, first.")
+    cli.emit(args, {"status": "done", "styles": rows, **({"channel": channel} if channel else {})}, "\n".join(lines))
     return 0
 
 

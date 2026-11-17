@@ -335,7 +335,7 @@ def test_animation_steps_name_the_engine_commands():
     flow_md = _text(SKILL / "references" / "flow.md")
     named = {
         "d1": ["tm env install animatic --yes", "animation-styles.md"],
-        "d2": ["tm organic atlas-styles", "no posters", "taste.style"],
+        "d2": ["tm organic atlas-styles", "playing loops", "taste.style"],
         "e2": ["An animation is drawn, not generated", "voiceover's credits"],
         "f1": ["--timestamps", "tm organic atlas-prompt --run R", "--voiceover --storyboard --aspect 9:16",
                "--srt <the word SRT>", "_progress.txt", "tm organic storyboard --run R", "--stage storyboard",
@@ -385,13 +385,13 @@ def test_stills_and_sections_steps_name_the_engine_commands():
 
 
 def test_animation_styles_reference_holds_the_brief_and_the_page_contract():
-    """references/animation-styles.md (Task 19): the taste card in words (Decision 13: no posters), the setting
+    """references/animation-styles.md (Task 19): the pick seen moving (issue #116: previews, the suggestion order), the setting
     replaced and the rendering kept (lesson 17), text above y 1260, the voiceover timed from the word SRT, the
     subagents' briefs with _progress.txt and their times (FLOWS K), and the page contract storyboard.mjs and
     render.mjs read."""
     text = re.sub(r"\s+", " ", _text(PLUGIN / "references" / "animation-styles.md"))
-    for words in ("2 to 3 styles by number, name and description", "No style posters are in the package",
-                  "Never a poster", "setting", "replaced by the topic's", "rendering", "is kept", "above y 1260",
+    for words in ("Pick 2 to 3 from the head of that list", "playing loops", "grouped by family",
+                  "Your channel's style", "goes **last**", "Never a picture from the web", "setting", "replaced by the topic's", "rendering", "is kept", "above y 1260",
                   "timed from the word SRT", "_progress.txt", "about 15 minutes", "window.STORYBOARD_READY = true",
                   "`p1` to `p6`", "window.makeSheet()", "window.seek(t)", "window.DURATION", "licence",
                   "tm organic atlas-prompt", "tm organic storyboard", "tm organic animate", "--stage storyboard"):

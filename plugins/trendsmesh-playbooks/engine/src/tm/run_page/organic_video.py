@@ -48,9 +48,9 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import json_schema, kit as kits, manifest, organic_gates, page as pages, state, stepchecks
+from tm import atlas_prompt, json_schema, kit as kits, manifest, organic_gates, page as pages, state, stepchecks
 from tm.organic_pages import choices, gate as gate_page, taste
-from tm.run_page import organic_plan
+from tm.run_page import organic_plan, styles as style_previews
 from tm.run_page.context import Context
 from tm.run_page.template import E, media_tag, register_block
 from tm.run_page.words import tx
@@ -424,14 +424,22 @@ def _taste(ctx: Context) -> list[dict]:
     picks, ones, many, notes, lines, texts = set(), [], [], [], [], []
     for sec in data["sections"]:
         sid = sec["id"]
-        opts = []
+        opts, gallery = [], []
         for o in sec.get("options") or []:
             media = [{"src": s, "caption": m.get("caption") or o["label"]} for m in o.get("media") or []
                      if (s := _put(ctx, m.get("src")))]
-            opts.append({"id": o["id"], "label": o["label"], "means": o.get("means") or "",
-                         "recommended": bool(o.get("recommended")), "badge": o.get("badge") or "",
-                         "default": bool(o.get("default")), "disabled": o.get("disabled") or "",
-                         "link": o.get("link") or "", "price": o.get("cost_text") or "", "media": media})
+            card = atlas_prompt.find_style(o["style"]) if o.get("style") else None
+            if card:                   # one of our styles: its own loop (issue #116)
+                media = [{"src": style_previews.media(ctx, card)["loop"], "caption": o["label"],
+                          "poster": style_previews.media(ctx, card)["poster"], "loop": True}]
+            if o.get("gallery"):
+                gallery.append({"id": o["id"], "card": card})
+            else:
+                opts.append({"id": o["id"], "label": o["label"], "means": o.get("means") or "",
+                             "recommended": bool(o.get("recommended")), "badge": o.get("badge") or "",
+                             "default": bool(o.get("default")), "disabled": o.get("disabled") or "",
+                             "link": o.get("link") or "", "price": o.get("cost_text") or "", "media": media,
+                             **({"value": style_previews.value(card)} if card else {})})
             if not o.get("disabled"):
                 picks.add(o["id"])
                 if sec["kind"] == "many":
@@ -445,7 +453,7 @@ def _taste(ctx: Context) -> list[dict]:
         lines += [f"{sid}{SEP}{x['id']}" for x in sec.get("lines") or []]
         sections.append({"id": sid, "kind": sec["kind"], "title": sec.get("title") or "", "hint": sec.get("hint") or "",
                          "options": opts, "lines": sec.get("lines") or [], "note": sec.get("note") or "",
-                         "text": sec.get("text")})
+                         "text": sec.get("text"), **({"gallery": _style_gallery(ctx, opts, gallery)} if gallery else {})})
     if ones:
         offer["picks"] = {"type": "each", "keys": ones, "values": sorted(picks)}
     if many:
@@ -461,8 +469,18 @@ def _taste(ctx: Context) -> list[dict]:
     cannot = {o["id"]: _w(ctx, "choices.cannot", reason=o["disabled"]) for s in sections for o in s["options"]
               if o["disabled"]}
     blocks = [{"kind": "text", "text": data.get("lede") or ""}] if data.get("lede") else []
+    if any(sec.get("gallery") for sec in sections):
+        words["styles"] = style_previews.words(ctx.lang)
     return blocks + [{"kind": "ov_choices", "sections": sections, "words": words, "cannot": cannot,
                       "how": _w(ctx, "page.how_taste"), "assets": _first(ctx), "offer": offer}]
+
+
+def _style_gallery(ctx: Context, offered: list[dict], gallery: list[dict]) -> dict:
+    """The taste page's gallery (issue #116): every style of ours by family, the suggested ones marked, the others
+    picked by their option id."""
+    ids = {style_previews.value(g["card"]): g["id"] for g in gallery}
+    return {"groups": style_previews.gallery(ctx), "ids": ids,
+            "taken": sorted(o["value"] for o in offered if o.get("value"))}
 
 
 def _taste_settled(ctx: Context) -> list[dict]:
@@ -691,7 +709,8 @@ def _choices(b: dict, ds, lang: str, live: bool) -> str:
             link = (f' · <a href="{E(o["link"])}" target="_blank" rel="noopener">{E(w["open_page"])}</a>'
                     if o["link"].startswith(("https://", "http://")) else "")
             why = f'<span class="small ov-off">{E(b["cannot"].get(o["id"]))}</span>' if off else ""
-            media = "".join(f'<figure>{media_tag(m["src"], m["caption"])}</figure>' for m in o["media"])
+            media = "".join("<figure>" + (style_previews.loop_tag(m["src"], m["poster"], m["caption"]) if m.get("loop")
+                                          else media_tag(m["src"], m["caption"])) + "</figure>" for m in o["media"])
             tag = "label" if live else "div"
             opts.append(f'<{tag} class="ov-choice{" off" if off else ""}">{field}<span><b>{E(o["label"])}</b> {badges}'
                         f'<span class="small soft">{E(o["means"])}</span>{why}{link}</span>'
@@ -700,6 +719,11 @@ def _choices(b: dict, ds, lang: str, live: bool) -> str:
         if opts:
             parts.append(f'<div class="ov-choices" role="{"group" if sec["kind"] == "many" else "radiogroup"}" '
                          f'aria-label="{E(sec["title"] or sid)}">{"".join(opts)}</div>')
+        if live and sec.get("gallery"):
+            g = sec["gallery"]
+            picked = next((o["id"] for o in sec["options"] if o["default"]), None)
+            parts.append(style_previews.gallery_html(f"ovs-{sid}", _path("picks", sid), g["groups"], picked,
+                                                     w["styles"], taken=set(g["taken"]), ids=g["ids"]))
         if live and sec.get("text"):
             parts.append(f'<label class="small soft note-l">{E(sec["text"].get("label") or "")}<textarea class="detail-note" '
                          f'data-detail="{_path("texts", sid)}" disabled>{E(sec["text"].get("value") or "")}</textarea></label>')
@@ -711,7 +735,11 @@ def _choices(b: dict, ds, lang: str, live: bool) -> str:
 
 
 def _assets(b: dict) -> str:
-    return f"<style>{CSS}</style><script>{SCRIPT}</script>" if b.get("assets") else ""
+    if not b.get("assets"):
+        return ""
+    styled = any(sec.get("gallery") or any(m.get("loop") for o in sec.get("options") or [] for m in o.get("media") or [])
+                 for sec in b.get("sections") or [])
+    return f"<style>{CSS}</style><script>{SCRIPT}</script>" + (style_previews.ASSETS if styled else "")
 
 
 register_block("ov_items", _items)

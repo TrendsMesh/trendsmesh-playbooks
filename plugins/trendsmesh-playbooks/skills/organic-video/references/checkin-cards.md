@@ -100,8 +100,8 @@ built and published to the same link, and the card again.
 **Pick the style, voice and music** (`taste`, after D2). Only what is needed: the voice for lines
 someone says off screen (2 to 3 ElevenLabs previews in the audience language, and the user's own),
 the music bed (from their folder, or a Mixkit track with a free commercial licence), and the
-style for an animation (2 to 3 of our animation styles by number, name and description, from `tm
-organic atlas-styles`; no posters: the look is judged on the storyboard). Each option with a one-line why, your pick first. A
+style for an animation (2 to 3 of our animation styles from the head of `tm organic atlas-styles --channel`,
+shown as playing loops, with every style by family below to pick instead; the storyboard is the real check). Each option with a one-line why, your pick first. A
 pick saved in the profile is offered first and saved again with the new ones. Choice: `accept`,
 `tm decide taste accept --run R --note "<their picks>"`; at Check every step the run page's taste
 stage has them to hear and pick (`flow.md#d2`), recorded with `tm page decision --run R taste

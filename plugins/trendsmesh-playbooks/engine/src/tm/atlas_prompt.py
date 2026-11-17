@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import difflib
 import functools
+import hashlib
 import html
 import json
 import re
@@ -70,6 +71,93 @@ def find_style(key: str) -> dict:
 def module_path(s: dict) -> Path:
     """The style's reference animation, `styles/NN_<styleId>.js`."""
     return ROOT / "styles" / f"{s['order']:02d}_{s['styleId']}.js"
+
+
+# --- previews and tags (issue #116) ---------------------------------------------------------------------------
+
+PREVIEWS = ROOT / "previews"
+# A card's `tags`: the channel types it suits (the profile's `type` ids, brand.CHANNEL_TYPES without "other"), 2 to 3
+# tone words from TONES, its energy, and whether it shows numbers clearly (data/styles/README.md, "Adding a style").
+CHANNEL_TYPES = ("news_explainers", "howto_education", "entertainment_skits", "music_dance", "lifestyle_vlog",
+                 "shop_product")
+TONES = ("serious", "playful", "premium", "retro", "warm", "edgy", "calm", "technical", "dreamy", "bold", "nostalgic",
+         "friendly", "raw", "elegant", "futuristic")
+ENERGIES = ("calm", "medium", "high")
+
+
+@functools.lru_cache(maxsize=1)
+def _previews() -> dict:
+    return json.loads((PREVIEWS / "previews.json").read_text(encoding="utf-8"))
+
+
+def previews() -> dict:
+    """`previews/previews.json`: per styleId its poster, loop, poster time, loop window, sizes and the hash of the
+    module and card they were made from (atlas/previews.mjs)."""
+    return {k: dict(v) for k, v in _previews().items()}
+
+
+def preview_files(s: dict) -> tuple[Path, Path]:
+    """The style's poster (`NN_<styleId>.jpg`, 540x960) and loop (`NN_<styleId>.mp4`, 4 s, 360x640, muted)."""
+    stem = f"{s['order']:02d}_{s['styleId']}"
+    return PREVIEWS / f"{stem}.jpg", PREVIEWS / f"{stem}.mp4"
+
+
+def preview_hash(s: dict) -> str:
+    """What atlas/previews.mjs stores as a preview's `hash`: sha256 of the module's bytes and the card's compact JSON,
+    16 hex digits. A style whose module or card changed no longer matches its preview."""
+    card = json.dumps(s, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(module_path(s).read_bytes() + card).hexdigest()[:16]
+
+
+def style_id(key: object) -> str | None:
+    """The styleId of a style named by its number, styleId or `<number> <name>`; None when it is not one of ours."""
+    if isinstance(key, bool) or not isinstance(key, (str, int)):
+        return None
+    text = str(key).strip()
+    head = text.split(" ", 1)[0] if text[:1].isdigit() else text
+    try:
+        return find_style(head)["styleId"]
+    except ValueError:
+        return None
+
+
+def ranked(*, channel_type: str | None = None, tone=(), numbers: bool = False, own: object = None,
+           rejected=()) -> list[dict]:
+    """Every style in the order it is suggested (issue #116), each card with `reason` and `shared_tone`:
+
+    1. `own`, the channel's own style (the card nearest its `video_style`, or one it picked 3 times or more): `channel`;
+    2. the styles whose tags.channels has `channel_type` (`type`), then the others (`tone` when they share a tone word,
+       else `other`); within each, most of `tone` in common first, then (with `numbers`, the idea has a key number)
+       the styles that show numbers well, then the library's order. A channel of type `other` (or none) is ranked by
+       the tone alone;
+    3. a style the user rejected for this channel (`rejected`) last (`rejected`), never the channel's own.
+
+    `own` and `rejected` name styles by number, styleId or `<number> <name>`; an unknown one is passed over. A
+    ValueError for a tone word outside TONES or an unknown channel type."""
+    tone = [str(w).strip().lower() for w in tone or () if str(w).strip()]
+    bad = [w for w in tone if w not in TONES]
+    if bad:
+        raise ValueError(f"Unknown tone word {', '.join(map(repr, bad))}: use {', '.join(TONES)}.")
+    if channel_type is not None and channel_type not in (*CHANNEL_TYPES, "other"):
+        raise ValueError(f"Unknown channel type {channel_type!r}: one of {', '.join(CHANNEL_TYPES)} or other.")
+    own_id = style_id(own) if own is not None else None
+    out_ids = {i for i in (style_id(r) for r in rejected or ()) if i} - {own_id}
+    head, typed, rest, last = [], [], [], []
+    for s in styles():
+        s["shared_tone"] = [w for w in tone if w in s["tags"]["tone"]]
+        if s["styleId"] == own_id:
+            head.append({**s, "reason": "channel"})
+        elif s["styleId"] in out_ids:
+            last.append({**s, "reason": "rejected"})
+        elif channel_type in CHANNEL_TYPES and channel_type in s["tags"]["channels"]:
+            typed.append({**s, "reason": "type"})
+        else:
+            rest.append({**s, "reason": "tone" if s["shared_tone"] else "other"})
+
+    def key(s: dict) -> tuple:
+        return -len(s["shared_tone"]), bool(numbers) and not s["tags"]["numbers"], s["order"]
+
+    return head + sorted(typed, key=key) + sorted(rest, key=key) + sorted(last, key=key)
 
 
 def _read(rel: str) -> str:

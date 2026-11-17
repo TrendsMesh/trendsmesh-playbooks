@@ -7,12 +7,17 @@ the handoff's, copied) with the plugin's block on each proposal:
     plugin = {"production": ai_footage|talking_character|animation|stills_motion|sections,
               "output": video|script, "risk_hits": [{"item": <one of RISK_ITEMS>, "mitigation": str,
               "case"?: <one of the item's cases>}], "transfer": bool, "weak_link": str|null, "series": str|null,
-              "seed": str|null, "aesthetic"?: str, "styles"?: [{"style": <number or styleId>, "why": str}]}
+              "seed": str|null, "aesthetic"?: str, "styles"?: [{"style": <number or styleId>, "why": str}],
+              "channel_style"?: {"style": <number or styleId>, "why": str}}
 
 Issue #87: `aesthetic` is how the video looks ("realistic, 1990s home camcorder"), kept through production;
 `styles` are an animation's (or a video in sections') 2 to 3 suggested catalogue styles (`tm organic
 atlas-styles`), the agent's pick first; a channel whose profile has its own `video_style` gets it first on the
-page, picked in advance (`style_options`). The risk level is the highest weight of the named risks for the
+page, picked in advance (`style_options`). Issue #116: `channel_style` is the catalogue style nearest the channel's
+own (its `video_style`, or a style it picked 3 times or more), named by the agent; it counts as one of the 2 to 3, so
+`styles` then has 1 to 2. The agent picks from the head of `atlas_prompt.ranked` (`tm organic atlas-styles
+--channel`): the channel's own, then its type's styles by the topic's tone; a style the user rejected for the channel
+earlier goes last on the page too. The risk level is the highest weight of the named risks for the
 production type (`risk_level`, the weights in data/organic-video/risks.yaml), never their count. A file written
 before these keys still checks.
 
@@ -115,6 +120,8 @@ PLUGIN: dict = {
         "styles": {"type": "array", "items": {"type": "object", "required": ["style", "why"],
                                               "properties": {"style": {"type": ["string", "integer"]},
                                                              "why": {"type": "string"}}}},
+        "channel_style": {"type": "object", "required": ["style", "why"],
+                          "properties": {"style": {"type": ["string", "integer"]}, "why": {"type": "string"}}},
     },
 }
 _SHAPE_TODO = (f"Write the proposals in the handoff's schema (schemas/{SCHEMA.name}) with the plugin block on each "
@@ -348,24 +355,42 @@ def _video_style(profile: dict | None) -> str | None:
     return style.strip() if _text(style) else None
 
 
+def _card(value: str) -> dict:
+    return atlas_prompt.find_style(value.split(" ", 1)[0])
+
+
 def style_options(p: dict, profile: dict | None) -> list[dict]:
-    """The styles an animation (or a video in sections) is offered on the page, in order: the channel's own style
-    (`video_style` of its profile, or the defaults `profile_defaults` gives) first, then the proposal's suggested
-    catalogue styles. `{value, text, why, style}`: `value` is CHANNEL_STYLE or `style_value`, `style` the catalogue
-    card (None for the channel's). Empty for any other production type."""
+    """The styles an animation (or a video in sections) is offered on the page, in order (issue #116): the channel's
+    own style first, then the proposal's suggested catalogue styles, a style the user rejected for this channel
+    earlier (`rejected_styles` of the defaults `profile_defaults` gives) last. The channel's own is its profile's
+    `video_style` (the user's words, drawn on the card the proposal names as `channel_style`), else the
+    `channel_style` card, else the style it picked 3 times or more (`habit_style`). `{value, text, why, style,
+    channel}`: `value` is CHANNEL_STYLE (the user's words) or `style_value`, `style` the catalogue card (None for the
+    channel's words without a named card). Empty for any other production type."""
     plugin = p.get("plugin") if isinstance(p.get("plugin"), dict) else {}
     if plugin.get("production") not in STYLED:
         return []
+    profile = profile or {}
+    named = plugin.get("channel_style") if isinstance(plugin.get("channel_style"), dict) else {}
+    near = style_value(named.get("style"))
     out = []
     own = _video_style(profile)
     if own:
-        out.append({"value": CHANNEL_STYLE, "text": own, "why": "", "style": None})
+        out.append({"value": CHANNEL_STYLE, "text": own, "why": str(named.get("why") or "") if near else "",
+                    "style": _card(near) if near else None, "channel": True})
+    elif near or style_value(profile.get("habit_style")):
+        value = near or style_value(profile.get("habit_style"))
+        out.append({"value": value, "text": _card(value)["name"], "why": str(named.get("why") or "") if near else "",
+                    "style": _card(value), "channel": True})
+    rejected = {style_value(x) for x in profile.get("rejected_styles") or []} - {None}
+    kept, last = [], []
     for entry in plugin.get("styles") or []:
         value = style_value(entry.get("style")) if isinstance(entry, dict) else None
-        if value and value not in [o["value"] for o in out]:
-            card = atlas_prompt.find_style(value.split(" ", 1)[0])
-            out.append({"value": value, "text": card["name"], "why": str(entry.get("why") or ""), "style": card})
-    return out
+        if value and value not in [o["value"] for o in out + kept + last]:
+            row = {"value": value, "text": _card(value)["name"], "why": str(entry.get("why") or ""),
+                   "style": _card(value), "channel": False}
+            (last if value in rejected else kept).append(row)
+    return out + kept + last
 
 
 def default_style(p: dict, profile: dict | None) -> str | None:
@@ -382,6 +407,9 @@ def _look(p: dict, pid: str, out: list[Problem]) -> None:
         out.append(Problem(f"{pid}.plugin.aesthetic", f"{_name(p)}: plugin.aesthetic is blank.",
                            "Write how the video looks, in a few words (for example \"realistic, 1990s home "
                            "camcorder\"), or leave it out."))
+    named = plugin.get("channel_style")
+    if named is not None:
+        _channel_style(p, pid, named, out)
     styles = plugin.get("styles")
     if styles is None:
         return
@@ -390,11 +418,15 @@ def _look(p: dict, pid: str, out: list[Problem]) -> None:
                                                    "a style is suggested only for an animation.",
                            "Leave plugin.styles out: the look goes in plugin.aesthetic."))
         return
-    if not 2 <= len(styles) <= 3:
+    own = isinstance(named, dict)       # the channel's own style counts as one of the 2 to 3 (issue #116)
+    if not (1 if own else 2) <= len(styles) <= (2 if own else 3):
         out.append(Problem(f"{pid}.plugin.styles", f"{_name(p)} suggests {len(styles)} style"
-                                                   f"{'' if len(styles) == 1 else 's'}.",
-                           "Suggest 2 to 3 of our styles (tm organic atlas-styles), your pick first."))
-    seen: set[str] = set()
+                                                   f"{'' if len(styles) == 1 else 's'}"
+                                                   + (" beside the channel's own." if own else "."),
+                           ("Suggest 1 to 2 more of our styles beside the channel's own (tm organic atlas-styles "
+                            "--channel), your pick first." if own else
+                            "Suggest 2 to 3 of our styles (tm organic atlas-styles), your pick first.")))
+    seen: set[str] = {v for v in [style_value(named.get("style"))] if v} if own else set()
     for k, entry in enumerate(styles):
         value = style_value(entry["style"])
         if value is None:
@@ -403,12 +435,33 @@ def _look(p: dict, pid: str, out: list[Problem]) -> None:
                                "Name it by its number or styleId (tm organic atlas-styles lists them)."))
         elif value in seen:
             out.append(Problem(f"{pid}.plugin.styles[{k}].style", f"{_name(p)} suggests {value} twice.",
-                               "Suggest 2 to 3 different styles."))
+                               "Suggest 2 to 3 different styles (the channel's own counts as one)."))
         else:
             seen.add(value)
         if not _text(entry["why"]):
             out.append(Problem(f"{pid}.plugin.styles[{k}].why", f"{_name(p)}: the style {entry['style']} has no why.",
                                "Say in one line why it fits this idea."))
+
+
+def _channel_style(p: dict, pid: str, named: object, out: list[Problem]) -> None:
+    """`plugin.channel_style`: the catalogue style nearest the channel's own, with why (issue #116)."""
+    where = f"{pid}.plugin.channel_style"
+    if p["plugin"]["production"] not in STYLED:
+        out.append(Problem(where, f"{_name(p)} is {PRODUCTION_WORDS[p['plugin']['production']]}, and a style is "
+                                  "suggested only for an animation.",
+                           "Leave plugin.channel_style out: the look goes in plugin.aesthetic."))
+        return
+    if not isinstance(named, dict):
+        out.append(Problem(where, f"{_name(p)}: plugin.channel_style is not {{style, why}}.",
+                           "Name the library style nearest the channel's own as {\"style\": <number>, \"why\": "
+                           "\"<one line>\"}, or leave it out."))
+        return
+    if style_value(named.get("style")) is None:
+        out.append(Problem(f"{where}.style", f"{_name(p)}: {named.get('style')!r} is not one of our styles.",
+                           "Name the closest by its number or styleId (tm organic atlas-styles lists them)."))
+    if not _text(named.get("why")):
+        out.append(Problem(f"{where}.why", f"{_name(p)}: the channel's style has no why.",
+                           "Say in one line why it is the closest to the channel's own style."))
 
 
 def _cost(p: dict, pid: str, out: list[Problem]) -> None:
@@ -737,16 +790,30 @@ def _aesthetic(doc: dict, p: dict) -> str | None:
 
 
 def _style(doc: dict, p: dict, base: dict) -> str | None:
+    """The style the page saved: one offered, or any catalogue style (the gallery, issue #116); else the one picked
+    in advance."""
     offered = [o["value"] for o in style_options(p, base)]
     given = doc.get("style")
     given = given if given == CHANNEL_STYLE else style_value(given)
-    return given if given in offered else (offered[0] if offered else None)
+    if offered and given is not None and (given in offered or given != CHANNEL_STYLE):
+        return given
+    return offered[0] if offered else None
+
+
+def style_fields(p: dict, row: dict, base: dict) -> dict:
+    """What a decisions.jsonl row keeps of an animation's style (issue #116): the style picked and the one picked in
+    advance, which the channel's history reads (`organic_research.style_history`); nothing for another production."""
+    picked = default_style(p, base)
+    if picked is None:
+        return {}
+    return {"style": row.get("style") or picked, "style_default": picked}
 
 
 def profile_defaults(run: RunFolder, data: dict) -> dict[str, dict]:
     """What a proposal's decision takes when the page leaves it out, per channel named in the file:
     the run's level (run.json, never mode.variant), its config's output, the channel profile's
-    platforms and its own style (`video_style`)."""
+    platforms and its own style (`video_style`); its type, the style it picked 3 times or more (`habit_style`) and the
+    styles the user rejected for it (`rejected_styles`, `organic_research.style_history`; issue #116)."""
     try:
         cfg = config.load(run)
     except ValueError:
@@ -766,9 +833,15 @@ def profile_defaults(run: RunFolder, data: dict) -> dict[str, dict]:
         except ValueError:
             profile = None
         platforms = (profile or {}).get("platforms")
+        try:
+            history = organic_research.style_history(workspace, slug) if slug else {}
+        except (Stop, ValueError):    # a damaged decisions.jsonl stops start and history, never the page
+            history = {}
         out[name] = {"level": level, "output": output,
                      "platforms": list(platforms) if isinstance(platforms, list) and platforms else None,
-                     "video_style": _video_style(profile)}
+                     "video_style": _video_style(profile), "channel_type": (profile or {}).get("type"),
+                     "habit_style": organic_research.habit_style(history) if history else None,
+                     "rejected_styles": list(history.get("rejected") or [])}
     return out
 
 
@@ -1098,7 +1171,8 @@ def _record_decisions(run: RunFolder, workspace: Path, data: dict, rows: dict, d
             "at": at, "date": today.isoformat(), "run": run.path.name, "proposal": p["id"], "idea": key,
             "title": p.get("title"), "decision": decision, "production": p["plugin"]["production"],
             "approach": APPROACHES.get(str(p["approach"]).strip().lower()), "output": row.get("output"),
-            "level": row.get("level"), "started": (started.get(key) or {}).get("run")})
+            "level": row.get("level"), "started": (started.get(key) or {}).get("run"),
+            **style_fields(p, row, defaults.get(p["channel"]) or {})})
         recorded[key] = decision
     for slug, out in by_channel.items():
         library.append_jsonl(workspace / organic_research.ORGANIC_DIR / slug / organic_research.DECISIONS, out)

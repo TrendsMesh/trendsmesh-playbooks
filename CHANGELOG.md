@@ -26,6 +26,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
   directory. The plugin's description now names Create an ad too.
 - **A smaller install.** The tests and the evals moved out of the plugin folder, to `tests/` and `evals/` at the
   repository root, so the plugin ships about 350 files instead of 1,700.
+- **See an animation style move before you pick it, and 10 new styles.** Every animation style has a poster and a
+  short loop, and there are ten new styles, among them two collage looks, a product launch, glass app screens and
+  vaporwave (49 in all). Thanks to @piotr-lezon, who made the previews, the new styles and their tags. The
+  ideas page and the style, voice and music page play the 2 to 3 suggested styles, each with Claude's one-line reason,
+  then show every style by family: click a poster to see it move, and pick any of them instead.
+- **Your channel's style comes first, every time.** The styles are suggested in a fixed order: your channel's own
+  style first (the look in its profile, matched to the nearest library style, or a style you picked three times
+  or more), then the styles that suit your channel's type and the topic's tone (styles that show numbers well
+  first when the idea has a key number), and a style you turned down for the channel earlier last.
 
 ## 0.13.1
 

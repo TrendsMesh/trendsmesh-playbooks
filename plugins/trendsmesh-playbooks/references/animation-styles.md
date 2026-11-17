@@ -6,21 +6,38 @@ generation money, only Claude usage. The order is OV9's: a storyboard first (the
 order are judged on still panels), then the full animation, then the edit.
 
 The style library ships with the plugin (`data/styles/`) and is ours, written from scratch: one
-card per style in `styles.json` (name, family, what it looks like, what it suits, palette, fonts, finishing
-passes, motion, how it explains, its sound, what to avoid), the shared drawing helpers, the sound kit and the
-page runtime in `lib/`, one short reference animation per style in `styles/`, and the build prompt's parts in
-`prompt/`. `data/styles/README.md` says how the pieces fit and how to add a style. It replaced a third-party
-catalogue whose licence did not allow shipping it. **No style posters are in the package**: a style is offered
-in words.
+card per style in `styles.json` (name, family, what it looks like, what it suits, its tags, palette, fonts,
+finishing passes, motion, how it explains, its sound, what to avoid), the shared drawing helpers, the sound kit and
+the page runtime in `lib/`, one short reference animation per style in `styles/`, the build prompt's parts in
+`prompt/`, and per style a **preview** in `previews/`: a poster from its key-number moment and a 4 s muted loop,
+made once by `atlas/previews.mjs` from the style's own reference animation (a test fails when a style changed
+since its preview was made). `data/styles/README.md` says how the pieces fit and how to add a style. It replaced a
+third-party catalogue whose licence did not allow shipping it.
 
-## The taste card: 2 to 3 styles in words
+## The pick: 2 to 3 styles, seen moving
 
-At D2, for an animation, offer **2 to 3 styles by number, name and description**: `tm organic atlas-styles
---json` lists them (`order`, `styleId`, `name`, `category` (the family), `description`, `suits`: what topics
-and tones it explains well). Pick the ones whose look fits the channel and the topic, each with a one-line
-why, your pick first. Never a poster, a preview link or a picture from the web: the look is judged on the
-storyboard (F1), where a style that does not fit is changed for free. The pick goes into the pack's
-`taste.style` as `<number> <name>` (for example `14 Halftone Comic`).
+The user picks a look by seeing it. `tm organic atlas-styles --channel <channel> --tone <words> [--numbers]
+--json` lists the styles **in the order to suggest them** (`order`, `styleId`, `name`, `category` (the family),
+`description`, `suits`, `tags`, `poster`, `loop`, and `reason`):
+
+1. **The channel's own style** (`reason: channel`), shown first as "Your channel's style": the words of the
+   profile's `video_style`, matched by you to the nearest card (say which and why, for example "paper cut-out
+   collage, old engravings" → 40 Editorial Collage); or, when the profile has none, the style the channel picked
+   3 times or more in its earlier runs (the command names it).
+2. **The styles of the channel's type** (`reason: type`): the cards whose `tags.channels` has the profile's
+   `type`, the most of the topic's tone words in common first (`--tone`, from the cards' fixed list: serious,
+   playful, premium, retro, warm, edgy, calm, technical, dreamy, bold, nostalgic, friendly, raw, elegant,
+   futuristic), then, when the idea carries a key number (`--numbers`), those that show numbers well. A channel
+   of type `other` is ranked by the tone alone. `--channel-type <type>` gives the same order without a channel.
+3. A style the user rejected for this channel in an earlier run (picked in advance, and they picked another)
+   goes **last** (`reason: rejected`).
+
+Pick 2 to 3 from the head of that list, the channel's own counting as one of them, each with a one-line why,
+your pick first. The pages show them as **playing loops** with their names and your why, then **all the styles
+grouped by family** (posters; a loop plays on a click), where the user may pick any other style instead. The
+pick goes into the pack's `taste.style` as `<number> <name>` (for example `14 Halftone Comic`). Never a picture
+from the web: the previews are the styles' own reference animations, and the storyboard (F1) stays the real check
+of the look on the user's topic, where a style that does not fit is changed for free.
 
 ## The build prompt
 

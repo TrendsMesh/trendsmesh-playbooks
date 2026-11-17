@@ -650,6 +650,11 @@ organic:
     look_label: Look (how the video looks; change it if you want another)
     style: Style
     channel_style: Your channel’s style
+    # issue 116: every style's preview, the gallery under the suggested ones
+    styles_all: "All {n} styles, by family"
+    styles_hint: Click a poster to see it move. Pick one to use it instead of the suggested ones.
+    styles_suggested: suggested above
+    styles_play: Play
     risk_from: "Highest risk: {risk}, in {production} ({weight})"
     risk_from_none: No risk is left once the named ones are covered
     weight_low: low

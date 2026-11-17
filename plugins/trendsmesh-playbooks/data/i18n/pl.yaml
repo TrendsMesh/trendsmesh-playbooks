@@ -157,6 +157,11 @@ strings:
       look_label: Wygląd (jak wygląda film; zmień, jeśli chcesz inny)
       style: Styl
       channel_style: Styl Twojego kanału
+      # issue 116: every style's preview, the gallery under the suggested ones
+      styles_all: "Wszystkie style ({n}), według rodzin"
+      styles_hint: Kliknij plakat, aby zobaczyć ruch. Wybierz styl, aby użyć go zamiast proponowanych.
+      styles_suggested: proponowany wyżej
+      styles_play: Odtwórz
       risk_from: "Największe ryzyko: {risk}, w {production} ({weight})"
       risk_from_none: Po zabezpieczeniu wymienionych ryzyk nie zostaje żadne
       weight_low: niskie

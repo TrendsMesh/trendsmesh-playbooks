@@ -104,7 +104,7 @@ def _script(value, *, ascii_only: bool = False) -> str:
 
 
 def _swatch(card: dict | None) -> str:
-    """A style's thumbnail: its palette (the package ships no style posters, references/animation-styles.md)."""
+    """A style's thumbnail on this older standalone page: its palette (the run page shows its preview, issue #116)."""
     if not card:
         return ""
     cells = "".join(f'<span style="display:inline-block;width:14px;height:28px;background:{esc(c["hex"])}"></span>'

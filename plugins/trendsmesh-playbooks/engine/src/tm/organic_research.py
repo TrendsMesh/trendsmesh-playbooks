@@ -13,7 +13,8 @@
   - `used_trends.jsonl`, one row per trend a video was made from: `{trend_id, name, kind, run, video,
     used, series}` (`record_used`, `used`, `series`; `tm organic used --channel C`);
   - `decisions.jsonl`, one row per proposal decided (Task 6's `tm organic start`), read by `history`
-    for its `decision`, `production` and `approach` (`tm organic history --channel C`).
+    for its `decision`, `production` and `approach` (`tm organic history --channel C`), and by `style_history`
+    for an animation's `style` and `style_default` (issue #116: the styles the channel picked and rejected).
 - `tm organic seed-check --run R`: a run started from a trend research seed re-checks it
   (`brief_research.seed_verdict`), stored in run.json `organic.seed_check`.
 """
@@ -402,6 +403,49 @@ def history(workspace: Path, channel: str) -> dict:
             counts = out[group].setdefault(name, dict.fromkeys(DECISION_KINDS, 0))
             counts[row["decision"]] += 1
     return out
+
+
+HABIT = 3       # picks of one style in a channel's earlier runs that make it the channel's own (issue #116)
+
+
+def _style_value(key: object) -> str | None:
+    from tm import atlas_prompt
+    sid = atlas_prompt.style_id(key)
+    if sid is None:
+        return None
+    s = atlas_prompt.find_style(sid)
+    return f"{s['order']} {s['name']}"
+
+
+def style_history(workspace: Path, channel: str) -> dict:
+    """The catalogue styles the channel picked and rejected (issue #116), from decisions.jsonl's `style` and
+    `style_default` (a row written before them says nothing): `{"picked": {"<number> <name>": n}, "rejected":
+    ["<number> <name>", ...]}`. An idea counts once, by its latest row; only an idea marked produce picks. A style
+    is rejected when it was picked in advance and the user picked another for that idea. The channel's own words
+    (`channel`) are no catalogue style."""
+    latest: dict[str, dict] = {}
+    for row in _rows(workspace, _folder(workspace, channel) / DECISIONS):
+        if isinstance(row.get("idea"), str) and ("style" in row or "style_default" in row):
+            latest[row["idea"]] = row
+    picked: dict[str, int] = {}
+    rejected: list[str] = []
+    for row in latest.values():
+        if row.get("decision") != "produce":
+            continue
+        style, default = _style_value(row.get("style")), _style_value(row.get("style_default"))
+        if style:
+            picked[style] = picked.get(style, 0) + 1
+        if default and default != style and default not in rejected:
+            rejected.append(default)
+    return {"picked": picked, "rejected": rejected}
+
+
+def habit_style(history: dict) -> str | None:
+    """The style the channel picked HABIT times or more (the most picked; on a tie the library's first), else None."""
+    counts = {k: n for k, n in (history.get("picked") or {}).items() if n >= HABIT}
+    if not counts:
+        return None
+    return min(counts, key=lambda k: (-counts[k], int(k.split(" ", 1)[0])))
 
 
 # --- the seed --------------------------------------------------------------------------------------

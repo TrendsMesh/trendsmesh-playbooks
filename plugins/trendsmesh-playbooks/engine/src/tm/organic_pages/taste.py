@@ -8,7 +8,7 @@ heard or seen before it is chosen.
 The agent writes what to offer as `03_wip/taste_options_vNN.json` (the next version for every change), from the run's
 own files only:
 
-    {"styles": [{"id", "label", "why", "preview", "recommended"}],
+    {"styles": [{"id", "label", "why", "preview", "recommended"}],    (an id that is one of our styles: see below)
      "voices": [{"voice_id", "name", "why", "preview", "source": "library|mine", "recommended"}],
      "music": {"trending": {"name", "link", "why"} | null,
                "tracks": [{"file", "title", "why", "licence", "recommended"}]}}
@@ -22,6 +22,10 @@ from another site. Styles are offered for an animation only, voices when someone
 script is the recipe-checked pack's lines. Music: "No track, I'll add a sound in the app" comes first; the default is
 the trending sound when trend research found one that fits (the user adds it in the app at posting), else the
 recommended track, else no track.
+
+Issue #116: a style whose `id` is one of ours (its number or styleId) is named `<number> <name>` and shown with its
+own loop (`tm.run_page.styles`), never a run file; every other style of ours follows as an option of the gallery
+(`gallery`, `group`: its family), picked like a suggested one. Any other row is taken as it is, with its `preview`.
 
 `take` reads the choices (the page, or the user's words in chat) into `03_wip/taste_vNN.json` = `{style, voice:
 {voice_id, name, source} | null, music: {kind: none|trending|track, file, title, name, link}, line_notes, notes}` and
@@ -158,7 +162,7 @@ def page_json(run: RunFolder, options_file: str | None = None) -> dict:
         sections.append({"id": "script", "kind": "text", "title": t("script"), "hint": t("script_hint"),
                          "lines": [{"id": str(ln["n"]), "at": _clock(ln.get("at")), "text": ln["text"]} for ln in lines],
                          "note": t("script_note")})
-    styles = opts.get("styles") or []
+    styles = [_our_style(s) for s in opts.get("styles") or []]
     if styles:
         taken: set[str] = set()
         rec = any(s.get("recommended") for s in styles)
@@ -167,8 +171,12 @@ def page_json(run: RunFolder, options_file: str | None = None) -> dict:
                                       "means": s.get("why") or "", "recommended": bool(s.get("recommended")),
                                       "default": bool(s.get("recommended")) or (not rec and n == 0),
                                       "media": [{"src": s["preview"], "caption": str(s.get("label") or s["id"])}]
-                                      if s.get("preview") else []}
+                                      if s.get("preview") and not s.get("style") else [],
+                                      **({"style": s["style"]} if s.get("style") else {})}
                                      for n, s in enumerate(styles)]})
+        gallery = _gallery(styles, taken)
+        sections[-1]["options"] += [o for o, _ in gallery]
+        styles += [g for _, g in gallery]
     voices = opts.get("voices") or []
     if voices:
         taken = set()
@@ -202,11 +210,37 @@ def page_json(run: RunFolder, options_file: str | None = None) -> dict:
     data = {"page": PAGE, "lang": pack.get("lang") or "en", "title": t("title", title=pack["title"]),
             "lede": t("lede"), "run": choices.run_ref(run), "date": choices.today(), "sections": sections, "total": None,
             "plugin": {"pack": pack_rel, "options": opts_rel,
-                       "styles": {o["id"]: s for o, s in zip(sections_of(sections, "style"), styles)},
+                       "styles": {o["id"]: s for o, s in zip(sections_of(sections, "style"), styles, strict=True)},
                        "voices": {o["id"]: v for o, v in zip(sections_of(sections, "voice"), voices)},
                        "tracks": {o["id"]: x for o, x in zip(sections_of(sections, "music")[1 + bool(trending):], tracks)},
                        "trending": trending}}
     return data
+
+
+def _our_style(s: object) -> object:
+    """A style offered by its number or styleId is one of ours (issue #116): named `<number> <name>` (what `taste.style`
+    keeps), shown with its own loop, never a file of the run; any other row is taken as it is."""
+    from tm import atlas_prompt
+    sid = atlas_prompt.style_id(s.get("id")) if isinstance(s, dict) else None
+    if sid is None:
+        return s
+    card = atlas_prompt.find_style(sid)
+    return {**s, "label": f"{card['order']} {card['name']}", "style": sid}
+
+
+def _gallery(styles: list, taken: set[str]) -> list[tuple[dict, dict]]:
+    """Every other style of ours, by family (issue #116): (its option, its row), picked like a suggested one."""
+    from tm import atlas_prompt
+    offered = {s.get("style") for s in styles if isinstance(s, dict)}
+    cards = [c for c in atlas_prompt.styles() if c["styleId"] not in offered]
+    families = list(dict.fromkeys(c["category"] for c in atlas_prompt.styles()))
+    out = []
+    for c in sorted(cards, key=lambda c: (families.index(c["category"]), c["order"])):
+        label = f"{c['order']} {c['name']}"
+        out.append(({"id": _slug_id(f"g-{c['styleId']}", taken), "label": label, "means": c["description"],
+                     "group": c["category"], "gallery": True, "style": c["styleId"], "default": False},
+                    {"id": c["styleId"], "label": label, "style": c["styleId"]}))
+    return out
 
 
 def sections_of(sections: list[dict], sid: str) -> list[dict]:

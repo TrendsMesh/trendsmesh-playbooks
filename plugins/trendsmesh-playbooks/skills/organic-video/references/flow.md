@@ -360,9 +360,13 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      trend and the idea (for example "realistic, 1990s home camcorder", "archival footage", "flat
      cartoon"); the user may change it on the page, and every prompt of every scene follows it;
    - **an animation's styles** (`plugin.styles`, for `animation`, or `sections` with an animation
-     insert): 2 to 3 of our styles (`tm organic atlas-styles --json`), each `{"style": <number>,
-     "why": "<one line>"}`, your pick first. A channel whose profile has its own look
-     (`video_style`) gets it first on the page as "Your channel's style", picked in advance;
+     insert): 2 to 3 of our styles from the head of `tm organic atlas-styles --channel <channel> --tone
+     <the topic's tone words> [--numbers] --json` (the channel's own style first, then its type's styles by
+     the topic's tone, a style the user rejected for it earlier last: `../../references/animation-styles.md`,
+     "The pick"), each `{"style": <number>, "why": "<one line>"}`, your pick first. A channel whose profile
+     has its own look (`video_style`), or that picked one style 3 times or more, gets it first on the page as
+     "Your channel's style", picked in advance: name the library style nearest it as `plugin.channel_style`
+     (`{"style": <number>, "why": "<one line>"}`); it counts as one of the 2 to 3, so `styles` then has 1 to 2;
    - the risk level with each hit of OV4's nine items named with its mitigation, **never a
      percentage**. **The level is the highest risk left after its mitigation, never the number of
      risks**: each risk has a weight per production type (`data/organic-video/risks.yaml`; for
@@ -402,8 +406,9 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    with one kind ("A news and explainer channel, so topics come first."; none for a profile without a
    type). Per idea the stage asks produce / maybe later / skip, the output, how involved (the three
    levels), the platforms, the taste answers and a note, with "Produce all" and a live count with the
-   estimated cost. It also shows the look (a field the user may change), an animation's styles (each with
-   its palette as a thumbnail and its why; the channel's own style first, picked in advance), under the
+   estimated cost. It also shows the look (a field the user may change), an animation's styles (each as a
+   playing loop with its name and its why, the channel's own style first and picked in advance; then every
+   style by family, a loop playing on a click, any of them to pick instead), under the
    output what an AI video of the idea needs installed (size and time) when anything is missing, where
    the risk level comes from ("Highest risk: several characters, in AI footage (medium)"), and the video,
    the recipe, the risks, the cost and the trends behind it with their evidence videos. The build is C2's
@@ -751,15 +756,17 @@ carries a bed. A style is asked only for an animation.
    run's own files, and it cannot play a sound from another site). A trending sound is added in the
    app per the kit, never in the edit.
 4. **A style**, for an animation only: the one picked on the proposals page (`00_raw/proposal.json`
-   `decision.style`) is offered first, selected (on the page: `recommended`); else 2 to 3 of our styles by number, name and
-   description (`tm organic atlas-styles --json`: each says what it suits), each with a one-line
-   why, your pick first; no posters (`../../references/animation-styles.md`, "The taste card"). The
+   `decision.style`) is offered first, selected (on the page: `recommended`); else 2 to 3 of our styles from
+   the head of `tm organic atlas-styles --channel <channel> --tone <words> --json`, each with a one-line why,
+   your pick first (`../../references/animation-styles.md`, "The pick"). Offer each by its number or styleId as
+   `id`: the page shows them as playing loops with their names and your why, then every style by family (a loop
+   plays on a click), and the user may pick any of them. The
    pick goes into `taste.style` as `<number> <name>`. **The channel's own style** (`channel`, from
    the profile's `video_style`) is drawn on the catalogue style closest to it: `taste.style` is that
    style as `<number> <name>` (say which and why), and the pack's `aesthetic` holds the channel's
    own words, which the build prompt puts first.
 5. **The page** (issue #83): write what you offer as the next `03_wip/taste_options_vNN.json`:
-   `{"styles": [{"id", "label", "why", "preview", "recommended"}], "voices": [{"voice_id", "name",
+   `{"styles": [{"id": <number or styleId>, "why", "recommended"}], "voices": [{"voice_id", "name",
    "why", "preview", "source": "library|mine", "recommended"}], "music": {"trending": {"name",
    "link", "why"} | null, "tracks": [{"file", "title", "why", "licence", "recommended"}]}}`, every
    file a run file (a track's `file` is the path `tm tool music_fetch --copy` printed, or the music index row's name, which the page finds there; styles only for an animation, voices only when someone speaks off screen). A

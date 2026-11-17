@@ -39,8 +39,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tm import manifest, organic_guesses, organic_proposals, organic_week, page as pages, state, stepchecks
+from tm import atlas_prompt, manifest, organic_guesses, organic_proposals, organic_week, page as pages, state, stepchecks
 from tm.organic_pages import levels as level_names, proposals as prop_page, value as shown, week as week_page
+from tm.run_page import styles as style_previews
 from tm.run_page.context import Context
 from tm.run_page.template import E, media_tag, register_block
 from tm.run_page.words import plural, tx
@@ -80,7 +81,7 @@ def keys() -> set[str]:
     from tm import organic_pages
     return ({f"organic.proposals.{k}" for k in PROPOSAL_UI} | {f"organic.week.{k}" for k in WEEK_UI}
             | {f"organic.{k}" for k in SHARED_UI} | {f"organic.page.{k}" for k in PAGE_UI}
-            | set(organic_pages.LEVELS.values()))
+            | set(organic_pages.LEVELS.values()) | set(style_previews.KEYS))
 
 
 def _w(lang: str, _key: str, **values: object) -> str:
@@ -207,6 +208,7 @@ def _proposals(ctx: Context) -> list[dict]:
             if options:
                 styled.append(pid)
                 style_values.update(o["value"] for o in options)
+                style_values.update(style_previews.value(s) for s in atlas_prompt.styles())   # the gallery's
                 if picked:
                     style_defaults[pid] = picked
             items.append({
@@ -228,10 +230,7 @@ def _proposals(ctx: Context) -> list[dict]:
                 "needs": _w(lang, "proposals.needs", installs=organic_proposals.installs_text(needs[pid], _tr(lang)))
                 if needs.get(pid) else "",
                 "taste": list(p.get("taste") or []), "look": look if isinstance(look, str) else None,
-                "styles": [{"value": o["value"], "name": _w(lang, "proposals.channel_style")
-                            if o["value"] == organic_proposals.CHANNEL_STYLE else o["text"],
-                            "words": o["text"] if o["value"] == organic_proposals.CHANNEL_STYLE else o["why"],
-                            "swatch": prop_page._swatch(o["style"])} for o in options],
+                "styles": [_style_option(ctx, o) for o in options],
                 "defaults": {"level": level, "output": output, "style": picked},
                 "trends": _trend_rows(ctx, p, found)})
     except (KeyError, TypeError, ValueError) as exc:     # the file's shape
@@ -256,7 +255,23 @@ def _proposals(ctx: Context) -> list[dict]:
     if organic_guesses.is_free(run):   # Free (issue #106): the page says first that these are guesses
         leads = [_w(lang, "proposals.free_banner", sources=_w(lang, "proposals.free_sources")), *leads]
     return [{"kind": "ov_proposals", "items": items, "levels": levels, "words": words, "leads": leads,
-             "how": _w(lang, "page.how_proposals"), "assets": _first(ctx), "offer": offer}]
+             "how": _w(lang, "page.how_proposals"), "assets": _first(ctx), "offer": offer,
+             "gallery": style_previews.gallery(ctx) if styled else [],
+             "style_words": style_previews.words(lang) if styled else {}}]
+
+
+def _style_option(ctx: Context, o: dict) -> dict:
+    """A suggested style as the page shows it (issue #116): the channel's own first under "Your channel's style" (its
+    words, or the card it picks, with the card's name), each one of ours with its loop and the agent's why."""
+    lang = ctx.lang
+    card = o["style"]
+    if o.get("channel"):
+        name = _w(lang, "proposals.channel_style")
+        words = " · ".join(x for x in (o["text"] if o["value"] == organic_proposals.CHANNEL_STYLE else "",
+                                       style_previews.value(card) if card else "", o["why"]) if x)
+    else:
+        name, words = style_previews.value(card), o["why"]
+    return {"value": o["value"], "name": name, "words": words, **(style_previews.media(ctx, card) if card else {})}
 
 
 def _tr(lang: str):
@@ -589,11 +604,13 @@ def _proposal_inputs(it: dict, b: dict) -> str:
     parts.append(_row(w["how"], _radios(f"ovp-l-{pid}", _path("level", pid), list(b["levels"].items()), d["level"],
                                         True, f'{w["how"]} {it["ID"]}')))
     parts.append(f'<p class="small soft ovp-auto" hidden>{E(w["hands_off_hint"])}</p>')
-    if it["styles"]:
-        opts = "".join(f'<label class="ovp-style"><input type="radio" name="ovp-s-{E(pid)}" value="{E(o["value"])}" '
-                       f'data-detail="{_path("styles", pid)}"{" checked" if o["value"] == d["style"] else ""} disabled>'
-                       f'{o["swatch"]}<span><b>{E(o["name"])}</b> {E(o["words"])}</span></label>' for o in it["styles"])
-        parts.append(_row(w["style"], f'<div class="ovp-styles" role="radiogroup">{opts}</div>'))
+    if it["styles"]:      # the suggested styles playing, then every style by family (issue #116)
+        name, path = f"ovp-s-{pid}", _path("styles", pid)
+        taken = {o["value"] for o in it["styles"]}
+        parts.append(_row(w["style"], f'<div class="ovp-styles" id="sty-{E(pid)}">'
+                                      + style_previews.suggested_html(name, path, it["styles"], d["style"])
+                                      + style_previews.gallery_html(name, path, b["gallery"], d["style"],
+                                                                    b["style_words"], taken=taken) + "</div>"))
     boxes = "".join(f'<label class="chip-opt"><input type="checkbox" data-detail="{_path("platforms", pid + SEP + k)}" '
                     f'checked disabled><span>{E(n)}</span></label>' for k, n in PLATFORMS)
     parts.append(_row(w["post_to"], f'<div class="choose" role="group" aria-label="{E(w["post_to"])}">{boxes}</div>'
@@ -724,7 +741,9 @@ def _week_html(b: dict, ds, lang: str, live: bool) -> str:
 
 
 def _assets(b: dict) -> str:
-    return f"<style>{CSS}</style><script>{SCRIPT}</script>" if b.get("assets") else ""
+    if not b.get("assets"):
+        return ""
+    return f"<style>{CSS}</style><script>{SCRIPT}</script>" + (style_previews.ASSETS if b.get("gallery") else "")
 
 
 register_block("ov_proposals", _proposals_html)
