@@ -1,6 +1,8 @@
 import React from "react";
 import { AbsoluteFill, Audio, Easing, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { compFont, loadFor } from "./fonts";
+import { CaptionLook, type Look } from "./CaptionLooks";
+import { OverlayLook, type Overlay } from "./OverlayLooks";
 
 // PB3 organic edit: source segments cut back to back (always muted: the trending sound is attached
 // in the app), plus native-style text inside the default safe zone.
@@ -35,6 +37,10 @@ export type Caption = {
   // the spoken word's colour, when `words` are given (a caption)
   highlight?: string;
   words?: Word[];
+  // the text style's look (CaptionLooks.tsx for a caption, OverlayLooks.tsx with `overlay`); none = the look above
+  look?: Look;
+  // an overlay drawn in a look's family (OverlayLooks.tsx): its kind (hook, label, number, cta, end) and family
+  overlay?: Overlay;
 };
 export type Music = { src: string; volume: number; fadeInSec?: number; fadeOutSec?: number };
 export type OrganicCaptionsProps = {
@@ -88,7 +94,7 @@ const Words: React.FC<{ c: Caption; t: number }> = ({ c, t }) => (
   </>
 );
 
-const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string }> = ({ c, k, fontFamily }) => {
+const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; language?: string }> = ({ c, k, fontFamily, language }) => {
   const frame = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
   const pop = interpolate(frame, [0, 5], [0.9, 1], { extrapolateRight: "clamp", easing: Easing.out(Easing.back(2)) });
@@ -105,6 +111,23 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string }> = ({ 
   const hook = c.style !== "note" && !caption;
   const outline = caption ? 9 : 6;
   const lit = caption && c.highlight && (c.words ?? []).length > 0;
+  if (c.overlay) {
+    const dur = Math.max(1, Math.round(c.to * fps) - Math.round(c.from * fps)); // as its <Sequence>
+    const el = <OverlayLook text={c.text} o={c.overlay} k={k} fontFamily={fontFamily} durFrames={dur} language={language} />;
+    if (c.overlay.kind === "end") return el;
+    return (
+      <div style={{ position: "absolute", top, left: SAFE_1080.left * k, width: width - (SAFE_1080.left + SAFE_1080.right) * k, height: height - top - bottom, display: "flex", flexDirection: "column", justifyContent: justify, alignItems: "center" }}>
+        {el}
+      </div>
+    );
+  }
+  if (caption && c.look) {
+    return (
+      <div style={{ position: "absolute", top, left, width: boxW, height: height - top - bottom, display: "flex", flexDirection: "column", justifyContent: justify, alignItems: "center" }}>
+        <CaptionLook c={c as Caption & { look: Look }} k={k} fontFamily={fontFamily} language={language} />
+      </div>
+    );
+  }
   return (
     <div style={{ position: "absolute", top, left, width: boxW, height: height - top - bottom, display: "flex", flexDirection: "column", justifyContent: justify, alignItems: "center" }}>
       <div
@@ -136,7 +159,7 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string }> = ({ 
 
 export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, captions, showSafeZone, keepAudio, music, audioTracks, language }) => {
   const { fps, width, height, durationInFrames } = useVideoConfig();
-  const fontFamily = loadFor(compFont("OrganicCaptions"), language, ["700", "800"]);
+  const fontFamily = loadFor(compFont("OrganicCaptions"), language, ["600", "700", "800", "900"]);
   const k = width / 1080;
   let cursor = 0;
   return (
@@ -171,8 +194,8 @@ export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, capt
         />
       ) : null}
       {captions.map((c, i) => (
-        <Sequence key={`c${i}`} from={Math.round(c.from * fps)} durationInFrames={Math.max(1, Math.round((c.to - c.from) * fps))} layout="none">
-          <CaptionView c={c} k={k} fontFamily={fontFamily} />
+        <Sequence key={`c${i}`} from={Math.round(c.from * fps)} durationInFrames={Math.max(1, Math.round(c.to * fps) - Math.round(c.from * fps))} layout="none">
+          <CaptionView c={c} k={k} fontFamily={fontFamily} language={language} />
         </Sequence>
       ))}
       {showSafeZone ? (
