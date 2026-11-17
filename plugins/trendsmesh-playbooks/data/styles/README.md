@@ -11,6 +11,7 @@ lib/player.js     window.Player  the page runtime: registers a style, seek/DURAT
 lib/page.html     page template: {{TITLE}} {{FONTS_LINK}} {{CONFIG}} {{SCRIPTS}}
 styles/NN_<id>.js one reference animation per style card (10-14 s), the style guide Claude copies the rendering of
 prompt/*.md       the build prompt: build.md, then voiceover.md and/or storyboard.md, then card + code
+previews/         per style a poster JPG and a 4 s loop MP4 (atlas/previews.mjs), previews.json
 ```
 
 ## The page contract
@@ -141,9 +142,16 @@ A score is `score(k)`; `k` records events, which are then rendered offline (MP4)
 
 ## Adding a style
 
-1. Write the card (palette, fonts, look, finish, motion, explaining, sound, avoid).
+1. Write the card (palette, fonts, look, finish, motion, explaining, sound, avoid) and its `tags`: `channels` (the
+   channel profile's `type` ids it suits: news_explainers, howto_education, entertainment_skits, music_dance,
+   lifestyle_vlog, shop_product), `tone` (2-3 of: serious, playful, premium, retro, warm, edgy, calm, technical, dreamy,
+   bold, nostalgic, friendly, raw, elegant, futuristic), `energy` (calm, medium, high), `numbers` (shows data well).
 2. Copy the structure of an exemplar into `styles/NN_<styleId>.js` (NN = the card's `order`, two digits), keep
    `"use strict"` and an IIFE, no globals of its own.
 3. Fill a page from `lib/page.html` (title, the fonts `<link>`, the config JSON, the four scripts), render it in both
    aspects as a storyboard and as an MP4 with `atlas/render.mjs` / `atlas/storyboard.mjs`, and look at the frames:
    it must read as the medium on the card, with legible text inside the safe area, sound, and no page errors.
+4. Make its preview: `node atlas/previews.mjs --browser <chrome> --only NN` renders the reference at 1080x1920 and
+   writes `previews/NN_<styleId>.jpg` (a poster from the "Key number" beat, or the card's `previewAt`) and
+   `previews/NN_<styleId>.mp4` (a 4 s muted loop), and records them in `previews/previews.json` with the hash of the
+   module and card. Run it again after changing a style: styles whose hash still matches are skipped.
