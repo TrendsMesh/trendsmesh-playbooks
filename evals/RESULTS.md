@@ -56,6 +56,23 @@ name in a comment. A result folder from before the rename carries the old name.
 | `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
 | `vo_shortened_with_bridging_line` | `vo_bridging_line` |
 
+## The #115 + #116 + #117 run, one branch (all cases, 2026-11-17 and 18)
+
+Not a release run: the model registry (#115), the animation-style previews (#116, with @piotr-lezon's #118) and the text
+sets (#117, with @piotr-lezon's #119) together on `wave-8-115-117` at 44a0995. Every case once (`evals/run.sh
+--report-issue --ablation none -j 3 --max-cost-usd 500`), then each failing case again on its own, and the ones
+still failing on `dev` 7a3c7a8 and three more times here.
+
+**First run: 72 of 81 passed** (3538 s). After the reruns and one fix: **78 of 81**, as on `dev`.
+
+| Found | Kind | Fix |
+|---|---|---|
+| `ri_acceptance_private`: the agent didn't name `/trendsmesh-playbooks:acceptance` (1 of 3 here). The grader's `/acceptance\b` also matched a file path, `/…/acceptance/2026-11-09_recuts/…`, so `dev` passed only when the answer gave the absolute path | **plugin** and grader | report-issue SKILL.md: name the command in the answer; the grader no longer counts a path. Then 3 of 3 |
+| `ov_page`, `talking_head_cuts`, `tr_picks_card_relative_numbers` failed once and passed on their own; `ov_profile_one_card` failed twice, then passed 3 of 3 | variance | none |
+| `cb_no_artifacts_local_page` and `cb_page_decisions_from_db`: the PDF printing setup timed out at the scaffold | infrastructure | none (known) |
+| `no_trendsmesh_guess`: the Free choice wasn't saved in `.trendsmesh/prefs.json`; the same on `dev` | already on `dev` | none here |
+| `ca_presenter_page`: the agent answered in chat instead of building the page; the same on `dev` | already on `dev` | none here |
+
 ## The #106 + #108 run, one branch (all cases, 2026-11-17)
 
 Not a release run: #106 and #108 together on `claude/free-paid-directory`, with the private data repo's matching

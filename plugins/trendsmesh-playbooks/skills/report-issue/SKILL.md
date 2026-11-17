@@ -25,9 +25,10 @@ to report it, **once a session** at most. Never file anything on your own.
 acceptance report (a `report_vNN.md` in an `acceptance/` folder, or the results of
 `/trendsmesh-playbooks:acceptance`), don't file it publicly and don't send it with this skill:
 it holds their own numbers (their ads' results, their channel, their spend). Say so, and point
-them to `/trendsmesh-playbooks:acceptance`'s way: they keep the file, or send it themselves,
-privately, by email to contact@trendsmesh.com. A bug they hit during the acceptance can still be
-reported here as its own report, written without the acceptance report's contents.
+them to `/trendsmesh-playbooks:acceptance`'s way, naming that command in your answer: they keep
+the file, or send it themselves, privately, by email to contact@trendsmesh.com. A bug they hit
+during the acceptance can still be reported here as its own report, written without the acceptance
+report's contents.
 
 ## The flow
 

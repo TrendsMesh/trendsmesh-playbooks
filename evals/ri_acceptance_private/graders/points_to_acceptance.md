@@ -1,5 +1,5 @@
 ---
 type: regex
 target: last_message
-pattern: 'trendsmesh-playbooks:acceptance|/acceptance\b'
+pattern: 'trendsmesh-playbooks:acceptance|(?<![\w./-])/acceptance\b(?![\w/-])'
 ---
