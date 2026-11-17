@@ -44,3 +44,7 @@ plugins/trendsmesh-playbooks/remotion/src/RankingSplit.tsx text eol=lf
 plugins/trendsmesh-playbooks/data/styles/** text eol=lf
 plugins/trendsmesh-playbooks/atlas/storyboard.mjs text eol=lf
 plugins/trendsmesh-playbooks/atlas/layout_check.mjs text eol=lf
+# The style previews (posters and loops) are binary files, made once by atlas/previews.mjs: never converted.
+# Their index (previews.json) is text, LF like the rest of the library.
+plugins/trendsmesh-playbooks/data/styles/previews/** binary
+plugins/trendsmesh-playbooks/data/styles/previews/*.json text eol=lf

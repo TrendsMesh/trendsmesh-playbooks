@@ -130,7 +130,7 @@ def _animate(run, capsys, page="03_wip/M1/explainer_v01.html", *extra):
 
 FAMILIES = {"Clean explainer", "Painterly", "Paper and craft", "Hand-drawn", "Cosmic", "Light and imaging",
             "Illustration", "Print", "Dimensional", "Retro digital", "Retro desktop", "Design movements", "Data",
-            "Type and pattern"}
+            "Type and pattern", "Collage", "Product and UI"}
 CARD_KEYS = {"order", "styleId", "name", "category", "description", "suits", "look", "palette", "fonts", "finish",
              "motion", "explaining", "sound", "avoid"}
 
@@ -144,7 +144,7 @@ def test_the_library_has_a_card_and_a_reference_animation_per_style():
     """data/styles/ (issue #75, ours): 39 styles numbered from 1, one per family at least, each with a full card
     and its reference animation; the library, the page template and the prompt's parts; all pinned LF."""
     styles = atlas_prompt.styles()
-    assert len(styles) == 39 and [s["order"] for s in styles] == list(range(1, len(styles) + 1))
+    assert len(styles) == 49 and [s["order"] for s in styles] == list(range(1, len(styles) + 1))
     assert len({s["styleId"] for s in styles}) == len(styles) and {s["category"] for s in styles} == FAMILIES
     for s in styles:
         assert set(s) >= CARD_KEYS and 5 <= len(s["palette"]) <= 8 and s["fonts"], s["styleId"]
