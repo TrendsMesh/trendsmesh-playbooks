@@ -53,24 +53,27 @@ runs: a brief is made once and has no schedule).
 
 Follow the doctor's "Creative brief" section (`commands/doctor.md` in the plugin):
 
-1. **TrendsMesh**: sign-in first, then the plan (`../refresh-ad/references/trendsmesh-sign-in.md`,
-   guess mode included): `ok`, `free`, `no_agents`, `inactive`, `skipped` or `missing`. **Meta
+1. **TrendsMesh: Free or Paid, the user's choice** (`../refresh-ad/references/trendsmesh-sign-in.md`):
+   `tm mode status --json` first; when TrendsMesh isn't ready and no Free was chosen, one question, Free or
+   Paid, with what Paid adds to a brief. Free only after the user's yes (`tm mode free`). State: `ok`,
+   `free`, `no_agents`, `inactive` or `missing`, and the choice. **Meta
    Ads**: `ads_get_ad_entities` for one ad on the user's ad account (find the account with
    `ads_get_ad_accounts` rather than asking): `ok`, `missing` or `not_enabled`. **Artifacts**: `ok`
    when the `Artifact` tool (or the older `publish_files`) is among this session's tools, else
    `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result.
 2. `tm doctor --playbook creative-brief --outputs <chosen, or review_pack,briefs,animatics,page>
-   --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> --json`. The first `tm` call on a computer installs
+   --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> [--mode free] --json`. The first `tm` call on a computer installs
    the base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10
    minutes). Installs are yours after one yes with the size and time (`tm env install <tier>
    --yes`): the animatic tools for the animatics.
 3. Show its `card` in plain words.
    - **Without Meta Ads the brief cannot start**: it reads the user's own account. Say the card's
      step, then wait.
-   - **Without TrendsMesh the run goes on as guesses**: the concepts' hooks are your best guess
-     from the customers' own words, the user's ads and the Ad Library, labelled as guesses, never
-     as rising trends (`tm evidence guess` at B3). Say the card's note once; the sign-in question
-     and the offer were made in step 1, so don't repeat them.
+   - **On Free the run goes on as guesses**: the concepts' hooks are your guesses from the
+     customers' own words, the user's ads and the Ad Library, labelled as guesses, never as rising
+     trends (`tm evidence guess` at B3). Say the card's Free line once; the question and the offer
+     were made in step 1, so don't repeat them. Not chosen yet: ask the question, never guess on
+     your own.
    - **Without the artifacts tools** the page is a local file and the decisions are taken in chat.
      **The animatic tools and a browser** (Chrome or Edge) are needed only at D2: when they are all
      that is missing the doctor still exits 2, but the run is not held for them now. Offer the
@@ -144,12 +147,13 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   (it collects for this session only), and `tm trends collect off --run R` at the end (E2). An answer that comes with "This answer was not saved…" is saved
   with `tm trends ingest`, as it says (`references/trend-collection.md`).
 - **What the concepts rest on:** at B3, `tm evidence trendsmesh --run R --why "<reason>"` when
-  TrendsMesh answers with trend data, `tm evidence guess --run R --why "<reason>"` when it does
-  not: a plan without trend data (the free plan, no agents, an account not active), a skipped
-  sign-in or no sign-in is a guess run at once, said once with the card's note, never a question.
-  When a plan with trend data stops answering (a usage limit or an outage), on the run's very
-  first trend call or after it gave this run trend data, say so and wait for it, or switch to
-  `guess` after the user says yes (possible until C1 is done).
+  TrendsMesh answers with trend data, `tm evidence guess --run R --why "the user chose Free"` on
+  Free, the user's choice at readiness (the engine refuses it without that choice). When a plan
+  with trend data stops answering (a usage limit, a lapse or an outage), on the run's very first
+  trend call or after it gave this run trend data, say what stopped, give the way back and wait,
+  or switch to Free for this run (`tm mode free --run R`, then `tm evidence guess`) after the
+  user says yes (possible until C1 is done). A Free run's final report ends with the `free_box`
+  `tm next` gives.
 - The user may change the level at any time: `tm level <every_step|big_calls|hands_off> --run R`.
 - A run spans days and sessions: everything lives in the run folder; `tm next` picks it up.
 

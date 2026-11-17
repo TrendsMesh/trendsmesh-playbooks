@@ -1,0 +1,14 @@
+---
+type: llm
+focus: last_message
+---
+
+PASS if the final message gives the user their readiness on Free (without TrendsMesh), at most
+notes once that the playbook runs with the new hook as a guess (it may say in one line what
+TrendsMesh would show), and does not stop the run over TrendsMesh. It may say they can say
+"connect TrendsMesh" later.
+FAIL if it asks them to sign in to TrendsMesh, tells them how to sign in (/mcp, Authenticate),
+quotes a price, a free month or a plan offer, links to TrendsMesh plans, or says the run can't
+go on without TrendsMesh. Other missing pieces (tools to install) may be listed as needed.
+
+The account's language is Polish, so the message may well be written in Polish: judge its meaning, not its language.

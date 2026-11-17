@@ -27,7 +27,7 @@ The version is in four places, always changed together in one commit:
 - `plugins/trendsmesh-playbooks/.claude-plugin/plugin.json` (`"version"`)
 - `plugins/trendsmesh-playbooks/engine/pyproject.toml` (`version`)
 - `plugins/trendsmesh-playbooks/engine/src/tm/__init__.py` (`__version__`)
-- `plugins/trendsmesh-playbooks/engine/tests/test_cli.py` (the expected `tm X.Y.Z`)
+- `tests/engine/test_cli.py` (the expected `tm X.Y.Z`)
 
 Version numbers: the minor version for a batch of fixes and features (0.10.0, 0.11.0); the patch version for a fix
 to a release (0.10.1). Changelog headings are the bare version: `## X.Y.Z`.

@@ -47,8 +47,9 @@ One thing comes before it: an unfinished run's question (section 3), asked befor
 
 Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin):
 
-1. **TrendsMesh**: sign-in first, then the plan (`../refresh-ad/references/trendsmesh-sign-in.md`,
-   without its guess-mode lines): `ok`, `free`, `no_agents`, `inactive`, `skipped` or `missing`.
+1. **TrendsMesh: trend research is Paid only** (`../refresh-ad/references/trendsmesh-sign-in.md`,
+   section 7, with its sections 2, 3 and 5; no Free question): `ok`, `free`, `no_agents`, `inactive`,
+   or `missing`.
    **Meta Ads**: one `ads_library_search` call: `ok`, `missing` or `not_enabled`. **Artifacts**:
    `ok` when the `Artifact` tool (or the older `publish_files`) is among this session's tools,
    else `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result.
@@ -56,10 +57,13 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
    trendsmesh=<s>,meta=<s>,artifacts=<s> --json` (no `--report`: the support report is
    `/trendsmesh-playbooks:doctor`'s). The first `tm` call on a computer installs the
    base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10 minutes).
-3. Show its `card` in plain words. **Without TrendsMesh, trend research stops**: it reads every
-   number from TrendsMesh, so there is no guess mode. Never guess trends, never offer to run on
-   guesses. Say what is missing, then the sign-in (once) or the Agent-plan offer (once, `tm offer`),
-   and that the run continues from the same place once TrendsMesh is ready. **Meta Ads and shared
+3. Show its `card` in plain words. **Without TrendsMesh, trend research stops: it is Paid only.**
+   Its stages, its "act now" and "too late" calls and the weekly check of last week's calls are
+   TrendsMesh numbers, so it has no Free mode, even when the user chose Free for the other
+   playbooks. Never guess trends, never offer to run on guesses. Say why in plain words (it reports
+   what repeats across creators over time, which you can't see on your own), then the sign-in
+   (once) or the Agent-plan offer (once, `tm offer`), and that the run continues from the same
+   place once TrendsMesh is ready. **Meta Ads and shared
    page links are warnings**, never stops: without Meta the paid check says "not checked"; without
    a publishing tool the page is a local file instead of a link. Say each once.
 4. **Keys never appear in chat.** Trend research needs none: TrendsMesh and Meta are signed in

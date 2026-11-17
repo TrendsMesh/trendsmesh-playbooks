@@ -30,19 +30,18 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
 
 ## 1. Readiness first (also `/trendsmesh-playbooks:doctor`)
 
-1. **TrendsMesh: sign-in first, then the plan.** If the user has clearly said no to TrendsMesh
-   (not a "not now"), run `tm signin skip --json` first (that keeps their no for this
-   workspace), say in one line that you won't ask again, use the state `skipped`, and don't
-   mention the plan. Otherwise follow
-   `references/trendsmesh-sign-in.md`: ask
-   the user to sign in (they skip only by saying so, and `tm signin` remembers it), read the plan
-   with `get_usage`, and when the plan has no trend data make the offer once (`tm offer`). It
-   gives the state: `ok`, `free`, `no_agents`, `inactive`, `skipped` or `missing`. None of them
-   stops the run.
+1. **TrendsMesh: Free or Paid, the user's choice** (`references/trendsmesh-sign-in.md`). First `tm mode
+   status --json`. On Free (chosen before), open with its one line and go on; on Paid, or with no choice,
+   check TrendsMesh with `get_usage`. When it isn't ready, ask one question, Free (you guess, each change
+   labelled a guess) or Paid (TrendsMesh: the sign-in, or the plan offer once, `tm offer`), with one
+   sentence on what Paid adds here. Free starts only after the user's yes (`tm mode free`), never on its
+   own: the engine refuses a guess run without it. A clear no to TrendsMesh in the request is that yes:
+   record `tm mode free` before the doctor and don't ask again. It gives the state: `ok`, `free`, `no_agents`,
+   `inactive` or `missing`, and the choice.
    **Meta Ads:** `ads_get_ad_entities` for one ad on the user's ad account (ask for the ad
    account first if you don't know it): `ok`, `missing` (not connected or not signed in) or
    `not_enabled` (Meta refuses this ad account).
-2. `tm doctor --outputs <chosen or all four> --mcp trendsmesh=<s>,meta=<s> [--voice]
+2. `tm doctor --outputs <chosen or all four> --mcp trendsmesh=<s>,meta=<s> [--mode free] [--voice]
    [--caption-removal] [--fact elevenlabs_plan=cloning|no_cloning|unknown] --json`. The first
    `tm` call on a computer, and the first after a plugin update, installs the base tools first
    (about 0.5 GB; after an update mostly from the download cache): say so before it, and give it
@@ -55,10 +54,9 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    every `tm env install`, and the first `tm tool teardown`, which downloads the speech model
    (about 1.6 GB). The optional `ocr` tier is never on the card: A3 offers it once, when it would help. Sign-ins, plans, keys and the Linux `sudo` line are the user's: say how, then
    **stop and wait**, except for the card's warnings.
-   **TrendsMesh is a warning, never a stop.** The run can go on without it (no Agent plan, not
-   signed in, or the user says no). Say the card's warning once in plain words: without TrendsMesh,
-   the new hook is your best guess from their own winners and the Ad Library, not proof from what
-   is rising now. The sign-in question and the offer were already made (step 1): don't repeat them.
+   **TrendsMesh is never a stop, and never a slide into guessing.** On Free the card shows one line,
+   "Free mode, your choice", with what Free misses: say it once. Not chosen yet, its row says the
+   choice is the user's: ask the question of step 1 (once), don't repeat it after.
    **An unknown voice-cloning plan is a warning too.** Pass `elevenlabs_plan=unknown` unless the user
    already said, and don't send them to look it up: a clone is needed only if V1c doesn't find the original
    voice, and V3 checks the plan then (`references/flow.md#v3`). **A plan known to have no cloning waits too.**
@@ -124,17 +122,22 @@ new run only. Before you do, plan or describe a step's work, read its section in
 | `stop` | Tell the user what happened, what to do and that the run continues from the same place. **Then wait.** Do nothing else in the run until they say it is done. |
 | `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). When it offers the move of the winning ad, ask that one question; when the ad was moved, end the report with the user's part, step by step (`tm live-test move report`, `flow.md#e4`). |
 
-- **`notice`:** whenever `tm next` gives a `notice` (a run without TrendsMesh data: the
-  direction of changes and the launch when they are shown to the user, and the final report;
-  Hands-off hears it at the launch, which is always asked, and in the final report), tell the
-  user in plain words, in their language, with the card or report. It is a statement, not a question: never stop or ask for it.
-- **What the changes rest on (guess mode).** At A5 the run records it: `tm evidence trendsmesh
+- **`notice`:** whenever `tm next` gives a `notice` (a Free run: the direction of changes and the
+  launch when they are shown to the user, and the final report; Hands-off hears it at the launch,
+  which is always asked, and in the final report), tell the user in plain words, in their
+  language, with the card or report. It says what the guess missed. It is a statement, not a
+  question: never stop or ask for it.
+- **`free_box`:** on a Free run's final report, `tm next` gives `free_box`: end the report with the
+  short box it describes, "What TrendsMesh would have changed", about this run's own guesses. No
+  numbers, no price.
+- **What the changes rest on (Free or Paid).** At A5 the run records it: `tm evidence trendsmesh
   --run R --why "<reason>"` when TrendsMesh answers with trend data, `tm evidence guess --run R
-  --why "<reason>"` when it does not. A guess run goes to the end like any other; its changes
-  are labelled as guesses (the change register, `tm register check`), never as proof. If
-  TrendsMesh stops answering mid-run (a limit, a lapsed plan, an expired sign-in), say so and
-  wait for it, or switch to `guess` only after the user says yes. That switch is possible until
-  the change register (A7) is done. After it the changes are decided and `tm evidence` refuses:
+  --why "the user chose Free"` on Free (refused without the user's choice). A Free run goes to the
+  end like any other; its changes are labelled as guesses (the change register, `tm register
+  check`), never as proof. If TrendsMesh stops answering mid-run (a limit, a lapsed plan, an
+  expired sign-in), say what stopped, give the way back and wait (`references/trendsmesh-sign-in.md`,
+  section 6); switch to Free for this run (`tm mode free --run R`, then `tm evidence guess`) only
+  after the user says yes. That switch is possible until the change register (A7) is done. After it the changes are decided and `tm evidence` refuses:
   tell the user, and write what you have (in the results library row, a trend status you can't
   fetch is `unknown`).
 - **After a stop**, once the user has acted: a stop you recorded or a budget stop clears with
@@ -245,6 +248,8 @@ check's fetch (R2b) and the "Pick the ad" card: `references/flow.md#a1` and `#a1
   Open <https://adsmanager.facebook.com/adsmanager/manage/ads?act=ACCOUNT&selected_ad_ids=AD>,
   open the ad, and download its video from the ad's media (or ask whoever made the ad for the
   original file). Put it in <brand folder> and tell me: the run continues from the same place."
+  ACCOUNT is `account.id` in the run's `config.yaml` (without `act_`), AD the ad's id: read them
+  there, never leave `act=` out.
   Only if the user can't get it: the low-quality preview, marked as such in the manifest and in
   every output.
 - **E2, upload.** First prepare every file the approved plan uses: each video in each format
@@ -293,7 +298,8 @@ voice line is regenerated to length first, and checked against the original.
 | "Show the key (or part of it) so they can check it" | Never, not masked either. `tm doctor` says whether it is set; they see it in `/plugin`. |
 | "Use the preview, downloads are a pain" | Stop with the Ads Manager link first. Preview only as the last resort, marked. |
 | "Don't bother them with prices" | Estimate first; approval or an approved budget; then `tm tool ... --cost`. |
-| "No TrendsMesh, so stop and wait for the plan" | Never. Say the warning once (the sign-in question and the offer were made at readiness) and go on in guess mode. |
+| "No TrendsMesh, so stop and wait for the plan" | Never. Ask Free or Paid once at readiness; on Free, go on with the changes labelled as guesses. |
+| "No TrendsMesh, so I'll just guess" | Never on your own. Guessing starts only after the user says Free (`tm mode free`); the engine refuses it otherwise. |
 | "This hook looks like a trend, call it proof" | Proof is a saved TrendsMesh answer of this run. Anything else is a guess, labelled as one. |
 | "The overlay boxes are probably right" | Look at the teardown's frame sheets before planning covering cards. OCR (the optional `ocr` tier) settles some rows; the rest you still check. |
 

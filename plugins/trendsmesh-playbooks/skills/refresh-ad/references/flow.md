@@ -265,14 +265,14 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
 <a id="a5"></a>
 ## A5 Trends (TrendsMesh)
 
-- **First, what the run rests on.** TrendsMesh answers with trend data (the Agent plan, signed
-  in): `tm evidence trendsmesh --run R --why "Agent plan"`, and do the pulls below. It does not
-  (no Agent plan, not signed in, or the user said no at readiness): `tm evidence guess --run R
-  --why "<reason>"`, and go to **Without TrendsMesh** below. If TrendsMesh was ready at readiness
-  and a pull now refuses (`not_in_plan`: the plan lapsed; or a sign-in that expired), say so and
-  wait: record `guess` only after the user says yes to going on without it. `tm done
-  A5` is refused until one is recorded, and a TrendsMesh run needs its trends saved
-  (`02_research/trend_<id>.json`).
+- **First, what the run rests on.** Paid, TrendsMesh answering with trend data: `tm evidence
+  trendsmesh --run R --why "Agent plan"`, and do the pulls below. Free, the user's choice at
+  readiness: `tm evidence guess --run R --why "the user chose Free"`, and go to **Without
+  TrendsMesh** below (the engine refuses it without that choice). If TrendsMesh was ready at
+  readiness and a pull now refuses (`not_in_plan`: the plan lapsed; or a sign-in that expired), say
+  what stopped, give the way back and wait (`trendsmesh-sign-in.md`, section 6): Free for this run
+  only after the user's yes. `tm done A5` is refused until one is recorded, and a TrendsMesh run
+  needs its trends saved (`02_research/trend_<id>.json`).
 - Tools: `trendsmesh-mcp.md`. Check `get_usage` before pulling many pages.
 - `search_trends` with the product's phrases and the persona's interests (hook and topic
   trends); `list_trends` with `sort` rising and updated (take candidates from these rankings,

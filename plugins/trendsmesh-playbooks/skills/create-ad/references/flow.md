@@ -46,7 +46,7 @@ page and one in chat count the same. Rules: `rules.md`.
 ## S1 Concepts (CA2)
 
 - First `tm evidence trendsmesh --run R --why <reason>` (TrendsMesh answers with data) or `tm evidence guess --run R
-  --why <reason>` (no Agent plan, not signed in, or the user said no).
+  --why "the user chose Free"` (Free, the user's choice at readiness; refused without it).
 - **Model ads (about 5):** ask first whether the user wants suggestions or has one. TrendsMesh paid (`origin=ad`)
   first. When it has no ads in the niche, say so and offer a Meta Ad Library search (`ads_library_search`), filtered
   for relevance; its keyword search is loose and covers commercial ads mainly for EU delivery, so outside the EU it

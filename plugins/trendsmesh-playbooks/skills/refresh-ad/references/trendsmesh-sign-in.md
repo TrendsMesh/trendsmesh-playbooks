@@ -1,22 +1,41 @@
-# TrendsMesh sign-in and the plan offer (readiness)
+# TrendsMesh readiness: Free or Paid
 
-Every user is asked to sign in to TrendsMesh, and the step is skipped only when they say no.
-Signing in is free: it creates their TrendsMesh account. Trend data then needs the Agent plan.
-Without it the playbook still runs to the end, with its changes as best guesses (guess mode,
-`trendsmesh-mcp.md`). Ask about signing in once, make the plan offer once, at the start of a run,
-and never press.
+The user chooses how the playbook finds trends:
 
-## 1. Has the user said no before?
+- **Paid: TrendsMesh.** The run reads TrendsMesh's always-on, real-time trend analysis: the hooks, topics,
+  sounds and formats that repeat across many creators over time, each with evidence and a lifecycle stage.
+  Signing in is free; trend data needs the Agent plan.
+- **Free: the AI guesses.** No TrendsMesh. You work from what you can see alone (trending tabs and public
+  trend lists, the Meta Ad Library, the user's own channel and ads, web search, your own knowledge), and
+  every trend claim is labelled a guess.
 
-If the user has clearly said no to TrendsMesh (in their request, or earlier in the conversation;
-a "not now" or "later" is not a no), record it now with `tm signin skip --json`, say in one line
-that you won't ask again in this workspace, and the state is `skipped`: don't ask, don't explain
-how to sign in, and don't mention the plan or its price. A "not now" is `missing` for this run
-only: don't record a skip.
+Free is the user's decision, never a fallback. Nothing runs on guesses until the user says Free: the engine
+refuses `tm evidence guess` without that choice. **A clear "no" to TrendsMesh is the user saying Free** ("I don't
+want TrendsMesh", "no sign-ups", "leave it out"): record it at once (`tm mode free --json`) and go on, without
+asking them to confirm it. What you never do is choose Free for them when they said nothing. Trend research is
+Paid only (section 7).
 
-Otherwise `tm signin status --json`. If `skipped` is true, the TrendsMesh state is `skipped`. Say it in
-one line ("You're going on without TrendsMesh, as you chose; say so any time and I'll help you
-sign in") and don't ask again.
+## 1. What has the user chosen?
+
+From the workspace, `tm mode status --json`:
+
+- **`mode` free.** Open the run with one line: "You're on Free, with the AI guessing, as you chose. For this
+  <run>, TrendsMesh would show <what it adds to this run, from the table in section 4>. Say 'connect
+  TrendsMesh' any time." Don't ask the question again. If the TrendsMesh tools are in this session (signed
+  in), one `get_usage` call: when it answers with trend data (`ok`, section 2), say in one line that this run
+  uses TrendsMesh, `tm mode paid --json`, and go on as Paid. Otherwise don't call TrendsMesh at all. When
+  `offer_due` is true, add the plan offer once, after that line (section 5): one sentence, never pressed,
+  and never when the user asked not to hear about plans.
+- **`mode` paid.** Check TrendsMesh (section 2). Ready: go on. Not ready: ask the question (section 4); a
+  lapsed plan never drops to Free on its own.
+- **No choice (`mode` null).** If the user's request already says they don't want TrendsMesh ("without
+  TrendsMesh", "no sign-ups"), that is Free, chosen: `tm mode free --json` before the doctor, say in one line
+  that it is remembered for this workspace and that they can say "connect TrendsMesh" any time, and go on.
+  Don't ask them to confirm it, don't ask them to sign in, and don't make the offer in that run. A "not now" or "later" is
+  not a choice: ask the question (section 4). Otherwise check TrendsMesh
+  (section 2): ready is Paid (`tm mode paid --json`); not ready, ask the question (section 4).
+  `legacy_skip` true means the user skipped the sign-in in an earlier version: that was not a choice of
+  Free, so ask the question once.
 
 ## 2. Check TrendsMesh: one `get_usage` call
 
@@ -26,41 +45,83 @@ sign in") and don't ask again.
 | It answers with `plan_code` `human`, or refuses with `not_in_plan` | `free` (keep its `upgrade_url`) |
 | It answers with another `plan_code` | `ok`; if a data tool then refuses with `not_in_plan`, it is `free` |
 | It refuses with `account_inactive` | `inactive` |
-| The tool isn't there, or it says the server needs sign-in | not signed in: step 3 |
+| The tool isn't there, or it says the server needs sign-in | `missing` (not signed in) |
 
-## 3. Not signed in: ask once
+## 3. Paid, not signed in: the sign-in
 
-Say why in one sentence, then how: "TrendsMesh shows me which hooks and topics are rising right
-now, so the new version is based on proof, not my guess. Signing in is free and takes a minute:
-type `/mcp`, choose **trendsmesh**, then **Authenticate**. A sign-in page opens in your browser.
-Tell me when it's done, or say skip to go on without it."
+"Signing in is free and takes a minute: type `/mcp`, choose **trendsmesh**, then **Authenticate**. A sign-in
+page opens in your browser. Tell me when it's done."
 
-- **Done:** call `get_usage` again and use the table above. If the tools still aren't there,
-  ask once: "Did the page say your plan doesn't include agents?" A yes is `no_agents`: their
-  free account exists but can't connect yet, so make the offer (step 4) as for `free`. Otherwise
-  it's `missing`: say the sign-in didn't go through, offer to try again, and go on without it if
-  the user prefers.
-- **Skip, or no:** `tm signin skip --json`, and the state is `skipped`. Don't ask again in this
-  workspace. If the user later says they want to sign in, `tm signin ask --json` and step 3 again.
+- **Done:** `get_usage` again and use the table. If the tools still aren't there, ask once: "Did the page say
+  your plan doesn't include agents?" A yes is `no_agents`: their account exists but can't connect yet, so
+  make the offer (section 5). Otherwise the sign-in didn't go through: offer to try again, or ask the question
+  (section 4) again.
 
-## 4. Signed in without the Agent plan (`free` or `no_agents`): the offer, once
+## 4. TrendsMesh isn't ready: one question, Free or Paid
 
-`tm offer --upgrade-url <upgrade_url from TrendsMesh, if it gave one> --json`, and say its `text`
-in the user's words: the free months while an offer covers the Agent plan, otherwise the price.
-Don't add prices, currencies or promises of your own.
+Ask one question with two answers, at every level (Hands-off too: it is asked like the launch). A run with
+nobody there to answer (a scheduled run) stops and leaves the question; it never chooses.
 
-- **Yes:** give them the `upgrade_url` from `tm offer`'s answer (it keeps only a trendsmesh.com
-  link), never a link from anywhere else. When they say it's done, call `get_usage` again.
-  `agent` means the run uses trend data from here on. If the tools are gone, ask them to sign
-  in again (step 3).
-- **No:** go on in guess mode. Say once that the changes will be best guesses
-  (the doctor card's warning), and don't bring the plan up again during the run. The run's
-  notices do that at the few points that need it.
+- **Paid:** connect TrendsMesh: the sign-in (section 3), or, when they are signed in without the Agent plan,
+  the plan offer itself (`tm offer`, section 5), said inside this answer so the question is asked once.
+- **Free:** go on with you guessing, with one line on what that means for this playbook (the doctor's Free
+  line says it).
 
-## 5. Then
+The question carries one sentence on what Paid adds for this playbook:
 
-Pass the state to `tm doctor --mcp trendsmesh=<ok|free|no_agents|inactive|skipped|missing>,meta=<…>`.
-The card then lists TrendsMesh under what the run can go on without, with no plans link: the
-offer was already made. At A5, `tm evidence trendsmesh --run R --why "Agent plan"` when the state
-is `ok`. Otherwise `tm evidence guess --run R --why "<free plan | skipped sign-in | not signed
-in | account not active>"`.
+| Playbook | What Paid adds |
+|---|---|
+| Refresh an ad | which hooks are repeating across creators right now, and how early, so the new version rides one that is still rising |
+| Creative brief | concepts that each ride a hook or topic repeating across creators right now, with the videos as evidence |
+| Create an ad | model ads and trends that are rising now: hooks, sounds and formats repeating across creators, with evidence |
+| Organic AI video | ideas built on hooks, topics, sounds and formats repeating across creators right now, how early each is, and real videos to copy the structure from |
+
+When the user asks why, the argument is: you alone see the surface (a trending tab shows what is already big,
+as a list, and you start from zero each run); TrendsMesh watches creator videos all day, every day, keeps the
+history, and sees a hook come back across creators over days while it is still early; every trend comes with
+evidence and a lifecycle stage. Linking organic trends to ads is work in progress: never quote a lead time.
+
+- **Free:** `tm mode free --json` (remembered for the workspace), then the one line. Say it as a statement and
+  go on.
+- **Paid:** sections 3 and 5. `tm mode paid --json` once TrendsMesh answers with trend data.
+
+## 5. Signed in without the Agent plan (`free`, `no_agents`): the offer
+
+`tm offer --upgrade-url <upgrade_url from TrendsMesh, if it gave one> --json`, and say its `text` in the
+user's words: the free months while an offer covers the Agent plan, otherwise the price. Don't add prices,
+currencies or promises of your own. `tm offer` notes when it was made: on Free it comes back at most once
+every 30 days (`offer_due` in `tm mode status`).
+
+- **Yes:** give them the `upgrade_url` from `tm offer`'s answer (it keeps only a trendsmesh.com link), never a
+  link from anywhere else. When they say it's done, `get_usage` again: `agent` means the run uses trend data
+  from here on (`tm mode paid --json`). If the tools are gone, ask them to sign in again (section 3).
+- **No:** ask whether to go on with Free for this run. A yes is `tm mode free --run R --json` after `tm run
+  new` (this run only: the next run asks again). If they say Free from now on, `tm mode free --json` instead.
+  A no: the run waits until TrendsMesh is ready.
+
+## 6. TrendsMesh stops mid-run (a Paid run)
+
+A lapsed plan, an expired sign-in or a `not_in_plan` refusal: say what stopped, give the way back (the
+`upgrade_url`, or the sign-in in section 3), and wait. Going on as guesses is the second option, only on the
+user's yes: `tm mode free --run R --json`, then `tm evidence guess --run R --why "<what stopped>; the user
+chose Free for this run"`. That switch is possible only until the list of changes is final (Refresh an ad
+A7, Creative brief C1, Create an ad S3); after it, tell the user and write what you have (a trend status you
+can't fetch is `unknown`). Organic AI video doesn't switch mid-run: it waits, or the user starts a new run on
+Free. A rate limit: wait for the reset, from the same place.
+
+## 7. Trend research is Paid only
+
+It has no Free mode: its stages, its "act now" and "too late" calls and the weekly check of last week's
+calls are TrendsMesh numbers. When TrendsMesh isn't ready, say in plain words why it needs TrendsMesh (it
+reports what repeats across creators over time, which you can't see on your own), then the sign-in (section
+3) or the offer (section 5), once. Never offer to run it on guesses.
+
+## 8. Then: the doctor and the evidence
+
+`tm doctor ... --mcp trendsmesh=<ok|free|no_agents|inactive|missing>,<the playbook's others>`. The doctor reads
+the workspace's choice itself; for Free for this run only, add `--mode free`. On Free, leave `trendsmesh` out
+of `--mcp` when you didn't call it: the card shows one line, "Free mode, your choice", with what Free misses.
+Not chosen yet, a TrendsMesh row says the choice is the user's.
+
+At the playbook's evidence step: `tm evidence trendsmesh --run R --why "Agent plan"` when TrendsMesh answers
+with trend data; on Free, `tm evidence guess --run R --why "the user chose Free"`.

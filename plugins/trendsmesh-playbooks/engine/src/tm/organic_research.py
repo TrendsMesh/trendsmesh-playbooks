@@ -53,8 +53,30 @@ def _full_ids(run: RunFolder, prefix: str) -> list[str]:
     return sorted(found)
 
 
+def _guess(run: RunFolder, given: object) -> tuple[str, dict] | None:
+    """On Free (issue #106, `tm.organic_guesses`): (the guess's key, a card made of it: name, kind and the guess
+    itself under `guess`) for one of the run's checked guesses, by its id (g1) or key; None on a Paid run."""
+    from tm import organic_guesses
+
+    if not (isinstance(given, str) and organic_guesses.is_free(run)):
+        return None
+    guesses = organic_guesses.latest(run)
+    g = guesses.get(given) or next((x for x in guesses.values() if organic_guesses.used_key(x) == given), None)
+    if g is None:
+        raise ValueError(f"{given!r} is not one of this Free run's checked guesses "
+                         f"({', '.join(guesses) or 'none checked yet: tm organic guesses check'})")
+    return organic_guesses.used_key(g), {"id": g["id"], "name": g.get("name"), "kind": g.get("kind"), "guess": g}
+
+
 def card(run: RunFolder, trend_id: str) -> tuple[dict | None, str | None]:
-    """(the latest saved card of a full trend id, None) or (None, why there is none)."""
+    """(the latest saved card of a full trend id, None) or (None, why there is none). On Free, a guess's key gives
+    the card made of the guess (`_guess`)."""
+    try:
+        got = _guess(run, trend_id)
+    except ValueError as exc:
+        return None, str(exc)
+    if got is not None:
+        return got[1], None
     path = brief_research.card_file(run, trend_id)
     if path is None:
         return None, "no card is saved (get_trend)"
@@ -65,7 +87,11 @@ def card(run: RunFolder, trend_id: str) -> tuple[dict | None, str | None]:
 def resolve(run: RunFolder, given: str) -> tuple[str, dict]:
     """(the full id, its card) of a trend id or 8-character prefix: the saved `trend_<prefix>*.json`
     files, each read at its latest version. An error answer is no card. A Stop when no card matches
-    (fetch it), a ValueError when the id is not a trend id or the prefix matches several cards."""
+    (fetch it), a ValueError when the id is not a trend id or the prefix matches several cards. On Free, one of
+    the run's guesses (g1, or its key) instead (`_guess`)."""
+    got = _guess(run, given)
+    if got is not None:
+        return got
     if not (isinstance(given, str) and trends.TREND_ID.fullmatch(given)):
         raise ValueError(f"{given!r} is not a TrendsMesh trend id (letters, digits, - and _).")
     ids = _full_ids(run, given)
@@ -90,8 +116,12 @@ def resolve(run: RunFolder, given: str) -> tuple[str, dict]:
 
 def videos(run: RunFolder, given: str) -> tuple[str, dict, list[dict]]:
     """(the full id, its card, its saved videos) for `tm organic videos`: `trends.load_videos` order, each
-    `{index, url, creator, views, published, hook_text, excerpt}`. A Stop when no saved video page holds a video."""
+    `{index, url, creator, views, published, hook_text, excerpt}`. A Stop when no saved video page holds a video,
+    and for a guess, which has none (Free, issue #106)."""
     tid, found = resolve(run, given)
+    if "guess" in found:
+        raise Stop(f"{found.get('name') or tid} is a guess on Free: it has no evidence videos, so a proposal names it "
+                   f"without picks; {AGAIN}.")
     try:
         saved = trends.load_videos(run, tid)
     except ValueError as exc:
@@ -121,7 +151,11 @@ def _shortlist(run: RunFolder) -> tuple[Path | None, dict | None]:
 def shortlist_gap(run: RunFolder) -> str | None:
     """The `shortlist_written` step check: B2 is done once `tm trends shortlist` wrote the latest
     03_wip/trend_shortlist_vNN.json in this run (its manifest row is dated on or after the run's
-    creation). Reads only."""
+    creation). On Free, once its guesses are checked (`organic_guesses.gap`). Reads only."""
+    from tm import organic_guesses
+
+    if organic_guesses.is_free(run):
+        return organic_guesses.gap(run)
     latest, data = _shortlist(run)
     if latest is None:
         return f"the shortlist is written in this run ({WIP}/{shortlist.STEM}_vNN.json, tm trends shortlist)"
@@ -222,7 +256,12 @@ def _cards_wanted(run: RunFolder) -> int:
 def evidence_gap(run: RunFolder) -> str | None:
     """The `evidence_saved` step check: B3 is done once each of the latest shortlist's top
     `research.cards` trends (`top_trends`) has a saved card (an error answer is none) and saved video
-    pages holding at least one video. Reads only."""
+    pages holding at least one video. On Free there is nothing to pull: its guesses checked at B2 (`organic_guesses.gap`).
+    Reads only."""
+    from tm import organic_guesses
+
+    if organic_guesses.is_free(run):
+        return organic_guesses.gap(run)
     latest, data = _shortlist(run)
     if data is None:
         return (f"the shortlist is written ({WIP}/{shortlist.STEM}_vNN.json, tm trends shortlist), then the cards "
