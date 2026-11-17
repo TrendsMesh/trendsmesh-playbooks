@@ -50,7 +50,7 @@ DEFAULTS: dict = {
     "output": "script",
     "weekly": {"contents": None, "per_week": 5, "days": ["mon", "wed", "fri", "sat", "sun"],
                "flexible_day": "sun", "run_day": "sun", "rhythm": "all_at_once"},
-    "generation": {"provider": "replicate", "quality_tier": "default", "resolution": "768p", "upscale": "none"},
+    "generation": {"provider": "replicate", "resolution": "768p", "upscale": "none"},
     "mode": {"variant": "gated", "gates": list(GATES)},
     "budget": {"per_run_usd": 5, "per_week_usd": 5},
     "publishing": {"tool": "none"},
@@ -68,7 +68,8 @@ DEFAULTS: dict = {
 }
 
 # What a config written before `languages` (issue #3) holds: accepted; page_lang is read as the working language.
-OLD_KEYS = {"page_lang": None, "page_lang_note": None}
+# A quality tier (before the model registry, #115: the models are chosen on the Models page) is accepted and unread.
+OLD_KEYS = {"page_lang": None, "page_lang_note": None, "generation": {"quality_tier": None}}
 
 FIXED = {  # rules, not thresholds: path -> (the fixed value, why another value is refused)
     "generation.provider": ("replicate", "{name} is not supported yet: generation uses Replicate (tracked at "
@@ -82,7 +83,6 @@ CHOICES = {
     "weekly.flexible_day": WEEKDAYS,
     "weekly.run_day": WEEKDAYS,
     "weekly.rhythm": ("all_at_once",),
-    "generation.quality_tier": ("budget", "default", "top"),
     "generation.resolution": ("720p", "768p", "1080p"),  # OV8: 720p (768P on H3) or 1080p; upscale apart
     "generation.upscale": ("none", "pruna"),
     "mode.variant": tuple(VARIANT_LEVEL),

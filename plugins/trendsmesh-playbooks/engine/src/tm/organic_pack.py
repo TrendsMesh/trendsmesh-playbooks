@@ -11,11 +11,13 @@ the pack stage, plans the money: run.json `planned` = the pack's totals per budg
 with the same items and no higher total keeps the earlier yes (`record`).
 
 What the pack stage holds the pack to, beyond the recipe:
-- models (OV6): a video model is the configured tier's (`TIERS`), unless the user named it and all six
-  `CRITERIA` are answered; a person described in text goes to Seedance 2.0, a host image to MiniMax H3
-  whatever the tier, and Seedance never takes a photoreal face (E005); a sound-led format never goes to the budget
-  tier; one video model per section; each model has its recipe in `references/model-prompting/` and a
-  ranking no older than `pricing.max_age_days`;
+- models (OV6): a video model is the one chosen on the Models page, else the model registry's (#115,
+  `tm.model_registry`: its talking-person route for a host, else its selected image-to-video model), unless the user
+  named it and all six `CRITERIA` are answered; a person described in text goes to the route's `described` model
+  (Seedance 2.0), a host image to its `specific_person` one (MiniMax H3), and a model whose registry limits hold
+  `photoreal_face` never takes a photoreal face (E005); a sound-led format never goes to a video model the registry
+  offers only as budget; one video model per section; each model has its recipe in `references/model-prompting/`,
+  and a model outside the registry a ranking no older than `pricing.max_age_days`;
 - speech (OV7): a talking character speaks natively on H3 unless a reason is given; native speech fits one
   take (`qa.wps_max` words a second, `qa.tail_s` after the last line, `qa.take_max_s` long); a voice
   reference only on the user's words, its sample at most 14 s; no ElevenLabs route the stack lacks; an ElevenLabs
@@ -75,8 +77,8 @@ from datetime import date
 from pathlib import Path
 from typing import Literal
 
-from tm import atlas, brand, config, flow, i18n, json_schema, manifest, organic, organic_config, organic_proposals, \
-    organic_research, paths, playbooks, runfolder, state, stepchecks, trend_spool, trends, tts_models
+from tm import atlas, brand, config, flow, i18n, json_schema, manifest, model_registry, organic, organic_config, \
+    organic_proposals, organic_research, paths, playbooks, runfolder, state, stepchecks, trend_spool, trends, tts_models
 from tm.config import Problem
 from tm.organic_config import ISSUES
 from tm.playbooks import ORGANIC_VIDEO
@@ -91,11 +93,13 @@ SCHEMA = Path(__file__).parent / "schemas" / "pb3_pack.schema.json"
 STAGES = ("recipe", "pack")             # also the stepchecks.mark keys
 SOURCE = "tm organic pack check"
 PACK_KEYS = ("speech", "models", "stages", "resolution", "cost", "facts", "risk", "sound")   # the pack stage's own
-TIERS = {"budget": "bytedance/seedance-1.5-pro", "default": "minimax/h3", "top": "bytedance/seedance-2.0",
-         "premium": "bytedance/seedance-2.5"}   # OV6; premium only when the user asks for it
-DESCRIBED_PERSON = "bytedance/seedance-2.0"   # a person from a description: no face image, so Seedance takes it
-FACE_HOST = "minimax/h3"                       # a host image goes to H3, whatever the tier (Seedance refuses it)
-FACE_BLOCKED = "bytedance/seedance"            # Seedance refuses photoreal faces in its inputs (Replicate E005)
+# OV6 from the model registry (#115): the talking person's route, the models that refuse a photoreal face (Replicate
+# E005, any version of their family) and the video tasks a Models page offers.
+_TALKING = model_registry.route("talking_person")["situations"]
+DESCRIBED_PERSON = _TALKING["described"]["model"]   # a person from a description: no face image, so Seedance takes it
+FACE_HOST = _TALKING["specific_person"]["model"]   # a host image goes to H3 (Seedance refuses it)
+FACE_BLOCKED = tuple(sorted({re.sub(r"-v?\d[\w.]*$", "", m) for m in model_registry.with_limit("photoreal_face")}))
+VIDEO_TASKS = ("image_to_video", "text_to_video")
 VIDEO_TYPES = ("ai_footage", "talking_character")   # the section types a video model makes
 ROUTES = ("h3_native", "h3_narrator", "elevenlabs_narrator", "elevenlabs_lipsync", "none")
 # The six questions a model the user names is checked against (resources/model-prompting/README.md,
@@ -111,8 +115,9 @@ CRITERIA = {
 VOICE_SAMPLE_MAX_S = 14   # OV7: a voice reference's sample, at most 14 s
 RECIPES = paths.bundled_data().parent / "references" / "model-prompting"   # the plugin's recipes (Task 18)
 RECIPE_PREFIX = "references/model-prompting/"
-UPSCALE = "pruna"                              # the upscale option is <base>_pruna
-UPSCALER = "prunaai/p-video-upscale"           # OV8's default upscaler, an item of the upscale stage
+UPSCALE = "pruna"                              # the upscale option is <base>_pruna (its id since 0.10; any upscaler)
+UPSCALER = model_registry.star("upscale")["model"]   # OV8's selected upscaler (the registry's), an upscale-stage item
+UPSCALERS = tuple(m for m in model_registry.models_of("upscale") if model_registry.model(m)["provider"] != "local")
 IMAGES_STAGE, VIDEO_STAGE, UPSCALE_STAGE = "images", "video", "upscale"   # an images item makes images; any other, seconds
 RESOLUTION_WORDS = {"base": ("720p", "768p"), "1080p": ("1080p", "2k")}   # a price tier's target resolution (H3: 768P, 2K)
 NOT_YET = ("A talking piece longer than one take is not supported yet (the voice can change between takes): "
@@ -504,13 +509,30 @@ def _pack(run: RunFolder, pack: dict, cfg: dict, today: date, out: list[Problem]
 
 
 def _fixed_model(pack: dict) -> tuple[str, str] | None:
-    """(model, why) when the host decides the video model whatever the tier, else None."""
+    """(model, why) when the host decides the video model (the registry's talking-person route), else None."""
     host = pack["host"]["kind"]
     if host == "description":
-        return DESCRIBED_PERSON, "a person described in text goes to Seedance 2.0"
+        return DESCRIBED_PERSON, f"a person described in text goes to {_label(DESCRIBED_PERSON)}"
     if host == "image":
-        return FACE_HOST, "a host image goes to MiniMax H3, whatever the tier"
+        return FACE_HOST, f"a host image goes to {_label(FACE_HOST)}"
     return None
+
+
+def _label(model: str) -> str:
+    found = model_registry.model(model)
+    return found["name"] if found else model
+
+
+def face_blocked(model: object) -> bool:
+    """Whether `model` refuses a photoreal face in its inputs (its registry limits, or its family's: E005)."""
+    return isinstance(model, str) and (model in model_registry.with_limit("photoreal_face")
+                                       or any(model.startswith(f) for f in FACE_BLOCKED))
+
+
+def _budget_only(model: str) -> bool:
+    """A video model the registry offers only in the budget group (weak native sound: never for a sound-led format)."""
+    groups = {r["group"] for t in VIDEO_TASKS for r in model_registry.active(t) if r["model"] == model}
+    return groups == {"budget"}
 
 
 def _models(pack: dict, cfg: dict, today: date, out: list[Problem], *, run: RunFolder | None = None) -> set[str]:
@@ -547,20 +569,20 @@ def _models(pack: dict, cfg: dict, today: date, out: list[Problem], *, run: RunF
     for model in sorted(section_models - set(listed)):
         _bad(out, "models", f"{model} is used by a section and not listed in models.",
              "List it in models with why, its recipe and its ranking.")
-    tier = cfg.get("generation", {}).get("quality_tier") if isinstance(cfg.get("generation"), dict) else None
-    tier = tier if tier in TIERS else "default"
-    expected, why = _fixed_model(pack) or (TIERS[tier], f"the {tier} tier's model")
+    selected = model_registry.star("image_to_video")["model"]
+    expected, why = _fixed_model(pack) or (selected, "the model registry's selected image-to-video model")
     if picked and (picked.get("video") or {}).get("model"):
         expected, why = picked["video"]["model"], "the model chosen on the Models page"
     for model in sorted(video):
         i, entry = listed.get(model, (None, {}))
         field = f"models[{i}]" if i is not None else "models"
-        if pack["host"]["kind"] == "image" and model.startswith(FACE_BLOCKED):
+        if pack["host"]["kind"] == "image" and face_blocked(model):
             _bad(out, f"{field}.model", f"{model} refuses a photoreal face as input (Replicate E005), and the host is an "
-                 "image.", f"Use {FACE_HOST} for a host image, or describe the person in text for Seedance 2.0.")
-        if pack["sound_led"] and model == TIERS["budget"]:
-            _bad(out, f"{field}.model", f"This format is sound-led, and {model} is the budget tier, whose native sound is "
-                 "weak.", "Use MiniMax H3, Seedance 2.0 or Veo 3.1 for a sound-led format (OV6).")
+                 "image.", f"Use {FACE_HOST} for a host image, or describe the person in text for "
+                 f"{_label(DESCRIBED_PERSON)}.")
+        if pack["sound_led"] and _budget_only(model):
+            _bad(out, f"{field}.model", f"This format is sound-led, and {model} is a budget model, whose native sound is "
+                 "weak.", "Use a suggested or best video model of the model registry for a sound-led format (OV6).")
         if entry.get("user_named"):
             _criteria(entry, field, out)
         elif model != expected:
@@ -586,6 +608,8 @@ def _models(pack: dict, cfg: dict, today: date, out: list[Problem], *, run: RunF
                  f"Write its recipe first ({model_page.library_recipe(model)}, from the model's official prompting "
                  "guide: its sources and the day you checked them in the title line, `(checked YYYY-MM-DD)`, and the "
                  "input fields from Replicate's API), then name it.")
+        if model in model_registry.ids():
+            continue                                   # the registry's models are tested by the owner (#115)
         if not _text(m["ranking"]["source"]):
             _bad(out, f"models[{i}].ranking", f"{model}'s ranking names no source.", "Name the ranking read.")
         late = _dated(_day(m["ranking"]["date"]), today, max_age, f"{model}'s ranking")
@@ -730,10 +754,11 @@ def _resolution(pack: dict, video: set[str], out: list[Problem]) -> None:
         _bad(out, "resolution.choice", f"The choice {res['choice']!r} is not one of the options.",
              "Choose one of the options.")
     upscales = [item["name"] for st in pack["stages"] if st["stage"] == UPSCALE_STAGE for item in st["items"]
-                if item["model"] == UPSCALER]
+                if item["model"] in UPSCALERS]
     if str(res["choice"]).endswith(f"_{UPSCALE}") and not upscales:
         _bad(out, "stages", f"The chosen resolution {res['choice']} upscales, and no {UPSCALE_STAGE} stage item uses "
-             f"{UPSCALER}.", f"Add an {UPSCALE_STAGE} stage with the upscale item and its seconds, and its cost line.")
+             f"an upscaler of the model registry ({', '.join(UPSCALERS)}).",
+             f"Add an {UPSCALE_STAGE} stage with the upscale item and its seconds, and its cost line.")
     elif upscales and not str(res["choice"]).endswith(f"_{UPSCALE}"):
         _bad(out, "stages", f"{', '.join(upscales)} upscales, and the chosen resolution {res['choice']} does not.",
              f"Remove the {UPSCALE_STAGE} stage, or choose the option with the upscale.")
@@ -972,8 +997,9 @@ def _priced(run: RunFolder, line: dict, field: str, today: date, max_age: int | 
 
 
 def _cheaper(pack: dict, video: set[str]) -> list[str]:
-    """What would cost less and still pass: a cheaper resolution, a lower tier (unless the host fixes the
-    model, or a sound-led format rules the budget tier out), a shorter script, a script to film."""
+    """What would cost less and still pass: a cheaper resolution, a cheaper image-to-video model of the registry
+    (unless the host fixes the model, or a sound-led format rules a budget model out), a shorter script, a script to
+    film."""
     found = []
     res = pack.get("resolution") or {}
     options = {o["id"]: o["cost"] for o in res.get("options") or []}
@@ -981,13 +1007,13 @@ def _cheaper(pack: dict, video: set[str]) -> list[str]:
     if chosen is not None:
         found += [f"resolution {rid} ({_usd(cost)})" for rid, cost in options.items() if cost < chosen - TOL]
     if _fixed_model(pack) is None:
-        order = list(TIERS)
+        rows = model_registry.active("image_to_video")
         for model in sorted(video):
-            tier = next((t for t, m in TIERS.items() if m == model), None)
-            if tier is None:
+            mine = [r["price"]["usd"] for r in rows if r["model"] == model]
+            if not mine:
                 continue
-            lower = [t for t in order[:order.index(tier)] if not (pack["sound_led"] and t == "budget")]
-            found += [f"the {t} tier ({TIERS[t]})" for t in lower]
+            found += [f"{r['name']} ({r['model']}, {r['group']}, ${r['price']['usd']:g} a second)" for r in rows
+                      if r["price"]["usd"] < min(mine) - TOL and not (pack["sound_led"] and _budget_only(r["model"]))]
     found += ["a shorter script (fewer seconds of video)", "a script to film instead ($0)"]
     return found
 

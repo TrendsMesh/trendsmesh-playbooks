@@ -24,15 +24,18 @@ from __future__ import annotations
 import argparse
 from pathlib import Path, PurePosixPath
 
-from tm import cli, manifest
+from tm import cli, manifest, model_registry
 from tm.runfolder import RunFolder
 
 MEDIA = {".mp4", ".mov", ".m4v", ".webm", ".mkv", ".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".opus",
          ".png", ".jpg", ".jpeg", ".webp", ".gif"}
-# A source or model naming one of these made or edited the file with generative AI (lower case, substrings).
-AI_MARKERS = ("elevenlabs", "replicate", "veo", "propainter", "inpaint", "frame-interpolation", "kling",
-              "seedance", "minimax", "runway", "sora", "flux", "imagen", "gpt-image", "midjourney",
-              "stable-diffusion", "stable diffusion", "dall-e", "dalle", "luma", "pika", "hailuo", "wan-")
+# A source or model naming one of these made or edited the file with generative AI (lower case, substrings): the
+# model registry's providers and paid models (#115, so a model added there is never missed here), and the families
+# of tools outside it that a user may bring.
+AI_MARKERS = tuple(dict.fromkeys(model_registry.ai_markers() + (
+    "veo", "propainter", "inpaint", "frame-interpolation", "kling", "seedance", "minimax", "runway", "sora", "flux",
+    "imagen", "gpt-image", "midjourney", "stable-diffusion", "stable diffusion", "dall-e", "dalle", "luma", "pika",
+    "hailuo", "wan-", "seedream", "grok-imagine", "gemini-omni", "topaz", "p-video", "p-image")))
 # Not ad media even when a marker matches: a shared voice's sample, a price page.
 NOT_MEDIA_SOURCES = ("voice preview", "model page", "run record")
 # Classical edits, no model (issue #56): the free plate's source (`tm.tools.inpaint.SOURCE`) and the one it was

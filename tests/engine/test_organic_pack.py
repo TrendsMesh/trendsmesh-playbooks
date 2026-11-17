@@ -157,16 +157,26 @@ def test_old_price_file_refused(tmp_path):
     assert [p.field for p in stale] == ["cost.lines[0].price_file", "cost.lines[1].price_file"]
     assert "checked on 2026-11-06, more than 7 days before 2026-11-14" in stale[1].what
     assert "tm tool replicate_price --run runs/03-organic-ai-video/" in stale[1].todo and "minimax/h3" in stale[1].todo
-    assert {"models[0].ranking.date", "models[1].ranking.date"} <= set(_fields(problems))   # the ranking too
+    # the registry's models (GPT Image 2, H3) carry the owner's test, not a ranking read on the day (#115)
+    assert not any(f.endswith("ranking.date") for f in _fields(problems))
 
 
 @pytest.mark.private_data
 def test_price_or_ranking_dated_after_today_refused(tmp_path):
     run = _m5_run(tmp_path)
     problems = _check(run, _pack("m5_pl_pack.json"), today=date(2026, 11, 5))
-    assert _fields(problems) == ["models[0].ranking.date", "models[1].ranking.date", "cost.lines[1].price_file"]
-    assert "dated 2026-11-06, after today (2026-11-05): the date is wrong" in problems[2].what
-    assert "more than" not in problems[2].what
+    assert _fields(problems) == ["cost.lines[1].price_file"]
+    assert "dated 2026-11-06, after today (2026-11-05): the date is wrong" in problems[0].what
+    assert "more than" not in problems[0].what
+
+
+@pytest.mark.private_data
+def test_a_model_outside_the_registry_still_needs_its_ranking(tmp_path):
+    run = _m5_run(tmp_path)
+    pack = _pack("m5_pl_pack.json")
+    pack["models"][0]["model"] = pack["stages"][0]["items"][0]["model"] = "acme/new-image-1"
+    problems = _check(run, pack, today=date(2026, 11, 14))
+    assert "models[0].ranking.date" in _fields(problems)
 
 
 @pytest.mark.private_data
@@ -235,15 +245,15 @@ def test_over_budget_refused_names_cheaper_options(tmp_path):
 
 
 @pytest.mark.private_data
-def test_cheaper_tiers_only_where_they_pass(tmp_path, animatic_ready):
+def test_cheaper_models_only_where_they_pass(tmp_path, animatic_ready):
     run = _pet_run(tmp_path, "p3")
     _set(run, budget__per_run_usd=1.0)
     pack = _pack("p3_sections_pack.json")
     problems = _check(run, pack)
     assert _fields(problems) == ["cost.totals.ai_usd"]
-    assert "the budget tier (bytedance/seedance-1.5-pro)" in problems[0].todo and "resolution" not in problems[0].todo
+    assert "Wan 3 (alibaba/wan-3, budget, $0.07 a second)" in problems[0].todo and "resolution" not in problems[0].todo
     pack["sound_led"] = True
-    assert "tier" not in _check(run, pack)[0].todo   # sound-led: never the budget tier
+    assert "wan-3" not in _check(run, pack)[0].todo   # sound-led: never a budget-only model
 
 
 @pytest.mark.private_data
@@ -333,11 +343,11 @@ def test_photoreal_host_on_seedance_refused(tmp_path):
 
 
 @pytest.mark.private_data
-@pytest.mark.parametrize("tier", ["budget", "top"])
-def test_silent_host_image_goes_to_h3_on_any_tier(tmp_path, tier):
-    """A host image that says nothing still goes to H3: Seedance (the budget and top tiers) refuses its face."""
+@pytest.mark.parametrize("model", ["bytedance/seedance-2.0", "bytedance/seedance-2.5"])
+def test_silent_host_image_goes_to_h3_whatever_the_model(tmp_path, model):
+    """A host image that says nothing still goes to H3: Seedance (any version, its registry limit) refuses its face."""
     run = _m5_run(tmp_path)
-    _set(run, generation__quality_tier=tier)
+    _set(run, generation__quality_tier="budget")       # an old config's tier is accepted and not read (#115)
     pack = _pack("m5_pl_pack.json")
     pack["production"] = pack["sections"][0]["type"] = "ai_footage"
     for line in pack["script"]["lines"]:
@@ -346,7 +356,7 @@ def test_silent_host_image_goes_to_h3_on_any_tier(tmp_path, tier):
     pack["speech"].update({"route": "none", "voice": None})
     pack["taste"]["voice"] = None
     assert _check(run, pack) == []
-    _swap_video_model(pack, organic_pack.TIERS[tier])
+    _swap_video_model(pack, model)
     assert "E005" in _what(_check(run, pack))
 
 
@@ -362,22 +372,23 @@ def test_described_person_goes_to_seedance_2_0(tmp_path):
 
 
 @pytest.mark.private_data
-def test_asmr_on_budget_tier_refused(tmp_path, animatic_ready):
+def test_asmr_on_a_budget_model_refused(tmp_path, animatic_ready):
     run = _pet_run(tmp_path, "p3")
-    _set(run, generation__quality_tier="budget")
     pack = _pack("p3_sections_pack.json")
     for sec in pack["sections"]:
         if sec["model"]:
-            sec["model"] = "bytedance/seedance-1.5-pro"
-    pack["stages"][1]["items"][0]["model"] = pack["models"][1]["model"] = "bytedance/seedance-1.5-pro"
-    assert "models[1].model" not in _fields(_check(run, pack))   # the budget tier's own model
+            sec["model"] = "alibaba/wan-3"
+    pack["stages"][1]["items"][0]["model"] = pack["models"][1]["model"] = "alibaba/wan-3"
+    pack["models"][1]["user_named"] = True
+    pack["models"][1]["criteria"] = {k: True for k in organic_pack.CRITERIA}
+    assert "models[1].model" not in _fields(_check(run, pack))   # the registry's budget model, the user's pick
     pack["sound_led"] = True
     problems = [p for p in _check(run, pack) if p.field == "models[1].model"]
-    assert len(problems) == 1 and "sound-led" in problems[0].what and "MiniMax H3" in problems[0].todo
+    assert len(problems) == 1 and "sound-led" in problems[0].what and "suggested or best" in problems[0].todo
 
 
 @pytest.mark.private_data
-def test_tier_model_or_a_user_named_model_with_six_criteria(tmp_path, animatic_ready):
+def test_the_registrys_model_or_a_user_named_model_with_six_criteria(tmp_path, animatic_ready):
     run = _pet_run(tmp_path, "p3")
     pack = _pack("p3_sections_pack.json")
     for sec in pack["sections"]:
@@ -385,7 +396,7 @@ def test_tier_model_or_a_user_named_model_with_six_criteria(tmp_path, animatic_r
             sec["model"] = "kwaivgi/kling-v3-omni-video"
     pack["stages"][1]["items"][0]["model"] = pack["models"][1]["model"] = "kwaivgi/kling-v3-omni-video"
     problems = [p for p in _check(run, pack) if p.field == "models[1].model"]
-    assert len(problems) == 1 and "the default tier's model is minimax/h3" in problems[0].what
+    assert len(problems) == 1 and "the model registry's selected image-to-video model is minimax/h3" in problems[0].what
     pack["models"][1]["user_named"] = True
     pack["models"][1]["criteria"] = {**{k: True for k in organic_pack.CRITERIA}, "photoreal_person": "not needed"}
     del pack["models"][1]["criteria"]["live_price"]

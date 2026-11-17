@@ -98,6 +98,8 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
 - sound-effect (issue 96) makes one effect the plugin's free set (`tm tool sfx_fetch`) does not have, `POST
   /v1/sound-generation` with the words, its length (0.5 to 30 s, so its price is known first) and how closely it
   follows them (`--influence`, 0 to 1): `03_wip/audio/sfx_<words>_vNN.mp3`. Paid, for credits, after the user's yes.
+  It always sends the registry's model, `model_id: eleven_text_to_sound_v3` (#115: v2 is deprecated and goes on
+  2027-03-01), at about 40 credits a second.
 - credits reads `GET /v1/user/subscription` and prints {tier, character_count, character_limit,
   next_character_count_reset_unix, instant_cloning}; it is free and writes nothing. `instant_cloning`
   is the plan's `can_use_instant_voice_cloning` (None when ElevenLabs does not say): refresh-ad's V3
@@ -131,7 +133,7 @@ from pathlib import Path
 
 import requests
 
-from tm import cli, i18n, music_models, organic_audio, providers, tts_models
+from tm import cli, i18n, model_registry, music_models, organic_audio, providers, tts_models
 from tm.runfolder import slug
 from tm.tools import _common as c
 
@@ -147,6 +149,7 @@ LAG_WAITS = (2, 4)   # seconds between the late reads of the subscription after 
 MUSIC_FORMAT = "mp3_44100_192"
 MUSIC_UPLOAD_PLAN = "music_v2"
 SFX_FORMAT = "mp3_44100_128"
+SFX_MODEL = next(r for r in model_registry.active("sound_effects") if r["provider"] == "elevenlabs" and r["star"])
 SFX_SECONDS = (0.5, 30.0)
 MUSIC_STOP = ("Your ElevenLabs plan or key cannot use Music, so nothing was generated and nothing was spent. "
               "Open elevenlabs.io, choose Subscription and pick a plan with Music, then tell Claude. "
@@ -567,7 +570,7 @@ def music_compose(plan: dict, out: Path | str, model: str = MUSIC_MODEL, fmt: st
 def sound_effect(text: str, seconds: float, influence: float, out: Path | str) -> dict:
     """One sound effect from its words and length, saved to `out` (mp3)."""
     out = Path(out)
-    body = {"text": text, "duration_seconds": seconds, "prompt_influence": influence}
+    body = {"text": text, "duration_seconds": seconds, "prompt_influence": influence, **SFX_MODEL["send"]}
     before = _before_paid("the sound effect")
     resp = _paid("/v1/sound-generation", "the sound effect", params={"output_format": SFX_FORMAT}, json=body)
     _check(resp, "the sound effect", "sound_effects")

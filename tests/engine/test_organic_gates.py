@@ -39,7 +39,7 @@ TAKE = {"model": "minimax/h3",
                   "first_frame_image": "host_v01_0.png", "duration": 15, "resolution": "768P"}}
 HOST = {"model": "openai/gpt-image-2",
         "input": {"prompt": "Natural light, no filter. A still that looks like a selfie video, caught mid-sentence …",
-                  "quality": "high", "aspect_ratio": "1152x2048", "output_format": "png", "number_of_images": 2}}
+                  "quality": "medium", "aspect_ratio": "1152x2048", "output_format": "png", "number_of_images": 2}}
 
 
 @pytest.fixture(autouse=True)

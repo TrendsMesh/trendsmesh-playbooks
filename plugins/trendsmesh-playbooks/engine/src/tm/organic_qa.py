@@ -51,7 +51,7 @@ contact_sheet, lines, heard_by}. Here:
   (QuizGrid's `options[].img`, a ranking's `items[].src`) show every generated item's current pick (the cards, or a
   ranking's takes), and nothing else the pack made; a picture the pack did not make only when it takes the user's own
   (an item with no model), and never one of the check-in pages' (`03_wip/gates/`, PR D review I1).
-- An upscale (the pack's upscale-stage item, `organic_pack.UPSCALER`, issue #90) is an automatic step after the user
+- An upscale (the pack's upscale-stage item, one of `organic_pack.UPSCALERS`, issue #90) is an automatic step after the user
   accepted the take: `upscale_check` (`tm organic upscale`) finds the item's latest output and the accepted take it
   was made from (the current takes pick its record names as input), checks only what an upscale may change (the
   1080p size with the take's shape, the frame rate, and the sound: there as in the take, as long, as loud, within
@@ -678,7 +678,7 @@ def upscale_item(pack: dict, name: str) -> dict | None:
     """The pack's upscale-stage item named `name` (any case, as its stem), or None."""
     stem = c.stem_of(name)
     return next((item for st in pack["stages"] if st["stage"] == organic_pack.UPSCALE_STAGE for item in st["items"]
-                 if item.get("model") == organic_pack.UPSCALER and c.stem_of(item["name"]) == stem), None)
+                 if item.get("model") in organic_pack.UPSCALERS and c.stem_of(item["name"]) == stem), None)
 
 
 def _measure(path: Path) -> dict:

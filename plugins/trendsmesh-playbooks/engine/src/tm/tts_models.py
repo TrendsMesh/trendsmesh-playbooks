@@ -1,7 +1,9 @@
 """ElevenLabs text-to-speech models: the default, each model's credit rate, and what each request may carry (#88).
 
 Read by `tm tool elevenlabs tts` (the model, `language_code`, `speed`) and by organic video's pack check (the
-voiceover's credits: its characters at the chosen model's rate). Checked against ElevenLabs' docs on 2026-11-12:
+voiceover's credits: its characters at the chosen model's rate). The ids, rates and limits come from the model
+registry (`data/models/registry.yaml`, `tm.model_registry`, #115); the notes below say where they come from. Checked
+against ElevenLabs' docs on 2026-11-12:
 https://elevenlabs.io/docs/overview/models, .../capabilities/text-to-speech/eleven-v4,
 .../api-reference/text-to-speech/convert and https://elevenlabs.io/pricing (the credits FAQ).
 
@@ -28,10 +30,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-DEFAULT = "eleven_v4"
+from tm import model_registry
+
+DEFAULT = model_registry.star("voiceover")["model"]   # Eleven v4, the registry's selected voiceover (#88, #115)
 KEEPS_PACE = "eleven_multilingual_v2"   # Refresh an ad: a line among the original's sentences
 GENERAL_RATE = 1.0                      # the docs' "1 credit per character", for a model not listed
-CHECKED = "2026-11-12"
+CHECKED = model_registry.price(DEFAULT, "default")["checked"]
 
 
 @dataclass(frozen=True)
@@ -42,11 +46,22 @@ class Model:
     source: str
 
 
-MODELS: dict[str, Model] = {
-    "eleven_v4": Model(0.5, True, False, "billed 0.5 a character in the owner's live run (character-cost header)"),
-    "eleven_multilingual_v2": Model(1.0, False, True, "docs: 1 text character equals 1 credit"),
-    "eleven_flash_v2_5": Model(0.5, True, True, "docs: 50% lower price per character"),
-}
+def _models() -> dict[str, Model]:
+    """The registry's text-to-speech models (an ElevenLabs model priced per character): the rate and what a request
+    may carry, from its `cannot` (`language_code`, `speed`)."""
+    out = {}
+    for mid in model_registry.ids(provider="elevenlabs"):
+        price = model_registry.price(mid, "default")
+        if price.get("per") != "character":
+            continue
+        limits = model_registry.cannot(mid)
+        out[mid] = Model(float(price["credits"]), "language_code" not in limits, "speed" not in limits,
+                         f"the model registry, checked {price['checked']}")
+    return out
+
+
+MODELS: dict[str, Model] = _models()
+assert KEEPS_PACE in MODELS, "the model registry has no eleven_multilingual_v2"
 
 
 def known(model: str) -> bool:
@@ -74,10 +89,10 @@ def takes_speed(model: str) -> bool:
     return found.speed if found else True
 
 
-SCRIBE_MODEL = "scribe_v3"
-STS_MODEL = "eleven_multilingual_sts_v2"
-SCRIBE_PER_MINUTE = 330
-STS_PER_MINUTE = 1000
+SCRIBE_MODEL = model_registry.star("transcription")["model"]
+STS_MODEL = model_registry.star("voice_changer")["model"]
+SCRIBE_PER_MINUTE = int(model_registry.price(SCRIBE_MODEL, "default")["credits"])
+STS_PER_MINUTE = int(model_registry.price(STS_MODEL, "default")["credits"])
 
 
 def _per_minute(seconds: float, rate: int) -> int:

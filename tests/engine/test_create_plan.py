@@ -230,7 +230,8 @@ def _plan_with(*talking, **presenter):
 
 
 @pytest.mark.parametrize("situation,model", [
-    ("described", "bytedance/seedance-2.0"), ("specific_person", "minimax/h3"), ("own_voice", "minimax/h3"),
+    ("described", "bytedance/seedance-2.0"), ("specific_person", "minimax/h3"),
+    ("own_voice", "google/gemini-omni-1.2-flash"),
     ("exact_wording", "google/gemini-omni-1.2-flash"), ("exact_wording", "gemini-omni"),
 ])
 def test_the_plan_takes_the_presenter_from_the_table(run, situation, model):

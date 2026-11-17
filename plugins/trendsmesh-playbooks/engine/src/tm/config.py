@@ -45,8 +45,8 @@ DEFAULTS: dict = {
     "diagnosis": {"table": "r2", "drop": 0.15, "frequency_rise": 0.20,
                   "middle_step_drop_pp": 3, "structural_recut": False},
     "formats": {"placement_share_min": 0.25},
+    # the models are the model registry's (data/models/registry.yaml, #115), not a setting
     "generation": {"provider": "replicate",
-                   "models": {"image": "gpt-image-2", "video": "veo-3.1-fast"},
                    "caption_removal": "telea"},
     "benchmark": {"source": "meta_ad_library"},
     "budget": {"ai_usd": None, "voice_credits": None, "test_per_day": None, "test_days": None},
@@ -265,11 +265,16 @@ def _get(cfg: dict, path: str):
 get = _get   # public name for the playbook modules
 
 
+RETIRED = ("generation.models",)   # read from the model registry now (#115): an old config keeping it still loads
+
+
 def _unknown_keys(cfg: object, schema: dict, prefix: str, out: list[Problem]) -> None:
     if not isinstance(cfg, dict):
         return
     for key, value in cfg.items():
         path = f"{prefix}{key}"
+        if path in RETIRED:
+            continue
         if key not in schema:
             out.append(Problem(path, f"{path} is not a setting of this playbook. The config can only "
                                      "change the thresholds of the rules, not the rules.",

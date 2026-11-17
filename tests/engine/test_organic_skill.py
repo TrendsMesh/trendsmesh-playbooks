@@ -11,7 +11,7 @@ import pytest
 
 from test_brief_flow import _leaf, _tm_commands
 from test_frontmatter import front_matter
-from tm import cli, flow, organic_config, organic_pack, paths, playbooks, state
+from tm import cli, flow, model_registry, organic_config, organic_pack, paths, playbooks, state
 from tm.organic_pages import CAPABILITIES
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
@@ -27,17 +27,17 @@ SHIPPED_OUTPUTS = ("proposals", "script_to_film", "organic_video", "weekly_plan"
 # AI video (PR C), a week run (PR E)
 RECIPES = PLUGIN / "references" / "model-prompting"
 HANDOFF_RECIPES = REPO / "handoff" / "organic-video_v02" / "resources" / "model-prompting"
-VERBATIM_RECIPES = ("README.md", "minimax-h3.md", "gpt-image-2.md", "veo-3.1.md")   # the handoff's, as they are
+VERBATIM_RECIPES = ("minimax-h3.md", "gpt-image-2.md", "veo-3.1.md")   # the handoff's, as they are
+README = ("README.md",)   # the handoff's, its model lists and prices moved to the model registry (#115)
 OWN_RECIPES = ("seedance-2.0.md", "kling-avatar-v2.md",   # the plugin's, from the handoff's pet-store research
-               "seedance-1.5-pro.md", "seedance-2.5.md", "p-video-upscale.md")
+               "seedance-2.5.md", "p-video-upscale.md")
+REGISTRY_RECIPES = ("topaz-video-upscale.md",)   # the plugin's, from Replicate's page and the owner's test (#115)
 VOICE_RECIPES = ("eleven-v4.md",)   # the plugin's, from ElevenLabs' docs and the owner's live run (#88)
 PRESENTER_RECIPES = ("gemini-omni-1.2-flash.md",)   # the plugin's, from Replicate's page and the owner's run (#95)
-ROUTED_RECIPES = {   # every model the engine itself sends a take to (a tier, a host image, a described person,
-    "bytedance/seedance-1.5-pro": "seedance-1.5-pro.md",   # the upscaler) -> its recipe
-    "minimax/h3": "minimax-h3.md",
+ROUTED_RECIPES = {   # every model the engine itself sends a take to (the registry's selected image-to-video model, a
+    "minimax/h3": "minimax-h3.md",   # host image, a described person, the selected upscaler) -> its recipe
     "bytedance/seedance-2.0": "seedance-2.0.md",
-    "bytedance/seedance-2.5": "seedance-2.5.md",
-    "prunaai/p-video-upscale": "p-video-upscale.md",
+    "topazlabs/video-upscale": "topaz-video-upscale.md",
 }
 RUN_PAGE_AT = ("c2", "f1", "g4")   # check-ins on the run page (C2's ideas, F1, F2; G4's delivery) declare the build's
                                    # capabilities (issue #60)
@@ -485,15 +485,16 @@ def test_no_trend_found_only_as_a_forbidden_phrase():
 
 @pytest.mark.private_data
 def test_model_recipes_are_the_handoffs_and_the_plugins_own_lf():
-    """references/model-prompting/: the handoff's four recipes verbatim (as text), and Seedance 2.0, Kling Avatar v2,
-    Seedance 1.5 Pro, Seedance 2.5 and Pruna's upscaler written from the handoff's pet-store research, each with its sources
-    and dated; pinned LF. The pack check reads this folder (`organic_pack.RECIPES`)."""
+    """references/model-prompting/: the handoff's three recipes verbatim (as text) and its README (its model lists now
+    the registry's, #115), and Seedance 2.0, Kling Avatar v2, Seedance 2.5 and Pruna's upscaler written from the
+    handoff's pet-store research, each with its sources and dated; pinned LF. The pack check reads this folder
+    (`organic_pack.RECIPES`)."""
     assert organic_pack.RECIPES == RECIPES
-    assert sorted(p.name for p in RECIPES.iterdir()) == sorted(VERBATIM_RECIPES + OWN_RECIPES + VOICE_RECIPES
-                                                              + PRESENTER_RECIPES)
+    assert sorted(p.name for p in RECIPES.iterdir()) == sorted(README + VERBATIM_RECIPES + OWN_RECIPES + VOICE_RECIPES
+                                                              + PRESENTER_RECIPES + REGISTRY_RECIPES)
     for name in VERBATIM_RECIPES:   # the handoff's, but for the client's line quoted in MiniMax's: a made-up one in ours
         assert _unquoted(_text(RECIPES / name)) == _unquoted(_text(HANDOFF_RECIPES / name)), name
-    assert sorted(p.name for p in HANDOFF_RECIPES.iterdir()) == sorted(VERBATIM_RECIPES)
+    assert sorted(p.name for p in HANDOFF_RECIPES.iterdir()) == sorted(README + VERBATIM_RECIPES)
     for name in OWN_RECIPES:
         text = _text(RECIPES / name)
         assert re.search(r"^# .+: prompting recipe \(checked \d{4}-\d{2}-\d{2}\)$", text, re.M), name
@@ -503,7 +504,7 @@ def test_model_recipes_are_the_handoffs_and_the_plugins_own_lf():
         text = _text(RECIPES / name)
         assert re.search(r"^# .+: prompting recipe \(checked \d{4}-\d{2}-\d{2}\)$", text, re.M), name
         assert "\nSources:\n" in text and "https://elevenlabs.io/docs/" in text, name
-    for name in PRESENTER_RECIPES:
+    for name in PRESENTER_RECIPES + REGISTRY_RECIPES:
         text = _text(RECIPES / name)
         assert re.search(r"^# .+: prompting recipe \(checked \d{4}-\d{2}-\d{2}\)$", text, re.M), name
         assert "\nSources:\n" in text and "https://replicate.com/" in text, name
@@ -512,15 +513,21 @@ def test_model_recipes_are_the_handoffs_and_the_plugins_own_lf():
 
 def test_every_model_the_engine_routes_to_has_its_recipe():
     """Task 12's recipe check refuses a model with no recipe ("Write its recipe first"); the models the engine
-    itself sends a video to (the default tier, a host image, a person from a description), the image model and the
-    lip-sync alternative have one, and so has every model of the fixture packs, so a live pack passes."""
+    itself sends a video to (the registry's selected image-to-video model, a host image, a person from a description,
+    the selected upscaler), the image model and the lip-sync alternative have one, and so has every model of the
+    fixture packs and every ★ model of the registry's Replicate tasks, so a live pack passes (#115)."""
     fixtures = PLUGIN / "engine" / "tests" / "fixtures" / "organic"
-    routed = {*organic_pack.TIERS.values(), organic_pack.FACE_HOST, organic_pack.DESCRIBED_PERSON, organic_pack.UPSCALER}
-    assert routed == set(ROUTED_RECIPES)   # every tier (budget and premium too) and the default upscaler
+    selected = model_registry.star("image_to_video")["model"]
+    routed = {selected, organic_pack.FACE_HOST, organic_pack.DESCRIBED_PERSON, organic_pack.UPSCALER}
+    assert routed == set(ROUTED_RECIPES)
     for model, name in ROUTED_RECIPES.items():
         assert (RECIPES / name).is_file() and model in _text(RECIPES / name), (model, name)
-    named = {"minimax-h3.md": organic_pack.TIERS["default"], "seedance-2.0.md": organic_pack.DESCRIBED_PERSON}
-    assert organic_pack.FACE_HOST == organic_pack.TIERS["default"] and organic_pack.TIERS["top"] == named["seedance-2.0.md"]
+    for task in model_registry.tasks():
+        star = model_registry.star(task) if any(r["star"] for r in model_registry.active(task)) else None
+        if star and star["provider"] == "replicate" and task != "inpainting":
+            assert star["recipe"] and (RECIPES / star["recipe"]).is_file(), (task, star["model"])
+    named = {"minimax-h3.md": selected, "seedance-2.0.md": organic_pack.DESCRIBED_PERSON}
+    assert organic_pack.FACE_HOST == selected
     for f in sorted(fixtures.glob("*_pack.json")):
         for m in json.loads(_text(f))["models"]:
             assert m["recipe"].startswith(organic_pack.RECIPE_PREFIX), (f.name, m)

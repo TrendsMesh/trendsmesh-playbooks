@@ -48,7 +48,7 @@ def test_defaults_match_playbook_config(run):
     expected = {
         "weekly.per_week": 5, "weekly.days": ["mon", "wed", "fri", "sat", "sun"], "weekly.flexible_day": "sun",
         "weekly.run_day": "sun", "weekly.rhythm": "all_at_once",
-        "generation.provider": "replicate", "generation.quality_tier": "default", "generation.resolution": "768p",
+        "generation.provider": "replicate", "generation.resolution": "768p",
         "generation.upscale": "none",
         "budget.per_run_usd": 5, "budget.per_week_usd": 5, "publishing.tool": "none",
         "mode.variant": "gated", "mode.gates": ["pack", "images", "video", "edit"],
@@ -205,8 +205,9 @@ def test_other_fields_checked(run):
         "generation": {"quality_tier": "cheap", "resolution": "4k", "upscale": "topaz"},
         "mode": {"gates": ["pack", "publish"]}, "kind": "production2"})
     assert set(_problems(run)) >= {"colour", "budget.per_run_usd", "qa.wps_max", "qa.lufs_usable", "qa.upload_crf",
-                                   "proposals.max", "weekly.days", "weekly.contents", "generation.quality_tier",
+                                   "proposals.max", "weekly.days", "weekly.contents",
                                    "generation.resolution", "generation.upscale", "mode.gates"}
+    assert "generation.quality_tier" not in _problems(run)   # an old config's tier: accepted, unread (#115)
     assert config.load(run)["kind"] == "proposals"     # the run kind follows the outputs, never the answers
     organic_config.write_from_intake(run, {**ANSWERS, "channels": ["Example Edu", 3]})
     assert "channels" in _problems(run)

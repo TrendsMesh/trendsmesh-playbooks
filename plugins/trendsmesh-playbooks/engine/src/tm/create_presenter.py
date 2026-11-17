@@ -26,24 +26,23 @@ import json
 from datetime import date
 from pathlib import Path
 
-from tm import config, create_config, create_plan, manifest
+from tm import config, create_config, create_plan, manifest, model_registry
 from tm.runfolder import RunFolder
 
 TAKE_S = 15
 PRICES = "02_research/models"
 ROW = "row"                       # the presenter_model answer for the row's own model
-# CA5's table (skills/create-ad/references/rules.md), in its order, keyed as create_plan.PRESENTERS: the model on
-# Replicate, the words of its priced tier's criteria, and what the row needs from the user.
+# CA5's table: the model registry's talking-person route (#115, data/models/registry.yaml), in its order, keyed as
+# create_plan.PRESENTERS: the model on Replicate, the words of its priced tier's criteria (the variant's), and an
+# ElevenLabs step on top (the voice changer, or the fallback's voiceover).
+_ROUTE = model_registry.route("talking_person")["situations"]
 ROWS = {
-    "described": {"model": "bytedance/seedance-2.0", "tier": ("non_video_in", "720p")},
-    "specific_person": {"model": "minimax/h3", "tier": ("768P",)},
-    "own_voice": {"model": "minimax/h3", "tier": ("768P",)},
-    "exact_wording": {"model": "google/gemini-omni-1.2-flash", "tier": ("720p",)},
-    "fallback": {"model": "kwaivgi/kling-avatar-v2", "tier": ("std",), "plus": "elevenlabs"},
-}
-MODELS = {"bytedance/seedance-2.0": "Seedance 2.0", "minimax/h3": "MiniMax H3",
-          "google/gemini-omni-1.2-flash": "Gemini Omni 1.2 Flash",
-          "kwaivgi/kling-avatar-v2": "ElevenLabs + Kling Avatar v2"}
+    sit: {"model": r["model"], "variant": r["variant"],
+          "tier": (str(model_registry.variants(r["model"])[r["variant"]].get("live", {}).get("criteria") or r["variant"]),),
+          **({"plus": "elevenlabs"} if r.get("plus") or r.get("then") else {})}
+    for sit, r in _ROUTE.items()}
+MODELS = {r["model"]: model_registry.model(r["model"])["name"] for r in _ROUTE.values()}
+MODELS.update({r["model"]: f"ElevenLabs + {MODELS[r['model']]}" for r in _ROUTE.values() if r.get("plus")})
 FALLBACK = "fallback"             # only once a review showed a take looks or sounds wrong (presenter.why)
 
 

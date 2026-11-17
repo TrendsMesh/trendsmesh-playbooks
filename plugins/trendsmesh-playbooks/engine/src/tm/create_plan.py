@@ -38,7 +38,7 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 
-from tm import config, create_config, flow, i18n, music_models, playbooks, state, stepchecks, tts_models
+from tm import config, create_config, flow, i18n, model_registry, music_models, playbooks, state, stepchecks, tts_models
 from tm.config import Problem
 from tm.playbooks import CREATE_AD
 from tm.runfolder import RunFolder, slug
@@ -407,14 +407,18 @@ def check_plan(run: RunFolder, data: dict, *, today: date | None = None) -> list
 
 # --- the talking person: CA5's table, CA4's one take per speaker (issue #95) -------
 
-PRESENTERS = {   # situation -> (a word of its take's model, what the casting gives it); rules.md CA5's table
-    "described": ("seedance", "nothing: the face block"),
-    "specific_person": ("h3", "the face"),
-    "own_voice": ("h3", "the face"),
-    "exact_wording": ("gemini-omni", "a reference"),
-    "fallback": ("kling-avatar", "the face"),
-}
-NO_FACE = ("seedance",)   # refuses a photoreal face in its inputs (Replicate E005): no casting face can be used
+def _family(model: str) -> str:
+    """A model's family word, its name without the version: `bytedance/seedance-2.0` -> `seedance`."""
+    return re.sub(r"-v?\d[\w.-]*$", "", str(model).rsplit("/", 1)[-1])
+
+
+_CASTING = {"none": "nothing: the face block", "face": "the face", "reference": "a reference"}
+# situation -> (a word of its take's model, what the casting gives it): the model registry's talking-person route
+# (#115), which rules.md CA5's table shows
+PRESENTERS = {sit: (_family(r["model"]), _CASTING[r["casting"]])
+              for sit, r in model_registry.route("talking_person")["situations"].items()}
+# refuses a photoreal face in its inputs (Replicate E005, the registry's limit): no casting face can be used
+NO_FACE = tuple(sorted({_family(m) for m in model_registry.with_limit("photoreal_face")}))
 
 
 def _names(lines: list[dict]) -> str:

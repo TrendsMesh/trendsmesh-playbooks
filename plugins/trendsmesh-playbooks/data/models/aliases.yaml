@@ -1,0 +1,131 @@
+# The same model's name in each public ranking and on Replicate (issue #115, section 1): the two-weekly review
+# (.github/scripts/model_review.py) matches the rankings to the registry through this table. A name it cannot match
+# is listed in the review issue as "to match"; the maintainer adds it here after the owner's review.
+#
+# registry id: {arena: [names on Arena's leaderboards], artificial_analysis: [names on Artificial Analysis],
+#               replicate: owner/name, elevenlabs: model id}
+
+openai/gpt-image-2:
+  arena: [gpt-image-2, "GPT Image 2", "gpt-image-2 (medium)", "gpt-image-2 (high)"]
+  artificial_analysis: ["GPT Image 2"]
+  replicate: openai/gpt-image-2
+openai/gpt-image-2.5-sunburst:
+  arena: [gpt-image-2.5-sunburst, "GPT Image 2.5 Sunburst"]
+  artificial_analysis: ["GPT Image 2.5 Sunburst"]
+  replicate: openai/gpt-image-2.5-sunburst
+openai/gpt-image-2.5-flare:
+  arena: [gpt-image-2.5-flare, "GPT Image 2.5 Flare"]
+  artificial_analysis: ["GPT Image 2.5 Flare"]
+  replicate: openai/gpt-image-2.5-flare
+openai/gpt-image-2.6-sunburst:
+  arena: [gpt-image-2.6-sunburst, "GPT Image 2.6 Sunburst"]
+  artificial_analysis: ["GPT Image 2.6 Sunburst"]
+  replicate: openai/gpt-image-2.6-sunburst
+openai/gpt-image-2.6-flare:
+  arena: [gpt-image-2.6-flare, "GPT Image 2.6 Flare"]
+  artificial_analysis: ["GPT Image 2.6 Flare"]
+  replicate: openai/gpt-image-2.6-flare
+prunaai/p-image:
+  arena: [p-image, "P-Image"]
+  artificial_analysis: ["P-Image", "Pruna P-Image"]
+  replicate: prunaai/p-image
+bytedance/seedream-5-pro:
+  arena: [seedream-5-pro, "Seedream 5 Pro", "Seedream 5.0 Pro"]
+  artificial_analysis: ["Seedream 5 Pro", "Seedream 5.0 Pro"]
+  replicate: bytedance/seedream-5-pro
+black-forest-labs/flux-3-image:
+  arena: [flux-3, "FLUX 3", "flux-3-image"]
+  artificial_analysis: ["FLUX 3", "FLUX.3"]
+  replicate: black-forest-labs/flux-3-image
+alibaba/wan-3:
+  arena: [wan-3, "Wan 3", "Wan 3.0"]
+  artificial_analysis: ["Wan 3", "Wan 3.0"]
+  replicate: alibaba/wan-3
+xai/grok-imagine-video-1.5:
+  arena: [grok-imagine-video-1.5, "Grok Imagine Video 1.5"]
+  artificial_analysis: ["Grok Imagine Video 1.5", "Grok Imagine 1.5"]
+  replicate: xai/grok-imagine-video-1.5
+minimax/h3:
+  arena: [h3, minimax-h3, "MiniMax H3", "Hailuo H3"]
+  artificial_analysis: ["MiniMax H3", "Hailuo H3"]
+  replicate: minimax/h3
+minimax/h3-lite:
+  arena: [h3-lite, minimax-h3-lite, "MiniMax H3 Lite"]
+  artificial_analysis: ["MiniMax H3 Lite", "Hailuo H3 Lite"]
+  replicate: minimax/h3-lite
+google/gemini-omni-1.2-flash:
+  arena: [gemini-omni-1.2-flash, "Gemini Omni 1.2 Flash"]
+  artificial_analysis: ["Gemini Omni 1.2 Flash"]
+  replicate: google/gemini-omni-1.2-flash
+bytedance/seedance-2.0:
+  arena: [seedance-2.0, "Seedance 2.0", seedance-v2.0]
+  artificial_analysis: ["Seedance 2.0"]
+  replicate: bytedance/seedance-2.0
+bytedance/seedance-2.5:
+  arena: [seedance-2.5, "Seedance 2.5", seedance-v2.5]
+  artificial_analysis: ["Seedance 2.5"]
+  replicate: bytedance/seedance-2.5
+google/veo-3.1-fast:
+  arena: [veo-3.1-fast, "Veo 3.1 Fast", veo-3.1-fast-audio]
+  artificial_analysis: ["Veo 3.1 Fast"]
+  replicate: google/veo-3.1-fast
+kwaivgi/kling-avatar-v2:
+  arena: [kling-avatar-v2, "Kling Avatar v2", "Kling AI Avatar 2.0"]
+  artificial_analysis: ["Kling Avatar v2", "Kling AI Avatar 2.0"]
+  replicate: kwaivgi/kling-avatar-v2
+prunaai/p-video-avatar:
+  arena: [p-video-avatar]
+  artificial_analysis: ["P-Video Avatar"]
+  replicate: prunaai/p-video-avatar
+prunaai/p-video-upscale:
+  arena: []
+  artificial_analysis: ["P-Video Upscale"]
+  replicate: prunaai/p-video-upscale
+topazlabs/video-upscale:
+  arena: []
+  artificial_analysis: ["Topaz Video Upscale", "Topaz Video AI"]
+  replicate: topazlabs/video-upscale
+jd7h/propainter:
+  arena: []
+  artificial_analysis: []
+  replicate: jd7h/propainter
+eleven_v4:
+  arena: [eleven-v4, "Eleven v4"]
+  artificial_analysis: ["Eleven v4", "ElevenLabs Eleven v4"]
+  elevenlabs: eleven_v4
+eleven_v4_turbo:
+  arena: [eleven-v4-turbo, "Eleven v4 Turbo"]
+  artificial_analysis: ["Eleven v4 Turbo", "ElevenLabs Eleven v4 Turbo"]
+  elevenlabs: eleven_v4_turbo
+eleven_multilingual_v2:
+  arena: [eleven-multilingual-v2]
+  artificial_analysis: ["Eleven Multilingual v2", "ElevenLabs Multilingual v2"]
+  elevenlabs: eleven_multilingual_v2
+eleven_flash_v2_5:
+  arena: [eleven-flash-v2.5]
+  artificial_analysis: ["Eleven Flash v2.5", "ElevenLabs Flash v2.5"]
+  elevenlabs: eleven_flash_v2_5
+eleven_text_to_sound_v3:
+  arena: []
+  artificial_analysis: ["ElevenLabs Sound Effects v3"]
+  elevenlabs: eleven_text_to_sound_v3
+eleven_multilingual_sts_v2:
+  arena: []
+  artificial_analysis: []
+  elevenlabs: eleven_multilingual_sts_v2
+music_v2_5:
+  arena: [eleven-music-v2.5]
+  artificial_analysis: ["Eleven Music v2.5", "ElevenLabs Music v2.5"]
+  elevenlabs: music_v2_5
+voice_isolator:
+  arena: []
+  artificial_analysis: []
+  elevenlabs: voice_isolator
+instant_voice_cloning:
+  arena: []
+  artificial_analysis: []
+  elevenlabs: instant_voice_cloning
+scribe_v3:
+  arena: []
+  artificial_analysis: ["Scribe v3", "ElevenLabs Scribe v3"]
+  elevenlabs: scribe_v3

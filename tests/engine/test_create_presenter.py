@@ -20,8 +20,8 @@ def _prices(run, day=TODAY, models=None):
             {"model": "google/gemini-omni-1.2-flash", "checked": day, "tiers": [
                 {"criteria": "target resolution=720p", "price": "$0.105", "unit": "second"}]},
             {"model": "kwaivgi/kling-avatar-v2", "checked": day, "tiers": [
-                {"criteria": "mode=std", "price": "$0.056", "unit": "second"},
-                {"criteria": "mode=pro", "price": "$0.11", "unit": "second"}]}]
+                {"criteria": "model variant=std", "price": "$0.056", "unit": "second"},
+                {"criteria": "model variant=pro", "price": "$0.11", "unit": "second"}]}]
     rows = [r for r in rows if models is None or r["model"] in models]
     rel = PRICES.format(day=day)
     path = run.path / rel
@@ -49,7 +49,8 @@ def test_the_plans_situation_comes_first_then_the_other_rows_each_priced_for_15_
                               "file": PRICES.format(day=TODAY), "old_days": None}
     by = {r["situation"]: r for r in rows}
     assert by["described"]["price"]["usd"] == 2.7              # the tier without a video input, at 720p
-    assert by["own_voice"]["price"]["usd"] == by["specific_person"]["price"]["usd"] == 1.2
+    assert by["specific_person"]["price"]["usd"] == 1.2
+    assert by["own_voice"]["price"]["usd"] == 1.575              # Gemini Omni, then the Voice Changer (#115)
     assert by["fallback"]["price"]["usd"] == 0.84              # Kling's std tier; ElevenLabs' line comes on top
 
 
@@ -59,7 +60,7 @@ def test_a_row_with_no_price_read_says_so_and_an_old_price_says_how_old(tmp_path
     _prices(run, day=old, models={"minimax/h3"})
     rows = {r["situation"]: r for r in create_presenter.rows(run, plan())}
     assert rows["described"]["price"] is None
-    assert rows["own_voice"]["price"]["old_days"] == 9
+    assert rows["specific_person"]["price"]["old_days"] == 9
 
 
 def test_the_plans_own_price_file_is_read_first(tmp_path):
@@ -78,7 +79,7 @@ def test_the_pick_is_the_situation_and_user_choice_only_for_another_model_than_t
     old = {"situation": "exact_wording"}
     assert create_presenter.choose(old, "exact_wording", "row") == {"situation": "exact_wording"}
     assert create_presenter.choose(old, "own_voice", "row") == {"situation": "own_voice"}
-    assert create_presenter.choose(old, "own_voice", "minimax/h3") == {"situation": "own_voice"}   # the row's own
+    assert create_presenter.choose(old, "own_voice", "google/gemini-omni-1.2-flash") == {"situation": "own_voice"}
     assert create_presenter.choose(old, "described", "minimax/h3") == {
         "situation": "described", "user_choice": True, "model": "minimax/h3"}
     assert create_presenter.choose({"situation": "described", "user_choice": True, "model": "minimax/h3",

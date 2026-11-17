@@ -1175,7 +1175,8 @@ def test_sound_effect_posts_the_words_and_length_and_saves_the_effect(api, run, 
                             "1.5", "--cost", "60", "--json"]) == 0
     post = next(c for c in api.calls if c.method == "POST")
     assert post.url == "https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128"
-    assert json.loads(post.body) == {"text": "A soft paper swipe", "duration_seconds": 1.5, "prompt_influence": 0.3}
+    assert json.loads(post.body) == {"text": "A soft paper swipe", "duration_seconds": 1.5, "prompt_influence": 0.3,
+                                     "model_id": "eleven_text_to_sound_v3"}   # v2 goes on 2027-03-01 (#115)
     out = run.path / "03_wip" / "audio" / "sfx_a-soft-paper-swipe_v01.mp3"
     assert out.read_bytes() == MP3
     result = json.loads(capsys.readouterr().out.strip().splitlines()[-1])

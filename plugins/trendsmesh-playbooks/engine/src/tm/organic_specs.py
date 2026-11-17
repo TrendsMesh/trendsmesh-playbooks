@@ -16,12 +16,16 @@ is a video when its model makes video anywhere in the pack (`_video_models`: a s
 the upscaler, or an item's outside the images stage), whatever stage it sits in; else it is an image.
 
 `check(run, spec, spec_path)` gives the spec's problems:
-- minimax/h3: no `first_frame_image` together with reference media (E006); reference mode needs
-  `ratio: "9:16"`; each local audio reference is 2–15 s (ffprobe through `tm.tools._common.probe`);
-  `duration` ≤ 15; `resolution` is the pack's choice (768p or 720p → "768P", 1080p → "2K");
-- openai/gpt-image-2: `output_format: "png"`; `quality: "high"` for an item with `face: true`;
-- bytedance/seedance-2.0 / 2.5: no input is the pack's `host.image`, the same file or the same name in any
-  case (Seedance refuses photoreal faces, E005);
+- a model of the model registry (#115, `tm.model_registry`): every input of its variant's `send` is sent with that
+  value (always explicit: Replicate's defaults are often the dear ones). The variant is the one chosen on the Models
+  page (`03_wip/models_vNN.json`), else for a video model the one at the pack's resolution (768p or 720p → H3's
+  "768P", 1080p → "2K"; any other choice keeps 768P), else the registry's selected one. A model whose limits hold
+  `quality_auto` (GPT Image) sends a `quality`, never "auto"; one whose limits hold `first_frame_with_references`
+  (H3) takes no first frame together with reference media (E006);
+- minimax/h3 (its recipe): reference mode needs `ratio: "9:16"`; each local audio reference is 2–15 s (ffprobe
+  through `tm.tools._common.probe`); `duration` ≤ 15;
+- a model whose registry limits hold `photoreal_face` (Seedance, any version): no input is the pack's `host.image`,
+  the same file or the same name in any case (E005);
 - any model: no input under `02_research/`, in any case (organic clips are evidence, never footage); every local
   input is a file of the run or a packshot the pack names (PR C review Minor 2); a voice reference
   (`VOICE_REFERENCES`) only when the pack's `speech.voice_reference` holds the user's request (OV7); the
@@ -83,8 +87,8 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import checkins, flow, library, manifest, organic_pack, organic_proposals, organic_vo, state, tools, \
-    trend_spool
+from tm import checkins, flow, library, manifest, model_registry, organic_pack, organic_proposals, organic_vo, state, \
+    tools, trend_spool
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, AGAIN_SENTENCE, Stop
@@ -98,14 +102,12 @@ IMAGES = "images"                     # the pack stage of images (the images che
 IMAGES_DECISIONS = "decisions_gate_images"   # 03_wip/<this>_vNN.json: the images check-in page's decisions
 IMAGES_BUILD = "tm organic page gate_images"   # the manifest source of an images page build (organic_pages.gate)
 EVIDENCE = "02_research"
-H3 = "minimax/h3"
+H3 = "minimax/h3"                     # its recipe's own rules (reference mode, audio length, take length) below
 H3_REFERENCES = ("reference_image_urls", "reference_video_urls", "reference_audio_urls")
 VOICE_REFERENCES = ("reference_audio_urls", "reference_audios")   # H3's and Seedance's voice samples (OV7)
 H3_AUDIO_S = (2.0, 15.0)              # OV10: an H3 audio reference is 2–15 s
 H3_TAKE_MAX_S = 15
-H3_RESOLUTION = {"720p": "768P", "768p": "768P", "1080p": "2K"}   # the pack's choice → H3's value
-GPT_IMAGE = "openai/gpt-image-2"
-SEEDANCE_NO_FACE = ("bytedance/seedance-2.0", "bytedance/seedance-2.5")
+RESOLUTION_KEYS = ("resolution", "target_resolution", "target", "size")   # where a variant sends its resolution
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".bmp")
 DONE = "done"
 UNCERTAIN = ("unknown", "not started")   # no prediction id, and Replicate may have started it
@@ -158,10 +160,11 @@ def _item(pack: dict, stem: str) -> tuple[str, dict] | None:
 
 
 def _video_models(pack: dict) -> set[str]:
-    """The models that make video in this pack: its sections', the OV6 tiers, the upscaler, and any item's outside
-    the images stage."""
+    """The models that make video in this pack: its sections', the registry's video, talking-person, lip-sync and
+    upscale models, and any item's outside the images stage."""
     made = {s["model"] for s in pack["sections"] if s.get("model")}
-    made |= set(organic_pack.TIERS.values()) | {organic_pack.UPSCALER}
+    made |= {m for t in (*organic_pack.VIDEO_TASKS, "talking_person", "lipsync", "upscale")
+             for m in model_registry.models_of(t)}
     return made | {item["model"] for st in pack["stages"] if st["stage"] != IMAGES for item in st["items"]
                    if item.get("model")}
 
@@ -414,28 +417,71 @@ def check(run: RunFolder, spec: dict, spec_path: Path, *, name: str | None = Non
             out.append(f"{key} is a voice reference, and the checked pack has none: a voice reference is used only "
                        "when the user asks for it (OV7). Leave it out, or write their words in "
                        "speech.voice_reference and check the pack again.")
+    if model_registry.model(model or "") is not None:
+        _registry(run, pack, model, found, inp, out)
     if model == H3:
         _h3(pack, inp, spec_path.parent, out)
-    elif model == GPT_IMAGE:
-        if inp.get("output_format") != "png":
-            out.append(f'gpt-image-2 needs output_format: "png" (got {inp.get("output_format")!r}).')
-        if found and found[1].get("face") is True and inp.get("quality") != "high":
-            out.append(f'{found[1]["name"]} is a face, so gpt-image-2 needs quality: "high" (got {inp.get("quality")!r}).')
-    elif model in SEEDANCE_NO_FACE and pack["host"].get("image"):
+    elif organic_pack.face_blocked(model) and pack["host"].get("image"):
         host = (run.path / pack["host"]["image"]).resolve()
         for key, path in inputs:
             if _same_file(path, host):
-                out.append(f"{key} is the host image {pack['host']['image']}: Seedance refuses a photoreal face "
-                           "(E005). Make a take with the host on minimax/h3.")
+                out.append(f"{key} is the host image {pack['host']['image']}: {model} refuses a photoreal face "
+                           f"(E005). Make a take with the host on {organic_pack.FACE_HOST}.")
     if found:
         _frames(run, pack, found, inputs, out)
     return out
 
 
+def variant_of(run: RunFolder, pack: dict, model: str, item: dict | None) -> str | None:
+    """The registry variant a call of `model` sends: the one chosen on the Models page, else (a video model) the one
+    at the pack's resolution, else the registry's selected one, else its only one; None when it cannot be told."""
+    from tm.organic_pages import models as model_page
+
+    names = model_registry.variants(model)
+    choice = str((pack.get("resolution") or {}).get("choice") or "").split("_", 1)[0].lower()
+    words = organic_pack.RESOLUTION_WORDS["1080p" if choice == "1080p" else "base"]
+    by_resolution = [n for n, v in names.items()
+                     if any(str((v.get("send") or {}).get(k, "")).lower() in words for k in RESOLUTION_KEYS)]
+    if choice and item is not None and item.get("seconds") and by_resolution:
+        return by_resolution[0]                       # E2's resolution question comes after the Models page
+    picked = model_page.chosen(run) or {}
+    for task in ("images", "video", "upscale"):
+        pick = picked.get(task) if isinstance(picked.get(task), dict) else {}
+        if pick.get("model") == model and pick.get("variant") in names:
+            return pick["variant"]
+    stars = [r["variant"] for t in model_registry.tasks() for r in model_registry.active(t)
+             if r["model"] == model and r["star"]]
+    if stars:
+        return stars[0]
+    return next(iter(names)) if len(names) == 1 else None
+
+
+def _registry(run: RunFolder, pack: dict, model: str, found: tuple[str, dict] | None, inp: dict,
+              out: list[str]) -> None:
+    """The registry's rules for a call of `model`: its variant's `send`, sent explicitly, and its hard limits."""
+    limits = model_registry.cannot(model)
+    if "quality_auto" in limits and (not inp.get("quality") or str(inp.get("quality")).lower() == "auto"):
+        out.append(f'{model} needs its quality sent (low, medium or high), never "auto" (got {inp.get("quality")!r}): '
+                   "auto is the dearest variant, and the price shown is the chosen one's.")
+    if "first_frame_with_references" in limits:
+        references = [k for k in inp if k.startswith("reference_") and inp.get(k)]
+        if inp.get("first_frame_image") and references:
+            out.append(E006)
+    variant = variant_of(run, pack, model, found[1] if found else None)
+    if variant is None:
+        return
+    for key, want in model_registry.send(model, variant).items():
+        got = inp.get(key)
+        if want == "source":
+            if got in (None, ""):
+                out.append(f"{key} is not sent, and {model} {variant} sends the take's own value: set it.")
+        elif str(got).lower() != str(want).lower():
+            out.append(f"{key} is {got!r}, and {model} {variant} sends {want!r}: set {key} to {json.dumps(want)} "
+                       "(the variant the user chose and was priced).")
+
+
 def _h3(pack: dict, inp: dict, base: Path, out: list[str]) -> None:
     references = [k for k in H3_REFERENCES if inp.get(k)]
-    if inp.get("first_frame_image") and references:
-        out.append(E006)
     if references and inp.get("ratio") != "9:16":
         out.append(f'H3 in reference mode needs ratio: "9:16" (got {inp.get("ratio")!r}).')
     audio = inp.get("reference_audio_urls") or []
@@ -456,12 +502,6 @@ def _h3(pack: dict, inp: dict, base: Path, out: list[str]) -> None:
     if duration is not None and not (isinstance(duration, (int, float)) and not isinstance(duration, bool)
                                      and math.isfinite(duration) and duration <= H3_TAKE_MAX_S):
         out.append(f"duration is {duration!r}, and an H3 take is at most {H3_TAKE_MAX_S} s.")
-    choice = (pack.get("resolution") or {}).get("choice")
-    if choice:
-        want = H3_RESOLUTION.get(str(choice).split("_", 1)[0].lower())
-        if want and str(inp.get("resolution", "")).upper() != want:
-            out.append(f"resolution is {inp.get('resolution')!r}, and the pack's choice is {choice}: set resolution "
-                       f'to "{want}".')
 
 
 def _frames(run: RunFolder, pack: dict, found: tuple[str, dict], inputs: list[tuple[str, Path]],

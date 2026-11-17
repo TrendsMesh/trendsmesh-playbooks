@@ -351,7 +351,7 @@ strings:
       trending_means: Dodajesz go w aplikacji przy publikacji.
     models:
       title: "{title}: modele"
-      lede: Modele do każdego zadania, według dzisiejszych rankingów i cen na Replicate. Proponowane są zaznaczone; jednym kliknięciem wybierzesz inny. Na tej stronie nic nie powstaje i nic nie jest płatne.
+      lede: Modele do każdego zadania, przetestowane dla tej wtyczki, każdy z dzisiejszą ceną. Wybrane są zaznaczone; jednym kliknięciem wybierzesz inny albo wpiszesz własny model na końcu zadania. Na tej stronie nic nie powstaje i nic nie jest płatne.
       task_images: Obrazy (pierwsza klatka)
       task_video: Wideo (z obrazu)
       task_upscale: Powiększenie do 1080p
@@ -365,7 +365,7 @@ strings:
       group_best: Najwyższa jakość
       no_upscale: Bez powiększenia
       credits: "≈ {n} kredytów"
-      no_price: Replicate nie pokazuje dziś jego ceny
+      no_price: niedostępny dziś na Replicate
       unit_price: "{price} USD za {unit}"
       audio_variant: lektor zastępuje dźwięk modelu, więc liczymy wariant bez dźwięku
       face: nie przyjmuje klatki z realistyczną twarzą
@@ -374,6 +374,30 @@ strings:
       notes: Uwagi
       notes_label: Co Claude powinien wiedzieć o modelach
       total: "Ten film na Replicate:"
+      own_model: Twój własny model (jego nazwa na Replicate lub w ElevenLabs), jeśli chcesz inny
+      unit_credits: "{price} kredytów za {unit}"
+      free: bezpłatnie
+      per_image: obraz
+      per_second: sekundę
+      per_run: użycie
+      per_character: znak
+      per_minute: minutę
+      hint_task: Cena za to, co powstaje w tym planie.
+      task_photos: "Zdjęcia (osoba, produkt)"
+      task_illustrations: Ilustracje i grafiki z tekstem
+      task_image_edit: Edycja obrazu z odniesieniami
+      task_image_to_video: Wideo z obrazu
+      task_text_to_video: Wideo z tekstu
+      task_talking_person: Mówiąca osoba
+      task_lipsync: Synchronizacja ust z nagraniem
+      task_voiceover: Lektor
+      task_sound_effects: Efekty dźwiękowe
+      task_voice_changer: Zmiana głosu
+      task_music: Muzyka
+      task_inpainting: Usuwanie napisów
+      task_voice_cloning: Klonowanie głosu
+      task_voice_isolation: Wydzielenie głosu
+      task_transcription: Transkrypcja do sprawdzenia
     # the script to film and its Markdown (organic_pages/script.py)
     script:
       eyebrow: Organiczne wideo AI · skrypt do nagrania

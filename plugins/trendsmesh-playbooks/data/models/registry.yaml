@@ -1,0 +1,588 @@
+# The model registry (issue #115): the one list of models every paid call reads.
+#
+# Each model: its id (owner/name on Replicate, or the ElevenLabs model id), provider (replicate, elevenlabs, or
+# local for a free tool on the user's machine), status (active; new: found by the review, not tested, never shown;
+# removed), name, good_for (one sentence, the only words the user sees with the price), recipe (its file in
+# references/model-prompting/), inputs and cannot (what it takes and its hard limits), tested (the owner's test,
+# internal only), variants and tasks.
+#
+# A variant is what the plugin always sends (`send`: quality, resolution, fps, audio) and its price as the provider
+# bills it (`price`: usd or credits, `per` image, second, run, character or minute, and the day it was read,
+# `checked`, which defaults to `checked:` below). `live.criteria` names the tier of Replicate's price file
+# (tm tool replicate_price) that prices the variant in a run, and `live.factor` turns that tier's price into the
+# registry's unit (Topaz bills in units of $0.08; p-image's page prices 1,000 images).
+#
+# tasks: per task the variant offered, its group (budget, suggested, best) and `star: true` for the one selected in
+# advance (one per task). routes: which model by situation, so no prose lists models.
+#
+# Nothing here changes without the owner's review (the two-weekly review issue, .github/workflows/model-review.yml):
+# the maintainer applies exactly the decisions the owner writes there.
+
+version: 1
+checked: 2026-11-17          # the day the prices were read on Replicate and ElevenLabs
+tested: 2026-11-17           # the owner's blind test that set the groups and the stars
+
+tasks:
+  photos: {label: "Photos (person, product)", unit: image}
+  illustrations: {label: "Illustrations and graphics with text", unit: image}
+  image_edit: {label: "Image edit with references (the same character)", unit: image}
+  image_to_video: {label: "Image to video", unit: second, shown_per: 15}
+  text_to_video: {label: "Text to video", unit: second, shown_per: 15}
+  talking_person: {label: "Talking person", unit: second, shown_per: 10}
+  lipsync: {label: "Lip-sync to a recording", unit: second, shown_per: 10}
+  upscale: {label: "Upscale to 1080p", unit: second, shown_per: 15}
+  voiceover: {label: "Voiceover", unit: character}
+  sound_effects: {label: "Sound effects", unit: second}
+  voice_changer: {label: "Voice changer", unit: minute}
+  music: {label: "Music", unit: second}
+  inpainting: {label: "Inpainting and caption removal", unit: second}
+  voice_cloning: {label: "Voice cloning", unit: run}
+  voice_isolation: {label: "Voice isolation", unit: minute}
+  transcription: {label: "Transcription for QA", unit: minute}
+
+models:
+  # --- images -------------------------------------------------------------------------------------------------
+  - id: openai/gpt-image-2
+    provider: replicate
+    status: active
+    name: GPT Image 2
+    good_for: Photoreal people and products, the steadiest faces.
+    recipe: gpt-image-2.md
+    inputs: [prompt, input_images, aspect_ratio, quality, output_format]
+    cannot: [quality_auto]
+    tested: {date: 2026-11-17, result: "suggested for photos (medium), best at high"}
+    variants:
+      low: {send: {quality: low, output_format: png}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
+      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
+      high: {send: {quality: high, output_format: png}, price: {usd: 0.128, per: image}, live: {criteria: "model variant=high"}}
+    tasks:
+      photos: [{variant: low, group: budget}, {variant: medium, group: suggested, star: true}, {variant: high, group: best}]
+      illustrations: [{variant: low, group: budget}, {variant: high, group: best}]
+      image_edit: [{variant: low, group: budget}, {variant: medium, group: suggested}]
+
+  - id: openai/gpt-image-2.5-sunburst
+    provider: replicate
+    status: active
+    name: GPT Image 2.5 Sunburst
+    good_for: Sharp text and graphics, keeps a character across edits.
+    recipe: gpt-image-2.md
+    inputs: [prompt, input_images, aspect_ratio, quality, output_format]
+    cannot: [quality_auto]
+    tested: {date: 2026-11-17, result: "suggested for illustrations and image edits (medium)"}
+    variants:
+      low: {send: {quality: low, output_format: png}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
+      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
+      high: {send: {quality: high, output_format: png}, price: {usd: 0.128, per: image}, live: {criteria: "model variant=high"}}
+    tasks:
+      photos: [{variant: low, group: budget}, {variant: medium, group: suggested}, {variant: high, group: best}]
+      illustrations: [{variant: low, group: budget}, {variant: medium, group: suggested, star: true}, {variant: high, group: best}]
+      image_edit: [{variant: low, group: budget}, {variant: medium, group: suggested, star: true}, {variant: high, group: best}]
+
+  - id: openai/gpt-image-2.5-flare
+    provider: replicate
+    status: active
+    name: GPT Image 2.5 Flare
+    good_for: Bright, clean images and text at a low price.
+    recipe: gpt-image-2.md
+    inputs: [prompt, input_images, aspect_ratio, quality, output_format]
+    cannot: [quality_auto]
+    tested: {date: 2026-11-17, result: "budget and suggested for photos and illustrations"}
+    variants:
+      low: {send: {quality: low, output_format: png}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
+      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
+    tasks:
+      photos: [{variant: low, group: budget}, {variant: medium, group: suggested}]
+      illustrations: [{variant: low, group: budget}, {variant: medium, group: suggested}]
+      image_edit: [{variant: low, group: budget}]
+
+  - id: openai/gpt-image-2.6-sunburst
+    provider: replicate
+    status: active
+    name: GPT Image 2.6 Sunburst
+    good_for: The most detailed photos and edits.
+    recipe: gpt-image-2.md
+    inputs: [prompt, input_images, aspect_ratio, quality, output_format]
+    cannot: [quality_auto]
+    tested: {date: 2026-11-17, result: "best for photos and image edits (medium)"}
+    variants:
+      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.09, per: image}, live: {criteria: "model variant=medium"}}
+    tasks:
+      photos: [{variant: medium, group: best}]
+      image_edit: [{variant: medium, group: best}]
+
+  - id: openai/gpt-image-2.6-flare
+    provider: replicate
+    status: active
+    name: GPT Image 2.6 Flare
+    good_for: Detailed edits that keep the reference's character.
+    recipe: gpt-image-2.md
+    inputs: [prompt, input_images, aspect_ratio, quality, output_format]
+    cannot: [quality_auto]
+    tested: {date: 2026-11-17, result: "best for image edits (medium)"}
+    variants:
+      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.09, per: image}, live: {criteria: "model variant=medium"}}
+    tasks:
+      image_edit: [{variant: medium, group: best}]
+
+  - id: prunaai/p-image
+    provider: replicate
+    status: active
+    name: Pruna P-Image
+    good_for: The cheapest image, lower quality.
+    recipe: null
+    inputs: [prompt, aspect_ratio, width, height]
+    cannot: []
+    tested: {date: 2026-11-17, result: "cheapest, lower quality"}
+    variants:
+      default: {send: {}, price: {usd: 0.005, per: image}, live: {criteria: "all", factor: 0.001}}
+    tasks:
+      photos: [{variant: default, group: budget}]
+
+  - id: bytedance/seedream-5-pro
+    provider: replicate
+    status: active
+    name: Seedream 5 Pro
+    good_for: Graphic styles and edits that keep the reference.
+    recipe: null
+    inputs: [prompt, image_input, size, aspect_ratio, output_format]
+    cannot: []
+    tested: {date: 2026-11-17, result: "suggested for illustrations and image edits (1K)"}
+    variants:
+      1K: {send: {size: 1K}, price: {usd: 0.045, per: image}, live: {criteria: "model variant=None, target resolution=1K"}}
+    tasks:
+      illustrations: [{variant: 1K, group: suggested}]
+      image_edit: [{variant: 1K, group: suggested}]
+
+  - id: black-forest-labs/flux-3-image
+    provider: replicate
+    status: active
+    name: FLUX 3
+    good_for: Illustrations and posters with clean type.
+    recipe: null
+    inputs: [prompt, images, resolution, aspect_ratio, output_format]
+    cannot: []
+    tested: {date: 2026-11-17, result: "suggested for illustrations (1k); left out for photos"}
+    variants:
+      1k: {send: {resolution: 1k}, price: {usd: 0.048, per: image}, live: {criteria: "target resolution=1k"}}
+    tasks:
+      illustrations: [{variant: 1k, group: suggested}]
+
+  # --- video --------------------------------------------------------------------------------------------------
+  - id: alibaba/wan-3
+    provider: replicate
+    status: active
+    name: Wan 3
+    good_for: Cheap image-to-video for simple motion.
+    recipe: null
+    inputs: [prompt, image, resolution, duration, aspect_ratio]
+    cannot: []
+    tested: {date: 2026-11-17, result: "budget for image to video (720p)"}
+    variants:
+      720p: {send: {resolution: 720p}, price: {usd: 0.07, per: second}, live: {criteria: "target resolution=720p"}}
+    tasks:
+      image_to_video: [{variant: 720p, group: budget}]
+
+  - id: xai/grok-imagine-video-1.5
+    provider: replicate
+    status: active
+    name: Grok Imagine Video 1.5
+    good_for: Lively motion from one image at a low price.
+    recipe: null
+    inputs: [prompt, image, resolution, duration, aspect_ratio]
+    cannot: []
+    tested: {date: 2026-11-17, result: "budget for image to video (720p)"}
+    variants:
+      720p: {send: {resolution: 720p}, price: {usd: 0.08, per: second}, live: {criteria: "all"}}
+    tasks:
+      image_to_video: [{variant: 720p, group: budget}]
+
+  - id: minimax/h3
+    provider: replicate
+    status: active
+    name: MiniMax H3
+    good_for: Natural motion and native speech from an image, takes a last frame.
+    recipe: minimax-h3.md
+    inputs: [prompt, first_frame_image, last_frame_image, reference_image_urls, reference_video_urls, reference_audio_urls, ratio, resolution, duration]
+    cannot: [first_frame_with_references]
+    tested: {date: 2026-11-17, result: "suggested for image and text to video (768P)"}
+    variants:
+      768P: {send: {resolution: 768P}, price: {usd: 0.08, per: second}, live: {criteria: "target resolution=768P"}}
+      2K: {send: {resolution: 2K}, price: {usd: 0.13, per: second}, live: {criteria: "target resolution=2K"}}
+    tasks:
+      image_to_video: [{variant: 768P, group: suggested, star: true}]
+      text_to_video: [{variant: 768P, group: suggested, star: true}]
+      talking_person: [{variant: 768P, group: budget}]
+
+  - id: minimax/h3-lite
+    provider: replicate
+    status: active
+    name: MiniMax H3 Lite
+    good_for: The cheapest text-to-video, weaker.
+    recipe: minimax-h3.md
+    inputs: [prompt, first_frame_image, last_frame_image, ratio, resolution, duration]
+    cannot: []
+    tested: {date: 2026-11-17, result: "budget for text to video (768P), weaker"}
+    variants:
+      768P: {send: {resolution: 768P}, price: {usd: 0.02, per: second}, live: {criteria: "target resolution=768P"}}
+    tasks:
+      text_to_video: [{variant: 768P, group: budget}]
+
+  - id: google/gemini-omni-1.2-flash
+    provider: replicate
+    status: active
+    name: Gemini Omni 1.2 Flash
+    good_for: A person from an image saying the exact words, with its own voice.
+    recipe: gemini-omni-1.2-flash.md
+    inputs: [prompt, image, video, last_frame, reference_images, resolution, duration, aspect_ratio]
+    cannot: []
+    tested: {date: 2026-11-17, result: "suggested for the talking person; suggested for image and text to video (720p)"}
+    variants:
+      720p: {send: {resolution: 720p}, price: {usd: 0.105, per: second}, live: {criteria: "target resolution=720p"}}
+    tasks:
+      image_to_video: [{variant: 720p, group: suggested}]
+      text_to_video: [{variant: 720p, group: suggested}]
+      talking_person: [{variant: 720p, group: suggested, star: true}]
+
+  - id: bytedance/seedance-2.0
+    provider: replicate
+    status: active
+    name: Seedance 2.0
+    good_for: Cinematic quality; a person only when described in words.
+    recipe: seedance-2.0.md
+    inputs: [prompt, image, last_frame_image, reference_images, reference_videos, reference_audios, resolution, duration, aspect_ratio, generate_audio]
+    cannot: [photoreal_face]
+    tested: {date: 2026-11-17, result: "best for image to video (720p); a person described in words"}
+    variants:
+      720p: {send: {resolution: 720p}, price: {usd: 0.18, per: second}, live: {criteria: "model variant=non_video_in, target resolution=720p"}}
+    tasks:
+      image_to_video: [{variant: 720p, group: best}]
+      talking_person: [{variant: 720p, group: best}]
+
+  - id: bytedance/seedance-2.5
+    provider: replicate
+    status: active
+    name: Seedance 2.5
+    good_for: The best motion and detail; a person only when described in words.
+    recipe: seedance-2.5.md
+    inputs: [prompt, image, last_frame_image, reference_images, reference_videos, reference_audios, resolution, duration, aspect_ratio, generate_audio]
+    cannot: [photoreal_face]
+    tested: {date: 2026-11-17, result: "best for image and text to video (720p)"}
+    variants:
+      720p: {send: {resolution: 720p}, price: {usd: 0.2312, per: second}, live: {criteria: "model variant=non_video_in, target resolution=720p"}}
+    tasks:
+      image_to_video: [{variant: 720p, group: best}]
+      text_to_video: [{variant: 720p, group: best}]
+      talking_person: [{variant: 720p, group: best}]
+
+  - id: google/veo-3.1-fast
+    provider: replicate
+    status: active
+    name: Veo 3.1 Fast
+    good_for: Short clips of 4, 6 or 8 s with sound.
+    recipe: veo-3.1.md
+    inputs: [prompt, image, last_frame, duration, resolution, aspect_ratio, generate_audio]
+    cannot: []
+    tested: {date: 2026-11-17, result: "weak in the text-to-video test, not tested on image to video: active, not suggested"}
+    variants:
+      without_audio: {send: {generate_audio: false}, price: {usd: 0.10, per: second}, live: {criteria: "model variant=without_audio"}}
+      with_audio: {send: {generate_audio: true}, price: {usd: 0.15, per: second}, live: {criteria: "model variant=with_audio"}}
+    tasks: {}
+
+  # --- talking person by lip-sync -----------------------------------------------------------------------------
+  - id: kwaivgi/kling-avatar-v2
+    provider: replicate
+    status: active
+    name: Kling Avatar v2
+    good_for: Lip-syncs a face to a recording.
+    recipe: kling-avatar-v2.md
+    inputs: [image, audio, prompt, mode]
+    cannot: []
+    tested: {date: 2026-11-17, result: "suggested lip-sync (std)"}
+    variants:
+      std: {send: {mode: std}, price: {usd: 0.056, per: second}, live: {criteria: "model variant=std"}}
+    tasks:
+      lipsync: [{variant: std, group: suggested, star: true}]
+
+  - id: prunaai/p-video-avatar
+    provider: replicate
+    status: active
+    name: Pruna P-Video Avatar
+    good_for: The cheapest lip-sync to a recording.
+    recipe: null
+    inputs: [image, audio, resolution]
+    cannot: []
+    tested: {date: 2026-11-17, result: "budget lip-sync (720p)"}
+    variants:
+      720p: {send: {resolution: 720p}, price: {usd: 0.025, per: second}, live: {criteria: "target resolution=720p"}}
+    tasks:
+      lipsync: [{variant: 720p, group: budget}]
+
+  # --- upscale ------------------------------------------------------------------------------------------------
+  - id: none-upscale
+    provider: local
+    status: active
+    name: No upscale
+    good_for: Keeps the take as it is, at no cost.
+    recipe: null
+    inputs: []
+    cannot: []
+    tested: {date: 2026-11-17, result: "budget"}
+    variants:
+      default: {send: {}, price: {usd: 0, per: second}}
+    tasks:
+      upscale: [{variant: default, group: budget}]
+
+  - id: prunaai/p-video-upscale
+    provider: replicate
+    status: active
+    name: Pruna P-Video Upscale
+    good_for: A quick 1080p upscale that keeps the sound.
+    recipe: p-video-upscale.md
+    inputs: [video, target, turbo, fps]
+    cannot: []
+    tested: {date: 2026-11-17, result: "budget (turbo) and suggested (standard)"}
+    variants:
+      # Replicate's page prices turbo per 1,000 seconds ("$7"): $0.007 a second, about $0.10 per 15 s.
+      turbo: {send: {target: 1080p, turbo: true}, price: {usd: 0.007, per: second}, live: {criteria: "model variant=up_to_30fps_turbo, target resolution=1080p", factor: 0.001}}
+      standard: {send: {target: 1080p, turbo: false}, price: {usd: 0.02, per: second}, live: {criteria: "model variant=up_to_30fps, target resolution=1080p"}}
+    tasks:
+      upscale: [{variant: turbo, group: budget}, {variant: standard, group: suggested}]
+
+  - id: topazlabs/video-upscale
+    provider: replicate
+    status: active
+    name: Topaz Video Upscale
+    good_for: The cleanest 1080p upscale, at the take's own frame rate.
+    recipe: topaz-video-upscale.md
+    inputs: [video, target_resolution, target_fps]
+    cannot: []
+    tested: {date: 2026-11-17, result: "suggested upscale (1080p, source fps)"}
+    variants:
+      # Replicate bills Topaz in units of $0.08; its guide gives $0.093 per 5 s at 1080p/30 fps, so 0.2325 units
+      # a second ($0.0186 a second, about $0.28 per 15 s). target_fps is the take's own frame rate.
+      1080p: {send: {target_resolution: 1080p, target_fps: source}, price: {usd: 0.0186, per: second}, live: {criteria: "all", factor: 0.2325}}
+    tasks:
+      upscale: [{variant: 1080p, group: suggested, star: true}]
+
+  # --- inpainting ---------------------------------------------------------------------------------------------
+  - id: opencv-telea
+    provider: local
+    status: active
+    name: OpenCV Telea
+    good_for: Free removal of small captions, on your machine.
+    recipe: null
+    inputs: [video, mask]
+    cannot: [large_card]
+    tested: {date: 2026-11-05, result: "kept as it is (not part of the 2026-11-17 test)"}
+    variants:
+      default: {send: {}, price: {usd: 0, per: second}}
+    tasks:
+      inpainting: [{variant: default, group: budget}]
+
+  - id: jd7h/propainter
+    provider: replicate
+    status: active
+    name: ProPainter
+    good_for: Fills a removed caption from the neighbouring frames.
+    recipe: null
+    inputs: [video, mask, mode, fp16]
+    cannot: []
+    tested: {date: 2026-11-05, result: "kept as it is (not part of the 2026-11-17 test)"}
+    variants:
+      # Billed by Replicate's hardware time (no billingConfig): about $0.05 per 2.5 s of video (refresh-ad variants.md).
+      default: {send: {fp16: true}, price: {usd: 0.02, per: second, checked: 2026-11-05}}
+    tasks:
+      inpainting: [{variant: default, group: suggested, star: true}]
+
+  # --- ElevenLabs ---------------------------------------------------------------------------------------------
+  - id: eleven_v4
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Eleven v4
+    good_for: The most natural voiceover, numbers read out well.
+    recipe: eleven-v4.md
+    inputs: [text, voice_id, language_code]
+    cannot: [speed]
+    tested: {date: 2026-11-17, result: "suggested voiceover"}
+    variants:
+      # Billed 0.5 credits a character in the owner's live run on 0.11.0 (the character-cost header).
+      default: {send: {}, price: {credits: 0.5, per: character, checked: 2026-11-12}}
+    tasks:
+      voiceover: [{variant: default, group: suggested, star: true}]
+
+  - id: eleven_v4_turbo
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Eleven v4 Turbo
+    good_for: A faster, cheaper voiceover.
+    recipe: eleven-v4.md
+    inputs: [text, voice_id, language_code]
+    cannot: [speed]
+    tested: {date: 2026-11-17, result: "budget voiceover"}
+    variants:
+      default: {send: {}, price: {credits: 0.5, per: character, checked: 2026-11-12}}
+    tasks:
+      voiceover: [{variant: default, group: budget}]
+
+  - id: eleven_multilingual_v2
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Multilingual v2
+    good_for: A new line that keeps the pace of the original's sentences.
+    recipe: eleven-v4.md
+    inputs: [text, voice_id, voice_settings]
+    cannot: [language_code]
+    tested: {date: 2026-11-05, result: "Refresh an ad's line among the original's sentences (variants.md section 3)"}
+    variants:
+      default: {send: {}, price: {credits: 1.0, per: character, checked: 2026-11-12}}
+    tasks: {}
+
+  - id: eleven_flash_v2_5
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Flash v2.5
+    good_for: A quick draft voice.
+    recipe: eleven-v4.md
+    inputs: [text, voice_id, language_code, voice_settings]
+    cannot: []
+    tested: {date: 2026-11-12, result: "not suggested"}
+    variants:
+      default: {send: {}, price: {credits: 0.5, per: character, checked: 2026-11-12}}
+    tasks: {}
+
+  - id: eleven_text_to_sound_v3
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Sound Effects v3
+    good_for: A sound effect the free library does not have.
+    recipe: null
+    inputs: [text, duration_seconds, prompt_influence]
+    cannot: []
+    tested: {date: 2026-11-17, result: "suggested sound effects; v2 is deprecated (removed 2027-03-01)"}
+    variants:
+      # The pricing page: 40 credits a second when the length is set (the plugin always sets it).
+      default: {send: {model_id: eleven_text_to_sound_v3}, price: {credits: 40, per: second}}
+    tasks:
+      sound_effects: [{variant: default, group: suggested, star: true}]
+
+  - id: mixkit
+    provider: local
+    status: active
+    name: Free sound library (Mixkit)
+    good_for: Free sound effects, free in ads.
+    recipe: null
+    inputs: []
+    cannot: []
+    tested: {date: 2026-11-17, result: "budget sound effects"}
+    variants:
+      default: {send: {}, price: {usd: 0, per: run}}
+    tasks:
+      sound_effects: [{variant: default, group: budget}]
+
+  - id: eleven_multilingual_sts_v2
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Voice Changer
+    good_for: Says a take again in another voice, keeping its timing and lip-sync.
+    recipe: null
+    inputs: [audio, voice_id, remove_background_noise, voice_settings]
+    cannot: []
+    tested: {date: 2026-11-17, result: "suggested voice changer"}
+    variants:
+      default: {send: {}, price: {credits: 1000, per: minute, checked: 2026-11-12}}
+    tasks:
+      voice_changer: [{variant: default, group: suggested, star: true}]
+
+  - id: music_v2_5
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Music v2.5
+    good_for: Music composed to the ad's length and mood.
+    recipe: null
+    inputs: [composition_plan]
+    cannot: []
+    tested: {date: 2026-11-12, result: "kept as it is (not part of the 2026-11-17 test)"}
+    variants:
+      # Billed about 1,550 credits for a 20 s take in the owner's live run (0.12.0): 77.5 a second, five times the
+      # docs' "900 credits per minute".
+      default: {send: {}, price: {credits: 77.5, per: second, checked: 2026-11-12}}
+    tasks:
+      music: [{variant: default, group: suggested, star: true}]
+
+  - id: voice_isolator
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Voice Isolator
+    good_for: Takes the voice out of a recording, without the music.
+    recipe: null
+    inputs: [audio]
+    cannot: []
+    tested: {date: 2026-11-05, result: "kept as it is"}
+    variants:
+      default: {send: {}, price: {credits: 1000, per: minute}}
+    tasks:
+      voice_isolation: [{variant: default, group: suggested, star: true}]
+
+  - id: instant_voice_cloning
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Instant Voice Cloning
+    good_for: A clone of a voice from a short recording.
+    recipe: null
+    inputs: [name, files, description]
+    cannot: []
+    tested: {date: 2026-11-05, result: "kept as it is"}
+    variants:
+      # Included in the paid plans (Starter and up): no credits a clone.
+      default: {send: {}, price: {credits: 0, per: run}}
+    tasks:
+      voice_cloning: [{variant: default, group: suggested, star: true}]
+
+  - id: scribe_v3
+    provider: elevenlabs
+    status: active
+    name: ElevenLabs Scribe v3
+    good_for: Word timings of a take, to check what was said.
+    recipe: null
+    inputs: [file, language_code]
+    cannot: []
+    tested: {date: 2026-11-12, result: "kept as it is"}
+    variants:
+      default: {send: {}, price: {credits: 330, per: minute, checked: 2026-11-12}}
+    tasks:
+      transcription: [{variant: default, group: suggested, star: true}]
+
+  - id: whisper
+    provider: local
+    status: active
+    name: Whisper (on your machine)
+    good_for: Free transcription, a little less exact.
+    recipe: null
+    inputs: [file]
+    cannot: []
+    tested: {date: 2026-11-12, result: "free alternative"}
+    variants:
+      default: {send: {}, price: {usd: 0, per: minute}}
+    tasks:
+      transcription: [{variant: default, group: budget}]
+
+routes:
+  # The talking person, by situation (Create an ad's CA5, presenter.situation; Organic AI video's host). Prices per
+  # 10 s: Gemini Omni $1.05, H3 $0.80, Seedance 2.0 $1.80, Seedance 2.5 $2.31.
+  talking_person:
+    shown_per: 10
+    situations:
+      described: {model: bytedance/seedance-2.0, variant: 720p, also: [bytedance/seedance-2.5], voice: native, casting: none}
+      specific_person: {model: minimax/h3, variant: 768P, voice: native, casting: face}
+      own_voice: {model: google/gemini-omni-1.2-flash, variant: 720p, then: eleven_multilingual_sts_v2, voice: voice_changer, casting: reference}
+      exact_wording: {model: google/gemini-omni-1.2-flash, variant: 720p, star: true, voice: native, casting: reference}
+      fallback: {model: kwaivgi/kling-avatar-v2, variant: std, plus: eleven_v4, voice: elevenlabs, casting: face}
+  # The voice: who is on screen and whether the user has their own recording.
+  voice:
+    - {on_screen: false, recording: true, route: user_recording}
+    - {on_screen: false, recording: false, route: voiceover, model: eleven_v4}
+    - {on_screen: true, recording: true, route: lipsync, model: kwaivgi/kling-avatar-v2, budget: prunaai/p-video-avatar}
+    - {on_screen: true, recording: false, route: native, model: google/gemini-omni-1.2-flash, then: eleven_multilingual_sts_v2}
+  lipsync_fallback: {model: kwaivgi/kling-avatar-v2, when: "takes from the video models keep failing"}
+  # A speech longer than one take.
+  long_speech: {takes: several, keep: [reference_image, voice], cut: sentence_end}

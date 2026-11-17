@@ -850,7 +850,7 @@ organic:
   # the Models page (after the idea is picked, before the pack; issue #86)
   models:
     title: "{title}: the models"
-    lede: The models for each task, from today's rankings and Replicate prices. The suggested ones are ticked; switch to any other with one click. Nothing is made or paid on this page.
+    lede: The models for each task, as tested for this plugin, each with today's price. The selected ones are ticked; switch to another with one click, or write your own model at the end of a task. Nothing is made or paid on this page.
     task_images: Images (the first frame)
     task_video: Video (image to video)
     task_upscale: Upscale to 1080p
@@ -864,7 +864,7 @@ organic:
     group_best: Best quality
     no_upscale: No upscale
     credits: "≈ {n} credits"
-    no_price: Replicate shows no price for it today
+    no_price: not available on Replicate today
     unit_price: "{price} USD per {unit}"
     audio_variant: the voiceover replaces the model's own sound, so the variant without audio is priced
     face: doesn't accept a frame with a realistic face
@@ -873,6 +873,30 @@ organic:
     notes: Notes
     notes_label: Anything Claude should know about the models
     total: "This video on Replicate:"
+    own_model: Your own model (its name on Replicate or ElevenLabs), if you want another
+    unit_credits: "{price} credits per {unit}"
+    free: free
+    per_image: image
+    per_second: second
+    per_run: run
+    per_character: character
+    per_minute: minute
+    hint_task: The price is for what this plan makes.
+    task_photos: "Photos (person, product)"
+    task_illustrations: Illustrations and graphics with text
+    task_image_edit: Image edit with references
+    task_image_to_video: Image to video
+    task_text_to_video: Text to video
+    task_talking_person: Talking person
+    task_lipsync: Lip-sync to a recording
+    task_voiceover: Voiceover
+    task_sound_effects: Sound effects
+    task_voice_changer: Voice changer
+    task_music: Music
+    task_inpainting: Caption removal
+    task_voice_cloning: Voice cloning
+    task_voice_isolation: Voice isolation
+    task_transcription: Transcription for the checks
   # the script to film and its Markdown (organic_pages/script.py)
   script:
     eyebrow: Organic AI video · script to film
@@ -1570,13 +1594,13 @@ ad:
       needs:
         described: "a description of the person in words; no face image, so no paid casting (Seedance refuses a photoreal face)"
         specific_person: an approved image of the person (the casting's face)
-        own_voice: the casting's face and a voice sample of 2 to 15 s
+        own_voice: the casting's face as a reference, then your voice or the brand's through the Voice Changer
         exact_wording: the lines as text in the prompt, and the casting's face as a reference
         fallback: the casting's face and the voice from ElevenLabs
       voice:
         described: the model's own (native)
         specific_person: the model's own (native)
-        own_voice: close to the sample
+        own_voice: yours or the brand's (the Voice Changer keeps the lip-sync)
         exact_wording: the model's own (native)
         fallback: ElevenLabs
     # the gates

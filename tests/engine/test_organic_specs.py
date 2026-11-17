@@ -25,7 +25,7 @@ PNG = b"\x89PNG\r\n\x1a\n fake image bytes"
 # ExampleEdu M5 PL: the host image (03_wip/M5_pl/host_v01.json) and the take (take_v01.json), typed, the prompts made up.
 HOST = {"model": "openai/gpt-image-2",
         "input": {"prompt": "Natural light, no filter. A still that looks like a selfie video, caught mid-sentence …",
-                  "quality": "high", "aspect_ratio": "1152x2048", "output_format": "png", "number_of_images": 2}}
+                  "quality": "medium", "aspect_ratio": "1152x2048", "output_format": "png", "number_of_images": 2}}
 TAKE = {"model": "minimax/h3",
         "input": {"prompt": "Task: a phone-shot clip in which a dad chats to the lens at the kitchen table …",
                   "first_frame_image": "host_v01_0.png", "duration": 15, "resolution": "768P"}}
@@ -265,17 +265,34 @@ def test_h3_duration_and_resolution_are_the_packs(ov):
     spec["input"].update(duration=20, resolution="1080P")
     problems = organic_specs.check(ov, spec, _spec(ov, "take", spec))
     assert any("duration" in p and "15" in p for p in problems), problems
-    assert any("1080P" in p and "768p" in p for p in problems), problems
+    assert any("1080P" in p and '"768P"' in p for p in problems), problems
+    spec["input"].update(duration=15)
+    spec["input"].pop("resolution")                     # Replicate's default is 2K, the dearer one (#115)
+    problems = organic_specs.check(ov, spec, _spec(ov, "take", spec))
+    assert any("resolution is None" in p and '"768P"' in p for p in problems), problems
 
 
-def test_png_required_for_gpt_image_2(ov):
+def test_h3_sends_2k_when_the_user_chose_1080p(ov):
+    _pick(ov, "03_wip/host_v01_0.png")
+    pack = organic_pack.checked_pack(ov)
+    pack["resolution"]["choice"] = "1080p"
+    assert organic_specs.variant_of(ov, pack, "minimax/h3", {"seconds": 15}) == "2K"
+    pack["resolution"]["choice"] = "768p_pruna"
+    assert organic_specs.variant_of(ov, pack, "minimax/h3", {"seconds": 15}) == "768P"
+
+
+def test_gpt_image_sends_the_chosen_variant_never_auto(ov):
     assert organic_specs.check(ov, HOST, _spec(ov, "host", HOST)) == []
     spec = copy.deepcopy(HOST)
     spec["input"]["output_format"] = "webp"
-    spec["input"]["quality"] = "medium"
+    spec["input"]["quality"] = "high"                 # not the variant the user chose and was priced (medium)
     problems = organic_specs.check(ov, spec, _spec(ov, "host", spec))
-    assert any('output_format: "png"' in p for p in problems), problems
-    assert any('quality: "high"' in p and "face" in p for p in problems), problems   # the M5 host item is a face
+    assert any('set output_format to "png"' in p for p in problems), problems
+    assert any('set quality to "medium"' in p for p in problems), problems
+    for quality in ("auto", None):
+        spec["input"]["quality"] = quality
+        problems = organic_specs.check(ov, spec, _spec(ov, "host", spec))
+        assert any('never "auto"' in p for p in problems), problems
 
 
 def test_evidence_clip_as_input_refused(ov):

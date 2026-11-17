@@ -279,7 +279,7 @@ def test_the_plan_page_shows_the_talking_persons_rows_the_plans_situation_first_
     assert order == sorted(order)                                   # the plan's situation first, then CA5's order
     assert "Your plan&#x27;s situation" in now and "Gemini Omni 1.2 Flash" in now and "1.58 USD for 15 s" in now
     assert "0.105 USD per second on Replicate, read " + TODAY in now
-    assert "a voice sample of 2 to 15 s" in now and "no face image, so no paid casting" in now
+    assert "through the Voice Changer" in now and "no face image, so no paid casting" in now
     assert "plus the ElevenLabs line, in credits" in now and "Only after a review shows a take" in now
     offer = _built(run, built)["offer"]["plan"]
     assert offer["presenter"] == {"type": "pick", "values": ["exact_wording", "described", "specific_person",

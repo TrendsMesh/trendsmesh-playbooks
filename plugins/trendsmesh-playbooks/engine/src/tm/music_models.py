@@ -1,6 +1,7 @@
 """ElevenLabs Music: each model's price per second, and the composition plan each model takes (#93).
 
-Read by `tm tool elevenlabs music-compose` (the plan's shape is checked before anything is sent; a take whose cost
+The models and their rates come from the model registry (`data/models/registry.yaml`, #115). Read by `tm tool
+elevenlabs music-compose` (the plan's shape is checked before anything is sent; a take whose cost
 ElevenLabs does not report is booked at its measured length times the rate), by Create an ad's plan check and its
 paid-call guard (a music line costs at least its seconds at the rate), and by `tm ad prices` (the dated price file a
 plan line names). Checked on 2026-11-12 against https://elevenlabs.io/pricing (the credits FAQ),
@@ -23,14 +24,18 @@ from __future__ import annotations
 
 import math
 
-DEFAULT = "music_v2_5"
-CHECKED = "2026-11-12"
+from tm import model_registry
+
+DEFAULT = model_registry.star("music")["model"]   # the registry's selected music model (#115)
+CHECKED = model_registry.price(DEFAULT, "default")["checked"]
 DOCS_RATE = 15.0          # "900 credits per minute": the docs' approximate rate, below what was billed
 CHUNK_MS = (3000, 120000)
 
-RATES: dict[str, tuple[float, str]] = {   # model -> (credits a second, where the rate comes from)
-    "music_v2_5": (77.5, "billed about 1,550 credits for a 20 s take in the owner's live run (0.12.0)"),
-}
+# model -> (credits a second, where the rate comes from): the registry's music models
+RATES: dict[str, tuple[float, str]] = {
+    mid: (float(model_registry.price(mid, "default")["credits"]),
+          f"the model registry, checked {model_registry.price(mid, 'default')['checked']}")
+    for mid in model_registry.models_of("music")}
 OTHER = max(rate for rate, _ in RATES.values())   # a model not listed: the highest rate listed
 
 V2_EXAMPLE = {"chunks": [{"text": "[Intro] warm, bright", "duration_ms": 10000,
