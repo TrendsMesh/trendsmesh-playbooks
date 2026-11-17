@@ -166,3 +166,116 @@ def test_tm_brand_text_style_saves_from_a_style_file_and_shows_the_runs_set(ws, 
     assert code == 0 and out["text_style"]["look"] == "marker" and out["text_style"]["font"]["family"] == "Brand"
     code, out = _cli(capsys, "brand", "text-style", "show", "--run", str(_ad(ws, "Nobody").path))
     assert code == 0 and out["text_style"] is None and out["suggested"][0] == "outline"
+
+
+# --- organic video: the edit's text style follows the saved set -------------------------------------
+
+from test_organic_edit import remotion  # noqa: E402,F401  (tm render without Node)
+
+from tm import organic_edit, organic_gates, organic_pages  # noqa: E402
+
+
+def _cli_last(capsys, *argv):
+    capsys.readouterr()
+    code = main([*argv, "--json"])
+    return code, json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+
+
+def _picture(run):
+    (run.path / "03_wip").mkdir(exist_ok=True)
+    (run.path / "03_wip" / "frame_v01_0.png").write_bytes(b"\x89PNG the first frame")
+    return "03_wip/frame_v01_0.png"
+
+
+def _look(capsys, run, *extra):
+    return _cli_last(capsys, "organic", "text", "look", "--run", str(run.path), "--picture", _picture(run),
+                     "--caption", "I check what is rising", "--overlay", "How I find ideas", *extra)
+
+
+def test_no_saved_set_draws_the_default_outline_set(ws, remotion, capsys):
+    run = _organic(ws)
+    code, out = _look(capsys, run)
+    assert code == 0, out
+    style = json.loads((run.path / out["style"]).read_text(encoding="utf-8"))
+    assert style["look"] == "outline" and out["text_set"] is None
+
+
+def test_the_saved_set_is_drawn_with_the_brands_font_and_logo_and_a_video_can_use_another(ws, remotion, capsys):
+    brand.save(ws, EXAMPLEEDU, run=None)
+    run = _organic(ws)
+    font, logo = _files(run)
+    text_sets.save(ws, "channel", "exampleedu", look="pill", accent="#1A237E", font=font, font_family="Brand",
+                   logo=logo, run=run, note="the pill one")
+    code, out = _look(capsys, run)
+    assert code == 0, out
+    assert out["text_set"] == "library/channels/exampleedu/text_style_v01.json"
+    style = json.loads((run.path / out["style"]).read_text(encoding="utf-8"))
+    assert (style["look"], style["accent"]) == ("pill", "#1A237E")
+    assert style["font"] == {"family": "Brand", "src": "03_wip/text_set/brand-bold_v01.ttf"}
+    assert style["logo"] == "03_wip/text_set/logo_v01.png" and organic_edit.style_problems(style) == []
+    props = json.loads((run.path / out["props"]).read_text(encoding="utf-8"))
+    assert props["brandFont"] == style["font"]
+    overlay, caption = props["captions"]
+    assert caption["look"] == "pill" and caption["ink"] == "#FFFFFF"
+    assert overlay["overlay"]["ink"] == "#FFFFFF" and overlay["overlay"]["accent"] == "#1A237E"
+    # one video in another set, for its format: the saved set stays
+    code, out = _look(capsys, run, "--look", "native")
+    assert code == 0, out
+    assert json.loads((run.path / out["style"]).read_text(encoding="utf-8"))["look"] == "native"
+    assert text_sets.for_run(run)["look"] == "pill"
+
+
+def test_a_style_with_a_bad_font_or_logo_is_refused():
+    style = organic_edit.default_style(caption="a", overlay="b", look="pop", font={"family": "", "src": 3},
+                                       logo="logo.svg")
+    said = " | ".join(organic_edit.style_problems(style))
+    assert "font must be" in said and "logo must be" in said
+
+
+def test_a_held_hook_stays_the_whole_video_and_the_end_card_has_the_logo(ws, remotion, capsys):
+    run = _organic(ws)
+    font, logo = _files(run)
+    text_sets.save(ws, "channel", "exampleedu", look="outline", accent="#FFD84D", font=font, logo=logo, run=run,
+                   note="x")
+    code, out = _look(capsys, run)
+    assert code == 0, out
+    assert _cli_last(capsys, "organic", "text", "approve", "--run", str(run.path), "--style", out["style"],
+                     "--by", "rule", "--note", "the channel's saved text set")[0] == 0
+    (run.path / "03_wip" / "vo_v01.mp3").write_bytes(b"vo")
+    (run.path / "03_wip" / "take.mp4").write_bytes(b"take")
+    edit = {"width": 1080, "height": 1920, "fps": 24,
+            "segments": [{"src": "03_wip/take.mp4", "start": 0, "end": 4}, {"src": "03_wip/take.mp4", "start": 5,
+                                                                             "end": 8}],
+            "audioTracks": [{"src": "03_wip/vo_v01.mp3", "from": 0, "volume": 1}],
+            "captions": [{"from": 0, "to": 2, "text": "How I find ideas", "style": "hook",
+                          "overlay": {"kind": "hook", "hold": True}},
+                         {"from": 2.5, "to": 4, "text": "+212%", "style": "hook",
+                          "overlay": {"kind": "number", "sub": "this week"}},
+                         {"from": 6, "to": 7, "text": "Follow for more", "style": "hook",
+                          "overlay": {"kind": "end", "brand": "ExampleEdu"}}]}
+    (run.path / "03_wip" / "edit_v01.props.json").write_text(json.dumps(edit), encoding="utf-8")
+    (run.path / "03_wip" / "vo_v01.words.json").write_text(json.dumps(
+        [{"word": "Hi", "start": 0.1, "end": 0.4}, {"word": "there.", "start": 0.5, "end": 0.9}]), encoding="utf-8")
+    code, made = _cli_last(capsys, "organic", "captions", "--run", str(run.path), "--props",
+                           "03_wip/edit_v01.props.json", "--words", "03_wip/vo_v01.words.json")
+    assert code == 0, made
+    props = json.loads((run.path / made["props"]).read_text(encoding="utf-8"))
+    hook, number, end = [c for c in props["captions"] if c["style"] != "caption"]
+    assert (hook["from"], hook["to"]) == (0, 7.0) and hook["place"] == "top"       # the whole video
+    assert number["place"] == "middle"                                             # off the held hook
+    assert end["overlay"]["logo"] == "03_wip/text_set/logo_v01.png" and end["overlay"]["brand"] == "ExampleEdu"
+    assert props["brandFont"]["src"] == "03_wip/text_set/brand-bold_v01.ttf"
+
+
+def test_the_images_page_shows_one_still_per_set_drawn(ws, remotion, capsys):
+    run = _organic(ws)
+    t = organic_pages.gate_words("en")
+    assert organic_gates._text_looks(run, t) == []
+    for look in ("outline", "native", "pop"):
+        assert _look(capsys, run, "--look", look)[0] == 0
+    assert _look(capsys, run, "--look", "native")[0] == 0          # the pick, drawn again as the latest
+    refs = organic_gates._text_looks(run, t)
+    assert [r["src"] for r in refs] == ["03_wip/text_look_v04.png", "03_wip/text_look_v03.png",
+                                        "03_wip/text_look_v01.png"]
+    assert "native" in refs[0]["caption"] and "pop" in refs[1]["caption"]
+    assert organic_pages.gate_words("pl")["cap_text_set"] != t["cap_text_set"]          # translated

@@ -3,6 +3,7 @@ import { AbsoluteFill, Audio, Easing, Img, interpolate, OffthreadVideo, Sequence
 import { compFont, loadFor } from "./fonts";
 import { CaptionLook, type Look } from "./CaptionLooks";
 import { OverlayLook, type Overlay } from "./OverlayLooks";
+import { useBrandFont, type BrandFont } from "./BrandFont";
 
 // PB3 organic edit: source segments cut back to back (always muted: the trending sound is attached
 // in the app), plus native-style text inside the default safe zone.
@@ -36,6 +37,8 @@ export type Caption = {
   stroke?: string; // the outline of a caption or a note
   // the spoken word's colour, when `words` are given (a caption)
   highlight?: string;
+  // a look's text drawn on the accent: dark or white, by contrast (tm.organic_edit.accent_ink)
+  ink?: string;
   words?: Word[];
   // the text style's look (CaptionLooks.tsx for a caption, OverlayLooks.tsx with `overlay`); none = the look above
   look?: Look;
@@ -58,6 +61,8 @@ export type OrganicCaptionsProps = {
   audioTracks?: { src: string; from: number; volume: number }[];
   // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
   language?: string;
+  // the brand's font, a file in the run: replaces Montserrat in every text set but native (BrandFont.ts)
+  brandFont?: BrandFont;
 };
 
 export const organicCaptionsDefaults: OrganicCaptionsProps = {
@@ -157,9 +162,9 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; languag
   );
 };
 
-export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, captions, showSafeZone, keepAudio, music, audioTracks, language }) => {
+export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, captions, showSafeZone, keepAudio, music, audioTracks, language, brandFont }) => {
   const { fps, width, height, durationInFrames } = useVideoConfig();
-  const fontFamily = loadFor(compFont("OrganicCaptions"), language, ["600", "700", "800", "900"]);
+  const fontFamily = useBrandFont(brandFont, loadFor(compFont("OrganicCaptions"), language, ["600", "700", "800", "900"]));
   const k = width / 1080;
   let cursor = 0;
   return (

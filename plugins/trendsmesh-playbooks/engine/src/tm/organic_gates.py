@@ -263,6 +263,25 @@ def _is_text_look(params: dict) -> bool:
 def _text_look(run: RunFolder, t: dict) -> dict | None:
     """The latest still of the edit's text style (`tm organic text look`, issue 89) as a ref: the images check-in shows
     it beside every item, for the user to accept or change."""
+    looks = _text_looks(run, t, most=1)
+    return {**looks[0], "caption": t["cap_text_style"]} if looks else None
+
+
+TEXT_SETS_SHOWN = 3   # the first time, three text sets are shown side by side (issue #117)
+
+
+def _set_of(params: dict) -> str | None:
+    for cap in params["props"].get("captions") or []:
+        if isinstance(cap, dict) and cap.get("style") == "caption":
+            return cap.get("look") if isinstance(cap.get("look"), str) else None
+    return None
+
+
+def _text_looks(run: RunFolder, t: dict, most: int = TEXT_SETS_SHOWN) -> list[dict]:
+    """The latest still of each text set drawn (`tm organic text look`, one call per set, issue #117), latest first,
+    at most `most`, as refs: the images check-in shows the three sets the first time, or the one style otherwise."""
+    out: list[dict] = []
+    seen: set[str | None] = set()
     for row in reversed(manifest.rows(run)):
         if (row["model"] != "remotion still" or not row["file"].startswith(f"{WIP}/")
                 or not (run.path / row["file"]).is_file()):
@@ -271,9 +290,17 @@ def _text_look(run: RunFolder, t: dict) -> dict | None:
             params = json.loads(row["params"]) if row["params"] else {}
         except ValueError:
             continue
-        if isinstance(params, dict) and _is_text_look(params):
-            return {"src": row["file"], "caption": t["cap_text_style"]}
-    return None
+        if not (isinstance(params, dict) and _is_text_look(params)):
+            continue
+        look = _set_of(params)
+        if look in seen:
+            continue
+        seen.add(look)
+        out.append({"src": row["file"],
+                    "caption": t["cap_text_set"].format(look=look) if look else t["cap_text_style"]})
+        if len(out) >= most:
+            break
+    return out
 
 
 def _stage_items(run: RunFolder, pack: dict, t: dict, *, video: bool, refs: list[dict],
@@ -396,9 +423,9 @@ def gate_json(run: RunFolder, gate: str) -> dict:
     t = _ui(lang_of(pack))
     refs, missing = _refs(run, pack, t)
     still = _still(run, pack, t) if gate == "images" and pack.get("style_spec") else None
-    look = _text_look(run, t) if gate == "images" else None
+    looks = _text_looks(run, t) if gate == "images" else []
     voiced = organic_voiced.voiceover(run) if organic_voiced.narrated(pack) else None   # issue #83 point 4
-    items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + [r for r in (still, look) if r],
+    items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + [r for r in (still,) if r] + looks,
                                  voiced=voiced if gate == "video" else None)
     if gate == "video" and organic_pack.stills(pack):
         extra, entries = _motions(run, pack, t)

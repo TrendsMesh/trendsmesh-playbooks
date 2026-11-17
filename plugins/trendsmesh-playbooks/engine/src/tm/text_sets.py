@@ -47,7 +47,7 @@ RUN_DIR = "03_wip/text_set"          # where a run keeps its copies, for Remotio
 SOURCE = "tm brand text-style"
 FONT_TYPES = (".ttf", ".otf", ".woff", ".woff2")   # Chrome draws them all (ffmpeg could not draw WOFF2)
 LOGO_TYPES = (".png",)
-DARK, WHITE = "#111111", "#FFFFFF"
+DARK = oe.DARK_INK
 
 # The three sets shown the first time, by the channel's type (issue #85), the best fit first.
 FIT = {
@@ -61,18 +61,7 @@ FIT = {
 }
 
 
-def _luminance(colour: str) -> float:
-    def lin(v: int) -> float:
-        s = v / 255
-        return s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4
-    r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
-    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
-
-
-def accent_ink(accent: str) -> str:
-    """The text drawn on the accent: dark (#111111) or white, whichever contrasts more with it."""
-    lum = _luminance(accent)
-    return DARK if (lum + 0.05) / (_luminance(DARK) + 0.05) >= 1.05 / (lum + 0.05) else WHITE
+accent_ink = oe.accent_ink   # the text drawn on the accent, dark or white by contrast
 
 
 def suggest_looks(channel_type: str | None, *, ugc: bool = False) -> list[str]:

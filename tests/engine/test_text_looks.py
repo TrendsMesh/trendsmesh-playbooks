@@ -68,7 +68,7 @@ def test_an_overlay_in_a_look_says_its_kind_and_family():
     assert hook["overlay"] == {"kind": "hook", "family": "native"} and "fontSize" not in hook
     number = oe.caption_entry("overlays", group, "+212%", 4.8, 7, look="outline", accent="#FFD84D",
                               overlay={"kind": "number", "sub": "rising this week", "brand": " "})
-    assert number["overlay"] == {"kind": "number", "family": "outline", "accent": "#FFD84D",
+    assert number["overlay"] == {"kind": "number", "family": "outline", "accent": "#FFD84D", "ink": "#111111",
                                  "sub": "rising this week"}
     odd = oe.caption_entry("overlays", group, "x", 0, 1, look="block", overlay={"kind": "banner"})
     assert odd["overlay"]["kind"] == "hook"

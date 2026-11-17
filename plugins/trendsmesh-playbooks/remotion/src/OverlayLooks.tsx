@@ -1,5 +1,5 @@
 import React from "react";
-import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
+import { Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import type { Look } from "./CaptionLooks";
 import { loadFor } from "./fonts";
 
@@ -8,7 +8,9 @@ import { loadFor } from "./fonts";
 // the key number (counts up), the CTA and the end card. `*word*` in the text marks the key word.
 // Every animation is timed from the overlay's own first frame.
 export type OverlayKind = "hook" | "label" | "number" | "cta" | "end";
-export type Overlay = { kind: OverlayKind; family: Look; sub?: string; brand?: string; accent?: string };
+// `ink`: the text on the accent, dark or white by contrast; `logo`: the brand's logo PNG in the run, on the end card
+// (without one the card shows the brand's name only)
+export type Overlay = { kind: OverlayKind; family: Look; sub?: string; brand?: string; accent?: string; ink?: string; logo?: string };
 
 const DARK = "#111111";
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -20,7 +22,7 @@ const parse = (text: string) =>
   text.split(" ").map((w) => (w.startsWith("*") && w.endsWith("*") ? { w: w.slice(1, -1), key: true } : { w, key: false }));
 
 // One line of overlay text in the family's look; words animate in one after another where the family does that.
-const Words: React.FC<{ text: string; family: Look; size: number; k: number; accent: string; frame: number; fps: number; onBox?: boolean }> = ({ text, family, size, k, accent, frame, fps, onBox }) => {
+const Words: React.FC<{ text: string; family: Look; size: number; k: number; accent: string; frame: number; fps: number; onBox?: boolean; ink?: string }> = ({ text, family, size, k, accent, frame, fps, onBox, ink = DARK }) => {
   const words = parse(family === "quiet" ? text.toLowerCase() : family === "pop" ? text.toUpperCase() : text);
   return (
     <>
@@ -63,7 +65,7 @@ const Words: React.FC<{ text: string; family: Look; size: number; k: number; acc
             const covered = p > 0.45;
             Object.assign(s, {
               fontWeight: 800,
-              color: covered ? DARK : "#fff",
+              color: covered ? ink : "#fff",
               backgroundImage: key ? `linear-gradient(${accent}, ${accent})` : undefined,
               backgroundRepeat: "no-repeat",
               backgroundPosition: "left center",
@@ -82,10 +84,10 @@ const Words: React.FC<{ text: string; family: Look; size: number; k: number; acc
 };
 
 // The box a family draws its overlay text in (none for the outline families)
-const boxOf = (family: Look, k: number, accent: string, kind: OverlayKind): React.CSSProperties => {
+const boxOf = (family: Look, k: number, accent: string, kind: OverlayKind, ink: string = DARK): React.CSSProperties => {
   switch (family) {
     case "pill":
-      return { background: kind === "label" ? DARK : accent, color: kind === "label" ? accent : DARK, borderRadius: 999, padding: `${10 * k}px ${34 * k}px`, boxShadow: `0 ${6 * k}px ${18 * k}px rgba(0,0,0,0.25)` };
+      return { background: kind === "label" ? DARK : accent, color: kind === "label" ? accent : ink, borderRadius: 999, padding: `${10 * k}px ${34 * k}px`, boxShadow: `0 ${6 * k}px ${18 * k}px rgba(0,0,0,0.25)` };
     case "native":
       return { background: "#fff", color: DARK, borderRadius: 18 * k, padding: `${12 * k}px ${30 * k}px` };
     case "block":
@@ -132,10 +134,11 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const accent = o.accent ?? "#FFD84D";
+  const ink = o.ink ?? DARK;
   const fam = o.family;
   const base = SIZES[o.kind] * (fam === "pop" && o.kind !== "number" ? 1.25 : fam === "quiet" ? 0.85 : 1) * k;
   const m = motion(fam, frame, fps, durFrames, k);
-  const box = boxOf(fam, k, accent, o.kind);
+  const box = boxOf(fam, k, accent, o.kind, ink);
   const onBox = Object.keys(box).length > 0 && fam !== "pop";
 
   if (o.kind === "number") {
@@ -143,7 +146,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
     const match = text.match(/^(\D*)(\d+)(\D*)$/);
     const target = match ? Number(match[2]) : 0;
     const shownNum = match ? `${match[1]}${Math.round(target * ease(frame, 12, Easing.out(Easing.quad)))}${match[3]}` : text;
-    const numStyle: React.CSSProperties = { color: fam === "pill" || fam === "native" ? DARK : "#fff", fontWeight: 900, fontSize: base, lineHeight: 1, fontVariantNumeric: "tabular-nums", letterSpacing: -0.02 * base };
+    const numStyle: React.CSSProperties = { color: fam === "pill" ? ink : fam === "native" ? DARK : "#fff", fontWeight: 900, fontSize: base, lineHeight: 1, fontVariantNumeric: "tabular-nums", letterSpacing: -0.02 * base };
     if (fam === "outline" || fam === "karaoke" || fam === "pop" || fam === "marker") Object.assign(numStyle, { color: fam === "outline" || fam === "pop" ? accent : "#fff", textShadow: shadow(k) }, stroke(14 * k));
     if (fam === "marker") Object.assign(numStyle, { backgroundImage: `linear-gradient(${accent}, ${accent})`, backgroundRepeat: "no-repeat", backgroundPosition: "left 85%", backgroundSize: `${ease(frame - 6, 8) * 100}% 28%`, padding: `0 ${16 * k}px` });
     if (fam === "quiet") Object.assign(numStyle, { fontWeight: 700 });
@@ -153,7 +156,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
           <div style={numStyle}>{shownNum}</div>
           {o.sub ? (
             <div style={{ fontSize: 38 * k * (fam === "quiet" ? 0.9 : 1), lineHeight: 1.2 }}>
-              <Words text={o.sub} family={fam} size={38 * k} k={k} accent={accent} frame={frame - 6} fps={fps} onBox={onBox} />
+              <Words text={o.sub} family={fam} size={38 * k} k={k} accent={accent} frame={frame - 6} fps={fps} onBox={onBox} ink={ink} />
             </div>
           ) : null}
         </div>
@@ -174,6 +177,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
     if (o.kind === "end") {
       return (
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24 * k, fontFamily }}>
+          {o.logo ? <Img src={staticFile(o.logo)} style={{ maxWidth: 420 * k, maxHeight: 200 * k, objectFit: "contain" }} /> : null}
           {lineBox(o.brand ?? "brand", sizeN * 1.25, 700)}
           {lineBox(text, sizeN * 0.75)}
           {lineBox(o.sub ?? "Link in bio", sizeN * 0.75, 700)}
@@ -190,17 +194,22 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
       ? { background: "rgba(0,0,0,0.25)", backdropFilter: `blur(${24 * k * enter}px)` } as React.CSSProperties
       : fam === "pill" ? { background: accent } : { background: `rgba(0,0,0,${0.62 * enter})` };
     const markBg = fam === "pill" ? DARK : fam === "quiet" ? "rgba(255,255,255,0.18)" : accent;
-    const markFg = fam === "pill" ? accent : fam === "quiet" ? "#fff" : DARK;
-    const cardText = fam === "pill" ? DARK : "#fff";
+    const markFg = fam === "pill" ? accent : fam === "quiet" ? "#fff" : ink;
+    const cardText = fam === "pill" ? ink : "#fff";
     return (
       <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28 * k, fontFamily, color: cardText, ...dim, opacity: fam === "pill" ? enter : 1, transform: fam === "pill" ? `translateY(${(1 - enter) * 120 * k}px)` : undefined }}>
         <div style={{ transform: `translateY(${(1 - enter) * 30 * k}px)`, opacity: enter, display: "flex", flexDirection: "column", alignItems: "center", gap: 22 * k }}>
-          <div style={{ width: 190 * k, height: 190 * k, borderRadius: 46 * k, background: markBg, color: markFg, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: 118 * k, border: fam === "quiet" ? `${2 * k}px solid rgba(255,255,255,0.5)` : undefined }}>t</div>
+          {o.logo ? (
+            // the brand's logo on a tile in the family's colours; without one the card shows the brand's name only
+            <div style={{ minWidth: 190 * k, height: 190 * k, padding: `0 ${28 * k}px`, borderRadius: 46 * k, background: markBg, color: markFg, display: "flex", alignItems: "center", justifyContent: "center", border: fam === "quiet" ? `${2 * k}px solid rgba(255,255,255,0.5)` : undefined, boxSizing: "border-box" }}>
+              <Img src={staticFile(o.logo)} style={{ maxWidth: 520 * k, maxHeight: 140 * k, objectFit: "contain" }} />
+            </div>
+          ) : null}
           <div style={{ fontSize: base, lineHeight: 1.1 }}>
             {fam === "pill" ? <span style={{ fontWeight: 900 }}>{o.brand ?? "brand"}</span> : <Words text={o.brand ?? "brand"} family={fam === "marker" ? "outline" : fam} size={base} k={k} accent={accent} frame={frame - 4} fps={fps} />}
           </div>
           <div style={{ fontSize: 46 * k, fontWeight: 600, opacity: 0.92, textShadow: fam === "pill" ? undefined : shadow(k, 0.4) }}>{fam === "quiet" ? text.toLowerCase() : text}</div>
-          <div style={{ marginTop: 10 * k, fontSize: 50 * k, fontWeight: 800, padding: `${18 * k}px ${50 * k}px`, borderRadius: 999, background: fam === "pill" ? DARK : fam === "quiet" ? "rgba(255,255,255,0.2)" : accent, color: fam === "pill" ? accent : fam === "quiet" ? "#fff" : DARK, border: fam === "quiet" ? `${1.5 * k}px solid rgba(255,255,255,0.45)` : undefined, transform: `scale(${1 + 0.04 * Math.sin(Math.max(0, frame - 10) / 5)})` }}>
+          <div style={{ marginTop: 10 * k, fontSize: 50 * k, fontWeight: 800, padding: `${18 * k}px ${50 * k}px`, borderRadius: 999, background: fam === "pill" ? DARK : fam === "quiet" ? "rgba(255,255,255,0.2)" : accent, color: fam === "pill" ? accent : fam === "quiet" ? "#fff" : ink, border: fam === "quiet" ? `${1.5 * k}px solid rgba(255,255,255,0.45)` : undefined, transform: `scale(${1 + 0.04 * Math.sin(Math.max(0, frame - 10) / 5)})` }}>
             {fam === "quiet" ? (o.sub ?? "link in bio").toLowerCase() : fam === "pop" ? (o.sub ?? "Link in bio").toUpperCase() : o.sub ?? "Link in bio"}
           </div>
         </div>
@@ -220,7 +229,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
     textWrap: "balance",
     letterSpacing: label ? 0.06 * size : undefined,
     textTransform: label && fam !== "quiet" ? "uppercase" : undefined,
-    color: fam === "pill" || ((fam === "marker" || fam === "pop") && label) ? DARK : "#fff",
+    color: fam === "pill" || ((fam === "marker" || fam === "pop") && label) ? ink : "#fff",
     ...box,
   } as React.CSSProperties;
   const arrow = o.kind === "cta" ? <span style={{ display: "inline-block", marginLeft: 0.25 * size, transform: `translateX(${Math.sin(frame / 4) * 6 * k}px)`, fontWeight: 900 }}>→</span> : null;
@@ -228,7 +237,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
   return (
     <div style={{ textAlign: "center", ...m }}>
       <div style={line}>
-        <Words text={text} family={labelFamily} size={size} k={k} accent={accent} frame={frame} fps={fps} onBox={onBox} />
+        <Words text={text} family={labelFamily} size={size} k={k} accent={accent} frame={frame} fps={fps} onBox={onBox} ink={ink} />
         {arrow}
       </div>
     </div>

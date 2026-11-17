@@ -19,7 +19,8 @@ The style is `03_wip/text_style_vNN.json` (`default_style`, checked by `style_pr
     {"captions": {fontSize, color, stroke, highlight (a colour or null), place, offsetY, width, words: [min, max]},
      "overlays": {fontSize, color, background, place, offsetY, width},
      "sample": {"caption": "<a line of the voiceover>", "overlay": "<the hook>"},
-     "look": <one of LOOKS, optional>, "accent": "<the brand colour #RRGGBB, optional>"}
+     "look": <one of LOOKS, optional>, "accent": "<the brand colour #RRGGBB, optional>",
+     "font": {"family", "src": "<the brand's font file in the run>"} (optional), "logo": "<its PNG in the run>" (optional)}
 
 in px at 1080×1920 (`width` at most 790, the safe zone's; `offsetY` negative moves the text up).
 
@@ -28,10 +29,22 @@ and the overlays drawn in the same visual language, the accent (the brand's colo
 look has its own word groups (`LOOK_WORDS`, `LOOK_CHARS`) and caption size (`LOOK_SIZE`), which `default_style`
 writes in; the colours and box of the groups are then the look's own. An overlay of the edit says what it is with
 `"overlay": {"kind": "hook" | "label" | "number" | "cta" | "end", "sub"?, "brand"?}` (default: hook); a word of the
-captions' words file marked `"key": true` is a key word (the accent in pop, the highlighter in marker).
+captions' words file marked `"key": true` is a key word (the accent in pop, the highlighter in marker). The text
+drawn on the accent is dark or white by contrast (`accent_ink`, written as `ink`). The brand's `font` replaces
+Montserrat in every set but `native` (always TikTok Sans), as the props' `brandFont`; the end card shows the brand's
+`logo`, or its name when there is none. A hook marked `"hold": true` stays on screen for the whole video, in any set:
+`tm organic captions` sets its `to` to the edit's end and moves the other overlays (a label, the number, the CTA) to
+the middle, off it.
 
-    tm organic text look --run R --picture <the first frame> [--style S | --caption T --overlay T] [--at SEC]
-        the style (the default with the given samples when no --style: the next text_style_vNN.json) drawn on the
+The channel's or brand's saved text set (`tm.text_sets`, `tm brand text-style`) is the style every run starts from:
+`tm organic text look` without `--style` draws it (its look, accent, font and logo; the default `outline` when none is
+saved), and `--look`/`--accent` draw another set for one video (a ranking, a quiz) or the three sets shown the first
+time, one call per set.
+
+    tm organic text look --run R --picture <the first frame> [--style S | --caption T --overlay T [--look L]
+                         [--accent C]] [--at SEC]
+        the style (the saved set, or the default, with the given samples when no --style: the next
+        text_style_vNN.json) drawn on the
         picture: `03_wip/text_look_vNN.props.json` and its still `03_wip/text_look_vNN.png` (`tm render still`, free).
         It is the latest OrganicCaptions still in 03_wip, so the images page shows it beside every item
         (`organic_gates._still`); a chat card shows the PNG.
@@ -129,12 +142,29 @@ LOOK_CHARS = {"native": 36, "outline": 20, "pill": 20, "block": 36, "karaoke": 4
 LOOK_SIZE = {"native": 52, "outline": 68, "pill": 64, "block": 54, "karaoke": 60, "pop": 108, "quiet": 50,
              "marker": 66}
 OVERLAY_KINDS = ("hook", "label", "number", "cta", "end")
+DARK_INK, WHITE_INK = "#111111", "#FFFFFF"
+LOGO_TYPES = (".png",)
 
 
-def default_style(*, caption: str, overlay: str, look: str | None = None, accent: str | None = None) -> dict:
+def _luminance(colour: str) -> float:
+    def lin(v: int) -> float:
+        s = v / 255
+        return s / 12.92 if s <= 0.04045 else ((s + 0.055) / 1.055) ** 2.4
+    r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+def accent_ink(accent: str) -> str:
+    """The text drawn on the accent: dark (#111111) or white, whichever contrasts more with it (WCAG)."""
+    lum = _luminance(accent)
+    return DARK_INK if (lum + 0.05) / (_luminance(DARK_INK) + 0.05) >= 1.05 / (lum + 0.05) else WHITE_INK
+
+
+def default_style(*, caption: str, overlay: str, look: str | None = None, accent: str | None = None,
+                  font: dict | None = None, logo: str | None = None) -> dict:
     """The suggested style: TikTok captions (white, black outline, at the bottom, 2 to 4 words) and the overlays in a
     white box at the top, with the two sample lines the look draws. With a `look`, that text set: its word groups and
-    caption size, and the brand's `accent`."""
+    caption size, and the brand's `accent`, `font` {family, src} and `logo` (files in the run)."""
     style = {"captions": {"fontSize": 64, "color": "#FFFFFF", "stroke": "#000000", "highlight": None,
                           "place": "bottom", "offsetY": 0, "width": SAFE_WIDTH, "words": [2, 4]},
              "overlays": {"fontSize": 58, "color": "#111111", "background": "#FFFFFF", "place": "top",
@@ -145,6 +175,10 @@ def default_style(*, caption: str, overlay: str, look: str | None = None, accent
         style["captions"].update({"fontSize": LOOK_SIZE[look], "words": list(LOOK_WORDS[look]), "highlight": accent})
         if accent is not None:
             style["accent"] = accent
+    if font is not None:
+        style["font"] = font
+    if logo is not None:
+        style["logo"] = logo
     return style
 
 
@@ -193,6 +227,13 @@ def style_problems(style: object) -> list[str]:
     accent = style.get("accent")
     if accent is not None and not (isinstance(accent, str) and COLOUR.fullmatch(accent)):
         out.append(f"accent must be a colour as #RRGGBB (the brand's), or left out, not {accent!r}.")
+    font = style.get("font")
+    if font is not None and not (isinstance(font, dict) and all(isinstance(font.get(k), str) and font[k].strip()
+                                                                for k in ("family", "src"))):
+        out.append(f"font must be {{\"family\", \"src\": \"<the font file in the run>\"}}, or left out, not {font!r}.")
+    logo = style.get("logo")
+    if logo is not None and not (isinstance(logo, str) and logo.lower().endswith(LOGO_TYPES)):
+        out.append(f"logo must be the brand's logo, a PNG in the run, or left out, not {logo!r}.")
     sample = style.get("sample")
     if sample is not None and not (isinstance(sample, dict)
                                    and all(isinstance(sample.get(k), str) for k in ("caption", "overlay"))):
@@ -249,13 +290,16 @@ def caption_entry(layer: str, group: dict, text: str, start: float, end: float,
             entry["words"] = words
         if look:
             entry["look"] = look
+            if accent:
+                entry["ink"] = accent_ink(accent)
     else:
         entry["background"] = group["background"]
         if look:
             given = overlay if isinstance(overlay, dict) else {}
             kind = given.get("kind") if given.get("kind") in OVERLAY_KINDS else "hook"
-            extra = {k: given[k] for k in ("sub", "brand") if isinstance(given.get(k), str) and given[k].strip()}
-            entry["overlay"] = {"kind": kind, "family": look, **({"accent": accent} if accent else {}), **extra}
+            extra = {k: given[k] for k in ("sub", "brand", "logo") if isinstance(given.get(k), str) and given[k].strip()}
+            tint = {"accent": accent, "ink": accent_ink(accent)} if accent else {}
+            entry["overlay"] = {"kind": kind, "family": look, **tint, **extra}
             del entry["fontSize"]   # the look sizes its overlays by kind
     return entry
 
@@ -265,18 +309,28 @@ def _stamp(rel: str, path: Path) -> dict:
 
 
 def look(run: RunFolder, picture: str, *, style: str | None, caption: str | None, overlay: str | None,
-         at: float = 0.0) -> dict:
-    """The style drawn on the picture (the module docstring): {style, props, still}."""
-    from tm import render   # it reads organic modules for an organic render: imported where it is used
+         at: float = 0.0, look_id: str | None = None, accent: str | None = None) -> dict:
+    """The style drawn on the picture (the module docstring): {style, props, still, text_set}."""
+    from tm import render, text_sets   # they read organic modules: imported where they are used
 
     _, pic = _inside(run, picture, "picture")
+    saved = None
     if style is None:
         if not (caption and caption.strip() and overlay and overlay.strip()):
             raise Stop("Without --style, give the two sample lines the look draws: --caption \"<a line of the "
                        f"voiceover>\" --overlay \"<the hook>\", in the audience language; {AGAIN}.")
+        if accent is not None and not COLOUR.fullmatch(accent):
+            raise Stop(f"--accent must be a colour as #RRGGBB (the brand's), not {accent!r}; {AGAIN}.")
+        saved = text_sets.for_run(run)
+        kit = text_sets.into_run(run, saved) if saved else {}
+        chosen = look_id or kit.get("look") or DEFAULT_LOOK
         target = run.next_version("wip", STYLE_STEM, "json")
-        c.write_json(target, default_style(caption=caption.strip(), overlay=overlay.strip()), newline="\n")
-        c.record(run, target, "tm organic text look", None, params={"default": True}, cost="free")
+        c.write_json(target, default_style(caption=caption.strip(), overlay=overlay.strip(), look=chosen,
+                                           accent=(accent.upper() if accent else kit.get("accent")),
+                                           font=kit.get("font"), logo=kit.get("logo")), newline="\n")
+        c.record(run, target, "tm organic text look", None,
+                 params={"default": saved is None, "look": chosen, "text_set": saved["file"] if saved else None},
+                 cost="free")
         style = c.rel(run, target)
     path, rel, data = _style_at(run, style)
     sample = data.get("sample") or {}
@@ -293,12 +347,13 @@ def look(run: RunFolder, picture: str, *, style: str | None, caption: str | None
                                         look=data.get("look"), accent=data.get("accent")),
                           caption_entry("captions", data["captions"], " ".join(text), 0, LOOK_SECONDS, words,
                                         look=data.get("look"), accent=data.get("accent"))],
-             "textStyle": _stamp(rel, path)}
+             "textStyle": _stamp(rel, path), **({"brandFont": data["font"]} if data.get("font") else {})}
     target = run.next_version("wip", LOOK_STEM, "props.json")
     c.write_json(target, props, newline="\n")
     png = target.with_name(target.name.removesuffix(".props.json") + ".png")
     done = render.still(run, "OrganicCaptions", target, LOOK_FRAME, png)
-    return {"style": rel, "props": c.rel(run, target), "still": c.rel(run, done)}
+    return {"style": rel, "props": c.rel(run, target), "still": c.rel(run, done),
+            "text_set": saved["file"] if saved else None}
 
 
 def approved_style(run: RunFolder) -> tuple[str, str, dict] | None:
@@ -444,6 +499,24 @@ def captions(run: RunFolder, props_file: str, words_file: str, *, source: str | 
                    f"The rest is said in the voiceover and shown in its captions. Nothing was written; {AGAIN}.")
     wpath, wrel = _inside(run, words_file, "words file")
     placed, start = _place(props, _read_words(wpath, wrel), wrel, source, offset)
+    layer = caption_layer(placed, style)
+    tops = overlay_entries(overlays, style, total=sum(float(s.get("end") or 0) - float(s.get("start") or 0)
+                                                      for s in props.get("segments") or [] if isinstance(s, dict)))
+    out = {**props, "captions": tops + layer, "textStyle": _stamp(style_rel, run.path / style_rel),
+           **({"brandFont": style["font"]} if style.get("font") else {})}
+    stem = re.sub(r"_v\d+$", "", Path(rel).name.removesuffix(".json").removesuffix(".props"))
+    target = run.next_version("wip", stem or "edit", "props.json")
+    c.write_json(target, out, newline="\n")
+    c.record(run, target, "tm organic captions", rel, params={"words": wrel, "style": style_rel, "offset": start,
+                                                               "captions": len(layer), "overlays": len(tops)},
+             cost="free")
+    return {"props": c.rel(run, target), "offset": start, "captions": len(layer), "overlays": len(tops),
+            "style": style_rel}
+
+
+def caption_layer(placed: list[dict], style: dict) -> list[dict]:
+    """The captions layer from words at their seconds in the edit ({word, start, end, key?}), in the style: the word
+    groups (`caption_groups`, the look's letter limit), each on screen until the next one starts."""
     lo, hi = style["captions"]["words"]
     look, accent = style.get("look"), style.get("accent")
     groups = caption_groups(placed, lo, hi, max_chars=LOOK_CHARS.get(look) if look else None)
@@ -455,18 +528,31 @@ def captions(run: RunFolder, props_file: str, words_file: str, *, source: str | 
                   **({"key": True} if w.get("key") else {})} for w in g]
         layer.append(caption_entry("captions", style["captions"], " ".join(w["word"] for w in g), g[0]["start"],
                                    max(end, g[0]["start"] + 0.1), words, look=look, accent=accent))
-    tops = [{**caption_entry("overlays", style["overlays"], str(o.get("text", "")), float(o.get("from") or 0),
-                             float(o.get("to") or 0), look=look, accent=accent, overlay=o.get("overlay"))}
-            for o in overlays]
-    out = {**props, "captions": tops + layer, "textStyle": _stamp(style_rel, run.path / style_rel)}
-    stem = re.sub(r"_v\d+$", "", Path(rel).name.removesuffix(".json").removesuffix(".props"))
-    target = run.next_version("wip", stem or "edit", "props.json")
-    c.write_json(target, out, newline="\n")
-    c.record(run, target, "tm organic captions", rel, params={"words": wrel, "style": style_rel, "offset": start,
-                                                               "captions": len(layer), "overlays": len(tops)},
-             cost="free")
-    return {"props": c.rel(run, target), "offset": start, "captions": len(layer), "overlays": len(tops),
-            "style": style_rel}
+    return layer
+
+
+def overlay_entries(overlays: list[dict], style: dict, *, total: float) -> list[dict]:
+    """The edit's overlays in the style: a held hook (`"overlay": {"kind": "hook", "hold": true}`) to `total`, the
+    seconds of the edit, with the other top overlays (label, number, CTA) moved to the middle; the end card with the
+    style's logo when it names none."""
+    look, accent = style.get("look"), style.get("accent")
+    held = any(isinstance(o.get("overlay"), dict) and o["overlay"].get("hold") is True
+               and o["overlay"].get("kind", "hook") == "hook" for o in overlays)
+    out = []
+    for o in overlays:
+        given = dict(o["overlay"]) if isinstance(o.get("overlay"), dict) else {}
+        kind = given.get("kind") if given.get("kind") in OVERLAY_KINDS else "hook"
+        group = dict(style["overlays"])
+        end = float(o.get("to") or 0)
+        if kind == "hook" and given.get("hold") is True:
+            end = round(total, 3)
+        elif held and kind in ("label", "number", "cta"):
+            group["place"] = "middle"
+        if kind == "end" and style.get("logo") and not given.get("logo"):
+            given["logo"] = style["logo"]
+        out.append(caption_entry("overlays", group, str(o.get("text", "")), float(o.get("from") or 0), end,
+                                 look=look, accent=accent, overlay=given or None))
+    return out
 
 
 # --- G1: the edit follows the approved style ----------------------------------------------------------
@@ -529,6 +615,9 @@ def add_parsers(sub) -> None:
     a.add_argument("--caption", help="without --style: a line of the voiceover, in the audience language")
     a.add_argument("--overlay", help="without --style: the hook, in the audience language")
     a.add_argument("--at", type=float, default=0.0, help="seconds into a video picture (default 0)")
+    a.add_argument("--look", choices=LOOKS, help="without --style: this text set instead of the saved one (one "
+                                               "video's format, or each of the three sets shown the first time)")
+    a.add_argument("--accent", help="without --style: the brand colour, #RRGGBB (default: the saved set's)")
     a.add_argument("--json", action="store_true")
     a = ts.add_parser("approve", help="record the user's yes to the latest text style, once its look was shown")
     a.add_argument("--run", required=True)
@@ -548,7 +637,8 @@ def add_parsers(sub) -> None:
 def _text(args: argparse.Namespace) -> int:
     run = RunFolder.open(Path(args.run))
     if args.text_action == "look":
-        out = look(run, args.picture, style=args.style, caption=args.caption, overlay=args.overlay, at=args.at)
+        out = look(run, args.picture, style=args.style, caption=args.caption, overlay=args.overlay, at=args.at,
+                   look_id=args.look, accent=args.accent)
         message = (f"Drew {out['style']} on {args.picture}: {out['still']}. Show it at the images check-in (the images "
                    "page shows it beside every item, or send the PNG); their changes are a new style version.")
     else:

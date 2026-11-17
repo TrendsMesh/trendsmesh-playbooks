@@ -43,6 +43,7 @@ export const CaptionLook: React.FC<{ c: Caption & { look: Look }; k: number; fon
   const t = c.from + frame / fps;
   const look = c.look;
   const accent = c.highlight ?? "#FFD84D";
+  const ink = c.ink ?? DARK; // the text on the accent, dark or white by contrast
   const words = c.words ?? [];
   const st = states(words, t);
   const size = (c.fontSize ?? SIZE[look]) * k;
@@ -92,7 +93,7 @@ export const CaptionLook: React.FC<{ c: Caption & { look: Look }; k: number; fon
         const p = on ? ease(wf, 3) : 0;
         Object.assign(s, {
           fontWeight: 800,
-          color: on ? DARK : "#fff",
+          color: on ? ink : "#fff",
           background: on ? accent : "transparent",
           borderRadius: 0.24 * size,
           padding: `${0.02 * size}px ${0.22 * size}px`,
@@ -135,7 +136,7 @@ export const CaptionLook: React.FC<{ c: Caption & { look: Look }; k: number; fon
         const covered = p > 0.45;
         Object.assign(s, {
           fontWeight: 800,
-          color: covered ? DARK : "#fff",
+          color: covered ? ink : "#fff",
           backgroundImage: key ? `linear-gradient(${accent}, ${accent})` : undefined,
           backgroundRepeat: "no-repeat",
           backgroundPosition: "left center",

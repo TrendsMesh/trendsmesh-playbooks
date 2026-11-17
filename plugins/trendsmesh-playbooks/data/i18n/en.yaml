@@ -720,6 +720,7 @@ organic:
     cap_evidence: Evidence video by @{creator}
     cap_still: The copied look, rendered ({comp}, frame {frame})
     cap_text_style: "The captions and the overlays, as the edit will draw them: accept, or say what to change"
+    cap_text_set: "The {look} text set, as the edit will draw it: pick one, or say what to change"
     cap_contact: QA contact sheet of {take}
     dl_video: video (1080p)
     dl_cover: cover
