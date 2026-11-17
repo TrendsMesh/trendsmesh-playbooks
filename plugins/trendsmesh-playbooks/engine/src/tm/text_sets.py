@@ -169,6 +169,15 @@ def owners(run: RunFolder) -> list[tuple[str, str]]:
     return []
 
 
+def channel_type(run: RunFolder) -> str | None:
+    """The type (issue #85) of the channel an organic run is for, else None."""
+    for kind, name in owners(run):
+        if kind == "channel":
+            profile = brand.latest(trend_spool.workspace_of(run), name, kind="channel")
+            return profile.get("type") if isinstance(profile, dict) else None
+    return None
+
+
 def for_run(run: RunFolder) -> dict | None:
     """The saved set a run uses (the module docstring), else None."""
     ws = trend_spool.workspace_of(run)
@@ -243,16 +252,18 @@ def _from_style(run: RunFolder, given: str) -> dict:
 
 def run_cli(args: argparse.Namespace) -> int:
     if args.ts_action == "show":
+        kind_of = None
         if args.run:
             run = RunFolder.open(Path(args.run))
             found = for_run(run)
             whose = owners(run)
+            kind_of = channel_type(run)
         else:
             if not (args.name and args.kind):
                 return cli.fail(args, "Give --run, or --name and --kind.")
             ws = Path(args.workspace) if args.workspace else paths.workspace()
             found, whose = latest(ws, args.kind, args.name), [(args.kind, args.name)]
-        suggested = suggest_looks(None)
+        suggested = suggest_looks(kind_of)   # by the channel's type; native first is the agent's call for UGC
         message = (f"The text set is {found['look']} ({found['file']})." if found else
                    f"No text set is saved for {' or '.join(f'{k} {n}' for k, n in whose) or 'this run'}: the default "
                    f"is {oe.DEFAULT_LOOK}; the first time, show three sets that fit (suggested: "

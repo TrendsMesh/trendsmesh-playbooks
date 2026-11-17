@@ -1067,19 +1067,37 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      --frame <a frame with the title and the cards> --json`, free), so the images page shows it
      beside the evidence videos.
 3. **The images check-in**:
-   - **The text style** (the edit's two text layers, [G1](#g1)) is shown at this check-in: once
-     the first frame (or the host image, or a storyboard panel) is made, draw the suggested style
-     on it, free: `tm organic text look --run R --picture 03_wip/<the frame> --caption "<a line of
-     the voiceover>" --overlay "<the hook>" --json`, both lines in the audience language. It writes
-     `03_wip/text_style_vNN.json` and the still `03_wip/text_look_vNN.png`, which the images page
-     shows beside every item (build the page after it; in chat, send the PNG). Ask: the captions and
-     the overlays will look like this; accept, or say what to change. A change is a new version of
-     the style (sizes in px at 1080×1920, `offsetY` negative moves the text up, `width` up to 790, the
-     safe zone's, `highlight` a colour that lights the spoken word, `words` [min, max] per
-     caption), drawn again with `--style 03_wip/text_style_vNN.json` and shown again. Their yes:
-     `tm organic text approve --run R --style 03_wip/text_style_vNN.json --note "<their words>"
-     --json`; by rule (Just the big calls, Hands-off) the suggested style, `--by rule --note "the
-     suggested style"`.
+   - **The text style** (the edit's two text layers, [G1](#g1)) is one of the 8 text sets
+     (`native`, `outline`, `pill`, `block`, `karaoke`, `pop`, `quiet`, `marker`: captions and
+     overlays in one look), the channel's own, kept beside its profile and used in every video
+     (`tm brand text-style show --run R --json`). Once the first frame (or the host image, or a
+     storyboard panel) is made, draw it on it, free: `tm organic text look --run R --picture
+     03_wip/<the frame> --caption "<a line of the voiceover>" --overlay "<the hook>" --json`, both
+     lines in the audience language. It writes `03_wip/text_style_vNN.json` and the still
+     `03_wip/text_look_vNN.png`, which the images page shows beside every item (build the page after
+     it; in chat, send the PNG).
+     - **The channel has a saved set** (`text_set` in the answer): it is drawn with its accent, the
+       brand's font and logo, and approved without asking again, `tm organic text approve --run R
+       --style 03_wip/text_style_vNN.json --by rule --note "the channel's saved text set" --json`;
+       the card says which set it is and that it can be changed any time. A video whose format
+       needs another one (a ranking, a quiz) draws it with `--look <set>` for that video only.
+     - **The first time** (no saved set): pick the 3 sets that fit the channel (its type, tone,
+       energy and kind of content; `tm brand text-style show` suggests three; `native` first for a
+       UGC channel or content meant to look filmed in the app, else the default `outline` among
+       them) and draw each, `--look <set>` (with `--accent <the brand colour>` when the brand has
+       one), so the page shows the three side by side. Ask which one the channel's videos use; the
+       pick is drawn again as the latest (`--look <the pick>`), approved with their words (`tm
+       organic text approve ... --note "<their words>"`) and saved for the channel: `tm brand
+       text-style save --run R --kind channel --name <channel> --style 03_wip/text_style_vNN.json
+       --note "<their words>" --json`, with `--font` and `--logo` when the brand has its own files
+       (its font replaces Montserrat in every set but `native`, always TikTok Sans; the end card
+       shows the logo, or the brand's name without one). By rule (Just the big calls, Hands-off):
+       the first of the three, approved `--by rule --note "the suggested text set"`, and saved.
+     - **A change** (another set, a size, a place) is a new version of the style (sizes in px at
+       1080×1920, `offsetY` negative moves the text up, `width` up to 790, the safe zone's,
+       `highlight` a colour that lights the spoken word, `words` [min, max] per caption), drawn
+       again with `--style 03_wip/text_style_vNN.json` and shown again; a new set for the channel
+       is saved again with `tm brand text-style save`.
    - **Check every step**: the images side by side, a stage of the run page (the plugin's
      `references/pages.md`, "The run page"; issue #60). Write the ask with the Write tool,
      `03_wip/ask_images.json`: `{"checkin": "images", "title": "<what is new, in the chat
@@ -1260,7 +1278,10 @@ A Remotion render takes about 1 minute.
    voiceover at its `from`), `music` (a bed under speech, low, with its fades) and the text on
    screen in **two layers**, inside the safe zone (x 90 to 880, y 260 to 1540):
    - **overlays** at the top, in a box (`"style": "hook"`): only the hook, the key number and the
-     closing question, at most 3, written by you in the props with their `from` and `to`;
+     closing question, at most 3, written by you in the props with their `from` and `to`, each
+     saying what it is in the text set, `"overlay": {"kind": "hook" | "label" | "number" | "cta" |
+     "end", "sub"?, "brand"?}` (`*word*` marks a key word); `"hold": true` on the hook keeps it on
+     screen the whole video, in any set (the others then move to the middle);
    - **captions** under the voiceover, TikTok style, made by the engine, never by hand: `tm organic
      captions --run R --props 03_wip/edit_vNN.props.json --words 03_wip/<voiceover>.words.json
      --json` writes a new version of the props with word groups of 2 to 4 from the recording's word

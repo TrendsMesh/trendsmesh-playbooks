@@ -35,6 +35,22 @@ What changed in each version of the TrendsMesh playbooks plugin.
   style first (the look in its profile, matched to the nearest library style, or a style you picked three times
   or more), then the styles that suit your channel's type and the topic's tone (styles that show numbers well
   first when the idea has a key number), and a style you turned down for the channel earlier last.
+- **Text sets: 8 looks for the captions and the overlays, together** (by @piotr-lezon): `native` (like
+  TikTok's own captions and text boxes, in TikTok Sans), `outline`, `pill`, `block`, `karaoke`, `pop`, `quiet` and
+  `marker`, each a look for both text layers in the brand's colour, every animation timed from its own word. The
+  overlays say what they are (the hook, a label, a key number that counts up, the CTA, the end card), and the one or
+  two words that carry a line are lit. Two captions back to back no longer share a frame.
+- **The text set is the channel's or the brand's, kept and used in every video.** The first time, the images
+  check-in shows the three sets that fit the channel on your own words, side by side; your pick is saved beside the
+  channel's or brand's profile and every later video uses it without asking (change it any time; one video can use
+  another for its format). Without a saved set the default is `outline`, or `native` for a channel meant to look
+  filmed in the app. The brand's own font replaces the default one in every set but `native`, the text on the
+  brand's colour is dark or white by contrast, and the end card shows the brand's logo, or its name without one.
+- **The hook can stay on screen for the whole video,** in every set.
+- **Create an ad draws its text in the brand's text set too:** the cut is still ffmpeg's, and the captions and the
+  overlays are drawn over it with the same sets as organic videos, so an ad and an organic video of a brand look
+  like the same brand. The layer check still sees every caption and overlay. Create an ad now installs the video
+  editing tools (Remotion) for this. Refresh an ad keeps copying the original ad's captions.
 
 ## 0.13.1
 

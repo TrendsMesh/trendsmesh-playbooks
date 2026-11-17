@@ -741,14 +741,17 @@ def test_every_key_row_checks_its_key():
     assert all(e["check"] == e["secret"].split("_")[0] for e in rows)
 
 
-def test_create_ad_asks_for_no_remotion(monkeypatch):
-    """Issue 96: Create an ad's edit is built with the plugin's ffmpeg, so its doctor never asks for the video
-    editing tools (Remotion, about 0.5 GB); organic video still does."""
-    monkeypatch.setattr(doctor.envtiers, "installed", lambda tier: tier != "video")
-    r = doctor.check({"video_ad"}, False, {"trendsmesh": "ok", "meta": "ok", "artifacts": "ok"}, playbook="create-ad")
-    assert "tier_video" not in ids(r) and "linux_chrome_libs" not in ids(r)
-    assert {"tier_base", "tier_breakdown", "tier_voice", "tier_ai"} <= ids(r)
+def test_create_ad_asks_for_remotion_for_its_text(monkeypatch):
+    """Issue 96 built Create an ad's edit with the plugin's ffmpeg alone; issue 117 draws its text over the ffmpeg cut
+    with Remotion's OrganicCaptions, in the brand's text set, so its doctor asks for the video editing tools too."""
+    mcp = {"trendsmesh": "ok", "meta": "ok", "artifacts": "ok"}
+    monkeypatch.setattr(doctor.envtiers, "installed", lambda tier: True)
+    r = doctor.check({"video_ad"}, False, mcp, playbook="create-ad")
+    assert {"tier_base", "tier_breakdown", "tier_voice", "tier_ai", "tier_video"} <= ids(r)
     assert r.ready
+    monkeypatch.setattr(doctor.envtiers, "installed", lambda tier: tier != "video")
+    r = doctor.check({"video_ad"}, False, mcp, playbook="create-ad")
+    assert not item(r, "tier_video").ok
 
 
 def test_create_ad_without_a_browser_is_a_warning(monkeypatch):

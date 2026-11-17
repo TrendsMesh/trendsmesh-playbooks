@@ -235,7 +235,7 @@ The agent may not skip them. The config changes only thresholds and defaults, no
 - **Safe zone** (most restrictive across platforms, at 1080×1920): text and key action inside x 90–880, y 260–1540.
   - Text is centred on the frame, never on the safe zone.
   - An Atlas animation in 9:16 keeps text and key action **above y 1260**, leaving the caption band free (round 32).
-- **Text on screen, two layers** (issue 89), in a style the user approves at the images check-in:
+- **Text on screen, two layers** (issue 89), in a style the user approves at the images check-in: one of the 8 text sets (issue 117), the channel's saved one in every video (the first time the user picks it from three; default `outline`, `native` for UGC), in the brand's colour, font and logo:
   - **captions** under the voiceover, TikTok style: 2 to 4 words at a time from the recording's word times (talking: from the transcript), white with a black outline, at the bottom, made by `tm organic captions`;
   - **overlays** at the top, in a box: only the hook, the key number and the closing question;
   - formats with a known caption style: the copied style (OV3).

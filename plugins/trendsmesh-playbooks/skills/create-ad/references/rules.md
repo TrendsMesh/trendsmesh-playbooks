@@ -77,8 +77,9 @@ hair, build), logos and signage replaced; write the guard into the prompt and of
 **CA10. Edit standards.** Overlays chosen to fit the ad's style and proposed on the storyboard (not a fixed set). A
 present person is full frame; screen beats full frame, the person absent or voice only; text-heavy screens never in
 a small card. Windows cover neither face nor chin and never collide with the captions. Hook text at the top in the
-first second. Captions in one fixed band, 3 words at most, timed from Scribe words, brand words spelled right. Brand
-elements match the site (logo, font, colours); tool icons where tools are named. Screen beats on a blurred, slowly
+first second. Captions in one fixed band, 3 words at most, timed from Scribe words, brand words spelled right. The
+text in the brand's text set, the same as its organic videos (issue 117). Brand elements match the site (logo,
+font, colours); tool icons where tools are named. Screen beats on a blurred, slowly
 scrolling view of the product's site. A ~2 s logo sting with the music ringing out. The picture ends at or before the
 take's last frame. Shots at least ~1.5 s; a short dissolve between clips of the same presenter; each line's picture
 inside its own shot. Transition sounds from a small library, a cue list mixed after the render.

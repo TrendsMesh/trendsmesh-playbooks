@@ -47,9 +47,9 @@ checks:
     fix: {any: "I install the video breakdown tools (about {size}, about {minutes} min). Say yes and I start."}
   - id: tier_video
     name: Video editing tools (Remotion)
-    # Create an ad's edit is built with the plugin's ffmpeg (base tier), never Remotion (issue 96)
-    playbooks: [01-refresh-ad, 03-organic-ai-video]
-    when: [{outputs: [organic_video]}]
+    # Create an ad's cut is the plugin's ffmpeg (base tier); its text is drawn over it with Remotion (issue 117)
+    playbooks: [01-refresh-ad, 03-organic-ai-video, 05-create-ad]
+    when: [{outputs: [organic_video]}, {outputs: [video_ad]}]
     outputs: [edited_video]
     kind: env_tier
     tier: video

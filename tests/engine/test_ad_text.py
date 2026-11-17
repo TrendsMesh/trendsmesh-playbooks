@@ -236,3 +236,21 @@ def test_a_text_on_two_lines_has_a_box_as_wide_as_its_room():
     caption = create_text.text_boxes(_props(_caption("I check what is rising every single morning",
                                                      look="block")))[0]["box"]
     assert (caption[0], caption[2]) == (90, 790)              # to its column
+
+
+def test_tm_render_checks_the_brand_font_and_the_logo_are_in_the_run(ad):
+    from tm import render
+
+    props = {**_props({"from": 7, "to": 8, "text": "x", "style": "hook",
+                       "overlay": {"kind": "end", "family": "pill", "logo": "03_wip/text_set/logo_v01.png"}}),
+             "segments": [], "brandFont": {"family": "Pet", "src": "03_wip/text_set/pet_v01.otf"}}
+    path = ad.path / "03_wip" / "p.props.json"
+    path.write_text(json.dumps(props), encoding="utf-8")
+    with pytest.raises(create_text.c.ToolError, match="pet_v01.otf"):
+        render._check_props(ad, "OrganicCaptions", path)
+    (ad.path / "03_wip" / "text_set").mkdir()
+    (ad.path / "03_wip" / "text_set" / "pet_v01.otf").write_bytes(b"OTTO")
+    with pytest.raises(create_text.c.ToolError, match="logo_v01.png"):
+        render._check_props(ad, "OrganicCaptions", path)
+    (ad.path / "03_wip" / "text_set" / "logo_v01.png").write_bytes(b"\x89PNG")
+    assert render._check_props(ad, "OrganicCaptions", path)["brandFont"]["family"] == "Pet"

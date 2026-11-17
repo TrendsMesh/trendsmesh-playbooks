@@ -168,7 +168,7 @@ def test_the_doctor_warns_without_trendsmesh_and_meta():
     assert item(r, "mcp_trendsmesh_create").note == evidence.CHOOSE_NOTE
     assert "paused ad" in item(r, "mcp_meta_create").note
     assert {"tier_base", "tier_ai", "tier_voice", "tier_breakdown"} <= set(ids(r))
-    assert "tier_video" not in ids(r)        # the edit is the plugin's ffmpeg, never Remotion (issue 96)
+    assert "tier_video" in ids(r)            # the cut is ffmpeg's, its text Remotion's OrganicCaptions (issue 117)
 
 
 def test_the_guess_notice_comes_with_the_concept():

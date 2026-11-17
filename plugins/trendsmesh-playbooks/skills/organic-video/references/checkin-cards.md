@@ -130,7 +130,9 @@ once, after the user said yes to its cost and the pack was re-planned with its l
 (`flow.md#paying-for-a-redo`), and the page shows the new images. F1 stays open after a redo: the
 check-in is asked again with the new images, and F1 is closed after the user's answer. The same card shows **the text
 style** on the first frame (the still beside every item, or the PNG in chat): the captions at the
-bottom and the overlays at the top, as the edit will draw them; accept it, or say what to change
+bottom and the overlays at the top, as the edit will draw them. With the channel's saved text set it
+is that set, said by name and not asked again (it can be changed any time); the first time, the three
+sets that fit the channel side by side: pick one, which every later video uses, or say what to change
 (a change is drawn and shown again, free; `flow.md#f1`).
 
 **Pick the takes** (`video`, inside F2, before `tm done F2`; its own card at Check every step). The run page's link (the takes stage), then
@@ -195,7 +197,7 @@ names (FLOWS.md section J; the plugin's words after it):
 | `reuse_profile` (Hands-off) | reuse when a confirmed profile exists, else new | each channel's saved profile and the date it was confirmed, or "no saved profile" |
 | `script` (Hands-off) | delivered | the page version and the script file |
 | `taste` (Hands-off) | the profile's saved picks, else your pick, logged with the reason | the picks and why (the pack's `taste.why`) |
-| `images` (Just the big calls, Hands-off) | the rubric's pick; one automatic redo per item; the suggested text style | each item's pick and its reason against the rubric (`tm organic pick`); the text style approved by rule (`tm organic text approve --by rule`) |
+| `images` (Just the big calls, Hands-off) | the rubric's pick; one automatic redo per item; the suggested text style | each item's pick and its reason against the rubric (`tm organic pick`); the text style approved by rule (`tm organic text approve --by rule`): the channel's saved set, else the first of the three suggested, saved for the channel (`tm brand text-style save`) |
 | `video` (Just the big calls, Hands-off) | the rubric's pick; a take that fails QA goes to the user (`fails_qa`) | each take's pick with its QA, or the findings that failed it |
 | `final_edit` (Hands-off) | delivered on the delivery page with every step | the page version and the final file |
 

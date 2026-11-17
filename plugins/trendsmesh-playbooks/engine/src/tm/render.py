@@ -260,6 +260,11 @@ def _check_props(run: RunFolder, comp: str, props: Path) -> dict:
     named = [*(data.get(k) or [] for k in shapes if k != "music")]
     files += [s.get("img" if comp == "QuizGrid" else "src") for group in named for s in group if isinstance(s, dict)]
     files += [music.get("src")] if music else []
+    if comp == "OrganicCaptions":   # the brand's font and logo, from its text set (issue #117)
+        font = data.get("brandFont")
+        files += [font.get("src")] if isinstance(font, dict) else []
+        files += [cap["overlay"].get("logo") for cap in data.get("captions") or []
+                  if isinstance(cap, dict) and isinstance(cap.get("overlay"), dict)]
     for rel_path in files:
         if isinstance(rel_path, str) and (
                 PurePosixPath(rel_path.replace("\\", "/")).is_absolute() or PureWindowsPath(rel_path).drive

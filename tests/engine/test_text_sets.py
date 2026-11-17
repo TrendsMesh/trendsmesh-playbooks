@@ -279,3 +279,10 @@ def test_the_images_page_shows_one_still_per_set_drawn(ws, remotion, capsys):
                                         "03_wip/text_look_v01.png"]
     assert "native" in refs[0]["caption"] and "pop" in refs[1]["caption"]
     assert organic_pages.gate_words("pl")["cap_text_set"] != t["cap_text_set"]          # translated
+
+
+def test_show_suggests_the_three_sets_by_the_channels_type(ws, capsys):
+    brand.save(ws, EXAMPLEEDU, run=None)                       # howto_education
+    code, out = _cli(capsys, "brand", "text-style", "show", "--run", str(_organic(ws).path))
+    assert code == 0 and out["text_style"] is None
+    assert out["suggested"] == text_sets.suggest_looks("howto_education")

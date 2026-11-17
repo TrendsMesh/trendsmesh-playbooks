@@ -240,21 +240,33 @@ page and one in chat count the same. Rules: `rules.md`.
 <a id="s6"></a>
 ## S6 Edit (CA10)
 
-- A data-driven edit built with `tm tool ffmpeg` (never Remotion): a timeline (scenes, take segments with a time
-  map, overlays, captions, sound cues) turned into one ffmpeg run. Overlays are those proposed on the storyboard.
-- **The text is two layers**, as in organic video's edit: **captions** under the speech (groups of 2 to 4 words from
-  its word times, at the bottom) and **overlays** (the hook at the top from 0 s, a number, a tag, a code chip, the
-  logo on the end card). Both in the brand's font (`drawtext` with `fontfile=` one of its files in the inventory),
-  the end card with the brand's logo (its PNG), never a system font or the name as plain text unless the inventory
-  says there is none. Keep them off the faces, off the windows and off each other (CA10).
-- **Write what the edit draws**, bottom to top, beside it: `03_wip/edit_layers_vNN.json` (the edit's NN), `{"layers":
-  [{"id", "kind" (picture, caption, overlay), "start", "end", "box": [x, y, w, h], "src", "from", "crop", "on"}]}`
-  in seconds of the edit and px of its frame: each picture (a take, a window, a scene card, a capture) with its
-  `src`, the second of it shown at `start` (`from`) and the part of it shown (`crop`, px of the source; a picture
-  with no `box` fills the frame), each caption and overlay with the box it is drawn in, and `on` naming the layer
-  it is drawn on on purpose (a chip on its card).
-- Render it as `03_wip/edit_mix_vNN.mp4` (`tm tool ffmpeg --run R --name edit_mix --ext mp4 -- ...`), then **the
-  loudness pass through the plugin**: `tm tool deliver finish --run R 03_wip/edit_mix_vNN.mp4`, with `--gain
+- **The cut** is a data-driven edit built with `tm tool ffmpeg`: a timeline (scenes, take segments with a time map,
+  windows, sound cues) turned into one ffmpeg run, **without text**: `03_wip/edit_cut_vNN.mp4` (`tm tool ffmpeg
+  --run R --name edit_cut --ext mp4 -- ...`). Write its pictures, bottom to top, beside it:
+  `03_wip/edit_pictures_vNN.json`, `{"layers": [{"id", "kind": "picture", "start", "end", "box": [x, y, w, h],
+  "src", "from", "crop", "on"}]}` in seconds of the edit and px of its frame: each picture (a take, a window, a scene
+  card, a capture) with its `src`, the second of it shown at `start` (`from`) and the part of it shown (`crop`, px of
+  the source; a picture with no `box` fills the frame), and `on` naming the layer it is drawn on on purpose.
+- **The text is two layers**, as in organic video's edit, drawn over the cut with Remotion in **the brand's text
+  set** (one of the 8 sets, kept beside the brand: `tm brand text-style show --run R --json`): **captions** under
+  the speech, from the cut's own transcript (`tm tool transcribe --run R 03_wip/edit_cut_vNN.mp4`; mark the 1–2
+  words that carry a line `"key": true` in it), and **overlays** proposed on the storyboard, written to
+  `03_wip/edit_text_vNN.json`: `{"overlays": [{"from", "to", "text", "overlay": {"kind": "hook" | "label" |
+  "number" | "cta" | "end", "sub"?, "brand"?, "hold"?}}]}` (the hook at the top from 0 s, `"hold": true` to keep it
+  the whole ad; a number counts up to its figure; the end card shows the brand's logo, its name, a line and the
+  CTA; `*word*` marks a key word). Then `tm ad text --run R --cut 03_wip/edit_cut_vNN.mp4 --words <the transcript>
+  --overlays 03_wip/edit_text_vNN.json --pictures 03_wip/edit_pictures_vNN.json --json`: it draws them in the set
+  with its accent, the brand's font and logo (`03_wip/edit_mix_vNN.mp4`, free) and writes
+  `03_wip/edit_layers_vNN.json` from the same props, the pictures and each caption's and overlay's box, for the
+  layer check (S7). Keep the text off the faces, off the windows and off each other (CA10): move an overlay
+  (`place`, its time) or a window, and run it again.
+- **The brand's text set:** saved, it is used without asking. None saved yet: the default `outline` (`native` for a
+  UGC concept, one meant to look filmed in the app), with the brand's colour (`--accent`), and saved once the user
+  accepts the edit at the review, with the brand's font and logo from the inventory: `tm brand text-style save
+  --run R --kind brand --name <the brand> --look <set> --accent <colour> --font <its font file> --logo <its PNG>
+  --note "<their words>" --json` (its font replaces Montserrat in every set but `native`; without a logo the end card
+  shows the brand's name). One ad in another set: `--look <set>` on `tm ad text`, the saved one unchanged.
+- Then **the loudness pass through the plugin**: `tm tool deliver finish --run R 03_wip/edit_mix_vNN.mp4`, with `--gain
   START-END:+DB` on a quiet line (a whisper) and `--compress` to even the speech: it limits, levels to the run's
   −14 LUFS with the true peak under −1.5 dBFS, and writes the edit's next version, `03_wip/edit_vNN.mp4`. Never set
   the level by hand. `tm done S6`.
@@ -276,7 +288,7 @@ page and one in chat count the same. Rules: `rules.md`.
   `03_wip/edit_qa_vNN.json`: `{"edit"
   (the latest edit), "qa" (its latest take_qa file), "checked": [{"check" (cuts, take_scenes, stills, captions,
   speech, joins, overlay_ends, text), "result" (ok, not_applicable, problem), "note" (what you looked at)}]}`, one
-  row per check (`captions`: what the layer check found; `text`: the brand's font and logo, letter by letter).
+  row per check (`captions`: what the layer check found; `text`: the brand's text set, font and logo, letter by letter).
   `tm ad check edit --run R --file <it>` refuses an edit no `tm tool deliver finish` wrote, one whose latest layer
   check found a collision, a loudness more than 1 LU off the target, a true peak above the limit, a transcript under
   the threshold or a stutter in an edit with lines, a check left out, and a `problem` (fix it in a new version, S6,
