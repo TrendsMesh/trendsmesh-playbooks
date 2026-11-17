@@ -617,6 +617,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     ps.add_argument("--file", required=True, help="the image, inside the run (from here first, else in the run)")
     ps.add_argument("--run", required=True, help="the run folder")
     ps.add_argument("--json", action="store_true")
+    from tm import text_sets   # it reads organic_edit, which reads modules that import this one
+    text_sets.add_parser(sub)   # tm brand text-style save|show (issue #117)
 
 
 def _load(path: str | Path) -> object:
@@ -650,6 +652,9 @@ def _done(args: argparse.Namespace, saved: Path, workspace: Path) -> int:
 
 def _run(args: argparse.Namespace) -> int:
     try:
+        if args.action == "text-style":
+            from tm import text_sets
+            return text_sets.run_cli(args)
         if args.action == "show":
             workspace = Path(args.workspace) if args.workspace else paths.workspace()
             skipped: list[str] = []
