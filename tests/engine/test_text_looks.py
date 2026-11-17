@@ -12,7 +12,7 @@ import pytest
 from tm import organic_edit as oe
 from tm import video_fonts as vf
 
-SRC = Path(__file__).resolve().parents[2] / "remotion" / "src"
+SRC = Path(__file__).resolve().parents[2] / "plugins" / "trendsmesh-playbooks" / "remotion" / "src"
 
 
 def _words(*items: tuple[str, float, float]) -> list[dict]:
