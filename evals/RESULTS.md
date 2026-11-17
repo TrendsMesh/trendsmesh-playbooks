@@ -56,6 +56,23 @@ name in a comment. A result folder from before the rename carries the old name.
 | `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
 | `vo_shortened_with_bridging_line` | `vo_bridging_line` |
 
+## The #106 + #108 run, one branch (all cases, 2026-11-17)
+
+Not a release run: #106 and #108 together on `claude/free-paid-directory`, with the private data repo's matching
+move linked in. Every case once (`evals/run.sh --report-issue --ablation none -j 3 --max-cost-usd 500`), then each
+failing case again on its own, and the ones still failing on a clean `dev` copy (private files copied in, not
+linked: the Claude CLI now refuses a linked case folder, so `dev`'s own `run.sh` can't run the private cases).
+
+**First run: 73 of 81 passed.** After the reruns and one fix: **78 of 81**.
+
+| Found | Kind | Fix |
+|---|---|---|
+| `missing_video_stops`: twice of four the Ads Manager link had no `act=` (the agent didn't read the run's `config.yaml`); passed twice on `dev` | **plugin** | SKILL.md section 7 says ACCOUNT is `account.id` in `config.yaml`; then 3 of 3 |
+| `cb_no_artifacts_local_page` and `cb_page_decisions_from_db`: the PDF printing setup timed out at the scaffold | infrastructure | none (known) |
+| `ra_local_checkin`: fails on `dev` too, twice (the page is built but the decision is offered on it; once no local page) | already on `dev` | none here |
+| `ca_presenter_page`: fails on the #106 commit too | already on `dev` | none here |
+| `hands_off_no_budget`, `tr_no_artifacts_page`, `tr_picks_card_relative_numbers` failed once, passed on their own | variance | none |
+
 ## The #108 run, evals outside the plugin folder (all cases, 2026-11-15)
 
 Not a release run: #108 moved `evals/` and the tests out of the plugin folder, to the repository root, on

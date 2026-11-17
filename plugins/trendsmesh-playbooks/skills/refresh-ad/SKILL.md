@@ -248,6 +248,8 @@ check's fetch (R2b) and the "Pick the ad" card: `references/flow.md#a1` and `#a1
   Open <https://adsmanager.facebook.com/adsmanager/manage/ads?act=ACCOUNT&selected_ad_ids=AD>,
   open the ad, and download its video from the ad's media (or ask whoever made the ad for the
   original file). Put it in <brand folder> and tell me: the run continues from the same place."
+  ACCOUNT is `account.id` in the run's `config.yaml` (without `act_`), AD the ad's id: read them
+  there, never leave `act=` out.
   Only if the user can't get it: the low-quality preview, marked as such in the manifest and in
   every output.
 - **E2, upload.** First prepare every file the approved plan uses: each video in each format
