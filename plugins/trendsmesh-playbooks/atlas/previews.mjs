@@ -34,7 +34,7 @@ const only = (opt("--only", "") || "").split(",").filter(Boolean);
 const W = 1080, H = 1920;                 // rendered
 const POSTER = [540, 960], LOOP = [360, 640];   // delivered
 const LOOP_S = 4, FADE_S = 0.5, FPS = 24;
-const POSTER_KB = 60, LOOP_KB = [200, 300];
+const POSTER_KB = 60, LOOP_KB = [160, 250];   // KiB; a loop stays under the plugin directory's 256 KiB a file
 
 const read = (p) => readFileSync(p, "utf8").replace(/\r/g, "");
 const cards = JSON.parse(read(join(STYLES, "styles.json")));

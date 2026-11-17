@@ -164,7 +164,7 @@
   "loop_s": 4,
   "beat": "Key number",
   "poster_kb": 81,
-  "loop_kb": 272,
+  "loop_kb": 224,
   "hash": "4ecc252af1b8026e"
  },
  "pixel-arcade": {
@@ -332,7 +332,7 @@
   "loop_s": 4,
   "beat": "Key number",
   "poster_kb": 64,
-  "loop_kb": 289,
+  "loop_kb": 230,
   "hash": "c85e3ca79bb2f2bd"
  },
  "sticky-notes": {
@@ -356,7 +356,7 @@
   "loop_s": 4,
   "beat": "Key number",
   "poster_kb": 60,
-  "loop_kb": 276,
+  "loop_kb": 231,
   "hash": "c3c4f5dd5159ebe8"
  },
  "newsprint": {
@@ -368,7 +368,7 @@
   "loop_s": 4,
   "beat": "Key number",
   "poster_kb": 63,
-  "loop_kb": 297,
+  "loop_kb": 223,
   "hash": "f09cf6dfca2c6cd8"
  },
  "isometric": {
@@ -584,7 +584,7 @@
   "loop_s": 4,
   "beat": "Key number: 4.76 cm/s",
   "poster_kb": 64,
-  "loop_kb": 274,
+  "loop_kb": 206,
   "hash": "bb7011c4fbfff80e"
  }
 }
