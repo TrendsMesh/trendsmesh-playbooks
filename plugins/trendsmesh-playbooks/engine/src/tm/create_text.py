@@ -20,8 +20,10 @@ file) from the same props: the picture layers given with `--pictures` (`{"layers
 wrote them), then each overlay and caption with its box (`text_boxes`), so `tm tool layer_check` (S7) checks them.
 
 `text_boxes` places each text as `OrganicCaptions.tsx` lays it out (the safe zone, the column, the place and
-`offsetY`, the set's sizes by kind) and estimates its width from its letters (a heavy sans, about 0.6 of the size a
-letter), on the safe side: a box is at least as large as the text drawn. An end card fills the frame.
+`offsetY`, the set's sizes by kind) and estimates its width from its letters: about 0.6 of the size a letter for the
+sets' own fonts, and for the brand's font its own average letter width (its OS/2 table, `font_letter`) with a margin,
+or a wide guess when the file can't be read (WOFF2), so a box is at least as large as the text drawn. An end card
+fills the frame.
 """
 
 from __future__ import annotations
@@ -29,6 +31,8 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import struct
+import zlib
 from pathlib import Path
 
 from tm import cli, organic_edit as oe
@@ -41,6 +45,8 @@ MIX, LAYERS, EDIT = "edit_mix", "edit_layers", "edit"
 SAFE = {"top": 260, "bottom": 380, "left": 90, "right": 200}   # OrganicCaptions.tsx SAFE_1080
 COLUMN = 680                                                   # its default column
 LETTER = 0.6                                                   # a letter's width, of the size (a heavy sans)
+UNKNOWN_LETTER = 0.8                                           # a brand font whose width can't be read
+BOLDER = 1.1                                                   # the drawn weight is heavier than the file's average
 LINE = 1.3                                                     # the line height, of the size, on the safe side
 # The sizes the sets draw at, px at 1080 (CaptionLooks.tsx SIZE, OverlayLooks.tsx SIZES and the native ones)
 CAPTION_SIZE = oe.LOOK_SIZE
@@ -50,12 +56,47 @@ SUB_SIZE = 38
 BOXED = ("pill", "block", "quiet", "native")                   # sets that draw a box behind an overlay
 
 
+def font_letter(path: Path) -> float | None:
+    """The font's average letter width, of its size (OS/2 xAvgCharWidth / head unitsPerEm), from a TTF, OTF or WOFF
+    file; None when it can't be read (WOFF2 is Brotli-packed, a collection, a damaged file)."""
+    try:
+        data = Path(path).read_bytes()
+        tables: dict[bytes, bytes] = {}
+        if data[:4] == b"wOFF":
+            count = struct.unpack(">H", data[12:14])[0]
+            for i in range(count):
+                tag, off, comp, orig, _ = struct.unpack(">4sIIII", data[44 + 20 * i:64 + 20 * i])
+                raw = data[off:off + comp]
+                tables[tag] = zlib.decompress(raw) if comp < orig else raw
+        elif data[:4] in (b"\x00\x01\x00\x00", b"OTTO", b"true"):
+            count = struct.unpack(">H", data[4:6])[0]
+            for i in range(count):
+                tag, _, off, length = struct.unpack(">4sIII", data[12 + 16 * i:28 + 16 * i])
+                tables[tag] = data[off:off + length]
+        else:
+            return None
+        avg = struct.unpack(">h", tables[b"OS/2"][2:4])[0]
+        upm = struct.unpack(">H", tables[b"head"][18:20])[0]
+    except (OSError, KeyError, struct.error, zlib.error):
+        return None
+    return avg / upm if avg > 0 and upm > 0 else None
+
+
+def letter_of(font: Path | None) -> float:
+    """The letter width `text_boxes` measures with: the sets' own, or the brand font's with a margin."""
+    if font is None:
+        return LETTER
+    own = font_letter(font)
+    return UNKNOWN_LETTER if own is None else max(LETTER, own * BOLDER)
+
+
 def _lines(text: str, size: float, room: float, factor: float = LETTER) -> tuple[float, int]:
-    """(the widest line's width, the lines) of `text` at `size` in `room` px, the lines balanced."""
+    """(the width, the lines) of `text` at `size` in `room` px. A text that wraps takes the whole room: a wrapped
+    inline box widens to the width it may use (CSS), whatever its lines' balance."""
     longest = max((len(part) for part in text.split("\n")), default=0)
     total = longest * factor * size
     lines = max(1, math.ceil(total / max(room, size))) + text.count("\n")
-    return min(room, total / max(1, lines - text.count("\n"))), lines
+    return (room if lines > 1 else min(room, total)), lines
 
 
 def _place(place: str, h: float, k: float, height: int, shift: float) -> float:
@@ -73,9 +114,11 @@ def _box(x: float, y: float, w: float, h: float, width: int, height: int) -> lis
     return [round(x, 1), round(y, 1), round(min(w, width - x), 1), round(min(h, height - y), 1)]
 
 
-def text_boxes(props: dict) -> list[dict]:
+def text_boxes(props: dict, letter: float = LETTER) -> list[dict]:
     """One layer per caption and overlay of OrganicCaptions props, in their order (the module docstring):
-    {"id", "kind" (caption, overlay), "start", "end", "box": [x, y, w, h]} in px of the props' frame."""
+    {"id", "kind" (caption, overlay), "start", "end", "box": [x, y, w, h]} in px of the props' frame. `letter`: a
+    letter's width of the size in the font the sets draw with (`letter_of` the brand's font); native is always
+    TikTok Sans."""
     width, height = int(props["width"]), int(props["height"])
     k = width / 1080
     out = []
@@ -97,9 +140,10 @@ def text_boxes(props: dict) -> list[dict]:
             left, room = SAFE["left"] * k, width - (SAFE["left"] + SAFE["right"]) * k
             room = min(room, 700 * k) if fam == "native" else room
             pad = 0.7 * size if fam in BOXED or what == "label" else 0.2 * size
-            factor = LETTER * (1.15 if what == "label" or fam == "pop" else 1)
+            own = LETTER if fam == "native" else letter
+            factor = own * (1.15 if what == "label" or fam == "pop" else 1)
             if what == "number":
-                w = max(len(text) * 0.62 * size, len(ov.get("sub") or "") * LETTER * SUB_SIZE * k) + pad
+                w = max(len(text) * own * 1.05 * size, len(ov.get("sub") or "") * own * SUB_SIZE * k) + pad
                 h = size + (SUB_SIZE * k * 1.25 + 6 * k if ov.get("sub") else 0) + 0.4 * size
                 w = min(w, room)
             else:
@@ -113,7 +157,7 @@ def text_boxes(props: dict) -> list[dict]:
             usable = 1080 - SAFE["left"] - SAFE["right"]
             col = min(max(float(cap.get("width") or COLUMN), 120), usable) * k
             left = min(max(width / 2 - col / 2, SAFE["left"] * k), width - SAFE["right"] * k - col)
-            factor = LETTER * (1.15 if look == "pop" else 1)
+            factor = (LETTER if look == "native" else letter) * (1.15 if look == "pop" else 1)
             pad = 0.5 * size if look in ("pill", "block") or kind == "overlay" else 0.2 * size
             line, lines = _lines(text.upper() if look == "pop" else text, size, col - pad, factor)
             w, h = min(col, line + pad), lines * size * LINE + 0.2 * size
@@ -202,7 +246,8 @@ def text(run: RunFolder, cut: str, *, overlays: str, words: str | None = None, p
     done = render.video(run, "OrganicCaptions", props_path, mix)
     nn = max(_nn(run.next_version("wip", EDIT, "mp4")), _nn(run.next_version("wip", LAYERS, "json")))
     layers_path = run.path / WIP / f"{LAYERS}_v{nn:02d}.json"
-    c.write_json(layers_path, {"layers": shown + text_boxes(props)}, newline="\n")
+    letter = letter_of(run.path / style["font"]["src"]) if style.get("font") else LETTER
+    c.write_json(layers_path, {"layers": shown + text_boxes(props, letter)}, newline="\n")
     c.record(run, layers_path, "tm ad text", c.rel(run, props_path), cost="free")
     return {"props": c.rel(run, props_path), "mix": c.rel(run, done), "layers": c.rel(run, layers_path),
             "look": look, "text_set": saved["file"] if saved else None, "captions": len(caps), "overlays": len(tops)}
@@ -220,8 +265,14 @@ def add_parser(sub) -> argparse.ArgumentParser:
 
 
 def run_cli(args: argparse.Namespace, run: RunFolder) -> int:
-    out = text(run, args.cut, overlays=args.overlays, words=args.words, pictures=args.pictures, look_id=args.look,
-               accent=args.accent)
+    try:
+        out = text(run, args.cut, overlays=args.overlays, words=args.words, pictures=args.pictures,
+                   look_id=args.look, accent=args.accent)
+    except c.ToolStop as exc:      # the render's own stop (the video tools not set up): its todo, exit 2
+        cli.emit(args, {"status": "stop", "message": str(exc)}, str(exc))
+        return 2
+    except c.ToolError as exc:
+        return cli.fail(args, str(exc))
     message = (f"Drew {out['captions']} captions and {out['overlays']} overlays in the {out['look']} set over "
                f"{args.cut}: {out['mix']}, and wrote {out['layers']}. Next: tm tool deliver finish --run R "
                f"{out['mix']}, then the edit QA (S7) with --layers {out['layers']}.")

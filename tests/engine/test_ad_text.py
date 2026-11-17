@@ -164,3 +164,75 @@ def test_an_overlays_file_without_overlays_or_with_a_bad_kind_is_refused(ad, rem
     code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
     assert code == 2 and "from" in out["message"]
     assert not (ad.path / "03_wip" / "edit_mix_v01.mp4").exists()
+
+
+def test_a_render_that_cannot_start_is_a_stop_with_its_todo_not_a_crash(ad, monkeypatch, capsys):
+    from tm import render
+
+    def missing(*a, **k):
+        raise create_text.c.ToolStop("Rendering needs the 'video' tools. Install them with: tm env install video")
+
+    monkeypatch.setattr(render, "video", missing)
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    assert code == 2 and out["status"] == "stop" and "tm env install video" in out["message"]
+
+    def broken(*a, **k):
+        raise create_text.c.ToolError("remotion render failed: a page error")
+
+    monkeypatch.setattr(render, "video", broken)
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    assert code == 1 and "remotion render failed" in out["message"]
+
+
+def _sfnt(avg: int, upm: int = 1000, woff: bool = False) -> bytes:
+    """A minimal font file: the OS/2 table's xAvgCharWidth and head's unitsPerEm, nothing else."""
+    import struct
+    import zlib
+
+    os2 = struct.pack(">Hh", 4, avg) + bytes(94)
+    head = bytes(18) + struct.pack(">H", upm) + bytes(34)
+    tables = [(b"OS/2", os2), (b"head", head)]
+    if not woff:
+        out = struct.pack(">IHHHH", 0x00010000, len(tables), 0, 0, 0)
+        offset = 12 + 16 * len(tables)
+        body = b""
+        for tag, data in tables:
+            out += tag + struct.pack(">III", 0, offset + len(body), len(data))
+            body += data
+        return out + body
+    out = b"wOFF" + struct.pack(">IIHH", 0x00010000, 0, len(tables), 0) + bytes(28)   # a 44-byte header
+    offset = 44 + 20 * len(tables)
+    body = b""
+    for tag, data in tables:
+        packed = zlib.compress(data)
+        out += tag + struct.pack(">IIII", offset + len(body), len(packed), len(data), 0)
+        body += packed
+    return out + body
+
+
+def test_a_brand_fonts_own_letter_width_widens_the_boxes(tmp_path):
+    wide = tmp_path / "wide.ttf"
+    wide.write_bytes(_sfnt(780))
+    packed = tmp_path / "wide.woff"
+    packed.write_bytes(_sfnt(780, woff=True))
+    unreadable = tmp_path / "x.woff2"
+    unreadable.write_bytes(b"wOF2 brotli")
+    assert create_text.font_letter(wide) == pytest.approx(0.78)
+    assert create_text.font_letter(packed) == pytest.approx(0.78)
+    assert create_text.font_letter(unreadable) is None
+    narrow = create_text.text_boxes(_props(_caption("I check")))[0]["box"]
+    props = {**_props(_caption("I check")), "brandFont": {"family": "Wide", "src": "wide.ttf"}}
+    broad = create_text.text_boxes(props, letter=create_text.letter_of(tmp_path / "wide.ttf"))[0]["box"]
+    assert broad[2] > narrow[2] * 1.3
+    guessed = create_text.letter_of(tmp_path / "x.woff2")
+    assert guessed == create_text.UNKNOWN_LETTER > create_text.LETTER
+
+
+def test_a_text_on_two_lines_has_a_box_as_wide_as_its_room():
+    hook = {"from": 0, "to": 8, "text": "Your cat drinks too little every single day", "style": "hook",
+            "place": "top", "offsetY": 0, "width": 680, "overlay": {"kind": "hook", "family": "pill"}}
+    box = create_text.text_boxes(_props(hook))[0]["box"]
+    assert (box[0], box[2]) == (90, 790)                      # a wrapped box widens to the safe zone (CSS)
+    caption = create_text.text_boxes(_props(_caption("I check what is rising every single morning",
+                                                     look="block")))[0]["box"]
+    assert (caption[0], caption[2]) == (90, 790)              # to its column

@@ -18,8 +18,24 @@ const ease = (f: number, n: number, e = Easing.out(Easing.cubic)) => interpolate
 const stroke = (px: number, color = "#000"): React.CSSProperties => ({ WebkitTextStroke: `${px}px ${color}`, paintOrder: "stroke fill" } as React.CSSProperties);
 const shadow = (k: number, a = 0.5) => `0 ${3 * k}px ${10 * k}px rgba(0,0,0,${a})`;
 
-const parse = (text: string) =>
-  text.split(" ").map((w) => (w.startsWith("*") && w.endsWith("*") ? { w: w.slice(1, -1), key: true } : { w, key: false }));
+// `*word*` or `*a few words*`: the words between the stars are key words (the stars are never drawn)
+const parse = (text: string) => {
+  let open = false;
+  return text.split(" ").map((word) => {
+    let w = word;
+    let key = open;
+    if (w.startsWith("*")) {
+      w = w.slice(1);
+      key = open = true;
+    }
+    if (w.endsWith("*")) {
+      w = w.slice(0, -1);
+      key = true;
+      open = false;
+    }
+    return { w, key };
+  });
+};
 
 // One line of overlay text in the family's look; words animate in one after another where the family does that.
 const Words: React.FC<{ text: string; family: Look; size: number; k: number; accent: string; frame: number; fps: number; onBox?: boolean; ink?: string }> = ({ text, family, size, k, accent, frame, fps, onBox, ink = DARK }) => {
