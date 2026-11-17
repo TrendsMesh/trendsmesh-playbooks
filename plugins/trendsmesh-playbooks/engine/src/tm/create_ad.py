@@ -49,7 +49,9 @@ def _setup(p: argparse.ArgumentParser) -> None:
     up = sub.add_parser("upload", help="the PAUSED Meta upload (S10)")
     up.add_argument("upload_action", choices=["check", "record"])
     up.add_argument("--file", required=True)
-    for sp in (c, cl, r, rj, co, pr, cp, up):
+    from tm import create_text   # it reads organic_edit, which reads modules that import this one
+    tx = create_text.add_parser(sub)   # tm ad text: the edit's text over the cut, in the brand's text set (#117)
+    for sp in (c, cl, r, rj, co, pr, cp, up, tx):
         sp.add_argument("--run", required=True, help="the run folder")
         sp.add_argument("--json", action="store_true")
 
@@ -63,6 +65,9 @@ def _run(args: argparse.Namespace) -> int:
                 return cli.refuse_problems(args, rel, problems)
             cli.emit(args, {"status": "done", "file": rel}, f"{rel} passed the check.")
             return 0
+        if args.action == "text":
+            from tm import create_text
+            return create_text.run_cli(args, run)
         if args.action == "clips":
             from tm import create_clips
             got = create_clips.fetch(run, args.file)
