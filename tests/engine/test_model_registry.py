@@ -98,7 +98,7 @@ def test_the_limits():
 
 def test_the_variant_always_sent():
     assert reg.send("minimax/h3", "768P") == {"resolution": "768P"}
-    assert reg.send("openai/gpt-image-2", "medium") == {"quality": "medium", "output_format": "png"}
+    assert reg.send("openai/gpt-image-2", "medium") == {"quality": "medium"}
     assert reg.send("eleven_text_to_sound_v3", "default") == {"model_id": "eleven_text_to_sound_v3"}
     assert reg.send("alibaba/wan-3", "720p") == {"resolution": "720p"}
     assert reg.send("topazlabs/video-upscale", "1080p") == {"target_resolution": "1080p", "target_fps": "source"}

@@ -4,7 +4,7 @@
   "languages": {"working": "pl", "market": "pl"},
   "channels": ["ExampleEdu"],
   "output": "script",
-  "generation": {"quality_tier": "default", "resolution": "768p", "upscale": "none"},
+  "generation": {"resolution": "768p", "upscale": "none"},
   "budget": {"per_run_usd": 5},
   "currency": "PLN",
   "fx_rate": 3.70

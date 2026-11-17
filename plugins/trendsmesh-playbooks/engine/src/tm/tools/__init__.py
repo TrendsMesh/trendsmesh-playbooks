@@ -39,7 +39,8 @@ specs, never an automatic video redo, an unfinished paid take resumed); Create a
 (the plan's or the storyboard's line, the video after the storyboard's yes, never an automatic video redo), and for
 ElevenLabs `create_plan.voice_guard` (a music or voice take is the plan's line at its cost, a music plan priced at
 its seconds, #93).
-Refresh-ad has none.
+Refresh-ad has none. In every playbook a Replicate call of a model of the model registry then sends one of its
+variants exactly, never GPT Image's `quality: auto` (`_variant_sent`, #115).
 
 Everything the engine itself says is one JSON object on stdout when `--json` is in the arguments.
 
@@ -64,7 +65,7 @@ from pathlib import Path
 from tm import budget, cli, envtiers, flow, i18n, paths, secrets, state
 from tm.playbooks import CREATE_AD, ORGANIC_VIDEO
 from tm.runfolder import RunFolder
-from tm.stops import Stop
+from tm.stops import AGAIN, Stop
 
 
 @dataclass(frozen=True)
@@ -209,11 +210,34 @@ def _precheck(run: RunFolder, name: str, args: list[str]) -> str | None:
                 f"that day, start it again from the week run (tm organic start --run {dropped.get('week') or '<week run>'}) "
                 "and make it in the new run.")
     target = PRECHECK.get(s.playbook, {}).get(name)
-    if not target:
+    if target:
+        flow.refuse_if_held(s, "nothing was spent")   # a stopped run: no pre-check runs, nothing is written
+        module, function = target.split(":")
+        said = getattr(importlib.import_module(module), function)(run, args)
+        if said:
+            return said
+    return _variant_sent(run, name, args) if name == "replicate_run" else None
+
+
+def _variant_sent(run: RunFolder, name: str, args: list[str]) -> str | None:
+    """Every playbook: a model of the model registry is sent with one of its variants exactly, never GPT Image's
+    `quality: auto` (#115). A spec that cannot be read is the tool's to refuse; a resumed take sends nothing new."""
+    from tm import model_registry
+
+    a = _parsed(args)
+    if a.resume or not a.spec:
         return None
-    flow.refuse_if_held(s, "nothing was spent")   # a stopped run: no pre-check runs, nothing is written
-    module, function = target.split(":")
-    return getattr(importlib.import_module(module), function)(run, args)
+    try:
+        spec = json.loads(run.given(str(a.spec)).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(spec, dict) or not isinstance(spec.get("model"), str):
+        return None
+    gaps = model_registry.send_problems(spec["model"], spec.get("input") or {})
+    if not gaps:
+        return None
+    return (f"{Path(str(a.spec)).name} is not run: {' '.join(gaps)} See `tm models list --task <task>` for what each "
+            f"variant sends. Nothing was run or spent; {AGAIN}.")
 
 
 def _settle(run, kind: str, estimate: float, report: Path, what: str) -> str | None:

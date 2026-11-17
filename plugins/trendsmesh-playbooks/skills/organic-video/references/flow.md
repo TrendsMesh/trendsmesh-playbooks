@@ -805,77 +805,65 @@ carries a bed. A style is asked only for an animation.
 
 Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` first.
 
-0. **The Models page** (issue #86), before anything is written for a model, at every level. Free
-   reads only, never an account or a paid API:
-   - **today's rankings** of each task, read as their public pages: Arena (text-to-image, image
-     edit, image-to-video) and Artificial Analysis (image-to-video, voice); the links are in
-     `model-prompting/README.md`. Note each model's place, the ranked variant (Arena ranks a named
-     variant, e.g. "Medium") and the day. A difference inside Arena's confidence interval is a tie:
-     the cheaper model, or the one the plugin has tested, wins;
-   - **their prices**: `tm tool replicate_price --run R <owner/model> ... --json` (free, the public
-     model pages) for every candidate;
-   - **the candidates**, as the next `02_research/models/candidates_vNN.json`: `{"price_file", "units":
-     {"images", "video_seconds", "takes", "upscale_seconds"}, "tasks": {"images" | "video" | "upscale":
-     [{"model", "criteria", "group": "budget|suggested|best", "rank": {"source", "place", "date"},
-     "good_at", "selected", "recipe", "start_frame", "cannot"}], "voice": [{"model", "label", "group",
-     "good_at", "credits", "selected"}]}}`: a few per group, one `selected` in the suggested group;
-     `criteria` is the priced variant's tier exactly as the price file holds it (the same variant
-     the ranking named; with a voiceover, the variant without audio where there is one); an upscale
-     row with `"model": null` is "no upscale"; `start_frame` says whether a video model takes the
-     approved first frame (from Replicate's API schema); `cannot` is your reason a model can't work
-     for this video. The voice models: Budget ElevenLabs Eleven v4 Turbo (`eleven_v4_turbo`),
-     Suggested ElevenLabs Eleven v4 (`eleven_v4`), on the user's key and credits (the voice itself
-     is picked at D2);
-   - `tm organic page models --run R --json` builds `04_final/models_vNN/`: per task the three
-     groups, each model with its price for this video (the engine's, from the price file and the
-     units), its ranking with the date, what it is good at and its Replicate link; the total at the
-     bottom follows every click. The engine greys out, with the reason, a model with no price today,
-     Seedance when the frame has a photoreal face (E005), a variant with audio under a voiceover,
-     and your `cannot`; a video model without a start frame is not listed; ranking or prices older
-     than `pricing.max_age_days` are refused.
+0. **The Models page** (issue #86; from the model registry, #115), before anything is written for a
+   model, at every level. The models, their groups (budget, suggested, best), the ★ model of each
+   task and the variant each sends are the registry's (`../../../data/models/registry.yaml`); only
+   price and availability are read live, free (never an account or a paid API):
+   - **today's prices**: `tm models ids --task photos --task image_to_video --task upscale` names
+     the models to price; `tm tool replicate_price --run R <those ids> --json` (Replicate's public
+     model pages) writes the price file in `02_research/models/`, with the date it was read;
+   - `tm organic page models --run R --json` builds `04_final/models_vNN/`: images, video, upscale
+     and voice model, each task's groups with the ★ model ticked, each model with its price for
+     this video (the engine's: the variant's price from the price file × this video's units, from
+     the checked recipe; `--file <units.json>` with `{"images", "video_seconds", "takes",
+     "upscale_seconds"}` overrides them) and its one sentence, `good_for`, and a field for the
+     user's own model; the total at the bottom follows every click. The engine greys out, with the
+     reason, a model Replicate shows no price for today, Seedance when the frame has a photoreal
+     face (E005) and a variant with its own sound under a voiceover; a price file older than
+     `pricing.max_age_days`, or one missing a model, is refused. When the registry is older than 30
+     days (`plugin.rankings_stale`), also read today's rankings (Arena, Artificial Analysis) and say
+     what changed in one line.
    - **Check every step and Just the big calls**: publish it (collection `models`,
      `organic_pages.CAPABILITIES["models"]`), `tm page await --page models`, end your turn with the
      reply button; then one unfiltered `ArtifactData` list and `tm organic decisions --run R --page
      models --json` (an answer in chat: `video: <option id>` per line, read with `--text`).
-     **Hands-off**: `tm organic decisions --run R --page models --by-rule --json` takes the
-     suggested models by rule; say which in one line. Either writes `03_wip/models_vNN.json`, which
-     the pack check holds the video and image models to.
+     **Hands-off**: `tm organic decisions --run R --page models --by-rule --json` takes the ★
+     models by rule; say which in one line. Either writes `03_wip/models_vNN.json` (each task's model
+     and variant), which the pack check and the paid-call guard hold the models and their inputs to.
+   - **A model the user writes in a task's field** is used without being blocked: price it (`tm tool
+     replicate_price`), check it against the six criteria (`model-prompting/README.md`) and say which
+     one fails.
    - **A chosen model without a recipe** (the message names it): write its recipe before any
      prompt, from the model's official prompting guide, into the workspace's
      `library/model-prompting/<owner>-<name>.md`: the title line `# <Model>: prompting recipe (checked
      YYYY-MM-DD)`, `Sources:` with each link, and the input fields from Replicate's API. The pack
      names it as `library/model-prompting/<file>`.
 1. **Read the model's recipe first**, before any prompt: `../../references/model-prompting/` holds
-   `gpt-image-2.md` (packshot work, character anchors, first frames), `minimax-h3.md` (the default
-   video model), `seedance-2.0.md` (the top tier; a person from a description), `seedance-1.5-pro.md`
-   (the budget tier), `seedance-2.5.md` (the premium tier), `veo-3.1.md` (image-to-video clips),
-   `kling-avatar-v2.md` (the lip-sync alternative) and `p-video-upscale.md` (Pruna's upscale, the
-   default upscaler). The pack names each
-   model's recipe as `references/model-prompting/<file>` (or `library/model-prompting/<file>`, one
-   you wrote); a model with no recipe is refused ("Write its recipe first").
+   one per model (the registry's `recipe` names it). The pack names each model's recipe as
+   `references/model-prompting/<file>` (or `library/model-prompting/<file>`, one you wrote); a model
+   with no recipe is refused ("Write its recipe first").
 2. **The video model** (OV6): the one chosen on the Models page. A run from before the page uses
-   its tier (`generation.quality_tier`: budget
-   `bytedance/seedance-1.5-pro`, **default `minimax/h3`**, top `bytedance/seedance-2.0`; premium
-   `bytedance/seedance-2.5` only when the user asks). A host image goes to MiniMax H3 whatever the
-   tier (Seedance refuses a photoreal face, E005); a person described in text goes to Seedance 2.0.
-   A sound-led format (ASMR) never goes to the budget tier. One video model per section. A model
-   the user names is checked against the six criteria (`model-prompting/README.md`): say which one
-   fails.
-3. **Rankings read on the day**: Artificial Analysis and Arena for the task (the links in
-   `model-prompting/README.md`), each with the date you read it (`models[].ranking`: source and
-   date, no older than `pricing.max_age_days`).
-4. **Live prices**: `tm tool replicate_price --run R <owner/model> <owner/model> ... --json` (free,
-   Replicate's public model pages; `--collection <slug>` adds a collection) writes the price file
-   in `02_research/models/`. Every cost line of the pack names that file and its date; a price file
-   older than `pricing.max_age_days` (7 days) is refused.
+   the registry's: a host image goes to its talking-person route's `specific_person` model (Seedance
+   refuses a photoreal face, E005), a person described in text to its `described` one, else the ★
+   image-to-video model. A sound-led format (ASMR) never goes to a video model the registry offers
+   only as budget. One video model per section. A model the user names is checked against the six
+   criteria (`model-prompting/README.md`): say which one fails.
+3. **Rankings**: a registry model's `models[].ranking` is `{"source": "model registry", "date":
+   <the registry's checked date>}`; only a model outside the registry needs a ranking read on the
+   day (Artificial Analysis or Arena, no older than `pricing.max_age_days`).
+4. **Live prices**: every cost line of the pack names the price file of step 0 and the date it
+   was read, at
+   the chosen variant's tier (`tm models list --task <task>` names it); a price file older than
+   `pricing.max_age_days` (7 days) is refused.
 5. **The speech route** (OV7, `speech.route`):
    - an on-screen talking character, human or animal: **native speech on H3** (`h3_native`), the
      dialogue written straight into the prompt; no voice reference unless the user asks (same text,
      at most 14 s);
    - an off-screen narrator: **ElevenLabs** by default (`elevenlabs_narrator`), the H3 narrator
      from the prompt (`h3_narrator`) as the alternative;
-   - **the lip-sync alternative** (`elevenlabs_lipsync`: an ElevenLabs line, then
-     `kwaivgi/kling-avatar-v2`) only on the user's request, or when the wording must be exact or a
+   - **the lip-sync alternative** (`elevenlabs_lipsync`: an ElevenLabs line, then the registry's
+     lip-sync model, `tm models list --task lipsync`, with its recipe: `kling-avatar-v2.md` for the
+     ★ one) only on the user's request, or when the wording must be exact or a
      brand voice is required (`speech.alternative_reason` says which);
    - no speech: `none`. An ElevenLabs route the stack does not have (no key, no credits) is refused.
    Lines that do not fit one 15 s take are not supported yet: shorten them or move a beat to
@@ -894,8 +882,8 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
    date; `totals` per kind, `ai_usd` in USD, `voice_credits` the characters the ElevenLabs lines
    read at the text-to-speech model's credit rate: the voice line's `model` is that model
    (`eleven_v4` unless the user picks another, `../../references/model-prompting/eleven-v4.md`),
-   `unit_price` its credits a character (0.5 for `eleven_v4`, 1 for `eleven_multilingual_v2` and for
-   a model not named), `unit` `character`; `currency_note` `1 USD = <rate> <CODE>` for an account in another currency), `facts` (each
+   `unit_price` its credits a character (the registry's, `tm models list --task voiceover`; 1 for a
+   model not in it), `unit` `character`; `currency_note` `1 USD = <rate> <CODE>` for an account in another currency), `facts` (each
    claim with its source, OV14), `risk` (the OV4 items hit, each with its mitigation, no
    percentages) and `sound` (the track, the trending sound).
    **An animation is drawn, not generated**: a whole animation has no video model, no stage items
@@ -917,8 +905,8 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
    seconds, which the take QA would find slow: add words, or shorten the take to a length the problem
    names, where both pace checks pass): fix them in the next `_vNN`.
 3. **Show `pack_vNN.md`** with every price and the date it was checked, the totals, the budget
-   left, and **the resolution question**: 768P (720p), 1080p, or 768P with Pruna's upscale
-   (`prunaai/p-video-upscale`), each with its cost for this pack (`checkin-cards.md`).
+   left, and **the resolution question**: 768P (720p), 1080p, or 768P with the upscale chosen on
+   the Models page, each with its cost for this pack (`checkin-cards.md`).
 4. `tm done E2 --run R`. **The `pack` check-in** ("Approve the generation pack and its cost") comes
    next, at every level (at Just the big calls inside the plan card). On the user's yes: `tm
    decide pack approve --run R --note "<their words>"`, then approve each planned amount: `tm
@@ -1008,8 +996,9 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      never run again. A record with none: ask the user to look at the Replicate dashboard, then `tm
      organic dashboard-checked --run R --name <item> --note "<what they saw>" --json`.
    - A failed prediction with no output is recorded as $0: say "confirm on the Replicate dashboard".
-2. **By production type**, the stage order of OV9, each image with GPT Image 2 (`gpt-image-2.md`:
-   `input_images`, `output_format: "png"`, `quality: "high"` for a face):
+2. **By production type**, the stage order of OV9, each image with the image model and variant
+   chosen at E1 (`03_wip/models_vNN.json`; GPT Image: `gpt-image-2.md`, `input_images`, its variant's
+   `quality` and `output_format: "png"`, never `quality: "auto"`):
    - **AI footage**: the packshots (the store's, made once per store and saved with `tm brand
      packshot`), a character anchor when a character recurs, then the first frames, each from the
      anchor and the packshot as `input_images`, with the realism checklist;
@@ -1176,8 +1165,8 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      prompt; the guard refuses a narrator's single take whose cuts are off the latest recorded
      voiceover (nothing is run or spent). A take of a later section gives `--offset <its start>`.
    - **the lip-sync alternative**, only on request or for exact wording or a brand voice: the
-     ElevenLabs line (`tm tool elevenlabs tts … --timestamps --cost <credits>`), then
-     `kwaivgi/kling-avatar-v2` (`kling-avatar-v2.md`) on the close-up frame; its contact sheet is
+     ElevenLabs line (`tm tool elevenlabs tts … --timestamps --cost <credits>`), then the
+     registry's ★ lip-sync model (its recipe, e.g. `kling-avatar-v2.md`) on the close-up frame; its contact sheet is
      checked for burned-in text.
    - **an animation** (free, no take, no QA tool): a subagent writes the animation's style module,
      `03_wip/<item>/explainer_v01.js`, from the same prompt and the accepted storyboard's module with
@@ -1252,8 +1241,8 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
    stills show>"`). A `redo` keeps F2 open, as in F1.
    **The upscale** (the 768P + upscale option) is an automatic step after the user accepted the
    take, at every level: the pack's upscale item through the guard (`tm tool replicate_run --run R
-   03_wip/<item>_vNN.json --name <item> --cost <its line cost> --json`, the spec per
-   `p-video-upscale.md`, its `video` the accepted take), then `tm organic upscale --run R --name
+   03_wip/<item>_vNN.json --name <item> --cost <its line cost> --json`, the spec per the chosen
+   upscaler's recipe and variant, its `video` the accepted take), then `tm organic upscale --run R --name
    <item> --json`. It checks only what an upscale may change (1080p in the take's shape, the frame
    rate and the sound as in the take: there, as long and as loud) and picks it by rule; the user
    is not asked again, and `tm organic pick` refuses it. One that fails stops (exit 2): show the

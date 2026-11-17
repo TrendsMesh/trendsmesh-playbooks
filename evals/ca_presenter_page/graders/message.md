@@ -6,8 +6,9 @@ focus: last_message
 PASS if the final message gives the talking-person options as rows of one table by situation, the plan's own
 first (exact wording needed: Gemini Omni 1.2 Flash, about 1.58 USD for a 15 s take), then the others: a person
 from a description (Seedance 2.0, about 2.70 USD, no casting face, so no paid casting), a specific person from an
-approved image and the user's own or a brand voice (MiniMax H3, about 1.20 USD; the voice one needs a voice sample
-of 2–15 s), and the fallback (ElevenLabs + Kling Avatar v2) only after a review shows a take looks or sounds wrong;
+approved image (MiniMax H3, about 1.20 USD), the user's own or a brand voice (Gemini Omni 1.2 Flash, about 1.58 USD,
+then the ElevenLabs Voice Changer, in credits), and the fallback (ElevenLabs + Kling Avatar v2) only after a review
+shows a take looks or sounds wrong;
 with the prices' date or source (Replicate); and it asks the user which situation fits (and whether another model)
 together with the plan's yes. It may give the path of the local run page (an `index.html` under
 `04_final/run_page_v…`) to open, with the answer given in chat.

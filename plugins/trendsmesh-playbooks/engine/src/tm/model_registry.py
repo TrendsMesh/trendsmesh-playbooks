@@ -7,12 +7,14 @@
     active(task)                  the task's rows a user may see: active models only, budget, suggested, best
     star(task)                    the row selected in advance (★)
     variants(id) / send(id, v)    a model's variants / the inputs the plugin always sends for variant v
+    send_problems(id, inputs)     what a call leaves out of its variant (every playbook's paid Replicate call)
     price(id, v)                  {usd | credits, per, checked} of variant v, as the provider bills it
     live_price(file, id, v)       the variant's price today from a `tm tool replicate_price` file, in the registry's unit
     route(name)                   talking_person, voice, lipsync_fallback, long_speech
     cannot(id) / with_limit(x)    a model's hard limits / the models with limit x (e.g. photoreal_face, E005)
     ai_markers()                  the providers and model names Meta's AI disclosure looks for (tm.ai_media)
     checked() / stale(today)      the day the prices were read / whether that is more than 30 days ago
+    left_out()                    the models tested and left out, or not used: never offered, never proposed again
 
 Only an `active` model is ever offered: `new` (found by the two-weekly review, not tested) and `removed` are never
 shown. Nothing here writes the registry: the owner reviews every change (`.github/workflows/model-review.yml`).
@@ -165,6 +167,29 @@ def variant_by_send(model_id: str, key: str, value: object, *, data: dict | None
     return None
 
 
+def send_problems(model_id: str, inputs: dict, *, data: dict | None = None) -> list[str]:
+    """What a call of a registry model leaves out of its variant, in words ([] when it sends one variant exactly, or
+    the model is not in the registry): Replicate's defaults are often the dear ones, so a call always sends its
+    variant's inputs (`send`; "source" means any value, the take's own), and never `quality: auto`."""
+    found = model(model_id.split(":", 1)[0], data=data)
+    if found is None or not isinstance(inputs, dict):
+        return []
+    out = []
+    if "quality_auto" in (found.get("cannot") or []) and str(inputs.get("quality") or "auto").lower() == "auto":
+        out.append(f'{found["id"]} needs its quality sent (low, medium or high), never "auto", the dearest variant.')
+    sends = {name: v.get("send") or {} for name, v in (found.get("variants") or {}).items() if v.get("send")}
+
+    def sent(want: dict) -> bool:
+        return all(inputs.get(k) not in (None, "") if w == "source" else str(inputs.get(k)).lower() == str(w).lower()
+                   for k, w in want.items())
+
+    if sends and not any(sent(w) for w in sends.values()):
+        ways = "; ".join(f"{n}: {json.dumps(w)}" for n, w in sends.items())
+        out.append(f"{found['id']} is sent without its variant: send one exactly ({ways}). The price shown is that "
+                   "variant's, and Replicate's default may cost more.")
+    return out
+
+
 def live_price(price_file: Path | str, model_id: str, variant: str, *, data: dict | None = None
                ) -> tuple[float, str, str]:
     """(price in the registry's unit, per, checked) of the variant in a `tm tool replicate_price` file: the tier its
@@ -308,8 +333,20 @@ def validate(data: dict, alias_table: dict | None = None) -> list[str]:
             out.append(f"routes {where}: {mid} is not in the registry")
         elif mid is not None and model(str(mid), data=data).get("status") != "active":
             out.append(f"routes {where}: {mid} is not active")
+    left = data.get("left_out") or []
+    for n, e in enumerate(left, 1):
+        if not (isinstance(e, dict) and str(e.get("id") or "").strip() and str(e.get("why") or "").strip()):
+            out.append(f"left_out {n}: needs an id and why")
+        elif e["id"] in seen and not e.get("task"):
+            out.append(f"left_out {e['id']} is a model of the registry: name the task it was left out of")
     if alias_table is not None:
+        known = seen | {e.get("id") for e in left if isinstance(e, dict)}
         for mid in alias_table:
-            if mid not in seen:
+            if mid not in known:
                 out.append(f"aliases: {mid} is not in the registry")
     return out
+
+
+def left_out(*, data: dict | None = None) -> list[dict]:
+    """The models tested and left out, or not used (never offered; the review does not propose them again)."""
+    return list(_data(data).get("left_out") or [])

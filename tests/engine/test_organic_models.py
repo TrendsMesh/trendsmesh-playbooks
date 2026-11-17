@@ -181,7 +181,7 @@ def test_hands_off_takes_the_registrys_selected_models_by_rule(tmp_path, capsys)
     chosen = models.chosen(run)
     assert chosen["by"] == "rule" and (chosen["video"]["model"], chosen["video"]["variant"]) == ("minimax/h3", "768P")
     assert chosen["upscale"]["model"] == "topazlabs/video-upscale"
-    assert chosen["images"]["send"] == {"quality": "medium", "output_format": "png"}
+    assert chosen["images"]["send"] == {"quality": "medium"}
 
 
 def test_the_users_own_model_is_taken_and_gets_a_recipe(tmp_path, monkeypatch):
@@ -206,7 +206,10 @@ def test_a_chosen_model_without_a_recipe_gets_one_written_in_the_library(tmp_pat
     _prices(run)
     models.build(run)
     got = models.take(run, by_rule=True)
-    assert "library/model-prompting/topazlabs-video-upscale.md" in got["recipes_to_write"]   # Topaz has no recipe yet
+    assert got["recipes_to_write"] == []                       # every ★ model has its recipe in the plugin
+    wan = next(e for e in json.loads((run.path / got["from"]).read_text(encoding="utf-8"))["plugin"]["video"].values()
+               if e["model"] == "alibaba/wan-3")
+    assert wan["recipe_to_write"] == "library/model-prompting/alibaba-wan-3.md"    # picked, its recipe is written first
     lib = trend_spool.workspace_of(run) / "library" / "model-prompting" / "minimax-h3.md"
     lib.parent.mkdir(parents=True)
     lib.write_text("# MiniMax H3: prompting recipe\n\nSources:\n- x\n", encoding="utf-8")

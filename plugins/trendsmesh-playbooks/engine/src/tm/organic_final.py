@@ -249,7 +249,8 @@ def _section_outputs(run: RunFolder, pack: dict, sec: dict) -> tuple[set[str], s
         made: set[str] = set()
         for st in pack["stages"]:
             for item in st["items"]:
-                if st["stage"] != organic_pack.IMAGES_STAGE and item.get("model") in (sec["model"], *organic_pack.UPSCALERS):
+                if st["stage"] != organic_pack.IMAGES_STAGE and (item.get("model") == sec["model"] or (
+                        st["stage"] == organic_pack.UPSCALE_STAGE and item.get("model"))):
                     made |= organic_specs.outputs(run, c.stem_of(item["name"]))[1]
         return {f.casefold() for f in made}, f"{sid}: a take of {sec['model']}"
     if kind == "animation":

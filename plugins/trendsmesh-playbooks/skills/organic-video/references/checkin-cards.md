@@ -109,7 +109,7 @@ stage has them to hear and pick (`flow.md#d2`), recorded with `tm page decision 
 
 **Approve the generation pack and its cost** (`pack`, after E2; at every level: the cost is
 confirmed while testing). From `pack_vNN.md`, in chat: the script with its timed lines, the
-production type and each section's model with why, its recipe and its ranking with the date read,
+production type and each section's model with why and its recipe (a model outside the registry: its ranking),
 the speech route, the stages and their items, **every cost line with its price and the date that
 price was checked**, the totals in USD (the account's currency with the rate when it differs) and
 the voice credits, **the budget left** for this run (`budget.per_run_usd` less what is spent and

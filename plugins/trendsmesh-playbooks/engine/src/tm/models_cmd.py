@@ -78,8 +78,8 @@ def _check(args: argparse.Namespace) -> int:
         text = "The model registry needs fixing:\n" + "\n".join(f"- {p}" for p in problems)
         cli.emit(args, {"status": "stop", "problems": problems, "message": text}, text)
         return 2
-    text = (f"The model registry holds ({len(model_registry.ids())} active models, prices checked "
-            f"{model_registry.checked().isoformat()}).")
+    text = (f"The model registry is in order: {len(model_registry.ids())} active models, prices checked "
+            f"{model_registry.checked().isoformat()}.")
     cli.emit(args, {"status": "done", "problems": [], "message": text}, text)
     return 0
 

@@ -30,24 +30,19 @@ laptop), "breaking news", literal product-category lines, outputs that do not ma
 (`ad_board_checked`)
 
 **CA5. Models per asset type: suggest, never impose.** Read the model's current prompting guide before writing a
-prompt and keep the rules used next to the prompt. **The talking person comes from one table, by situation** (issue
-#95; `../../references/model-prompting/README.md` holds the same table): the plan asks the user which situation
-applies before any casting, names it (`presenter.situation`), and suggests that row's model; the user may pick
-another (`presenter.user_choice`). The user sees the rows on the plan's page, with today's prices, and picks
-there (issue #100; `flow.md#s5`).
-
-| Situation (`presenter.situation`) | Model | Voice | Casting face | Cost per 15 s |
-|---|---|---|---|---|
-| A person generated from a description (`described`) | Seedance 2.0 | native | no (face block), so no paid casting | $2.70 |
-| A specific person from an approved image (`specific_person`) | MiniMax H3, reference mode | native | yes | $1.20 |
-| The user's own voice or a brand voice (`own_voice`) | MiniMax H3 with a voice sample (`reference_audio_urls`, 2–15 s) | close to the sample | yes | $1.20 |
-| Exact wording needed (`exact_wording`) | Gemini Omni 1.2 Flash (lines as text in the prompt) | native | as a reference | $1.58 |
-| Fallback, only when the review shows the take looks or sounds wrong (`fallback`) | ElevenLabs + Kling Avatar v2 | ElevenLabs | yes | about $0.84–1.65 |
-
-Prices from Replicate at 720p (768P for H3), read 2026-11-12; the plan reads them again. **Seedance cannot use the
-casting's face**: it refuses a photoreal face in its inputs (E005), so when the plan picks it for a person, it says
-so before the casting, and the person is cast from a description in the prompt, with no paid casting stills.
-Stills: GPT Image 2. Generation stays provider-neutral. (`ad_plan_checked`)
+prompt and keep the rules used next to the prompt. **The models are the model registry's**
+(`../../../data/models/registry.yaml`, issue #115): each asset type's task has a budget, a suggested and a best group
+with one model selected in advance (★), and the variant each sends; the user picks on the Models page at S5 (`tm
+models page`, `flow.md#s5`), and a model they name outside the registry is used once its recipe is written. **The
+talking person comes from the registry's talking-person route, by situation** (issue #95): the plan asks the user
+which situation applies before any casting, names it (`presenter.situation`: `described`, `specific_person`,
+`own_voice`, `exact_wording`, `fallback`), and suggests that row's model; the user may pick another
+(`presenter.user_choice`). The user sees the rows on the plan's page, with today's prices, and picks there (issue
+#100). The fallback (lip-sync to an ElevenLabs line) only when the review shows a take looks or sounds wrong.
+**A model whose registry limits hold `photoreal_face` cannot use the casting's face** (Seedance refuses a photoreal
+face in its inputs, E005), so when the plan picks it for a person, it says so before the casting, and the person is
+cast from a description in the prompt, with no paid casting stills. Generation stays provider-neutral.
+(`ad_plan_checked`)
 
 **CA6. The voice route is decided in S5.** Native voice of the video model, an ElevenLabs voice (library or the
 user's), a 1:1 clone of the user's VO recording, or a clone of a native take for extra VO. When a take has a flaw:

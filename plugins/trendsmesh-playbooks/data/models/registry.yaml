@@ -52,9 +52,9 @@ models:
     cannot: [quality_auto]
     tested: {date: 2026-11-17, result: "suggested for photos (medium), best at high"}
     variants:
-      low: {send: {quality: low, output_format: png}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
-      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
-      high: {send: {quality: high, output_format: png}, price: {usd: 0.128, per: image}, live: {criteria: "model variant=high"}}
+      low: {send: {quality: low}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
+      medium: {send: {quality: medium}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
+      high: {send: {quality: high}, price: {usd: 0.128, per: image}, live: {criteria: "model variant=high"}}
     tasks:
       photos: [{variant: low, group: budget}, {variant: medium, group: suggested, star: true}, {variant: high, group: best}]
       illustrations: [{variant: low, group: budget}, {variant: high, group: best}]
@@ -70,9 +70,9 @@ models:
     cannot: [quality_auto]
     tested: {date: 2026-11-17, result: "suggested for illustrations and image edits (medium)"}
     variants:
-      low: {send: {quality: low, output_format: png}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
-      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
-      high: {send: {quality: high, output_format: png}, price: {usd: 0.128, per: image}, live: {criteria: "model variant=high"}}
+      low: {send: {quality: low}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
+      medium: {send: {quality: medium}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
+      high: {send: {quality: high}, price: {usd: 0.128, per: image}, live: {criteria: "model variant=high"}}
     tasks:
       photos: [{variant: low, group: budget}, {variant: medium, group: suggested}, {variant: high, group: best}]
       illustrations: [{variant: low, group: budget}, {variant: medium, group: suggested, star: true}, {variant: high, group: best}]
@@ -88,8 +88,8 @@ models:
     cannot: [quality_auto]
     tested: {date: 2026-11-17, result: "budget and suggested for photos and illustrations"}
     variants:
-      low: {send: {quality: low, output_format: png}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
-      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
+      low: {send: {quality: low}, price: {usd: 0.012, per: image}, live: {criteria: "model variant=low"}}
+      medium: {send: {quality: medium}, price: {usd: 0.047, per: image}, live: {criteria: "model variant=medium"}}
     tasks:
       photos: [{variant: low, group: budget}, {variant: medium, group: suggested}]
       illustrations: [{variant: low, group: budget}, {variant: medium, group: suggested}]
@@ -105,7 +105,7 @@ models:
     cannot: [quality_auto]
     tested: {date: 2026-11-17, result: "best for photos and image edits (medium)"}
     variants:
-      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.09, per: image}, live: {criteria: "model variant=medium"}}
+      medium: {send: {quality: medium}, price: {usd: 0.09, per: image}, live: {criteria: "model variant=medium"}}
     tasks:
       photos: [{variant: medium, group: best}]
       image_edit: [{variant: medium, group: best}]
@@ -120,7 +120,7 @@ models:
     cannot: [quality_auto]
     tested: {date: 2026-11-17, result: "best for image edits (medium)"}
     variants:
-      medium: {send: {quality: medium, output_format: png}, price: {usd: 0.09, per: image}, live: {criteria: "model variant=medium"}}
+      medium: {send: {quality: medium}, price: {usd: 0.09, per: image}, live: {criteria: "model variant=medium"}}
     tasks:
       image_edit: [{variant: medium, group: best}]
 
@@ -565,6 +565,42 @@ models:
       default: {send: {}, price: {usd: 0, per: minute}}
     tasks:
       transcription: [{variant: default, group: budget}]
+
+# Tested and left out (the owner's test of 2026-11-17), or older ElevenLabs models the plugin does not use: never
+# offered, and the two-weekly review does not propose them again.
+left_out:
+  - {id: google/nano-banana-2.1, why: "left out after the 2026-11-17 test (photos)"}
+  - {id: black-forest-labs/flux-3-image, why: "left out for photos after the 2026-11-17 test (kept for illustrations)", task: photos}
+  - {id: xai/grok-imagine-image-2.0, why: "left out for photos after the 2026-11-17 test"}
+  - {id: qwen/qwen-image, why: "left out after the 2026-11-17 test"}
+  - {id: prunaai/z-image-turbo, why: "left out after the 2026-11-17 test"}
+  - {id: black-forest-labs/flux-2-klein-4b, why: "left out after the 2026-11-17 test"}
+  - {id: minimax/image-01, why: "left out after the 2026-11-17 test"}
+  - {id: krea/krea-3, why: "left out after the 2026-11-17 test"}
+  - {id: prunaai/p-video-2-pro, why: "left out after the 2026-11-17 test"}
+  - {id: bytedance/video-upscaler, why: "left out after the 2026-11-17 test (defaults to 4K and 60 fps)"}
+  - {id: wan-video/wan-2.2-s2v, why: "left out after the 2026-11-17 test"}
+  - {id: bytedance/omni-human-1.5, why: "left out after the 2026-11-17 test"}
+  - {id: eleven_text_to_sound_v2, why: "deprecated; ElevenLabs removes it on 2027-03-01"}
+  - {id: music_v1, why: "deprecated; ElevenLabs removes it on 2027-01-31"}
+  - {id: eleven_v3, why: "older than eleven_v4"}
+  - {id: eleven_v3_conversational, why: "for agents"}
+  - {id: eleven_turbo_v2, why: "older"}
+  - {id: eleven_turbo_v2_5, why: "older"}
+  - {id: eleven_flash_v2, why: "older"}
+  - {id: eleven_multilingual_v1, why: "older"}
+  - {id: eleven_english_sts_v1, why: "older voice changer"}
+  - {id: eleven_english_sts_v2, why: "English only; the plugin uses eleven_multilingual_sts_v2"}
+  - {id: eleven_multilingual_ttv_v2, why: "voice design, not used"}
+  - {id: eleven_ttv_v3, why: "voice design, not used"}
+  - {id: eleven_realtime_v1_max, why: "realtime, not used"}
+  - {id: eleven_realtime_v1_mini, why: "realtime, not used"}
+  - {id: music_v2, why: "older than music_v2_5 (its plan shape is still read for uploads)"}
+  - {id: scribe_v1, why: "older"}
+  - {id: scribe_v2, why: "older"}
+  - {id: scribe_v2_medical, why: "medical, not used"}
+  - {id: scribe_v2_realtime, why: "realtime, not used"}
+  - {id: scribe_v3_live, why: "live, not used"}
 
 routes:
   # The talking person, by situation (Create an ad's CA5, presenter.situation; Organic AI video's host). Prices per

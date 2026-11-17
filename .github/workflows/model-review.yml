@@ -1,0 +1,33 @@
+name: Model review
+
+# Every two weeks (the 1st and the 15th), the model registry against the public rankings and prices (issue #115,
+# section 5): one issue for the owner, mentioning @piotr-lezon. It reads only public pages (Arena's dataset on Hugging
+# Face, Artificial Analysis, Replicate's model pages, ElevenLabs' models page), needs no paid key, and never changes
+# plugins/trendsmesh-playbooks/data/models/registry.yaml: the owner decides, the maintainer applies.
+on:
+  schedule:
+    - cron: "0 7 1,15 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  review:
+    name: review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML
+        run: python -m pip install --quiet pyyaml
+      - name: Compare and open the review issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: python .github/scripts/model_review.py

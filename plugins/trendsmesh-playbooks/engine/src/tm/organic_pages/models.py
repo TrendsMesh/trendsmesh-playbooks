@@ -178,7 +178,10 @@ def _rows(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, 
           price_path: Path | None) -> tuple[list[dict], dict, list[str]]:
     from tm.organic_gates import item_id
 
-    max_age = config.get(config.load(run), "pricing.max_age_days") or 7
+    try:
+        max_age = config.get(config.load(run), "pricing.max_age_days") or 7
+    except ValueError:                                   # a run whose config is not written yet
+        max_age = 7
     out, plugin, problems = [], {}, []
     priced_needed = [m for t_ in sections.values() for m in price_ids([t_])]
     if priced_needed and price_path is None:
@@ -196,6 +199,8 @@ def _rows(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, 
             oid = item_id(f"{model}-{variant}", taken)
             reason, cost, unit_price = None, None, None
             label = f"{row['name']} ({variant})" if model in twice else row["name"]   # a model in two groups
+            if row["provider"] == "local" and task == "upscale":
+                label = t("no_upscale")
             option = {"id": oid, "label": label, "group": t(f"group_{row['group']}"), "default": False,
                       "recommended": row["star"]}
             if row["provider"] == "replicate":
@@ -221,8 +226,8 @@ def _rows(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, 
                 unit_price, cost = price.get("usd", 0), 0.0
             words = [row["good_for"]]
             if unit_price is not None:
-                money = t("unit_credits" if "credits" in price else "unit_price", price=f"{unit_price:g}",
-                          unit=t(f"per_{per}"))
+                each = {"price": f"{unit_price:g}", "unit": t(f"per_{per}")}
+                money = t("unit_credits", **each) if "credits" in price else t("unit_price", **each)
                 words.append(money if unit_price else t("free"))
             option["means"] = " · ".join(w for w in words if w)
             if face and "photoreal_face" in row["cannot"] and sid not in ("images", "photos"):
@@ -250,7 +255,7 @@ def _rows(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, 
         for o in options:
             o["recommended"] = o is pick
         out.append({"id": sid, "kind": "one", "title": t(f"task_{sid}"),
-                    "hint": t(f"hint_{sid}" if sid in ORGANIC else "hint_task"),
+                    "hint": t(f"hint_{sid}") if sid in ORGANIC else t("hint_task"),
                     "options": options, "text": {"label": t("own_model"), "value": ""}})
         plugin[sid] = entries
     return out, plugin, problems

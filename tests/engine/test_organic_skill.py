@@ -264,7 +264,7 @@ def test_ai_video_steps_name_the_engine_commands():
                "tm organic decisions --run R --page gate_images", "tm organic pick", "tm organic redo",
                "input_images", "tm decide images accept", "tm organic text look", "tm organic text approve"],
         "f2": ["timed shot list", "a brisk, energetic TikTok pace, no pauses between sentences", "ratio: \"9:16\"",
-               "Seedance 2.0", "kwaivgi/kling-avatar-v2", "burned-in text", "tm tool take_qa",
+               "Seedance 2.0", "lip-sync model", "kling-avatar-v2.md", "burned-in text", "tm tool take_qa",
                "tm page decision --run R video --record",
                "tm organic pick --run R --stage takes", "fails_qa", "tm tool deliver speed"],
         "g1": ["OrganicCaptions", "keepAudio", "volume", "zoom", "audioTracks", "music", "word groups",

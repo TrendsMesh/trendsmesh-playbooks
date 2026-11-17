@@ -16,9 +16,10 @@ Sources:
 - **Only for the "720p + upscale" answer to the resolution question** (OV8, the pack's `resolution.choice`
   `768p_pruna`): the picked take is upscaled to 1080p as the one item of the pack's upscale stage, priced on its own
   cost line. 720p (768P on MiniMax H3) and native 1080p are the other two answers; each is shown with its cost.
-- `prunaai/p-video-upscale` is the suggested upscaler (the user's decision, round 30, 2026-11-06). Topaz
-  (`topazlabs/video-upscale`) and ByteDance (`bytedance/video-upscaler`, `scene: aigc`) only when the user asks;
-  each needs its own recipe first.
+- Which upscaler, and its variants (standard, turbo) and prices, is the model registry's `upscale` task
+  (`data/models/registry.yaml`, #115; the owner's test of 2026-11-17 selects Topaz, `topaz-video-upscale.md`, with
+  Pruna's standard and turbo upscales beside it). Pruna was the suggested upscaler from round 30 (2026-11-06).
+  Always send the variant: `target: "1080p"` and `turbo` true or false.
 - There is no independent ranking of video upscalers (2026-11-06): the pack's ranking line names the research above
   and its date.
 

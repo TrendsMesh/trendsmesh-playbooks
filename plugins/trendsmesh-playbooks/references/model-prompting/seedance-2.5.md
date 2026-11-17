@@ -17,11 +17,9 @@ Sources:
   (https://arena.ai/leaderboard/video/image-to-video, updated 2026-11-05), Seedance 2.5 1488 (#3).
 
 ## When the plugin uses it
-- **The premium quality tier, only when the user asks for it** (OV6): `bytedance/seedance-2.5`, 720p. It is never
-  suggested on its own and is not a `generation.quality_tier` setting: the pack names it as the user's model
-  (`user_named: true`, the six criteria answered). At 720p with image inputs it costs about 28 % more than
-  Seedance 2.0 ($3.47 against $2.70 per 15 s); with a video input it is about four times as much, so it is given no
-  video input.
+- **Where the model registry offers it** (`data/models/registry.yaml`, #115: its groups, its 720p variant and its
+  price): the user picks it on the Models page. With a video input it costs about four times as much, so it is given
+  no video input.
 - **Never with a photoreal face in its inputs**: the same face block as Seedance 2.0 (Replicate E005, `seedance-2.0.md`).
   A host image goes to MiniMax H3 reference mode (`minimax-h3.md`); a person from a description is written in the
   prompt, as for Seedance 2.0. The tricks that hide a face from the check are never used.

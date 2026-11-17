@@ -564,7 +564,7 @@ def test_organic_suite_loads_with_ten_cases_and_its_budget():
     assert "read_declaration" in _case("organic", "O3")["pass"]
     assert "normalized_alignment" in _case("organic", "O5")["pass"]
     o6 = _prose(_case("organic", "O6"))
-    assert "seedance-1.5-pro" in o6 and "seedance-2.5" in o6 and "did not fit the budget" in _case("organic", "O6")["pass"]
+    assert "seedance-2.0" in o6 and "seedance-2.5" in o6 and "seedance-1.5" not in o6 and "did not fit the budget" in _case("organic", "O6")["pass"]
     assert "number words" in _case("organic", "O4")["pass"]
     assert "drop-slot" in _case("organic", "O9")["pass"]
     o2 = _case("organic", "O2")
@@ -577,7 +577,7 @@ def test_organic_suite_loads_with_ten_cases_and_its_budget():
     assert "O2's proposals page" in o4 and "tm organic start --run <O2's run>" in o4 and "O3's run folder" not in o4
     assert "at Hands-off" in o4 and "A to Z" not in o4 + _case("organic", "O4")["title"]          # N3: the page's level
     o8 = " ".join(_case("organic", "O8")["steps"])
-    assert "a person described in text" in o8 and "Seedance 2.0, the top quality tier" in o8 and "O7" not in o8   # N4
+    assert "a person described in text" in o8 and "Seedance 2.0, the registry's route for a person described in words" in o8 and "O7" not in o8   # N4
     for cid in ("O5", "O6", "O7", "O8"):
         assert "O2's" in " ".join(_case("organic", cid)["steps"]) and "start it" in " ".join(_case("organic", cid)["steps"]), cid
     # m7: O1 runs A0 and A1; m6: O9 can deliver (one script day, one to drop, the rest skipped)

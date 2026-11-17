@@ -1,0 +1,6 @@
+{"features": [], "rows": [
+ {"row_idx": 0, "row": {"model_name": "Gemini Omni 1.2 Flash", "organization": "google", "rank": 1, "category": "overall", "leaderboard_publish_date": "2026-11-09"}},
+ {"row_idx": 1, "row": {"model_name": "Acme Motion 2 (720p)", "organization": "acme", "rank": 2, "category": "overall", "leaderboard_publish_date": "2026-11-09"}},
+ {"row_idx": 2, "row": {"model_name": "MiniMax H3", "organization": "minimax", "rank": 3, "category": "overall", "leaderboard_publish_date": "2026-11-09"}},
+ {"row_idx": 3, "row": {"model_name": "MiniMax H3", "organization": "minimax", "rank": 1, "category": "portrait", "leaderboard_publish_date": "2026-11-09"}}
+]}

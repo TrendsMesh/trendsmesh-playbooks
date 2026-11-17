@@ -113,10 +113,10 @@ cases:
     steps:
       - "On O2's proposals page, ask the person to choose one more proposal, AI footage with their product, as an AI video; read the page again and start it, as in O4. Work in that production run. If the page holds no such proposal, record the case as blocked with that note."
       - "This case has no file need, so ask for the product's packshot (one file) here, when the case gets to it, then show the spending check-in with the estimate within the suite's AI dollars left and approve it with `tm budget approve`."
-      - "Make the footage with the product 1:1 from the packshot. Carry: the recipe uses seedance-1.5-pro (the budget tier) and seedance-2.5 (premium, only when the person asks for it): take one real prediction of each recipe the case's budget allows, and compare the price Replicate billed with the price the recipe states. If seedance-2.5 does not fit the budget, say so and record what was proved."
+      - "Make the footage with the product 1:1 from the packshot. Carry: the model registry's best image-to-video models, seedance-2.0 and seedance-2.5 (picked on the Models page, its 720p variant sent): take one real prediction of each the case's budget allows, and compare the price Replicate billed with the registry's price. If seedance-2.5 does not fit the budget, say so and record what was proved."
     pass: >-
-      Each Seedance recipe tried (seedance-1.5-pro, seedance-2.5) took a real prediction, and its
-      cost matches the price the recipe states (the note holds both numbers), or the note says
+      Each Seedance model tried (seedance-2.0, seedance-2.5) took a real prediction, and its
+      cost matches the registry's price (the note holds both numbers), or the note says
       seedance-2.5 did not fit the budget; the product shot matches the packshot.
     judge: >-
       Does the product match the packshot in every shot?
@@ -141,7 +141,7 @@ cases:
     needs: [key, budget, human_verdict]
     kinds: [ai_usd]
     steps:
-      - "On O2's proposals page, ask the person to choose one more proposal as an AI video, one with a person described in text (no host image), so its pack makes that person with Seedance 2.0, the top quality tier; read the page again and start it, as in O4. Work in that production run. If the page holds no such proposal, record the case as blocked with that note."
+      - "On O2's proposals page, ask the person to choose one more proposal as an AI video, one with a person described in text (no host image), so its pack makes that person with Seedance 2.0, the registry's route for a person described in words; read the page again and start it, as in O4. Work in that production run. If the page holds no such proposal, record the case as blocked with that note."
       - "Note the run's spend. Approve the smallest check-in (`tm budget approve`) the case needs within the suite's AI dollars left."
       - "Send a spec Replicate rejects at validation: Seedance 2.0 with a photoreal AI face as input (E005). The engine refuses the pack's own host image before any call, so use a second photoreal face file that is not the host image (ask the person for one), on a pack item the checked pack prices for Seedance 2.0."
       - "If the engine's own guard stops the call first (the call is \"not run\", with no record), that passes the engine but is not the E005 proof: record the case as not proved for E005 (not a fail), with the guard's words in the note."

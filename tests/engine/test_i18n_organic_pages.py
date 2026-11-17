@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from tm import i18n, kit, organic, organic_pack, organic_pages, organic_qa, organic_week_delivery
+from tm import i18n, kit, model_registry, organic, organic_pack, organic_pages, organic_qa, organic_week_delivery
 from tm.organic_pages import gate, proposals, script, week
 from tm.playbooks import ORGANIC_VIDEO
 from tm.run_page import organic_plan, organic_video
@@ -71,6 +71,8 @@ def _choice_keys() -> set[str]:
     keys |= {intake._I + f"resolution_{r}" for r in intake.RESOLUTIONS}
     keys |= {models._M + k for k in found(models, r"""\bt\(["']([a-z_]+)["']""")}
     keys |= {models._M + f"{kind}_{task}" for kind in ("task", "hint") for task in models.TASKS}
+    keys |= {models._M + f"task_{task}" for task in model_registry.tasks()}             # any playbook's (#115)
+    keys |= {models._M + f"per_{per}" for per in model_registry.PER}
     keys |= {models._M + f"group_{g}" for g in models.GROUPS}
     return keys | {taste._T + k for k in found(taste, r"""\bt\(["']([a-z_]+)["']""")}
 

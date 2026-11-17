@@ -96,9 +96,17 @@ page and one in chat count the same. Rules: `rules.md`.
 <a id="s5"></a>
 ## S5 Production plan and its cost (CA5 to CA7)
 
+- **The Models page** (issue #115): the models of each asset type in the plan are the model registry's
+  (`../../../data/models/registry.yaml`). Read today's prices, free: `tm models ids --task <task> ...` names the
+  models to price and `tm tool replicate_price --run R <those ids> --json` reads them, for the plan's tasks (`photos`, `illustrations`, `image_edit`, `image_to_video`,
+  `talking_person`, `voiceover`, `music`, `sound_effects`, `upscale`: `tm models list` names them). Then `tm models
+  page --run R --task <task> ... --units <units.json> [--face] --json` (`--face` when the casting gives a photoreal
+  face: Seedance is greyed out, E005), published and awaited like every page; `tm models decisions --run R --json`
+  (`--by-rule` at Hands-off: the ★ models) writes `03_wip/models_vNN.json`, and each line's `model` is that task's
+  choice, sent with its variant (`tm models list --task <task>` gives what each variant sends). Each model's price is
+  its price per unit as the provider bills it; nothing is ranked live.
 - Read each model's prompting guide first (`../../references/model-prompting/`; a model without one: find its
-  current guide, save it with its date, and keep the rules next to the prompt). Live prices: `tm tool
-  replicate_price`, saved in `02_research/` with the date.
+  current guide, save it with its date, and keep the rules next to the prompt).
 - `03_wip/production_plan_vNN.json`: `{"voice_route" (native, elevenlabs_voice, user_vo, clone_take), "lines":
   [{"item", "type" (an asset type: presenter, hook_scene, product_shot, still, slide, animation, music, sfx, voice,
   upscale, transcription), "stage" (pre_video, or video for the takes, priced again at G3), "model", "alternative",
@@ -110,27 +118,27 @@ page and one in chat count the same. Rules: `rules.md`.
   and the engine refuses call N + 1. Without `calls` a line is one call.
 - **Music from ElevenLabs is priced by the second:** `tm ad prices --run R` saves ElevenLabs' dated price table as
   the line's price file; the line gives `seconds` (one take's length) and costs at least the seconds at the model's
-  rate (`music_v2_5` was billed about 77.5 credits a second, five times the docs' "900 a minute"), a take a call.
+  rate (the registry's billed rate, about five times the docs' "900 a minute"), a take a call.
   Never take Refresh an ad's 220 credits a take: that was a different job. A `voice` line is the
-  ElevenLabs model (`eleven_v4` unless the user picks another, `../../references/model-prompting/eleven-v4.md`)
-  and its cost the lines' characters at that model's rate (0.5 credits a character for v4, 1 for
-  `eleven_multilingual_v2`); the lines write numbers, dates and percentages out as words in the market's
-  language, which the take is recorded in (`language_code`).
+  ElevenLabs model chosen for `voiceover` (the registry's ★ unless the user picks another,
+  `../../references/model-prompting/eleven-v4.md`) and its cost the lines' characters at that model's rate (the
+  registry's); the lines write numbers, dates and percentages out as words in the market's language, which the take
+  is recorded in (`language_code`).
 - **A model the user names is their choice only when it is plain:** a line made from the user's own words for a
   model (a pick, a change, a new take) keeps those words in `user_named`. When they don't name one model exactly
   ("Gemini Sequence 2.0" when no such model exists), ask one short question before any paid call ("Do you mean
   Seedance 2.0?") and keep their answer in `model_confirmed`; the paid-call guard refuses the line until then, and
   refuses a call whose model (the spec's, or ElevenLabs' `--model`) is not the line's.
-- **The talking person** (lines of type `presenter`: the casting at `pre_video`, the take at `video`) comes from CA5's
-  table, by situation: ask the user which applies before any casting, and write `"presenter": {"situation"
+- **The talking person** (lines of type `presenter`: the casting at `pre_video`, the take at `video`) comes from the
+  registry's talking-person route (CA5), by situation: ask the user which applies before any casting, and write `"presenter": {"situation"
   (described, specific_person, own_voice, exact_wording, fallback), "user_choice" (true when the user picked another
   model than the row's), "why" (the fallback only: what the review showed)}`. Each take line may name its `speaker`
   (the board's). With **Seedance** (a person from a description), say before the casting that a casting face can't
   be used: the person is cast from a description in the prompt, and the plan has no casting line. One take per
   speaker whose lines fit one take (CA4).
 - **The talking person is chosen on the plan's page** (issue #100), not only in chat. Before the plan's check-in,
-  read today's price of each row's model: `tm tool replicate_price --run R bytedance/seedance-2.0 minimax/h3
-  google/gemini-omni-1.2-flash kwaivgi/kling-avatar-v2` (free), and name the file as `presenter.price_file`. Write
+  read today's price of each row's model: `tm models ids --task talking_person --task lipsync` names them and `tm
+  tool replicate_price --run R <those ids>` reads them (free); name the file as `presenter.price_file`. Write
   the situation that fits best as `presenter.situation`. The page shows CA5's rows, your situation first, each with
   its model, what it needs (a description, a face, a voice sample, the lines as text) and its price for a 15 s take,
   and the user picks the situation and the model (the row's own, or another of the table's; the fallback only once a

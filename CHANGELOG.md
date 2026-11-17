@@ -51,6 +51,18 @@ What changed in each version of the TrendsMesh playbooks plugin.
   overlays are drawn over it with the same sets as organic videos, so an ad and an organic video of a brand look
   like the same brand. The layer check still sees every caption and overlay. Create an ad now installs the video
   editing tools (Remotion) for this. Refresh an ad keeps copying the original ad's captions.
+- **One list of models for every paid step (the model registry).** Which model makes which image, video, voice,
+  sound or upscale, the variant it is sent with, its price and its limits now live in one file, from the owner's blind
+  test of 2026-11-17, and every paid playbook reads it. Organic AI video, Create an ad and Refresh an ad show the same
+  Models page: per task a budget, a suggested and a best choice with the selected one ticked, each with its price per
+  unit and one sentence, and a field for your own model. Only price and availability are checked in a run, so the list
+  no longer changes from run to run. Every call sends its variant (MiniMax H3 at 768P unless you choose 1080p, GPT
+  Image never at the dearer "auto" quality), so the price shown is what it costs. Sound effects use ElevenLabs'
+  current model, and Topaz's upscale is priced per second as Replicate bills it. Seedance 1.5 Pro, gone from
+  Replicate, is gone here too; a talking person in your own or a brand voice is now Gemini Omni with the Voice Changer.
+- **A model review every two weeks.** A scheduled check compares the public rankings and Replicate's and ElevenLabs'
+  pages with the list and opens one issue for the owner with what is new, what changed price and what is gone.
+  Nothing in the list changes without the owner's decision.
 
 ## 0.13.1
 

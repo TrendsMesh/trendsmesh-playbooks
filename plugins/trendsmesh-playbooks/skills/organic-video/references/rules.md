@@ -61,13 +61,15 @@ organic page`, `tm organic decisions`, `tm page await`: OV12).
 - OV3: Recreate needs at least 2 evidence videos with the same structure; a style spec is read
   from at least 2 evidence videos.
 - OV4: the nine risk items; no percentages.
-- OV6: budget `bytedance/seedance-1.5-pro`; default `minimax/h3` (768P, $0.08/s); top
-  `bytedance/seedance-2.0` (720p, $0.18/s); premium on request `bytedance/seedance-2.5`.
+- OV6: the models, their variants and prices are the model registry's (`../../../data/models/registry.yaml`,
+  `tm models list --task <task>`, #115), chosen on the Models page (E1); the ★ model of each task is selected in
+  advance, a host image goes to the talking-person route's `specific_person` model, a person described in words to
+  its `described` one.
 - OV7: a script sized at 2.8 to 3 words per second (`qa.wps_min`, `qa.wps_max`); at least 1.5 s
   after the last line; a slow take sped up by up to about 1.25×; a voice reference only on
   request, same text, at most 14 s; real narrator voices run 2.5 to 3.8 words a second.
-- OV8: 720p (768P on H3), 1080p, or 720p + upscale; the default upscaler
-  `prunaai/p-video-upscale` ($0.02/s at 1080p); prices no older than `pricing.max_age_days` (7).
+- OV8: 720p (768P on H3), 1080p, or 720p + upscale; the upscaler is the one chosen on the Models page (the
+  registry's `upscale` task); prices no older than `pricing.max_age_days` (7).
 - OV9: a take's transcript at least 90 % of the script; images redone once automatically at
   most; videos never.
 - OV10: 9:16, 1080×1920, H.264, AAC 48 kHz, −14 LUFS (ASMR about −16); safe zone x 90–880, y
@@ -85,7 +87,7 @@ organic page`, `tm organic decisions`, `tm page await`: OV12).
 - OV12: the video as a 1080p upload copy under 15 MB, the cover as JPG, the script as `.md`;
   previews 720p, CRF about 27.
 - Config defaults (PLAYBOOK §7): `budget.per_run_usd` 5, `budget.per_week_usd` 5; `generation`
-  replicate, default tier, 768p, no upscale; `publishing.tool` none.
+  replicate, 768p, no upscale; `publishing.tool` none.
 
 ## OV1 to OV14 (PLAYBOOK.md section 4, verbatim)
 

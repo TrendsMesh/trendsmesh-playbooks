@@ -168,7 +168,7 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
 - **A production run** starts at D1, with the output chosen on the page. **A script to film**: D1
   (the recipe), E3 (the script page and its check-in), H1 (how to post). **An AI video**: D1 (the
   doctor for the media tools, the credits, the production type and product, the recipe), D2 (the
-  taste picks), E1 (the models, their recipes, rankings and live prices, the speech route), E2 (the
+  taste picks), E1 (the models from the model registry, their recipes and live prices, the speech route), E2 (the
   pack and its cost), F1 (the images), F2 (the takes and their QA), G1 (the edit, the final, the
   upload copy and the cover), G2 (the posting kit), G4 (the delivery page with every step), H1
   (how to post). Continue each started run in turn: `tm next --run <its folder>`.
@@ -221,8 +221,8 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   `read_declaration` again); if the rules are not there, or the publish refused them, say so
   plainly, once, and take the decisions in chat.
 - **The pages of choices** (issue #83): the intake at A0 (`tm organic page intake`) and the Models
-  page before E1 (`tm organic page models`, issue #86: each task's models from today's rankings and
-  Replicate prices), one option set per question with the default ticked and one Done button;
+  page before E1 (`tm organic page models`, issue #86: each task's models from the model registry, #115, with
+  today's Replicate prices), one option set per question with the default ticked and one Done button;
   their collections are `intake` and `models`, read with `tm organic decisions --page
   intake|models` into the same files an answer in chat makes (`flow.md#a0`, `#e1`). The style,
   voice and music (D2) are on the run page (above). Nothing on them spends money.

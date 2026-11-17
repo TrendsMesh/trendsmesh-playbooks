@@ -868,8 +868,6 @@ organic:
     unit_price: "{price} USD per {unit}"
     audio_variant: the voiceover replaces the model's own sound, so the variant without audio is priced
     face: doesn't accept a frame with a realistic face
-    recipe_to_write: recipe to write
-    rank: "#{place} on {source} ({date})"
     notes: Notes
     notes_label: Anything Claude should know about the models
     total: "This video on Replicate:"

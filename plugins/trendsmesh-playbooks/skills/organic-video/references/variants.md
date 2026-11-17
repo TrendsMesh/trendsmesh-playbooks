@@ -41,7 +41,7 @@ in the living spec, `spec/03-organic-ai-video/VARIANTS.md`.
 ## 3. Production types
 | Type | How | Status | In the plugin |
 |---|---|---|---|
-| AI footage with native sound (ASMR, mukbang) | H3 from first frames; sound kept | tested (pet store: grooming ASMR, lick-mat mukbang) | built: H3 from picked first frames; a sound-led format never on the budget tier; ASMR finished near −16 LUFS (`--asmr`) |
+| AI footage with native sound (ASMR, mukbang) | H3 from first frames; sound kept | tested (pet store: grooming ASMR, lick-mat mukbang) | built: H3 from picked first frames; a sound-led format never on a budget-only video model of the registry; ASMR finished near −16 LUFS (`--asmr`) |
 | Talking AI human host, English | H3, dialogue in the prompt; product via reference mode | tested (pet store: "what my husky eats in a day"; ExampleEdu host in English) | built: H3, a host image always goes to H3; reference mode needs `ratio: "9:16"` |
 | Talking AI human host, Polish | H3, dialogue in the prompt, word for word; slower pace, sped up 1.2× in the edit | tested (ExampleEdu, A–Z) | built: QA measures the pace; `tm tool deliver speed`, at most 1.25× |
 | Talking AI animal | H3 reference mode, dialogue in the prompt | tested (pet store: bath-day skit) | built: H3 reference mode, native speech |

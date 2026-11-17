@@ -21,7 +21,8 @@ the upscaler, or an item's outside the images stage), whatever stage it sits in;
   page (`03_wip/models_vNN.json`), else for a video model the one at the pack's resolution (768p or 720p → H3's
   "768P", 1080p → "2K"; any other choice keeps 768P), else the registry's selected one. A model whose limits hold
   `quality_auto` (GPT Image) sends a `quality`, never "auto"; one whose limits hold `first_frame_with_references`
-  (H3) takes no first frame together with reference media (E006);
+  (H3) takes no first frame together with reference media (E006); a GPT Image call sends `output_format: "png"`
+  (its recipe);
 - minimax/h3 (its recipe): reference mode needs `ratio: "9:16"`; each local audio reference is 2–15 s (ffprobe
   through `tm.tools._common.probe`); `duration` ≤ 15;
 - a model whose registry limits hold `photoreal_face` (Seedance, any version): no input is the pack's `host.image`,
@@ -108,6 +109,7 @@ VOICE_REFERENCES = ("reference_audio_urls", "reference_audios")   # H3's and See
 H3_AUDIO_S = (2.0, 15.0)              # OV10: an H3 audio reference is 2–15 s
 H3_TAKE_MAX_S = 15
 RESOLUTION_KEYS = ("resolution", "target_resolution", "target", "size")   # where a variant sends its resolution
+GPT_IMAGE = "openai/gpt-image-"       # any GPT Image: output_format "png" (gpt-image-2.md)
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".avif", ".bmp")
 DONE = "done"
 UNCERTAIN = ("unknown", "not started")   # no prediction id, and Replicate may have started it
@@ -419,6 +421,8 @@ def check(run: RunFolder, spec: dict, spec_path: Path, *, name: str | None = Non
                        "speech.voice_reference and check the pack again.")
     if model_registry.model(model or "") is not None:
         _registry(run, pack, model, found, inp, out)
+    if str(model or "").startswith(GPT_IMAGE) and inp.get("output_format") != "png":
+        out.append(f'{model} needs output_format: "png" (got {inp.get("output_format")!r}).')   # its recipe's
     if model == H3:
         _h3(pack, inp, spec_path.parent, out)
     elif organic_pack.face_blocked(model) and pack["host"].get("image"):

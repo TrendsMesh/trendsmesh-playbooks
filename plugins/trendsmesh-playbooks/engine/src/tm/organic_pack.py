@@ -754,10 +754,10 @@ def _resolution(pack: dict, video: set[str], out: list[Problem]) -> None:
         _bad(out, "resolution.choice", f"The choice {res['choice']!r} is not one of the options.",
              "Choose one of the options.")
     upscales = [item["name"] for st in pack["stages"] if st["stage"] == UPSCALE_STAGE for item in st["items"]
-                if item["model"] in UPSCALERS]
+                if _text(item["model"])]             # the registry's upscaler, or the user's own (never blocked)
     if str(res["choice"]).endswith(f"_{UPSCALE}") and not upscales:
-        _bad(out, "stages", f"The chosen resolution {res['choice']} upscales, and no {UPSCALE_STAGE} stage item uses "
-             f"an upscaler of the model registry ({', '.join(UPSCALERS)}).",
+        _bad(out, "stages", f"The chosen resolution {res['choice']} upscales, and no {UPSCALE_STAGE} stage item names "
+             f"its upscaler (the Models page's, else the registry's: {', '.join(UPSCALERS)}).",
              f"Add an {UPSCALE_STAGE} stage with the upscale item and its seconds, and its cost line.")
     elif upscales and not str(res["choice"]).endswith(f"_{UPSCALE}"):
         _bad(out, "stages", f"{', '.join(upscales)} upscales, and the chosen resolution {res['choice']} does not.",

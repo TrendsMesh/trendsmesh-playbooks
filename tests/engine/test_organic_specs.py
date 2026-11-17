@@ -287,7 +287,7 @@ def test_gpt_image_sends_the_chosen_variant_never_auto(ov):
     spec["input"]["output_format"] = "webp"
     spec["input"]["quality"] = "high"                 # not the variant the user chose and was priced (medium)
     problems = organic_specs.check(ov, spec, _spec(ov, "host", spec))
-    assert any('set output_format to "png"' in p for p in problems), problems
+    assert any('output_format: "png"' in p for p in problems), problems
     assert any('set quality to "medium"' in p for p in problems), problems
     for quality in ("auto", None):
         spec["input"]["quality"] = quality
@@ -543,7 +543,8 @@ def test_refresh_ad_has_no_precheck(tmp_path, engine, capsys, monkeypatch):
     s.budgets = {"ai_usd": 5.0}
     state.save(run, s)
     _record(run, "hook", 1)
-    spec = _spec(run, "hook card", HOST | {"input": {"prompt": "A snowy street", "output_format": "webp"}})
+    spec = _spec(run, "hook card", HOST | {"input": {"prompt": "A snowy street", "output_format": "webp",
+                                                     "quality": "low"}})   # a variant, sent: the registry's rule
     assert _tool(capsys, run, spec, "hook", cost="0.04")[0] == 0
     assert _tool(capsys, run, spec, "hook", cost="0.04")[0] == 0
     assert len(engine) == 2 and state.load(run).spend == {"ai_usd": 0.08}

@@ -23,9 +23,9 @@ Sources:
   (https://arena.ai/leaderboard/video/image-to-video), Seedance 2.0 1478.
 
 ## When the plugin uses it
-- **The top quality tier** (OV6): `bytedance/seedance-2.0`, 720p, $0.18/s ($2.70 per 15 s).
-- **A person generated from a description** (no specific influencer, OV6 round 27): Seedance 2.0 first, with the
-  person written in the prompt and the product (and a pet) as reference images.
+- **Where the model registry offers `bytedance/seedance-2.0`** (`data/models/registry.yaml`, #115: its groups, its
+  720p variant and its price), and its talking-person route's **person generated from a description** (no specific influencer, OV6 round
+  27): the person written in the prompt and the product (and a pet) as reference images.
 - **Never with a photoreal face in its inputs.** Seedance 2.0 (and 2.5) checks every input image for a realistic
   human face before it reads the prompt, and refuses one, an AI-made face included: Replicate error E005 "flagged as
   sensitive", in about 5 s, no output (pet store P4 take_v05 and v05b, 2026-11-05; the same input fails again). A
@@ -73,5 +73,5 @@ Sources:
 ## Prices (Replicate `billingConfig`, 2026-11-06)
 Image inputs (`model variant=non_video_in`): 480p $0.08/s, **720p $0.18/s**, 1080p $0.45/s, 4k $1/s; with a video
 input (`video_in`) 480p $0.10/s, 720p $0.22/s, 1080p $0.55/s, 4k $1.25/s. A cost line names its tier's criteria as
-the price file holds them, for example `model variant=non_video_in, target resolution=720p`. Seedance 2.5 (the premium tier, only on request): $0.2312/s at 720p, with the same face block. Read the price again
+the price file holds them, for example `model variant=non_video_in, target resolution=720p`. Seedance 2.5 has the same face block. Today's prices are the registry's; read the price again
 with `tm tool replicate_price` before a pack: a price older than `pricing.max_age_days` is refused.

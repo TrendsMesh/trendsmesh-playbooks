@@ -1,0 +1,26 @@
+{
+ "rankings": {
+  "arena:image_to_video": [
+   {"name": "Gemini Omni 1.2 Flash", "rank": 1},
+   {"name": "Acme Motion 2 (720p)", "rank": 2},
+   {"name": "MiniMax H3", "rank": 3},
+   {"name": "Gemini Nano Banana 2.1", "rank": 4},
+   {"name": "Utopai X", "rank": 5},
+   {"name": "Far Down Model", "rank": 40}
+  ],
+  "artificial_analysis:text-to-speech/leaderboard": [{"name": "Eleven v4", "rank": 1}]
+ },
+ "collections": {"image-to-video": ["acme/acme-motion-2", "acme/acme-motion-2-avatar", "minimax/h3"]},
+ "replicate": {
+  "acme/acme-motion-2": {"tiers": [{"criteria": "target resolution=720p", "price": "$0.05", "unit": "second of output video"},
+                                   {"criteria": "target resolution=1080p", "price": "$0.10", "unit": "second of output video"}]},
+  "minimax/h3": {"tiers": [{"criteria": "target resolution=768P", "price": "$0.09", "unit": "second of output video"},
+                           {"criteria": "target resolution=2K", "price": "$0.13", "unit": "second of output video"}]},
+  "kwaivgi/kling-avatar-v2": {"error": "HTTP 404", "available": false},
+  "jd7h/propainter": {"error": "billingConfig not found"},
+  "topazlabs/video-upscale": {"tiers": [{"criteria": "all", "price": "$0.08", "unit": "unit"}]}
+ },
+ "elevenlabs": ["eleven_v4", "eleven_v4_turbo", "eleven_v5", "eleven_text_to_sound_v2", "eleven_text_to_sound_v3",
+                "scribe_v3", "eleven_multilingual_v2", "eleven_multilingual_sts_v2", "music_v2_5", "eleven_flash_v2_5"],
+ "errors": ["artificial_analysis music/leaderboard: HTTP Error 404: Not Found"]
+}

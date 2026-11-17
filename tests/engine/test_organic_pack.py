@@ -423,10 +423,10 @@ def test_two_video_models_in_one_section_refused(tmp_path):
 
 
 @pytest.mark.private_data
-@pytest.mark.parametrize("model,recipe", [("bytedance/seedance-1.5-pro", "seedance-1.5-pro.md"),
+@pytest.mark.parametrize("model,recipe", [("bytedance/seedance-2.0", "seedance-2.0.md"),
                                           ("bytedance/seedance-2.5", "seedance-2.5.md")])
-def test_the_budget_and_premium_tiers_have_their_recipes(tmp_path, model, recipe):
-    """The queued ruling: the budget and premium tiers' models are never refused with "Write its recipe first"."""
+def test_the_registrys_best_video_models_have_their_recipes(tmp_path, model, recipe):
+    """The queued ruling: the registry's best image-to-video models are never refused with "Write its recipe first"."""
     run = _pet_run(tmp_path, "p4")
     pack = _pack("p4_host_pack.json")
     pack["models"][1].update({"model": model, "recipe": f"references/model-prompting/{recipe}"})

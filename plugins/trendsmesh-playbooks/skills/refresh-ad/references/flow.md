@@ -580,9 +580,9 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 ## CR5a Repairs and new shots: ProPainter, Veo (re-cut)
 
 - The re-cut budget check-in (RB) comes first, at Just the big calls inside the spending card:
-  each paid variant with what it buys and its estimate (ProPainter cents; Veo 3.1 Fast first +
-  last frame $0.80 per 8 s; ElevenLabs Music about 220 credits per take, plus a one-off upload of
-  about 366 credits per track), the total per kind. Run `tm r4` first (and write the AI video's
+  each paid variant with what it buys and its estimate (the model registry's prices, `tm models
+  list --task inpainting` / `image_to_video` / `music`; ElevenLabs Music about 220 credits per take,
+  plus a one-off upload of about 366 credits per track), the total per kind. Run `tm r4` first (and write the AI video's
   D1 plan when the AI video is an output), so the spending card shows real amounts for every
   member. `approve`, then `tm budget approve --run R ai_usd <total>` and `tm budget approve --run R
   voice_credits <total>` for what it covers, each `<total>` the kind's running total: `tm status
@@ -604,8 +604,10 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   it is asked.
 - The paid repairs and shots of the chosen L3 and L4 variants (`recut.md` section 7), each through
   `tm tool replicate_run --run R <spec> --name <name> --cost <USD> --json` after the estimate and
-  the approval (Replicate's prices confirmed by the user first, lesson 7): ProPainter for the image
-  under a removed card, Veo for a new or regenerated shot. Look at every output's frames before
+  the approval (Replicate's prices confirmed by the user first, lesson 7): the registry's ★
+  inpainting model (ProPainter) for the image under a removed card, the image-to-video model chosen
+  on the Models page (D1; else the registry's ★, which also takes a last frame) for a new or
+  regenerated shot, each sent with its variant. Look at every output's frames before
   you use it. A run that stopped part way: `--resume 03_wip/<name>_vNN.run.json`, free. A variant
   still waiting for its budget is skipped here and stays waiting.
 - Rebuilt cards (L1) and inserts (L2) are free and are made over the render in CR6, so they are
@@ -708,12 +710,20 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 <a id="d1"></a>
 ## D1 Visual decision and shot plan (AI video)
 
+- **The Models page** (issue #115), before the plan: the first frame's and the clips' models are the
+  model registry's (`../../../data/models/registry.yaml`). Read today's prices, free: `tm models
+  ids --task photos --task image_to_video` names the models and `tm tool replicate_price --run R
+  <those ids> --json` reads them; then `tm
+  models page --run R --task photos --task image_to_video --units <units.json> --json`, published
+  and awaited like every page, and `tm models decisions --run R --json` (`--by-rule` at Hands-off:
+  the ★ models) writes `03_wip/models_vNN.json`. A model the user writes in a task's field is used
+  once its recipe is written.
 - From A5 to A7 (a new setting or a topic swap, `variants.md` 4b is the model): target length
-  (the original's), model limits (Veo 3.1 Fast: 4, 6 or 8 s clips), the chain (lesson 13), what
-  happens in each clip (mirroring the original's structure), text cards on a clean image, the
-  prompts, models (`openai/gpt-image-2` medium for the first frame, `google/veo-3.1-fast` for
-  clips), parameters, attempts allowed, and the cost of each call and in total
-  (`tm budget estimate ai_usd ...`). → `03_wip/ai/ai_video_plan_v01.md`.
+  (the original's), the chosen model's limits (its recipe: clip lengths, a last frame), the chain
+  (lesson 13), what happens in each clip (mirroring the original's structure), text cards on a
+  clean image, the prompts, the models chosen on the Models page with their variants (`tm models
+  list --task <task>` gives what each sends), parameters, attempts allowed, and the cost of each
+  call and in total (`tm budget estimate ai_usd ...`). → `03_wip/ai/ai_video_plan_v01.md`.
 - Ask the user to confirm Replicate's current prices before the first run (lesson 7).
 - "Approve the AI video plan and budget" (G6), in the spending card at Just the big calls:
   `approve`, then `tm budget approve --run R ai_usd <total>` (the kind's running total: the
@@ -724,8 +734,9 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 <a id="d2"></a>
 ## D2 First frame
 
-- A spec `03_wip/ai/frame1_v01.json`: `{"model": "openai/gpt-image-2", "input": {...}}` with the
-  original frame (clean of captions) as the character and composition reference. Record it.
+- A spec `03_wip/ai/frame1_v01.json`: `{"model": "<the image model chosen at D1>", "input":
+  {...}}` with its variant's inputs (never `quality: "auto"`) and the original frame (clean of
+  captions) as the character and composition reference. Record it.
 - `tm tool replicate_run --run R 03_wip/ai/frame1_v01.json --name frame1 --cost <USD> --json`.
   A run that stopped part way is finished, free, with `--resume 03_wip/<name>_vNN.run.json`.
 - "Choose the first frame" (G7): the variants next to the original frame on the run page.
