@@ -176,7 +176,14 @@ def texts(comp: str, data: dict) -> list[tuple[str, str, str]]:
             add(f"probe[{i}].text", p.get("text"), _primary(comp, p.get("font") or style.get("font")), upper)
     elif comp == "OrganicCaptions":
         for i, cap in enumerate(_list(data.get("captions"))):
-            add(f"captions[{i}].text", _dict(cap).get("text"), _primary(comp))
+            cap = _dict(cap)
+            ov = _dict(cap.get("overlay"))
+            look = ov.get("family") or cap.get("look")
+            family = "TikTokSans" if look == "native" else _primary(comp)   # the native text set's own font
+            upper = look == "pop" or (ov.get("kind") == "label" and look not in ("native", "quiet"))
+            add(f"captions[{i}].text", cap.get("text"), family, upper)
+            for key in ("sub", "brand"):
+                add(f"captions[{i}].overlay.{key}", ov.get(key), family, upper)
     elif comp in ("RankingList", "RankingSplit"):
         for i, line in enumerate(_list(data.get("title"))):
             for j, w in enumerate(_list(line)):

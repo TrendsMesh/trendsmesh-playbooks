@@ -11,6 +11,7 @@ import { loadFont as Baloo2 } from "@remotion/google-fonts/Baloo2";
 import { loadFont as Fredoka } from "@remotion/google-fonts/Fredoka";
 import { loadFont as Montserrat } from "@remotion/google-fonts/Montserrat";
 import { loadFont as Poppins } from "@remotion/google-fonts/Poppins";
+import { loadFont as TikTokSans } from "@remotion/google-fonts/TikTokSans";
 import { loadFont as NotoSans } from "@remotion/google-fonts/NotoSans";
 import { loadFont as NotoSansArabic } from "@remotion/google-fonts/NotoSansArabic";
 import { loadFont as NotoSansHebrew } from "@remotion/google-fonts/NotoSansHebrew";
@@ -23,7 +24,7 @@ import table from "./fonts.json";
 
 type Loader = (style: string, options: { weights: string[]; subsets: string[] }) => { fontFamily: string };
 const LOADERS: Record<string, Loader> = {
-  BebasNeue, Nunito, Baloo2, Fredoka, Montserrat, Poppins, NotoSans, NotoSansArabic, NotoSansHebrew, NotoSansThai,
+  BebasNeue, Nunito, Baloo2, Fredoka, Montserrat, Poppins, TikTokSans, NotoSans, NotoSansArabic, NotoSansHebrew, NotoSansThai,
   NotoSansJP, NotoSansKR, NotoSansSC, NotoSansTC,
 } as unknown as Record<string, Loader>;
 

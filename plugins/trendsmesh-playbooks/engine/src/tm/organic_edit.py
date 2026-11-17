@@ -18,9 +18,17 @@ The style is `03_wip/text_style_vNN.json` (`default_style`, checked by `style_pr
 
     {"captions": {fontSize, color, stroke, highlight (a colour or null), place, offsetY, width, words: [min, max]},
      "overlays": {fontSize, color, background, place, offsetY, width},
-     "sample": {"caption": "<a line of the voiceover>", "overlay": "<the hook>"}}
+     "sample": {"caption": "<a line of the voiceover>", "overlay": "<the hook>"},
+     "look": <one of LOOKS, optional>, "accent": "<the brand colour #RRGGBB, optional>"}
 
 in px at 1080×1920 (`width` at most 790, the safe zone's; `offsetY` negative moves the text up).
+
+A `look` makes the style one of the text sets (remotion/src/CaptionLooks.tsx and OverlayLooks.tsx): the captions
+and the overlays drawn in the same visual language, the accent (the brand's colour) on the spoken or key word. Each
+look has its own word groups (`LOOK_WORDS`, `LOOK_CHARS`) and caption size (`LOOK_SIZE`), which `default_style`
+writes in; the colours and box of the groups are then the look's own. An overlay of the edit says what it is with
+`"overlay": {"kind": "hook" | "label" | "number" | "cta" | "end", "sub"?, "brand"?}` (default: hook); a word of the
+captions' words file marked `"key": true` is a key word (the accent in pop, the highlighter in marker).
 
     tm organic text look --run R --picture <the first frame> [--style S | --caption T --overlay T] [--at SEC]
         the style (the default with the given samples when no --style: the next text_style_vNN.json) drawn on the
@@ -110,15 +118,34 @@ TAIL = 0.3              # a group stays on screen this long after its last word,
 COLOUR = re.compile(r"#[0-9A-Fa-f]{6}")
 SENTENCE_END = (".", "?", "!", "…")
 
+# The text sets (a look each, captions + overlays), drawn by remotion/src/CaptionLooks.tsx and OverlayLooks.tsx
+# (their `Look` type lists the same ids; test_text_looks checks it).
+LOOKS = ("native", "outline", "pill", "block", "karaoke", "pop", "quiet", "marker")
+DEFAULT_LOOK = "outline"     # the profile has no text style yet; "native" for UGC and in-app-looking channels
+LOOK_WORDS = {"native": [1, 6], "outline": [1, 3], "pill": [1, 3], "block": [1, 6], "karaoke": [1, 6], "pop": [1, 1],
+              "quiet": [1, 6], "marker": [1, 3]}   # a min of 1: a comma always closes a group in a look
+LOOK_CHARS = {"native": 36, "outline": 20, "pill": 20, "block": 36, "karaoke": 44, "pop": 14, "quiet": 36,
+              "marker": 20}
+LOOK_SIZE = {"native": 52, "outline": 68, "pill": 64, "block": 54, "karaoke": 60, "pop": 108, "quiet": 50,
+             "marker": 66}
+OVERLAY_KINDS = ("hook", "label", "number", "cta", "end")
 
-def default_style(*, caption: str, overlay: str) -> dict:
+
+def default_style(*, caption: str, overlay: str, look: str | None = None, accent: str | None = None) -> dict:
     """The suggested style: TikTok captions (white, black outline, at the bottom, 2 to 4 words) and the overlays in a
-    white box at the top, with the two sample lines the look draws."""
-    return {"captions": {"fontSize": 64, "color": "#FFFFFF", "stroke": "#000000", "highlight": None,
-                         "place": "bottom", "offsetY": 0, "width": SAFE_WIDTH, "words": [2, 4]},
-            "overlays": {"fontSize": 58, "color": "#111111", "background": "#FFFFFF", "place": "top",
-                         "offsetY": 0, "width": 680},
-            "sample": {"caption": caption, "overlay": overlay}}
+    white box at the top, with the two sample lines the look draws. With a `look`, that text set: its word groups and
+    caption size, and the brand's `accent`."""
+    style = {"captions": {"fontSize": 64, "color": "#FFFFFF", "stroke": "#000000", "highlight": None,
+                          "place": "bottom", "offsetY": 0, "width": SAFE_WIDTH, "words": [2, 4]},
+             "overlays": {"fontSize": 58, "color": "#111111", "background": "#FFFFFF", "place": "top",
+                          "offsetY": 0, "width": 680},
+             "sample": {"caption": caption, "overlay": overlay}}
+    if look is not None:
+        style["look"] = look
+        style["captions"].update({"fontSize": LOOK_SIZE[look], "words": list(LOOK_WORDS[look]), "highlight": accent})
+        if accent is not None:
+            style["accent"] = accent
+    return style
 
 
 def _number(value: object) -> bool:
@@ -160,6 +187,12 @@ def style_problems(style: object) -> list[str]:
                                     and all(isinstance(n, int) and not isinstance(n, bool) for n in words)
                                     and 1 <= words[0] <= words[1] <= 6):
         out.append(f"captions.words must be [min, max] words a caption shows, 1 to 6 (e.g. [2, 4]), not {words!r}.")
+    look = style.get("look")
+    if look is not None and look not in LOOKS:
+        out.append(f"look must be one of {', '.join(LOOKS)}, or left out, not {look!r}.")
+    accent = style.get("accent")
+    if accent is not None and not (isinstance(accent, str) and COLOUR.fullmatch(accent)):
+        out.append(f"accent must be a colour as #RRGGBB (the brand's), or left out, not {accent!r}.")
     sample = style.get("sample")
     if sample is not None and not (isinstance(sample, dict)
                                    and all(isinstance(sample.get(k), str) for k in ("caption", "overlay"))):
@@ -200,20 +233,30 @@ def _style_at(run: RunFolder, given: str) -> tuple[Path, str, dict]:
 
 
 def caption_entry(layer: str, group: dict, text: str, start: float, end: float,
-                  words: list[dict] | None = None) -> dict:
-    """One OrganicCaptions caption of a layer ("captions" or "overlays") in the style's `group`."""
+                  words: list[dict] | None = None, *, look: str | None = None, accent: str | None = None,
+                  overlay: dict | None = None) -> dict:
+    """One OrganicCaptions caption of a layer ("captions" or "overlays") in the style's `group`; with a `look`, drawn
+    in that text set (an overlay's `overlay` {kind, sub?, brand?} says what it is, a hook by default)."""
     entry = {"from": round(start, 3), "to": round(end, 3), "text": text,
              "style": "caption" if layer == "captions" else "hook", "place": group["place"],
              "fontSize": group["fontSize"], "offsetY": group.get("offsetY", 0), "width": group["width"],
              "color": group["color"]}
     if layer == "captions":
         entry["stroke"] = group["stroke"]
-        if group.get("highlight"):
-            entry["highlight"] = group["highlight"]
+        if group.get("highlight") or (look and accent):
+            entry["highlight"] = group.get("highlight") or accent
         if words:
             entry["words"] = words
+        if look:
+            entry["look"] = look
     else:
         entry["background"] = group["background"]
+        if look:
+            given = overlay if isinstance(overlay, dict) else {}
+            kind = given.get("kind") if given.get("kind") in OVERLAY_KINDS else "hook"
+            extra = {k: given[k] for k in ("sub", "brand") if isinstance(given.get(k), str) and given[k].strip()}
+            entry["overlay"] = {"kind": kind, "family": look, **({"accent": accent} if accent else {}), **extra}
+            del entry["fontSize"]   # the look sizes its overlays by kind
     return entry
 
 
@@ -246,8 +289,10 @@ def look(run: RunFolder, picture: str, *, style: str | None, caption: str | None
     start = max(float(at), 0.0)
     props = {"width": 1080, "height": 1920, "fps": 24,
              "segments": [{"src": pic, "start": start, "end": start + LOOK_SECONDS}],
-             "captions": [caption_entry("overlays", data["overlays"], sample["overlay"].strip(), 0, LOOK_SECONDS),
-                          caption_entry("captions", data["captions"], " ".join(text), 0, LOOK_SECONDS, words)],
+             "captions": [caption_entry("overlays", data["overlays"], sample["overlay"].strip(), 0, LOOK_SECONDS,
+                                        look=data.get("look"), accent=data.get("accent")),
+                          caption_entry("captions", data["captions"], " ".join(text), 0, LOOK_SECONDS, words,
+                                        look=data.get("look"), accent=data.get("accent"))],
              "textStyle": _stamp(rel, path)}
     target = run.next_version("wip", LOOK_STEM, "props.json")
     c.write_json(target, props, newline="\n")
@@ -301,13 +346,16 @@ def approve(run: RunFolder, style: str, *, by: str, note: str) -> dict:
 
 # --- the captions layer ------------------------------------------------------------------------------
 
-def caption_groups(words: list[dict], lo: int, hi: int, pause: float = PAUSE) -> list[list[dict]]:
+def caption_groups(words: list[dict], lo: int, hi: int, pause: float = PAUSE,
+                   max_chars: int | None = None) -> list[list[dict]]:
     """Words ({word, start, end}) in groups: one closes at `hi` words, at a sentence's end, at a comma once it has `lo`
-    words, and before a pause of `pause` seconds."""
+    words, before a pause of `pause` seconds, and before a word that would make it longer than `max_chars` letters
+    (a look's limit, so a group stays on one or two short lines)."""
     groups: list[list[dict]] = []
     group: list[dict] = []
     for w in words:
-        if group and w["start"] - group[-1]["end"] > pause:
+        long = max_chars is not None and len(" ".join(x["word"] for x in group + [w])) > max_chars
+        if group and (w["start"] - group[-1]["end"] > pause or long):
             groups.append(group)
             group = []
         group.append(w)
@@ -330,7 +378,8 @@ def _read_words(path: Path, rel: str) -> list[dict]:
     for w in raw or []:
         if (isinstance(w, dict) and isinstance(w.get("word"), str) and w["word"].strip()
                 and _number(w.get("start")) and _number(w.get("end"))):
-            words.append({"word": w["word"].strip(), "start": float(w["start"]), "end": float(w["end"])})
+            words.append({"word": w["word"].strip(), "start": float(w["start"]), "end": float(w["end"]),
+                          **({"key": True} if w.get("key") is True else {})})
     if not words:
         raise Stop(f"{rel} holds no words with times ([{{word, start, end}}], or a transcript's segments[].words); "
                    f"{AGAIN}.")
@@ -396,16 +445,19 @@ def captions(run: RunFolder, props_file: str, words_file: str, *, source: str | 
     wpath, wrel = _inside(run, words_file, "words file")
     placed, start = _place(props, _read_words(wpath, wrel), wrel, source, offset)
     lo, hi = style["captions"]["words"]
-    groups = caption_groups(placed, lo, hi)
+    look, accent = style.get("look"), style.get("accent")
+    groups = caption_groups(placed, lo, hi, max_chars=LOOK_CHARS.get(look) if look else None)
     layer = []
     for i, g in enumerate(groups):
         nxt = groups[i + 1][0]["start"] if i + 1 < len(groups) else None
         end = g[-1]["end"] + TAIL if nxt is None else min(g[-1]["end"] + TAIL, nxt)
-        words = [{"text": w["word"], "from": round(w["start"], 3), "to": round(w["end"], 3)} for w in g]
+        words = [{"text": w["word"], "from": round(w["start"], 3), "to": round(w["end"], 3),
+                  **({"key": True} if w.get("key") else {})} for w in g]
         layer.append(caption_entry("captions", style["captions"], " ".join(w["word"] for w in g), g[0]["start"],
-                                   max(end, g[0]["start"] + 0.1), words))
+                                   max(end, g[0]["start"] + 0.1), words, look=look, accent=accent))
     tops = [{**caption_entry("overlays", style["overlays"], str(o.get("text", "")), float(o.get("from") or 0),
-                             float(o.get("to") or 0))} for o in overlays]
+                             float(o.get("to") or 0), look=look, accent=accent, overlay=o.get("overlay"))}
+            for o in overlays]
     out = {**props, "captions": tops + layer, "textStyle": _stamp(style_rel, run.path / style_rel)}
     stem = re.sub(r"_v\d+$", "", Path(rel).name.removesuffix(".json").removesuffix(".props"))
     target = run.next_version("wip", stem or "edit", "props.json")
