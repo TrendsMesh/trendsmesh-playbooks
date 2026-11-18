@@ -291,6 +291,7 @@ def animated(tmp_path, monkeypatch):
     import test_run_page_organic_plan as plan_tests
     from tm.organic_pages import proposals as proposals_page
     monkeypatch.setattr(page, "fetch_image", lambda url, dest, timeout=30: False)
+    monkeypatch.setattr(organic_proposals.envtiers, "installed", lambda tier: True)   # no plugin folders in CI
     monkeypatch.setattr(proposals_page, "_trends", plan_tests._trends)
     data = plan_tests._proposals()
     data["proposals"][0]["plugin"] = {"production": "animation", "output": "video", "styles": _styles(14, 7),
