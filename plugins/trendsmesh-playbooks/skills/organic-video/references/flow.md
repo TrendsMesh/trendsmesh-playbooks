@@ -298,9 +298,10 @@ at each part and every few calls, which part is running and how many are done ("
    for an AI explainer channel not only "AI" but also "tools", "tech", "apps", "news", so news
    about AI tools stays. Sounds are ranked by their niche relevance (lesson 1). A thin niche's
    topics are kept as weak fits: never "no trend found".
-2. **The fit of each hook and format for the channel** (no word filter: a hook says how a video
-   opens and a format how it is told, so niche words are almost never in them). The JSON's
-   `fit_candidates` lists every hook and format of the pool. Score each one from its card, as
+2. **The fit of each hook, format and topic for the channel** (no word filter for hooks and formats: a
+   hook says how a video opens and a format how it is told, so niche words are almost never in them;
+   topics passed the anchor filter first, and up to 20 of the best are scored too, issue #142). The
+   JSON's `fit_candidates` lists every hook and format of the pool and those topics. Score each one from its card, as
    Trend research scores its hooks: Creative brief's seven CB3 criteria, 1 to 5 (`brand_fit`,
    `persona_fit`, `bridge`, `lifecycle`, `transfer`, `sensitivity`, `feasibility`), for this
    channel: can it carry what the channel films, and how it tells it (the profile's `context`),
@@ -308,7 +309,8 @@ at each part and every few calls, which part is running and how many are done ("
    "why": "..."}}`; a trend that fits badly scores low, it is never left out), then run step 1's
    command again with `--fit 03_wip/trend_fit_v01.json`. Hooks and formats are ranked by their fit
    (the mean), each shown with its score and why; a fit under 3 is marked "weak fit for this
-   channel" and comes last.
+   channel" and comes last. A topic under 3 is marked the same way and never takes a B3 place (for
+   an AI explainer channel, "Temu product hauls" scores low).
 3. Read the `.md`. **The used trends** (B1) stay in the lists, marked `used: {run, date, production_type}`
    in the JSON: at most one idea builds on one, with a new angle, while it still rises (B1), or a series
    continues it. Mark a transfer (a hook with evidence only in another subject
@@ -326,7 +328,7 @@ at each part and every few calls, which part is running and how many are done ("
 1. **The cards the shortlist names** (its JSON's `pulls`, the "Cards B3 pulls" section): the
    channel type's split of `research.cards` (12), for example a news channel 2 hooks, 6 topics,
    3 formats, 1 sound, a music channel 6 sounds (`brand.CHANNEL_TYPES`). A trend that fits the
-   channel weakly never takes a place: a kind with nothing that fits gives its places to the type's
+   channel weakly (a hook, format or topic whose fit is under 3) never takes a place: a kind with nothing that fits gives its places to the type's
    leading kind (for `other`, the kind that fits best in this search), and places nothing fits stay
    empty. A profile saved before channel types takes 3 of each kind. For each:
    `get_trend` (the card) and `get_trend_videos` (order views, limit 20). The collector

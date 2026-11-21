@@ -4,6 +4,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Organic AI video: topics are scored for your channel too.** Claude now scores up to 20 of the shortlist's topics
+  for your channel, as it does hooks and formats. A topic that fits badly (for example "Temu product hauls" for an AI
+  explainer channel) no longer takes a place among the trends whose evidence is pulled.
 - **Music in one step, from your whole library.** At the style, voice and music step, Claude puts 2 to 3 free Mixkit
   tracks straight on the page, each with its licence line, with no question asked first: the track you pick is your
   yes, and it goes into the channel's music library. Free-licence tracks fetched for another of your channels are
