@@ -76,11 +76,15 @@ checkins:
     card: pick_the_ad
     route: {every_step: own, big_calls: card, hands_off: rule}
     rule: "R2 table"
+    # override (issue #143): the user refreshes against the diagnosis, or an ad with too little data, at any
+    # level and by the user only: `tm decide G1a override --stage <hook|middle|promise_cta|fatigue> --said
+    # "<their words>"`. The engine stores it in the diagnosis and targets that stage (tm.flow._override).
     on_choice:
       do_not_refresh:
         end: >-
           The diagnosis says this ad should not be refreshed, so the run ends here.
-          The diagnosis report is the result of this run, and nothing was spent.
+          The diagnosis report (04_final/diagnosis_report_v01.md) is the result of this run, and nothing was spent.
+      override: {}
 
   - id: G1b
     name: Accept the persona

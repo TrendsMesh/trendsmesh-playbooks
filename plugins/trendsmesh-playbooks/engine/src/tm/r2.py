@@ -62,13 +62,20 @@ class Diagnosis:
     note: str = ""
     ladder: dict = field(default_factory=dict)  # {"peak": {step: rate}, "latest": {...}, "dropped": [steps]}
     structural: dict | None = None  # R2b's answer across uploads of the same video (tm structural)
+    too_little_data: bool = False   # the ad lacks R1's results for a diagnosis (issue #143): the user picks the stage
+    override: dict | None = None    # the user's G1a override: {stage, said, by, diagnosed_stage} (issue #143)
 
     def to_json(self) -> dict:
-        return {"stage": self.stage, "refresh": self.refresh,
-                "evidence": {k: [v[0], v[1]] for k, v in self.evidence.items()},
-                "also_seen": list(self.also_seen), "account_check": dict(self.account_check),
-                "target_stage": self.target_stage, "note": self.note, "ladder": self.ladder,
-                "structural": self.structural}
+        out = {"stage": self.stage, "refresh": self.refresh,
+               "evidence": {k: [v[0], v[1]] for k, v in self.evidence.items()},
+               "also_seen": list(self.also_seen), "account_check": dict(self.account_check),
+               "target_stage": self.target_stage, "note": self.note, "ladder": self.ladder,
+               "structural": self.structural}
+        if self.too_little_data:
+            out["too_little_data"] = True
+        if self.override:
+            out["override"] = dict(self.override)
+        return out
 
     @classmethod
     def from_json(cls, data: dict) -> "Diagnosis":
@@ -78,7 +85,9 @@ class Diagnosis:
                    account_check=dict(data.get("account_check", {})),
                    target_stage=data.get("target_stage"), note=data.get("note", ""),
                    ladder=dict(data.get("ladder", {})),
-                   structural=data.get("structural"))
+                   structural=data.get("structural"),
+                   too_little_data=bool(data.get("too_little_data", False)),
+                   override=dict(data["override"]) if isinstance(data.get("override"), dict) else None)
 
 
 _FIELDS = ("start", "stop", "spend", "results", "impressions", "p25", "thruplay", "clicks_est",
@@ -200,9 +209,20 @@ def diagnose(peak: Window, latest: Window, account_ratio: float, cfg: dict | Non
                      ladder=lad)
 
 
+def override_note(override: dict, diagnosed: str) -> str:
+    """The diagnosis' note when the user overruled it at G1a (issue #143)."""
+    return (f"The diagnosis points at {changes.STAGES.get(diagnosed, diagnosed)}; the user decided to refresh "
+            f"{changes.STAGES.get(override['stage'], override['stage'])} instead.")
+
+
 def retarget(s: state.RunState) -> None:
-    """Set target_stage and note in the stored diagnosis from the stage, also_seen and the material."""
+    """Set target_stage and note in the stored diagnosis from the stage, also_seen and the material. The user's
+    override (G1a, issue #143) keeps its stage: whether that stage still has a change for the material is
+    `flow._blocking`'s question."""
     d = s.diagnosis
+    if isinstance(d.get("override"), dict):
+        d["target_stage"], d["note"] = d["override"]["stage"], override_note(d["override"], d["stage"])
+        return
     res = changes.resolve(d["stage"], d.get("also_seen", []), d.get("refresh", False), s.material)
     d["target_stage"], d["note"] = res.target, res.note
 
@@ -211,12 +231,20 @@ def record(run: RunFolder, d: Diagnosis) -> Path:
     """Save the diagnosis in run state and as 04_final/diagnosis_vNN.json (R2's evidence).
 
     Diagnosing again before G1a is decided replaces the earlier diagnosis (a new versioned file
-    and manifest row; the old file stays). A finished run refuses it.
+    and manifest row; the old file stays). The user's override at G1a stays, over the new stage
+    (issue #143). A finished run refuses it.
     """
-    if state.load(run).status == "done":
+    before = state.load(run)
+    if before.status == "done":
         raise ValueError("This run is done; the diagnosis can no longer be changed.")
-    res = changes.resolve(d.stage, d.also_seen, d.refresh, state.load(run).material)
-    d.target_stage, d.note = res.target, res.note
+    kept = (before.diagnosis or {}).get("override")
+    if isinstance(kept, dict) and not d.override:
+        d.override = {**kept, "diagnosed_stage": d.stage}
+    if d.override:
+        d.target_stage, d.note = d.override["stage"], override_note(d.override, d.stage)
+    else:
+        res = changes.resolve(d.stage, d.also_seen, d.refresh, before.material)
+        d.target_stage, d.note = res.target, res.note
     target = run.next_version("04_final", "diagnosis", "json")
     run.assert_writable(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -241,23 +269,58 @@ def run_config(run: RunFolder) -> dict | None:
 
 def _setup(p: argparse.ArgumentParser) -> None:
     p.add_argument("--run", required=True, help="the run folder")
-    p.add_argument("--peak", required=True, help="the peak window: a JSON file or a JSON object")
-    p.add_argument("--latest", required=True, help="the latest window: a JSON file or a JSON object")
-    p.add_argument("--account-ratio", required=True, type=float,
+    p.add_argument("--peak", help="the peak window: a JSON file or a JSON object")
+    p.add_argument("--latest", help="the latest window: a JSON file or a JSON object")
+    p.add_argument("--account-ratio", type=float,
                    help="the rest of the account's results per spend, latest / peak (R1)")
+    p.add_argument("--too-little-data", action="store_true",
+                   help="the chosen ad has too little data for R2 (R1's not_enough_data) and the user wants it "
+                        "refreshed anyway: the diagnosis is marked so, and the user picks the stage at G1a "
+                        "(tm decide G1a override). The windows are optional then (both or none)")
     p.add_argument("--json", action="store_true")
+
+
+def too_little_data(peak: Window | None, latest: Window | None, account_ratio: float,
+                    cfg: dict | None) -> Diagnosis:
+    """The diagnosis of an ad with too little data (issue #143): no stage is named ("unclear", no refresh), so the
+    run waits for the user's stage at G1a. With both windows, R2's reading of them is kept as signals only
+    (`evidence`, and the stage it would name in `also_seen`)."""
+    if peak is None or latest is None:
+        return Diagnosis(stage="unclear", refresh=False, too_little_data=True)
+    read = diagnose(peak, latest, account_ratio, cfg)
+    signals = [x for x in [read.stage, *read.also_seen] if x != "unclear"]
+    return Diagnosis(stage="unclear", refresh=False, evidence=read.evidence, also_seen=list(dict.fromkeys(signals)),
+                     account_check=read.account_check, ladder=read.ladder, too_little_data=True)
 
 
 def _run(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
-        d = diagnose(_window_arg(args.peak, run), _window_arg(args.latest, run), args.account_ratio, run_config(run))
+        if args.too_little_data:
+            if (args.peak is None) != (args.latest is None):
+                raise ValueError("With --too-little-data give both windows (--peak and --latest) or neither.")
+            windows = [_window_arg(w, run) if w else None for w in (args.peak, args.latest)]
+            ratio = 1.0 if args.account_ratio is None else args.account_ratio
+            d = too_little_data(*windows, ratio, run_config(run))
+        else:
+            missing = [f"--{k.replace('_', '-')}" for k in ("peak", "latest", "account_ratio")
+                       if getattr(args, k) is None]
+            if missing:
+                raise ValueError(f"tm diagnose needs {', '.join(missing)} (from the ranking, flow.md#a1a); "
+                                 "for an ad with too little data, --too-little-data.")
+            d = diagnose(_window_arg(args.peak, run), _window_arg(args.latest, run), args.account_ratio,
+                         run_config(run))
         target = record(run, d)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return cli.fail(args, str(exc))
-    text = (f"Wrote 04_final/{target.name}: {d.stage} is fading"
-            + ("" if d.refresh else " (do not refresh the creative)")
-            + (f"; also seen: {', '.join(d.also_seen)}" if d.also_seen else "") + ".")
+    if d.too_little_data:
+        text = (f"Wrote 04_final/{target.name}: too little data to diagnose; the user picks the stage at G1a "
+                "(tm decide G1a override --stage <stage> --said \"<their words>\")"
+                + (f"; signals: {', '.join(d.also_seen)}" if d.also_seen else "") + ".")
+    else:
+        text = (f"Wrote 04_final/{target.name}: {d.stage} is fading"
+                + ("" if d.refresh else " (do not refresh the creative)")
+                + (f"; also seen: {', '.join(d.also_seen)}" if d.also_seen else "") + ".")
     cli.emit(args, {"status": "done", "file": f"04_final/{target.name}", **d.to_json()}, text)
     return 0
 
