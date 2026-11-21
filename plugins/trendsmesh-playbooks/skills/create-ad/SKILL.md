@@ -133,6 +133,7 @@ check-in; CA14 the upload is offered, proposed in full and created PAUSED; CA15 
 | "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
 | "The user said generate everything, so I'll start" | Nothing paid before the plan's yes (and the storyboard's for the video), with the prices and their dates shown. |
 | "That take stutters; I'll regenerate it" | Never automatically. Show it raw with its QA notes and offer: a precise cut, a clone of the line, a new take with its cost, or accept. |
+| "Whisper didn't hear a line, and the user said to redo a take with a missing line, so I'll offer a new take" | It is not missing yet (`quiet`): offer the Scribe check with its credits, or listening to the take. No new take is offered, not even as an option, before Scribe's words are in the QA. |
 | "There's no Gemini 2.0 video model, so they mean Seedance 2.0" | Probably, but ask first: "Do you mean Seedance 2.0?" No money goes to a model the user didn't clearly choose. |
 | "A daily budget of 20 seems right" | The ad budget is never inferred. Ask for the amount and the cadence. |
 | "These ads obviously use AI, so OPT_IN" | The AI disclosure is the advertiser's call. Show the facts and ask. |
