@@ -162,6 +162,9 @@ def test_the_visual_and_audio_gates_show_the_batch_raw_with_a_choice_each(run, c
     for text in shown:
         assert text in now
     assert "unrelated" not in now and "Accept" in now and "Redo" in now and "Drop" in now
+    tech = re.search(r'<details class="tech">.*?</details>', now, re.S).group(0)       # issue #132
+    for f in files:
+        assert f"<li>{f}</li>" in tech and f"<figcaption>{f.rsplit('/', 1)[1]}" not in now
     offer = _built(run, built)["offer"][checkin]["items"]
     assert offer["keys"] == [f.rsplit("/", 1)[1].rsplit(".", 1)[0] for f in files]
     assert offer["defaults"] == {k: "accept" for k in offer["keys"]}             # no item left empty (issue #97)
