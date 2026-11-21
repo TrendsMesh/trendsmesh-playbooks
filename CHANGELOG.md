@@ -10,6 +10,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   report, each with its reason, and any of them comes back when you ask. Hooks work the same way: Claude scores at
   most 50, in TrendsMesh's rising order (new `tm research hook-candidates`), and the others are listed as not scored.
   A run with 300 mapped trends and 150 hooks no longer has Claude scoring every card by hand.
+- **TrendsMesh calls are paced, so none hits the rate limit.** A small hook holds each TrendsMesh call until it fits
+  your plan's limits (10 calls a second, 10 searches and 20 video pages a minute, or the limits TrendsMesh's usage
+  check reports), so parallel fetches no longer get "Rate limit reached" and are never retried. It runs without
+  Python, in about 30 ms a call. When the day's calls are spent, Claude says how many are left and when they reset.
 - **Organic AI video: at most 50 hooks and formats are scored for your channel.** The best 50 by the plugin's own
   score are scored (topics keep their own 20); the rest are set aside, listed, and scored when you ask for one.
 - **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file

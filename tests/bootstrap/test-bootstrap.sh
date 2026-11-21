@@ -333,7 +333,7 @@ for t in mcp__plugin_trendsmesh-playbooks_trendsmesh__get_trend_videos mcp__tren
          mcp__claude-artifacts__db_list Artifact ArtifactData; do
   printf '%s\n' "$t" | grep -Eqx "$matcher" || fail "the PostToolUse matcher misses $t"
 done
-for t in mcp__other__get_trend Bash mcp__plugin_x_trendsmesh2__get_usage mcp__other__ads_get_ad_videos ArtifactComments; do
+for t in mcp__other__get_trend Bash mcp__plugin_x_trendsmesh2__get_usage mcp__other__ads_get_insights ArtifactComments; do
   ! printf '%s\n' "$t" | grep -Eqx "$matcher" || fail "the PostToolUse matcher should not take $t"
 done
 WS="$TMP/my ws"
@@ -418,5 +418,95 @@ printf '%s' "$out" | grep -q '"additionalContext": "This answer was not saved to
 [ "$(printf '%s\n' "$out" | wc -l)" -eq 1 ] || fail "the collector printed more than one line: $out"
 grep -q "	get_trend_videos	the engine did not start (tm exited 1)$" "$RUNDIR/02_research/collect_failures.log" \
   || fail "no line in collect_failures.log: $(cat "$RUNDIR/02_research/collect_failures.log" 2>&1)"
+
+# The PreToolUse pacer (pace-mcp.sh, issue #129), through the exact hooks.json command: the key guard stays the
+# first PreToolUse entry, the pacer is the second, on the TrendsMesh tools only. Each call books its moment in
+# <workspace>/.trendsmesh/pace.jsonl and waits until it fits every window; one that cannot fit within 65 s,
+# or that a spent get_usage budget stops, is denied with what to do. No Python runs.
+hook=$(awk -f "$HERE/json-fields.awk" "$ROOT/hooks/hooks.json" | awk -F '\t' '
+  $1 == "hooks.PreToolUse.0.matcher" { sub(/^[^\t]*\t/, ""); print "G\t" $0 }
+  $1 == "hooks.PreToolUse.1.matcher" { sub(/^[^\t]*\t/, ""); print "M\t" $0 }
+  $1 == "hooks.PreToolUse.1.hooks.0.command" { sub(/^[^\t]*\t/, ""); print "C\t" $0 }')
+printf '%s\n' "$hook" | grep -q '^G	Read|Grep|' || fail "the key guard is no longer the first PreToolUse entry"
+matcher=$(printf '%s\n' "$hook" | sed -n 's/^M\t//p')
+cmd=$(printf '%s\n' "$hook" | sed -n 's/^C\t//p' | sed "s|\${CLAUDE_PLUGIN_ROOT}|$ROOT|g")
+[ -n "$cmd" ] && [ -n "$matcher" ] || fail "no pacer matcher and command in hooks.json"
+printf '%s' "$cmd" | grep -q 'pace-mcp.sh' && printf '%s' "$cmd" | grep -q 'pace-mcp.ps1' || fail "the pacer command: $cmd"
+for t in mcp__plugin_trendsmesh-playbooks_trendsmesh__get_trend_videos mcp__trendsmesh__search_trends mcp__trendsmesh__get_usage; do
+  printf '%s\n' "$t" | grep -Eqx "$matcher" || fail "the pacer misses $t"
+done
+for t in mcp__other__search_trends mcp__claude_ai_Meta_Ads__ads_library_search Bash Read; do
+  ! printf '%s\n' "$t" | grep -Eqx "$matcher" || fail "the pacer should not take $t"
+done
+PW="$TMP/pace ws"
+PRUN="$PW/runs/04-trend-research/2026-11-21_nails"
+mkdir -p "$PRUN/02_research"
+pevent() {  # tool [cwd]
+  printf '{"session_id":"s","transcript_path":"/t.jsonl","cwd":"%s","hook_event_name":"PreToolUse","tool_name":"mcp__plugin_trendsmesh-playbooks_trendsmesh__%s","tool_input":{"about":"x","cwd":"/elsewhere"},"tool_use_id":"x"}' "${2:-$PRUN}" "$1"
+}
+PL="$PW/.trendsmesh/pace.jsonl"
+# One call, from inside a run folder: it goes at once (no output), booked in the workspace's log, fast.
+start=$(now_ms)
+out=$(pevent search_trends | sh -c "$cmd" 2>&1) || fail "the pacer exited non-zero"
+took=$(( $(now_ms) - start ))
+[ -z "$out" ] || fail "the pacer printed for a call that fits: $out"
+[ "$(wc -l < "$PL")" -eq 1 ] && grep -q '^{"t":[0-9]*,"tool":"search_trends"}$' "$PL" || fail "the pacer's log: $(cat "$PL" 2>&1)"
+[ ! -e "$PW/.trendsmesh/pace.lock" ] || fail "the pacer left its lock"
+limit=300; [ -z "$WIN" ] || limit=1500
+[ "$took" -lt "$limit" ] || fail "the pacer took $took ms for a call that fits (limit $limit ms)"
+# Parallel calls queue: with 2 searches a 1.5 s window (a get_usage answer's limits), the third waits for the first.
+rm -f "$PL"
+printf 'window\t1500\t2\tsearch_trends\nwindow\t1000\t10\t*\n' > "$PW/.trendsmesh/pace-limits.tsv"
+start=$(now_ms)
+for i in 1 2 3; do pevent search_trends | sh -c "$cmd" > "$TMP/pace-out-$i" 2>&1 & done
+wait
+took=$(( $(now_ms) - start ))
+[ "$(cat "$TMP"/pace-out-*)" = "" ] || fail "parallel calls printed: $(cat "$TMP"/pace-out-*)"
+[ "$(wc -l < "$PL")" -eq 3 ] || fail "parallel calls booked: $(cat "$PL")"
+[ "$took" -ge 1700 ] && [ "$took" -lt 5000 ] || fail "three searches at 2 per 1.5 s took $took ms"
+spread=$(sed 's/.*"t":\([0-9]*\).*/\1/' "$PL" | sort -n | awk 'NR == 1 { f = $1 } END { print $1 - f }')
+[ "$spread" -ge 1800 ] || fail "the third search was booked $spread ms after the first (at least 1.5 s + 300 ms)"
+# Another tool is not held back by the search window.
+start=$(now_ms)
+out=$(pevent get_trend | sh -c "$cmd" 2>&1)
+[ -z "$out" ] && [ $(( $(now_ms) - start )) -lt "$limit" ] || fail "get_trend waited on the search window: $out"
+# A call that cannot fit within a minute is denied, and not booked.
+printf 'window\t90000\t1\tsearch_trends\n' > "$PW/.trendsmesh/pace-limits.tsv"
+lines=$(wc -l < "$PL")
+out=$(pevent search_trends | sh -c "$cmd" 2>&1)
+printf '%s' "$out" | grep -q '"permissionDecision": "deny"' && printf '%s' "$out" | grep -q 'would have to wait more than 65 s: TrendsMesh allows 1 search_trends calls per 90 s' \
+  || fail "the pacer did not deny a call it cannot fit: $out"
+[ "$(wc -l < "$PL")" -eq "$lines" ] || fail "a denied call was booked"
+# A spent daily budget (from get_usage) denies at once, with the reset time.
+printf 'budget\t0\t%s\t%s\t*\t2026-11-22 00:00 UTC\n' "$(( $(now_ms) - 60000 ))" "$(( $(now_ms) + 3600000 ))" > "$PW/.trendsmesh/pace-limits.tsv"
+out=$(pevent get_trend_videos | sh -c "$cmd" 2>&1)
+printf '%s' "$out" | grep -q 'TrendsMesh allows 0 more calls until 2026-11-22 00:00 UTC' || fail "a spent budget was not said: $out"
+rm -f "$PW/.trendsmesh/pace-limits.tsv"
+# A lock left by a killed hook (older than 5 s) is taken over.
+mkdir -p "$PW/.trendsmesh/pace.lock" && printf '%s' "$(( $(now_ms) - 9000 ))" > "$PW/.trendsmesh/pace.lock/t"
+out=$(pevent get_trend | sh -c "$cmd" 2>&1) && [ -z "$out" ] && [ ! -e "$PW/.trendsmesh/pace.lock" ] || fail "a stale lock held the pacer: $out"
+# Under claude plugin eval a case can turn it off (mocks have no limits); nothing is booked.
+lines=$(wc -l < "$PL")
+out=$(pevent get_trend | EVAL_TM_PACE=off sh -c "$cmd" 2>&1)
+[ -z "$out" ] && [ "$(wc -l < "$PL")" -eq "$lines" ] || fail "EVAL_TM_PACE=off still paced"
+# Without a clock in milliseconds (no GNU date, no perl) the call goes to tm trends pace, with its cwd and tool.
+if [ -z "$WIN" ]; then
+  mkdir -p "$TMP/noclock"
+  printf '#!/bin/sh\necho 1795000000%%3N\n' > "$TMP/noclock/date"
+  printf '#!/bin/sh\nexit 1\n' > "$TMP/noclock/perl"
+  chmod +x "$TMP/noclock/date" "$TMP/noclock/perl"
+  cat > "$CLAUDE_PLUGIN_DATA/pixi/bin/pixi" <<'STUB'
+#!/bin/sh
+d="$(dirname "$0")/.."
+cat > "$d/pace-stdin"
+for a in "$@"; do printf '[%s]\n' "$a"; done > "$d/pace-args"
+STUB
+  chmod +x "$CLAUDE_PLUGIN_DATA/pixi/bin/pixi"
+  out=$(pevent get_trend | PATH="$TMP/noclock:$PATH" sh -c "$cmd" 2>&1) || fail "the pacer without a clock exited non-zero"
+  grep -qxF '[pace]' "$CLAUDE_PLUGIN_DATA/pixi/pace-args" || fail "without a clock tm trends pace did not run"
+  grep -q "\"cwd\": \"$PRUN\"" "$CLAUDE_PLUGIN_DATA/pixi/pace-stdin" && grep -q '"tool_name": "get_trend"' "$CLAUDE_PLUGIN_DATA/pixi/pace-stdin" \
+    || fail "tm trends pace got: $(cat "$CLAUDE_PLUGIN_DATA/pixi/pace-stdin")"
+  [ ! -e "$PW/.trendsmesh/pace.lock" ] || fail "the pacer kept its lock while tm paced"
+fi
 
 echo "bootstrap tests passed"

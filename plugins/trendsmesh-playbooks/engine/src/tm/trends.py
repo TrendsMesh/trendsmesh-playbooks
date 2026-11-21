@@ -3,6 +3,7 @@
     tm trends check-fields --run RUN [--json]
     tm trends collect on|off --run RUN, spool, ingest       (the collector: tm.trend_spool)
     tm trends shortlist --run RUN --terms ...                (the PB2 shortlist: tm.shortlist)
+    tm trends pace [--event F] [--status] [--json]           (the pacer of TrendsMesh calls: tm.trend_pace)
 
 A saved answer is `{"_tool", "_input", "_at", "answer"}` under `02_research/` (names in
 `save_answer`, never overwritten). The handoff's legacy files are read as they are: video files
@@ -265,6 +266,14 @@ def save_answer(run: RunFolder, tool: str, tool_input: dict, answer: Any, *, at:
     os.replace(tmp, path)
     source = _SOURCES.get(tool, f"TrendsMesh MCP {tool}")
     manifest.record(run, path.relative_to(run.path).as_posix(), RESEARCH, source, params=tool_input)
+    if tool == "get_usage":                    # issue #129: the pacer keeps to the newest saved limits
+        from tm import paths, trend_pace
+        try:
+            workspace = paths.workspace_of_run(run.path)
+            if workspace is not None:
+                trend_pace.learn(workspace, answer)
+        except OSError:
+            pass                               # the answer is saved; the pacer keeps its limits
     return path
 
 
@@ -404,9 +413,10 @@ def _setup(p: argparse.ArgumentParser) -> None:
     cf = sub.add_parser("check-fields", help="the fields the run needs, in the saved answers")
     cf.add_argument("--run", required=True, help="the run folder")
     cf.add_argument("--json", action="store_true")
-    from tm import shortlist, trend_spool   # they import this module
+    from tm import shortlist, trend_pace, trend_spool   # they import this module
     trend_spool.add_parsers(sub)
     shortlist.add_parser(sub)
+    trend_pace.add_parser(sub)
 
 
 def _check_fields(args: argparse.Namespace, run: RunFolder) -> int:
@@ -431,6 +441,9 @@ def _run(args: argparse.Namespace) -> int:
         return trend_spool.ACTIONS[args.action](args)
     if args.action == "shortlist":
         return shortlist.run_shortlist(args)
+    if args.action == "pace":
+        from tm import trend_pace
+        return trend_pace.run_pace(args)
     try:
         run = RunFolder.open(Path(args.run))
         return {"check-fields": _check_fields}[args.action](args, run)

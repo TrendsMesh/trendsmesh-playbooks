@@ -145,11 +145,27 @@ tokens without the collector.
 
 ## Pacing with `get_usage`
 
-Before a long pull (trend research: the hooks' videos at B4, the evidence videos at C1, the weekly
-fetch; creative brief: the evidence videos at B3), call `get_usage` and compare the calls left in
-each meter with the pull's size (`tm research fetch-plan`'s `calls_estimate`, plus the `get_trend`
-checks; in a brief, the pages of every trend whose videos you read). If it is short, say so plainly
-("TrendsMesh allows N more calls until <reset time>; the pull needs about M"), stop and wait for
-the reset, then continue from the same place and fetch only what is not saved yet. In the same
-session collection stays on; in a new session it is a resume: `collect on` right before the next
-call. A rate limit hit mid-pull is handled the same way.
+**The plugin paces every TrendsMesh call** (issue #129): a hook holds each call until it fits the
+plan's limits, 10 calls a second for every tool, 10 `search_trends` and 20 `get_trend_videos` pages
+a minute (or the limits of the latest saved `get_usage` answer), so no call is refused with
+`rate_limited` and nothing needs a retry. Fire calls in parallel as usual, **at most 10 at once**;
+a call may take up to about a minute to start, and that is the pacing, not a fault. Never add your
+own waits or sleeps between calls, and never retry a call because it was slow.
+
+`get_usage` is for the daily budget. Before a long pull (trend research: the hooks' videos at B4,
+the evidence videos at C1, the weekly fetch; creative brief: the evidence videos at B3), call
+`get_usage` and compare the calls left in each meter with the pull's size (`tm research
+fetch-plan`'s `calls_estimate`, plus the `get_trend` checks; in a brief, the pages of every trend
+whose videos you read). If it is short, say so plainly ("TrendsMesh allows N more calls until
+<reset time>; the pull needs about M"), stop and wait for the reset, then continue from the same
+place and fetch only what is not saved yet. In the same session collection stays on; in a new
+session it is a resume: `collect on` right before the next call.
+
+When the pacer denies a call, its reason says why, in one of two ways:
+
+- "TrendsMesh allows N more calls until <reset time>": the daily budget is spent. Handle it as
+  above: say so with what the pull still needs, stop and wait for the reset.
+- "would have to wait more than 65 s": more calls were fired at once than fit in a minute. Make it
+  again in about a minute, with at most 10 calls at once; the run continues from the same place.
+
+`tm trends pace --status --json` shows the limits in use and the calls booked in the last minute.
