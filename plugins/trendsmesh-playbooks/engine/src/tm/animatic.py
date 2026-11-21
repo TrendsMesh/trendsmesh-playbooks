@@ -248,20 +248,19 @@ MARGIN = 12                     # px between a hook and what it must not cover
 MARKED = {"face": "the face", "screen": "the product screen", "brand": "the brand's name"}
 
 
-def probe(anim: dict, fmt: str, *, node: list[str] | None = None) -> dict:
+def probe(anim: dict, fmt: str) -> dict:
     """What each beat of `anim` draws that a hook must keep clear of, and each hook's box at each place and size, in
-    format `fmt` (probe.js, run by node: the `video` environment's unless `node` names the command). A ToolError
-    when it cannot run."""
+    format `fmt` (probe.js, run by the `video` environment's node, as the renderer is). A ToolError when it cannot
+    run."""
     from tm import render as remotion
 
     with tempfile.TemporaryDirectory(prefix="tm-hooks-") as tmp:
         js = Path(tmp) / "anim.js"
         js.write_text("window.ANIM = " + json.dumps(anim, ensure_ascii=False) + ";\n", encoding="utf-8")
-        argv = [*(node or [*remotion._prefix(), "node"]), str(PROBE_JS), str(SCENES_JS), str(js),
-                str(JS_DIR / "engine.js"), fmt]
+        argv = [*remotion._prefix(), "node", str(PROBE_JS), str(SCENES_JS), str(js), str(JS_DIR / "engine.js"), fmt]
         try:
             proc = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                  timeout=180, env=None if node else remotion._env())
+                                  timeout=180, env=remotion._env())
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise c.ToolError(f"the hook check could not start ({exc})") from None
     lines = [x for x in (proc.stdout or "").splitlines() if x.strip()]

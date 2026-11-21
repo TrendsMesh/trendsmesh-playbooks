@@ -209,12 +209,13 @@ def _concept(*beats):
 
 
 @needs_node
-def test_the_page_marks_the_phone_screen_and_the_product_name_and_gives_the_hooks_boxes():
+def test_the_page_marks_the_phone_screen_and_the_product_name_and_gives_the_hooks_boxes(monkeypatch):
     from tm import animatic
 
+    monkeypatch.setattr(render, "_prefix", lambda: [])                  # node from PATH, not the video tier's
     anim = animatic.build_anim(_concept(("product_phone", {"product": "Lumen lamp"}, [HOOK]),
                                         ("selfie_talk", {}, [{**HOOK, "style": "top"}])))
-    got = animatic.probe.__wrapped__(anim, "9x16", node=["node"])
+    got = animatic.probe.__wrapped__(anim, "9x16")
     phone, selfie = got["beats"]
     assert {m["kind"] for m in phone["marks"]} == {"screen", "brand"}
     assert {m["kind"] for m in selfie["marks"]} == {"face"}
@@ -274,17 +275,17 @@ def test_tm_brief_animatic_moves_the_hook_before_rendering_and_names_the_change(
     (run.path / "04_final").mkdir(exist_ok=True)
     (run.path / "04_final" / "brief_pack_v01.json").write_text(json.dumps(
         {"concepts": [_concept(("product_phone", {"product": "Lumen lamp"}, [HOOK]))]}), encoding="utf-8")
-    real = animatic.probe.__wrapped__
-    monkeypatch.setattr(animatic, "probe", lambda anim, fmt: real(anim, fmt, node=["node"]))
+    monkeypatch.setattr(animatic, "probe", animatic.probe.__wrapped__)
+    monkeypatch.setattr(render, "_prefix", lambda: [])                  # node from PATH, not the video tier's
     monkeypatch.setattr(atlas, "need", lambda: tmp_path / "chrome")
     drawn = []
 
-    def render(page, out, *, fps=atlas.FPS, stills=atlas.STILLS):
+    def fake_render(page, out, *, fps=atlas.FPS, stills=atlas.STILLS):
         drawn.append(Path(page).read_text(encoding="utf-8"))
         Path(out).write_bytes(b"mp4")
         return {"render_s": 1, "page_errors": []}
 
-    monkeypatch.setattr(atlas, "render", render)
+    monkeypatch.setattr(atlas, "render", fake_render)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--formats", "9x16")
     assert code == 0, out
     js = (run.path / animatic.WIP / "C1_anim_v01.js").read_text(encoding="utf-8")
