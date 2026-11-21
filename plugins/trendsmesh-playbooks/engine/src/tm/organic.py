@@ -15,11 +15,16 @@ decisions --page week` (the week plan page, `tm.organic_pages.week`), `tm organi
 run per OK slot), `tm organic flexible` (the flexible day, the day before) and `tm organic deliver-week` (one delivery
 page for the week and the posting plan).
 An animation (F1, F2): `tm organic atlas-styles` lists our animation styles (`data/styles/`) and `tm organic atlas-prompt`
-writes a style's build prompt (`tm.atlas_prompt`) into `03_wip/<item>/prompt_vNN.txt`; `tm organic atlas-page` builds
-the page of the style module a subagent wrote from it; `tm organic storyboard`
-draws the storyboard page a subagent built from it into `03_wip/<item>/storyboard_vNN/` and `tm organic animate`
-the full animation page into `03_wip/<item>/renders/anim_vNN.mp4` (`tm.atlas`), only once the storyboard is accepted
-(`organic_qa.accepted_storyboard`). <item> is an animated item of the checked pack (`organic_pack.animated`). An
+writes a style's build prompt (`tm.atlas_prompt`) into `03_wip/<item>/prompt_vNN.txt`: `--storyboard` first, then
+`--animation` (the full animation from the accepted storyboard's module, `--from`, with the user's notes on it);
+`tm organic atlas-page` builds the page of the style module a subagent wrote from it (a storyboard: one panel per beat,
+refused when the beats do not match the frames list's scenes); `tm organic storyboard`
+draws the storyboard page into `03_wip/<item>/storyboard_vNN/` (as many panels as the page draws) and `tm organic
+animate` the full animation page into `03_wip/<item>/renders/anim_vNN.mp4` (`tm.atlas`) with a still at each beat's
+end, only once the storyboard is accepted (`organic_qa.accepted_storyboard`). <item> is an animated item of the checked
+pack (`organic_pack.animated`). A stills item (`organic_pack.stills`) has no storyboard: `atlas-prompt --layout`
+asks for its layout in the format of the trend's videos, `atlas-page` inlines the picked pictures, and `animate`
+draws it as the item's F2 render (issue 138 item 2, issue 141). An
 insert (an animation section of a video in sections) sits in the 9:16 edit: its prompt is made with `--aspect 9:16`
 only, and keeps the caption band below y 1260 free (`CAPTION_BAND`).
 Here, the stack check. The doctor (`tm doctor --playbook organic-video`) says what is installed and
@@ -46,6 +51,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -273,29 +279,41 @@ def _setup(p: argparse.ArgumentParser) -> None:
     a.add_argument("--numbers", action="store_true", help="the idea carries a key number: styles that show numbers well "
                                                           "first among equals")
     a.add_argument("--json", action="store_true")
-    a = sub.add_parser("atlas-prompt", help="an animation's build prompt in one of our styles, 03_wip/<item>/prompt_vNN.txt (free)")
+    a = sub.add_parser("atlas-prompt", help="an animation's (or a stills video's layout's) build prompt in one of our "
+                                            "styles, 03_wip/<item>/prompt_vNN.txt (free)")
     a.add_argument("--run", required=True, help="the run folder")
-    a.add_argument("--item", required=True, help="the animated item of the checked pack (its id, or a section's)")
+    a.add_argument("--item", required=True, help="the animated or stills item of the checked pack (its id, or a "
+                                                 "section's)")
     a.add_argument("--style", required=True, help="the style: its number or its styleId (tm organic atlas-styles)")
     a.add_argument("--voiceover", action="store_true", help="time the animation to the voiceover (with --srt)")
-    a.add_argument("--storyboard", action="store_true", help="ask for a storyboard first, before the animation")
+    mode = a.add_mutually_exclusive_group()
+    mode.add_argument("--storyboard", action="store_true", help="ask for a storyboard first, before the animation")
+    mode.add_argument("--animation", action="store_true", help="the full animation, from the accepted storyboard's "
+                                                               "module (--from), with the user's notes on it")
+    mode.add_argument("--layout", action="store_true", help="a stills item: its layout in the format of the trend's "
+                                                            "videos, with the picked pictures")
+    a.add_argument("--from", dest="from_module", help="with --animation: the accepted storyboard's module, "
+                                                      "03_wip/<item>/storyboard_vNN.js")
+    a.add_argument("--picture", action="append", default=[], metavar="NAME=FILE",
+                   help="with --layout: one of the user's own pictures in the run (an images item with no model)")
     a.add_argument("--aspect", choices=("9:16", "4:5", "1:1"), help="the frame to build for (9:16 here; 16:9 without it)")
     a.add_argument("--content", help="a text file in the run: the topic, the script and what each line shows")
     a.add_argument("--srt", help="the voiceover's word SRT (<stem>.words.srt), with --voiceover")
     a.add_argument("--json", action="store_true")
     a = sub.add_parser("atlas-page", help="build the page of a style module Claude wrote: <module>.html beside it (free)")
     a.add_argument("--run", required=True, help="the run folder")
-    a.add_argument("--item", required=True, help="the animated item of the checked pack")
-    a.add_argument("--module", required=True, help="the style module in 03_wip/<item>/ (storyboard_vNN.js or "
-                   "explainer_vNN.js)")
-    a.add_argument("--storyboard", action="store_true", help="a storyboard page (6 panels), not the animation")
+    a.add_argument("--item", required=True, help="the animated or stills item of the checked pack")
+    a.add_argument("--module", required=True, help="the style module in 03_wip/<item>/ (storyboard_vNN.js, "
+                   "explainer_vNN.js or layout_vNN.js)")
+    a.add_argument("--storyboard", action="store_true", help="a storyboard page (one panel per beat), not the animation")
+    a.add_argument("--panels", help=argparse.SUPPRESS)   # gone: the page draws one panel per beat (PANELS_GONE)
     a.add_argument("--json", action="store_true")
     a = sub.add_parser("storyboard", help="draw a storyboard page into 03_wip/<item>/storyboard_vNN/ (free, local)")
     a.add_argument("--run", required=True, help="the run folder")
     a.add_argument("--item", required=True, help="the animated item of the checked pack")
     a.add_argument("--page", required=True, help="the storyboard page in the run (window.STORYBOARD_READY, canvases "
                                                  "p1 to pN, window.makeSheet)")
-    a.add_argument("--panels", type=int, default=6, help="how many panels the page draws (default 6)")
+    a.add_argument("--panels", help=argparse.SUPPRESS)   # gone: the count is read from the page (PANELS_GONE)
     a.add_argument("--json", action="store_true")
     vs = sub.add_parser("vo-sync", help="the recorded voiceover's line times against the pack's and the take's cuts, "
                                         "with proposed times and the pace (free, reads only)")
@@ -305,10 +323,10 @@ def _setup(p: argparse.ArgumentParser) -> None:
                     help="the take's spec, whose input.prompt holds the timed shot list, relative to the run folder")
     vs.add_argument("--offset", type=float, default=0.0, help="the take's start in the video, in seconds (default 0)")
     vs.add_argument("--json", action="store_true")
-    a = sub.add_parser("animate", help="draw the full animation page into 03_wip/<item>/renders/anim_vNN.mp4 "
-                                       "once its storyboard is accepted (free, local)")
+    a = sub.add_parser("animate", help="draw the full animation page (once its storyboard is accepted) or a stills "
+                                       "item's layout page into 03_wip/<item>/renders/anim_vNN.mp4 (free, local)")
     a.add_argument("--run", required=True, help="the run folder")
-    a.add_argument("--item", required=True, help="the animated item of the checked pack")
+    a.add_argument("--item", required=True, help="the animated or stills item of the checked pack")
     a.add_argument("--page", required=True, help="the animation page in the run (window.seek, window.DURATION)")
     a.add_argument("--fps", type=int, help="frames a second (default: the config's animation.fps, 30)")
     a.add_argument("--json", action="store_true")
@@ -1000,33 +1018,143 @@ def _atlas_prompt(args: argparse.Namespace) -> int:
     run = RunFolder.open(Path(args.run))
     if args.srt and not args.voiceover:
         raise ValueError("--srt times the animation to the voiceover: give --voiceover with it.")
+    if args.from_module and not args.animation:
+        raise ValueError("--from names the accepted storyboard's module of the full animation: give --animation with it.")
+    if args.picture and not args.layout:
+        raise ValueError("--picture adds one of the user's own pictures to a stills video's layout: give --layout with it.")
     pack = organic_qa._pack(run)
-    item = organic_qa.animation_item(pack, args.item)
+    item, stills = organic_qa.drawn_item(pack, args.item)
+    if stills and not args.layout:
+        raise ValueError(f"{item} is a stills item: its video is the layout of its picked pictures, in the format of the "
+                         "trend's videos: build its prompt with --layout (it has no storyboard: the pictures were picked "
+                         "at F1).")
+    if args.layout and not stills:
+        raise ValueError(f"{item} is an animation, not a stills item: --layout is for a stills video's layout; use "
+                         "--storyboard first, then --animation.")
     insert = item != str(pack["id"])
     if insert and args.aspect != "9:16":
-        raise ValueError(f"{item} is an animation insert in the video's 9:16 edit: build its prompt with --aspect 9:16 "
-                         "(the prompt then keeps the caption band, below y 1260, free).")
+        raise ValueError(f"{item} is an {'insert' if stills else 'animation insert'} in the video's 9:16 edit: build its "
+                         "prompt with --aspect 9:16 (the prompt then keeps the caption band, below y 1260, free).")
     style = atlas_prompt.find_style(args.style)
     given = {k: audience.inside(run, getattr(args, k)) if getattr(args, k) else None for k in ("content", "srt")}
     look = pack.get("aesthetic")
     rules = [CAPTION_BAND if insert else "", LOOK_RULE.format(look=look.strip()) if isinstance(look, str) and look.strip()
              else ""]
+    animation = layout = None
+    own: dict[str, str] = {}
+    if args.animation:
+        board = organic_qa.accepted_storyboard(run, item)          # a Stop until the storyboard is accepted
+        module_rel = _board_module(run, item, board, args.from_module)
+        animation = {"file": module_rel, "code": (run.path / module_rel).read_text(encoding="utf-8-sig"),
+                     "notes": _storyboard_notes(run, item)}
+    if args.layout:
+        own = _own_pictures(run, args.picture)
+        pictures = organic_qa.layout_pictures(run, pack, own)
+        layout = {"pictures": [{"name": name, "file": file, **_size_of(run.path / file)}
+                               for name, file in pictures.items()],
+                  "style_spec": pack.get("style_spec")}
+    seconds = _length(pack, item)
     text = atlas_prompt.build(style, args.voiceover, args.storyboard,
                               *(g[0].read_text(encoding="utf-8-sig") if g else None for g in given.values()),
-                              args.aspect, "\n\n".join(r for r in rules if r) or None)
+                              args.aspect, "\n\n".join(r for r in rules if r) or None,
+                              animation=animation, layout=layout, duration=seconds)
     out = run.next_version(f"03_wip/{item}", "prompt", "txt")
     _write_new(run, out, text)
     rel = out.relative_to(run.path).as_posix()
     manifest.record(run, rel, "03_wip", ATLAS_PROMPT, parent=given["content"][1] if given["content"] else None,
                     params={"style": f"{style['order']:02d} {style['styleId']}", "voiceover": args.voiceover,
-                            "storyboard": args.storyboard, "aspect": args.aspect, "insert": insert,
+                            "storyboard": args.storyboard, "animation": bool(args.animation),
+                            "from": animation["file"] if animation else None, "layout": bool(args.layout),
+                            "pictures": own, "duration": seconds, "aspect": args.aspect, "insert": insert,
                             "srt": given["srt"][1] if given["srt"] else None}, cost="0")
+    what = ("storyboard page first" if args.storyboard else "full animation from the accepted storyboard's module"
+            if args.animation else "layout of the stills video (layout_vNN.js)" if args.layout else "animation page")
     message = (f"Wrote the build prompt for {item} in style {style['order']} {style['name']} ({len(text):,} "
-               f"characters) to {rel}. Hand the file whole to a subagent to build the "
-               + ("storyboard page first" if args.storyboard else "animation page") + " (about 15 minutes).")
+               f"characters) to {rel}. Hand the file whole to a subagent to build the {what} (about 15 minutes).")
     cli.emit(args, {"status": "done", "file": rel, "item": item, "style": style["styleId"], "chars": len(text),
-                    "message": message}, message)
+                    "duration": seconds, "message": message}, message)
     return 0
+
+
+def _length(pack: dict, item: str) -> float | None:
+    """The item's length in seconds: its section's span, else the checked pack's `script.seconds`."""
+    section = next((sec for sec in pack.get("sections") or [] if str(sec.get("id")) == item), None)
+    if section is not None and isinstance(section.get("to"), (int, float)) and isinstance(section.get("from"), (int, float)):
+        return round(float(section["to"]) - float(section["from"]), 3)
+    seconds = (pack.get("script") or {}).get("seconds")
+    return float(seconds) if isinstance(seconds, (int, float)) and not isinstance(seconds, bool) and seconds > 0 else None
+
+
+def _size_of(path: Path) -> dict:
+    from tm import atlas_prompt
+
+    size = atlas_prompt.picture_size(path)
+    return {"width": size[0], "height": size[1]} if size else {}
+
+
+def _own_pictures(run: RunFolder, given: list[str]) -> dict[str, str]:
+    """--picture NAME=FILE: the user's own pictures in the run, by name (run-relative)."""
+    out: dict[str, str] = {}
+    for entry in given:
+        name, sep, file = str(entry).partition("=")
+        name = name.strip()
+        if not sep or not name or not file.strip() or not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+            raise ValueError(f"--picture {entry}: give NAME=FILE, the name in letters, digits, '_' and '-' (the module "
+                             "draws it by that name) and the file a picture in the run.")
+        path, rel = audience.inside(run, file.strip())          # ValueError: not a file of this run
+        if not path.is_file() or path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".webp"):
+            raise ValueError(f"--picture {name}: {rel} is not a PNG, JPEG or WebP picture in the run.")
+        out[name] = rel
+    return out
+
+
+def _board_module(run: RunFolder, item: str, board: dict, given: str | None) -> str:
+    """The style module the accepted storyboard was drawn from (its sheet's page, that page's module), run-relative;
+    `given` (--from) must be it when the manifest says which it was."""
+    rows = manifest.rows(run)
+    sheet = str(board.get("file") or "").replace("\\", "/")
+    drawn = next((r for r in reversed(rows) if r["source"] == "tm organic storyboard" and r["file"] == sheet), {})
+    built = next((r for r in reversed(rows) if r["source"] == ATLAS_PAGE and r["file"] == drawn.get("parent")), {})
+    known = built.get("parent") or None
+    if given is None:
+        if known is None:
+            raise ValueError(f"Which module the accepted storyboard ({sheet}) was drawn from is not recorded: name it with "
+                             f"--from 03_wip/{item}/storyboard_vNN.js.")
+        return known
+    path, rel = audience.inside(run, given)          # ValueError: not a file of this run
+    if not path.is_file() or path.suffix.lower() != ".js":
+        raise ValueError(f"--from {rel} is not a .js file: give the accepted storyboard's module, 03_wip/{item}/"
+                         "storyboard_vNN.js.")
+    if path.resolve().parent != (run.path / "03_wip" / item).resolve():
+        raise ValueError(f"--from {rel} is not in 03_wip/{item}/: the item's module lives in its own folder.")
+    if known is not None and known.casefold() != rel.casefold():
+        raise ValueError(f"The accepted storyboard ({sheet}) was drawn from {known}, not {rel}: build the animation from "
+                         f"the module the user accepted (--from {known}).")
+    return rel
+
+
+def _storyboard_notes(run: RunFolder, item: str) -> str:
+    """The user's notes on the item's storyboard, from the latest images check-in decisions: its note and each frame's,
+    one prompt line each ("" without any)."""
+    found = run.latest("03_wip", "decisions_gate_images", "json")
+    if found is None:
+        return ""
+    try:
+        rows = (json.loads(found.read_text(encoding="utf-8-sig")).get("decisions") or {}).values()
+    except (OSError, ValueError, AttributeError):
+        return ""
+    lines = []
+    for row in rows:
+        if not (isinstance(row, dict) and row.get("kind") == "storyboard"
+                and str(row.get("name", "")).casefold() == item.casefold()):
+            continue
+        frames = row.get("frame_notes") if isinstance(row.get("frame_notes"), dict) else {}
+        note = str(row.get("note") or "").strip()
+        for line in note.splitlines():   # a redo's note carries the frame notes too: those are listed below
+            if line.strip() and not any(line.strip() == f"{k}: {v}" for k, v in frames.items()):
+                lines.append(f"- {line.strip()}")
+        lines += [f"- {k.replace('_', ' ')}: {str(v).strip()}" for k, v in frames.items() if str(v).strip()]
+    return "\n".join(lines)
 
 
 def _page_of(run: RunFolder, given: str) -> tuple[Path, str]:
@@ -1074,13 +1202,23 @@ def _prompt_aspect(run: RunFolder, item: str) -> str | None:
 ATLAS_PAGE = "tm organic atlas-page"   # the manifest source of a page built from a style module
 
 
+PANELS_GONE = ("--panels is gone: a storyboard draws one panel per beat of the module, and the count is read from "
+               "the page, so the panel files and sheet.png always match. Give one beat per scene in the module instead.")
+BEATS_LIST = re.compile(r"\bbeats\s*:\s*\[([^\]]*)\]")
+
+
 def _atlas_page(args: argparse.Namespace) -> int:
     """The page of a style module Claude wrote from the build prompt: `<module stem>.html` beside it, at the latest
-    prompt's frame (16:9 when it was built without --aspect), never over an earlier page."""
-    from tm import atlas, atlas_prompt
+    prompt's frame (16:9 when it was built without --aspect), never over an earlier page. A storyboard page draws one
+    panel per beat, and is refused when the beats do not match the frames list's scenes; a stills item's layout page
+    inlines the picked pictures (`organic_qa.layout_pictures`)."""
+    from tm import atlas_prompt, organic_qa
 
+    if args.panels is not None:
+        raise ValueError(PANELS_GONE)
     run = RunFolder.open(Path(args.run))
-    item = _animated(run, args.item)
+    pack = organic_qa._pack(run)
+    item, stills = organic_qa.drawn_item(pack, args.item)
     path, rel = audience.inside(run, args.module)          # ValueError: not a file of this run
     if not path.is_file() or path.suffix.lower() != ".js":
         raise ValueError(f"{rel} is not a .js file: give the style module the subagent wrote in 03_wip/{item}/.")
@@ -1091,21 +1229,36 @@ def _atlas_page(args: argparse.Namespace) -> int:
     if params is None:
         raise ValueError(f"{item} has no build prompt yet: make it with tm organic atlas-prompt first (the page takes "
                          "its frame).")
+    pictures: dict[str, str] = {}
+    if stills:
+        if args.storyboard:
+            raise ValueError(f"{item} is a stills item: its layout is built in play mode, with no storyboard (its "
+                             "pictures were picked at F1); leave --storyboard out.")
+        if not params.get("layout"):
+            raise ValueError(f"{item}'s latest build prompt is not a layout's: make it with tm organic atlas-prompt "
+                             "--layout first.")
+        own = params.get("pictures") if isinstance(params.get("pictures"), dict) else {}
+        pictures = organic_qa.layout_pictures(run, pack, own)
     aspect = params.get("aspect") if isinstance(params.get("aspect"), str) else None
+    voiced = bool(params.get("voiceover"))
     out = path.with_suffix(".html")
-    page = atlas_prompt.module_page(path.read_text(encoding="utf-8-sig"), f"{item} {path.stem}", aspect,
-                                    args.storyboard, atlas.PANELS if args.storyboard else 0,
-                                    bool(params.get("voiceover")))
     if out.exists():
         raise ValueError(f"{out.relative_to(run.path).as_posix()} already exists, and files are never overwritten: "
                          "write the module as a new version.")
+    module = path.read_text(encoding="utf-8-sig")
+    files = {name: run.path / file for name, file in pictures.items()}
+    layout = _layout_of(path, item, aspect, voiced, files)
+    if args.storyboard:
+        _beats_match(run, item, module, layout)
+    page = atlas_prompt.module_page(module, f"{item} {path.stem}", aspect, args.storyboard, 0, voiced, files)
     _write_new(run, out, page)
     out_rel = out.relative_to(run.path).as_posix()
     manifest.record(run, out_rel, "03_wip", ATLAS_PAGE, parent=rel,
-                    params={"storyboard": args.storyboard, "aspect": aspect}, cost="0")
+                    params={"storyboard": args.storyboard, "aspect": aspect, "layout": stills,
+                            **({"pictures": pictures} if stills else {})}, cost="0")
     w, h = atlas_prompt.frame(aspect)
-    message = (f"Built {out_rel} from {rel} ({'storyboard' if args.storyboard else 'animation'}, {w}x{h}).")
-    layout = _layout_of(path, item, aspect, bool(params.get("voiceover")))
+    kind = "storyboard, one panel per beat" if args.storyboard else "layout, with its pictures" if stills else "animation"
+    message = f"Built {out_rel} from {rel} ({kind}, {w}x{h})."
     found = layout.get("problems") or []
     if found:
         message += (" The layout check found what a viewer on a phone would miss; fix the module (a new version) and "
@@ -1116,11 +1269,53 @@ def _atlas_page(args: argparse.Namespace) -> int:
         message += (" Draw it with tm organic " + ("storyboard" if args.storyboard else "animate")
                     + f" --page {out_rel}.")
     cli.emit(args, {"status": "done", "file": out_rel, "item": item, "module": rel, "layout": layout,
-                    "message": message}, message)
+                    **({"pictures": pictures} if stills else {}), "message": message}, message)
     return 0
 
 
-def _layout_of(module: Path, item: str, aspect: str | None, voiceover: bool) -> dict:
+def module_beats(module: str, layout: dict | None = None) -> list | None:
+    """The beats of a style module: the layout check's (the page ran it), else a literal `beats: [...]` in its code;
+    None when neither says."""
+    beats = ((layout or {}).get("summary") or {}).get("beats")
+    if isinstance(beats, list):
+        return beats
+    found = BEATS_LIST.search(module)
+    if not found:
+        return None
+    parts = [x.strip() for x in found.group(1).split(",") if x.strip()]
+    try:
+        return [float(x) for x in parts]
+    except ValueError:
+        return None
+
+
+def frame_scenes(run: RunFolder, item: str) -> tuple[int, str] | None:
+    """(the scenes of the item's latest frames list, `03_wip/<item>/frames_vNN.json`, and its path), or None without a
+    readable one."""
+    found = run.latest(f"03_wip/{item}", "frames", "json")
+    if found is None:
+        return None
+    try:
+        rows = json.loads(found.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(rows, list):
+        return None
+    return sum(1 for r in rows if isinstance(r, dict)), found.relative_to(run.path).as_posix()
+
+
+def _beats_match(run: RunFolder, item: str, module: str, layout: dict) -> None:
+    """A storyboard module has one beat per scene of the frames list (issue 141 item 2); a ValueError otherwise."""
+    scenes = frame_scenes(run, item)
+    beats = module_beats(module, layout)
+    if scenes is None or beats is None or len(beats) == scenes[0]:
+        return
+    raise ValueError(f"The module has {len(beats)} beats and the frames list {scenes[0]} scenes ({scenes[1]}): give one "
+                     "beat per scene, in a new version of the module (or a new frames list when the scenes changed). "
+                     "No page was built.")
+
+
+def _layout_of(module: Path, item: str, aspect: str | None, voiceover: bool, pictures: dict | None = None) -> dict:
     """The layout check (atlas.layout) of a style module, always on its play-mode page (a storyboard page has no
     timeline), built in a temporary folder: {checked, problems, summary} or {checked: False, why}."""
     import tempfile
@@ -1131,7 +1326,7 @@ def _layout_of(module: Path, item: str, aspect: str | None, voiceover: bool) -> 
     if atlas.missing() is not None:
         return {"checked": False, "why": "the animatic tier or a browser is missing"}
     page = atlas_prompt.module_page(module.read_text(encoding="utf-8-sig"), f"{item} {module.stem}", aspect,
-                                    False, 0, voiceover)
+                                    False, 0, voiceover, pictures)
     with tempfile.TemporaryDirectory(prefix="tm-layout-") as tmp:
         target = Path(tmp) / f"{module.stem}.html"
         target.write_text(page, encoding="utf-8")
@@ -1161,6 +1356,8 @@ def _wrong_sizes(run: RunFolder, item: str, sizes: object) -> tuple[list[int], s
 def _storyboard(args: argparse.Namespace) -> int:
     from tm import atlas, organic_qa
 
+    if args.panels is not None:
+        raise ValueError(PANELS_GONE)
     run = RunFolder.open(Path(args.run))
     item = _animated(run, args.item)
     page, page_rel = _page_of(run, args.page)
@@ -1168,53 +1365,85 @@ def _storyboard(args: argparse.Namespace) -> int:
     taken = [int(m.group(1)) for d in (folder.iterdir() if folder.is_dir() else []) if (m := organic_qa.BOARD.match(d.name))]
     out = folder / f"storyboard_v{max(taken, default=0) + 1:02d}"
     try:
-        summary = _drawn(atlas.storyboard, page, out, panels=args.panels)
+        summary = _drawn(atlas.storyboard, page, out)
     finally:
         if out.is_dir() and not any(out.iterdir()):   # a refused or failed drawing leaves no empty version
             out.rmdir()
-    files = [p.relative_to(run.path).as_posix() for p in atlas.panel_paths(out, args.panels)]
+    n = summary.get("panels") if isinstance(summary.get("panels"), int) else len(summary.get("sizes") or [])
+    files = [p.relative_to(run.path).as_posix() for p in atlas.panel_paths(out, n)]
     errors = summary.get("page_errors") or []
     wrong, said = _wrong_sizes(run, item, summary.get("sizes"))
     for rel in files:
         manifest.record(run, rel, "03_wip", "tm organic storyboard", parent=page_rel, cost="0",
                         params={"page_errors": errors} if rel.endswith("/sheet.png") else None)
-    message = (f"Drew the storyboard of {item}: {args.panels} panels and the sheet in {out.relative_to(run.path).as_posix()}/"
+    message = (f"Drew the storyboard of {item}: {n} panels (one per beat, each at its end) and the sheet in "
+               f"{out.relative_to(run.path).as_posix()}/"
                + (f"; the page logged errors ({'; '.join(map(str, errors))}): look at the panels before showing them"
                   if errors else "") + said
                + ". Look at the sheet against the storyboard rubric, then the images check-in.")
-    cli.emit(args, {"status": "done", "item": item, "files": files, "sheet": files[-1], "sizes": summary.get("sizes"),
-                    "wrong_sizes": wrong, "page_errors": errors, "message": message}, message)
+    cli.emit(args, {"status": "done", "item": item, "files": files, "sheet": files[-1], "panels": n,
+                    "sizes": summary.get("sizes"), "wrong_sizes": wrong, "page_errors": errors, "message": message},
+             message)
     return 0
 
 
+def _built_page(run: RunFolder, page_rel: str) -> dict | None:
+    """The params of the atlas-page row that built `page_rel`, or None when tm organic atlas-page did not build it."""
+    for row in reversed(manifest.rows(run)):
+        if row["source"] == ATLAS_PAGE and row["file"].casefold() == page_rel.casefold():
+            try:
+                params = json.loads(row["params"]) if row["params"] else {}
+            except ValueError:
+                params = {}
+            return params if isinstance(params, dict) else {}
+    return None
+
+
 def _animate(args: argparse.Namespace) -> int:
-    from tm import atlas, organic_qa
+    from tm import atlas, organic_qa, render
 
     run = RunFolder.open(Path(args.run))
-    item = _animated(run, args.item)
-    board = organic_qa.accepted_storyboard(run, item)
+    pack = organic_qa._pack(run)
+    item, stills = organic_qa.drawn_item(pack, args.item)
+    board = None if stills else organic_qa.accepted_storyboard(run, item)
     page, page_rel = _page_of(run, args.page)
+    pictures: dict[str, str] = {}
+    if stills:
+        built = _built_page(run, page_rel)
+        if not built or not built.get("layout") or not isinstance(built.get("pictures"), dict):
+            raise ValueError(f"{page_rel} is not a layout page of {item}: build the layout module's page with tm organic "
+                             "atlas-page first (it inlines the picked pictures), then draw that page.")
+        pictures = built["pictures"]
     fps = args.fps if args.fps is not None else config.get(config.load(run), "animation.fps")
     fps = atlas.FPS if fps is None else fps                       # 0 is refused below, never the default
     if fps < 1:
         raise ValueError(f"--fps is a whole number above 0, not {fps}.")
     out = _in_wip(run, run.next_version(f"03_wip/{item}/renders", organic_qa.ANIM, "mp4"))
     out.parent.mkdir(parents=True, exist_ok=True)
-    info = _drawn(atlas.render, page, out, fps=fps)
+    info = _drawn(atlas.render, page, out, fps=fps, stills=atlas.BEATS)
     rel = out.relative_to(run.path).as_posix()
-    stills = [p.relative_to(run.path).as_posix() for p in atlas.still_paths(out) if p.is_file()]
+    shots = [p.relative_to(run.path).as_posix() for p in atlas.beat_still_paths(out) if p.is_file()]
     errors = info.get("page_errors") or []
-    manifest.record(run, rel, "03_wip", organic_qa.ANIMATE, parent=page_rel, cost="0",
-                    params={"storyboard": board["file"], "storyboard_pick": organic_qa.pick_mark(board), "fps": fps,
-                            "duration": info.get("duration"), "render_s": info.get("render_s"), "page_errors": errors})
-    for still in stills:
+    made = {"fps": fps, "duration": info.get("duration"), "render_s": info.get("render_s"), "page_errors": errors,
+            "stills_at": [s.get("t") for s in info.get("stills") or [] if isinstance(s, dict)]}
+    if stills:
+        props = {"pictures": list(dict.fromkeys(pictures.values()))}
+        params = {"composition": render.LAYOUT_COMP, "item": item, "props": props,
+                  "made_under": organic_qa.made_under(run, render.LAYOUT_COMP, props), **made}
+    else:
+        params = {"storyboard": board["file"], "storyboard_pick": organic_qa.pick_mark(board), **made}
+    manifest.record(run, rel, "03_wip", organic_qa.ANIMATE, parent=page_rel, cost="0", params=params)
+    for still in shots:
         manifest.record(run, still, "03_wip", organic_qa.ANIMATE, parent=rel, cost="0")
-    message = (f"Drew the animation of {item} into {rel} ({info.get('duration')} s at {fps} fps, with {len(stills)} "
-               f"stills), from the storyboard accepted as {board['file']}"
+    source = (f"its layout page {page_rel}, with {len(pictures)} picked pictures" if stills
+              else f"the storyboard accepted as {board['file']}")
+    message = (f"Drew the {'layout' if stills else 'animation'} of {item} into {rel} ({info.get('duration')} s at {fps} "
+               f"fps, with {len(shots)} stills, one at each beat's end, the storyboard's moments), from {source}"
                + (f"; the page logged errors ({'; '.join(map(str, errors))}): look at the stills first" if errors else "")
                + ". Look at the stills, then the video check-in.")
-    cli.emit(args, {"status": "done", "item": item, "file": rel, "stills": stills, "storyboard": board["file"],
-                    "fps": fps, "summary": info, "message": message}, message)
+    cli.emit(args, {"status": "done", "item": item, "file": rel, "stills": shots,
+                    "storyboard": board["file"] if board else None, "fps": fps, "summary": info, "message": message},
+             message)
     return 0
 
 

@@ -779,7 +779,7 @@ def test_images_page_shows_the_look_beside_its_evidence(tmp_path, monkeypatch):
     state.save(run, s)
     refs = organic_gates.gate_json(run, "images")["items"][0]["refs"]
     assert [r["src"] for r in refs if r["src"].startswith("03_wip/edit_")] == []
-    assert organic_gates.compositions(pack) == render.MOTION_COMPS
+    assert organic_gates.compositions(pack) == render.STILLS_COMPS            # the layout too (issue 138 item 2)
     assert organic_gates.compositions(_pack("m5_pl_pack.json")) == ("OrganicCaptions",)     # a talking piece's edit
     assert organic_gates.compositions(_pack("p3_sections_pack.json")) == ("OrganicCaptions",)
 

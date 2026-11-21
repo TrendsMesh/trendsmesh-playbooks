@@ -21,7 +21,7 @@ also open it and play it. You write one file, the style module; the page is buil
   - `duration`: seconds (10 to 60, as the topic needs).
   - `fonts`: `{ href: "<Google Fonts css2 URL>", faces: ['800 20px "Font Name"', ...] }`, one face per weight you use.
     Write the URL out in full: the page's `<link>` is taken from it.
-  - `beats`: the start time of each beat (5 or 6 of them); `beatNames`: a short name for each.
+  - `beats`: the start time of each beat, one beat per scene of the topic; `beatNames`: a short name for each.
   - `draw(ctx, W, H, t)`: draws the whole frame at `t` seconds.
   - `score(k)`: the sound, with `k.at(time, "effect", { gain, pitch, pan, dur })`, `k.bed(...)`, `k.seq(...)` and
     the rest of the scheduler in `sound.js`.

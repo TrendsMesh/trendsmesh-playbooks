@@ -369,7 +369,9 @@ def test_stills_and_sections_steps_name_the_engine_commands():
         "f1": ["An animation insert", "--item S2", "--aspect 9:16", "caption band", "stills with motion graphics",
                "tm render still --run R --comp QuizGrid", "the latest still of the composition"],
         "f2": ["`QuizGrid`", "`RankingSplit`", "`RankingList`", "tm render video --run R --comp QuizGrid",
-               "motion-graphics renders", "the cards' current picks"],
+               "stills item's renders", "the cards' current picks", "atlas-prompt --run R --item <item> --style <the "
+               "channel's or the closest style> --layout", "03_wip/<item>/layout_v01.js", "--animation --from",
+               "a still at each beat's end"],
         "g1": ["A video in sections", "in their order", "renders/anim_vNN.mp4", "each from its own outputs"],
     }
     for anchor, words in named.items():
@@ -393,7 +395,7 @@ def test_animation_styles_reference_holds_the_brief_and_the_page_contract():
     for words in ("Pick 2 to 3 from the head of that list", "playing loops", "grouped by family",
                   "Your channel's style", "goes **last**", "Never a picture from the web", "setting", "replaced by the topic's", "rendering", "is kept", "above y 1260",
                   "timed from the word SRT", "_progress.txt", "about 15 minutes", "window.STORYBOARD_READY = true",
-                  "`p1` to `p6`", "window.makeSheet()", "window.seek(t)", "window.DURATION", "licence",
+                  "`p1` to `pN`", "one beat per scene", "window.makeSheet()", "window.seek(t)", "window.DURATION", "licence",
                   "tm organic atlas-prompt", "tm organic storyboard", "tm organic animate", "--stage storyboard"):
         assert words in text, words
     assert "gate" not in text.lower()

@@ -46,9 +46,11 @@ pack check that changed what it shows: its scenes (each script line's `shot` and
 style or its section (`item_marks`, key `storyboard_key`). The spoken `text` (what goes to the voice) is not drawn, so a
 change to it alone keeps the storyboard's accept (issue #90).
 
-Stills with motion graphics (FLOWS.md F4, a quiz or a ranking): pictures (GPT Image 2 cards, paid and picked at
-F1, or the user's own pictures, an images item with no model) in a QuizGrid, RankingList or RankingSplit render
-(F2, free). Its items (`stills`) are the pack's id, else each stills section's id. A generated item of any pack is
+Stills with motion graphics (FLOWS.md F4), in the format of the trend's own videos: pictures (GPT Image 2 cards, paid
+and picked at F1, or the user's own pictures, an images item with no model) laid out by a style module the agent
+builds from the trend's evidence and the style spec (`tm organic atlas-prompt --layout`, drawn by `tm organic
+animate`, F2, free); a QuizGrid, RankingList or RankingSplit render stays a tested example for a real quiz or
+ranking. Its items (`stills`) are the pack's id, else each stills section's id. A generated item of any pack is
 made on Replicate, so the pack stage refuses one when the run's stack has no Replicate key.
 
 A video in sections (FLOWS.md F5): `sections` follow each other (the `to` of one is the `from` of the next, each
@@ -1036,8 +1038,9 @@ def animated(pack: dict) -> list[str]:
 
 
 def stills(pack: dict) -> list[str]:
-    """The items the pack makes as stills with motion graphics (a QuizGrid, RankingList or RankingSplit render): its id
-    when the whole video is one, else each stills section's id."""
+    """The items the pack makes as stills with motion graphics (their layout, in the format of the trend's videos, drawn
+    by `tm organic animate`, or a QuizGrid, RankingList or RankingSplit render): its id when the whole video is one,
+    else each stills section's id."""
     if pack["production"] == "stills_motion":
         return [str(pack["id"])]
     return [str(sec["id"]) for sec in pack["sections"] if sec["type"] == "stills_motion"]

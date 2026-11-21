@@ -1,24 +1,31 @@
 /* player.js - the page runtime for TrendsMesh style pages. window.Player
  *
  * The page sets a config before any script runs:
- *   window.TM_PAGE = { width: 1080, height: 1920, mode: "play" | "storyboard", panels: 6, voiceover: false };
+ *   window.TM_PAGE = { width: 1080, height: 1920, mode: "play" | "storyboard", panels: 0, voiceover: false,
+ *                      pictures: { "card1": "data:image/png;base64,..." } };   // panels 0: one per beat
  * then inlines brush.js, sound.js, player.js and one style module, which calls:
  *
  *   Player.register({
  *     id: "flat-explainer", name: "Flat Vector Explainer",
  *     duration: 12,                                  // seconds
  *     fonts: { href: "https://fonts.googleapis.com/css2?family=...", faces: ['800 10px "Baloo 2"', ...] },
- *     beats: [0, 2, 4.2, 6.6, 9, 10.8],              // start times of the 5-6 beats
+ *     beats: [0, 2, 4.2, 6.6, 9, 10.8],              // start times of the beats, one per scene
  *     beatNames: ["Title", ...],                     // optional, for storyboard captions
- *     stills: [1.2, ...],                            // optional: exact storyboard panel times
+ *     stills: [1.2, ...],                            // optional: one panel time per beat (default: each beat's end)
  *     draw(ctx, W, H, t) { ... },                    // the frame at t: a pure function of t
  *     score(k) { ... },                              // the sound score (see sound.js)
  *   });
  *
  * Play mode: one <canvas id="stage"> at width x height (the frame), window.seek(t), window.DURATION,
  * window.scoreSound, and a small player for people. Nothing headless depends on the player: seek draws directly.
- * Storyboard mode: canvases p1..pN at width x height, each the still of one beat, window.STORYBOARD_READY = true
- * once drawn, window.makeSheet() -> PNG data URL contact sheet.
+ * Storyboard mode: canvases p1..pN at width x height, each the still of one beat (N = the beats, or the config's
+ * panels when above 0; window.STORYBOARD_PANELS), window.STORYBOARD_READY = true once drawn, window.makeSheet() ->
+ * PNG data URL contact sheet.
+ * A panel shows its beat's end, where the scene is complete: 0.2 s before the next beat starts (the length - 0.2 s for
+ * the last); `stills` replace those times when they give one per panel. Player.panelTimes(n) and Player.beatEnds()
+ * give them, so render.mjs takes the animation's QA stills at the same moments.
+ * Pictures: the config's `pictures` (name -> data URL, the run's picked stills) are loaded before Player.ready
+ * resolves; Player.picture(ctx, name, x, y, w, h, opts) draws one, Player.pictures() lists them with their sizes.
  */
 (function () {
   "use strict";
@@ -65,22 +72,67 @@
   }
   const fmt = (t) => t.toFixed(1).padStart(4, " ");
 
-  /** Panel times for the storyboard: style.stills, else 60 % of the way into each beat. */
+  const END_GAP = 0.2; // a panel is taken this long before its beat ends, where the scene is complete
+
+  /** The moment a span [a, b) is complete: END_GAP before its end, never before its start (a short span: its middle). */
+  function endOf(a, b, d) {
+    const t = b - a > 2 * END_GAP ? b - END_GAP : a + (b - a) / 2;
+    return Math.max(0, Math.min(d - 0.01, t));
+  }
+  /** Panel times for the storyboard (and the animation's QA stills): style.stills when they give one time per panel,
+   * else each beat's end (just before the next beat starts; the length for the last). */
   function panelTimes(style, n) {
     const d = style.duration;
-    if (Array.isArray(style.stills) && style.stills.length >= n) return style.stills.slice(0, n);
+    if (Array.isArray(style.stills) && style.stills.length === n) return style.stills.slice();
     const beats = (style.beats || []).slice();
     const pickIdx = (i) => (beats.length <= 1 || n <= 1 ? 0 : Math.round((i * (beats.length - 1)) / (n - 1)));
     const out = [];
     for (let i = 0; i < n; i++) {
       if (beats.length >= n) {
         const bi = beats.length === n ? i : pickIdx(i);
-        const a = beats[bi], b = bi + 1 < beats.length ? beats[bi + 1] : d;
-        out.push(Math.min(d - 0.01, a + 0.6 * (b - a)));
-      } else out.push(((i + 0.6) * d) / n);
+        out.push(endOf(beats[bi], bi + 1 < beats.length ? beats[bi + 1] : d, d));
+      } else out.push(endOf((i * d) / n, ((i + 1) * d) / n, d));
     }
     return out;
   }
+  function beatCount(style) {
+    return Math.max(1, (style.beats || []).length || 6);
+  }
+  P.panelTimes = (n) => panelTimes(P.style, n);
+  /** One time per beat: the storyboard's panels with the page's default count, the animation's QA stills. */
+  P.beatEnds = () => panelTimes(P.style, beatCount(P.style));
+
+  // ------------------------------------------------------------------ pictures
+  const pics = {};
+  const picsLoaded = Promise.all(Object.entries(cfg.pictures || {}).map(([name, src]) => new Promise((res) => {
+    const img = new Image();
+    img.onload = () => { pics[name] = img; res(); };
+    img.onerror = () => { console.error("picture " + name + " could not be loaded"); res(); };
+    img.src = src;
+  })));
+  /** The page's pictures: [{ name, width, height }]. */
+  P.pictures = () => Object.keys(cfg.pictures || {}).map((name) => ({
+    name, width: pics[name] ? pics[name].naturalWidth : 0, height: pics[name] ? pics[name].naturalHeight : 0 }));
+  /** Draw the picture `name` into the box x, y, w, h. opts.fit: "cover" (default: fills the box, cropped) or "contain"
+   * (whole, letterboxed); opts.radius rounds the corners; opts.focus [fx, fy] (0-1) is the point a cover crop keeps.
+   * Returns false (and draws nothing) when the page has no such picture. */
+  P.picture = function (ctx, name, x, y, w, h, opts) {
+    const img = pics[name], o = opts || {};
+    if (!img || !(w > 0) || !(h > 0)) return false;
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const s = o.fit === "contain" ? Math.min(w / iw, h / ih) : Math.max(w / iw, h / ih);
+    const dw = iw * s, dh = ih * s, [fx, fy] = o.focus || [0.5, 0.5];
+    const dx = o.fit === "contain" ? x + (w - dw) / 2 : x + (w - dw) * fx;
+    const dy = o.fit === "contain" ? y + (h - dh) / 2 : y + (h - dh) * fy;
+    ctx.save();
+    ctx.beginPath();
+    if (o.radius && ctx.roundRect) ctx.roundRect(x, y, w, h, o.radius);
+    else ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.drawImage(img, dx, dy, dw, dh);
+    ctx.restore();
+    return true;
+  };
 
   // ------------------------------------------------------------------ play mode
   function buildPlayer(style) {
@@ -231,16 +283,17 @@
       else if (e.key === "g" || e.key === "G") showGuides();
     });
 
-    window.seek(0);
-    P.ready = waitFonts(style).then(() => {
+    if (!Object.keys(cfg.pictures || {}).length) window.seek(0); // with pictures: the first frame once they are loaded
+    P.ready = Promise.all([waitFonts(style), picsLoaded]).then(() => {
       if (!playing) window.seek(current);
     });
   }
 
   // ------------------------------------------------------------------ storyboard mode
   function buildStoryboard(style) {
-    const n = cfg.panels > 0 ? cfg.panels : Math.max(1, (style.beats || []).length || 6);
+    const n = cfg.panels > 0 ? cfg.panels : beatCount(style);
     const times = panelTimes(style, n);
+    window.STORYBOARD_PANELS = n;
     const names = style.beatNames || [];
     const portrait = H > W;
     css(`
@@ -270,7 +323,7 @@
     }
     document.body.append(h1, board);
     window.STORYBOARD_READY = false;
-    P.ready = waitFonts(style).then(() => {
+    P.ready = Promise.all([waitFonts(style), picsLoaded]).then(() => {
       panels.forEach((c, i) => P.drawAt(c.getContext("2d"), times[i]));
       window.STORYBOARD_READY = true;
     });
@@ -310,7 +363,7 @@
     for (const key of ["id", "name", "duration", "draw"]) if (style[key] == null) throw new Error("Player.register: style needs " + key);
     if (!(style.duration > 0)) throw new Error("Player.register: duration must be > 0");
     if (typeof style.draw !== "function") throw new Error("Player.register: draw must be a function");
-    if (!Array.isArray(style.beats) || style.beats.length < 2) console.warn("Player.register: give beats (5-6 start times)");
+    if (!Array.isArray(style.beats) || style.beats.length < 2) console.warn("Player.register: give beats (one start time per scene)");
     P.style = style;
     window.DURATION = style.duration;
     window.scoreSound = function (k) {

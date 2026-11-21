@@ -2,7 +2,7 @@
 // nothing a viewer must read outside the safe area or off the frame, and no large dead band in a vertical frame.
 // Usage: node layout_check.mjs <page.html> --browser <path> [--no-sandbox] [--step 0.25]
 // The page is a play-mode page (window.seek, window.DURATION, a <canvas> at the frame size). Prints one JSON line:
-// { size, duration, small: [...], outside: [...], empty: [...], texture: n, page_errors: [...] }.
+// { size, duration, beats (the module's beat starts), small: [...], outside: [...], empty: [...], texture: n, page_errors: [...] }.
 //
 // How text is measured: fillText and strokeText are wrapped before the page's scripts run, so every string drawn
 // on any canvas is recorded with its font size, the canvas transform and its box. Text drawn on a helper canvas is
@@ -165,6 +165,8 @@ try {
   await page.goto(pathToFileURL(resolve(page_)).href, { waitUntil: "networkidle0", timeout: 60000 });
   await page.evaluate(() => document.fonts.ready);
   await page.waitForFunction("typeof window.seek === 'function' && window.DURATION > 0", { timeout: 60000 });
+  await page.evaluate(() => window.Player && window.Player.ready);   // its fonts and pictures
+  const beats = await page.evaluate(() => (window.Player && window.Player.style && window.Player.style.beats) || null);
   await new Promise((r) => setTimeout(r, 300));     // the runtime clears cached layers once fonts are in
   const info = await page.evaluate(() => {
     const c = [...document.querySelectorAll("canvas")].sort((p, q) => q.width * q.height - p.width * p.height)[0];
@@ -260,7 +262,7 @@ try {
       }
     }
   }
-  console.log(JSON.stringify({ size: [W, H], duration: D, min_label_px: minPx, small, outside, empty,
+  console.log(JSON.stringify({ size: [W, H], duration: D, beats, min_label_px: minPx, small, outside, empty,
                                texture: texture.size, page_errors: errors.slice(0, 10) }));
 } finally {
   await browser.close();

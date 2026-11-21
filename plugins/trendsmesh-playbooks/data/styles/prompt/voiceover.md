@@ -6,7 +6,8 @@ A narration will be laid over this animation. Here is its script, timed word by 
 {{SRT}}
 ```
 
-- The animation is exactly as long as the voiceover: `duration` is the end time of the last cue.
+- `duration` is {{DURATION}}, the video's length (the voiceover ends at {{LAST_CUE}}): hold the last beat until the
+  end, so nothing is cut off and nothing new starts after the voice stops.
 - Each beat starts on the word that names it: take the start time of that word's cue from the SRT, and use it in
   `beats` and in `draw`. Things that are said should appear as they are said, not before.
 - Never draw the narration or captions of it. The edit adds them. Short labels, numbers and titles are fine.

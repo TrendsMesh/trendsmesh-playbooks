@@ -21,6 +21,10 @@ earlier goes last on the page too. The risk level is the highest weight of the n
 production type (`risk_level`, the weights in data/organic-video/risks.yaml), never their count. A file written
 before these keys still checks.
 
+`stills_motion` is the run's picked pictures laid out in the format the trend's own videos use (a tips list, a before
+and after, a ranking, a quiz ...): the agent builds that layout as a style module at F2 (`tm organic atlas-prompt
+--layout`, issue 138 item 2); the quiz and ranking templates stay only as tested examples.
+
 `tm organic proposals check --run R --file F` runs `check` and marks the file it passed on
 (`stepchecks.mark`, key `proposals`); C1's step check `proposals_checked` (`checked_gap`) asks that the
 latest proposals file is that one, unchanged.
@@ -89,7 +93,8 @@ _NOT_FOUND = re.compile(r"no trend found|nie znaleziono trendu", re.IGNORECASE)
 _PERCENT = re.compile(r"\d+\s?%")
 PRODUCTION_WORDS = {  # a production type in the user's words (flow.md C3), for the stops the agent relays
     "ai_footage": "AI footage", "talking_character": "a talking character", "animation": "an animation",
-    "stills_motion": "stills with motion graphics (a quiz or a ranking)", "sections": "a video in sections",
+    "stills_motion": "stills with motion graphics (the format from the trend's videos)",
+    "sections": "a video in sections",
 }
 NEEDS = {  # a production type the stack hides -> (the stack key, what it needs)
     "ai_footage": ("replicate", "a Replicate key (REPLICATE_API_TOKEN) for the video models"),
@@ -473,8 +478,9 @@ def _cost(p: dict, pid: str, out: list[Problem]) -> None:
 
 def makeable(stack: dict | None) -> list[str]:
     """The production types this stack can make as one AI video, in the user's words (PR C re-review N2): the types
-    it does not hide, an animation only where the Atlas renderer can draw, stills with motion graphics on the user's
-    own pictures without Replicate (GPT Image 2 makes the cards on it); a video in sections is not one type."""
+    it does not hide, an animation only where the Atlas renderer can draw, stills with motion graphics (in the format
+    of the trend's videos) on the user's own pictures without Replicate (GPT Image 2 makes the cards on it); a video
+    in sections is not one type."""
     hidden = organic.hidden_types(stack)
     out = []
     for kind in PRODUCTIONS:

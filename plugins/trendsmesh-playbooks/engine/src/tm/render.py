@@ -9,7 +9,10 @@ voice tracks, and native-style captions inside the platforms' common safe zone. 
 the render by `tm tool deliver finish`. In an organic run, `tm render video` refuses an edit that keeps an AI shot's own
 sound under the voiceover (`organic_edit.shot_audio_gap`, issue 89) unless the user asked for it (`--keep-shot-audio`).
 `draft_still` draws a frame of props given as data to a scratch file, never recorded (`tm tool cover_fit` measures its
-drafts). The handoff's motion graphics (`MOTION_COMPS`, FLOWS.md F4): `QuizGrid` (a "Guess the
+drafts). A stills video is rendered in the format of the trend's own videos: the agent builds that layout as a style
+module (`tm organic atlas-prompt --layout`, `LAYOUT_COMP`), drawn by `tm organic animate`; the handoff's motion
+graphics stay as tested examples for a faster render when the evidence really is a quiz or a ranking (`MOTION_COMPS`,
+FLOWS.md F4): `QuizGrid` (a "Guess the
 _" quiz: its `options[].img` pictures in a 2×2 grid, a countdown, the reveal, an optional `music`), `RankingList` and
 `RankingSplit` (a countdown ranking: one clip per `items[].src`, cut back to back and muted; RankingSplit is the look
 copied from the evidence, lesson 21).
@@ -62,7 +65,11 @@ from tm.tools import _common as c
 
 Comp = Literal["HookSwap", "WordCaptions", "OrganicCaptions", "RankingList", "RankingSplit", "QuizGrid"]
 COMPS = ("HookSwap", "WordCaptions", "OrganicCaptions", "RankingList", "RankingSplit", "QuizGrid")
-MOTION_COMPS = ("RankingList", "RankingSplit", "QuizGrid")   # organic video's motion graphics (stills with motion)
+MOTION_COMPS = ("RankingList", "RankingSplit", "QuizGrid")   # the three tested templates of a stills video
+# A stills video's own layout, in the format of the trend's videos: a style module the agent builds (tm organic
+# atlas-prompt --layout) with the picked pictures inlined, drawn by `tm organic animate` (issue 138 item 2, issue 141).
+LAYOUT_COMP = "layout"
+STILLS_COMPS = MOTION_COMPS + (LAYOUT_COMP,)   # what may render a stills item for F2
 # Card styles HookSwap.tsx draws (the `style` of each card). Keep in step with CardStyle there.
 CARD_STYLES = ("box", "outlineBar")
 MARKER = ".setup-done"

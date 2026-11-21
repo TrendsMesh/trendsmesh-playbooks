@@ -2,8 +2,10 @@
 its stills, drawn in the user's own Chrome or Edge. Shared by the creative brief and PB03.
 
     find_browser()                                  the browser render.mjs drives, or None
-    render(page, out_mp4, *, fps=24, stills=...)    render.mjs's JSON summary of one render
-    storyboard(page, out_dir, *, panels=6)          storyboard.mjs's JSON summary: a storyboard's panels
+    render(page, out_mp4, *, fps=24, stills=...)    render.mjs's JSON summary of one render; stills=BEATS takes one
+                                                    still per beat, at the storyboard's panel times
+    storyboard(page, out_dir)                       storyboard.mjs's JSON summary: a storyboard's panels, as many
+                                                    as the page draws (one per beat)
     layout(page)                                    layout_check.mjs's JSON summary: text too small, text
                                                     outside the safe area, dead bands in a vertical frame
 
@@ -18,8 +20,10 @@ run, so they always match the plugin.
 
 `storyboard` (organic video's storyboard check-in) draws a storyboard page the way the handoff's
 `render_storyboard.mjs` does: the page sets `window.STORYBOARD_READY = true`, draws each panel on
-a canvas `p1` ... `pN` and gives the contact sheet from `window.makeSheet()` (a data URL);
-storyboard.mjs writes `panel_NN.png` and `sheet.png` into the folder. It goes through the same
+a canvas `p1` ... `pN` (N in `window.STORYBOARD_PANELS`: one per beat of the module) and gives the contact sheet
+from `window.makeSheet()` (a data URL); storyboard.mjs writes `panel_NN.png` and `sheet.png` into the folder, so the
+panel files and the sheet always have the same panels. Each panel is its beat's end (player.js), and an animation's
+QA stills (`render(..., stills=BEATS)`) are taken at the same times: `<stem>_still_bNN.png`, one per beat. It goes through the same
 `need()`, sandbox rule, time limit and process-tree kill as a render.
 
 `layout` checks a play-mode page the way a viewer on a phone meets it (layout_check.mjs says how): every
@@ -41,6 +45,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -58,9 +63,10 @@ SCRIPT = "render.mjs"
 STORYBOARD_SCRIPT = "storyboard.mjs"
 LAYOUT_SCRIPT = "layout_check.mjs"
 SCRIPTS = (SCRIPT, STORYBOARD_SCRIPT, LAYOUT_SCRIPT)
-PANELS = 6                   # a storyboard's panels (FLOWS.md F3: 5-6)
+_PANEL_FILE = re.compile(r"^panel_\d+\.png$")
 FPS = 24
-STILLS = (0.06, 0.3, 0.55, 0.8, 0.95)
+STILLS = (0.06, 0.3, 0.55, 0.8, 0.95)   # a creative brief's animatic stills, as shares of its length
+BEATS = "beats"              # render(..., stills=BEATS): one still per beat, at its end (organic video's animations)
 LINUX_BROWSERS = ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge",
                   "microsoft-edge-stable")
 MAC_BROWSERS = ("Google Chrome.app/Contents/MacOS/Google Chrome", "Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
@@ -242,6 +248,12 @@ def still_paths(out_mp4: Path, stills: tuple[float, ...] = STILLS) -> list[Path]
     return [out.with_name(f"{out.stem}_still_{math.floor(s * 100 + 0.5):03d}.png") for s in stills]
 
 
+def beat_still_paths(out_mp4: Path) -> list[Path]:
+    """The beat stills render.mjs wrote beside `out_mp4` (`stills=BEATS`): `<stem>_still_bNN.png`, by beat."""
+    out = Path(out_mp4)
+    return sorted(out.parent.glob(f"{out.stem}_still_b[0-9][0-9].png")) if out.parent.is_dir() else []
+
+
 def _kill_tree(proc: subprocess.Popen) -> None:
     """Stop render.mjs and what it started. On Windows taskkill takes the tree. Elsewhere the process
     group gets SIGTERM first, so puppeteer closes its Chrome (which runs in a group of its own), then
@@ -287,21 +299,24 @@ def _run(argv: list[str], name: str, what: str = "animatic renderer") -> subproc
     return subprocess.CompletedProcess(argv, proc.returncode, stdout, stderr)
 
 
-def render(page: Path, out_mp4: Path, *, fps: int = FPS, stills: tuple[float, ...] = STILLS) -> dict:
-    """Render `page` to `out_mp4` and its stills (`still_paths`) with render.mjs; returns
-    render.mjs's JSON summary (out, duration, frames, size, sound, page_errors ...). Never
-    overwrites: an existing `out_mp4` or still is refused. A failed render leaves none of its files."""
+def render(page: Path, out_mp4: Path, *, fps: int = FPS, stills: tuple[float, ...] | str = STILLS) -> dict:
+    """Render `page` to `out_mp4` and its stills (`still_paths`; with `stills=BEATS` one per beat at its end,
+    `beat_still_paths`) with render.mjs; returns render.mjs's JSON summary (out, duration, frames, size, sound,
+    stills, page_errors ...). Never overwrites: an existing `out_mp4` or still is refused. A failed render leaves none
+    of its files."""
     page, out = Path(page).resolve(), Path(out_mp4).resolve()
     if not page.is_file():
         raise c.ToolError(f"The animatic page {page} does not exist.")
-    pictures = still_paths(out, stills)
+    beats = stills == BEATS
+    pictures = beat_still_paths(out) if beats else still_paths(out, stills)
     taken = [p.name for p in (out, *pictures) if p.exists()]
     if taken:
         raise c.ToolError(f"{', '.join(taken)} already exist(s), and files are never overwritten.")
     browser = need()
     script = _sync_script()
     argv = [*remotion._prefix(), "node", str(script), str(page), str(out), "--browser", str(browser),
-            "--ffmpeg", c.ffmpeg_bin(), "--fps", str(int(fps)), "--stills", ",".join(f"{s:g}" for s in stills)]
+            "--ffmpeg", c.ffmpeg_bin(), "--fps", str(int(fps)),
+            "--stills", BEATS if beats else ",".join(f"{s:g}" for s in stills)]
     if needs_no_sandbox(browser):
         argv.append("--no-sandbox")
     c.say(f"Drawing the animatic {out.name} ...")
@@ -311,7 +326,8 @@ def render(page: Path, out_mp4: Path, *, fps: int = FPS, stills: tuple[float, ..
         proc = _run(argv, page.name)
         ok = proc.returncode == 0
     finally:
-        for part in parts if ok else [*parts, out, *pictures]:   # never a half-written file under a name
+        drawn = beat_still_paths(out) if beats else pictures
+        for part in parts if ok else [*parts, out, *drawn]:   # never a half-written file under a name
             part.unlink(missing_ok=True)
     if not ok:
         _failed(proc, f"The animatic renderer failed on {page.name}")
@@ -331,39 +347,40 @@ def _failed(proc: subprocess.CompletedProcess, failed: str) -> None:
     raise c.ToolError(f"{failed}: {tail}")
 
 
-def panel_paths(out_dir: Path, panels: int = PANELS) -> list[Path]:
+def panel_paths(out_dir: Path, panels: int) -> list[Path]:
     """The files storyboard.mjs writes into `out_dir`: `panel_01.png` ... and `sheet.png`, last."""
     out = Path(out_dir)
     return [out / f"panel_{n:02d}.png" for n in range(1, panels + 1)] + [out / "sheet.png"]
 
 
-def storyboard(page: Path, out_dir: Path, *, panels: int = PANELS) -> dict:
-    """Draw the storyboard `page` into `out_dir` (`panel_paths`) with storyboard.mjs; returns its JSON summary
-    (written, sizes, page_errors). Never overwrites: a panel or sheet already there is refused. A failed
-    drawing leaves none of its files."""
+def _board_files(out: Path) -> list[Path]:
+    return sorted(p for p in out.iterdir() if p.is_file() and (p.name == "sheet.png" or _PANEL_FILE.match(p.name))) \
+        if out.is_dir() else []
+
+
+def storyboard(page: Path, out_dir: Path) -> dict:
+    """Draw the storyboard `page` into `out_dir` (`panel_paths`, as many panels as the page draws) with
+    storyboard.mjs; returns its JSON summary (written, panels, sizes, page_errors). Never overwrites: a panel or sheet
+    already there is refused. A failed drawing leaves none of its files."""
     page, out = Path(page).resolve(), Path(out_dir).resolve()
     if not page.is_file():
         raise c.ToolError(f"The storyboard page {page} does not exist.")
-    if isinstance(panels, bool) or not isinstance(panels, int) or panels < 1:
-        raise c.ToolError(f"A storyboard has a whole number of panels above 0, not {panels!r}.")
-    targets = panel_paths(out, panels)
-    taken = [p.name for p in targets if p.exists()]
+    taken = [p.name for p in _board_files(out)]
     if taken:
         raise c.ToolError(f"{', '.join(taken)} already exist(s) in {out}, and files are never overwritten.")
     browser = need()
     script = _sync_script(STORYBOARD_SCRIPT)
-    argv = [*remotion._prefix(), "node", str(script), str(page), str(out), "--browser", str(browser),
-            "--panels", str(panels)]
+    argv = [*remotion._prefix(), "node", str(script), str(page), str(out), "--browser", str(browser)]
     if needs_no_sandbox(browser):
         argv.append("--no-sandbox")
-    c.say(f"Drawing the storyboard {out.name} ({panels} panels) ...")
+    c.say(f"Drawing the storyboard {out.name} (one panel per beat) ...")
     ok = False
     try:
         proc = _run(argv, page.name, "storyboard renderer")
         ok = proc.returncode == 0
     finally:
         if not ok:
-            for part in targets:                      # never a half-drawn storyboard under its names
+            for part in _board_files(out):            # never a half-drawn storyboard under its names
                 part.unlink(missing_ok=True)
     if not ok:
         _failed(proc, f"The storyboard renderer failed on {page.name}")

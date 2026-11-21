@@ -75,14 +75,18 @@ of the look on the user's topic, where a style that does not fit is changed for 
 
 A subagent builds the storyboard from the prompt (about 15 minutes, FLOWS K). Its brief:
 read `03_wip/<item>/prompt_vNN.txt` whole and follow its storyboard mode; write the style module
-`03_wip/<item>/storyboard_vNN.js` with **5 to 6 beats**, one per beat of the voiceover; build its page
+`03_wip/<item>/storyboard_vNN.js` with **one beat per scene** of the content and the frames list
+(`03_wip/<item>/frames_vNN.json`), each starting on its line of the voiceover; build its page
 with `tm organic atlas-page --run R --item <item> --module 03_wip/<item>/storyboard_vNN.js --storyboard
---json` (the page draws each panel of 1080×1920 on a canvas with the id `p1` to `p6`, sets
+--json` (refused when the module's beats do not match the frames list's scenes; the page draws one
+panel of 1080×1920 per beat, at the beat's end, 0.2 s before the next beat starts, on a canvas with
+the id `p1` to `pN`, sets
 `window.STORYBOARD_READY = true` once they are drawn, and gives the contact sheet as a PNG data URL from
 `window.makeSheet()`), open it and fix what is wrong in a new module version; append its stage to
 `03_wip/<item>/_progress.txt` as it goes (one line per stage). Then draw it: `tm organic storyboard --run R --item <item> --page
 03_wip/<item>/storyboard_vNN.html --json` writes `03_wip/<item>/storyboard_vNN/panel_01.png` …
-and `sheet.png` (free, in the user's browser; never over an earlier one). Look at the sheet
+and `sheet.png`, as many panels as the page draws (free, in the user's browser; never over an earlier
+one). Look at the sheet
 against the rubric: the style kept, the same characters in every panel, text and key action above
 y 1260, a panel per beat.
 
@@ -95,14 +99,17 @@ the pack check that last changed its script, style or section, counts.
 
 ## The animation (F2)
 
-A subagent builds the animation from the same prompt and the accepted storyboard's module, with the
-user's notes on it (about 15 minutes, and about 2.5 minutes to render 750 frames): the module
+A subagent builds the animation from its own prompt, `tm organic atlas-prompt ... --animation --from
+03_wip/<item>/storyboard_vNN.js` (the accepted storyboard's module, the user's notes on it and the pack's
+length in it; it asks for no storyboard), about 15 minutes, and about 2.5 minutes to render 750 frames: the
+module
 `03_wip/<item>/explainer_vNN.js`, then its page with `tm organic atlas-page --run R --item <item> --module
 03_wip/<item>/explainer_vNN.js --json`: `03_wip/<item>/explainer_vNN.html`, a page whose every frame is a
 pure function of `t` (`window.seek(t)`, `window.DURATION`, one canvas, the sound score in
 `window.scoreSound` with the library's `SOUND` kit), appending its stage to `03_wip/<item>/_progress.txt`. Then `tm organic animate --run R --item
 <item> --page 03_wip/<item>/explainer_vNN.html --json` renders it at the config's
-`animation.fps` (30) into `03_wip/<item>/renders/anim_vNN.mp4` with its stills; it is refused
-until the storyboard is accepted. Look at the stills (text inside the safe zone, the fixes from the
+`animation.fps` (30) into `03_wip/<item>/renders/anim_vNN.mp4` with a still at each beat's end, the
+storyboard panels' moments; it is refused until the storyboard is accepted. Look at the stills beside the
+storyboard (text inside the safe zone, the fixes from the
 storyboard's notes, no page errors), then the video check-in shows the render. The edit (G1) lays
 the voiceover, the music and the captions over it.

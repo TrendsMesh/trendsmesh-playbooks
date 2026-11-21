@@ -1,5 +1,6 @@
 // Render an animation page (window.seek / DURATION / scoreSound) to MP4 with its sound effects.
-// Usage: node render.mjs <page.html> <out.mp4> --browser <path> [--ffmpeg <path>] [--no-sandbox] [--fps 30] [--stills 0.1,0.5,0.9]
+// Usage: node render.mjs <page.html> <out.mp4> --browser <path> [--ffmpeg <path>] [--no-sandbox] [--fps 30] [--stills 0.1,0.5,0.9 | beats]
+// --stills beats: one still per beat at its end (Player.beatEnds(), the storyboard's panel times), <stem>_still_bNN.png.
 // Needs ffmpeg (on PATH, or --ffmpeg). Uses the installed Chrome (or Edge) at --browser through puppeteer-core, headless.
 import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";
@@ -16,7 +17,8 @@ const FFMPEG = opt("--ffmpeg", "ffmpeg");
 // Linux only, when Chrome's sandbox cannot run (root, a downloaded headless shell); the page is local.
 const NO_SANDBOX = args.includes("--no-sandbox") ? ["--no-sandbox"] : [];
 const FPS = +opt("--fps", 30);
-const stills = (opt("--stills", "") || "").split(",").filter(Boolean).map(Number);
+const BEATS = opt("--stills", "") === "beats";
+const stills = BEATS ? [] : (opt("--stills", "") || "").split(",").filter(Boolean).map(Number);
 const pagePath = resolve(page_), out = resolve(out_);
 mkdirSync(dirname(out), { recursive: true });
 
@@ -31,6 +33,7 @@ try {
   await page.goto(pathToFileURL(pagePath).href, { waitUntil: "networkidle0", timeout: 60000 });
   await page.waitForFunction("typeof window.seek === 'function' && window.DURATION > 0", { timeout: 30000 });
   await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => window.Player && window.Player.ready);   // its fonts and pictures
   const D = await page.evaluate(() => window.DURATION);
   const n = Math.round(D * FPS);
 
@@ -54,9 +57,19 @@ try {
   await new Promise((res, rej) => ff.on("close", c => c === 0 ? res() : rej(new Error("ffmpeg video exit " + c))));
 
   // Stills for review.
+  const shots = [];
   for (const f of stills) {
     const b64 = await page.evaluate((t) => { window.seek(t); return window.__frameCanvas.toDataURL("image/png").split(",")[1]; }, f * D);
-    writeFileSync(join(dirname(out), `${basename(out, ".mp4")}_still_${String(Math.round(f * 100)).padStart(3, "0")}.png`), Buffer.from(b64, "base64"));
+    const file = join(dirname(out), `${basename(out, ".mp4")}_still_${String(Math.round(f * 100)).padStart(3, "0")}.png`);
+    writeFileSync(file, Buffer.from(b64, "base64"));
+    shots.push({ file, t: +(f * D).toFixed(3) });
+  }
+  const ends = BEATS ? await page.evaluate(() => window.Player.beatEnds()) : [];
+  for (let i = 0; i < ends.length; i++) {
+    const b64 = await page.evaluate((t) => { window.seek(t); return window.__frameCanvas.toDataURL("image/png").split(",")[1]; }, ends[i]);
+    const file = join(dirname(out), `${basename(out, ".mp4")}_still_b${String(i + 1).padStart(2, "0")}.png`);
+    writeFileSync(file, Buffer.from(b64, "base64"));
+    shots.push({ file, t: +ends[i].toFixed(3), beat: i + 1 });
   }
 
   // Sound: render the score offline, 16-bit stereo WAV.
@@ -83,7 +96,7 @@ try {
       .on("close", c => c === 0 ? res() : rej(new Error("ffmpeg copy exit " + c))));
   }
   slow.sort((a, b) => a - b);
-  console.log(JSON.stringify({ out, duration: D, frames: n, size, sound: hasSound, render_s: Math.round((Date.now() - t0) / 1000),
+  console.log(JSON.stringify({ out, duration: D, frames: n, size, sound: hasSound, stills: shots, render_s: Math.round((Date.now() - t0) / 1000),
     frame_ms_median: slow[n >> 1], frame_ms_p95: slow[Math.floor(n * 0.95)], page_errors: errors.slice(0, 10) }));
 } finally {
   await browser.close();

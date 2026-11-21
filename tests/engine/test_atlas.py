@@ -369,8 +369,12 @@ def test_render_mjs_is_the_originals_but_for_the_browser_ffmpeg_and_sandbox_opti
                if line[:1] in "+-" and not line.startswith(("+++", "---"))]
     allowed = ("// Render an", "--browser", "--ffmpeg", "FFMPEG", "NO_SANDBOX", "BROWSERS", "existsSync);", "Program Files",
                "];", "// Usage:", "// Needs ffmpeg", "// Linux only", 'spawn("ffmpeg"', "usage: node render.mjs",
-               "puppeteer.launch({ executablePath, headless: true")
-    assert changed and all(any(a in line for a in allowed) for line in changed), changed
+               "puppeteer.launch({ executablePath, headless: true",
+               # issue 141: the stills at the beats' ends (--stills beats), after the page's fonts and pictures
+               "--stills beats", "BEATS", "Player.ready", "const file", "writeFileSync(file", "shots", "ends.length", "_still_", "const stills",
+               "console.log(JSON.stringify({ out, duration: D")
+    assert changed and all(any(a in line for a in allowed) for line in changed if line[1:].strip() not in ("}",)), \
+        changed
 
 
 # --- the tier and the doctor ---------------------------------------------------------------------

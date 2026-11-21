@@ -2,7 +2,8 @@
 
     styles()                 the library's styles, in their order
     find_style(key)          one style, by its number or its styleId; a ValueError names the closest
-    build(style, ...)        the ready-to-paste build prompt for an animation in that style
+    build(style, ...)        the ready-to-paste build prompt for an animation in that style (a storyboard first, the
+                             full animation from an accepted storyboard's module, or a stills video's layout)
     page(style, ...)         the style's own reference animation as a page (window.seek / DURATION, or a storyboard)
 
     module_page(text, ...)   a page built from a style module Claude wrote (tm organic atlas-page)
@@ -11,15 +12,18 @@ The library is engine data, `data/styles/` (written by us, from scratch): `style
 style: name, family, description, what it suits, its look, palette, fonts, finishing passes, motion, how it
 explains, its sound, what to avoid), `lib/` (brush.js, the shared drawing helpers; sound.js, the synthesized sound
 kit; player.js, the page runtime; page.html, the page template), `styles/NN_<styleId>.js` (each style's reference
-animation), `prompt/` (the prompt's parts: build.md always, voiceover.md and storyboard.md by mode) and README.md.
-The build prompt is those parts with the content, the voiceover's word SRT and the frame filled in, then the style's
-card, then the libraries' API (README.md's module, Brush and SOUND sections) and the code of the style's reference
-animation. Claude writes only a style module; the page is built from it with the libraries inlined, so neither the
+animation), `prompt/` (the prompt's parts: build.md always, voiceover.md by mode, then one of storyboard.md (a
+storyboard first), animation.md (the full animation from the accepted storyboard's module, named and appended) and
+layout.md (a stills video: the trend's format laid out with the run's picked pictures, which `module_page` inlines))
+and README.md. The build prompt is those parts with the content, the voiceover's word SRT, its length (`{{DURATION}}`:
+the pack's `script.seconds`, else the SRT's last cue) and the frame filled in, then the style's card, then the
+libraries' API (README.md's module, Brush and SOUND sections) and the code of the style's reference animation. Claude writes only a style module; the page is built from it with the libraries inlined, so neither the
 prompt nor Claude's answer carries the libraries' 100k characters.
 """
 
 from __future__ import annotations
 
+import base64
 import difflib
 import functools
 import hashlib
@@ -204,23 +208,71 @@ def api() -> str:
     return "\n\n".join(parts)
 
 
-def build(style, voiceover=False, storyboard=False, content=None, srt=None, aspect=None, extra=None) -> str:
+CUE_END = re.compile(r"-->\s*(\d+):(\d+):(\d+)[,.](\d+)")
+NO_NOTES = "- (none: the user accepted the storyboard as it is)"
+NO_SPEC = "(no style spec: read the format from the trend's saved videos)"
+
+
+def last_cue(srt: str | None) -> float | None:
+    """The end of the SRT's last cue, in seconds, or None without a timed cue."""
+    ends = [int(h) * 3600 + int(m) * 60 + int(sec) + int(ms.ljust(3, "0")[:3]) / 1000
+            for h, m, sec, ms in CUE_END.findall(srt or "")]
+    return max(ends) if ends else None
+
+
+def _seconds(value: float) -> str:
+    return f"{round(value, 2):g} s"
+
+
+def picture_lines(pictures) -> str:
+    """The pictures a layout page holds, one prompt line each: `name`: its file (W x H px)."""
+    lines = []
+    for pic in pictures or ():
+        size = f" ({pic['width']}x{pic['height']} px)" if pic.get("width") and pic.get("height") else ""
+        lines.append(f"- `{pic['name']}`: {pic['file']}{size}" + (f", {pic['what']}" if pic.get("what") else ""))
+    return "\n".join(lines) or "- (none)"
+
+
+def build(style, voiceover=False, storyboard=False, content=None, srt=None, aspect=None, extra=None, *,
+          animation=None, layout=None, duration=None) -> str:
     """The build prompt for an animation in `style`: the prompt's parts for the modes asked for, filled in, then the
     style's card, the libraries' API and the style's reference animation. `aspect` re-composes it for that format
-    (ASPECTS; 16:9 without one); `extra` adds rules (an insert's caption band)."""
+    (ASPECTS; 16:9 without one); `extra` adds rules (an insert's caption band). `duration` is the video's length in
+    seconds (the pack's `script.seconds`), else the SRT's last cue.
+
+    One mode at most: `storyboard` (a storyboard first, then stop); `animation`, {"file", "code", "notes"} (the full
+    animation from the accepted storyboard's module, the user's notes applied: the module is named and appended);
+    `layout`, {"pictures": [{name, file, width, height, what}], "style_spec": {...} | None} (a stills video's layout,
+    the pictures drawn with Player.picture)."""
+    if sum(bool(m) for m in (storyboard, animation, layout)) > 1:
+        raise ValueError("A build prompt is for a storyboard, the full animation or a stills layout: one of them.")
     w, h = frame(aspect)
     top, bottom = safe_area(aspect)
-    parts = ["build.md"] + (["voiceover.md"] if voiceover else []) + (["storyboard.md"] if storyboard else [])
+    mode = ["storyboard.md"] if storyboard else ["animation.md"] if animation else ["layout.md"] if layout else []
+    parts = ["build.md"] + (["voiceover.md"] if voiceover else []) + mode
+    end = last_cue(srt)
+    length = duration if duration else end
     fill = {"{{STYLE_NAME}}": style["name"], "{{WIDTH}}": str(w), "{{HEIGHT}}": str(h),
             "{{ASPECT}}": aspect or "16:9", "{{SAFE_TOP}}": str(top), "{{SAFE_BOTTOM}}": str(bottom),
             "{{TEXT_SIZES}}": text_sizes(aspect), "{{EXTRA_RULES}}": (extra or "").strip(),
+            "{{DURATION}}": _seconds(length) if length else "the end time of the SRT's last cue",
+            "{{LAST_CUE}}": _seconds(end) if end is not None else "the SRT's last cue",
+            "{{FROM}}": (animation or {}).get("file") or "",
+            "{{NOTES}}": ((animation or {}).get("notes") or "").strip() or NO_NOTES,
+            "{{PICTURES}}": picture_lines((layout or {}).get("pictures")),
+            "{{STYLE_SPEC}}": (json.dumps(layout["style_spec"], ensure_ascii=False, indent=2)
+                               if (layout or {}).get("style_spec") else NO_SPEC),
             "{{CONTENT}}": (content or "").strip() or CONTENT_PH, "{{SRT}}": (srt or "").strip() or SRT_PH}
     text = "\n\n".join(_read(f"prompt/{p}").strip() for p in parts)
     for key, value in fill.items():
         text = text.replace(key, value)
     rel = module_path(style).relative_to(ROOT).as_posix()
-    return (text + "\n\n## The style\n\n" + card(style) + "\n\n## The libraries' API\n\n" + api()
-            + f"\n\n## The reference module ({style['name']}, `{rel}`)\n\n```js\n{_read(rel).rstrip()}\n```\n")
+    text += ("\n\n## The style\n\n" + card(style) + "\n\n## The libraries' API\n\n" + api()
+             + f"\n\n## The reference module ({style['name']}, `{rel}`)\n\n```js\n{_read(rel).rstrip()}\n```\n")
+    if animation:
+        text += (f"\n## The accepted storyboard's module (`{animation['file']}`)\n\n```js\n"
+                 f"{str(animation['code']).replace(chr(13), '').rstrip()}\n```\n")
+    return text
 
 
 FONTS_URL = re.compile(r"https://fonts\.googleapis\.com/css2\?[^\"'`\s]+")
@@ -235,25 +287,67 @@ def fonts_link(module: str) -> str:
             f'<link rel="stylesheet" href="{html.escape(found.group(0))}">')
 
 
-def module_page(module: str, title: str, aspect: str | None = None, storyboard: bool = False, panels: int = 6,
-                voiceover: bool = False) -> str:
+PICTURE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+
+
+def picture_size(path: Path) -> tuple[int, int] | None:
+    """A PNG's or JPEG's width and height in px, read from its header; None for another file or one that cannot be
+    read."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(32)
+            if head[:8] == b"\x89PNG\r\n\x1a\n" and head[12:16] == b"IHDR":
+                return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+            if head[:2] != b"\xff\xd8":
+                return None
+            fh.seek(2)
+            while True:
+                marker = fh.read(2)
+                if len(marker) < 2 or marker[0] != 0xFF:
+                    return None
+                if marker[1] in (0xD8, 0x01) or 0xD0 <= marker[1] <= 0xD7:
+                    continue
+                length = int.from_bytes(fh.read(2), "big")
+                if 0xC0 <= marker[1] <= 0xCF and marker[1] not in (0xC4, 0xC8, 0xCC):
+                    body = fh.read(5)
+                    return int.from_bytes(body[3:5], "big"), int.from_bytes(body[1:3], "big")
+                fh.seek(length - 2, 1)
+    except OSError:
+        return None
+
+
+def data_uri(path: Path) -> str:
+    """A picture file as a data URL (PNG, JPEG or WebP), for a page that must open with no other file."""
+    path = Path(path)
+    kind = PICTURE_TYPES.get(path.suffix.lower())
+    if kind is None:
+        raise ValueError(f"{path.name} is not a picture a page can hold ({', '.join(PICTURE_TYPES)}).")
+    return f"data:{kind};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+
+
+def module_page(module: str, title: str, aspect: str | None = None, storyboard: bool = False, panels: int = 0,
+                voiceover: bool = False, pictures: dict | None = None) -> str:
     """A self-contained page from a style module: lib/page.html with the frame, the mode, the fonts <link> the module
     names and the three libraries, then the module, inlined. Play mode gives window.seek, window.DURATION and
-    window.scoreSound; storyboard mode `panels` panels on canvases p1 ... pN and window.makeSheet()."""
+    window.scoreSound; storyboard mode `panels` panels on canvases p1 ... pN (0: one per beat of the module) and
+    window.makeSheet(). `pictures` ({name: picture file}) are inlined as data URLs, for Player.picture."""
     w, h = frame(aspect)
     config = {"width": w, "height": h, "mode": "storyboard" if storyboard else "play",
               "panels": panels if storyboard else 0, "voiceover": bool(voiceover)}
+    if pictures:
+        config["pictures"] = {name: data_uri(path) for name, path in pictures.items()}
     code = [_read(f"lib/{n}") for n in LIB] + [module.replace("\r", "")]
     scripts = "\n".join("<script>\n" + c.rstrip().replace("</script", "<\\/script") + "\n</script>" for c in code)
     fill = {"{{TITLE}}": html.escape(title + (" - storyboard" if storyboard else "")),
-            "{{FONTS_LINK}}": fonts_link(module), "{{CONFIG}}": json.dumps(config), "{{SCRIPTS}}": scripts}
+            "{{FONTS_LINK}}": fonts_link(module), "{{CONFIG}}": json.dumps(config).replace("</", "<\\/"),
+            "{{SCRIPTS}}": scripts}
     text = _read("lib/page.html")
     for key, value in fill.items():
         text = text.replace(key, value)
     return text
 
 
-def page(style, aspect: str | None = None, storyboard: bool = False, panels: int = 6) -> str:
-    """The style's own reference animation as a page (`module_page`)."""
+def page(style, aspect: str | None = None, storyboard: bool = False, panels: int = 0) -> str:
+    """The style's own reference animation as a page (`module_page`; a storyboard: one panel per beat)."""
     return module_page(_read(module_path(style).relative_to(ROOT).as_posix()), style["name"], aspect, storyboard,
                        panels)

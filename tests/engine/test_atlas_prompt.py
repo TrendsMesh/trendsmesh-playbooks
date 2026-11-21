@@ -101,19 +101,25 @@ def _draws_storyboard(code=0, stderr="", panels=6, written=None, size=(1080, 192
         files = atlas.panel_paths(out, panels)
         for f in files[:written]:
             f.write_bytes(PNG)
-        summary = {"written": [str(f) for f in files], "sizes": [list(size)] * panels, "page_errors": []}
+        summary = {"written": [str(f) for f in files], "panels": panels, "sizes": [list(size)] * panels,
+                   "page_errors": []}
         return code, (json.dumps(summary) + "\n") if code == 0 else "", stderr
     return act
 
 
-def _draws_animation(code=0):
+def _draws_animation(code=0, beats=5):
+    """What render.mjs leaves: the MP4 and its stills (one per beat with --stills beats, issue 141 item 2)."""
     def act(argv, kw):
         out = Path(argv[argv.index("--browser") - 1])
         out.write_bytes(b"mp4")
-        for still in atlas.still_paths(out):
+        by_beat = argv[argv.index("--stills") + 1] == atlas.BEATS
+        shots = ([out.with_name(f"{out.stem}_still_b{n:02d}.png") for n in range(1, beats + 1)] if by_beat
+                 else atlas.still_paths(out))
+        for still in shots:
             still.write_bytes(PNG)
         summary = {"out": str(out), "duration": 25.0, "frames": 750, "size": [1080, 1920], "sound": True,
-                   "render_s": 149, "page_errors": []}
+                   "render_s": 149, "stills": [{"file": str(f), "t": 4.8 * n, "beat": n} for n, f in enumerate(shots, 1)],
+                   "page_errors": []}
         return code, json.dumps(summary) + "\n", ""
     return act
 
@@ -168,8 +174,9 @@ def test_prompt_for_m1_in_style_14(tmp_path, capsys, animatic_ready):
     style = atlas_prompt.find_style("14")
     assert (style["styleId"], style["name"]) == ("halftone-comic", "Halftone Comic")
     content, srt = exampleedu.m1_text("content_v01.txt"), exampleedu.m1_text("vo_words_v01.srt")
-    built = atlas_prompt.build(style, True, True, content, srt, "9:16")
+    built = atlas_prompt.build(style, True, True, content, srt, "9:16", duration=_m1_pack()["script"]["seconds"])
     assert content.strip() in built and srt.strip() in built and "{{" not in built
+    assert "`duration` is 25 s, the video's length (the voiceover ends at 23.96 s)" in built   # issue 141 item 3
     assert "1080x1920" in built and atlas_prompt.CONTENT_PH not in built and atlas_prompt.SRT_PH not in built
     for part in ("build.md", "voiceover.md", "storyboard.md"):
         assert _first_line(part) in built, part
@@ -220,7 +227,7 @@ def test_atlas_page_builds_the_page_of_a_module(tmp_path, capsys, animatic_ready
     code, out = _cli(capsys, *page)
     assert (code, out["file"], out["item"]) == (0, "03_wip/M1/storyboard_v01.html", "M1"), out
     html = _text(run.path / out["file"])
-    assert '"width": 1080, "height": 1920, "mode": "storyboard", "panels": 6, "voiceover": true' in html
+    assert '"width": 1080, "height": 1920, "mode": "storyboard", "panels": 0, "voiceover": true' in html
     assert module.rstrip() in html and all(_text(DATA / "lib" / n).rstrip() in html for n in atlas_prompt.LIB)
     assert '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?' in html
     row = next(r for r in manifest.rows(run) if r["file"] == out["file"])
@@ -425,8 +432,7 @@ def test_storyboard_runs_storyboard_mjs_and_never_overwrites(tmp_path, capsys, r
     assert isinstance(argv, list) and "shell" not in kw and (kw.get("start_new_session") or kw.get("creationflags"))
     assert argv[len(render._prefix()):] == [
         "node", str(atlas.work_dir() / "storyboard.mjs"), str((run.path / page).resolve()),
-        str((run.path / "03_wip" / "M1" / "storyboard_v01").resolve()), "--browser", str(Path("/Apps/Google Chrome")),
-        "--panels", "6"]
+        str((run.path / "03_wip" / "M1" / "storyboard_v01").resolve()), "--browser", str(Path("/Apps/Google Chrome"))]
     assert {r["file"] for r in manifest.rows(run) if r["source"] == "tm organic storyboard"} == set(out["files"])
     code, out = _storyboard(run, capsys, page)
     assert out["sheet"] == "03_wip/M1/storyboard_v02/sheet.png"            # the next version
@@ -562,7 +568,9 @@ def test_storyboard_mjs_is_the_originals_but_for_the_browser_panels_and_sandbox_
     allowed = ("--browser", "--no-sandbox", "NO_SANDBOX", "--panels", "panels", "--suffix", "--only", "suffix", "only",
                "createRequire", "require", "puppeteer-core", "BROWSERS", "executablePath", "// Usage:", "// Same toolchain",
                "// Linux only", "fontOk", "sizes", "const got", "if (!got)", "writeFileSync(targets[n]", "console.log",
-               "const b64", "const targets", "const sheetPath")
+               "const b64", "const targets", "const sheetPath",
+               # issue 141: no --panels, the count read from the page, and any panel or sheet already there refused
+               "readdirSync", "existsSync", "taken", "refusing to overwrite", "querySelectorAll(\"canvas\")")
     changed = [line for line in changed if line[1:].strip()]
     assert changed and all(any(a in line for a in allowed) for line in changed), changed
     assert 'import puppeteer from "puppeteer-core";' in ours and "C:/" not in "\n".join(ours)
@@ -605,7 +613,9 @@ def test_animate_refused_before_storyboard_accepted(tmp_path, capsys, ready, pop
     assert code == 0 and out["file"] == "03_wip/M1/renders/anim_v01.mp4" and out["fps"] == 30, out
     argv = popen.calls[-1][0]
     assert argv[argv.index("--fps") + 1] == "30" and atlas.FPS == 24
-    assert out["storyboard"] == sheet and len(out["stills"]) == 5
+    assert argv[argv.index("--stills") + 1] == "beats"                   # the storyboard's moments (issue 141 item 2)
+    assert out["storyboard"] == sheet and out["stills"] == [f"03_wip/M1/renders/anim_v01_still_b{n:02d}.png"
+                                                            for n in range(1, 6)]
     row = next(r for r in manifest.rows(run) if r["file"] == out["file"])
     assert row["source"] == "tm organic animate" and json.loads(row["params"])["storyboard"] == sheet
     assert stepchecks.run("takes_checked", run) is None
