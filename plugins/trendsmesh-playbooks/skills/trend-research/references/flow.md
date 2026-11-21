@@ -74,9 +74,25 @@ what each does in a weekly run is under the step. In order:
     **Just the big calls** (two: the category map, then the picks and the page; plus the weekly
     schedule question), **Hands-off** (none: I decide by the playbook's rules and report; I still
     stop when I can't go on without you, or when the map changed a lot since last week);
-  - **the category**: a short phrase ("beauty", "nail art"). A product or landing-page link, a
-    store or brand, competitors, or an ad as the input are not supported yet: say so in one line
-    and ask for the phrase (for example the product type);
+  - **the category**: a phrase, or anything that describes it (a product or site link, a store or
+    brand, a description, a product photo, a note about the client). From anything other than a
+    phrase, propose the category phrases and search phrases and let the user approve or correct
+    them (issue #135):
+    - read the input: a link with `tm page fetch --run R --url <url> --name <short name>
+      --found-in user --json` (it saves the page's text in `00_raw/`), a photo by looking at it (saved in the run first, in
+      `00_raw/`), a note or description as given;
+    - a product link (V3): seed phrases from the product type, use, audience and claims; the page
+      also gives the default focus;
+    - a store or brand (V4): **one seed phrase per product line**, and the focus is the brand
+      unless the user names another (`tm config check` refuses a store with no focus);
+    - propose **2 to 5 phrases** in the same intake message, each with where it came from ("from
+      your product page: magnetic cat-eye gel polish"); the user approves or corrects them there;
+    - the approved first phrase is `category.phrase`, the others `category.seeds` (the search
+      phrases), and the original input stays in `category.inputs` as `{kind, value}`: `product`
+      (the URL), `store` (its link or name), `note` (the text), `photo` (its run-relative path) or
+      `phrase`;
+    - competitors and an existing ad as the input (V5, V6) are not supported yet: say so in one
+      line and ask for a phrase, a link or a note instead;
   - **market and the two languages** (US / working English, market English; PL / Polish and Polish), from
     the defaults of `references/languages.md`, correctable in the same reply;
   - **focus (optional)**: who reads the report, a brand or sub-category ("a nail brand"); the data
@@ -96,7 +112,11 @@ what each does in a weekly run is under the step. In order:
    "outputs": ["category_report", "weekly_digest", "paid_view"]}
   ```
 
-  `category.seeds`: more phrases the user gave for the same category (each a seed phrase). Then
+  `category.seeds`: more phrases for the same category (each a seed phrase): the user's own, or
+  the approved phrases you proposed from a link, a store, a note or a photo. Started from a
+  product link, for example:
+  `"category": {"inputs": [{"kind": "product", "value": "https://shop.example/cat-eye-gel"}],
+  "phrase": "cat eye nails", "seeds": ["nail art", "gel manicure"]}`. Then
   `tm config write --run R --answers 03_wip/intake_answers_v01.json` and `tm config check --run R
   --json`; each problem it lists has what and what to do: ask, write `_v02`, write again (allowed
   until A0 is done). The config changes thresholds only, never a rule.
@@ -124,7 +144,8 @@ what each does in a weekly run is under the step. In order:
 ## A1 Category input and seed phrases
 
 - The seed phrases are the category phrase and `category.seeds`, each with its source ("your
-  phrase"). In a weekly run they are the previous run's (copied with the config).
+  phrase", or the input it was proposed from: "from your product page"). In a weekly run they are
+  the previous run's (copied with the config).
 - Prepare the G0 card: the seed phrases, the market and language, the currency, the focus, the
   outputs (`checkin-cards.md`). At Check every step it is asked after this step; at Just the big
   calls it joins the map card after B4; in Hands-off it is logged by rule.

@@ -115,7 +115,7 @@ def test_the_intakes_answers_on_the_page_are_written_as_the_configs_answers(tmp_
     assert answers == {"level": "big_calls", "outputs": ["proposals"], "languages": {"working": "pl", "market": "pl"},
                        "channels": ["Zorbo"], "output": "ai_video",
                        "generation": {"resolution": "768p", "upscale": "none"},
-                       "budget": {"per_run_usd": 5.0}, "currency": "USD"}
+                       "budget": {"per_run_usd": 5.0}, "currency": "USD", "proposals": {"count": 5}}
     profile = json.loads((run.path / out["profile"]).read_text(encoding="utf-8"))["profile"]
     assert profile["bubble"] == "pet care tips for new owners" and profile["product_role"] == "not shown"
     assert "platforms" in profile["defaults_kept"] and out["done"] is True
@@ -136,6 +136,100 @@ def test_an_intake_answer_in_chat_counts_the_same(tmp_path):
     assert got["intake"]["level"] == "hands_off" and got["intake"]["budget"] == {"per_run_usd": 8.0}
     assert got["intake"]["output"] == "script"                           # untouched: the free default
     assert got["profile_answers"]["platforms"] == ["tiktok", "youtube"]
+
+
+def _known(run, body, name="intake_known_v01.json"):
+    path = run.path / "03_wip" / name
+    path.write_text(json.dumps(body, ensure_ascii=False), encoding="utf-8-sig")   # a BOM, as PowerShell writes it
+    return "03_wip/" + name
+
+
+def test_the_intake_page_is_filled_with_what_was_said_in_chat(tmp_path, capsys):
+    """Issue #135: what the user already said in chat is on the page, marked "from the chat", and still editable."""
+    run = _run(tmp_path)
+    known = _known(run, {"channel": {"text": "Zorbo"}, "bubble": {"text": "pet care tips for new owners"},
+                         "output": {"choice": "ai_video"}, "platforms": {"choice": ["tiktok", "youtube"]},
+                         "count": {"text": "8"}})
+    code, out = _cli(capsys, "organic", "page", "intake", "--run", str(run.path), "--known", known)
+    assert code == 0, out
+    data = json.loads((run.path / out["data"]).read_text(encoding="utf-8"))
+    assert _section(data, "channel")["text"]["value"] == "Zorbo"
+    assert _section(data, "bubble")["text"]["value"] == "pet care tips for new owners"
+    assert _default(data, "output") == ["ai_video"] and _default(data, "platforms") == ["tiktok", "youtube"]
+    assert _section(data, "count")["text"]["value"] == "8"
+    chat = {s["id"] for s in data["sections"] if s.get("from_chat")}
+    assert chat == {"channel", "bubble", "output", "platforms", "count"}
+    html = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
+    assert html.count('class="from-chat"') == 5 and "from the chat" in html
+    assert '<textarea id="t-channel"' in html                           # every field stays editable
+    said = run.path / "03_wip" / "intake_chat_v01.txt"
+    said.write_text("level: big_calls\n", encoding="utf-8")
+    got = intake.take(run, text=said)
+    assert got["intake"]["channels"] == ["Zorbo"] and got["intake"]["output"] == "ai_video"
+    assert got["intake"]["proposals"] == {"count": 8}
+    profile = got["profile_answers"]
+    assert profile["from_chat"] == ["bubble", "channel", "count", "output", "platforms"]
+    assert not set(profile["from_chat"]) & set(profile["defaults_kept"])   # answered, not a kept default
+    assert "resolution" in profile["defaults_kept"] and "level" not in profile["defaults_kept"]
+
+
+def test_what_was_said_in_chat_is_checked_against_the_page(tmp_path, capsys):
+    run = _run(tmp_path)
+    for body, words in (({"colour": {"text": "red"}}, "not a section"),
+                        ({"output": {"choice": "a_film_crew"}}, "not an option"),
+                        ({"output": {"choice": ["script", "ai_video"]}}, "one option"),
+                        ({"channel": {"choice": "x"}}, "text"),
+                        (["channel"], "an object")):
+        known = _known(run, body)
+        code, out = _cli(capsys, "organic", "page", "intake", "--run", str(run.path), "--known", known)
+        assert code == 2 and words in out["message"], (body, out)
+    assert not list((run.path / "04_final").glob("intake_v*"))           # nothing was built
+    code, out = _cli(capsys, "organic", "page", "intake", "--run", str(run.path), "--file", known)
+    assert code != 0 and "--known" in out["message"]
+
+
+def test_the_intake_asks_the_channels_style_the_product_and_how_many_ideas(tmp_path):
+    run = _run(tmp_path)
+    data = intake.page_json(run)
+    ids = [s["id"] for s in data["sections"]]
+    assert ids.index("video_style") == ids.index("bubble") + 1
+    style = _section(data, "video_style")
+    assert style["kind"] == "text" and style["title"] == "The channel’s own style" and style["text"]["value"] == "none"
+    product = _section(data, "catalogue")
+    assert product["title"] == "The product" and "photo" in product["hint"]
+    means = {o["id"]: o["means"] for o in _section(data, "product_role")["options"]}
+    assert means["not_shown"] and "name" in means["soft_mention"] and "image" in means["hero"]
+    assert "image" in means["featured"] and "image" not in means["incidental"]
+    count = _section(data, "count")
+    assert count["text"]["value"] == "5" and count["hint"] == "By default 5 ideas, or write how many you need."
+    assert "count" not in {s["id"] for s in intake.page_json(run, week=True)["sections"]}   # a week has per_week
+
+    said = run.path / "03_wip" / "intake_chat_v01.txt"
+    said.write_text("channel: Zorbo\ncount: 3\nvideo_style: paper cut-out collage, flat colour\n"
+                    "catalogue: https://zorbo.example/app\nproduct_role: soft_mention\n", encoding="utf-8")
+    intake.build(run)
+    got = intake.take(run, text=said)
+    assert got["intake"]["proposals"] == {"count": 3}
+    profile = got["profile_answers"]
+    assert profile["video_style"] == "paper cut-out collage, flat colour"
+    assert profile["catalogue"] == "https://zorbo.example/app" and profile["product_role"] == "soft mention"
+    assert profile["product_needs"] == ["name"]
+    said.write_text("channel: Zorbo\nproduct_role: hero\n", encoding="utf-8")
+    got = intake.take(run, text=said)
+    assert got["profile_answers"]["video_style"] is None                # "none" is no style
+    assert got["profile_answers"]["product_needs"] == ["name", "image"]
+    assert got["profile_answers"]["catalogue"] is None                  # nothing given: ask once (A1)
+    said.write_text("channel: Zorbo\ncount: a few\n", encoding="utf-8")
+    with pytest.raises(Stop, match="how many ideas"):
+        intake.take(run, text=said)
+
+
+def test_a_polish_intake_marks_what_came_from_the_chat_in_polish(tmp_path):
+    run = _run(tmp_path, working="pl")
+    known = _known(run, {"channel": {"text": "Zorbo"}})
+    got = intake.build(run, working="pl", known=run.path / known)
+    html = (run.path / got["folder"] / "index.html").read_text(encoding="utf-8")
+    assert "z rozmowy" in html and "Własny styl kanału" in html
 
 
 def test_an_answer_the_intake_did_not_offer_is_refused_and_nothing_is_written(tmp_path):

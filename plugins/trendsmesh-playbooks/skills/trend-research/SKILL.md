@@ -79,8 +79,10 @@ with `tm`, so an allow rule can match it.
 ## 2. Intake (A0), one batch of questions
 
 A new category: `tm run new --playbook trend-research --name <category> --json`. **Its answer lists `unfinished_runs`**: this playbook's runs of the same name that were started and are not done (`folder`, `created`, `step`). When it lists any, always ask first, in one short question, whether to continue one of them (then `tm next` on it; the new folder stays unused) or start this new one. Then the intake
-in one batch with defaults: the level, the category phrase (a link, store, competitor or ad as the
-input is "not supported yet": ask for a phrase), market, the working and market languages, focus (optional), outputs
+in one batch with defaults: the level, the category: a phrase, or anything that describes it (a product or site
+link, a store, a description, a product photo, a note about the client). From anything other than a phrase, propose
+the category phrase and 2 to 5 search phrases and let the user approve or correct them (competitors and an ad as the
+input are "not supported yet"), market, the working and market languages, focus (optional), outputs
 (the category report always; weekly digest; paid view; default all three), currency. Then `tm
 config write`, `tm config check`, `tm done A0`. Details: `references/flow.md#a0`.
 

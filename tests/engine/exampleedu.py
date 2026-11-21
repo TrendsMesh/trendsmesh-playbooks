@@ -115,7 +115,8 @@ def build(workspace: Path) -> RunFolder:
     channel profile in the library, the walkthrough's trend files, and proposals_v02.json."""
     workspace = Path(workspace)
     run = RunFolder.create(workspace, NAME, CREATED, playbook=ORGANIC_VIDEO)
-    config.save(run, {**organic_config.defaults(), "channels": [CHANNEL], "page_lang": "pl"})
+    config.save(run, {**organic_config.defaults(), "channels": [CHANNEL], "page_lang": "pl",
+                      "proposals": {"count": 6}})   # the walkthrough asked for six ideas (issue #135)
     brand.save(workspace, PROFILE, run=run)
     save_trends(run)
     shutil.copyfile(PROPOSALS, run.path / "03_wip" / PROPOSALS.name)

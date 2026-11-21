@@ -108,26 +108,75 @@ def test_rules_are_fixed_and_thresholds_checked(run):
     assert "category_report" in problems["outputs"].what
 
 
-def test_non_phrase_input_is_not_supported_yet(run):
-    research_config.write_from_intake(run, {**BASE, "level": "every_step", "category": {
-        "phrase": "uroda", "inputs": [{"kind": "phrase", "value": "uroda"}, "pielęgnacja",
-                                      {"kind": "product", "value": "https://sklep.example/serum"}]}})
-    problems = research_config.validate(run)
-    assert [p.field for p in problems] == ["category.inputs"]
-    assert "V3" in problems[0].what and "not supported yet" in problems[0].what
-    assert research_config.ISSUES in problems[0].what
-    assert "phrase" in problems[0].todo
-    # a bare link is a product or landing-page link too; a store is V4
+def _inputs_problems(run, inputs, **category):
     cfg = config.load(run)
-    cfg["category"]["inputs"] = ["https://sklep.example/serum", {"kind": "store", "value": "Hebe"},
-                                 {"kind": "podcast", "value": "x"}, {"kind": "phrase"},
-                                 {"kind": "phrase", "value": "  "}]
-    (run.path / "config.yaml").write_text(yaml.safe_dump(cfg), encoding="utf-8")
-    whats = [p.what for p in research_config.validate(run)]
-    assert len(whats) == 5
-    assert "(V3)" in whats[0] and "(V4)" in whats[1] and "podcast" in whats[2]
-    assert all("is not a category input" in w for w in whats[2:])
+    cfg["category"] = {**cfg["category"], **category, "inputs": inputs}
+    (run.path / "config.yaml").write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    return research_config.validate(run)
+
+
+def test_any_start_input_is_accepted_with_the_phrases_proposed_from_it(run):
+    """Issue #135: a product or site link, a store, a note or a photo starts a run; the approved phrases are the
+    category phrase and its seeds, and the original input stays in category.inputs (V3)."""
+    (run.path / "00_raw" / "photo_serum.jpg").write_bytes(b"\xff\xd8 fake photo")
+    research_config.write_from_intake(run, {**BASE, "level": "every_step", "focus": "Hebe", "category": {
+        "phrase": "serum do twarzy", "seeds": ["pielęgnacja twarzy", "witamina c"],
+        "inputs": [{"kind": "phrase", "value": "uroda"}, "pielęgnacja",
+                   "https://sklep.example/serum", {"kind": "product", "value": "https://sklep.example/serum"},
+                   {"kind": "store", "value": "Hebe"},
+                   {"kind": "note", "value": "Klient sprzedaje serum z witaminą C dla cery dojrzałej."},
+                   {"kind": "photo", "value": "00_raw/photo_serum.jpg"}]}})
+    assert research_config.validate(run) == []
+    assert main(["config", "check", "--run", str(run.path), "--json"]) == 0
+    assert set(research_config.INPUT_KINDS) >= {"phrase", "product", "store", "note", "photo"}
+    assert set(research_config.UNSUPPORTED_INPUTS) == {"competitor", "ad"}
+
+
+PRODUCT_PAGE = ("<html><head><title>Cat eye gel polish</title></head><body><h1>Magnetic cat eye gel polish</h1>"
+                "<p>A magnetic gel polish for a cat eye manicure at home, with a magnet wand. Lasts three weeks "
+                "under a UV lamp, for nail art beginners and salons alike.</p><p>Price: 39 PLN</p></body></html>")
+
+
+def test_a_run_started_from_a_product_link_reads_it_and_takes_the_approved_phrases(run, monkeypatch, capsys):
+    """Issue #135 acceptance: only a product link is given; its page is saved (no network: a fixture), the agent
+    proposes the phrases, the user approves them, and the config check passes."""
+    from tm import page_text
+    url = "https://shop.example/cat-eye-gel"
+    monkeypatch.setattr(page_text, "download", lambda u: (PRODUCT_PAGE, u))
+    monkeypatch.setattr(page_text, "MIN_WORDS", 5)
+    assert main(["page", "fetch", "--run", str(run.path), "--url", url, "--name", "cat-eye", "--found-in", "user",
+                 "--json"]) == 0
+    saved = json.loads(capsys.readouterr().out)["file"]
+    assert "magnetic gel polish" in (run.path / saved).read_text(encoding="utf-8")
+    research_config.write_from_intake(run, {**BASE, "level": "every_step", "category": {
+        "inputs": [{"kind": "product", "value": url}], "phrase": "cat eye nails",
+        "seeds": ["nail art", "gel manicure"]}})
+    assert main(["config", "check", "--run", str(run.path), "--json"]) == 0
+    cfg = config.load(run)
+    assert cfg["category"]["inputs"] == [{"kind": "product", "value": url}]   # the original input is kept
+
+
+def test_a_start_input_is_checked_and_competitors_and_ads_are_not_supported_yet(run):
+    research_config.write_from_intake(run, {**BASE, "level": "every_step"})
+    whats = [p.what for p in _inputs_problems(run, [
+        {"kind": "competitor", "value": "Drogeria Przykład"}, {"kind": "ad", "value": "https://fb.example/ad/1"},
+        {"kind": "podcast", "value": "x"}, {"kind": "phrase"}, {"kind": "phrase", "value": "  "},
+        {"kind": "note", "value": " "}, {"kind": "product", "value": "serum"},
+        {"kind": "photo", "value": "00_raw/missing.jpg"}])]
+    assert len(whats) == 8, whats
+    assert "(V5)" in whats[0] and "not supported yet" in whats[0] and research_config.ISSUES in whats[0]
+    assert "(V6)" in whats[1]
+    assert "podcast" in whats[2] and all("is not a category input" in w for w in whats[2:6])
+    assert "link" in whats[6] and "00_raw/missing.jpg" in whats[7]
     assert main(["config", "check", "--run", str(run.path), "--json"]) == 2
+
+
+def test_a_store_input_has_the_brand_as_its_focus(run):
+    """V4: one seed phrase per product line, and the focus is the brand unless the user named another."""
+    research_config.write_from_intake(run, {**BASE, "level": "every_step"})
+    problems = _inputs_problems(run, [{"kind": "store", "value": "Hebe"}])
+    assert [p.field for p in problems] == ["focus"] and "V4" in problems[0].what
+    assert "Hebe" in problems[0].todo
 
 
 def test_write_from_previous_copies_and_defaults_to_hands_off(ws, run, monkeypatch, capsys,

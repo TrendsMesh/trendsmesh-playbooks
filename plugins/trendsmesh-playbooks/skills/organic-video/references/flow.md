@@ -87,6 +87,11 @@ posts.
    that video (C1) **keeps the concept's hook, format, length and sound** word for word, with the
    seed's id in `plugin.seed` (`tm organic seed-check` first, as for any seed). Other proposals beside
    it are offered only if the user asks.
+   **Starting from any input** (issue #135): the user may start with a channel name, a product or
+   site link, a description, a product photo or a note about the client. Read it (a link with `tm
+   page fetch --run R --url <url> --name <short name> --found-in user --json`, a photo by looking at
+   it, saved in the run's `00_raw/`, a note as given), derive the channel, the bubble and the product
+   from it, and show them for approval: they fill the intake page as "from the chat" (item 4).
 2. **The stack check, with the run's own output** (`commands/doctor.md`, "Organic video"): check
    TrendsMesh (sign-in first, then the plan, `../../refresh-ad/references/trendsmesh-sign-in.md`
    without its guess-mode lines) and whether `Artifact` (or the older `publish_files`) is among
@@ -110,8 +115,14 @@ posts.
 4. **The intake, on a page** (FLOWS A1, issue #83; `tm next` says so): `tm organic page intake
    --run R --working <the language you are talking in> --market <the audience's> --json` (a week
    run: `--week`) builds `04_final/intake_vNN/`: one option set per question, the default
-   ticked, a text field only where something is typed (the channel, the bubble, the links, the
-   catalogue), and one Done button. **A paid output is never the default**: the free script to
+   ticked, a text field only where something is typed (the channel, the bubble, the channel's own
+   style, the links, the product, the idea count), and one Done button. **Before you build it,
+   write what the user already said** (the channel, the bubble, the links, the product, the output,
+   the idea count, the languages, anything else) to `03_wip/intake_known_vNN.json`, `{section id:
+   {"text": "..."}}` for a text field and `{section id: {"choice": "<option id>"}}` (a list for
+   platforms) for an option set, with the page's ids, and pass it with `--known
+   03_wip/intake_known_vNN.json`: those sections are filled and marked "from the chat", and stay
+   editable. An id or option the page does not have is refused (nothing is built). **A paid output is never the default**: the free script to
    film is ticked, and an AI video is chosen only by a click. Publish it as the other pages
    (`tm page files --page intake`, the `Artifact` publish with `capabilities` =
    `organic_pages.CAPABILITIES["intake"]`, `tm page published` and `tm page await --page intake`),
@@ -125,16 +136,22 @@ posts.
      to trending sounds);
    - the bubble: what the channel films, about what, for whom, its style, and what performed (2 to
      3 links, or "none yet");
-   - **the channel's own look**, if its videos have one (optional; "none" by default): the style
-     they are made in, in the user's words, for example "paper cut-out collage, old engravings,
-     flat colour". It is kept in the profile and offered first in every later run;
-   - the company and its catalogue (products and the problems they solve), or "nothing sold"; the
-     product role per channel, from "not shown" to "hero" (OV5);
+   - **the channel's own style** (`video_style`), if its videos have one look (optional; "none" by
+     default): the style they are made in, in the user's words, for example "paper cut-out
+     collage, old engravings, flat colour". It is kept in the profile and offered first in every
+     later run;
+   - **the product** (`catalogue`): a link, a photo, a description or a few words of context are
+     enough, or "nothing sold"; you fill in the rest at A1. The product role, from "not shown" to
+     "hero" (OV5), each option saying what it needs: "not shown" nothing; "incidental" and "soft
+     mention" the product's name and what it does; "featured" and "hero" also a product image (the
+     user's photo, or one from their own product page);
    - the market language (the audience's, derived from the channel, confirmed) and the working
      language (the one you are talking in), both shown with their defaults
      (`references/languages.md`);
    - the output: **a script to film** ($0) or **a ready AI video** (paid, each cost approved
-     first); it is chosen again per idea on the proposals page. For "plan my week of videos", **a
+     first); it is chosen again per idea on the proposals page;
+   - **the idea count** (`count`, an idea run only): "By default 5 ideas, or tell me how many you
+     need" (1 to 12), read into `proposals.count`. For "plan my week of videos", **a
      week run** (`outputs: ["weekly_plan"]`, `output: weekly_pack`), with its own questions: the
      contents (scripts, videos or a mix), how many a week (`weekly.per_week`, 5), the posting days
      (`weekly.days`, Mon, Wed, Fri, Sat, Sun), the flexible day (`weekly.flexible_day`, Sunday: its
@@ -156,17 +173,21 @@ posts.
    - **from the page** (the reply button, or "done"): one unfiltered `ArtifactData` list (the
      page's `url`, collection `intake`, `query.limit` 1000), then `tm organic decisions --run R
      --page intake --json`. It writes `03_wip/intake_answers_vNN.json` (the shape below, the level
-     in it) and `03_wip/intake_profile_vNN.json` (the profile's answers, for A1); a section the user
-     did not touch keeps its default. **From chat**: write their answer one line per question
+     in it) and `03_wip/intake_profile_vNN.json` (the profile's answers, for A1: the bubble, the
+     `video_style`, the product as given in `catalogue` (null for "nothing sold"), the product role
+     and its `product_needs`); a section the user did not touch keeps its default, and one filled
+     from the chat that they left as it was counts as their answer (`from_chat`, not
+     `defaults_kept`). **From chat**: write their answer one line per question
      (`channel: <name>`, `output: ai_video`, `level: big_calls`, `budget: 8` …; the ids are the
      page's) to a file in the run and read it with `--text`, or write the answers file yourself as
      below. Then go on with `tm config write` (the level is set from the answers);
    - `tm level <every_step|big_calls|hands_off> --run R` when you wrote the answers yourself;
    - the answers as `03_wip/intake_answers_v01.json` (shape: `templates/intake_answers_example.json`:
      `level`, `outputs: ["proposals"]` (a week run: `["weekly_plan"]` with `weekly`), `languages: {working, market}` (tags), `channels` by name,
-     `output`, `generation`, `budget`, `currency` and `fx_rate`). **Never send a `mode` key**: the
+     `output`, `generation`, `budget`, `currency` and `fx_rate`, and `proposals: {count}` when the
+     user asked for another number of ideas). **Never send a `mode` key**: the
      level replaces the handoff's two variants, and is read from the run, never from `mode.variant`.
-     Keep the profile's answers (bubble, catalogue, product role, rules) for A1;
+     Keep the profile's answers (bubble, channel style, product, product role, rules) for A1;
    - `tm config write --run R --answers 03_wip/intake_answers_v01.json`, then `tm config check
      --run R --json`. Each problem says what and what to do: ask, write the next `_vNN`, write again
      (allowed until A0 is done). A working language whose table is not translated yet gives English
@@ -199,11 +220,24 @@ channel with none needs a new one (`new`). At Hands-off the rule decides it the 
 The profile (OV1, `channel/1`, `../../references/brand-and-audience.md`, "Channel profile"):
 
 1. **Draft it from A0's answers**, one per channel, as `03_wip/channel_<slug>_v01.json`, the
-   assumptions marked in `assumptions`, `confirmed: null`. The channel's own look goes in
-   `video_style`, in the user's words (null when they gave none; a profile saved before it has none). A store with several channels has one
+   assumptions marked in `assumptions`, `confirmed: null`. The channel's own style goes in
+   `video_style`, in the user's words (the intake profile's `video_style`; null when they gave
+   none; a profile saved before it has none). A store with several channels has one
    profile per channel sharing one catalogue: the store's brand profile (`brand/1` with
    `catalog.products`) is saved first (`tm brand check`, `tm brand save`), and each channel names
    it in `store`. A channel that sells nothing has `store: null` and its videos show no product.
+   **The product role the user picked** (issue #135; `product_needs` in the intake profile): with
+   any role but "not shown", draft the store profile yourself from the product they gave (the link
+   read with `tm page fetch`, the photo, the description): `03_wip/brand_v01.json` in the `brand/1`
+   shape with `catalog.products` (each product's name and the problem it solves; **a SaaS product
+   or an app uses the same store profile**), `tm brand check`, `tm brand save`, and name it in the
+   channel's `store`. For "featured" or "hero" also save the product image as its packshot (`tm
+   brand packshot --name <store> --product <name> --file 00_raw/<image> --run R`), **only from the
+   user's own photo or their own product page**, never a picture found elsewhere. So `tm brand
+   check` never refuses the role ("store is null"), and the pack never lacks a packshot (OV5). When
+   nothing usable was given for the role (no product at all, or no image for "featured" or
+   "hero"), ask once for a link, a photo or a few words; without an answer, lower the role to one
+   the given product allows, and say so.
    **The channel type** (`type`, issue #85): propose it from the channel's videos and what
    performed, one of `news_explainers`, `howto_education`, `entertainment_skits`, `music_dance`,
    `lifestyle_vlog`, `shop_product` or `other` (then `type_note`: the user's one sentence about the
@@ -369,7 +403,9 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    videos (creator, views, date, hook text, caption excerpt), each with its index. A proposal's
    `pick` is that index, never a number you count yourself. Read the hooks: they appear on screen
    from the first frame (lesson 5).
-2. **4 to 6 proposals** (`proposals.min`, `proposals.max`), **at least half of them built on the
+2. **The idea count's proposals** (`proposals.count`: by default 5 ideas, or as many as the user
+   asked for at the intake, 1 to 12; a config from before it keeps `proposals.min` to
+   `proposals.max`), **at least half of them built on the
    channel type's leading kind** (topics for a news channel, sounds for a music one: a trend of
    that kind among each one's trends; the check asks it when B3 pulled one), each with a different
    production type where possible, written as `03_wip/proposals_v01.json` in the handoff's schema

@@ -58,7 +58,7 @@ def test_defaults_match_playbook_config(run):
         "qa.take_max_s": 15, "qa.lufs_target": -14, "qa.lufs_asmr": -16, "qa.lufs_usable": [-30, -5],
         "qa.cut_flag_s": 1.0, "qa.upload_max_mb": 15, "qa.preview_crf": 27, "qa.upload_crf": [26, 28],
         "safe_zone.x": [90, 880], "safe_zone.y": [260, 1540], "safe_zone.atlas_text_max_y": 1260,
-        "proposals.min": 4, "proposals.max": 6,
+        "proposals.count": 5,
         "research.cards": 12, "research.recent_days": 7,
         "animation.fps": 30,
     }
@@ -201,16 +201,33 @@ def test_other_fields_checked(run):
     organic_config.write_from_intake(run, {
         **ANSWERS, "colour": "red", "budget": {"per_run_usd": 0},
         "qa": {"wps_min": 3.2, "lufs_usable": [-5, -30], "upload_crf": [26]},
-        "proposals": {"min": 7}, "weekly": {"days": ["mon", "funday"], "contents": "films"},
+        "proposals": {"count": 13}, "weekly": {"days": ["mon", "funday"], "contents": "films"},
         "generation": {"quality_tier": "cheap", "resolution": "4k", "upscale": "topaz"},
         "mode": {"gates": ["pack", "publish"]}, "kind": "production2"})
     assert set(_problems(run)) >= {"colour", "budget.per_run_usd", "qa.wps_max", "qa.lufs_usable", "qa.upload_crf",
-                                   "proposals.max", "weekly.days", "weekly.contents",
+                                   "proposals.count", "weekly.days", "weekly.contents",
                                    "generation.resolution", "generation.upscale", "mode.gates"}
     assert "generation.quality_tier" not in _problems(run)   # an old config's tier: accepted, unread (#115)
     assert config.load(run)["kind"] == "proposals"     # the run kind follows the outputs, never the answers
     organic_config.write_from_intake(run, {**ANSWERS, "channels": ["Example Edu", 3]})
     assert "channels" in _problems(run)
+
+
+def test_the_idea_count_is_one_to_twelve_and_the_old_range_still_reads(run):
+    """Issue #135: proposals.count (5 by default, at most 12); a config from before it keeps min and max."""
+    for good in (1, 8, 12):
+        organic_config.write_from_intake(run, {**ANSWERS, "proposals": {"count": good}})
+        assert not {k for k in _problems(run) if k.startswith("proposals")}, good
+    for bad in (0, 13, 2.5, "five"):
+        organic_config.write_from_intake(run, {**ANSWERS, "proposals": {"count": bad}})
+        assert "proposals.count" in _problems(run), bad
+    cfg = config.load(run)
+    cfg["proposals"] = {"min": 4, "max": 6}                       # an old config.yaml
+    config.save(run, cfg)
+    assert not {k for k in _problems(run) if k.startswith("proposals")}
+    cfg["proposals"] = {"min": 7, "max": 6}
+    config.save(run, cfg)
+    assert "proposals.max" in _problems(run)
 
 
 def test_intake_closed_after_a0(run):

@@ -4,13 +4,15 @@ Copied verbatim from the handoff's `VARIANTS.md` (handoff `trend-research_v01`, 
 input" to "Other playbooks"). The flow is `flow.md`; the rules `rules.md`. **What the plugin does
 with them:**
 
-- **Built:** V1, V2, V7 and V8 (B1 to B4); V9, V11 to V15 and V17 (C2, D3: the seasonal guard, the
+- **Built:** V1, V2, V7 and V8 (B1 to B4); V3 and V4 (A0, issue #135: a product link, a store,
+  a description, a note or a photo as the start; you propose the phrases and the user approves
+  them, the input kept in `category.inputs`); V9, V11 to V15 and V17 (C2, D3: the seasonal guard, the
   conditions of rule v3, the review of the picks, the lens); V16 as the risk line only; V19, V20,
   V22 and V22a (D2; V22 is `"checked": false`, and the page says "not checked"); V23 to V26 (F2,
   B4: the stored snapshot, the rebuilt one, re-identification, the map that changed a lot); V27
   (E3: the seeds for the creative brief).
-- **Not supported yet**, said plainly with the issue link `tm config check` gives: V3 to V6 (any
-  category input but a phrase: ask for a phrase instead, for example the product type), V10 (a
+- **Not supported yet**, said plainly with the issue link `tm config check` gives: V5 and V6
+  (competitors or an ad as the category input: ask for a phrase, a link or a note instead), V10 (a
   valid-until at an event ahead: the default 14 days holds), V18 (own results), V21 (Foreplay),
   V28 (PB8).
 - The text's approval points (G1 to G3) are check-ins (`checkin-cards.md`); its concentration
@@ -22,8 +24,8 @@ with them:**
 |---|---|---|---|
 | V1 | **Broad phrase** ("beauty": 1 relevant result) | split into 5–8 sub-categories, thin ones once more; agent review | yes (beauty: 26 searches, 52 trends after review) |
 | V2 | **Narrow phrase with enough results** ("hairstyle": 18 relevant) | no split; the map is the phrase's results after review | partly (as a sub-category) |
-| V3 | **Product or landing-page link** | read the page; seed phrases from product type, use, audience, claims; the page also fills the brand intake and the default focus | no |
-| V4 | **Store or brand link / name** | one seed phrase per product line; focus = the brand | no |
+| V3 | **Product or landing-page link** (also a description, a note about the client or a product photo, issue #135) | read the page (`tm page fetch`; a photo by looking at it, a note as given); propose 2 to 5 seed phrases from product type, use, audience, claims for the user to approve; the page also fills the brand intake and the default focus | in the engine (`tm config check` passes with the input kept); live: acceptance T9 |
+| V4 | **Store or brand link / name** | one seed phrase per product line; focus = the brand (`tm config check` refuses a store input with no focus) | in the engine |
 | V5 | **Competitors** | their product categories become seed phrases | no |
 | V6 | **An existing ad or video** | its topic and format become seed phrases; its hook is matched against hook trends | no |
 | V7 | **Thin corpus**: leaves still empty after two splits (sunscreen, body lotion, self tanning: 0) | stop; the map says "little TrendsMesh coverage here"; show the closest trends marked "weak match"; never "no trends" | yes |
@@ -68,6 +70,6 @@ with them:**
 
 ## Order of the remaining tests
 1. **V23 forward test** (on or after 2026-11-11): the real check that PB4 reaches its goal.
-2. **V3 product link** as input (most common real intake).
+2. **V3 product link** as input (most common real intake): acceptance T9, live.
 3. **V18 own results** and **V10 event ahead** (before Christmas).
 4. V16 non-English market, V21 Foreplay, V27 hand-off to PB2.

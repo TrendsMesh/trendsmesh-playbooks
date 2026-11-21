@@ -822,6 +822,7 @@ organic:
   intake:
     title: Start a new video plan
     lede: A few questions before the trend search. Everything you leave as it is keeps the default.
+    from_chat: from the chat
     free: free
     paid: paid
     channel: Channel
@@ -836,16 +837,25 @@ organic:
     bubble: The channel’s bubble
     bubble_hint: What the channel films, about what, for whom, and in what style.
     bubble_label: In a few sentences
+    video_style: The channel’s own style
+    video_style_hint: "If the videos have one look, describe it in your words, for example: paper cut-out collage, old engravings, flat colour."
+    video_style_label: The style
+    video_style_none: none
     links: What performed
     links_hint: 2 to 3 links to videos that did well, or “none yet”.
     links_label: Links
     links_none: none yet
-    catalogue: Company and catalogue
-    catalogue_hint: The products and the problems they solve, or “nothing sold”.
-    catalogue_label: Products
+    catalogue: The product
+    catalogue_hint: A link, a photo, a description or a few words of context are enough. Claude fills in the rest. Or “nothing sold”.
+    catalogue_label: The product (a link, a description, or add a photo to the chat)
     catalogue_none: nothing sold
     product_role: The product in the videos
-    product_role_hint: From not shown to the hero of the video.
+    product_role_hint: From not shown to the hero of the video. Each says what it needs.
+    product_means_not_shown: Needs nothing.
+    product_means_incidental: Needs the product’s name and what it does.
+    product_means_soft_mention: Needs the product’s name and what it does.
+    product_means_featured: Needs the product’s name, what it does and a product image (a photo, or one from your product page).
+    product_means_hero: Needs the product’s name, what it does and a product image (a photo, or one from your product page).
     languages: Languages
     languages_hint: The working language (the pages and the chat), then the audience’s language.
     languages_label: Working, audience (language tags, e.g. en, en)
@@ -854,6 +864,9 @@ organic:
     output_script: A script to film
     output_video: A ready AI video
     output_video_means: Paid; every cost is shown and approved first.
+    count: How many ideas
+    count_hint: "By default {n} ideas, or write how many you need."
+    count_label: "Ideas (1 to {most})"
     contents: What the week holds
     contents_scripts: Scripts to film
     contents_videos: AI videos

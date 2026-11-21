@@ -100,6 +100,36 @@ def _start(capsys, run, *flags):
 
 # --- C1: the proposals check ------------------------------------------------------------------------
 
+def _set_proposals(run, block):
+    cfg = config.load(run)
+    cfg["proposals"] = block
+    config.save(run, cfg)
+
+
+@pytest.mark.parametrize("count", [3, 6])
+def test_the_idea_count_is_the_number_of_proposals_the_check_wants(tmp_path, count):
+    """Issue #135: the idea count is a default the user can change (1 to 12); the check wants that many."""
+    run = _idea_run(tmp_path)
+    _set_proposals(run, {"count": count})
+    data = exampleedu.proposals()
+    data["proposals"] = data["proposals"][:count]
+    assert "proposals" not in _fields(_problems(run, data))
+    data = exampleedu.proposals()
+    data["proposals"] = data["proposals"][:count - 1]
+    found = [p for p in _problems(run, data) if p.field == "proposals"]
+    assert found and f"Write {count} " in found[0].todo and "the idea count" in found[0].todo
+
+
+def test_an_old_config_keeps_its_range_of_proposals(tmp_path):
+    run = _idea_run(tmp_path)
+    _set_proposals(run, {"min": 4, "max": 6})                           # written before proposals.count
+    data = exampleedu.proposals()
+    assert "proposals" not in _fields(_problems(run, data))
+    data["proposals"] = data["proposals"][:3]
+    found = [p for p in _problems(run, data) if p.field == "proposals"]
+    assert found and "4 to 6" in found[0].todo
+
+
 def test_exampleedu_proposals_v02_pass(tmp_path, capsys):
     run = _idea_run(tmp_path)
     assert organic_proposals.checked_gap(run) is not None

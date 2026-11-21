@@ -827,6 +827,19 @@ def variety(proposals: list, found: dict[str, list[str]], rising: dict[str, str]
                                    "Give it a production type the channel-style ideas do not use."))
 
 
+def idea_count(cfg: dict) -> tuple[int, int]:
+    """How many proposals the page holds, (fewest, most): exactly `proposals.count` (issue #135: 5 by default, or as
+    many as the user asked for); a config written before the count keeps its `proposals.min` to `proposals.max`."""
+    count = config.get(cfg, "proposals.count")
+    if isinstance(count, int) and not isinstance(count, bool) and count >= 1:
+        return count, count
+    least, most = config.get(cfg, "proposals.min"), config.get(cfg, "proposals.max")
+    if count is None and isinstance(least, int) and isinstance(most, int) and 1 <= least <= most:
+        return least, most
+    default = organic_config.DEFAULTS["proposals"]["count"]
+    return default, default
+
+
 def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
     """Everything wrong in a proposals file (the module docstring and the plan's Task 6); empty when it
     holds. Reads only."""
@@ -838,11 +851,12 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
     s = state.load(run)
     organic_state = s.organic or {}
     proposals = data["proposals"]
-    least = config.get(cfg, "proposals.min") or organic_config.DEFAULTS["proposals"]["min"]
-    most = config.get(cfg, "proposals.max") or organic_config.DEFAULTS["proposals"]["max"]
+    least, most = idea_count(cfg)
     if not least <= len(proposals) <= most:
+        want = (f"{least} (the idea count, proposals.count: by default 5, or as many as the user asked for)"
+                if least == most else f"{least} to {most}")
         out.append(Problem("proposals", f"The page holds {len(proposals)} proposals.",
-                           f"Write {least} to {most} (C1), each with a different production type where possible."))
+                           f"Write {want} (C1), each with a different production type where possible."))
     seen: set[str] = set()
     for i, p in enumerate(proposals):
         if p["id"].casefold() in seen or not _text(p["id"]):

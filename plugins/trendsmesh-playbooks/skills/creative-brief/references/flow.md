@@ -83,6 +83,13 @@ account, no customer-voice step, no Ad Library). A0 and D2 (the animatics on req
 The user gives one thing: the product. Everything else you derive and show on one card
 (PLAYBOOK "Inputs").
 
+**Any input starts it** (issue #135): a product or site link, a description, a product photo, a
+note about the client, or a category phrase. Read it (a link with `tm page fetch`, step 3; a photo
+by looking at it, saved in the run's `00_raw/`; a note as given), derive the product, the category
+phrase and the search phrases (`trends.terms`, 2 to 5) from it, and show them on the card for the
+user to approve or correct. A link or a name the account's ads also show is matched to the pick
+list (step 2); one that is not in the account is the product's landing page (`--found-in user`).
+
 1. **Turn collection on**: `tm trends collect on --run R --json`, then at once
    `ads_get_ad_accounts`. One account: use it. Several: a pick list (the one case where the user
    picks the account).
