@@ -1,4 +1,4 @@
-# Customer voice: the angle comes from what customers say (shared: PB02; later PB03)
+# Customer voice: the angle comes from what customers say (the ad brief of PB02)
 
 A concept leads with the aspect of the product that customers themselves stress (CB5). This is
 how a run finds it, codes it and proves it. The engine fetches and checks (`tm voice`); you read,

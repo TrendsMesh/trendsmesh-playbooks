@@ -14,31 +14,44 @@
 # No concept check-in (issue #145): C1 goes straight on to D1, which writes every concept in full; each
 # concept is approved, sent back or dropped on D3's page (G3), and the choice (`tm brief choose`,
 # `concepts_chosen`) is checked at E1 and E2.
-# B2 (customer voice, CB5) belongs to the ad brief; the organic video brief (issue #136) gives it its
-# `skip_when` once that flow exists.
+# Two kinds of brief (issue #136): the check-in `brief_kind` before A0 says which. The ad brief's steps
+# (A1 to E2) have `skip_when: {brief_kind: organic}`, the organic video brief's (O1 to O8) `skip_when:
+# {brief_kind: ad}`; A0 and D2 (the animatics on request) serve both. B2 (customer voice, CB5) and the Ad
+# Library check (B4, CB4) belong to the ad brief alone.
 # The plugin's merges: A0 is FLOWS.md A0 and A2 (the run folder is made with the stack check);
 # E1 is FLOWS.md E1 to E3 (the creator, editor and media-buyer views come from one brief.json,
 # CB10); E2 is FLOWS.md F (decisions and the hand-off to PB1).
 # Nothing spends: PB2 has no paid step and no budget (FLOWS.md legend).
 
-outputs: [review_pack, briefs, page]
+outputs: [review_pack, briefs, page, organic_brief]
 
 steps:
   # A. Intake and setup
-  - {id: A0, title: Stack check and run folder, outputs: [review_pack, briefs, page], spends: false, ref: "skills/creative-brief/references/flow.md#a0"}
-  - {id: A1, title: Product and intake card, outputs: [review_pack, briefs, page], checkins: [G0], requires: [intake_written], spends: false, ref: "skills/creative-brief/references/flow.md#a1"}
+  - {id: A0, title: Stack check and run folder, outputs: [review_pack, briefs, page, organic_brief], before: [brief_kind], spends: false, ref: "skills/creative-brief/references/flow.md#a0"}
+  # O. The organic video brief (issue #136): O1 to O5 here, D2 (the animatics on request) shared, then O7 and O8.
+  # No Meta, no customer voice (CB5), no Ad Library (CB4).
+  - {id: O1, title: Start card, outputs: [organic_brief], checkins: [G0o], requires: [intake_written], skip_when: {brief_kind: ad}, spends: false, ref: "skills/creative-brief/references/flow.md#o1"}
+  - {id: O2, title: Channel context, outputs: [organic_brief], requires: [channel_context_written], skip_when: {brief_kind: ad}, spends: false, ref: "skills/creative-brief/references/flow.md#o2"}
+  - {id: O3, title: Persona, outputs: [organic_brief], requires: [audience_picked], skip_when: {brief_kind: ad}, spends: false, ref: "skills/creative-brief/references/flow.md#o3"}
+  - {id: O4, title: Rising trends, outputs: [organic_brief], requires: [trends_or_guess], skip_when: {brief_kind: ad}, spends: false, ref: "skills/creative-brief/references/flow.md#o4"}
+  - {id: O5, title: Three concepts, outputs: [organic_brief], requires: [organic_concepts_checked, page_built], skip_when: {brief_kind: ad}, spends: false, ref: "skills/creative-brief/references/flow.md#o5"}
+  # A to E. The ad brief
+  - {id: A1, title: Product and intake card, outputs: [review_pack, briefs, page], checkins: [G0], requires: [intake_written], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#a1"}
   # B. Research (CB1 to CB5)
-  - {id: B1, title: Account context and persona, outputs: [review_pack, briefs, page], checkins: [G1], requires: [audience_picked], spends: false, ref: "skills/creative-brief/references/flow.md#b1"}
-  - {id: B2, title: Customer voice, outputs: [review_pack, briefs, page], requires: [voice_checked], spends: false, ref: "skills/creative-brief/references/flow.md#b2"}
-  - {id: B3, title: Rising trends, outputs: [review_pack, briefs, page], requires: [trends_or_guess], spends: false, ref: "skills/creative-brief/references/flow.md#b3"}
-  - {id: B4, title: Fit scoring and saturation, outputs: [review_pack, briefs, page], requires: [scores_and_saturation], spends: false, ref: "skills/creative-brief/references/flow.md#b4"}
+  - {id: B1, title: Account context and persona, outputs: [review_pack, briefs, page], checkins: [G1], requires: [audience_picked], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#b1"}
+  - {id: B2, title: Customer voice, outputs: [review_pack, briefs, page], requires: [voice_checked], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#b2"}
+  - {id: B3, title: Rising trends, outputs: [review_pack, briefs, page], requires: [trends_or_guess], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#b3"}
+  - {id: B4, title: Fit scoring and saturation, outputs: [review_pack, briefs, page], requires: [scores_and_saturation], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#b4"}
   # C. Concepts (CB6, CB7)
-  - {id: C1, title: Concepts and the review pack, outputs: [review_pack, briefs], requires: [concepts_checked, page_built], spends: false, ref: "skills/creative-brief/references/flow.md#c1"}
+  - {id: C1, title: Concepts and the review pack, outputs: [review_pack, briefs], requires: [concepts_checked, page_built], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#c1"}
   # D. Briefs, their page, and the animatics on request (CB10 to CB12)
-  - {id: D1, title: Briefs, outputs: [briefs], requires: [brief_checked], spends: false, ref: "skills/creative-brief/references/flow.md#d1"}
-  - {id: D3, title: Page with the briefs, outputs: [briefs], checkins: [G3], requires: [page_built], spends: false, ref: "skills/creative-brief/references/flow.md#d3"}
-  - {id: D2, title: Animatics on request, outputs: [briefs], before: [animatics], skip_when: {animatics: skip}, requires: [animatics_rendered, page_built], spends: false, ref: "skills/creative-brief/references/flow.md#d2"}
+  - {id: D1, title: Briefs, outputs: [briefs], requires: [brief_checked], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#d1"}
+  - {id: D3, title: Page with the briefs, outputs: [briefs], checkins: [G3], requires: [page_built], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#d3"}
+  - {id: D2, title: Animatics on request, outputs: [briefs, organic_brief], before: [animatics], skip_when: {animatics: skip}, requires: [animatics_rendered, page_built], spends: false, ref: "skills/creative-brief/references/flow.md#d2"}
   # E. Production views (CB13)
-  - {id: E1, title: Production views, outputs: [briefs], checkins: [G4], requires: [concepts_chosen, production_checked, page_built], spends: false, ref: "skills/creative-brief/references/flow.md#e1"}
+  - {id: E1, title: Production views, outputs: [briefs], checkins: [G4], requires: [concepts_chosen, production_checked, page_built], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#e1"}
+  # O. The organic video brief's views, then its posting plan and hand-off
+  - {id: O7, title: Brief views, outputs: [organic_brief], checkins: [G4o], requires: [organic_views_checked, page_built], skip_when: {brief_kind: ad}, spends: false, ref: "skills/creative-brief/references/flow.md#o7"}
+  - {id: O8, title: Posting plan and hand-off, outputs: [organic_brief], requires: [concepts_chosen, page_built, handed_off], skip_when: {brief_kind: ad}, spends: false, ref: "skills/creative-brief/references/flow.md#o8"}
   # F. Decisions and the hand-off
-  - {id: E2, title: Hand-off, outputs: [review_pack, briefs, page], requires: [concepts_chosen, page_built, handed_off], spends: false, ref: "skills/creative-brief/references/flow.md#e2"}
+  - {id: E2, title: Hand-off, outputs: [review_pack, briefs, page], requires: [concepts_chosen, page_built, handed_off], skip_when: {brief_kind: organic}, spends: false, ref: "skills/creative-brief/references/flow.md#e2"}

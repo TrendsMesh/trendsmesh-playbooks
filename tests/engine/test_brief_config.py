@@ -71,7 +71,7 @@ def test_defaults_match_playbook_numbers(run):
                              "terms": [], "exclude_terms": []}
     assert cfg["persona"] == {"min_results_per_segment": 10}
     assert cfg["formats"] == {"placement_share_min": 0.25}
-    assert cfg["brief"] == {"valid_days_default": 14,
+    assert cfg["brief"] == {"kind": "ad", "valid_days_default": 14,
                             "recipients": ["decision", "strategy", "creator", "editor", "media-buyer"],
                             "currency": "USD", "fx_rate": None}
     assert cfg["scoring"] == {"weights": {c: 1 for c in ("brand_fit", "persona_fit", "bridge", "lifecycle",

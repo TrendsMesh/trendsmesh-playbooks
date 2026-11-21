@@ -22,7 +22,7 @@ How to read the copy in the plugin:
   check` refuses `benchmark.source: foreplay` with the issues link; saturation is always the Meta
   Ad Library), Goodreads reviews (CB5: its terms forbid scrapers; `references/voice.md` says
   why), the Shopify connector and Notion or Drive brand guides as connectors (an export or a file
-  the user has works), organic-only use (the media-buyer view off, an organic KPI), and comment
+  the user has works), and comment
   texts under ads (the Meta connection gives counts only).
 - **Decisions on the page** (CB12): the plugin reads them with `ArtifactData` (one unfiltered list; the older tools' `db_list`) and
   records them with `tm brief decisions` and `tm brief choose`; a decision written in chat always
@@ -167,7 +167,7 @@ CB5 applies to the ad brief. A brief for an organic video has no customer-voice 
 - Organic clips are evidence and inspiration, never footage.
 
 ### CB10. Production-ready brief, one data source
-The brief is written once as **`brief.json`** (schema: `schema/brief.schema.json`); every view, the page and the animatic are generated from it. Its content: concept, angle with the customer evidence, trend with clips and numbers, hook (2–3 variants for testing), structure by seconds, formats (R6), primary text, headline, thumbnail (R7), why it should work (data), valid-until date, `brief_id` and a one-sentence test hypothesis ("this concept tests whether angle X works"), so a later test can be linked back to the brief. PB2 itself has no measurement step.
+The brief is written once as **`brief.json`** (its shape: `templates/brief_pack_example.json`); every view, the page and the animatic are generated from it. Its content: concept, angle with the customer evidence, trend with clips and numbers, hook (2–3 variants for testing), structure by seconds, formats (R6), primary text, headline, thumbnail (R7), why it should work (data), valid-until date, `brief_id` and a one-sentence test hypothesis ("this concept tests whether angle X works"), so a later test can be linked back to the brief. PB2 itself has no measurement step.
 The creator part (rendered as the creator view, the former shot list): role, casting (age, look, persona), setting and props, shot by shot (framing, action, takes), lines to say (key points + sample lines, natural, not read out), hook versions as extra takes, deliverables: **raw footage without burned-in captions, separate VO / audio track**, both formats. (Clean sources make a later PB1 refresh much easier.) The editor and media-buyer parts follow CB13.
 
 ### CB11. Animatic on request
@@ -218,3 +218,26 @@ Every refresh includes a decision on the **primary text, headline and thumbnail 
 B1's placement read, and `tm audience pick` gives the formats; R7 means every brief writes its
 primary text, headline and thumbnail (`ad_copy.primary`, `ad_copy.headline`, `plugin.thumbnail`),
 which `tm brief check --stage brief` requires.
+
+## Organic brief (the organic video brief, `flow.md#o1` to `#o8`; issue #136)
+
+A brief for a channel's organic videos, checked by `tm brief check --stage organic_concepts` (O5) and
+`--stage organic_views` (O7).
+
+- **Apply:** CB2 (the best-fitting rising trends, the trend row first; "Hook (agent's guess)" in a
+  guess run), CB6 (every two concepts differ on at least two axes), CB7 (the hook reproduces its
+  evidence videos), CB8 (clips with their as-of date, a valid-until date), CB9 (a sound's licence;
+  **a business account takes only sounds licensed for business use, a personal account may take a
+  trending sound, its licence shown**), CB10 (one brief.json, a key message and a one-sentence
+  hypothesis per concept), CB12 (one shareable page with the decisions) and R3 (every number has its
+  source; a measure with no channel data is "to set", and says why).
+- **Do not apply:** CB1's account read (the persona is the hypothesis from the channel's
+  description, directional: `tm audience pick --no-data`), CB4 (no Ad Library check), CB5 (no
+  customer-voice step and no customer phrases), and CB13's media-buyer view and money in USD: an
+  organic brief spends nothing, so it has no media buyer and no fx note.
+- **The views:** creator (what to film, the lines, the shots and takes, the props), editor (the rows
+  "Length", "Captions", "Formats", "Versions", "Files"), publisher (per platform: the post description,
+  hashtags, posting time and sound, held to `data/organic-video/platform_rules.yaml` as a posting kit
+  is) and the posting plan (which concept on which platform, the day and time; views, % watched to the
+  end, saves and shares).
+- **R6:** 9:16 for every short-video platform.

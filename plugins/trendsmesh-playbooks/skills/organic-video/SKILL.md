@@ -18,7 +18,8 @@ render, the edit, then a delivery page with the video, its cover and its posting
 page with a live budget, the user approves the week once, and each slot becomes its own production
 run, made one after another, ending on one delivery page for the week with the posting plan
 (`references/flow.md#i2` to `#i5`). It ends in an organic post, not an ad: no Meta ad account is
-needed.
+needed. To brief people who will film a video themselves, that is creative-brief's organic video brief;
+organic-video makes the video itself.
 
 **The engine `tm` owns the flow, the checks of what you write against OV1 to OV14, the run state,
 the check-ins, the pages and the stops.** You do the judgement (the intake, the channel profile
@@ -105,7 +106,8 @@ with `tm`, so an allow rule can match it.
 ## 2. Intake (A0), one batch of questions
 
 `tm run new --playbook organic-video --name <channel or short label> --json` (with `--seed
-<seed_id>` when starting from a trend pick of the user's trend report: `references/flow.md#a0`).
+<seed_id>` when starting from a trend pick of the user's trend report, or from a concept of their organic video brief
+(`--source pb2`, a ready concept): `references/flow.md#a0`).
 **Its answer lists `unfinished_runs`**: this playbook's runs of the same name or channel that were started and are not done (`folder`, `created`, `step`). When it lists any, always ask first, in one short question, whether to continue one of them (then `tm next` on it; the new folder stays unused) or start this new one.
 Then the readiness above, then **FLOWS A1's intake in one batch**, at A0: the engine needs the
 level and the outputs before any check-in. **Ask it on the intake page** (`tm organic page

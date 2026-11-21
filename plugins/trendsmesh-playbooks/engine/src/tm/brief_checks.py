@@ -62,8 +62,12 @@ from tm.mcp_saves import META
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
-Stage = Literal["concepts", "brief", "production"]
-STAGES = ("concepts", "brief", "production")
+Stage = Literal["concepts", "brief", "production", "organic_concepts", "organic_views"]
+AD_STAGES = ("concepts", "brief", "production")
+# the organic video brief's (issue #136): its concepts (O5), then its creator, editor and publisher views and the
+# posting plan (O7, cumulative). No customer phrases (CB5), Ad Library (CB4) or media-buyer rows: nothing is spent.
+ORGANIC_STAGES = ("organic_concepts", "organic_views")
+STAGES = (*AD_STAGES, *ORGANIC_STAGES)
 FINAL, STEM = "04_final", "brief_pack"
 NAME = re.compile(rf"^{FINAL}/{STEM}_v\d+\.json$")
 SCHEMA = Path(__file__).parent / "schemas" / "pb2_brief.schema.json"
@@ -76,6 +80,9 @@ RELATIONS = ("consistent", "setup_payoff", "contradiction")       # CB7
 LICENCES = ("commercial", "organic", "unknown")                   # CB9, as the shortlist reads them
 GUESS_LABEL = "Hook (agent's guess)"
 GLANCE_KEYS = ("trend", "guess", "customers", "account", "competition")   # a glance row's name in any language
+# an organic video brief's rows beside the trend's (issue #136): the channel (O2) and the persona (O3); the schema's
+# glance `key` enum takes them too (`_schema`)
+ORGANIC_GLANCE_KEYS = ("channel", "persona")
 COMPETITOR_FOUND = "competitor found"
 # The review pack's: what its page shows of a concept, with the plugin block.
 CONCEPT_FIELDS = ["id", "brief_id", "title", "one_liner", "key_message", "hypothesis", "glance", "hook", "beats", "plugin"]
@@ -151,7 +158,32 @@ def _schema(stage: str) -> dict:
     props["copy_from_hook"]["properties"]["evidence"]["items"]["properties"]["plugin"] = CLIP_PLUGIN
     props["customer_phrases"]["items"]["properties"]["adapted_from"] = _TEXT
     props["customer_phrases"]["items"]["properties"]["translated"] = {"type": "boolean"}   # CB5, issue #3
+    props["glance"]["items"]["properties"]["key"]["enum"] = [*GLANCE_KEYS, *ORGANIC_GLANCE_KEYS]
+    if stage in ORGANIC_STAGES:
+        return _organic_schema(schema, stage)
+    meta["properties"]["kind"] = {"enum": ["ad"]}           # an organic brief is checked at its own stages
     concept["required"] = list(CONCEPT_FIELDS) if stage == "concepts" else [*concept["required"], "plugin"]
+    return schema
+
+
+def _organic_schema(schema: dict, stage: str) -> dict:
+    """The organic video brief's shape (issue #136): `meta.kind` organic and its `meta.channel`, no landing page
+    needed, no media-buyer view; each concept with its `organic` block, no saturation check (no Ad Library); the
+    posting plan at `organic_views`."""
+    meta = schema["properties"]["meta"]
+    meta["required"] = [*meta["required"], "kind", "channel"]
+    meta["properties"]["kind"] = {"enum": ["organic"]}
+    meta["properties"]["product"]["required"] = ["name"]
+    meta["properties"]["recipients"]["items"]["enum"] = ["decision", "strategy", "creator", "editor", "publisher"]
+    meta["properties"]["plugin"] = {**META_PLUGIN, "required": ["evidence"]}
+    concept = schema["$defs"]["concept"]
+    plugin = copy.deepcopy(CONCEPT_PLUGIN)
+    plugin["required"] = [k for k in plugin["required"] if k != "saturation"]
+    plugin["properties"]["saturation"] = {"type": "null"}
+    concept["properties"]["plugin"] = plugin
+    concept["required"] = [*CONCEPT_FIELDS, "organic"]
+    if stage == "organic_views":
+        schema["required"] = [*schema["required"], "plan"]
     return schema
 
 
@@ -310,9 +342,9 @@ def _meta(run: RunFolder, brief: dict, evidence: str | None, cfg: dict) -> list[
         out.append(Problem("meta.plugin.evidence", f"meta.plugin.evidence is {plugin['evidence']}, but this run's "
                                                    f"evidence is {evidence}.", f"Set it to {evidence}."))
     account = brief_research._setting(cfg, "account.currency")
-    if account is not None and plugin["account_currency"] != account:
+    if account is not None and plugin.get("account_currency") != account:
         out.append(Problem("meta.plugin.account_currency", f"meta.plugin.account_currency is "
-                                                           f"{plugin['account_currency']}, but the ad account spends "
+                                                           f"{plugin.get('account_currency')}, but the ad account spends "
                                                            f"in {account} (account.currency).", f"Set it to {account}."))
     return out
 
@@ -585,9 +617,10 @@ def _phrases(i: int, c: dict, bank: list[str] | None, where: str, least: int) ->
 
 
 def _fidelity_sound_persona(i: int, c: dict, directional: bool | None, audience_says: bool,
-                            cfg: dict) -> list[Problem]:
+                            cfg: dict, row: str = "Account") -> list[Problem]:
     """CB7 (the hook-to-image relation), CB9 (the sound's licence) and CB1 (directional: in the
-    Account row, or in the brief's audience text, where the dry run says it)."""
+    Account row, or in the brief's audience text, where the dry run says it; an organic video brief's Persona
+    row, `row`)."""
     cid, field, plugin = c["id"], f"concepts[{i}].plugin", c["plugin"]
     out = []
     image = plugin["hook_image"]
@@ -615,13 +648,13 @@ def _fidelity_sound_persona(i: int, c: dict, directional: bool | None, audience_
                                                        f"the audience pick is "
                                                        f"{'directional' if directional else 'not directional'} (CB1).",
                                f"Set it to {str(directional).lower()}."))
-        k, account = _row(c, "Account")
+        k, account = _row(c, row)
         if directional and not audience_says and not (account and _says(account["text"], "directional")):
             where = f"concepts[{i}].glance[{k}].text" if account else f"concepts[{i}].glance"
-            out.append(Problem(where, f"Neither the Account row of {cid} nor audience.text says \"directional\", and "
+            what = "the account numbers are" if row == "Account" else "the persona is"
+            out.append(Problem(where, f"Neither the {row} row of {cid} nor audience.text says \"directional\", and "
                                       "the audience pick is (CB1: thin data).",
-                               "Say in the audience text or the Account row that the account numbers are "
-                               "directional."))
+                               f"Say in the audience text or the {row} row that {what} directional."))
     return out
 
 
@@ -663,7 +696,7 @@ def _prose(brief: dict, bank: list[str]) -> object:
         copied += [p.get(k) for p in c.get("customer_phrases") or [] if isinstance(p, dict)
                    for k in ("phrase", "adapted_from")]
         copied += [w.get("quote") for w in c.get("why") or [] if isinstance(w, dict)]
-        copied += [c["plugin"]["saturation"]["query"], (c["plugin"]["trend"] or {}).get("name")]
+        copied += [(c["plugin"].get("saturation") or {}).get("query"), (c["plugin"]["trend"] or {}).get("name")]
     texts = sorted({_norm(t) for t in copied if _filled(t)}, key=len, reverse=True)
     cut = re.compile("|".join(map(re.escape, texts))) if texts else None
 
@@ -1071,15 +1104,121 @@ def _creator_pdf_data(run: RunFolder, brief: dict, data: list[tuple[str, str, re
             for value, what, pattern in data if any(pattern.search(low) for low in lows) and f'"{value}"' not in named]
 
 
+# --- the organic video brief (issue #136) --------------------------------------------------------
+
+def _organic_rows(i: int, c: dict) -> list[Problem]:
+    """The rows an organic concept's glance has beside the trend's: Channel (O2) and Persona (O3)."""
+    out = []
+    for label in ("Channel", "Persona"):
+        if _row(c, label)[1] is None:
+            out.append(Problem(f"concepts[{i}].glance", f"{c['id']} has no {label} row (an organic video brief's "
+                                                        "glance: the trend, Channel and Persona).",
+                               f"Add the {label} row, keyed {label.lower()}, with its source."))
+    return out
+
+
+def _organic_block(i: int, c: dict, business: bool) -> list[Problem]:
+    """The concept's topic, format, length and sound; a business account's sound is licensed for business use
+    (the owner's decision on issue #136: a personal account may take a trending sound, its licence shown)."""
+    cid, field, block = c["id"], f"concepts[{i}].organic", c["organic"]
+    out = [Problem(f"{field}.{k}", f"{cid} has no {k}.", f"Give its {k}.")
+           for k in ("topic", "format") if not _filled(block.get(k))]
+    if not (isinstance(block.get("length_s"), (int, float)) and block["length_s"] > 0):
+        out.append(Problem(f"{field}.length_s", f"{cid}'s length is {block.get('length_s')!r}, not seconds.",
+                           "Give its length in seconds."))
+    sound = block["sound"]
+    if not _filled(sound.get("name")):
+        out.append(Problem(f"{field}.sound.name", f"{cid}'s sound has no name.", "Name the sound, or the track."))
+    if business and sound["licence"] != "commercial":
+        out.append(Problem(f"{field}.sound", f"{cid}'s sound has the licence {sound['licence']!r}, and the channel is a "
+                                             "business account: it may use only sounds licensed for business use.",
+                           "Pick a sound licensed for business use (a commercial library track), or ask whether the "
+                           "channel is a personal account."))
+    return out
+
+
+def _organic_concept_checks(run: RunFolder, brief: dict, evidence: str | None, cfg: dict) -> list[Problem]:
+    """O5: CB2 (the trend row), CB6 (two axes apart), CB7, CB9 and CB1's directional mark, the Channel and Persona
+    rows and each concept's organic block. No customer phrases (CB5) and no Ad Library check (CB4)."""
+    concepts = brief["concepts"]
+    out = _meta(run, brief, evidence, cfg) + _ids(concepts)
+    out += _axes(concepts, brief_research._setting(cfg, "concepts.min_axes_diff"))
+    pick = (state.load(run).audience or {}).get("pick")
+    directional = pick.get("directional") if isinstance(pick, dict) else None
+    if not isinstance(directional, bool):
+        directional = None
+        out.append(Problem("audience", "The persona is not picked yet, so CB1's directional mark cannot be checked.",
+                           "Pick it first (tm audience pick --no-data), then check the brief."))
+    channel = brief["meta"]["channel"]
+    said = brief_research._setting(cfg, "channel.business")
+    if isinstance(said, bool) and channel["business"] is not said:
+        out.append(Problem("meta.channel.business", f"meta.channel.business is {channel['business']}, but the start card "
+                                                    f"says {said} (channel.business).", f"Set it to {str(said).lower()}."))
+    business = said if isinstance(said, bool) else channel["business"]
+    audience_says = _says((brief.get("audience") or {}).get("text"), "directional")
+    for i, c in enumerate(concepts):
+        out += _trend_row(run, i, c, evidence)
+        out += _fidelity_sound_persona(i, c, directional, audience_says, cfg, row="Persona")
+        out += _organic_rows(i, c)
+        out += _organic_block(i, c, business)
+    prose = _prose(brief, [])
+    out += research_checks.wording(prose, BANNED)
+    if evidence == GUESS:
+        out += research_checks.wording(prose, RISING)
+    return out
+
+
+def _organic_view_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
+    """O7: each concept's key message and one-sentence hypothesis (CB10), its beats' scenes, the intake's values
+    never invented, CB8's valid-until, the landing page's quotes (R3); the creator view (what to film and say), the
+    editor rows, the publisher view against the platform rules, and the posting plan."""
+    from tm import brief_organic             # it reads tm.kit, which a creative brief's other stages never need
+    meta, out = brief["meta"], []
+    scenes = animatic.scene_names()
+    for i, c in enumerate(brief["concepts"]):
+        cid, field = c["id"], f"concepts[{i}]"
+        if not _filled(c["key_message"]):
+            out.append(Problem(f"{field}.key_message", f"{cid} has no key message (CB10).", "Write its key message."))
+        if not (_filled(c["hypothesis"]) and brand._one_sentence(c["hypothesis"])):
+            out.append(Problem(f"{field}.hypothesis", f"{cid}'s hypothesis is to be one sentence (CB10).",
+                               "Write what the video tests in one sentence."))
+        for k, beat in enumerate(c["beats"]):
+            scene = (beat.get("animatic") or {}).get("scene")
+            if scene not in scenes:
+                out.append(Problem(f"{field}.beats[{k}].animatic.scene", f"{cid}'s beat {k + 1} has the scene "
+                                                                          f"{scene!r}, which scenes.js does not draw.",
+                                   f"Use one of {', '.join(sorted(scenes))}."))
+        if "creator" in meta["recipients"]:
+            creator = c.get("creator") or {}
+            out += [Problem(f"{field}.creator.{k}", f"{cid}'s creator view has no {what} (the creator view).",
+                            f"Write {what}.") for k, what in (("say", "what to say"), ("shots", "shots to record"))
+                    if not creator.get(k)]
+        if "editor" in meta["recipients"]:
+            have = {_norm(r["label"]) for r in c.get("editor") or []}
+            out += [Problem(f"{field}.editor", f"{cid} lacks the editor row {row} (the editor view).",
+                            f"Add the row {row!r}.") for row in EDITOR_ROWS if _norm(row) not in have]
+        out += _intake(i, c, cfg)
+    if "publisher" in meta["recipients"]:
+        out += brief_organic.posting_problems(brief)
+    out += brief_organic.plan_problems(brief)
+    return out + _valid_until(run, brief, cfg) + landing_quotes(run, brief)
+
+
 # --- the check -----------------------------------------------------------------------------------
 
 def check(run: RunFolder, brief: dict, stage: Stage, cfg: dict) -> list[Problem]:
     """Everything wrong in brief.json at the stage, cumulative (see the module docstring); empty
-    when it holds. `cfg` is the run's config ({} for the defaults)."""
+    when it holds. `cfg` is the run's config ({} for the defaults). An organic video brief is checked at its
+    own stages (`ORGANIC_STAGES`, issue #136)."""
     problems = shape(brief, stage)
     if problems:
         return problems
     evidence = state.load(run).evidence
+    if stage in ORGANIC_STAGES:
+        out = _organic_concept_checks(run, brief, evidence, cfg or {}) + _visible(run, brief)
+        if stage == "organic_views":
+            out += _organic_view_checks(run, brief, cfg or {})
+        return out
     out = _concept_checks(run, brief, evidence, cfg or {}) + _visible(run, brief)
     if stage in ("brief", "production"):
         out += _brief_checks(run, brief, cfg or {})
@@ -1170,3 +1309,11 @@ def brief_gap(run: RunFolder) -> str | None:
 
 def production_gap(run: RunFolder) -> str | None:
     return stepchecks.fresh(run, key("production"), FINAL, STEM, "json")
+
+
+def organic_concepts_gap(run: RunFolder) -> str | None:
+    return stepchecks.fresh(run, key("organic_concepts"), FINAL, STEM, "json")
+
+
+def organic_views_gap(run: RunFolder) -> str | None:
+    return stepchecks.fresh(run, key("organic_views"), FINAL, STEM, "json")

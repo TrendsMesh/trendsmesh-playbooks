@@ -160,7 +160,10 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
 5. Tell the user where the support report was saved, as in step 5 above.
 
 **Creative brief.** The outputs are the review pack, the briefs and the page (animatics are made on
-request, after the briefs).
+request, after the briefs). An organic video brief (a run whose first answer was "an organic video") has
+the outputs `organic_brief,page`: it needs no Meta Ads, so skip the Meta Ads check below, pass no `meta=`
+and no `--meta-account`, and run `tm doctor --playbook creative-brief --outputs organic_brief,page --mcp
+trendsmesh=<result>,artifacts=<result> --report --json`.
 
 1. Check three connections, never guessing a result (a call you could not make is `missing`):
    - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`: Free or Paid, the user's choice). It gives `ok`, `free`, `no_agents`,

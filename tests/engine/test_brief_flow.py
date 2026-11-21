@@ -32,6 +32,7 @@ TABLE = {  # id: (title, outputs, checkins, requires), the plan's Task 1 and iss
     "E1": ("Production views", ["briefs"], ["G4"], ["concepts_chosen", "production_checked", "page_built"]),
     "E2": ("Hand-off", ALL, [], ["concepts_chosen", "page_built", "handed_off"]),
 }
+ORGANIC_TOO = ("A0", "D2")   # the ad brief's steps the organic video brief shares (issue #136)
 ANSWER = {"animatics": "skip"}   # what _walk answers where the first choice needs more (make names concepts)
 
 
@@ -97,13 +98,18 @@ def test_creative_brief_is_registered():
 
 def test_creative_brief_steps_match_the_plan():
     every = flow.steps(CREATIVE_BRIEF)
-    assert flow.output_ids(CREATIVE_BRIEF) == ALL
-    assert [st.id for st in every] == STEP_IDS
+    assert flow.output_ids(CREATIVE_BRIEF) == [*ALL, "organic_brief"]       # issue #136: the organic video brief
+    assert [st.id for st in every if st.id in TABLE] == STEP_IDS
     assert flow.flows(CREATIVE_BRIEF) == set()
+    before = {"A0": (("brief_kind",), ()), "D2": (("animatics",), (("animatics", "skip"),))}
     for st in every:
-        assert (st.title, list(st.outputs), list(st.checkins), list(st.requires)) == TABLE[st.id], st.id
+        if st.id not in TABLE:                 # an organic video brief's step: test_brief_organic.py
+            continue
+        outputs = list(TABLE[st.id][1]) + (["organic_brief"] if st.id in ORGANIC_TOO else [])
+        assert (st.title, list(st.outputs), list(st.checkins), list(st.requires)) == (
+            TABLE[st.id][0], outputs, *TABLE[st.id][2:]), st.id
         assert not st.spends and st.budget is None, st.id
-        assert (st.before, st.skip_when) == ((("animatics",), (("animatics", "skip"),)) if st.id == "D2" else ((), ())), st.id
+        assert (st.before, st.skip_when) == before.get(st.id, ((), (("brief_kind", "organic"),))), st.id
         assert st.ref == f"skills/creative-brief/references/flow.md#{st.id.lower()}"
     named = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO, CREATE_AD) for st in flow.steps(pb) for name in st.requires}
     chosen = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO, CREATE_AD)
@@ -119,7 +125,10 @@ def test_creative_brief_steps_match_the_plan():
 
 def test_creative_brief_catalogue():
     cat = checkins.load(playbook=CREATIVE_BRIEF)
-    assert list(cat.checkins) == ["G0", "G1", "G3", "animatics", "G4"]
+    assert [c for c in cat.checkins if c in ("G0", "G1", "G3", "animatics", "G4")] == ["G0", "G1", "G3", "animatics", "G4"]
+    assert list(cat.checkins)[0] == "brief_kind"           # issue #136: asked first, never by rule
+    kind = cat.checkins["brief_kind"]
+    assert (kind.name, kind.choices, set(kind.route.values())) == ("What is the brief for?", ("ad", "organic"), {"own"})
     assert cat.levels == checkins.load(playbook=TREND_RESEARCH).levels
     assert {c.id: (c.name, c.ask) for c in cat.cards.values()} == {
         "approve_setup": ("Approve the setup", "last"),
@@ -170,7 +179,7 @@ def test_guess_flag_must_be_boolean(tmp_path, monkeypatch, bad):
 def test_unknown_required_check_refused_at_load(tmp_path):
     folder = paths.bundled_data() / "creative-brief"
     data = yaml.safe_load((folder / "steps.yaml").read_text(encoding="utf-8"))
-    data["steps"][2]["requires"] = ["audience_picked", "persona_guessed"]
+    next(st for st in data["steps"] if st["id"] == "B1")["requires"] = ["audience_picked", "persona_guessed"]
     steps_path = tmp_path / "steps.yaml"
     steps_path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     with pytest.raises(ValueError, match="B1") as no:
@@ -206,6 +215,9 @@ def test_a0_of_a_brief_needs_no_level_or_outputs_and_asks_only_for_the_product(t
     batch."""
     (tmp_path / "ws").mkdir()
     run = RunFolder.create(tmp_path / "ws", "ld", date(2026, 11, 7), playbook=CREATIVE_BRIEF)
+    nxt = flow.next(run)                                   # issue #136: what the brief is for, first
+    assert (nxt.step, nxt.action, nxt.checkin.ids) == ("A0", "ask", ["brief_kind"])
+    decide(run, "brief_kind", "ad", by="user", note=None, said="an ad")
     nxt = flow.next(run)
     assert (nxt.step, nxt.action, nxt.checkin) == ("A0", "work", None)
     assert "which product" in nxt.message and "one batch" not in nxt.message
@@ -266,7 +278,11 @@ def test_every_step_ref_has_its_anchor_in_the_skill():
         assert st.ref.startswith("skills/creative-brief/references/flow.md#"), st.ref
     flow_md = (SKILL / "references" / "flow.md").read_text(encoding="utf-8")
     anchors = re.findall(r'<a id="([a-z0-9]+)"></a>', flow_md)
-    assert anchors == [st.ref.split("#")[1] for st in flow.steps(CREATIVE_BRIEF)]
+    refs = [st.ref.split("#")[1] for st in flow.steps(CREATIVE_BRIEF)]
+    assert len(anchors) == len(set(anchors)) and set(refs) <= set(anchors)
+    # the ad brief's in step order, then the organic video brief's O1 to O8 (O6 is D2's own: issue #136)
+    assert [a for a in anchors if not a.startswith("o")] == [r for r in refs if not r.startswith("o")]
+    assert [a for a in anchors if a.startswith("o")] == [f"o{n}" for n in range(1, 9)]
 
 
 def _tm_commands(text: str) -> list[str]:

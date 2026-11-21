@@ -13,7 +13,8 @@
     tm brief choose --run R [--drop C2[,C3]] --source page|chat|rule [--decisions F] [--keep-carried] [--json]
     tm brief animatic --run R [--concepts C1 ...] [--formats 9x16 4x5] [--render] [--json]   CB11
     tm brief evidence --run R [--json]               the clips' thumbnails and as-of dates (CB8)
-    tm brief handoff --run R [--json]                05_results/handoff_vNN.json and library/briefs.jsonl (E2)
+    tm brief handoff --run R [--to-video C2[,C3]] [--json]   05_results/handoff_vNN.json and library/briefs.jsonl (E2,
+                                                     O8); --to-video: seed/1 rows, source pb2 (issue #136)
 
 A check that finds problems in a file the agent wrote exits 2 with them; a pass marks the file for
 the step's check (B4's; `brief_<stage>` for C1, D and E1). The dispatcher catches `Stop` (exit 2)
@@ -51,7 +52,8 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
-from tm import (animatic, audience, brief_checks, brief_page, brief_research, cli, library, manifest, page, state,
+from tm import (animatic, audience, brief_checks, brief_config, brief_organic, brief_page, brief_research, cli, flow,
+                library, manifest, page, seeds, state,
                 stepchecks, trend_spool, trends)
 from tm.runfolder import ReadOnlyError, RunFolder
 from tm.stops import AGAIN, Stop
@@ -144,8 +146,11 @@ def _setup_media(sub) -> None:
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("handoff", help=f"hand the chosen concepts' test plans on in "
                                        f"{HANDOFF_STAGE}/{HANDOFF_STEM}_vNN.json and add their brief ids to "
-                                       f"{BRIEFS.as_posix()} (E2)")
+                                       f"{BRIEFS.as_posix()} (E2, an organic video brief's O8)")
     c.add_argument("--run", required=True, help="the run folder")
+    c.add_argument("--to-video", nargs="+", help="an organic video brief's concepts the user hands to organic video, "
+                                                 "e.g. C2 or C1,C3: each gets a seed (source pb2) in "
+                                                 "library/seeds.jsonl")
     c.add_argument("--json", action="store_true")
 
 
@@ -595,21 +600,34 @@ def _read_handoff(path: Path) -> list | None:
     return rows if isinstance(rows, list) else None
 
 
-def handoff(run: RunFolder) -> dict:
+def handoff(run: RunFolder, *, to_video: list[str] | None = None) -> dict:
     """`tm brief handoff`: the hand-off file of the chosen concepts from the latest brief, and their
     brief ids in the workspace's library. Returns {file, brief, rows, written, test_plan, added,
     there, other_runs, library}. Stop with nothing chosen, a brief that has not passed its stage check
     (production; concepts in a review pack), a chosen concept the brief lacks or without its
     brief_id, a brief not in its shape, or a damaged library line: nothing is written then. A
-    brief_id another run's row holds is named (`other_runs`)."""
+    brief_id another run's row holds is named (`other_runs`).
+
+    An organic video brief (issue #136) is handed on once it passes `organic_views` (O7), with no test plan; with
+    `to_video` (the kept concepts the user hands to organic video, O8) each also gets a `seed/1` row with `source:
+    pb2` in library/seeds.jsonl (`brief_organic.seed_rows`), once: {seeds, seeds_there}. An ad brief takes none."""
     chosen = _chosen(run)
+    s = state.load(run)
+    organic = flow.kind_of(s) == brief_config.ORGANIC
+    named = list(dict.fromkeys(to_video or []))
+    if named and not organic:
+        raise ValueError("--to-video hands an organic video brief's concepts to organic video; this is an ad brief.")
     if not chosen:
         raise Stop(f"No concepts are chosen yet, so there is nothing to hand on: record the choice first (tm brief "
                    f"choose); {AGAIN}.")
-    s = state.load(run)
+    unknown = [c for c in named if c not in chosen]
+    if unknown:
+        raise ValueError(f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not a kept concept of this brief "
+                         f"({', '.join(chosen)}): name the concepts to hand to organic video from those.")
     _, rel, data = brief_page.load_brief(run, None)
     test_plan = "briefs" in s.outputs
-    stage = "production" if test_plan else "concepts"      # E1's check, or C1's in a review pack
+    stage = ("organic_views" if organic else           # O7's check in an organic video brief
+             "production" if test_plan else "concepts")   # E1's check, or C1's in a review pack
     unchecked = stepchecks.fresh(run, brief_checks.key(stage), brief_checks.FINAL, brief_checks.STEM, "json")
     if unchecked:
         raise Stop(f"{rel} is handed on only once it passes its check, and it does not yet: {unchecked}. Check it "
@@ -621,6 +639,12 @@ def handoff(run: RunFolder) -> dict:
         raise DamagedBriefs(f"{BRIEFS.as_posix()} has damaged lines (not JSON rows): {', '.join(map(str, damaged))}. "
                             "Nothing is handed off while they are there, so a brief is never written twice. Fix or "
                             f"delete those lines, then hand off again; {AGAIN}.")
+    published = s.pages.get(brief_page.PAGE)            # this run's own publish, never page.published's walk back
+    page_ref = {"slug": published["slug"], "version": published["version"]} if published else None
+    seed_rows = brief_organic.seed_rows(run, data, named, brief_research.run_config(run), page_ref=page_ref)
+    for row in seed_rows:
+        seeds.check(row)
+    fresh_seeds, seeds_there = seeds._pending(workspace, seed_rows) if seed_rows else ([], [])  # damaged: a Stop
     latest = run.latest(HANDOFF_STAGE, HANDOFF_STEM, "json")
     latest_rel = latest.relative_to(run.path).as_posix() if latest is not None else None
     written = not (latest is not None and _made_from(run, latest_rel) == rel and _read_handoff(latest) == rows)
@@ -629,8 +653,6 @@ def handoff(run: RunFolder) -> dict:
         animatic.write_new(target, json.dumps(rows, ensure_ascii=False, indent=1) + "\n")
         latest_rel = target.relative_to(run.path).as_posix()
         manifest.record(run, latest_rel, HANDOFF_STAGE, HANDOFF_SOURCE, parent=rel, params={"concepts": chosen})
-    published = s.pages.get(brief_page.PAGE)            # this run's own publish, never page.published's walk back
-    page_ref = {"slug": published["slug"], "version": published["version"]} if published else None
     meta = data["meta"]
     present = {r.get("brief_id"): r.get("run") for r in existing if isinstance(r, dict)}
     this_run = run.path.resolve().name
@@ -643,8 +665,10 @@ def handoff(run: RunFolder) -> dict:
          "title": r["title"], "hypothesis": r["hypothesis"], "prepared": meta.get("prepared"),
          "valid_until": meta.get("valid_until"), "market": meta.get("market"), "page": page_ref,
          "handoff": latest_rel} for r in added])
+    library.append_jsonl(workspace / seeds.FILE, fresh_seeds)
     return {"file": latest_rel, "brief": rel, "rows": rows, "written": written, "test_plan": test_plan,
-            "library": BRIEFS.as_posix(),
+            "library": BRIEFS.as_posix(), "seeds": [r["seed_id"] for r in fresh_seeds],
+            "seeds_there": [r["seed_id"] for r in seeds_there],
             "added": [r["brief_id"] for r in added], "there": [r["brief_id"] for r in there],
             "other_runs": {r["brief_id"]: present[r["brief_id"]] for r in there
                            if present[r["brief_id"]] != this_run}}
@@ -683,12 +707,12 @@ def handoff_gap(run: RunFolder) -> str | None:
 
 
 def _handoff(args: argparse.Namespace, run: RunFolder) -> int:
-    got = handoff(run)
+    got = handoff(run, to_video=cli.ids_arg(args.to_video))
     ids = [r["concept"] for r in got["rows"]]
     message = (f"{'Wrote' if got['written'] else 'Kept'} {got['file']} from {got['brief']}: the test plan of "
                f"{', '.join(ids)} for PB1's live test (R4)")
     if not got["test_plan"]:
-        message += ", its test fields null (a review pack has no test plan)"
+        message += ", its test fields null (a review pack or an organic video brief has no test plan)"
     message += f". {got['library']}: "
     message += (f"added {', '.join(got['added'])}" if got["added"] else "nothing new")
     if got["there"]:
@@ -697,6 +721,12 @@ def _handoff(args: argparse.Namespace, run: RunFolder) -> int:
         message += (f"; {brief_id}'s row is the run {other}'s, so PB1's result links to that run's hand-off: give "
                     "this run's concept a new brief_id if it is a new brief")
     message += "."
+    if got["seeds"] or got["seeds_there"]:
+        message += (f" {seeds.FILE.as_posix()}: " + (f"added the seeds {', '.join(got['seeds'])}" if got["seeds"]
+                                                     else "no new seed")
+                    + (f"; {', '.join(got['seeds_there'])} there already" if got["seeds_there"] else "")
+                    + ". organic video starts from one with tm run new --playbook organic-video --name <name> "
+                      "--seed <seed_id>.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

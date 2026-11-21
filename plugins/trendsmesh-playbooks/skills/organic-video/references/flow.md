@@ -73,6 +73,15 @@ posts.
    listed, with its `valid_until`, because B3 re-checks it. Name any `damaged` lines to the user.
    Then `tm run new --playbook organic-video --name <name> --seed <seed_id> --json`: the pick is
    kept as `00_raw/seed.json`, and the search starts from its trend.
+   **Starting from an organic video brief's concept** (creative-brief handed one on at its O8, issue
+   #136): `tm seeds list --source pb2 --json`, then `tm run new --playbook organic-video --name <name>
+   --seed <seed_id> --json`. That seed is **a ready concept**: its `hook`, `format`, `length_s`,
+   `sound` (with its licence), `topic` and `brief_id` are the user's approved concept. The intake
+   still asks what it always asks (the channel, the level, the output), but the search does not look
+   for an idea: it checks the seed's trend (`trend_id`; none in a guess brief), and the proposal of
+   that video (C1) **keeps the concept's hook, format, length and sound** word for word, with the
+   seed's id in `plugin.seed` (`tm organic seed-check` first, as for any seed). Other proposals beside
+   it are offered only if the user asks.
 2. **The stack check, with the run's own output** (`commands/doctor.md`, "Organic video"): check
    TrendsMesh (sign-in first, then the plan, `../../refresh-ad/references/trendsmesh-sign-in.md`
    without its guess-mode lines) and whether `Artifact` (or the older `publish_files`) is among

@@ -11,6 +11,12 @@ The plugin merges three of the reference playbook's steps: **A0** is its A0 and 
 the stack check), **E1** is its E1 to E3 (the creator, editor and media-buyer parts come from one
 brief.json), and **E2** is its section F (decisions and the hand-off to PB1).
 
+**Two kinds of brief** (issue #136). The run's first question, before A0, is what the brief is for (the
+check-in `brief_kind`, `checkin-cards.md`): **an ad** (A1 to E2 below: the Meta ad account, the
+customers' words, the Ad Library) or **an organic video** for a channel (O1 to O8, at the end: no ad
+account, no customer-voice step, no Ad Library). A0 and D2 (the animatics on request) serve both.
+`tm next` gives only the kind's steps.
+
 - **Every MCP answer of the run is saved by the collector** (`trend-collection.md`): TrendsMesh,
   the Meta reads and the page tools. `tm trends collect on --run R` runs right before the run's
   first MCP call (A1, right before `ads_get_ad_accounts`), and **again at every resume, in any
@@ -42,16 +48,19 @@ brief.json), and **E2** is its section F (decisions and the hand-off to PB1).
 <a id="a0"></a>
 ## A0 Stack check and run folder
 
-- Readiness first (SKILL.md section 1): the doctor with `--playbook creative-brief`. **Meta Ads
-  is required** (the brief reads the user's own ad account): without it the run cannot start, so
-  say what the card says and wait. Without TrendsMesh the run goes on as guesses; without the
+- **First, what the brief is for** (the check-in `brief_kind`, before A0's work, at every level): an
+  ad or an organic video. `tm decide brief_kind ad|organic --said "<their words>" --run R`.
+- Readiness first (SKILL.md section 1): the doctor with `--playbook creative-brief`. **For an ad brief
+  Meta Ads is required** (the brief reads the user's own ad account): without it the run cannot start, so
+  say what the card says and wait. **An organic video brief** runs the doctor with `--outputs
+  organic_brief,page` and no `meta=`: it never checks or calls Meta. Without TrendsMesh the run goes on as guesses; without the
   artifacts tools the page is a local file and decisions are taken in chat. **The animatic tools
   and a browser are needed only at D2, and only when the user asks for animatics:** when they are
   the only things missing, the doctor still exits 2. Offer the tools' install once (after a yes,
   `tm env install animatic --yes`) and say which browser to install, then go on: the run is not
   held for them now, and D2 waits until they are there. With several ad accounts the doctor checks one; the user picks at A1.
-- **Nothing is asked at A0.** The user gives only the product, at A1; the level and the outputs
-  are chosen on A1's card (`tm next` says so).
+- **Nothing else is asked at A0.** The user gives only the product, at A1; the level and the outputs
+  are chosen on A1's card (`tm next` says so); an organic video brief's are on its start card, O1.
 - `tm run new --playbook creative-brief --name <product or short label> --json` gives the run
   folder `runs/02-creative-brief/<date>_<name>/` with its seven stages and `manifest.md`.
 - **Starting from a trend pick** (the user names a pick of their trend report, or asks to brief
@@ -349,9 +358,9 @@ CB3, CB4.
 <a id="c1"></a>
 ## C1 Concepts and the review pack
 
-CB5, CB6, CB7. The concepts go into **`04_final/brief_pack_v01.json`** (brief.json: the schema is
-`spec/02-creative-brief/schema/brief.schema.json`; the dry run's `04_final/brief_pack_v01.json` is
-the example). One file is the source of the page, the animatics and the hand-off (CB10). There is no concept
+CB5, CB6, CB7. The concepts go into **`04_final/brief_pack_v01.json`**. Its shape is
+`templates/brief_pack_example.json`, with the plugin blocks; the engine checks it against
+`pb2_brief.schema.json` (`tm brief check`). One file is the source of the page, the animatics and the hand-off (CB10). There is no concept
 check-in: with the briefs, C1 goes straight on to D1, which writes every concept in full, and the
 team decides per concept on D3's page.
 
@@ -378,8 +387,7 @@ team decides per concept on D3's page.
   "consistent"|"setup_payoff"|"contradiction", "why"}, "sound": {"licence", "organic_only",
   "licensed_equivalent"} | null, "thumbnail": "…", "directional": true|false}`. `awareness` is
   one of `unaware`, `problem_aware`, `solution_aware`, `product_aware`, `most_aware`. A
-  contradiction needs its `why` (CB7). The engine test fixture
-  `tests/engine/fixtures/creative_brief/ld_plugin_blocks.json` (in the repository) holds the dry run's.
+  contradiction needs its `why` (CB7), as in `templates/brief_pack_example.json`.
 - **CB6:** every two concepts differ on at least 2 of the five axes; none is a near-duplicate of
   an ad already running (the creatives read at B1). **CB5:** at least one language-bank phrase per
   concept, verbatim or minimally adapted (`adapted_from` naming the bank phrase), used in the hook,
@@ -479,7 +487,8 @@ CB10, CB13, R7, CB8. Only with the briefs (the review pack alone skips D1 to E1)
 ## D2 Animatics on request
 
 CB11 (`references/animatic.md`). The check-in `animatics` comes first (`checkin-cards.md`): after the
-briefs are shown, ask whether to make animatics and for which concepts, in the user's language.
+briefs are shown, ask whether to make animatics and for which concepts, in the user's language. An
+organic video brief comes here after O5's concepts (it is O6, `#o6`), with the same question and calls.
 
 - **Make:** `tm decide animatics make --concepts C1,C3 --run R --said "<their words>"` (the concepts the user named; "all"
   is every concept id). Then `tm brief animatic --run R --render --concepts C1,C3 --json`: it draws
@@ -546,6 +555,150 @@ them with `tm brief choose` first):
   brief. A dropped concept is in neither.
 - `tm done E2 --run R`, then `tm trends collect off --run R`.
 - `tm next` says `done`: the final report (SKILL.md section 3).
+
+---
+
+## The organic video brief (O1 to O8)
+
+A brief for the people who will film a video for a channel themselves (the user, a creator, a team).
+It reads no ad account and calls no Meta tool, has no customer-voice step (CB5) and no Ad Library
+check (CB4), and spends nothing. organic-video makes the video itself; O8 can hand a concept to it.
+The rules that apply: `rules.md`, "Organic brief". Every step's files are recorded as in the ad brief
+(`tm record`), and every `tm` exit 2 is a stop.
+
+<a id="o1"></a>
+## O1 Start card
+
+The organic video brief's one card, in the form of organic-video's start page: one message with
+every field, each optional value nobody gave shown as **"to set"**:
+
+- the **product or brand**, in any form (a link, a description, a photo, or none: a channel that sells
+  nothing); a link is saved as its own text with `tm page fetch --run R --url <url> --name <short name>
+  --json`, never from a WebFetch summary;
+- the **channel**: its name and platforms (TikTok, Instagram, YouTube, Facebook), its link if there is
+  one, and **whether it is a business account** (the owner's rule: a business account is offered only
+  sounds whose licence allows business use; a personal account gets the trending sounds, each with its
+  licence shown);
+- the **goal** (`reach`, `followers`, `traffic` to the product, `sales`), **who films** (`self`,
+  `creator`, `team`), the working language and the market language;
+- the **recipients** (decision maker, creator, editor, publisher by default; the strategist on
+  request: an organic brief has no media buyer), the number of concepts (3), and how involved they want
+  to be (Check every step, the default; Just the big calls; Hands-off).
+
+Then the answers file `03_wip/intake_answers_v01.json` (the config's shape plus `level`:
+`brief.kind: organic`, `channel: {name, platforms, url, description, business}`, `organic: {goal,
+films}`, `product: {name, category_phrase}` with the channel's topic as the category phrase when
+nothing is sold; `outputs` is `organic_brief, page`), `tm config write --run R --answers
+03_wip/intake_answers_v01.json`, `tm config check --run R --json`, then `tm done O1 --run R`
+(`intake_written`). G0o follows (`checkin-cards.md`).
+
+<a id="o2"></a>
+## O2 Channel context
+
+What the channel films, its topic, its audience and its style. No Meta.
+
+1. **organic-video saved the channel already** (`library/channels/<slug>/channel_vNN.json`, a
+   `channel/1` profile): read its `context` (`films`, `topic`, `audience`, `style`) and `video_style`.
+2. **Else its page:** `tm page fetch --run R --url <channel link> --name <short name> --kind channel
+   --json` saves `00_raw/channel_<name>.txt` when the page gives text. A link without readable text
+   (a stop from the fetch) is no stop for the step: the user's description carries it.
+3. **And the user's description** from the start card, word for word.
+
+Write `01_base/channel_context.md` (the four parts, each with its source: the saved channel, the page
+file, the user's words) and record it: `tm record --run R --file 01_base/channel_context.md --stage
+01_base --source "<what it rests on>"`. `tm done O2 --run R` (`channel_context_written`).
+
+<a id="o3"></a>
+## O3 Persona
+
+From O2's audience and the channel: write who watches as `02_research/audience/hypothesis_v01.md`,
+`tm audience hypothesis --run R --file 02_research/audience/hypothesis_v01.md --json`, then `tm audience
+pick --run R --no-data --json`. The persona is the hypothesis, marked **directional**, both formats
+(9:16 for every short-video platform, R6). `tm done O3 --run R` (`audience_picked`).
+
+<a id="o4"></a>
+## O4 Rising trends
+
+B3 as it is (`#b3`), from the channel's bubble (O2) and the persona's topics (O3): the TrendsMesh
+searches, `tm trends shortlist` (with `--sounds-commercial-only` for a business account), the cards
+and the evidence videos; hooks, formats, sounds and topics. `tm evidence trendsmesh` or `tm evidence
+guess` first, as at B3. **No check of whether the channel already used a trend** (no `tm organic used`
+or `tm organic history`) and **no B4**: no fit scoring against an ad account and no Ad Library check.
+`tm done O4 --run R` (`trends_or_guess`).
+
+<a id="o5"></a>
+## O5 Three concepts
+
+Three concepts in `04_final/brief_pack_v01.json` (its shape: `templates/brief_pack_example.json`, the
+organic example in it), each built on a shortlisted trend (or, in a guess run, your idea):
+
+- `meta.kind: "organic"`, `meta.channel` (as the start card says it, `business` included), the
+  recipients from the config, `meta.product` with its `name` (no `landing_url` needed), `meta.plugin`
+  with `evidence` (no account currency: there is no ad account);
+- per concept the ad brief's fields (`id`, `brief_id`, title, one-liner, key message, hypothesis,
+  hook, beats with their `animatic.scene`) and its **`organic`** block: `topic`, `format`,
+  `length_s` and `sound: {name, trend_id | null, licence}` (`commercial`, `organic` or `unknown`; a
+  business account takes `commercial` only);
+- **glance**: the trend row first, as at C1 (CB2), then **Channel** (key `channel`, from O2) and
+  **Persona** (key `persona`, "directional"); no Customers and no Competition row;
+- `plugin` as at C1, without `saturation` (null or left out): the axes (CB6: every two concepts
+  differ on at least two), `hook_image` (CB7: the hook reproduces its evidence videos), `sound` (CB9),
+  `directional: true`, `thumbnail`.
+
+No customer phrases (CB5 is off) and no concept-choice gate. Then `tm brief evidence --run R --json`,
+`tm brief check --run R --file 04_final/brief_pack_vNN.json --stage organic_concepts --json` (fix and
+check again until exit 0), `tm brief page --run R --json`, and publish it (`references/pages.md`, the
+first publish with `tm brief capabilities`). `tm done O5 --run R` (`organic_concepts_checked`,
+`page_built`).
+
+<a id="o6"></a>
+## O6 Animatics on request
+
+D2 (`#d2`), the same check-in and the same calls: ask whether to make animatics and for which
+concepts, explaining in one sentence that an animatic is a drawn storyboard video of the idea, to show
+the team, not the final video. Yes: `tm decide animatics make --concepts <ids> --said "<their words>"`,
+`tm brief animatic --run R --render --concepts <ids> --json`, then the page again. No: `tm decide
+animatics skip --said "<their words>"`, and the run goes on.
+
+<a id="o7"></a>
+## O7 Brief views
+
+One new brief version with the three views, for every concept:
+
+- **Creator:** what to film, the lines (`creator.say`), the shots and takes (`creator.shots`), the
+  props and look, what to send back (raw footage without burned-in captions, 9:16).
+- **Editor:** the rows "Length", "Captions", "Formats", "Versions", "Files" (`editor`), the safe zones
+  and the sound.
+- **Publisher:** per platform of the channel, `posting.<platform>`: `description`, `hashtags`,
+  `post_time` and `sound` (YouTube: and its `title`). Fields and limits follow the plugin's
+  `references/posting-kit.md` and `data/organic-video/platform_rules.yaml`, as organic-video's posting
+  kit does: the text as pasted (the description with its hashtags) within the platform's length, the
+  hashtag count, no link or domain, no engagement bait.
+- **The posting plan**, at pack level, `plan`: `posts` (which concept on which platform, `date`
+  YYYY-MM-DD and `time` HH:MM) and `metrics`: `views`, `completion_rate` (% watched to the end),
+  `saves` and `shares`, each with its `target` and `source` (R3); with no channel data the target is
+  null ("to set") and the source says why.
+
+Then `tm brief check --run R --file 04_final/brief_pack_vNN.json --stage organic_views --json` (it runs
+O5's checks too), `tm brief page --run R --json`, publish to the same URL. `tm done O7 --run R`. G4o
+follows: the views are decided on the page per concept (Approve, Ask for changes, Drop), read with
+`tm brief await --stage G4` and `tm brief decisions --stage G4` as at E1, then `tm brief choose --run R
+[--drop <ids>] --source page|chat` (Hands-off: `--source rule`) before `tm decide G4o accept`.
+
+<a id="o8"></a>
+## O8 Posting plan and hand-off
+
+- Say the posting plan in plain words: which concept on which platform, the day and the time, and what
+  is measured (views, % watched to the end, saves and shares, each target with its source, or "to set").
+- **One question:** "Do you want organic-video to make one of these videos?" (organic-video makes the
+  video itself; this brief is for the people who film it).
+- `tm brief handoff --run R --json` writes `05_results/handoff_vNN.json` and the briefs library rows,
+  as at E2. **On a yes**, with the concepts the user named: `tm brief handoff --run R --to-video C2
+  --json` also writes a `seed/1` row per concept with `source: pb2` (its trend id, kind, hook, format,
+  length, sound and `brief_id`) to `library/seeds.jsonl`. The user then starts organic-video from it
+  (`tm seeds list --source pb2`, `tm run new --playbook organic-video --name <name> --seed <seed_id>`).
+- `tm done O8 --run R` (`concepts_chosen`, `page_built`, `handed_off`), then `tm trends collect off
+  --run R`. `tm next` says `done`: the final report.
 
 ---
 

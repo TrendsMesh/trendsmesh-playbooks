@@ -2,7 +2,8 @@
 
 A check-in is a decision the user makes. Which ones the user sees depends on the level; the
 engine decides that (`data/creative-brief/checkins.yaml`) and says `ask`, `auto` or `stop` in `tm
-next`. A creative brief has five (G0, G1, G3, the animatics question, G4), and none spends anything:
+next`. An ad brief has five (G0, G1, G3, the animatics question, G4), an organic video brief three (G0o,
+the animatics question, G4o), both after the question what the brief is for, and none spends anything:
 nothing in it costs money. There is no concept check-in: the concepts are decided per concept on
 the page with the briefs (G3).
 
@@ -29,6 +30,16 @@ animatics question's (`make` or `skip`): what changes is recorded in brief.json 
 choose`.
 
 ## The cards
+
+**What is the brief for?** (`brief_kind`, before A0: the first thing a run asks, at every level, never
+decided by rule). One question with two options: **An ad on Meta** ("reads your ad account": the ad
+brief, A1 to E2) and **An organic video for a channel** ("no ad account needed": the organic video
+brief, O1 to O8). When the user's own words already say plainly which ("not an ad, a video we post
+ourselves", "new ad concepts for my Meta account"), those words are the answer: record them without
+asking again. When they only hint ("a brief for our TikTok video" may be an ad on TikTok's placements
+or an organic post), ask, with the hinted one first as recommended. Record `tm decide brief_kind
+ad|organic --said "<their words>" --run R`. It can be changed (`--change`) only until A0 is done; after
+that, a new run.
 
 **G0 · Confirm the intake card** (after A1). The card A1 showed: product, ad account, landing
 page, market, working language and market language (`references/languages.md`), category phrase, the brand draft (what it stands for, tone in three
@@ -81,6 +92,22 @@ music and licence, formats and safe zones, files), the media-buyer view (the dec
 against the baseline, the minimum events and the estimated spend, the control). Decided on the
 page or in chat. Choice: `accept`.
 
+**G0o · Confirm the start card** (after O1, an organic video brief). The card O1 showed: the product or
+brand (or none), the channel and its platforms, **whether it is a business account** (and what that
+means for the sounds: only those licensed for business use; a personal account gets trending sounds
+with their licence shown), the goal, who films, the working and market languages, the recipients, the
+number of concepts, the level, and every optional value as "to set". At Check every step the user's
+reply to the card is this check-in's answer, as at G0. Choice: `accept`.
+
+**G4o · Accept the brief views** (after O7). Per concept: the video (topic, hook, format, length,
+sound and its licence), then the creator view (what to film and say, the shots), the editor view
+(length, captions, formats, safe zones, sound) and the publisher view (per platform: the post
+description, hashtags, posting time and sound), then the posting plan (which concept on which
+platform, the day and time, and the measures: views, % watched to the end, saves and shares, each
+target with its source or "to set"). Decided on the page per concept (Approve, Ask for changes,
+Drop; read with `--stage G4`) or in chat, recorded with `tm brief choose`, then `tm decide G4o accept
+--said "<their words>"`. Choice: `accept`.
+
 ## Decisions taken on the page
 
 For G3 and G4 at Check every step and Just the big calls (and C1's page in the review pack alone),
@@ -107,6 +134,8 @@ all, restating each member's points, then record it.
 |---|---|---|---|
 | Approve the setup | G0, G1 | after B1 (the intake card and the persona) | `tm decide approve_setup accept --run R --said "<their words>"` |
 | Make animatics? on its own | animatics | after D3 (the page with the briefs) | `tm decide animatics make --concepts <ids> --run R --said "<their words>"`, or `skip` |
+| Approve the setup (organic) | G0o | after O1 (the start card) | `tm decide approve_setup accept --run R --said "<their words>"` |
+| Approve the briefs (organic) | G4o | after O7 (the three views and the posting plan) | decided on the page (`--stage G4`, `tm brief choose`), then `tm decide approve_briefs accept --run R --said "<their words>"` |
 | Approve the briefs | G3, G4 | after E1 (the briefs and production views on one page) | decided on the page (approve, changes or drop per concept, read at E1 before its views, then with `--stage G4`; `tm brief choose`), then `tm decide approve_briefs accept --run R --said "<their words>"` |
 
 ## Decided by rule (`auto`)
@@ -121,6 +150,8 @@ all, restating each member's points, then record it.
 | G3 | published as is, every concept kept: `tm brief choose --source rule` | the page version |
 | animatics | skip: Hands-off makes no animatic | "Hands-off makes no animatic" |
 | G4 | published as is | the page version |
+| G0o | logged: the start card as derived | the channel, its platforms, business or personal, the goal, who films |
+| G4o | published as is, every concept kept: `tm brief choose --source rule` | the page version |
 
 Every decision by rule is listed in the final report with its rule and its data, and shown at the
 next check-in the user sees.

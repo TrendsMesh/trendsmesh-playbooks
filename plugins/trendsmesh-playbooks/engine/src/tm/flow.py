@@ -115,14 +115,34 @@ _EVIDENCE_WINDOW = {REFRESH_AD: (TREND_STEP, REGISTER_STEP), CREATIVE_BRIEF: ("B
                     ORGANIC_VIDEO: ("B1", "B1")}
 # Playbooks whose level and outputs are chosen on a later step's card, not in A0's intake batch:
 # the steps before it are done without them (creative brief: the user gives only the product, and
-# A1's card, checked by `intake_written`, holds the level and the outputs). The message per step.
-_LATE_INTAKE = {CREATIVE_BRIEF: ("A1", {
+# A1's card, checked by `intake_written`, holds the level and the outputs; an organic video brief's start card,
+# O1, the same). The intake steps, then the message per step. A check-in `before` the first step is asked before
+# its work, the intake still open (creative brief's `brief_kind`, issue #136).
+_LATE_INTAKE = {CREATIVE_BRIEF: (("A1", "O1"), {
     "A0": ("Check readiness (the doctor), then finish with `tm done A0`. Ask nothing yet: the intake asks the user "
            "only which product, at A1, and the level and the outputs are chosen on A1's intake card."),
     "A1": ("Ask the user only which product to brief (one pick list from the ad account; a landing link only when "
            "neither the ads, the ad sets' Pixel nor the Ad Library gives one), then show the intake card, with the level of involvement and the outputs on it. "
            "`tm config write` records them with the rest of the card; then finish with `tm done A1`."),
+    "O1": ("Show the start card of the organic video brief in one message (the product or brand in any form, the "
+           "channel and its platforms, whether it is a business account, the goal, who films, the languages, the "
+           "recipients, the number of concepts and the level of involvement); `tm config write` records the level "
+           "and the outputs with the rest of the card; then finish with `tm done O1`. No Meta tool is called in "
+           "this run."),
 })}
+# A step's message by the brief's kind (issue #136): A0's doctor outputs, and no Meta for an organic brief.
+_LATE_KIND = {CREATIVE_BRIEF: {
+    ("A0", "ad"): ("Check readiness: the doctor with `--outputs review_pack,briefs,page` (an ad brief reads the "
+                   "user's Meta ad account), then finish with `tm done A0`. Ask nothing yet: the intake asks the user "
+                   "only which product, at A1, and the level and the outputs are chosen on A1's intake card."),
+    ("A0", "organic"): ("Check readiness: the doctor with `--outputs organic_brief,page` (an organic video brief "
+                        "needs no ad account: pass no meta state and call no Meta tool in this run), then finish "
+                        "with `tm done A0`. Ask nothing yet: the start card (O1) asks the rest."),
+}}
+# The check-in a playbook's kind is chosen at and, once the outputs are set, the kind they say: (check-in, the output
+# that means `kind`, kind, the kind otherwise). A run whose outputs are set before the question (a run started
+# before issue #136) is never asked it: its outputs answer it.
+_RUN_KIND = {CREATIVE_BRIEF: ("brief_kind", "organic_brief", "organic", "ad")}
 _EVIDENCE_FIRST = ("First record what this run's changes rest on: `tm evidence trendsmesh --run R "
                    "--why <reason>` when TrendsMesh answers with trend data, or `tm evidence guess "
                    "--run R --why <reason>` when the user chose Free (it is refused without that choice: "
@@ -310,6 +330,7 @@ class _Run:
     p: int  # index of the current step in `app`; len(app) once all work is done
     owner: dict[str, tuple[int, bool]] = field(default_factory=dict)  # cid -> (step, before)
     latest: dict[str, dict] = field(default_factory=dict)  # check-in -> latest decision
+    derived: dict[str, str] = field(default_factory=dict)  # check-in -> the choice the outputs say (`_RUN_KIND`)
 
     def route(self, cid: str) -> str:
         return self.cat.route(cid, self.s.level)
@@ -354,7 +375,7 @@ class _Run:
         found: list[_Item] = []
         cards: dict[str, _Item] = {}
         for order, cid in enumerate(self.cat.checkins):
-            if cid not in self.owner:
+            if cid not in self.owner or cid in self.derived:
                 continue
             c = self.cat.checkins[cid]
             last = self.latest.get(cid)
@@ -407,6 +428,28 @@ def _applies(st: Step, s: state.RunState) -> bool:
     return not st.targets or target is None or target in st.targets
 
 
+def kind_of(s: state.RunState) -> str | None:
+    """The run's kind (`_RUN_KIND`: creative brief's ad or organic): its decision, else what its outputs say, else None
+    (not chosen yet, or a playbook of one kind)."""
+    if s.playbook not in _RUN_KIND:
+        return None
+    cid, output, kind, otherwise = _RUN_KIND[s.playbook]
+    said = builtins.next((d.get("choice") for d in reversed(s.decisions) if d.get("checkin") == cid), None)
+    if said is not None:
+        return said
+    return (kind if output in s.outputs else otherwise) if s.outputs else None
+
+
+def derived_kind(s: state.RunState) -> dict[str, str]:
+    """{check-in: kind} when the run's outputs answer its kind check-in, which nobody decided."""
+    if s.playbook not in _RUN_KIND or not s.outputs:
+        return {}
+    cid = _RUN_KIND[s.playbook][0]
+    if any(d.get("checkin") == cid for d in s.decisions):
+        return {}
+    return {cid: kind_of(s)}
+
+
 def _picture(s: state.RunState) -> _Run:
     cat = checkins.load(playbook=s.playbook)
     every = steps(s.playbook)
@@ -414,6 +457,8 @@ def _picture(s: state.RunState) -> _Run:
     chosen: dict[str, str] = {}
     for d in s.decisions:
         chosen[d.get("checkin")] = d.get("choice")
+    derived = derived_kind(s)
+    chosen.update(derived)
     app: list[Step] = []
     kept: list[tuple[Step, list[str]]] = []  # a skipped step's `before` check-ins that skipped it
     for st in every:
@@ -433,7 +478,7 @@ def _picture(s: state.RunState) -> _Run:
         p = _first((i for i, st in enumerate(app) if position[st.id] >= g), len(app))
     else:
         raise ValueError(f"run.json names an unknown step {s.step!r}.")
-    run = _Run(s=s, cat=cat, app=app, p=p)
+    run = _Run(s=s, cat=cat, app=app, p=p, derived=derived)
     for i, st in enumerate(app):
         for cid in st.before:
             run.owner[cid] = (i, True)
@@ -847,10 +892,25 @@ def _late_step(s: state.RunState) -> Step | None:
     return _first((st for st in every if st.id == s.step), every[0]) if s.step else every[0]
 
 
+def _open_before(s: state.RunState, st: Step) -> list[str]:
+    """The check-ins `before` a step of a late-intake playbook, asked while its intake is still open, that nobody
+    decided (and the outputs do not answer)."""
+    decided = {d.get("checkin") for d in s.decisions} | set(derived_kind(s))
+    return [cid for cid in st.before if cid not in decided]
+
+
 def _intake(s: state.RunState) -> NextStep:
     late = _late_step(s)
     if late is not None:
-        return _step_view(late, "work", _LATE_INTAKE[s.playbook][1][late.id])
+        cat = checkins.load(playbook=s.playbook)
+        ask = _open_before(s, late)
+        if ask:
+            c = cat.checkins[ask[0]]
+            view = CheckinView(ids=[c.id], name=c.name, card=None, rule=c.rule_for(s.evidence),
+                               choices=list(c.choices) if c.choices else None)
+            return _step_view(late, "ask", _item_message(view, "ask", None, cat), view)
+        message = _LATE_KIND.get(s.playbook, {}).get((late.id, kind_of(s))) or _LATE_INTAKE[s.playbook][1][late.id]
+        return _step_view(late, "work", message)
     first = steps(s.playbook)[0]
     names = checkins.load(playbook=s.playbook).levels
     levels = ", ".join(f"{names[i]} (`{i}`)" for i in checkins.LEVEL_IDS)
@@ -1292,10 +1352,17 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
     s = state.load(run)
     if s.status == "done":
         raise ValueError("This run is done; nothing more can be decided in it.")
+    late = _late_step(s)
+    if late is not None and checkin_id in late.before:
+        _decide_before_intake(run, s, late, checkin_id, choice, by, note, change, said)
+        return
     if s.level is None or not s.outputs:
         raise ValueError("Finish the intake first: the level and the outputs are not set yet.")
     pic = _picture(s)
     cat = pic.cat
+    if checkin_id in pic.derived:
+        raise ValueError(f"{checkin_id} ({cat.checkins[checkin_id].name}) is answered by this run's outputs "
+                         f"({', '.join(s.outputs)}): {pic.derived[checkin_id]}. It is not asked in it.")
     level_name = cat.levels[s.level]
     current = _pointer(pic)
     pb01 = _pb01(s)
@@ -1491,7 +1558,7 @@ def complete(run: RunFolder, step_id: str, *, measured: str | None = None,
         refuse_if_held(s, f"{step_id} cannot be finished")
         raise Held("The run is stopped. Run `tm next` to see why.")
     late = _late_step(s)
-    if late is not None and late.id != _LATE_INTAKE[s.playbook][0]:
+    if late is not None and late.id not in _LATE_INTAKE[s.playbook][0]:
         _complete_before_intake(run, s, late, step_id)
         return
     # a late-intake playbook takes both from the intake card's answers, not from `tm level`
@@ -1560,12 +1627,45 @@ def _complete_before_intake(run: RunFolder, s: state.RunState, st: Step, step_id
     no check-in (none sits there), without the level or the outputs."""
     if step_id != st.id:
         raise ValueError(f"The run is at {st.id} ({st.title}), not {step_id}. Steps are finished in order.")
+    ask = _open_before(s, st)
+    if ask:
+        c = checkins.load(playbook=s.playbook).checkins[ask[0]]
+        raise ValueError(f"Decide {c.id} ({c.name}) first: it is asked before {st.id}.")
     for name in st.requires:
         gap = stepchecks.run(name, run)
         if gap is not None:
             raise stops.Stop(f"{st.id} ({st.title}) is done once {gap}; {stops.AGAIN}.")
-    every = [x.id for x in steps(s.playbook)]
-    s.step = every[every.index(st.id) + 1]
+    chosen = {d.get("checkin"): d.get("choice") for d in s.decisions}
+    every = steps(s.playbook)
+    later = every[[x.id for x in every].index(st.id) + 1:]
+    s.step = _first((x.id for x in later if not any(chosen.get(cid) == v for cid, v in x.skip_when)), END)
+    state.save(run, s)
+
+
+def _decide_before_intake(run: RunFolder, s: state.RunState, st: Step, cid: str, choice: str, by: str,
+                          note: str | None, change: bool, said: str | None) -> None:
+    """A check-in `before` a late-intake playbook's first steps (creative brief's `brief_kind`), decided while the
+    intake is still open: by the user (its route is `own` at every level), once, changed only with `change`
+    before the step it is asked before is done."""
+    c = checkins.load(playbook=s.playbook).checkins[cid]
+    if by == "rule" and "rule" not in c.route.values():
+        raise ValueError(f"{cid} ({c.name}) is not decided by rule: ask the user.")
+    if c.choices and choice not in c.choices:
+        raise ValueError(f"{cid} takes one of: {', '.join(c.choices)}.")
+    earlier = [d for d in s.decisions if d.get("checkin") == cid]
+    if earlier and not change:
+        raise ValueError(f"{cid} is already decided ({earlier[-1]['choice']}). Use --change to change it.")
+    entry: dict = {"checkin": cid, "choice": choice, "by": by}
+    if said is not None:
+        entry["said"] = said
+    if by == "rule":
+        entry["rule"] = c.rule_for(s.evidence)
+    if note:
+        entry["note"] = note
+    if earlier:
+        entry["change"] = True
+    entry["at"] = _now()
+    s.decisions.append(entry)
     state.save(run, s)
 
 

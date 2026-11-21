@@ -78,7 +78,7 @@ checks:
   - id: tier_animatic
     name: Animatic tools (the animatic renderer)
     playbooks: [02-creative-brief, 03-organic-ai-video]
-    when: [{outputs: [briefs]}, {outputs: [organic_video], production: [animation]}]   # briefs: animatics on request (#145)
+    when: [{outputs: [briefs]}, {outputs: [organic_brief]}, {outputs: [organic_video], production: [animation]}]   # briefs, organic_brief: animatics on request (#145, #136)
     kind: env_tier
     tier: animatic
     fixer: agent
@@ -183,11 +183,14 @@ checks:
       inactive: "Your TrendsMesh account is not active, so it gives no trend data. Open https://trendsmesh.com/app/plan to see why."
     warn: true
     unchecked: "Can't be checked until TrendsMesh is connected and signed in."
-  # Meta Ads is required for refresh-ad and creative brief (its PLAYBOOK manifest): no warn.
+  # Meta Ads is required for refresh-ad and creative brief (its PLAYBOOK manifest): no warn. The `when` is every
+  # refresh-ad output and the ad brief's (review_pack, briefs): an organic video brief (organic_brief, issue #136)
+  # reads no ad account, so it never asks for Meta.
   - id: mcp_meta
     name: Meta Ads connected and signed in
     playbooks: [01-refresh-ad, 02-creative-brief]
     outputs: []
+    when: [{outputs: [creative_brief, edited_video, ai_video, live_test]}, {outputs: [review_pack]}, {outputs: [briefs]}]
     kind: mcp
     mcp: meta
     fixer: user
@@ -198,6 +201,7 @@ checks:
     names_account: true
     playbooks: [01-refresh-ad, 02-creative-brief]
     outputs: []
+    when: [{outputs: [creative_brief, edited_video, ai_video, live_test]}, {outputs: [review_pack]}, {outputs: [briefs]}]
     kind: plan
     mcp: meta
     plan_of: not_enabled
@@ -280,7 +284,7 @@ checks:
   - id: browser_for_animatics
     name: A browser for the animatics (Chrome or Edge)
     playbooks: [02-creative-brief]
-    when: [{outputs: [briefs]}]   # the animatics on request, at D2 (issue #145)
+    when: [{outputs: [briefs]}, {outputs: [organic_brief]}]   # the animatics on request, at D2 (issues #145, #136)
     kind: browser
     fixer: user
     fix:
