@@ -2,6 +2,7 @@
 
     styles()                 the library's styles, in their order
     find_style(key)          one style, by its number or its styleId; a ValueError names the closest
+    look_text(style)         the card's look in prompt words (Looks, Avoid, palette, fonts), for any image or video prompt
     build(style, ...)        the ready-to-paste build prompt for an animation in that style (a storyboard first, the
                              full animation from an accepted storyboard's module, or a stills video's layout)
     page(style, ...)         the style's own reference animation as a page (window.seek / DURATION, or a storyboard)
@@ -196,6 +197,16 @@ def card(s: dict) -> str:
     for title, key in CARD_FIELDS:
         lines += ["", f"{title}:", *(f"- {item}" for item in s[key])]
     return "\n".join(lines)
+
+
+def look_text(style) -> str:
+    """The style card's look in prompt words, one line (issue #138 item 3): its Looks and Avoid lists, the palette's
+    hexes and the fonts. Every image and video prompt of a video whose `taste.style` is this style carries it
+    (`organic_specs.check`). `style` is a card, or its number, styleId or `<number> <name>`."""
+    s = style if isinstance(style, dict) else find_style(str(style).strip().split(" ", 1)[0])
+    palette = ", ".join(f"{p['role']} {p['hex']}" for p in s["palette"])
+    return (f"Look of style {s['order']} {s['name']}: Looks: {'; '.join(s['look'])}. Avoid: {'; '.join(s['avoid'])}. "
+            f"Palette: {palette}. Fonts: {', '.join(s['fonts'])}.")
 
 
 def api() -> str:

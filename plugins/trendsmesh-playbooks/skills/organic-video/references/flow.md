@@ -743,7 +743,8 @@ marker is per run), and again at every resume.
 ## D2 Taste picks
 
 Asked only where needed (OV7, FLOWS D2): a **voice** when someone speaks, **music** when the edit
-carries a bed. A style is asked only for an animation.
+carries a bed. A style is asked for every AI video (issue #138): an animation is drawn in it, and an image or video
+prompt carries its look.
 
 1. **What the profile already holds**: the channel profile's `voice` (`narrator_elevenlabs_id`,
    `host_description`, `host_image`) and `music` (`folder`, `index`). A saved pick is offered first.
@@ -767,7 +768,7 @@ carries a bed. A style is asked only for an animation.
    --run R --copy <file> --copy <file> --json` (into `02_research/music/`; a page shows only the
    run's own files, and it cannot play a sound from another site). A trending sound is added in the
    app per the kit, never in the edit.
-4. **A style**, for an animation only: the one picked on the proposals page (`00_raw/proposal.json`
+4. **A style**, for every AI video: the one picked on the proposals page (`00_raw/proposal.json`
    `decision.style`) is offered first, selected (on the page: `recommended`); else 2 to 3 of our styles from
    the head of `tm organic atlas-styles --channel <channel> --tone <words> --json`, each with a one-line why,
    your pick first (`../../references/animation-styles.md`, "The pick"). Offer each by its number or styleId as
@@ -781,7 +782,7 @@ carries a bed. A style is asked only for an animation.
    `{"styles": [{"id": <number or styleId>, "why", "recommended"}], "voices": [{"voice_id", "name",
    "why", "preview", "source": "library|mine", "recommended"}], "music": {"trending": {"name",
    "link", "why"} | null, "tracks": [{"file", "title", "why", "licence", "recommended"}]}}`, every
-   file a run file (a track's `file` is the path `tm tool music_fetch --copy` printed, or the music index row's name, which the page finds there; styles only for an animation, voices only when someone speaks off screen). A
+   file a run file (a track's `file` is the path `tm tool music_fetch --copy` printed, or the music index row's name, which the page finds there; voices only when someone speaks off screen). A
    voice may be a row of `tm tool elevenlabs voices --json` (the library's, or `--mine`) copied as
    it is, with your `why` and `recommended` added: its `preview_file` is its preview, and a `--mine`
    row is the user's own. `trending` is the trending sound trend research found that fits this video, or null. Then
@@ -994,6 +995,10 @@ Read `rules.md` (OV11, OV14) and `../../references/posting-kit.md` first.
 The cheap stage is the test (OV9): the images show most problems before the takes are paid for.
 Show a task list with the times (two images about 1 minute) and a one-line status per item.
 
+0. **The style's look in every prompt** (issue #138): when the pack's `taste.style` is one of our styles, every
+   image and video prompt carries the style card's look in words, its `look_text` (`tm organic atlas-styles --json`
+   gives it with each style; Looks, Avoid, the palette's hexes and the fonts), copied in as it is. The guard
+   refuses a prompt without it before anything is paid.
 1. **Every paid call goes through the guard**: write the item's spec as a new
    `03_wip/<item>_vNN.json` (`{"model": "<owner/name>", "input": {...}}`, inputs as paths relative to the
    run folder, `03_wip/…`, or full paths: a missing one stops the run before anything is paid), then `tm tool replicate_run --run R 03_wip/<item>_vNN.json --name <item>

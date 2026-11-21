@@ -4,6 +4,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Organic AI video: the picked style shapes every kind of video.** A style from the library can now be picked for
+  AI footage, a talking character and stills too, not only an animation. Its look (what it looks like, what it
+  avoids, its colours and fonts) goes into every image and video prompt, and the plugin refuses a paid image or
+  video whose prompt leaves it out, before anything is paid.
 - **Organic AI video: every batch of ideas has variety.** Each idea is built on a format rising now, and no two ideas
   share a format and a production type. When your channel has its own style, at least one idea comes in another
   look, unless you say you want every idea in your channel's style. The proposals page says how many ideas are in

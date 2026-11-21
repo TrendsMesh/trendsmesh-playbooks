@@ -18,7 +18,7 @@ library search or from `--mine`, the user's own voices (a row with `category`, w
 `source: "mine"`). A track's `file` may be the name `tm tool music_fetch --copy` copied into `02_research/music/` (a row of the music
 index taken as it is). `preview` and `file` are run files (a voice's preview clip as `tm tool elevenlabs voices` saves it, the user's own
 voices' as `voices --mine` does; a track copied into the run): the page carries them, since it cannot play a sound
-from another site. Styles are offered for an animation only, voices when someone speaks off screen, as D2 says; the
+from another site. Styles are offered for every AI video (issue #138: an image or video prompt carries the card's look), voices when someone speaks off screen, as D2 says; the
 script is the recipe-checked pack's lines. Music: "No track, I'll add a sound in the app" comes first; the default is
 the trending sound when trend research found one that fits (the user adds it in the app at posting), else the
 recommended track, else no track.

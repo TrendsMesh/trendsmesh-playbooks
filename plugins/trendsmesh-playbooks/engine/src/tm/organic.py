@@ -974,7 +974,7 @@ def _atlas_styles(args: argparse.Namespace) -> int:
     for s in cards:
         poster, loop = atlas_prompt.preview_files(s)
         rows.append({**{k: s[k] for k in ("order", "styleId", "name", "category", "description", "suits", "tags")},
-                     "poster": str(poster), "loop": str(loop),
+                     "poster": str(poster), "loop": str(loop), "look_text": atlas_prompt.look_text(s),
                      **({"reason": s["reason"], "shared_tone": s["shared_tone"]} if ordered else {})})
     words = {"channel": "the channel's own style", "type": "the channel's type", "tone": "shares the tone",
              "other": "", "rejected": "rejected for this channel before"}

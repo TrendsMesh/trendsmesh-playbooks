@@ -206,8 +206,11 @@ def local_file(value: object, base: Path, run: RunFolder | None = None) -> Path 
             if found is not None and found.is_file():
                 return found
         p = Path(value) if Path(value).is_absolute() else Path(base) / value
-        if p.is_file():
-            return p
+        try:
+            if p.is_file():
+                return p
+        except OSError:      # a long prompt is no file name (ENAMETOOLONG on macOS and Linux)
+            return None
     return None
 
 

@@ -469,11 +469,9 @@ def _product(run: RunFolder, pack: dict, out: list[Problem]) -> None:
 
 
 def _taste(pack: dict, out: list[Problem]) -> None:
-    """D2 asks only where needed: a style for an animation, a voice for lines someone says, and music."""
+    """D2 asks only where needed: a style (any production type, issue #138: the card's look shapes the prompts too), a
+    voice for lines someone says, and music."""
     taste = pack["taste"]
-    if taste["style"] is not None and "animation" not in _types(pack):
-        _bad(out, "taste.style", "A style is picked, and nothing in this video is animated.",
-             "Set taste.style to null: the style is asked only for an animation.")
     if taste["voice"] is not None and all(line["speaker"] == "none" for line in pack["script"]["lines"]):
         _bad(out, "taste.voice", "A voice is picked, and no line is said.",
              "Set taste.voice to null: the voice is asked only when someone speaks.")
