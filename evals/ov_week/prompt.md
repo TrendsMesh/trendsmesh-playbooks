@@ -1,5 +1,5 @@
 ---
-description: "Just-the-big-calls week run at I2: the week plan (five slots, $5 for the week) checked, its page built, published as art_mock_5 and awaited. The artifacts tools are mocked: db_list holds the user's choices: Monday swapped for the reserve Switch 2 host video (1080p, $3.26) and every day a video, $6.20, with the page's own approval. The user says approve and start. The agent reads the choices, the approval is refused over the budget, and it names the overrun and the three ways out and asks (weekly pack, I2)."
+description: "Just-the-big-calls week run at I2: the week plan (five slots, $5 for the week) checked, its page built, published as art_mock_5 and awaited. The artifacts tools are mocked: db_list holds the user's choices: Monday swapped for the reserve Switch 2 host video (39 s in three takes, $3.26) and every day a video, $6.20, with the page's own approval. The user says approve and start. The agent reads the choices, the approval is refused over the budget, and it names the overrun and the three ways out and asks (weekly pack, I2)."
 tags: [organic-video, weekly, money]
 max_turns: 60
 timeout_seconds: 1800

@@ -174,9 +174,22 @@ ANSWERS = {
 }
 
 
+def with_said(args: tuple[str, ...]) -> tuple[str, ...]:
+    """`tm decide` as the fixtures call it, with the user's words a decision by the user needs (issue #125): the
+    note when there is one, else "(eval fixture)". A decision by rule keeps none (the engine refuses --said there),
+    and a call that already gives the words is left as it is."""
+    if not args or args[0] != "decide" or "--said" in args or "--said-file" in args:
+        return args
+    if any(a == "--by" and b == "rule" for a, b in zip(args, args[1:])):
+        return args
+    note = next((b for a, b in zip(args, args[1:]) if a == "--note"), None)
+    return (*args, "--said", note or "(eval fixture)")
+
+
 def tm(ws: Path, *args: str, ok=(0,)) -> dict:
     env = {**os.environ, "PYTHONPATH": f"{ROOT}/engine/src", "PYTHONDONTWRITEBYTECODE": "1",
            "TM_WORKSPACE": str(ws)}
+    args = with_said(args)
     p = subprocess.run([PY, "-m", "tm", *args, "--json"], env=env, cwd=ws, capture_output=True,
                        text=True, encoding="utf-8")
     if p.returncode not in ok:
@@ -676,6 +689,26 @@ def tr_b4(ws: Path, run: Path) -> None:
     tm(ws, "research", "hooks", "--run", str(run), "--file", "03_wip/hook_use_v01.json")
 
 
+def tr_b3(ws: Path, run: Path) -> None:
+    """The dry run's relevance review. The dry run read every trend; the engine now sets aside the ones below the
+    best review.max_trends by match (issue #129), among them trends the dry run's picks and Ad Library checks name
+    (the Sephora sale hauls, the Karseell skits): the review restores those, as an agent restores a trend it
+    keeps."""
+    review = _fix("map_review_v01.json")
+    cmap = json.loads(sorted((run / "02_research").glob("category_map_v*.json"))[-1].read_text(encoding="utf-8"))
+    picks = _fix("picks_v04.json")
+    named = ({p.get("id") for k in ("act_now", "act_now_other", "still_rising", "watch_next")
+              for p in picks.get(k) or [] if isinstance(p, dict)}
+             | {c.get("trend_id") for c in _fix("ad_library_summary_v02.json")["checks"]})
+    restore = {r["name"]: "the dry run's review kept it: a pick of the dry run (eval fixture)"
+               for r in cmap.get("set_aside") or [] if r["id"] in named and r["name"] not in review.get("drop", {})}
+    if restore:
+        review["restore"] = {**review.get("restore", {}), **restore}
+    place(ws, run, "03_wip/map_review_v01.json", review, "the relevance review (eval fixture: the dry run's map_review_v01)")
+    tm(ws, "research", "map", "--run", str(run), "--split", str(run / "03_wip/split_v01.json"),
+       "--review", str(run / "03_wip/map_review_v01.json"))
+
+
 def tr_c3(ws: Path, run: Path) -> None:
     from datetime import date, timedelta
     if json.loads((run / "run.json").read_text(encoding="utf-8")).get("previous_run"):
@@ -764,10 +797,7 @@ TR_HOOKS = {
     "A2": lambda ws, run: tm(ws, "research", "previous", "--run", str(run)),
     "B1": tr_b1,
     "B2": lambda ws, run: tm(ws, "research", "map", "--run", str(run), "--split", str(run / "03_wip/split_v01.json")),
-    "B3": lambda ws, run: (place(ws, run, "03_wip/map_review_v01.json", _fix("map_review_v01.json"),
-                                 "the relevance review (eval fixture: the dry run's map_review_v01)"),
-                           tm(ws, "research", "map", "--run", str(run), "--split", str(run / "03_wip/split_v01.json"),
-                              "--review", str(run / "03_wip/map_review_v01.json"))),
+    "B3": lambda ws, run: tr_b3(ws, run),
     "B4": tr_b4,
     "C2": lambda ws, run: tm(ws, "research", "growth", "--run", str(run)),
     "C3": tr_c3,
@@ -1097,6 +1127,9 @@ def cb_c1(ws: Path, run: Path) -> None:
     tm(ws, "brief", "page", "--run", str(run))
 
 
+# The check-ins whose choice is not `accept`: every creative brief case is an ad brief (issue #136's brief_kind,
+# asked before A0 and always by the user).
+CB_CHOICES = {"brief_kind": "ad"}
 CB_HOOKS = {"A1": lambda ws, run: (cb_landing(ws, run), cb_a1(ws, run)), "B1": cb_b1, "B2": cb_b2,
             "B3": cb_b3, "B4": cb_b4, "C1": cb_c1}
 
@@ -1114,7 +1147,7 @@ def cb_drive(ws: Path, run: Path, stop_at: str) -> dict:
         elif n["action"] in ("ask", "auto"):
             for cid in n["checkin"]["ids"]:
                 extra = ["--by", "rule", "--note", "set by the eval fixture"] if n["action"] == "auto" else []
-                tm(ws, "decide", cid, "accept", "--run", str(run), *extra)
+                tm(ws, "decide", cid, CB_CHOICES.get(cid, "accept"), "--run", str(run), *extra)
         else:
             raise SystemExit(f"never reached {stop_at}: {n}")
     raise SystemExit(f"never reached {stop_at}")
@@ -1245,7 +1278,9 @@ def ov_run(ws: Path, level: str, outputs: list[str], *, stack: dict | None = Non
     answers = {"level": level, "outputs": outputs, "chat_language": chat, "audience_language": "pl",
                "channels": ["ExampleEdu"], "output": "script",
                "generation": {"quality_tier": "default", "resolution": "768p", "upscale": "none"},
-               "budget": {"per_run_usd": 5, "per_week_usd": 5}, "currency": "USD", **(extra or {})}
+               "budget": {"per_run_usd": 5, "per_week_usd": 5}, "currency": "USD",
+               # the idea count (issue #135, 5 by default): the walkthrough's six ideas, so the user asked for six
+               "proposals": {"count": len(ov_proposals()["proposals"])}, **(extra or {})}
     f = place(ws, run, "03_wip/intake_answers_v01.json", answers, "the intake batch, answered by the user (eval fixture)")
     tm(ws, "config", "write", "--run", str(run), "--answers", str(f))
     tm(ws, "config", "check", "--run", str(run))
@@ -1485,8 +1520,9 @@ def ov_m5_pack(prices: str) -> dict:
     price file and its rankings read today."""
     pack = _ov("m5_pack.json")
     pack["id"] = "m5"
-    for line in pack["cost"]["lines"]:
-        line.update(price_file=prices, checked=_today())
+    for line in pack["cost"]["lines"]:       # exact to the third decimal, the totals their exact sum (issue #137)
+        line.update(price_file=prices, checked=_today(), cost=round(line["unit_price"] * line["units"], 3))
+    pack["cost"]["totals"]["ai_usd"] = round(sum(line["cost"] for line in pack["cost"]["lines"]), 3)
     for m in pack["models"]:
         m["ranking"]["date"] = _today()
     return pack
@@ -1521,10 +1557,10 @@ def ov_m5_pack_sized(prices: str) -> dict:
     pack["sections"][0]["to"] = seconds
     pack["stages"][1]["items"][0]["seconds"] = seconds
     take = next(line for line in pack["cost"]["lines"] if line["item"] == "take")
-    take.update(units=seconds, cost=round(0.08 * seconds, 2), what=take["what"].replace("15 s", f"{seconds} s"))
-    pack["cost"]["totals"]["ai_usd"] = round(sum(line["cost"] for line in pack["cost"]["lines"]), 2)
-    costs = {"768p": round(0.08 * seconds, 2), "1080p": round(0.13 * seconds, 2),
-             "768p_pruna": round((0.08 + 0.02) * seconds, 2)}
+    take.update(units=seconds, cost=round(0.08 * seconds, 3), what=take["what"].replace("15 s", f"{seconds} s"))
+    pack["cost"]["totals"]["ai_usd"] = round(sum(line["cost"] for line in pack["cost"]["lines"]), 3)
+    costs = {"768p": round(0.08 * seconds, 3), "1080p": round(0.13 * seconds, 3),
+             "768p_pruna": round((0.08 + 0.02) * seconds, 3)}
     for option in pack["resolution"]["options"]:
         option["cost"] = costs[option["id"]]
     return json.loads(json.dumps(pack, ensure_ascii=False).replace("ujęcie 15 s", f"ujęcie {seconds} s")
@@ -1687,10 +1723,17 @@ def ov_script_d1(ws: Path, run: Path) -> None:
           "fixture: a made-up M5 script to film)")
 
 
+# Each video's planned length and pictures (issue #137: the check prices cost_video from the model registry's ★ models
+# at the run's 768p, never a typed cost): w2, w3 and w4 as the engine tests' (tests/engine/exampleedu.py WEEK_UNITS:
+# $1.454, $1.294, $0.188), and the reserve r2 (the Switch 2 host video) a long one, 39 s in three takes: $3.261.
+OV_WEEK_UNITS = {"w2": {"seconds": 17, "images": 2}, "w3": {"seconds": 15, "images": 2}, "w4": {"images": 4},
+                 "r2": {"seconds": 39, "images": 3}}
+
+
 def ov_week_plan() -> dict:
     """A made-up week plan in the shape of the walkthrough's week_v01.json, with the plugin blocks, its week the one after the
-    fixture's day (the check wants the coming week) and the reserve r2 (the Switch 2 host video) priced at 1080p
-    with two takes, $3.26: swapped in for Monday it makes the week $6.20 of $5."""
+    fixture's day (the check wants the coming week) and each video's units (OV_WEEK_UNITS). The week as planned is
+    $2.94; the reserve r2, $3.26, swapped in for Monday makes it $6.20 of $5."""
     from datetime import date, timedelta
     week = _ov("week.json")
     today = date.today()
@@ -1700,7 +1743,8 @@ def ov_week_plan() -> dict:
     for slot in week["slots"]:
         d = monday + timedelta(days=offsets[slot["day"]])
         slot["date"] = f"{d.day}.{d.month:02d}"
-    week["reserves"][1]["cost_video"] = 3.26
+    for idea in [*week["slots"], *week["reserves"]]:
+        idea.update(OV_WEEK_UNITS.get(idea["id"], {}))
     return week
 
 
@@ -1906,6 +1950,7 @@ def _ca_files(ws: Path, run: Path, upto: str, presenter_prices: bool = False) ->
         "placeholder_render": "03_wip/edit_placeholder_v01.mp4",
         "videos": [{"item": "presenter_take", "model": "gemini-omni", "prompt": "a different, non-identifiable person, "
                     "handheld, natural light, says the two lines", "prompt_rules": "gemini-omni guide (saved)",
+                    "cuts": [],   # one continuous shot: the take's QA measures against no cuts (issue #144)
                     "cost": 1.5, "budget": "ai_usd", **price}]})
     tm(ws, "ad", "check", "storyboard", "--run", str(run), "--file", rel)
     if upto == "storyboard":
