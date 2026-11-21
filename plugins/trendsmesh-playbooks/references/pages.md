@@ -34,9 +34,9 @@ in this session was refused by Claude Code's permissions. A refused publish is a
 2. **The files:** `tm page files --run R --page <page> --json`. Its `artifact` holds the publish's
    `file_path` (the local `index.html`) and `files` (every other path inside the page -> its local
    file), passed as they are.
-3. **First publish** (`none`): `Artifact` with that `file_path` and `files`, a `title` in the user's
-   language ("Trend report: <category> (<market>)"), the `icon` `chart`, a one-sentence
-   `description`, and no `url`. It creates a new artifact, which starts **private**: only the user
+3. **First publish** (`none`): `Artifact` with that `file_path` and `files`, the `icon` `chart`, a
+   one-sentence `description`, and no `url`. Give no `title`: the page's own `<title>`, which the
+   engine writes ("Trend report: <category> (<market>)" for a trend report), names the artifact. It creates a new artifact, which starts **private**: only the user
    sees it until they share it from the page's Share menu. Say so. The result names the page's
    claude.ai URL and its version ("Version 1, version id <id>").
 4. **Later publishes** (a record with a `url` exists): first `Artifact` `action: "list"`,

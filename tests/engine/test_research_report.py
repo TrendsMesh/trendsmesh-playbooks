@@ -109,7 +109,7 @@ def test_page_has_three_views_and_switch(beauty_run, tmp_path):
     for view in ("report", "digest", "paid"):
         assert f'id="view-{view}"' in text and f"<a href='#{view}'>" in text
     assert '<nav class="views"' in text and "window.addEventListener('hashchange'" in text
-    assert "<title>Beauty Trend Report</title>" in text and "What is moving in beauty" in text
+    assert "<title>Trend report: beauty (US)</title>" in text and "What is moving in beauty" in text
     assert "Valid until 18 Nov 2026" in text and "Meta Ad Library (US)" in text
     assert "fonts.googleapis" not in text and "fonts.gstatic" not in text           # no call to Google (GDPR)
     assert "Four trends to act on now" in text and "Act on these four" in text
@@ -284,7 +284,7 @@ def test_report_is_not_hard_coded_to_beauty(tmp_path):
         low = written.casefold()
         assert "beauty" not in low and "staging" not in low and "dry run" not in low
         assert " US" not in written
-    assert "<title>Uroda Trend Report</title>" in text and "What is moving in Uroda" in text
+    assert "<title>Trend report: Uroda (PL)</title>" in text and "What is moving in Uroda" in text
     assert "Meta Ad Library (PL)" in text and "active PL ads" in text and "typical Uroda trend" in text
     assert "Trend data: TrendsMesh, 4 Nov 2026." in text
     assert "As of 4 Nov 2026" in text and "Valid until 18 Nov 2026" in text          # in any locale
@@ -473,8 +473,33 @@ def test_unchecked_ad_library_is_said(tmp_path):
     assert "checked in Meta Ad Library" not in text and "titles only" not in text
     assert "Meta Ad Library was not checked in this run" in text
     assert "Paid check: Meta Ad Library was not checked in this run" in text
-    assert "<title>Kosmetyki naturalne Trend Report</title>" in text            # only the first letter raised
+    assert "<title>Trend report: kosmetyki naturalne (PL)</title>" in text      # as written, with the market
 
+
+
+def test_freshness_shows_the_card_age(tmp_path):
+    """Issue #147: the freshness cell says the trend's age from its TrendsMesh card (`active_for_days`): the saved
+    card (02_research/trend_<id>.json) first, else the card the trend was found with; growth's `age_days` (from
+    the oldest saved video) only when the card has none."""
+    run, _ = _uroda(tmp_path)
+    research = run.path / "02_research"
+    grown = _read(research / "growth_v01.json")
+    for t in grown["trends"]:
+        t["active_for_days"] = {KREM: 90, OLEJ: 60}.get(t["id"])
+    _write(research / "growth_v01.json", grown)
+    _write(research / f"trend_{OLEJ}.json", {"data": {"id": OLEJ, "kind": "topic_trend", "active_for_days": 75}})
+    folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    text = (folder / "index.html").read_text(encoding="utf-8")
+    assert "trend seen for 90 d" in text            # the card it was found with, not the 30 d of its videos
+    assert "trend seen for 75 d" in text            # the saved card wins over the found one (60)
+    assert "trend seen for 30 d" not in text and "trend seen for 60 d" not in text
+
+    for t in grown["trends"]:
+        t["active_for_days"] = None
+    _write(research / "growth_v01.json", grown)
+    (research / f"trend_{OLEJ}.json").unlink()
+    folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    assert "trend seen for 30 d" in (folder / "index.html").read_text(encoding="utf-8")   # no card age: the videos'
 
 # --- issue #58: the hooks section, the hooks' band by their rising place -------------------------
 

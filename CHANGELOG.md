@@ -9,6 +9,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   Creative brief and Organic AI video offer the picks of the category you named; a pick from another research is
   listed apart ("From another research (use it?)", with its category and run) and used only after you say yes.
   Picks saved before this change are listed there as "category unknown".
+- **Trend research: the report's name says the market, and a hook's age is TrendsMesh's.** The report page is named
+  "Trend report: <category> (<market>)", so the gallery shows the market too. The "trend seen for" line takes the
+  trend's age from its TrendsMesh card, as the card shows it, instead of the oldest saved video. With the weekly
+  report run by hand, Claude no longer tries to finish the schedule step, which failed with "Steps are finished in
+  order".
 - **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file
   names, theme codes such as T02, or a choice's internal name. A brief row's source reads like `TrendsMesh: Rising
   hook "who said _"` or `Meta Ad Library, query "lucid dream", US`; the ids and files behind it sit in a folded

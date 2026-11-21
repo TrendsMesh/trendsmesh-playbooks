@@ -541,15 +541,16 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
 <a id="f5"></a>
 ## F5 Weekly schedule
 
-Only with the weekly digest. GS comes first; `by_hand` skips this step.
+Only with the weekly digest, after GS.
 
-- Follow `references/schedule.md` (plugin root): with `create_scheduled_task` in the session and
-  the user's yes, a weekly task on the config's `digest.schedule` day (`weekly_monday` by default)
-  at 09:00 local, recorded with `tm research schedule --run R --how desktop_task --id <taskId>
-  --cron "<cron>"`. A task that already exists for this category (last week's, or found with
-  `list_scheduled_tasks`) is kept and recorded again: never a second one. On `by_hand`, record `tm research schedule --run R --how
-  by_hand` when GS is decided and say the one sentence.
-- `tm done F5 --run R`.
+- **On `by_hand`:** record `tm research schedule --run R --how by_hand` when GS is decided and say the
+  one sentence. The engine skips F5: do not run `tm done F5`; `tm next` goes on to E3.
+- **On a desktop task:** follow `references/schedule.md` (plugin root): with `create_scheduled_task`
+  in the session and the user's yes, a weekly task on the config's `digest.schedule` day
+  (`weekly_monday` by default) at 09:00 local, recorded with `tm research schedule --run R --how
+  desktop_task --id <taskId> --cron "<cron>"`. A task that already exists for this category (last
+  week's, or found with `list_scheduled_tasks`) is kept and recorded again: never a second one.
+  Then `tm done F5 --run R`.
 
 <a id="e3"></a>
 ## E3 Hand the picks on (seeds)

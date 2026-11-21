@@ -58,7 +58,8 @@ keeping the same task. A previous `by_hand` stays `by_hand`.
 2. `create_scheduled_task` with:
    - `taskId`: `trend-report-<category slug>-<market lower case>`, for example
      `trend-report-beauty-us` (if it is taken, the tool names a free one: use that);
-   - `title`: "Trend report: <category> (<market>)", in the user's language;
+   - `title`: "Trend report: <category> (<market>)", in the user's language: the same name the report
+     page carries in its own `<title>`;
    - `description`: "Weekly trend report for <category> (<market>), republished to the same link";
    - `cronExpression`: `"0 9 * * <day>"`, the day from the config's `digest.schedule`
      (`weekly_monday` 1, `weekly_tuesday` 2, `weekly_wednesday` 3, `weekly_thursday` 4,
