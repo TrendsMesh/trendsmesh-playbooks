@@ -79,6 +79,8 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
    so). Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The first `tm`
    call on a computer installs the base tools (about 0.5 GB): say so, and give it the Bash tool's
    longest timeout (10 minutes).
+   If `tm` says Windows Smart App Control blocked a file of the plugin's Python, stop here: give the user its
+   steps in plain words (it is no network or install failure), and never change Windows security settings yourself.
 3. Show its `card` in plain words. **Without TrendsMesh and without the user's choice, organic
    video stops** (exit 2): ask Free or Paid once. Paid: the sign-in (once) or the Agent-plan offer
    (once, in the words of `tm offer --json`), and the run continues from the same place once

@@ -43,16 +43,21 @@
 #   key-store      .secrets/ or api_keys.env, from any folder (a workspace's own key store);
 # and in a TrendsMesh workspace (the session's folder holds runs/0N-... or .secrets/, or is
 # inside runs/):
-#   key-store      also a .env file, a dot-name glob (.s*, .*) or api_keys*;
+#   key-store      also a .env file or api_keys* (anywhere in the call, a heredoc note too), or a
+#                  dot-name glob (.s*, .*, dir/.e*) as a whole word the shell expands: not inside a
+#                  quoted string, a heredoc body or a PowerShell here-string, so a regex or a note
+#                  passes (command-words.awk says which strings a shell still runs as code);
 #   key-search     a recursive search, for replicate, elevenlabs, token, secret, api, key, r8_,
 #                  sk_ or anything ('' or .*), of a folder that holds .secrets/ or a .env file (the
 #                  Grep path, or the session's folder or its parent for a command that names no
-#                  narrower path such as runs/). A Grep whose folder holds .secrets/ counts from
-#                  any session folder.
+#                  narrower path such as runs/ or a full path to a folder outside it). A Grep
+#                  whose folder holds .secrets/ counts from any session folder. A command's
+#                  heredoc bodies and here-strings are no part of the search.
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 # A \n in a JSON string (a line break in a command) becomes " ; " before the fields are read.
-fields=$(cat | awk '{ gsub(/\\\\/, "\003"); gsub(/\\n/, " ; "); print }' | awk -f "$HERE/json-fields.awk" 2>/dev/null) || exit 0
+raw=$(cat)
+fields=$(printf '%s\n' "$raw" | awk '{ gsub(/\\\\/, "\003"); gsub(/\\n/, " ; "); print }' | awk -f "$HERE/json-fields.awk" 2>/dev/null) || exit 0
 [ -n "$fields" ] || exit 0
 
 get() {  # the values of the fields whose path matches the regex $1, one per line
@@ -85,6 +90,24 @@ Q=$(printf '%s' "$P" | tr -d "\"$q\`")
 N=$(printf '%s' "$gpaths" | tr -d "\\\\\"$q\`")
 TN=$(printf '%s' "$targets" | tr -d "\\\\\"$q\`")
 TP=$(printf '%s' "$targets" | slashes)
+# Two more readings of a command (command-words.awk): E, the words the shell would expand (no
+# quoted string, heredoc body or here-string), for the dot-name glob; and H, the command without
+# heredoc bodies and here-strings, for the key-search rule. Any other tool's fields are words as
+# they are (E is Q). If the command can't be read so, both stay the whole command.
+E=$Q H=$targets
+case "$tool" in Bash|PowerShell)
+  mode=bash; [ "$tool" = PowerShell ] && mode=ps
+  two=$(printf '%s\n' "$raw" | awk '{ gsub(/\\\\/, "\003"); gsub(/\\n/, "\004"); print }' \
+    | awk -f "$HERE/json-fields.awk" 2>/dev/null \
+    | awk -F '\t' '$1 == "tool_input.command" { sub(/^[^\t]*\t/, ""); print }' \
+    | awk -v mode=$mode -f "$HERE/command-words.awk" 2>/dev/null)
+  if [ -n "$two" ]; then
+    E=$(printf '%s\n' "$two" | sed -n 's/^E	//p')
+    H=$(printf '%s\n' "$two" | sed -n 's/^H	//p')
+  fi ;;
+esac
+HP=$(printf '%s' "$H" | slashes)
+HQ=$(printf '%s' "$HP" | tr -d "\"$q\`")
 data=$(printf '%s' "${CLAUDE_PLUGIN_DATA:-}" | slashes)
 dl=$(printf '%s' "$data" | lower); cl=$(printf '%s' "$cwd" | lower)
 above=  # is the session's folder above the data folder?
@@ -263,9 +286,13 @@ store_at() {  # does folder $1 hold .secrets/ or a .env file?
 if [ -z "$rule" ] && [ "$tool" != Glob ]; then
   hit=$(mi "$Q" '(^|[/ =(])\.secrets(/|[ ;|&)]|$)|api_keys\.env')
   [ -n "$hit" ] || [ -z "$workspace" ] ||
-    hit=$(mi "$Q" '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|(^|[/ =(])\.[^/ .]*[*?]|api_keys')
+    hit=$(mi "$Q" '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|api_keys')
+  # A dot-name glob (.s*, .*, dir/.e*) only as a whole word the shell expands: none in a quoted
+  # regex, a heredoc note or a here-string.
+  [ -n "$hit" ] || [ -z "$workspace" ] ||
+    hit=$(mi "$E" '(^|[ ;|&(<>{])([^ ;|&(<>{]*/)?\.[^/ .;|&()<>]*[*?]')
   [ -n "$hit" ] && deny key-store "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" \
-    "Don't open, search or copy it: tm reads the keys itself. When it is only text in the command (a note in a heredoc, or a regex such as .* or .*?), write that text to a file with the Write tool and use the file (awk -f, python3 script.py, a note appended from it)."
+    "Don't open, search or copy it: tm reads the keys itself. When it is only text in a note (a heredoc that names .secrets/ or .env), write that text to a file with the Write tool and use the file (a note appended from it)."
 fi
 if [ -z "$rule" ] && { [ -n "$workspace" ] || [ "$tool" = Grep ]; }; then
   hit=
@@ -285,8 +312,31 @@ if [ -z "$rule" ] && { [ -n "$workspace" ] || [ "$tool" = Grep ]; }; then
         rec="$rec|findstr [^|;&]*/s|(get-childitem|gci|dir|ls) [^|;&]*-r[^|;&]*\\| *(select-string|sls)"
         narrow='(rg|ag|ack|find|grep|egrep|fgrep|findstr|select-string|sls|get-childitem|gci|dir|ls)( [^|;&>]*)? [a-z0-9_][^ |;&)>]*/'
         rootish='(^| )(\.|\./|\.\.|\.\./|\*|\.\*|\./\*|\*/)( |[;|&)]|$)'
-        if [ -n "$(mi "$TP" "$rec")" ] && { [ -z "$(mi "$Q" "$narrow")" ] || [ -n "$(mi "$Q" "$rootish")" ]; }; then
-          hit=$(mi "$TP" "$words")
+        # A full path (/..., C:/..., ~/..., $HOME/...) is narrow when it is a folder or file
+        # outside the session's folder, and covers it when it is that folder or one above it.
+        # Redirects are no path; a pattern such as /token/ is no folder, so it is not narrow.
+        wide= nar=
+        abs=$(printf '%s\n' "$HQ" | CWDL=$cl HOMEO=$(printf '%s' "${HOME:-${USERPROFILE:-}}" | slashes) awk '
+          function norm(t) { if (drive && t ~ /^\/[a-z](\/|$)/) t = substr(t, 2, 1) ":" substr(t, 3); if (t != "/") sub(/\/+$/, "", t); return t }
+          BEGIN { cwd = ENVIRON["CWDL"]; drive = cwd ~ /^[a-z]:\//; cwd = norm(cwd); home = ENVIRON["HOMEO"] }
+          {
+            o = $0; gsub(/[0-9&]*[<>]+ *[^ ;|&()<>]*/, " ", o)
+            n = split(o, tk, /[ ;|&()=]+/)
+            for (k = 1; k <= n; k++) {
+              t = tk[k]
+              if (home != "" && match(tolower(t), /^(~|\$home|\$\{home\}|%userprofile%|\$env:userprofile|\$userprofile|\$env:home)/)) {
+                x = substr(t, RLENGTH + 1); if (x == "" || x ~ /^\//) t = home x
+              }
+              l = norm(tolower(t))
+              if (l !~ /^(\/|[a-z]:(\/|$))/) continue
+              if (l == "/" || l == cwd || index(cwd "/", l "/") == 1) print "wide"; else print "out\t" t
+            }
+          }')
+        printf '%s\n' "$abs" | grep -qx wide && wide=1
+        nar=$(printf '%s\n' "$abs" | sed -n 's/^out	//p' | while IFS= read -r p; do [ -e "$p" ] && { echo 1; break; }; done)
+        if [ -n "$(mi "$HP" "$rec")" ] \
+          && { { [ -z "$(mi "$HQ" "$narrow")" ] && [ -z "$nar" ]; } || [ -n "$(mi "$HQ" "$rootish")" ] || [ -n "$wide" ]; }; then
+          hit=$(mi "$HP" "$words")
         fi
       fi ;;
   esac

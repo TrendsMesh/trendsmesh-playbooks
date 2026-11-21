@@ -79,6 +79,49 @@ out=$(sh "$HERE/session-start.sh" 2>/dev/null) || fail "session-start.sh with a 
 [ "$(wc -l < "$CLAUDE_PLUGIN_DATA/pixi/due-calls.log")" -eq 1 ] || fail "the due check should be one pixi call"
 grep -q -- '--as-is' "$CLAUDE_PLUGIN_DATA/pixi/due-calls.log" || fail "the due call must use --as-is"
 
+# Windows Smart App Control blocking the plugin's Python (issue #123) is the one failure of the due
+# check that is said: one line for Claude, with the file and the steps.
+for said in "tm:Windows blocked a file of the plugin's Python (_ssl.pyd). This is Smart App Control" \
+            "pixi:Error: failed to spawn python (os error 4551)"; do
+  printf '#!/bin/sh\necho "%s" >&2\nexit 1\n' "${said#*:}" > "$CLAUDE_PLUGIN_DATA/pixi/bin/pixi"
+  out=$(sh "$HERE/session-start.sh" 2>/dev/null) || fail "session-start.sh with a blocked Python"
+  file=_ssl.pyd; [ "${said%%:*}" = pixi ] && file=python.exe
+  printf '%s\n' "$out" | grep -qF "Windows Smart App Control blocked a file of the plugin's Python ($file), so tm cannot run." \
+    && printf '%s\n' "$out" | grep -qF "never change Windows security settings yourself" \
+    && printf '%s\n' "$out" | grep -qF "1. Update the plugin" || fail "session start must say the block (${said%%:*}): $out"
+done
+printf '#!/bin/sh\necho "Error: no such environment" >&2\nexit 1\n' > "$CLAUDE_PLUGIN_DATA/pixi/bin/pixi"
+out=$(sh "$HERE/session-start.sh" 2>/dev/null)
+[ "$out" = "$LINE" ] || fail "any other failure of the due check stays silent: $out"
+
+# tm.ps1 runs the same probe as bin/tm (below); pwsh runs it here with a stub pixi.exe.
+if [ -z "${PWSH:-}" ] && command -v pwsh >/dev/null 2>&1; then PWSH=pwsh; fi
+if [ -n "${PWSH:-}" ]; then
+  PD="$TMP/ps data"; mkdir -p "$PD/pixi/bin"
+  cat > "$PD/pixi/bin/pixi.exe" <<'STUB'
+#!/bin/sh
+case "$*" in
+  *"-m tm"*) echo "tm:$TM_BLOCK_EXIT" >> "$(dirname "$0")/calls"; exit "${TM_STUB_RC:-1}" ;;
+  *"-c import ssl,_hashlib,_queue"*) echo "probe" >> "$(dirname "$0")/calls"
+    echo "ImportError: DLL load failed while importing _hashlib: ${TM_STUB_WORDS:-Some other error.}" >&2; exit 1 ;;
+esac
+STUB
+  chmod +x "$PD/pixi/bin/pixi.exe"
+  ps() { env "$@" TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$PD" $PWSH -NoProfile -File "$HERE/tm.ps1" doctor; }  # ps VAR=value...
+  if ps TM_STUB_WORDS="error 4551" 2> "$TMP/err"; then fail "tm.ps1 must fail when Python is blocked"; fi
+  grep -qF "Windows blocked a file of the plugin's Python (_hashlib)" "$TMP/err" \
+    && grep -qF "Never change Windows security settings yourself" "$TMP/err" || fail "tm.ps1 must say the block: $(cat "$TMP/err")"
+  grep -qx 'tm:86' "$PD/pixi/bin/calls" || fail "tm.ps1 must tell tm how to say it said the block"
+  : > "$PD/pixi/bin/calls"
+  ps 2> "$TMP/err" && fail "tm.ps1 must pass a failure on"
+  ! grep -q "Smart App Control" "$TMP/err" || fail "tm.ps1 said a block for another failure: $(cat "$TMP/err")"
+  : > "$PD/pixi/bin/calls"
+  rc=0; ps TM_STUB_RC=86 2> "$TMP/err" || rc=$?
+  [ "$rc" = 1 ] && ! grep -q probe "$PD/pixi/bin/calls" || fail "tm.ps1: tm said the block itself (86): exit 1, no probe ($rc)"
+  rc=0; ps TM_STUB_RC=2 2> "$TMP/err" || rc=$?
+  [ "$rc" = 2 ] && ! grep -q probe "$PD/pixi/bin/calls" || fail "tm.ps1: a warning (2) passes with no probe ($rc)"
+fi
+
 fi  # not Windows
 
 # bin/tm: arguments with spaces pass through unchanged, via a stub pixi that prints argv.
@@ -228,6 +271,39 @@ if TM_TEST_ARGS="$TMP/winargs" TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$WD" PATH=
 fi
 grep -qF "The reason: trendsmesh-playbooks: from the ps1 (data $WD)" "$TMP/err" || fail "Windows: bin/tm lost the ps1's reason: $(cat "$TMP/err")"
 grep -qF '[-Report]' "$TMP/winargs" && grep -q 'install-pixi.ps1\]' "$TMP/winargs" || fail "Windows: bin/tm did not call install-pixi.ps1 -Report: $(cat "$TMP/winargs")"
+# bin/tm under Git Bash: Smart App Control blocking the plugin's Python (issue #123). tm says it
+# itself (exit 86, then 1); any other failure gets one probe, and a block is the number or Windows'
+# own words for it (asked of powershell.exe), with the blocked file named.
+WD2="$TMP/win data 2"; mkdir -p "$WD2/pixi/bin" "$TMP/winbin2"
+cp "$TMP/fakebin/uname" "$TMP/winbin2/uname"
+printf '#!/bin/sh\necho "An Application Control policy has blocked this file."\n' > "$TMP/winbin2/powershell.exe"
+chmod +x "$TMP/winbin2/powershell.exe"
+cat > "$WD2/pixi/bin/pixi" <<'STUB'
+#!/bin/sh
+case "$*" in
+  *"-m tm"*) echo "tm:${TM_BLOCK_EXIT:-}" >> "$(dirname "$0")/calls"; exit "${TM_STUB_RC:-1}" ;;
+  *"-c import ssl,_hashlib,_queue"*) echo "probe" >> "$(dirname "$0")/calls"
+    echo "ImportError: DLL load failed while importing _ssl: ${TM_STUB_WORDS:-The specified module could not be found.}" >&2; exit 1 ;;
+esac
+STUB
+chmod +x "$WD2/pixi/bin/pixi"
+wtm() { env "$@" TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$WD2" PATH="$TMP/winbin2:$PATH" sh "$ROOT/bin/tm" doctor; }  # wtm VAR=value...
+for words in "An Application Control policy has blocked this file." "[WinError 4551] Zasady zablokowały plik"; do
+  : > "$WD2/pixi/bin/calls"; rc=0
+  wtm TM_STUB_WORDS="$words" 2> "$TMP/err" || rc=$?
+  [ "$rc" = 1 ] || fail "Windows: bin/tm must exit 1 when Python is blocked ($words), got $rc"
+  grep -qF "Windows blocked a file of the plugin's Python (_ssl). This is Smart App Control" "$TMP/err" \
+    && grep -qF "Never change Windows security settings yourself" "$TMP/err" || fail "Windows: bin/tm must say the block ($words): $(cat "$TMP/err")"
+  grep -qx 'tm:86' "$WD2/pixi/bin/calls" || fail "Windows: bin/tm must tell tm how to say it said the block"
+done
+: > "$WD2/pixi/bin/calls"; rc=0
+wtm 2> "$TMP/err" || rc=$?
+[ "$rc" = 1 ] && ! grep -q "Smart App Control" "$TMP/err" || fail "Windows: another failure passes on as it is ($rc): $(cat "$TMP/err")"
+for c in 86:1 2:2 0:0; do
+  : > "$WD2/pixi/bin/calls"; rc=0
+  wtm TM_STUB_RC="${c%%:*}" 2> "$TMP/err" || rc=$?
+  [ "$rc" = "${c#*:}" ] && ! grep -q probe "$WD2/pixi/bin/calls" || fail "Windows: tm exit ${c%%:*} must give ${c#*:} with no probe, got $rc"
+done
 
 if [ -z "$WIN" ]; then
 

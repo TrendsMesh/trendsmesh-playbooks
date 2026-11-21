@@ -18,8 +18,10 @@ HEREW=$HERE ROOTW=$ROOT
 if command -v cygpath >/dev/null 2>&1; then TMP=$(cygpath -m "$TMP"); HEREW=$(cygpath -m "$HERE"); ROOTW=$(cygpath -m "$ROOT"); fi
 export CLAUDE_PLUGIN_DATA="$TMP/home/.claude/plugins/data/trendsmesh-playbooks-TrendsMesh"
 mkdir -p "$CLAUDE_PLUGIN_DATA/envs/abc/envs/default/bin" "$TMP/code" "$TMP/ws/runs/03-organic-ai-video" \
-  "$TMP/ws/runs/01-refresh-ad" "$TMP/ws/.secrets" "$TMP/ws2/runs/03-organic-ai-video"
+  "$TMP/ws/runs/01-refresh-ad" "$TMP/ws/.secrets" "$TMP/ws2/runs/03-organic-ai-video" \
+  "$TMP/ws3/runs/03-organic-ai-video" "$TMP/Users/x/Videos" "$TMP/Users/x/Desktop/keynote"
 : > "$TMP/ws/.secrets/api_keys.env"
+: > "$TMP/ws3/.env"
 TOKEN="r8_$(printf 'A%.0s' 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37)"
 
 # The hook command exactly as hooks.json has it, with the plugin root filled in.
@@ -65,6 +67,8 @@ if [ -z "${PWSH:-}" ] && command -v pwsh >/dev/null 2>&1; then PWSH=pwsh; fi
 C="$TMP/code"   # ordinary coding, not a TrendsMesh workspace
 W="$TMP/ws"     # a TrendsMesh workspace that keeps keys in .secrets/ (as the testers' does)
 W2="$TMP/ws2"   # a TrendsMesh workspace with no key store of its own
+W3="$TMP/ws3"   # a TrendsMesh workspace that keeps keys in a .env file
+U="$TMP/Users/x"  # a user's own folders, outside every workspace
 D="$CLAUDE_PLUGIN_DATA"
 P="$ROOT"       # the plugin's own source
 
@@ -351,12 +355,67 @@ t allow "$W2" Grep '{"pattern":"REPLICATE","path":"."}'
 t allow "$W2" Bash '{"command":"grep -ri elevenlabs ."}'
 # Ordinary commands the guard still blocks (issue #62): each block message says how to rephrase.
 says "write that text to a file with the Write tool" "$W" Bash '{"command":"cat >> runs/x/notes.md <<'"'"'EOF'"'"'\nThe keys stay in .secrets/ and never in a run.\nEOF"}'
-says "write that text to a file with the Write tool" "$W" Bash '{"command":"awk '"'"'/^title: .*/ {print}'"'"' runs/x/a.md"}'
-says "write that text to a file with the Write tool" "$W" Bash '{"command":"python3 - <<'"'"'EOF'"'"'\nimport re\nprint(re.findall(r\"id: .*?;\", open(\"runs/x/a.md\").read()))\nEOF"}'
-t deny:key-store "$W" Bash '{"command":"awk '"'"'/^title: .*/ {print}'"'"' runs/x/a.md"}'
 t deny:data-parent "$C" Bash '{"command":"grep -rn \"width / 2\" ~/.claude/plugins/cache/tm/trendsmesh-playbooks/0.11.0/engine"}'
 says "use the Grep tool with that folder as its path" "$C" Bash '{"command":"grep -rn \"width / 2\" ~/.claude/plugins/cache/tm/trendsmesh-playbooks/0.11.0/engine"}'
 says "tm tool ffmpeg" "$C" Bash '{"command":"ls \"$TM_PLUGIN_DATA/envs\""}'
+# --- Regexes, notes and searches that name no key store (issue #127) ---------------------------
+# A .* in a quoted regex, a heredoc note or a PowerShell here-string is no dot-name glob: the shell
+# expands no glob there. A search of a user folder outside the workspace is no key search, though
+# the folder's path holds a key word (keynote) or the command excludes hidden folders.
+for ws in "$W" "$W2" "$W3"; do
+  t allow "$ws" Bash '{"command":"sed '"'"'s/.*\"message\"/MSG/'"'"' log.txt"}'
+  t allow "$ws" Bash '{"command":"grep -nE '"'"'\\.(png|jpe?g)$'"'"' list.txt"}'
+  t allow "$ws" Bash '{"command":"grep -rn \"json.loads(.*read_text\" engine/src"}'
+  t allow "$ws" Bash '{"command":"find runs -iname \"*.mp4\""}'
+  t allow "$ws" Bash '{"command":"cat >> notes.md <<'"'"'EOF'"'"'\nmatch /.(png|jpe?g)/ and .*\nEOF"}'
+  t allow "$ws" Bash '{"command":"awk '"'"'/^title: .*/ {print}'"'"' runs/x/a.md"}'
+  t allow "$ws" Bash '{"command":"python3 - <<'"'"'EOF'"'"'\nimport re\nprint(re.findall(r\"id: .*?;\", open(\"runs/x/a.md\").read()))\nEOF"}'
+  t allow "$ws" Bash '{"command":"cat <<-END >> runs/x/notes.md\n\tthe hook rate .* of views, key moments\n\tEND\nls runs"}'
+  t allow "$ws" Bash "{\"command\":\"find $U/Videos -iname \\\"*.mp4\\\" -not -path \\\"*/.*\\\"\"}"
+  t allow "$ws" Bash "{\"command\":\"find $U/Desktop/keynote -iname \\\"*.mp4\\\" 2>/dev/null | head\"}"
+  t allow "$ws" Bash "{\"command\":\"grep -rn \\\"api_key.*=\\\" $P/engine/src\"}"
+  t allow "$ws" Bash '{"command":"x=$((1<<2)); echo $x"}'
+  t allow "$ws" PowerShell '{"command":"Select-String -Path runs\\x\\log.txt -Pattern '"'"'\\.(png|jpe?g)$'"'"'"}'
+  t allow "$ws" PowerShell '{"command":"Select-String -Path runs\\x\\a.md -Pattern \"^title: .*\""}'
+  t allow "$ws" PowerShell '{"command":"$note = @'"'"'\nmatch /.(png|jpe?g)/ and .*\n'"'"'@\nAdd-Content -Path notes.md -Value $note"}'
+  t allow "$ws" PowerShell '{"command":"$n = @\"\nhook rate .* of views\n\"@\nAdd-Content notes.md $n"}'
+  t allow "$ws" PowerShell '{"command":"Get-ChildItem runs -Recurse -Filter *.mp4"}'
+done
+# Still denied, by the same rules as before: a key store named or globbed as a word the shell
+# expands, also inside a string or heredoc a shell runs; secrets.env in a note; a search of a
+# workspace that holds .env.
+t deny:key-store "$W3" Bash '{"command":"cat .env"}'
+t deny:key-store "$W" Bash '{"command":"cat .*"}'
+t deny:key-store "$W" Bash '{"command":"ls .s*"}'
+t deny:key-store "$W3" PowerShell '{"command":"type .env.local"}'
+t deny:key-store "$W3" Bash '{"command":"type .env.local"}'
+t deny:secrets-file "$W" Bash '{"command":"cat >> runs/x/notes.md <<'"'"'EOF'"'"'\ncat secrets.env\nEOF"}'
+t deny:secrets-file "$W" PowerShell '{"command":"$n = @'"'"'\ncat secrets.env\n'"'"'@"}'
+t deny:secrets-file "$W" Bash '{"command":"cat \"$CLAUDE_PLUGIN_DATA/secrets.env\""}'
+t deny:key-search "$W3" Bash '{"command":"grep -r token ."}'
+t deny:key-search "$W3" Bash "{\"command\":\"grep -r token $W3\"}"
+t deny:key-search "$W" Bash "{\"command\":\"grep -ri replicate $W\"}"
+t deny:key-search "$W" Bash '{"command":"rg -i /replicate"}'
+t deny:key-search "$W" Bash '{"command":"grep -r token . <<'"'"'EOF'"'"'\nx\nEOF"}'
+t deny:key-store "$W" Bash '{"command":"cat \".s\"*/*"}'
+t deny:key-store "$W" Bash '{"command":"cat \\.e*"}'
+t deny:key-store "$W" Bash '{"command":"sh -c '"'"'cat .s*/*'"'"'"}'
+t deny:key-store "$W" Bash '{"command":"bash -lc \"ls .e*\""}'
+t deny:key-store "$W" Bash '{"command":"eval \"cat .e*\""}'
+t deny:key-store "$W" Bash '{"command":"echo \"$(cat .e*)\""}'
+t deny:key-store "$W" Bash '{"command":"cat $(pwd)/.e*"}'
+t deny:key-store "$W" Bash '{"command":"bash <<'"'"'EOF'"'"'\ncat .s*/*\nEOF"}'
+t deny:key-store "$W" Bash '{"command":"cat <<'"'"'EOF'"'"' | sh\ncat .e*\nEOF"}'
+t deny:key-store "$W" Bash '{"command":"cat <<EOF\n$(cat .e*)\nEOF"}'
+t deny:key-store "$W" Bash '{"command":"cat <<EOF > runs/x/a.txt\nnote\nEOF\ncat .*"}'
+t deny:key-store "$W" Bash '{"command":"x=$((1<<2))\ncat .*"}'
+t deny:key-store "$W" PowerShell '{"command":"Get-Content '"'"'.e*'"'"'"}'
+t deny:key-store "$W" PowerShell '{"command":"gc \".s*\\*\""}'
+t deny:key-store "$W" PowerShell '{"command":"Get-Content -Path '"'"'.\\.e*'"'"'"}'
+t deny:key-store "$W" PowerShell '{"command":"Get-Content \"$(Get-Location)\\.e*\""}'
+t deny:key-store "$W" PowerShell '{"command":"pwsh -Command \"gc .s*/*\""}'
+t deny:key-store "$W" PowerShell '{"command":"$n = @\"\n$(gc .e*)\n\"@"}'
+says "write that text to a file with the Write tool" "$W" Bash '{"command":"cat .*"}'
 # The rephrased forms pass.
 t allow "$W" Bash '{"command":"awk -f runs/x/titles.awk runs/x/a.md"}'
 t allow "$W" Bash '{"command":"python3 runs/x/ids.py"}'

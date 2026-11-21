@@ -64,8 +64,24 @@ fi
 
 # 5. what is due: `tm due --quiet` prints one plain line per thing due (a measurement, a weekly trend report)
 #    and nothing else.
-#    A missing environment or a failure means "nothing due" (and prints nothing).
+#    A missing environment or a failure means "nothing due" (and prints nothing), except Windows
+#    Smart App Control blocking the plugin's Python (error 4551, issue #123), which gets one line.
 export PIXI_HOME="$DATA/pixi" PIXI_NO_PATH_UPDATE=1 TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$DATA"
-due=$("$PIXI" run --as-is --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm due --quiet 2>/dev/null) || exit 0
-[ -n "$due" ] && printf '%s\n' "$due"
+errf=$(mktemp 2>/dev/null) || errf="$DATA/due-stderr.txt"
+if due=$("$PIXI" run --as-is --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm due --quiet 2>"$errf"); then
+  rm -f "$errf"
+  [ -n "$due" ] && printf '%s\n' "$due"
+  exit 0
+fi
+if grep -qiE "Smart App Control|(os error|winerror|error)[^0-9a-z]{0,3}4551([^0-9]|\$)" "$errf" 2>/dev/null; then
+  file=$(sed -n "s/.*plugin's Python (\\([^)]*\\)).*/\\1/p; s/.*while importing \\([^ :]*\\).*/\\1/p" "$errf" | head -n 1)
+  steps=$(FILE=${file:-python.exe} awk '
+    /^ *smart_app_control: *"/ {
+      sub(/^ *smart_app_control: *"/, ""); sub(/" *$/, "")
+      i = index($0, "{file}"); if (i) $0 = substr($0, 1, i - 1) ENVIRON["FILE"] substr($0, i + 6)
+      print; exit
+    }' "$ROOT/data/i18n/en.yaml")
+  echo "TrendsMesh playbooks: Windows Smart App Control blocked a file of the plugin's Python (${file:-python.exe}), so tm cannot run. Tell the user the steps from tm's message in plain words; never change Windows security settings yourself. tm's message: $steps"
+fi
+rm -f "$errf"
 exit 0

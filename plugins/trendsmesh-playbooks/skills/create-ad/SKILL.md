@@ -49,6 +49,8 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
 2. `tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<s>,meta=<s>,artifacts=<s>
    --meta-account currency=<code>,accounts=<n> [--mode free] --json`, and show its `card` in plain words. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The media tools are installed after the user's yes, with their size
    and time.
+   If `tm` says Windows Smart App Control blocked a file of the plugin's Python, stop here: give the user its
+   steps in plain words (it is no network or install failure), and never change Windows security settings yourself.
 3. **On Free the run goes on as labelled guesses** (`tm evidence guess`, refused until the user chose Free): model
    ads from the Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats you
    know; trends are your guess. Say it once at readiness (the card's Free line) and again with the concepts (`tm
