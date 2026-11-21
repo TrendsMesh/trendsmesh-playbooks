@@ -4,6 +4,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Organic AI video: the channel profile stays confirmed after the voice and music picks.** Saving the picked voice
+  and music into the channel profile keeps the date you confirmed it, so the next run reuses the profile without
+  asking again. Any other change to the profile still asks you to confirm it, and Claude says why.
 - **Organic AI video: the picked style shapes every kind of video.** A style from the library can now be picked for
   AI footage, a talking character and stills too, not only an animation. Its look (what it looks like, what it
   avoids, its colours and fonts) goes into every image and video prompt, and the plugin refuses a paid image or

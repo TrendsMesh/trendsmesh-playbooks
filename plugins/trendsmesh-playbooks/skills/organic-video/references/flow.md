@@ -805,8 +805,10 @@ prompt carries its look.
    and ask in chat.
 6. **The picks go into the profile**: write a new version of the channel profile with the voice
    and the music, `tm brand check --run R --file 03_wip/channel_<slug>_vNN.json --json`, then `tm brand
-   save --run R --file 03_wip/channel_<slug>_vNN.json --json` (it carries the date the user
-   confirmed the profile). Then the pack's next `_vNN` with `taste` filled in (`by: user`, or
+   save --run R --file 03_wip/channel_<slug>_vNN.json --json`. The draft keeps `confirmed: null`;
+   `tm brand save` carries the earlier confirmation date when only the voice and music changed (any
+   other change saves it unconfirmed, and the answer says so: the next run asks the profile
+   check-in again). Then the pack's next `_vNN` with `taste` filled in (`by: user`, or
    `profile` for a saved pick), checked again with `--stage recipe` (from the page, `tm page
    decision --run R taste --record` has written that version).
 7. `tm done D2 --run R`. **The `taste` check-in** comes next: at Check every step its own card; at
