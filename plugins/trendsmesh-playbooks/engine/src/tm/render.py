@@ -25,6 +25,10 @@ the user's machine in the `video` environment (Node 22). The project lives in th
 - `src/` is copied next to `node_modules` before every render (it is small), so the source always
   matches the plugin version and module resolution finds the packages.
 - A render never downloads anything: when the setup is missing it stops (exit 2) with the todo.
+- `probe()` renders the 1-second `Probe` composition (160×90, one colour, no props) to `<data>/remotion/probe/`
+  (issue #124): the files of a setup can be in place while a render still fails. `tm env install video` runs it after
+  the setup, and the doctor runs it until it has passed once for this lock file and headless shell (`.probe-ok`
+  holds both: `probe_ok`).
 
 The run folder is Remotion's `--public-dir`, so props paths like `01_base/ad3_original.mp4`
 resolve (OrganicCaptions' segment, music and voice files the same way). Outputs go to the next
@@ -62,6 +66,8 @@ MOTION_COMPS = ("RankingList", "RankingSplit", "QuizGrid")   # organic video's m
 # Card styles HookSwap.tsx draws (the `style` of each card). Keep in step with CardStyle there.
 CARD_STYLES = ("box", "outlineBar")
 MARKER = ".setup-done"
+NO_BIN = "could not determine executable to run"   # npm's words when `npx remotion` finds no local command (#124)
+PROBE_MARKER = ".probe-ok"   # the lock hash and the headless shell's VERSION of the last test render that passed
 
 
 def project_dir() -> Path:
@@ -85,13 +91,44 @@ def fonts_dir() -> Path:
     return work_dir() / video_fonts.PACKAGE
 
 
+def _shell_version_file() -> Path:
+    return work_dir() / "node_modules" / ".remotion" / "chrome-headless-shell" / "VERSION"
+
+
 def setup_done() -> bool:
     marker = work_dir() / MARKER
     try:
-        return (marker.read_text(encoding="utf-8").strip() == lock_hash()
-                and (work_dir() / "node_modules" / ".remotion" / "chrome-headless-shell" / "VERSION").is_file())
+        return marker.read_text(encoding="utf-8").strip() == lock_hash() and _shell_version_file().is_file()
     except OSError:
         return False
+
+
+def _probe_key() -> str:
+    return f"{lock_hash()}\n{_shell_version_file().read_text(encoding='utf-8').strip()}"
+
+
+def probe_ok() -> bool:
+    """A test render passed for this lock file and this headless shell (`probe`)."""
+    try:
+        return (work_dir() / PROBE_MARKER).read_text(encoding="utf-8").strip() == _probe_key()
+    except OSError:
+        return False
+
+
+def probe() -> None:
+    """Render the `Probe` composition (1 s, 160×90) as a real render would, and keep the pass in `.probe-ok`. A
+    ToolError on failure, with the last lines Remotion wrote; no pass is kept then."""
+    marker = work_dir() / PROBE_MARKER
+    marker.unlink(missing_ok=True)
+    out = work_dir() / "probe" / "probe.mp4"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.unlink(missing_ok=True)
+    _sync_src()
+    _sh([_node_tool("npx"), "remotion", "render", "src/index.ts", "Probe", str(out.resolve()), "--log=warn",
+         "--codec=h264"], work_dir(), "Remotion test render")
+    if not out.is_file():
+        raise c.ToolError("Remotion test render finished but wrote no video.")
+    marker.write_text(_probe_key(), encoding="utf-8")
 
 
 def _is_windows() -> bool:
@@ -125,6 +162,9 @@ def _sh(argv: list[str], cwd: Path, what: str) -> None:
         _close_orphaned_chrome()
     if proc.returncode != 0:
         tail = " | ".join((proc.stderr or proc.stdout or "").strip().splitlines()[-4:])
+        if NO_BIN in tail:   # npx found no local `remotion` and looked it up online, where it has no command
+            tail += (f" (npx found no Remotion command in {cwd / 'node_modules' / '.bin'}: the Remotion packages "
+                     "there are incomplete)")
         raise c.ToolError(f"{what} failed: {tail}")
 
 
@@ -198,9 +238,10 @@ def _sync_src() -> None:
     shutil.rmtree(old, ignore_errors=True)
 
 
-def setup() -> None:
-    """npm ci into <data>/remotion and fetch the headless browser, once per lock file."""
-    if setup_done():
+def setup(*, force: bool = False) -> None:
+    """npm ci into <data>/remotion and fetch the headless browser, once per lock file. `force`: again, though the
+    files are in place (a test render failed with them)."""
+    if setup_done() and not force:
         return
     work_dir().mkdir(parents=True, exist_ok=True)
     for name in ("package.json", "package-lock.json"):

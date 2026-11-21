@@ -52,10 +52,10 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
    or `missing`.
    **Meta Ads**: one `ads_library_search` call: `ok`, `missing` or `not_enabled`. **Artifacts**:
    `ok` when the `Artifact` tool (or the older `publish_files`) is among this session's tools,
-   else `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result.
-2. `tm doctor --playbook trend-research --outputs <chosen, or all three> --mcp
+   else `missing` (no call; never ask the user to add it through `/mcp`), or `denied` once a publish in this session was refused by Claude Code's permissions. Never guess a result.
+2. `tm doctor --playbook trend-research --outputs <chosen, from category_report,weekly_digest,paid_view> --mcp
    trendsmesh=<s>,meta=<s>,artifacts=<s> --json` (no `--report`: the support report is
-   `/trendsmesh-playbooks:doctor`'s). The first `tm` call on a computer installs the
+   `/trendsmesh-playbooks:doctor`'s). Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The first `tm` call on a computer installs the
    base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10 minutes).
 3. Show its `card` in plain words. **Without TrendsMesh, trend research stops: it is Paid only.**
    Its stages, its "act now" and "too late" calls and the weekly check of last week's calls are
@@ -68,6 +68,11 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
    a publishing tool the page is a local file instead of a link. Say each once.
 4. **Keys never appear in chat.** Trend research needs none: TrendsMesh and Meta are signed in
    through `/mcp`. Never search for, read, print or ask for a key or token.
+
+**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
+later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
+and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
+with `tm`, so an allow rule can match it.
 
 ## 2. Intake (A0), one batch of questions
 
@@ -106,9 +111,9 @@ read its section in `references/flow.md` (the `ref`): never from memory.
 | action | what you do |
 |---|---|
 | `work` | Read the step's section in `references/flow.md` (`ref`). Do the work. Record each file you write yourself with `tm record`. Then `tm done <step> --run R`. |
-| `ask` | Show the check-in as a card (`references/checkin-cards.md`), restating every point, wait for the answer, then `tm decide <id> <choice> --run R [--note ...]`. "Approve the picks and the page" is shown once and recorded as `tm decide G2 accept`, then `tm decide G3 publish` or `keep_local`. |
+| `ask` | Show the check-in as a card (`references/checkin-cards.md`), restating every point, wait for the answer, then `tm decide <id> <choice> --said "<their words>" --run R [--note ...]` (`--said`: the user's own words from the chat, verbatim, or `--said-file <path>` for long ones; `--note` is context). "Approve the picks and the page" is shown once and recorded as `tm decide G2 accept --said "<their words>"`, then `tm decide G3 publish --said "<their words>"` or `keep_local`. |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
-| `stop` | Tell the user what happened, what to do, and that the run continues from the same place. **Then wait.** A map that changed a lot is cleared by `tm decide G1 accept --change` after the user saw it, not by `tm resume` (`checkin-cards.md`). |
+| `stop` | Tell the user what happened, what to do, and that the run continues from the same place. **Then wait.** A map that changed a lot is cleared by `tm decide G1 accept --said "<their words>" --change` after the user saw it, not by `tm resume` (`checkin-cards.md`). |
 | `done` | Final report: the page's link (or the local `index.html`), the picks in short, the calls that held, the schedule, what was not checked, and every decision taken by rule with its data. |
 
 - **Every stop** you report, from `tm` or your own (a TrendsMesh limit: `tm stop --run R --reason
@@ -153,6 +158,7 @@ hypothesis is never a finding.
 
 | Thought | Reality |
 |---|---|
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
 | "There are no trends in this category" | Never. A thin map shows its closest trends as a **"weak match"** (V7). |
 | "Not in ads" | Say **"none found in Ad Library titles"**: the Ad Library returns titles only. A shortlisted hook checked in the category's words says "competitor found" or "none found in Ad Library titles", never "unused"; an unchecked hook is "Not checkable without Foreplay". |
 | "I'll count creators myself" | `tm research growth` counts them, every time. Never a number by hand. |

@@ -26,7 +26,7 @@ its label.
 The user can always answer something else ("drop the third idea", "from now on, just the big
 calls"). Redo the work as a new version and show the card again; record only the final answer. A
 level change is `tm level <every_step|big_calls|hands_off> --run R`; a decision changed later
-needs `tm decide <id> <choice> --change --run R`.
+needs `tm decide <id> <choice> --said "<their words>" --change --run R`.
 
 ## The cards
 
@@ -42,8 +42,9 @@ and explainers"), and ask; a yes is `new` (A1 saves a version with it), and a `r
 takes 3 trends of each kind. The engine refuses `reuse` unless every channel of
 the run has a saved profile the user confirmed. **When a channel has no saved profile**, there is
 nothing to reuse: say so in one line ("No saved profile for <channel> yet: I'll draft one from
-your answers") and record `tm decide reuse_profile new --run R --note "no saved profile for
-<slug>"`, without asking.
+your answers") and record `tm decide reuse_profile new --said "<the user's words this rests on>" --run R --note "no saved
+profile for <slug>"` (their words that asked for this channel; Hands-off: `--by rule` in place of `--said`), without
+asking again.
 
 **Confirm the channel profile** (`profile`, after A1; at every level: a channel's first profile is
 always the user's). One card per channel, in the template's fields
@@ -56,7 +57,7 @@ what performed, the products or "nothing sold", the product role, the output, th
 the level, the budget, the tools the stack check found, and the content rules for a
 sensitive niche. **Each assumption is marked** (A), and the question is "Anything to correct?" A
 correction is a new version, checked and saved, then the card again. Choice: `accept`, recorded
-with `tm decide profile accept --run R --note "<their words>"`; in a run of several channels one
+with `tm decide profile accept --run R --said "<their words>"`; in a run of several channels one
 decision per channel, the note naming the channel's slug (`--note <slug>`, then `--change` with
 the next slug). Then `tm brand save --confirmed` (`flow.md#a1`).
 
@@ -103,7 +104,7 @@ the music bed (from their folder, or a Mixkit track with a free commercial licen
 style for an animation (2 to 3 of our animation styles from the head of `tm organic atlas-styles --channel`,
 shown as playing loops, with every style by family below to pick instead; the storyboard is the real check). Each option with a one-line why, your pick first. A
 pick saved in the profile is offered first and saved again with the new ones. Choice: `accept`,
-`tm decide taste accept --run R --note "<their picks>"`; at Check every step the run page's taste
+`tm decide taste accept --said "<their words>" --run R --note "<their picks>"`; at Check every step the run page's taste
 stage has them to hear and pick (`flow.md#d2`), recorded with `tm page decision --run R taste
 --record`.
 
@@ -118,7 +119,7 @@ approved), the facts with their sources, and the risk item by item with its miti
 with Pruna's upscale. Ask: "Shall I make it at this cost?" Choices: `approve` (then `tm budget
 approve` for each planned amount, `flow.md#e2`) or `reject` (nothing is generated or paid). A
 change the user asks for (a resolution, a model, a line, a redo) is a new pack, checked again; a
-higher total or other items need a new yes (`tm decide pack approve --change`). A redo is paid
+higher total or other items need a new yes (`tm decide pack approve --said "<their words>" --change`). A redo is paid
 for this way (`flow.md#paying-for-a-redo`).
 
 **Pick the images** (`images`, inside F1, before `tm done F1`; its own card at Check every step). The run page's link (the images stage),
@@ -175,13 +176,13 @@ nothing paid without their yes. While people decide, no new page version.
 
 `tm next` gives `checkin.card` and the member `ids` still open. Show one card that covers them
 all, restating each member's points, then record it **as the message says**. When the members
-share an answer, one command decides the card (`tm decide <card> <choice>`). **When they share
+share an answer, one command decides the card (`tm decide <card> <choice> --said "<their words>"`). **When they share
 none**, the message names each member's own command, in order, and each is run in that order
 with the user's words as its note: the card is not decided as one.
 
 | Card | Members | When | How to record |
 |---|---|---|---|
-| Approve the plan for this video | `taste` ("Pick the style, voice and music"), `pack` ("Approve the generation pack and its cost") | after E2, in an AI video production run | `tm decide taste accept --run R --note ...`, then `tm decide pack approve --run R --note ...` (or `reject`), in the order the message gives; then `tm budget approve` for each planned amount |
+| Approve the plan for this video | `taste` ("Pick the style, voice and music"), `pack` ("Approve the generation pack and its cost") | after E2, in an AI video production run | `tm decide taste accept --said "<their words>" --run R --note ...`, then `tm decide pack approve --said "<their words>" --run R --note ...` (or `reject`), in the order the message gives; then `tm budget approve` for each planned amount |
 
 The plan card restates both members' points (the taste picks, then the whole pack card with its
 costs and the resolution question) and asks one question: "Make this video, with these picks, at
@@ -208,7 +209,7 @@ next check-in the user sees. `profile`, `proposals` and `pack` are never decided
 
 | Check-in | Asked when | The card |
 |---|---|---|
-| Approve the week (`week`) | after I2, at every level: the user approves the week once | The run page's link (the week's stage), then every day restated in chat: the day and date, the idea by title, AI video or script, its cost; the skipped days; the swaps; the total against the week's budget. "Approve the week as it stands, or change a day?" On the page, `tm page decision --run R week --record` records it with the week's decisions; from chat, `tm decide week approve --run R`, only after the week's decisions are read (`tm organic decisions --page week --text`): the engine refuses a week over its budget in the page's words, so offer what the page offers (a script, a cheaper idea, a skip). The approval spends nothing: each video's own pack is approved in its own run. |
+| Approve the week (`week`) | after I2, at every level: the user approves the week once | The run page's link (the week's stage), then every day restated in chat: the day and date, the idea by title, AI video or script, its cost; the skipped days; the swaps; the total against the week's budget. "Approve the week as it stands, or change a day?" On the page, `tm page decision --run R week --record` records it with the week's decisions; from chat, `tm decide week approve --said "<their words>" --run R`, only after the week's decisions are read (`tm organic decisions --page week --text`): the engine refuses a week over its budget in the page's words, so offer what the page offers (a script, a cheaper idea, a skip). The approval spends nothing: each video's own pack is approved in its own run. |
 | Set up the weekly pack (`schedule`) | before I5; Hands-off by rule | When it runs (the run day, 09:00 local), what runs (next week's research, week page and approval; nothing is made before the user approves the week), what it costs (nothing to start; each video is approved in its run), how to stop it ("stop the weekly pack"), and that it works only while the Claude desktop app is open. `schedule` with `create_scheduled_task` in the session and the user's yes, else `by_hand` (`flow.md#i5`). |
 
 ## Stops the user must clear

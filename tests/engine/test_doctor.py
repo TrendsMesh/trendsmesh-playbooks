@@ -1,5 +1,7 @@
 import json
+import re
 from collections import namedtuple
+from pathlib import Path
 
 import pytest
 
@@ -9,6 +11,7 @@ Usage = namedtuple("Usage", "total used free")
 GB = 1024**3
 ALL_OK = {"trendsmesh": "ok", "meta": "ok"}
 REAL_INSTALLED = envtiers.installed  # the world fixture stubs it; a test that needs the real check puts it back
+REAL_PROBE = doctor._video_probe   # conftest stubs it (`_no_real_probe`)
 
 
 @pytest.fixture(autouse=True)
@@ -76,11 +79,16 @@ def test_no_plan_says_the_plan_has_no_trend_data():
     assert it.fix == "You're on the free TrendsMesh plan: it has no trend data."
 
 
-def test_unchecked_mcp_is_not_ready_and_says_so():
+def test_unchecked_mcp_is_pending_and_ready():
+    """Issue #124: an MCP Claude has not checked yet is checked by Claude a moment later, so it is pending, not a
+    blocker: ⏳ on the card, still ready."""
     r = doctor.check({"creative_brief"}, False, {"trendsmesh": "ok"})
     it = item(r, "mcp_meta")
-    assert not it.ok and "not checked" in it.fix.lower() and not r.ready
-    assert "Not checked yet" in doctor.card(r)
+    assert not it.ok and it.pending and it.fixer == "agent" and "not checked" in it.fix.lower() and r.ready
+    card = doctor.card(r)
+    assert "- ⏳ Meta Ads connected and signed in: checking in a moment" in card and "❌" not in card
+    assert card.startswith("**Ready to go.** I'm still checking Meta Ads connected and signed in and Meta Ads "
+                           "enabled for your ad account.")
 
 
 def test_missing_tier_is_agent_fix_with_size(monkeypatch):
@@ -189,14 +197,57 @@ def test_report_contains_no_secret(world, tmp_path):
     text = path.read_text(encoding="utf-8")
     assert "r8_secretvalue" not in text
     assert "step failed" in text and "tier_base" in text
-    assert path.parent == tmp_path / "ws" and path.name.startswith("trendsmesh-support-")
+    assert path == tmp_path / "ws" / "trendsmesh-support.md"
 
 
-def test_report_never_overwrites():
+def test_one_report_file_overwritten_each_time_with_the_plugin_version(tmp_path, monkeypatch):
+    """Issue #124: one name, so the current report is never in doubt; the Date line stays inside."""
+    plugin = tmp_path / "plugin"
+    (plugin / ".claude-plugin").mkdir(parents=True)
+    (plugin / ".claude-plugin" / "plugin.json").write_text('{"name": "trendsmesh-playbooks", "version": "9.8.7"}')
+    monkeypatch.setenv("TM_PLUGIN_ROOT", str(plugin))
     r = doctor.check({"creative_brief"}, False, ALL_OK)
-    a, b, c = (doctor.support_report(r, "") for _ in range(3))
-    assert len({a, b, c}) == 3
-    assert b.name.endswith("_2.md") and c.name.endswith("_3.md")
+    a, b, c = (doctor.support_report(r, f"run {n}") for n in range(3))
+    assert a == b == c == tmp_path / "ws" / "trendsmesh-support.md"
+    assert [p.name for p in (tmp_path / "ws").iterdir() if p.name.startswith("trendsmesh-support")] == [a.name]
+    text = c.read_text(encoding="utf-8")
+    assert "run 2" in text and "run 0" not in text and "- Date: " in text
+    assert "- Plugin: trendsmesh-playbooks 9.8.7\n- tm engine: " in text
+
+
+def test_report_says_unknown_when_plugin_json_is_unreadable(tmp_path, monkeypatch):
+    monkeypatch.setenv("TM_PLUGIN_ROOT", str(tmp_path / "nowhere"))
+    text = doctor.support_report(doctor.check({"creative_brief"}, False, ALL_OK), "").read_text(encoding="utf-8")
+    assert "- Plugin: trendsmesh-playbooks (version unknown)" in text
+
+
+def test_meta_account_names_currency_and_count_on_card_and_report(capsys):
+    """Issue #124: which account was checked, as its currency and the number of accounts; never a name or an id."""
+    code = cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "trendsmesh=ok,meta=ok",
+                     "--meta-account", "currency=eur,accounts=2", "--report", "--json"])
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0 and out["meta_account"] == {"currency": "EUR", "accounts": 2}
+    row = next(i for i in out["items"] if i["id"] == "meta_mcp_enabled_for_account")
+    assert row["name"] == "Meta Ads enabled for your ad account (EUR; 1 of 2 accounts checked)"
+    assert "✅ Meta Ads enabled for your ad account (EUR; 1 of 2 accounts checked)" in out["card"]
+    report = Path(out["report"]).read_text(encoding="utf-8")
+    assert "| meta_mcp_enabled_for_account (EUR; 1 of 2 accounts checked) | ok |" in report
+    assert "- Meta ad account: EUR; 1 of 2 accounts checked" in report
+
+
+def test_one_meta_account_reads_as_the_only_one():
+    r = doctor.check({"creative_brief"}, False, ALL_OK, meta_account={"currency": "PLN", "accounts": 1})
+    assert item(r, "meta_mcp_enabled_for_account").name.endswith("(PLN; your only ad account)")
+    assert item(r, "mcp_meta").name == "Meta Ads connected and signed in"
+
+
+@pytest.mark.parametrize("given", ["currency=EURO,accounts=2", "currency=EUR,accounts=0", "currency=EUR",
+                                   "accounts=2", "currency=EUR,accounts=2,name=Shop", "currency=EUR,accounts=x",
+                                   "currency=EUR,accounts=2,id=act_123"])
+def test_meta_account_refuses_anything_but_a_currency_and_a_count(capsys, given):
+    code = cli.main(["doctor", "--outputs", "creative_brief", "--meta-account", given, "--json"])
+    out = json.loads(capsys.readouterr().out)
+    assert code == 1 and "--meta-account" in out["message"] and "currency=<ISO 4217 code>,accounts=<n>" in out["message"]
 
 
 def test_cli_exit_codes_and_json(capsys, monkeypatch):
@@ -211,7 +262,7 @@ def test_cli_exit_codes_and_json(capsys, monkeypatch):
 
 def test_cli_report_prints_path(capsys):
     code = cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "trendsmesh=ok,meta=ok", "--report"])
-    assert code == 0 and "trendsmesh-support-" in capsys.readouterr().out
+    assert code == 0 and "trendsmesh-support.md" in capsys.readouterr().out
 
 
 def test_card_shows_no_command_flags_and_says_who_acts(monkeypatch):
@@ -221,9 +272,9 @@ def test_card_shows_no_command_flags_and_says_who_acts(monkeypatch):
     r = doctor.check(set(doctor.flow.output_ids()), True, {})            # nothing checked, plan unknown
     card = doctor.card(r)
     assert "--" not in card and "<result>" not in card
-    mine = card.split("**I still need to check these (nothing for you to do):**")[1].split("**You need")[0]
-    assert "TrendsMesh" in mine and "Meta Ads" in mine
-    assert "TrendsMesh call" not in card.split("**I still need to check these")[0]
+    mine = [line for line in card.splitlines() if line.startswith("- ⏳")]
+    assert any("TrendsMesh" in line for line in mine) and any("Meta Ads" in line for line in mine)
+    assert "TrendsMesh call" not in card
     go_on = card.split("**You can go on without these:**")[1].split("**I")[0]
     assert "voice cloning" in go_on   # the unknown plan is checked at the voice step, if a clone is needed (#5)
 
@@ -265,8 +316,7 @@ def test_trendsmesh_unchecked_does_not_block_but_stays_on_claudes_list():
     r = doctor.check({"creative_brief"}, False, {"meta": "ok"})
     assert r.ready
     card = doctor.card(r)
-    mine = card.split("**I still need to check these (nothing for you to do):**")[1]
-    assert "TrendsMesh" in mine
+    assert "- ⏳ TrendsMesh connected and signed in: checking in a moment" in card
 
 
 def test_meta_missing_still_blocks_with_trendsmesh_missing():
@@ -468,8 +518,9 @@ def test_one_warning_keeps_the_one_thing_heading():
 def test_trend_research_unchecked_warnings_stay_on_claudes_list():
     r = doctor.check(TR_OUTPUTS, False, {"trendsmesh": "ok"}, playbook=TR)
     assert r.ready
-    mine = doctor.card(r).split("**I still need to check these (nothing for you to do):**")[1]
-    assert "Meta Ads call" in mine and "shared page links" in mine
+    card = doctor.card(r)
+    assert "- ⏳ Meta Ad Library connected and signed in: checking in a moment" in card
+    assert "- ⏳ Shared page links (claude.ai artifacts): checking in a moment" in card
 
 
 def test_trend_research_cli_refuses_other_outputs_and_states(_tr_cli):
@@ -489,12 +540,12 @@ REFRESH_AD_CARD_030 = """**Not ready yet.** Here is what is in place and what is
 - ✅ AI video tools
 - ✅ Free disk space
 - ✅ TrendsMesh connected and signed in
+- ⏳ Meta Ads connected and signed in: checking in a moment
+- ⏳ Meta Ads enabled for your ad account: checking in a moment
 - ⚠️ TrendsMesh Agent plan
 - ❌ Video editing tools (Remotion)
 - ❌ Replicate token: missing
 - ❌ ElevenLabs key: missing
-- ❌ Meta Ads connected and signed in (not checked yet)
-- ❌ Meta Ads enabled for your ad account (not checked yet)
 
 **You can go on without these:**
 - You're on the free TrendsMesh plan: it has no trend data.
@@ -503,10 +554,6 @@ REFRESH_AD_CARD_030 = """**Not ready yet.** Here is what is in place and what is
 **I can fix these for you, once you say yes:**
 - I install the video editing tools (about 500 MB, about 1 min). Say yes and I start.
 - Together: about 500 MB, about 1 min.
-
-**I still need to check these (nothing for you to do):**
-- Not checked yet: I check it with one quick Meta Ads call, then look again.
-- Can't be checked until Meta Ads is connected and signed in.
 
 **You need to do these yourself:**
 1. Make a token at https://replicate.com/account/api-tokens (sign in, then Create token, and copy it). Then open /plugin, choose Installed, then trendsmesh-playbooks, then Configure options, paste it as the Replicate API token, and start a new session. It makes the AI images and video; each run is paid from your Replicate account (https://replicate.com/account/billing).
@@ -589,8 +636,9 @@ def test_creative_brief_not_ready_without_meta(_cb_cli, meta, blocked, says):
     it = next(i for i in out["items"] if i["id"] == blocked)
     assert not it["ok"] and not it["warn"] and it["fixer"] == "user" and it["fix"] == says
     assert f"1. {says}" in out["card"] and "**You can go on without these:**" not in out["card"]
-    code, out = _cb_cli("trendsmesh=ok,artifacts=ok")  # Meta not checked yet: not ready either
-    assert code == 2 and next(i for i in out["items"] if i["id"] == "mcp_meta")["unchecked"]
+    code, out = _cb_cli("trendsmesh=ok,artifacts=ok")  # Meta not checked yet: pending, Claude checks it (#124)
+    assert code == 0 and out["ready"] and next(i for i in out["items"] if i["id"] == "mcp_meta")["pending"]
+    assert out["pending"] == ["mcp_meta", "meta_mcp_enabled_for_account"] and out["warnings"] == []
 
 
 def test_artifacts_warning_uses_brief_note(_cb_cli):
@@ -783,10 +831,32 @@ def test_on_free_a_working_trendsmesh_is_used():
     assert not any(i.free for i in r.items) and item(r, "mcp_trendsmesh").ok
 
 
-def test_paid_without_trendsmesh_says_the_choice_is_the_users():
+def test_paid_without_trendsmesh_keeps_its_own_step_not_the_choice_note():
+    """Issue #124: Paid is the user's saved choice, so the card no longer says Free or Paid is theirs to make."""
     r = doctor.check({"creative_brief"}, False, {"meta": "ok", "trendsmesh": "free"}, mode="paid")
     it = item(r, "trendsmesh_agent_plan")
-    assert it.warn and it.note == doctor.evidence.CHOOSE_NOTE and not any(i.free for i in r.items)
+    assert it.warn and it.note != doctor.evidence.CHOOSE_NOTE and not any(i.free for i in r.items)
+    assert it.fix == "You're on the free TrendsMesh plan: it has no trend data."
+    card = doctor.card(r)
+    assert doctor.evidence.CHOOSE_NOTE not in card and "\n- \n" not in card and not card.endswith("- ")
+
+
+def test_the_choice_note_only_when_no_mode_is_saved_and_the_row_is_not_ok():
+    r = doctor.check({"creative_brief"}, False, {"meta": "ok", "trendsmesh": "free"})
+    assert item(r, "trendsmesh_agent_plan").note == doctor.evidence.CHOOSE_NOTE
+    assert item(r, "mcp_trendsmesh").note == ""   # signed in: ok, no note
+    for mode in ("paid", None):
+        r = doctor.check({"creative_brief"}, False, ALL_OK, mode=mode)
+        assert not any(i.note == doctor.evidence.CHOOSE_NOTE for i in r.items)
+
+
+def test_cli_after_tm_mode_paid_carries_no_choice_note(capsys):
+    assert cli.main(["mode", "paid", "--json"]) == 0
+    capsys.readouterr()
+    code = cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "trendsmesh=missing,meta=ok", "--json"])
+    out = json.loads(capsys.readouterr().out)
+    assert code == 0 and out["mode"] == "paid"
+    assert not any(i["note"] == doctor.evidence.CHOOSE_NOTE for i in out["items"] if "trendsmesh" in i["id"])
 
 
 def test_trend_research_is_paid_only_even_on_free():
@@ -806,3 +876,105 @@ def test_the_cli_reads_the_workspace_choice(tmp_path, monkeypatch, capsys):
                      "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["mode"] == "paid" and "mcp_trendsmesh" in out["warnings"]
+
+
+def test_a_failed_test_render_makes_the_video_tools_an_agent_fix(monkeypatch):
+    """Issue #124: the files of the video tier are in place, but the test render fails. The row is not ready, Claude
+    sets the tools up again after the user's yes, and the card quotes what failed."""
+    monkeypatch.setattr(doctor, "_video_probe", lambda: (
+        "failed", "Remotion test render failed: npm error could not determine executable to run"))
+    r = doctor.check({"edited_video"}, False, ALL_OK)
+    it = item(r, "tier_video")
+    assert not it.ok and it.fixer == "agent" and not r.ready
+    assert it.fix.startswith("The video editing tools are installed but a test render failed: ")
+    assert "could not determine executable to run" in it.fix and "tm env install video --yes" in it.fix
+    assert "❌ " + it.name in doctor.card(r)
+
+
+def test_a_test_render_that_passed_now_says_so_once(monkeypatch):
+    monkeypatch.setattr(doctor, "_video_probe", lambda: ("passed", ""))
+    it = item(doctor.check({"edited_video"}, False, ALL_OK), "tier_video")
+    assert it.ok and "test render passed" in it.name and "about a minute" in it.name
+    monkeypatch.setattr(doctor, "_video_probe", lambda: ("cached", ""))
+    it = item(doctor.check({"edited_video"}, False, ALL_OK), "tier_video")
+    assert it.ok and "test render" not in it.name
+
+
+def test_the_probe_runs_only_for_an_installed_video_tier(monkeypatch):
+    ran = []
+    monkeypatch.setattr(doctor, "_video_probe", lambda: ran.append(1) or ("cached", ""))
+    doctor.check({"creative_brief"}, False, ALL_OK)
+    assert not ran
+    monkeypatch.setattr(doctor.envtiers, "installed", lambda t: t != "video")
+    assert not item(doctor.check({"edited_video"}, False, ALL_OK), "tier_video").ok and not ran
+    monkeypatch.setattr(doctor.envtiers, "installed", lambda t: True)
+    doctor.check({"edited_video"}, False, ALL_OK)
+    assert ran == [1]
+
+
+def test_video_probe_runs_a_render_only_without_a_cached_pass(monkeypatch):
+    from tm import render
+    from tm.tools import _common
+    ran = []
+    monkeypatch.setattr(render, "probe_ok", lambda: True)
+    monkeypatch.setattr(render, "probe", lambda: ran.append(1))
+    assert REAL_PROBE() == ("cached", "") and not ran
+    monkeypatch.setattr(render, "probe_ok", lambda: False)
+    assert REAL_PROBE() == ("passed", "") and ran == [1]
+
+    def broken():
+        raise _common.ToolError("Remotion test render failed: boom")
+    monkeypatch.setattr(render, "probe", broken)
+    assert REAL_PROBE() == ("failed", "Remotion test render failed: boom")
+
+
+SKILLS = Path(__file__).resolve().parents[2] / "plugins" / "trendsmesh-playbooks" / "skills"
+_OUTPUTS = re.compile(r"--outputs\s+(?:<(?:chosen, from|one of)\s+)?([a-z_]+(?:[,|][a-z_]+)*)")
+
+
+@pytest.mark.parametrize("pb", [p for p in doctor.playbooks.all_playbooks() if doctor.playbooks.bundled(p)],
+                         ids=lambda p: p.skill)
+def test_each_skill_names_its_exact_output_ids(pb):
+    """Issue #124: the readiness command in each playbook's SKILL.md names the output ids `tm doctor` takes, read from
+    the playbook's data (`flow.output_ids`), so a first call never fails on a guessed name."""
+    text = (SKILLS / pb.skill / "SKILL.md").read_text(encoding="utf-8")
+    named = [i for m in _OUTPUTS.finditer(text) for i in re.split(r"[,|]", m.group(1))]
+    assert named, f"{pb.skill}/SKILL.md gives no --outputs ids"
+    assert set(named) == set(doctor.flow.output_ids(pb.id)), f"{pb.skill}/SKILL.md names {named}"
+
+
+@pytest.mark.parametrize("given, hint", [("brief", "creative_brief"), ("video", "edited_video"),
+                                         ("edited_vidoe", "edited_video"), ("zzz", None)])
+def test_an_unknown_output_suggests_the_closest_id(capsys, given, hint):
+    code = cli.main(["doctor", "--outputs", given, "--json"])
+    message = json.loads(capsys.readouterr().out)["message"]
+    assert code == 1 and message.startswith(f"Unknown output {given}.")
+    assert (f"Did you mean {hint}?" in message) if hint else "Did you mean" not in message
+    assert "Choose from: creative_brief, edited_video, ai_video, live_test." in message
+
+
+ARTIFACT_ROWS = {"artifacts_pages": "trend-research", "artifacts_pages_brief": "creative-brief",
+                 "artifacts_pages_organic": "organic-video", "artifacts_pages_create": "create-ad"}
+
+
+@pytest.mark.parametrize("row, pb", ARTIFACT_ROWS.items())
+def test_a_refused_publish_is_recorded_as_denied_with_the_allow_step(row, pb):
+    """Issue #125: when Claude Code's permissions refused a page publish, `artifacts=denied` says so and how to allow
+    it; the row stays a warning, as without a publishing tool."""
+    outputs = {doctor.flow.output_ids(pb)[0]}
+    r = doctor.check(outputs, False, {"trendsmesh": "ok", "meta": "ok", "artifacts": "denied"}, playbook=pb)
+    it = item(r, row)
+    assert not it.ok and it.warn and not it.pending and it.fixer == "user"
+    assert it.fix.startswith("Claude Code's permission settings refused to publish a page")
+    assert "`Artifact`" in it.fix and "permissions.allow" in it.fix and "tell me and I check again" in it.fix
+    missing = item(doctor.check(outputs, False, {"trendsmesh": "ok", "meta": "ok", "artifacts": "missing"},
+                                playbook=pb), row)
+    assert "permission" not in missing.fix
+
+
+def test_denied_is_a_state_of_artifacts_only(capsys):
+    assert "denied" in doctor.MCP_STATES and doctor.MCP_STATES_OF["artifacts"] == ("ok", "missing", "denied")
+    assert cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "meta=denied", "--json"]) == 1
+    capsys.readouterr()
+    assert cli.main(["doctor", "--playbook", "create-ad", "--outputs", "video_ad", "--mcp",
+                     "trendsmesh=ok,meta=ok,artifacts=denied", "--json"]) == 0

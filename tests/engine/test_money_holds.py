@@ -112,8 +112,8 @@ def test_red_r8_blocks_spend_approval_and_launch(run, capsys):
     assert out["status"] == "stop" and "R8" in out["message"] and "nothing was approved" in out["message"]
     assert _cli(run, "budget", "spend", "test", "100", "--what", "live test") == 2
     assert "nothing was spent" in json.loads(capsys.readouterr().out)["message"]
-    assert _cli(run, "decide", "approve_launch", "activate") == 2
-    assert _cli(run, "decide", "G11", "activate") == 2
+    assert _cli(run, "decide", "approve_launch", "activate", "--said", "yes") == 2
+    assert _cli(run, "decide", "G11", "activate", "--said", "yes") == 2
     s = state.load(run)
     assert s.spend == {} and s.budgets == {} and s.measurements_due == []
     assert not any(d["checkin"] == "G11" for d in s.decisions)
@@ -121,7 +121,7 @@ def test_red_r8_blocks_spend_approval_and_launch(run, capsys):
     decide(run, "E2b", "green", by="rule", note="AI label added", change=True)
     assert state.load(run).status == "active"
     assert _cli(run, "budget", "approve", "test", "100") == 0
-    assert _cli(run, "decide", "approve_launch", "activate") == 0
+    assert _cli(run, "decide", "approve_launch", "activate", "--said", "yes") == 0
     assert _cli(run, "budget", "spend", "test", "100", "--what", "live test") == 0
 
 
@@ -393,6 +393,6 @@ def test_a_rejected_spending_card_names_only_what_this_run_skips(run, capsys):
     complete(run, "D1")                                       # the spending card is due now
     assert flow.next(run).checkin.card == "approve_spending"
     capsys.readouterr()
-    assert _cli(run, "decide", "approve_spending", "reject") == 0
+    assert _cli(run, "decide", "approve_spending", "reject", "--said", "yes") == 0
     message = json.loads(capsys.readouterr().out)["message"]
     assert "AI video" in message and "voice" not in message and "live test" not in message

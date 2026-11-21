@@ -56,11 +56,11 @@ the run state; never write or patch its HTML.
 
 `tm next` gives `checkin.card` and the member `ids` still open. Show one card that covers them
 all (one question per member is fine inside the same card), then record **each member** with its
-own choice: `tm decide G1 <ad id>`, `tm decide G1a refresh --note hook`, `tm decide G1b accept
---note "<segment>"`. Use the card id itself (`tm decide pick_the_ad ...`) only when one choice
+own choice: `tm decide G1 <ad id> --said "<their words>"`, `tm decide G1a refresh --said "<their words>" --note hook`, `tm decide G1b accept --said "<their words>"
+--note "<segment>"`. Use the card id itself (`tm decide pick_the_ad ... --said "<their words>"`) only when one choice
 fits every member (`tm next` lists the card's `choices` when its members share them). In the
 spending card, a user who approves one budget and not another gets one decision per member:
-`tm decide G10 reject`, then `tm decide approve_spending approve` for the rest.
+`tm decide G10 reject --said "<their words>"`, then `tm decide approve_spending approve --said "<their words>"` for the rest.
 
 | Card | Members | What it shows |
 |---|---|---|

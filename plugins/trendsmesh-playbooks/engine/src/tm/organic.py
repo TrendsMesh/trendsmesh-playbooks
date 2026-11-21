@@ -26,7 +26,10 @@ Here, the stack check. The doctor (`tm doctor --playbook organic-video`) says wh
 connected; `tm organic stack` records what that means for this run in run.json `organic.stack`:
 
     {"replicate": ok|missing, "elevenlabs": ok|missing|no_credits|unchecked,
-     "artifacts": ok|missing, "browser": ok|missing, "at": <ISO time>}
+     "artifacts": ok|missing|denied, "browser": ok|missing, "at": <ISO time>}
+
+(`denied`: a page publish in this session was refused by Claude Code's permissions, issue #125; the pages are then
+local files, as with `missing`.)
 
 - A0 records it from the doctor's rows, with `--elevenlabs ok|missing` (the credits are not read yet,
   so a key that is set is `ok` there and the credits stay unchecked until D1).
@@ -54,7 +57,7 @@ from tm.stops import AGAIN, Stop
 
 STACK_VALUES = {"replicate": ("ok", "missing"),
                 "elevenlabs": ("ok", "missing", "no_credits", "unchecked"),
-                "artifacts": ("ok", "missing"),
+                "artifacts": ("ok", "missing", "denied"),
                 "browser": ("ok", "missing")}
 ELEVENLABS_ROUTES = ("elevenlabs_narrator", "elevenlabs_lipsync")  # the speech routes that need ElevenLabs
 ORGANIC_VIDEO_OUTPUT = "organic_video"   # the production run's output that makes an AI video
@@ -482,7 +485,7 @@ def _week_budget(args: argparse.Namespace, run: RunFolder) -> int:
     message = (f"The week's budget is now ${got['budget']:.2f} (“{args.note.strip()}”), in {where}; the week's "
                f"videos have planned, approved or spent ${got['committed']:.2f} so far. Every video's pack is capped "
                "by it once the user says yes to the week at it (a lower budget at once). Show the user the week at this budget and record their yes again (tm decide week approve "
-               f"--run {args.run} --change) before anything more starts; the week page shows the old budget until it "
+               f"--run {args.run} --change --said \"<their words>\") before anything more starts; the week page shows the old budget until it "
                "is built again (tm organic page week).")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
@@ -508,7 +511,7 @@ def _drop_slot(args: argparse.Namespace) -> int:
     got = organic_week.drop_slot(RunFolder.open(Path(args.run)), args.day, args.note)
     message = (f"Dropped {got['run']}, the {got['day']} run (“{args.note.strip()}”): it is ended, and what it spent "
                f"(${got['spent']:.2f}) still counts against the week. The day can be decided again on the week page; "
-               "a changed week needs the user's yes again (tm decide week approve --change) before it starts.")
+               "a changed week needs the user's yes again (tm decide week approve --change --said \"<their words>\") before it starts.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -866,7 +869,7 @@ def _pack(args: argparse.Namespace) -> int:
                    f"saved price file; its Markdown is {got['md']}. ")
         if got["replanned"]:
             message += (f"Show the user the pack and its cost and ask \"{name}\" (after an earlier yes: tm decide pack "
-                        "approve --change): nothing is generated or paid before their yes.")
+                        "approve --change --said \"<their words>\"): nothing is generated or paid before their yes.")
         else:
             message += "It makes the same items for no more than the plan the user said yes to: that yes still holds."
     message = _built(message, got)                  # the Markdown is in English when the table has no translation

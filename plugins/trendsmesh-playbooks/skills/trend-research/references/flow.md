@@ -240,7 +240,7 @@ own path (TR1).
    (V26: at least 25 % of the mapped trends are new, or a group is new), G1 is `changed_a_lot` in
    Hands-off, and the run stops there. **To clear it:** show the new map as the G1 card
    (`checkin-cards.md`); when the user says to go on (after any review changes they ask for and the
-   map rebuilt), record `tm decide G1 accept --change --run R --note "<their words, and what
+   map rebuilt), record `tm decide G1 accept --said "<their words>" --change --run R --note "<their words, and what
    changed>"`. `tm resume` does not clear it: only that decision does. Then `tm next`.
 3. **Rank the hooks by fit, from their cards** (no video is fetched for this). A hook is a structure
    that can carry almost any subject, so the question is which few fit this category best, not
@@ -516,8 +516,8 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   B3 or B4; a run made before those judgements keeps its word-matched lists and English event names.
 - `tm done E1 --run R`. G3 follows: on its own at Check every step (the local path and the views);
   at Just the big calls the card **"Approve the picks and the page"** is shown once, here, for G2
-  and G3 together, and each is recorded on its own: `tm decide G2 accept --run R`, then `tm
-  decide G3 publish --run R` or `tm decide G3 keep_local --run R` (their choices differ, so the
+  and G3 together, and each is recorded on its own: `tm decide G2 accept --said "<their words>" --run R`, then `tm
+  decide G3 publish --run R` or `tm decide G3 keep_local --said "<their words>" --run R` (their choices differ, so the
   card's own id is not used). Hands-off: G3 by rule, `keep_local` when neither `Artifact` nor
   `publish_files` is in the session, otherwise `publish`.
 

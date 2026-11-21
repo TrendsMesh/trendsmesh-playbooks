@@ -19,6 +19,8 @@
 #        `warn_note`, and it does not make the run not ready.
 # warn_note: the line the card shows for that warning (once, however many warnings share it);
 #        absent means the guess-mode notice (tm/evidence.py NOTICE_SHORT).
+# names_account: true on the row that says which Meta ad account was checked: with `tm doctor --meta-account`, its
+#        name ends in the account's currency and the number of accounts (issue #124; never a name or an id).
 # ok_states: for mcp checks, the MCP states that count as ok; absent means connected (ok,
 #        not_enabled, no_plan, free, inactive), so a plan check on the same MCP says the rest.
 # playbooks: the playbooks (data/playbooks.yaml ids) the check is for; absent means
@@ -193,6 +195,7 @@ checks:
     unchecked: "Not checked yet: I check it with one quick Meta Ads call, then look again."
   - id: meta_mcp_enabled_for_account
     name: Meta Ads enabled for your ad account
+    names_account: true
     playbooks: [01-refresh-ad, 02-creative-brief]
     outputs: []
     kind: plan
@@ -255,6 +258,8 @@ checks:
     mcp: artifacts
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
+    fix_by_state:
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
     warn: true
     warn_note: "Without shared page links the report is otherwise complete."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
@@ -266,6 +271,8 @@ checks:
     mcp: artifacts
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
+    fix_by_state:
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
     warn: true
     warn_note: "Without shared page links you get the page as a local file, and decisions are taken here in chat."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
@@ -321,6 +328,8 @@ checks:
     mcp: artifacts
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
+    fix_by_state:
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
     warn: true
     warn_note: "Without shared page links you get each page as a local file, and choices are taken here in chat."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
@@ -391,6 +400,7 @@ checks:
     unchecked: "Can't be checked until TrendsMesh is connected and signed in."
   - id: mcp_meta_create
     name: Meta Ads connected and signed in
+    names_account: true
     playbooks: [05-create-ad]
     outputs: []
     kind: mcp
@@ -411,6 +421,8 @@ checks:
     mcp: artifacts
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so each step is shown here in chat and saved as a file."}
+    fix_by_state:
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
     warn: true
     warn_note: "Without shared page links, each step is shown here in chat and decided here."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."

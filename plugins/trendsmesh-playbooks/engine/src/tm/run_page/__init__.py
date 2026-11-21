@@ -385,7 +385,8 @@ def _read_json(path: Path) -> dict | None:
 
 
 def _chat(checkin: str) -> str:
-    return f"Or ask in chat and record the answer with `tm decide {checkin} <choice>`. The run continues from the same place."
+    return (f"Or ask in chat and record the answer with `tm decide {checkin} <choice> --said \"<their words>\"`. The run "
+            "continues from the same place.")
 
 
 def decision(run: RunFolder, checkin: str) -> dict:

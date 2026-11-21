@@ -534,3 +534,75 @@ def test_an_orphaned_chrome_given_to_a_subreaper_is_found():
         "garbage line",
     ])
     assert sorted(render._orphaned_chrome(listing, {root}, 200)) == [400, 401]
+
+
+def _shell_version(text: str = "1") -> None:
+    shell = render.work_dir() / "node_modules" / ".remotion" / "chrome-headless-shell"
+    shell.mkdir(parents=True, exist_ok=True)
+    (shell / "VERSION").write_text(text)
+
+
+def test_probe_renders_the_probe_composition_and_caches_a_pass(light, monkeypatch):
+    """Issue #124: a 1 s Probe render, run through `_sh` like a real render. A pass is kept in `.probe-ok` for this
+    lock file and headless shell; a new lock file or shell version asks for the test render again."""
+    _, _, root = light
+    _shell_version("123.0")
+    seen = []
+
+    def fake(argv, **kw):
+        seen.append(argv[len(render._prefix()):])
+        Path(argv[-1] if argv[-1].endswith(".mp4") else next(a for a in argv if a.endswith("probe.mp4"))).write_bytes(b"x")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(render.subprocess, "run", fake)
+    assert not render.probe_ok()
+    render.probe()
+    argv = seen[-1]
+    assert argv[:5] == [render._node_tool("npx"), "remotion", "render", "src/index.ts", "Probe"]
+    assert Path(argv[5]) == (render.work_dir() / "probe" / "probe.mp4").resolve()
+    assert render.probe_ok()
+    _shell_version("124.0")
+    assert not render.probe_ok()
+    render.probe()
+    assert render.probe_ok()
+    (root / "remotion" / "package-lock.json").write_text('{"changed": 1}')
+    assert not render.probe_ok()
+
+
+def test_a_failed_probe_raises_with_the_tail_and_keeps_no_pass(light, monkeypatch):
+    _shell_version()
+    (render.work_dir() / render.PROBE_MARKER).write_text("stale")
+
+    def fake(argv, **kw):
+        return subprocess.CompletedProcess(argv, 1, "", "a\nb\nc\nd\nnpm error could not determine executable to run")
+
+    monkeypatch.setattr(render.subprocess, "run", fake)
+    with pytest.raises(common.ToolError) as err:
+        render.probe()
+    assert "could not determine executable to run" in str(err.value) and "a |" not in str(err.value)
+    assert "npx found no Remotion command in " in str(err.value) and ".bin" in str(err.value)
+    assert not (render.work_dir() / render.PROBE_MARKER).exists() and not render.probe_ok()
+
+
+def test_setup_force_runs_again_when_the_files_are_in_place(light, monkeypatch):
+    calls = []
+
+    def fake(argv, **kw):
+        calls.append(argv[len(render._prefix()):])
+        _shell_version()
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(render.subprocess, "run", fake)
+    render.setup()
+    render.setup()
+    assert len(calls) == 2
+    render.setup(force=True)
+    assert len(calls) == 4
+
+
+@pytest.mark.video
+def test_real_probe_renders_and_is_cached(real):
+    (render.work_dir() / render.PROBE_MARKER).unlink(missing_ok=True)
+    render.probe()
+    out = render.work_dir() / "probe" / "probe.mp4"
+    assert out.is_file() and out.stat().st_size > 100 and render.probe_ok()

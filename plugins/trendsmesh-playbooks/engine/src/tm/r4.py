@@ -381,7 +381,7 @@ def _run(args: argparse.Namespace) -> int:
     msg = (f"This test cannot collect enough results at this budget. {p.calculation} The run is "
            "stopped: nothing is approved or launched for the live test. Tell the user and ask which "
            "way to go: a higher daily budget (`--per-day`), more days (`--max-days`) or fewer "
-           "variants, then run `tm r4` again; or skip the live test (`tm decide G10 reject`). The "
+           "variants, then run `tm r4` again; or skip the live test (`tm decide G10 reject --said \"<their words>\"`). The "
            "run continues from the same place.")
     cli.emit(args, {"status": "stop", "file": f"04_final/{target.name}", "message": msg, **p.to_json()}, msg)
     return 2

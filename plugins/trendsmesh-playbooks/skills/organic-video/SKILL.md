@@ -67,13 +67,16 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
    or Paid, with what Paid adds to video ideas. Free only after the user's yes (`tm mode free`). State:
    `ok`, `free`, `no_agents`, `inactive` or `missing`, and the choice.
    **Artifacts**: `ok` when the `Artifact` tool (or the older `publish_files`) is among this
-   session's tools, else `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result. The Replicate token,
+   session's tools, else `missing` (no call; never ask the user to add it through `/mcp`), or `denied` once a publish in this session was refused by Claude Code's permissions. Never guess a result. The Replicate token,
    the ElevenLabs key and the browser are read by the doctor itself.
-2. At A0 of an idea run: `tm doctor --playbook organic-video --outputs proposals --mcp
-   trendsmesh=<s>,artifacts=<s> --json`. At D1 of a production run, the production run's own
-   output: `script_to_film` (the base tools alone) or `organic_video` (the video breakdown, video
+2. At A0 of an idea run: `tm doctor --playbook organic-video --outputs <one of proposals|weekly_plan> --mcp
+   trendsmesh=<s>,artifacts=<s> --json` (`weekly_plan` for a week run). At D1 of a production run, the production
+   run's own output, `--outputs <one of script_to_film|organic_video>`: `script_to_film` (the base tools alone) or
+   `organic_video` (the video breakdown, video
    editing, voice and AI video tools, installed after the user's yes with their size and time;
-   then the ElevenLabs credits, `tm tool elevenlabs credits --run R --json`, free). The first `tm`
+   then the ElevenLabs credits, `tm tool elevenlabs credits --run R --json`, free; with the video editing tools
+   installed, the first check after their install or an update makes a 1-second test render, about a minute: say
+   so). Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The first `tm`
    call on a computer installs the base tools (about 0.5 GB): say so, and give it the Bash tool's
    longest timeout (10 minutes).
 3. Show its `card` in plain words. **Without TrendsMesh and without the user's choice, organic
@@ -91,6 +94,11 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
 5. **Keys never appear in chat.** Never search for, read, print or ask for a key or token: not in
    part, not masked, not their length. The user sets them in `/plugin` → **Installed** →
    trendsmesh-playbooks → **Configure options**; the doctor says whether each is set.
+
+**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
+later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
+and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
+with `tm`, so an allow rule can match it.
 
 ## 2. Intake (A0), one batch of questions
 
@@ -129,7 +137,7 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
 | action | what you do |
 |---|---|
 | `work` | Read the step's section in `references/flow.md` (`ref`). Do the work. Record each file you write yourself with `tm record`. Then `tm done <step> --run R` (F1 and F2: their check-in first, as the message says; the step closes after the user's decision). |
-| `ask` | Show the check-in as a card (`references/checkin-cards.md`), restating every point in the message, wait for the answer, then record it with the command the message gives: `tm decide <id> <choice> --run R [--note ...]`. **A card whose check-ins share no answer** (at Just the big calls, "Approve the plan for this video": the style, voice and music, then the pack and its cost) is shown once and recorded with each check-in's own command, in the order the message gives (`tm decide taste accept`, then `tm decide pack approve`, then `tm budget approve` for each planned amount). A page decision is read first (section 5). |
+| `ask` | Show the check-in as a card (`references/checkin-cards.md`), restating every point in the message, wait for the answer, then record it with the command the message gives: `tm decide <id> <choice> --said "<their words>" --run R [--note ...]` (`--said`: the user's own words from the chat, verbatim, or `--said-file <path>` for long ones; `--note` is context). **A card whose check-ins share no answer** (at Just the big calls, "Approve the plan for this video": the style, voice and music, then the pack and its cost) is shown once and recorded with each check-in's own command, in the order the message gives (`tm decide taste accept --said "<their words>"`, then `tm decide pack approve --said "<their words>"`, then `tm budget approve` for each planned amount). A page decision is read first (section 5). |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do, and that the run continues from the same place. **Then wait.** |
 | `done` | Final report (section 4). |
@@ -178,7 +186,7 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   <its line cost>`, under the engine's guard: **a video is never regenerated without the user's
   request** (`tm organic redo`), an image at most once by rule, an unfinished take is resumed for
   free (`--resume`), never run again, and a failed prediction is recorded as $0. A pack re-planned
-  to a higher cost needs a new yes (`tm decide pack approve --change`). **A redo is paid for only
+  to a higher cost needs a new yes (`tm decide pack approve --said "<their words>" --change`). **A redo is paid for only
   once the pack prices it**: its own cost line in the next pack version, checked, the user's yes
   to the new total, then `tm budget approve` (`flow.md#e2`, "Paying for a redo").
 - **Done:** an idea run's report gives the proposals page's link (or its local `index.html`),
@@ -277,6 +285,7 @@ R3: every number has a source, and a hypothesis is never a finding.
 
 | Thought | Reality |
 |---|---|
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
 | "No trend fits" | Never "no trend found". Show the best fit there is, with its numbers, marked weak (an Inspire with its weak link, or a transfer as a hypothesis). |
 | "M5 is ready" | Never a bare code. Name the video by what it is: "the ChatGPT age-limit host video is ready". |
 | "I'll put the sources in the caption" | Sources go in the pack and the script's fact check only, never in any post text (OV11, OV14). `tm kit check` refuses them. |

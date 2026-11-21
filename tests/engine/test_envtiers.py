@@ -166,3 +166,38 @@ def test_env_status_cleans_old_versions_first(tmp_path, monkeypatch, capsys):
     assert main(["env", "status", "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert not old.exists() and out["removed_old_environments"] == 1
+
+
+def _video_install(monkeypatch, *, done_before: bool, probes: list):
+    """`tm env install video --yes` with pixi's install a pass and the Remotion steps recorded."""
+    from tm import render
+    from tm.tools import _common
+    steps = []
+    monkeypatch.setattr(envtiers.subprocess, "run", lambda *a, **k: _proc(0))
+    monkeypatch.setattr(render, "setup_done", lambda: done_before)
+    monkeypatch.setattr(render, "setup", lambda force=False: steps.append(("setup", force)))
+
+    def probe():
+        steps.append("probe")
+        if probes.pop(0):
+            raise _common.ToolError("Remotion test render failed: npm error could not determine executable to run")
+    monkeypatch.setattr(render, "probe", probe)
+    return steps
+
+
+def test_video_install_runs_the_probe_and_fails_when_it_fails(monkeypatch, capsys):
+    """Issue #124: the install tests a render; a failed one is exit 1 with the reason."""
+    steps = _video_install(monkeypatch, done_before=False, probes=[True])
+    assert envtiers.install("video", True) == 1
+    assert steps == [("setup", False), "probe"]
+    assert "test render failed" in capsys.readouterr().out
+    steps = _video_install(monkeypatch, done_before=False, probes=[False])
+    assert envtiers.install("video", True) == 0 and steps == [("setup", False), "probe"]
+
+
+def test_video_install_sets_up_again_when_files_in_place_do_not_render(monkeypatch):
+    """The files of an earlier setup are in place (its marker, the headless shell) but a render fails: the install
+    sets Remotion up again from scratch, then tests once more."""
+    steps = _video_install(monkeypatch, done_before=True, probes=[True, False])
+    assert envtiers.install("video", True) == 0
+    assert steps == [("setup", False), "probe", ("setup", True), "probe"]

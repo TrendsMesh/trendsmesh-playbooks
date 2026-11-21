@@ -417,7 +417,7 @@ the example). One file is the source of the page, the animatics and the hand-off
   quotation marks; paste those lines into your reply as they are, change no word, then say nothing
   was done with any note and nothing was sent. Then `tm brief choose --run R
   --concepts <ids> --source page` (only concepts approved on the page) or `--source chat` (the
-  user's word), then `tm decide G2 accept --run R --note "<what was chosen, and from where>"`.
+  user's word), then `tm decide G2 accept --said "<their words>" --run R --note "<what was chosen, and from where>"`.
   Changes asked for: after the user's yes, change only brief.json (a new version), then the steps
   above again (evidence, check, page, publish), wait again, ask again. In that second round the
   page shows each person's first-round choice until they save again: approvals `tm brief
@@ -478,7 +478,7 @@ CB11 (`references/animatic.md`).
   (`tm brief await --run R --stage G3 --version <published version>`, the card, the
   `ArtifactData` list, `tm
   brief decisions --run R --stage G3`, its `quote` pasted as it is, as at G2), then `tm decide G3
-  accept --run R --note "<…>"`. **The
+  accept --said "<their words>" --run R --note "<…>"`. **The
   page shows each person's G2 choice until they save again**: say so on the card, and treat the
   rows `tm brief decisions` marks as carried over as not yet looked at. Ask the user once ("These
   N approvals were carried over from the earlier review. Keep them?") before closing G3 on them.
@@ -534,7 +534,7 @@ CB13. One new brief version completes all three parts (the reference playbook's 
   `tm brief page --run R --single-file --json` writes `04_final/brief_pack_vNN.html` with the
   videos inlined. Make it on a yes, or at once when the user said they will send the page on.
 - Decisions are taken in chat: the card restates every point, and the answer is recorded with
-  `tm brief choose --run R --concepts <ids> --source chat`, then `tm decide G2 accept`. A team
+  `tm brief choose --run R --concepts <ids> --source chat`, then `tm decide G2 accept --said "<their words>"`. A team
   member's "Copy my decisions" text from the page, saved to a file in `03_wip/` with the Write
   tool, is read with `tm brief decisions --run R --stage G2 --text <file> --json`.
 - Say once, plainly, that this session can't publish claude.ai artifacts, so the page is a file

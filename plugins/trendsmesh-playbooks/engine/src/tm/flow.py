@@ -615,7 +615,7 @@ def approval_gap(s: state.RunState, kind: str, note: str | None, for_step: str |
         name = pic.cat.checkins[cid].name
         return (f"The user said no to this spending at \"{name}\" ({cid}), so no {kind} budget "
                 f"can be approved. If they change their mind, record it first with `tm decide "
-                f"{cid} approve --change`.")
+                f"{cid} approve --change --said \"<their words>\"`.")
     if any(_stop_kind(x) == kind for x in _open_stops(s)):
         return None
     cid = (open_ or cids)[0]
@@ -636,7 +636,7 @@ def approval_gap(s: state.RunState, kind: str, note: str | None, for_step: str |
                 "approve --run R ai_usd <total> --for VC --note \"<their words>\"` (`<total>`: the ai_usd "
                 f"already approved plus this amount). {cid} later approves the AI video's amount on top.")
     return (f"Ask \"{name}\" ({cid}) first and record the user's yes with `tm decide {cid} "
-            "approve`; then approve the amount they agreed to.")
+            "approve --said \"<their words>\"`; then approve the amount they agreed to.")
 
 
 def _caption_gap(s: state.RunState, pic: _Run, kind: str, note: str | None, for_step: str) -> str | None:
@@ -704,15 +704,15 @@ def _planned_approval_gap(s: state.RunState, kind: str, note: str | None) -> str
         what = "plan" if s.playbook == CREATE_AD else "pack"
         return (f"The {what} was checked again after the user's yes at \"{name(cid)}\" ({cid}), so "
                 f"that yes no longer counts. Show them the new cost and record it with `tm decide "
-                f"{cid} approve --change`.")
+                f"{cid} approve --change --said \"<their words>\"`.")
     if open_:
         cid = open_[0]
         return (f"Ask \"{name(cid)}\" ({cid}) first and record the user's yes with `tm decide "
-                f"{cid} approve`; then approve the amount they agreed to.")
+                f"{cid} approve --said \"<their words>\"`; then approve the amount they agreed to.")
     cid = said_no[0]
     return (f"The user said no to this spending at \"{name(cid)}\" ({cid}), so no {kind} budget "
             f"can be approved. If they change their mind, record it first with `tm decide "
-            f"{cid} approve --change`.")
+            f"{cid} approve --change --said \"<their words>\"`.")
 
 
 # --- stops --------------------------------------------------------------------
@@ -825,12 +825,13 @@ def _item_message(view: CheckinView, kind: str, stop: dict | None,
     each = _member_commands(cat, view.ids) if view.card else None
     if each:
         return (f"Show the check-in \"{view.name}\" to the user and record the answer for each "
-                f"check-in it covers, in order: {each} (each takes `--note ...`). No one answer "
+                f"check-in it covers, in order: {each} (each takes `--said \"<their words>\"`, and `--note ...` for "
+                f"context). No one answer "
                 f"fits them all, so the card {view.card} is not decided as one.")
     target = view.card or view.ids[0]
     covers = f" It covers {', '.join(view.ids)}." if view.card else ""
     return (f"Show the check-in \"{view.name}\" to the user and record the answer with "
-            f"`tm decide {target} <choice> [--note ...]`.{covers}{choices}")
+            f"`tm decide {target} <choice> --said \"<their words>\" [--note ...]`.{covers}{choices}")
 
 
 def _step_view(st: Step, action: Action, message: str, checkin: CheckinView | None = None) -> NextStep:
@@ -912,7 +913,7 @@ def _blocking_ask(run: RunFolder, s: state.RunState, res: changes.Resolution, to
     else:
         action = "ask"
         how = ("Show it to the user, recommend do_not_refresh, and record the answer with "
-               "`tm decide G1a do_not_refresh`.")
+               "`tm decide G1a do_not_refresh --said \"<their words>\"`.")
     message = (f"{res.message} {how} Any other answer is refused while this stands: a corrected "
                "`tm diagnose` or `tm material` is the way out." + again)
     return _step_view(owner, action, message, view)
@@ -972,7 +973,8 @@ def _first_how(run: _Run, view: CheckinView) -> str:
     if run.route(cid) == "rule":
         return (f"decide it by the rule \"{view.rule}\" and record it with `tm decide {cid} <choice> --by rule "
                 f"--note <the data behind it>`{choices}")
-    return f"show it to the user and record their answer with `tm decide {cid} <choice> [--note ...]`{choices}"
+    return (f"show it to the user and record their answer with `tm decide {cid} <choice> --said \"<their words>\" "
+            f"[--note ...]`{choices}")
 
 
 def _first_message(run: _Run, st: Step, view: CheckinView) -> str:
@@ -1266,10 +1268,12 @@ def recut_refusal(run: RunFolder, s: state.RunState) -> str | None:
 
 
 def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "rule"],
-           note: str | None, *, today: date | None = None, change: bool = False) -> None:
+           note: str | None, *, today: date | None = None, change: bool = False, said: str | None = None) -> None:
     """Record a decision. A card id records one entry per check-in it covers.
 
-    A decision by rule needs `note`: the data behind it. Deciding again needs `change`.
+    A decision by rule needs `note`: the data behind it. Deciding again needs `change`. `said`: the user's own
+    words, stored verbatim (`tm decide --said`, which the command line requires for a decision by the user, issue
+    #125; `note` is context).
     A choice may end the run (G1a do_not_refresh, accepted from G1a's own step even when its
     card comes later), stop it (E2b red), set the measurement dates (G11 activate, from
     `today`; keep_paused clears them), need another decision first (activate needs a green
@@ -1356,6 +1360,8 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
     for cid in ids:
         c = cat.checkins[cid]
         entry: dict = {"checkin": cid, "choice": choice, "by": by}
+        if said is not None:
+            entry["said"] = said
         if by == "rule":
             entry["rule"] = c.rule_for(s.evidence)
         if note:

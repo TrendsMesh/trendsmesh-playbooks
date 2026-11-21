@@ -40,9 +40,13 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    `inactive` or `missing`, and the choice.
    **Meta Ads:** `ads_get_ad_entities` for one ad on the user's ad account (ask for the ad
    account first if you don't know it): `ok`, `missing` (not connected or not signed in) or
-   `not_enabled` (Meta refuses this ad account).
-2. `tm doctor --outputs <chosen or all four> --mcp trendsmesh=<s>,meta=<s> [--mode free] [--voice]
-   [--caption-removal] [--fact elevenlabs_plan=cloning|no_cloning|unknown] --json`. The first
+   `not_enabled` (Meta refuses this ad account). From `ads_get_ad_accounts`: the checked account's currency
+   and the number of ad accounts, never a name or an id.
+2. `tm doctor --outputs <chosen, from creative_brief,edited_video,ai_video,live_test> --mcp trendsmesh=<s>,meta=<s>
+   --meta-account currency=<code>,accounts=<n> [--mode free] [--voice]
+   [--caption-removal] [--fact elevenlabs_plan=cloning|no_cloning|unknown] --json`. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. With the
+   video editing tools installed, the first check after their install or an update makes a 1-second test render
+   (about a minute): say so. The first
    `tm` call on a computer, and the first after a plugin update, installs the base tools first
    (about 0.5 GB; after an update mostly from the download cache): say so before it, and give it
    the Bash tool's longest timeout (10 minutes).
@@ -65,6 +69,11 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
 4. When the video tier is needed (edited or AI video), say once: Remotion is free for
    individuals and companies of up to 3 people; a company of 4 or more needs its own Remotion
    licence to render on its machines.
+
+**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
+later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
+and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
+with `tm`, so an allow rule can match it.
 
 ## 2. Intake (step A0), one batch of questions
 
@@ -117,7 +126,7 @@ new run only. Before you do, plan or describe a step's work, read its section in
 | action | what you do |
 |---|---|
 | `work` | Read the step's section in `references/flow.md` (`ref`). Do the work. Record every file you create yourself with `tm record` (tools record theirs; section 5). Then `tm done <step> --run R`. |
-| `ask` | Put the check-in on the run page and show it as a question card (`references/checkin-cards.md`, "The run page"), wait for the answer, then `tm decide <id> <choice> --run R [--note ...]` (a choice clicked on the page: `tm page decision --run R <id> --record`). |
+| `ask` | Put the check-in on the run page and show it as a question card (`references/checkin-cards.md`, "The run page"), wait for the answer, then `tm decide <id> <choice> --said "<their words>" --run R [--note ...]` (`--said`: the user's own words from the chat, verbatim, or `--said-file <path>` for long ones; `--note` is context) (a choice clicked on the page: `tm page decision --run R <id> --record`). |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do and that the run continues from the same place. **Then wait.** Do nothing else in the run until they say it is done. |
 | `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). When it offers the move of the winning ad, ask that one question; when the ad was moved, end the report with the user's part, step by step (`tm live-test move report`, `flow.md#e4`). |
@@ -151,7 +160,7 @@ new run only. Before you do, plan or describe a step's work, read its section in
   (the steps are linear; except a re-cut's CR5a and CR5b: section 5). Say so plainly and offer
   to set the budget (`tm budget approve`).
 - The user may change the level at any time: `tm level <every_step|big_calls|hands_off> --run R`.
-- To change a decision already taken: `tm decide <id> <choice> --change --run R`.
+- To change a decision already taken: `tm decide <id> <choice> --said "<their words>" --change --run R`.
 - A run spans days and sessions: everything lives in the run folder. On a new session,
   `tm next` picks up exactly where it was. `tm due --json` lists measurements that are due.
 
@@ -289,6 +298,7 @@ voice line is regenerated to length first, and checked against the original.
 
 | Thought | Reality |
 |---|---|
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
 | "The user is in a hurry, skip this step / check" | Steps and check-ins come from `tm`. Make the step quick; never skip it. Saturation is always the Meta Ad Library. |
 | "Any ad will do" | The ad comes from the R1 ranking. |
 | "The user remembers the number" | Use the number from the run's data with its source, or leave it out (R3). |

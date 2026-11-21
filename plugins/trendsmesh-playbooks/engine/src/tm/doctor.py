@@ -2,12 +2,14 @@
 
 The doctor cannot see MCP servers. Claude checks each MCP with one cheap
 call and passes the result in (`--mcp trendsmesh=ok,meta=not_enabled`); the ElevenLabs plan is a
-reported fact (`--fact elevenlabs_plan=cloning|no_cloning|unknown`). Anything not passed is
-"not checked yet", which counts as not ready. A check marked `warn` (TrendsMesh for refresh-ad;
+reported fact (`--fact elevenlabs_plan=cloning|no_cloning|unknown`). An MCP not passed is "not checked yet":
+Claude checks it itself a moment later, so the row is `pending` (⏳ "checking in a moment" on the card, `pending` in
+the JSON) and counts as ready (issue #124); exit 2 is only for a row that is really missing. A check marked `warn` (TrendsMesh for refresh-ad;
 TrendsMesh and the artifacts connector for creative brief; the Meta Ad Library and the artifacts
 connector for trend research; the keys, the artifacts connector and the browser for organic video)
 never makes the run not ready: the card shows it as a warning with
-its own note (a TrendsMesh row: `evidence.CHOOSE_NOTE`, the choice being the user's; else the row's `warn_note`). The ElevenLabs
+its own note (a TrendsMesh row while no mode is saved: `evidence.CHOOSE_NOTE`, the choice being the user's; else the
+row's `warn_note`). The ElevenLabs
 plan row is left out while the key is missing, since the key row already says what to do.
 
 Each check names the playbooks it is for (`playbooks`, refresh-ad when absent), and `--playbook`
@@ -34,6 +36,8 @@ from __future__ import annotations
 
 import argparse
 import ctypes.util
+import difflib
+import json
 import platform
 import re
 import shutil
@@ -54,12 +58,13 @@ from tm.playbooks import REFRESH_AD
 # gives), inactive (a suspended account), skipped (the user chose to go on without it).
 # no_agents: the sign-in page said the plan doesn't include agents (until free accounts can
 # connect), so nothing connected. artifacts: the session can publish claude.ai artifacts (the
-# built-in `Artifact` tool, or the older `publish_files`) or not.
-McpState = Literal["ok", "missing", "not_enabled", "no_plan", "free", "inactive", "skipped", "no_agents"]
-MCP_STATES = ("ok", "missing", "not_enabled", "no_plan", "free", "inactive", "skipped", "no_agents")
+# built-in `Artifact` tool, or the older `publish_files`) or not; denied: a publish in this session was refused by
+# Claude Code's permissions (issue #125, references/permissions.md), recorded once Claude saw the refusal.
+McpState = Literal["ok", "missing", "not_enabled", "no_plan", "free", "inactive", "skipped", "no_agents", "denied"]
+MCP_STATES = ("ok", "missing", "not_enabled", "no_plan", "free", "inactive", "skipped", "no_agents", "denied")
 MCP_STATES_OF = {"trendsmesh": ("ok", "missing", "no_plan", "free", "inactive", "skipped", "no_agents"),
                  "meta": ("ok", "missing", "not_enabled"),
-                 "artifacts": ("ok", "missing")}
+                 "artifacts": ("ok", "missing", "denied")}
 _CONNECTED = ("ok", "not_enabled", "no_plan", "free", "inactive")
 _NOT_SIGNED_IN = ("skipped", "no_agents")  # the user's no, or a plan that connects no agent
 FACT_VALUES = {"elevenlabs_plan": ("cloning", "no_cloning", "unknown")}
@@ -86,6 +91,7 @@ class Item:
     later: bool = False  # a warning that matters only at a later step, if the run gets there (the cloning plan)
     state: str = ""  # a key row: works, unusable (connected but unusable), missing, unchecked (#66)
     free: bool = False  # the TrendsMesh row of a run on Free, the user's choice (issue #106): shown, not a warning
+    pending: bool = False  # not checked yet, and Claude checks it itself in a moment (issue #124): not a blocker
 
 
 @dataclass(frozen=True)
@@ -232,19 +238,50 @@ def _for_playbook(playbook: str) -> list[dict]:
     return [e for e in _catalogue() if playbook in e.get("playbooks", [REFRESH_AD])]
 
 
+PROBE_FAILED = ("The video editing tools are installed but a test render failed: {tail}. I set them up again with "
+                "`tm env install video --yes` (after your yes).")
+PROBE_PASSED = " (a test render passed: a one-time check of about a minute)"
+
+
+def _video_probe() -> tuple[str, str]:
+    """The video tier's test render (`render.probe`, issue #124): ("cached", "") when one passed before for this lock
+    file and headless shell, ("passed", "") when it passed now (about a minute), ("failed", <what failed>)."""
+    from tm import render
+    from tm.tools import _common
+
+    if render.probe_ok():
+        return "cached", ""
+    try:
+        render.probe()
+    except (_common.ToolError, OSError, RuntimeError) as exc:
+        return "failed", str(exc)
+    return "passed", ""
+
+
 FREE_ROW = "TrendsMesh: Free mode, your choice (say \"connect TrendsMesh\" any time)"
 _FREE_GENERAL = ("Free mode: I guess trends from what I can see, each labelled a guess. TrendsMesh would show which "
                  "hooks, topics, sounds and formats are repeating across creators right now, and how early.")
 
 
+def account_words(meta_account: dict | None) -> str:
+    """The Meta account the check read, as its currency and the number of accounts (issue #124): never a name or an
+    id, which `--meta-account` cannot carry."""
+    if not meta_account:
+        return ""
+    n, currency = meta_account["accounts"], meta_account["currency"]
+    return f"{currency}; your only ad account" if n == 1 else f"{currency}; 1 of {n} accounts checked"
+
+
 def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
           caption_removal: bool = False, facts: dict[str, str] | None = None,
-          playbook: str = REFRESH_AD, production: str | None = None, mode: str | None = None) -> Readiness:
+          playbook: str = REFRESH_AD, production: str | None = None, mode: str | None = None,
+          meta_account: dict | None = None) -> Readiness:
     """`playbook` is its id or skill name, or GENERAL for the general check. `production`: organic video's
     production type for a production run (an animation needs the animatic tools, and no breakdown or AI video
     tools). `mode`: the user's choice, free or paid (None: not chosen). On Free, in a playbook that has it, the
     TrendsMesh rows are one line, "Free mode, your choice", and TrendsMesh is not checked (issue #106); not
-    chosen or Paid, a TrendsMesh warning says the choice is the user's (`evidence.CHOOSE_NOTE`)."""
+    chosen, a TrendsMesh row that is not ok says the choice is the user's (`evidence.CHOOSE_NOTE`); on Paid it keeps
+    its own note and step (issue #124)."""
     facts = facts or {}
     outputs = set(outputs)
     pb = GENERAL if playbook == GENERAL else playbooks.get(playbook).id
@@ -268,10 +305,17 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
                 free_shown = True
             continue
         ok, unchecked, size, vars, key_state, key_fix = False, False, 0, {}, "", ""
+        probe_fix = ""
         if kind == "env_tier":
             t = envtiers.TIERS[e["tier"]]
             ok, size = present[e["tier"]], t.approx_mb
             vars = {"tier": e["tier"], "size": _size(t.approx_mb), "minutes": _minutes(t.approx_mb)}
+            if ok and e["tier"] == "video":   # the files are in place: does a render work? (issue #124)
+                result, tail = _video_probe()
+                if result == "failed":
+                    ok, fixer, probe_fix = False, "agent", PROBE_FAILED.format(tail=tail.rstrip("."))
+                elif result == "passed":
+                    name += PROBE_PASSED
         elif kind == "secret" and e.get("check"):
             provider = e["check"]
             if provider not in checked:
@@ -319,51 +363,58 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
             if value == "unknown" and e["fact"] == "elevenlabs_plan" and said and said.cloning is not None:
                 value = "cloning" if said.cloning else "no_cloning"   # the key check's own answer (#66)
             ok, unchecked = value == "cloning", value not in ("cloning", "no_cloning")
+        if e.get("names_account") and meta_account:
+            name = f"{name} ({account_words(meta_account)})"
         by_state = (e.get("fix_by_state") or {}).get(mcp.get(e.get("mcp", ""))) if "mcp" in e else None
-        fix = "" if ok else (e["unchecked"] if unchecked else by_state or key_fix or _fix_text(e, **vars))
+        fix = "" if ok else (e["unchecked"] if unchecked else by_state or key_fix or probe_fix or _fix_text(e, **vars))
         fact = kind == "plan" and "mcp" not in e
         later = fact and not ok and bool(e.get("unknown_warns") if unchecked else e.get("short_warns"))
         warn = bool(e.get("warn")) or later
         note = e.get("short_note") if later and not unchecked else e.get("warn_note") or ""
-        if e.get("mcp") == "trendsmesh":
-            note = evidence.CHOOSE_NOTE   # not chosen yet, or Paid and not ready: never a guess notice
-        items.append(Item(id_, name, ok, "agent" if unchecked and "mcp" in e else fixer, fix, size if not ok else 0,
-                          unchecked, warn, note if warn else "", later, key_state))
-    return Readiness(items, all(i.ok or i.warn for i in items))
+        if e.get("mcp") == "trendsmesh" and mode is None and not ok:
+            note = evidence.CHOOSE_NOTE   # not chosen yet: the choice is the user's (on Paid, the row's own note)
+        who = "agent" if unchecked and "mcp" in e else fixer
+        items.append(Item(id_, name, ok, who, fix, size if not ok else 0, unchecked, warn, note if warn else "",
+                          later, key_state, pending=not ok and unchecked and who == "agent"))
+    return Readiness(items, all(i.ok or i.warn or i.pending for i in items))
 
 
 def card(r: Readiness, *, general: bool = False) -> str:
     """The readiness card. `general`: the general check's card (no playbook chosen), which speaks of the plugin, not
     of a run, and ends with how to check one playbook."""
-    # A warning Claude has not checked yet stays on Claude's list: it is checked, not skipped. One
-    # the user would check (the cloning plan) is checked later, when it matters: a warning.
-    warned = [i for i in r.items if not i.ok and i.warn and not (i.unchecked and i.fixer == "agent")]
-    bad = [i for i in r.items if not i.ok and i not in warned]
+    # A row Claude has not checked yet is pending: Claude checks it in a moment, nothing for the user to do (issue
+    # #124). One the user would check (the cloning plan) is checked later, when it matters: a warning.
+    pending = [i for i in r.items if i.pending]
+    warned = [i for i in r.items if not i.ok and i.warn and not i.pending]
+    bad = [i for i in r.items if not i.ok and i not in warned and not i.pending]
     if general:
         head = i18n.t("doctor.general.ready" if r.ready else "doctor.general.not_ready")
-    elif r.ready and not any(i.warn and not i.ok for i in r.items):
+    elif r.ready and not warned:
         head = "**Ready to go.** Everything this run needs is in place."
     elif r.ready and all(i.later and i.unchecked for i in warned):  # checked later, if needed
         head = "**Ready to go.** You can start now. One thing is checked later, only if the run needs it."
-    elif r.ready and warned and all(i.later for i in warned):  # known now, matters only at a later step
+    elif r.ready and all(i.later for i in warned):  # known now, matters only at a later step
         head = "**Ready to go.** You can start now. One thing matters later, only if the run needs it."
     elif r.ready:
         things = "One thing" if len(warned) < 2 else "A few things"
         head = f"**Ready to go.** You can start now. {things} would make the results better."
     else:
         head = "**Not ready yet.** Here is what is in place and what is not."
+    if pending and r.ready and not general:
+        still = f"I'm still checking {_and([i.name for i in pending])}."
+        head = (f"**Ready to go.** {still}" if not warned
+                else head.replace("**Ready to go.**", f"**Ready to go.** {still}", 1))
     lines = [head, ""]
     lines += [f"- ✅ {i.name}" for i in r.items if i.ok and not i.free]
     lines += [f"- ℹ️ {i.name}. {i.note}" for i in r.items if i.free]
+    lines += [f"- ⏳ {i.name}: checking in a moment" for i in pending]
     lines += [f"- ⚠️ {i.name}" for i in warned]
-    for i in bad:
-        lines.append(f"- ❌ {i.name}" + (" (not checked yet)" if i.unchecked else ""))
+    lines += [f"- ❌ {i.name}" for i in bad]
     if warned:
         lines += ["", "**You can go on without these:**"]
         lines += [f"- {i.fix}" for i in warned]
-        lines += [f"- {note}" for note in dict.fromkeys(i.note for i in warned)]
-    todo = [i for i in bad if i.unchecked and i.fixer == "agent"]
-    agent = [i for i in bad if i.fixer == "agent" and not i.unchecked]
+        lines += [f"- {note}" for note in dict.fromkeys(i.note for i in warned) if note]
+    agent = [i for i in bad if i.fixer == "agent"]
     user = [i for i in bad if i.fixer == "user"]
     if agent:
         lines += ["", "**I can fix these for you, once you say yes:**"]
@@ -371,9 +422,6 @@ def card(r: Readiness, *, general: bool = False) -> str:
         total = sum(i.size_mb for i in agent)
         if total:
             lines.append(f"- Together: about {_size(total)}, about {_minutes(total)} min.")
-    if todo:
-        lines += ["", "**I still need to check these (nothing for you to do):**"]
-        lines += [f"- {i.fix}" for i in todo]
     if user:
         lines += ["", "**You need to do these yourself:**"]
         lines += [f"{n}. {i.fix}" for n, i in enumerate(user, 1)]
@@ -384,6 +432,10 @@ def card(r: Readiness, *, general: bool = False) -> str:
         names = ", ".join(pb.name for pb in playbooks.all_playbooks() if playbooks.bundled(pb))
         lines += ["", i18n.t("doctor.general.one_playbook", playbooks=names)]
     return "\n".join(lines)
+
+
+def _and(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
 
 
 def system_name() -> str:
@@ -417,15 +469,35 @@ def scrub(text: str) -> str:
     return re.sub(r"\br8_[A-Za-z0-9]{8,}", "[hidden]", text)
 
 
-def support_report(r: Readiness, log_tail: str) -> Path:
-    rows = [f"| {i.id} | {'ok' if i.ok else ('not checked' if i.unchecked else 'missing')} | {i.fixer} | {i.fix} |"
-            for i in r.items]
+REPORT_NAME = "trendsmesh-support.md"   # one file, overwritten by each report (issue #124)
+
+
+def plugin_version() -> str:
+    """The plugin's version from its manifest (`.claude-plugin/plugin.json`), or "(version unknown)"."""
+    try:
+        version = json.loads((paths.plugin_root() / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+    except (OSError, RuntimeError, ValueError, KeyError, TypeError):
+        return "(version unknown)"
+    return str(version)
+
+
+def support_report(r: Readiness, log_tail: str, *, meta_account: dict | None = None) -> Path:
+    """The support report, `<workspace>/trendsmesh-support.md`: written again by each report, so it is always the
+    current one. A row that names the Meta account says which one was checked, as `account_words`."""
+    words = account_words(meta_account)
+
+    def check_name(i: Item) -> str:
+        return f"{i.id} ({words})" if words and i.name.endswith(f"({words})") else i.id
+    rows = [f"| {check_name(i)} | {'ok' if i.ok else ('not checked' if i.unchecked else 'missing')} | {i.fixer} | "
+            f"{i.fix} |" for i in r.items]
     body = "\n".join([
         "# TrendsMesh playbooks: support report", "",
         f"- Date: {date.today().isoformat()}",
         f"- System: {system_name()}",
         f"- Python: {sys.version.split()[0]}",
+        f"- Plugin: trendsmesh-playbooks {plugin_version()}",
         f"- tm engine: {__version__}",
+        *([f"- Meta ad account: {words}"] if words else []),
         f"- Ready: {'yes' if r.ready else 'no'}", "",
         "## Checks", "", "| Check | Result | Who fixes | Next step |", "|---|---|---|---|", *rows, "",
         "## Log of the last failed step", "", "```", log_tail.rstrip(), "```", "",
@@ -433,16 +505,36 @@ def support_report(r: Readiness, log_tail: str) -> Path:
     ])
     ws = paths.workspace()
     ws.mkdir(parents=True, exist_ok=True)
-    stem = f"trendsmesh-support-{date.today().isoformat()}"
-    n = 1
-    while True:
-        target = ws / (f"{stem}.md" if n == 1 else f"{stem}_{n}.md")
-        try:
-            with open(target, "x", encoding="utf-8") as fh:
-                fh.write(scrub(body))
-            return target
-        except FileExistsError:
-            n += 1
+    target = ws / REPORT_NAME
+    target.write_text(scrub(body), encoding="utf-8")
+    return target
+
+
+_ACCOUNT_HELP = "currency=<ISO 4217 code>,accounts=<n>"
+
+
+def _meta_account(text: str | None) -> dict | None:
+    """`--meta-account currency=EUR,accounts=2`: the checked account's currency and how many accounts the user has.
+    Nothing else is taken, so no account name or id reaches the card or the report."""
+    if text is None:
+        return None
+    pairs = dict(part.partition("=")[::2] for part in text.split(",") if part.strip())
+    pairs = {k.strip(): v.strip() for k, v in pairs.items()}
+    currency, accounts = pairs.get("currency", "").upper(), pairs.get("accounts", "")
+    if set(pairs) != {"currency", "accounts"} or not re.fullmatch(r"[A-Z]{3}", currency) \
+            or not accounts.isdigit() or int(accounts) < 1:
+        raise ValueError(f"Could not read --meta-account '{text}': give {_ACCOUNT_HELP} (the currency of the ad "
+                         "account checked and the number of ad accounts), never an account name or id.")
+    return {"currency": currency, "accounts": int(accounts)}
+
+
+def _closest(given: str, known: list[str]) -> str | None:
+    """The output id a wrong name most likely meant (issue #124): one that contains it, else the closest spelling."""
+    within = [k for k in known if given.lower() in k]
+    if within:
+        return within[0]
+    close = difflib.get_close_matches(given.lower(), known, n=1, cutoff=0.5)
+    return close[0] if close else None
 
 
 def _pairs(text: str | None, allowed: dict[str, tuple[str, ...]] | None, what: str) -> dict[str, str]:
@@ -474,8 +566,11 @@ def _setup(p: argparse.ArgumentParser) -> None:
                                         "plugin.production): an animation asks for the animatic tools, not the video "
                                         "breakdown or AI video tools")
     p.add_argument("--mcp", help="trendsmesh=<ok|free|inactive|skipped|no_agents|missing|no_plan>,"
-                                 "meta=<ok|not_enabled|missing>,artifacts=<ok|missing>")
+                                 "meta=<ok|not_enabled|missing>,artifacts=<ok|missing|denied>")
     p.add_argument("--fact", help="elevenlabs_plan=cloning|no_cloning|unknown")
+    p.add_argument("--meta-account", metavar="SPEC",
+                   help=f"{_ACCOUNT_HELP}: the Meta ad account checked, from ads_get_ad_accounts: its currency and "
+                        "the number of ad accounts (never a name or an id); shown on the card and in the report")
     p.add_argument("--mode", choices=offer.MODES, help="the user's choice, Free or Paid (default: the workspace's, "
                                                        "`tm mode status`; a run's own choice is passed here)")
     p.add_argument("--report", action="store_true", help="also write the support report")
@@ -502,13 +597,19 @@ def _run(args: argparse.Namespace) -> int:
         outputs = {o.strip() for o in args.outputs.split(",") if o.strip()}
         bad = outputs - set(known)
         if not outputs or bad:
-            return cli.fail(args, f"Unknown output {', '.join(sorted(bad)) or '(none given)'}. Choose from: {', '.join(known)}.")
+            hints = [h for b in sorted(bad) if (h := _closest(b, known))]
+            hint = f" Did you mean {', '.join(dict.fromkeys(hints))}?" if hints else ""
+            return cli.fail(args, f"Unknown output {', '.join(sorted(bad)) or '(none given)'}.{hint} "
+                                  f"Choose from: {', '.join(known)}.")
     try:
         mcp = _pairs(args.mcp, MCP_STATES_OF, "mcp")
         if general and set(mcp) - {"trendsmesh"}:
             raise ValueError("The general check takes TrendsMesh only (--mcp trendsmesh=<state>): each playbook's own "
                              "check looks at Meta Ads and shared page links.")
         facts = _pairs(args.fact, FACT_VALUES, "fact")
+        meta_account = _meta_account(args.meta_account)
+        if general and meta_account:
+            raise ValueError("The general check never looks at Meta Ads: give --meta-account to a playbook's check.")
         production = args.production
         if production is not None:
             from tm import organic_proposals   # it imports the doctor's neighbours: imported where it is used
@@ -519,7 +620,7 @@ def _run(args: argparse.Namespace) -> int:
         envtiers.clean_stale()  # free the disk an earlier plugin version's tiers still hold
         mode = args.mode or offer.mode_status(paths.workspace())["mode"]
         r = check(outputs, args.voice, mcp, caption_removal=args.caption_removal, facts=facts,
-                  playbook=playbook, production=production, mode=mode)
+                  playbook=playbook, production=production, mode=mode, meta_account=meta_account)
     except (ValueError, RuntimeError) as exc:
         return cli.fail(args, str(exc))
     report = None
@@ -530,16 +631,17 @@ def _run(args: argparse.Namespace) -> int:
                 tail = "\n".join(Path(args.log_file).read_text(encoding="utf-8", errors="replace").splitlines()[-60:])
             except OSError:
                 tail = "(the log could not be read)"
-        report = support_report(r, tail)
+        report = support_report(r, tail, meta_account=meta_account)
     shown = card(r, general=general)
     text = shown + (f"\n\nSupport report written to: {report}\n{i18n.t('doctor.report.send')}" if report else "")
     payload = {"status": "ready" if r.ready else "stop", "ready": r.ready,
                "playbook": None if general else playbook, "mode": mode,
                "items": [asdict(i) for i in r.items], "card": shown,
-               "warnings": [i.id for i in r.items if i.warn and not i.ok],
+               "warnings": [i.id for i in r.items if i.warn and not i.ok and not i.pending],
+               "pending": [i.id for i in r.items if i.pending], "meta_account": meta_account,
                "report": str(report) if report else None}
     cli.emit(args, payload, text)
-    return 0 if r.ready else 2
+    return 0 if r.ready else 2   # ready allows pending rows; 2 only for a row that is really missing
 
 
 cli.register("doctor", _setup, _run)

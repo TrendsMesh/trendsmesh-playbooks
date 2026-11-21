@@ -18,6 +18,10 @@ yourself, never work around a refusal.
 JSON. The report itself is always in **English**, whatever language the user writes in: say so
 when you show it.
 
+**Refused by Claude Code's permissions:** a `tm report` step refused by Claude Code (auto mode or a deny rule) is
+a stop, never a reworded retry: tell the user which step and the reason it gave, and the allow rule to add (the
+plugin's `references/permissions.md`).
+
 **Suggesting it:** after a failed run, or when the user is unhappy with the plugin, you may offer
 to report it, **once a session** at most. Never file anything on your own.
 

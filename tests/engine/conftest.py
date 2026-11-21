@@ -166,6 +166,17 @@ def _free_was_chosen(request, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _no_real_probe(request, monkeypatch):
+    """The doctor tests a Remotion render when the video tools are installed (`doctor._video_probe`, issue #124):
+    outside the `video` tests it answers "passed before" without running anything. A test of the probe patches it
+    again."""
+    if request.node.get_closest_marker("video"):
+        return
+    from tm import doctor
+    monkeypatch.setattr(doctor, "_video_probe", lambda: ("cached", ""))
+
+
+@pytest.fixture(autouse=True)
 def _no_real_ocr(monkeypatch):
     """`tm tool teardown` asks pixi whether the optional ocr tier is installed (`_ocr.reader`, issue 57): in the
     tests it is not, whatever this computer has. A test of the OCR route patches `_ocr.reader` again."""

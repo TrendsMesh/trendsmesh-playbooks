@@ -266,3 +266,10 @@ def test_organic_dispatcher_exits_2_on_a_stop(run, capsys, monkeypatch):
     monkeypatch.setattr(organic, "record_stack", stopped)
     code, out = _stack(capsys, run)
     assert code == 2 and out == {"status": "stop", "message": "Fetch the channel profile first."}
+
+
+def test_the_stack_records_a_refused_publish_as_denied(run, capsys):
+    """Issue #125: a publish Claude Code's permissions refused is recorded as `denied`; like `missing`, the pages are
+    then local files."""
+    code, out = _stack(capsys, run, artifacts="denied")
+    assert code == 0 and organic.stack_of(run)["artifacts"] == "denied" and organic.stack_gap(run) is None
