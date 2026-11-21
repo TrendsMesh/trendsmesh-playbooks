@@ -351,7 +351,8 @@ own path (TR1).
    (fetch them), hooks saved after the fit scores (score them in a new version, `hook-fit` again),
    or Ad Library checks that no longer cover the shortlist (check the new ones, `hook-ads` again).
 9. Prepare the G1 card (`checkin-cards.md`): the sub-categories with counts, what was kept and
-   dropped and why, the weak matches, the shortlisted hooks in two lists (used in the category, with
+   dropped and why, how many trends and hooks the engine set aside (any comes back on request), the
+   weak matches, the shortlisted hooks in two lists (used in the category, with
    "used in your category: N of the M captions read" and your line on why, and transfers), each
    with its fit and its Ad Library verdict.
    `tm done B4 --run R`. The report shows the same two lists under "Hooks for <category>".
