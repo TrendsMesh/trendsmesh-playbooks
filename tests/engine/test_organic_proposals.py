@@ -228,18 +228,25 @@ def test_stack_message_says_the_types_are_hidden_for_an_ai_video(tmp_path, capsy
     assert "Hidden for an AI video: ai_footage, talking_character; a script to film may use any type." in out["message"]
 
 
-def test_used_trend_refused_unless_series(tmp_path):
+def test_used_trend_needs_a_new_angle_and_a_rising_trend_unless_series(tmp_path):
+    """Issue #142: one idea per batch may build on a used trend, with a new angle, while it still rises; Tung Tung
+    Tung Sahur's card names no momentum, so it is no longer rising."""
     run = _idea_run(tmp_path)
     workspace = run.path.parents[2]
     full = exampleedu.full_ids()["c20bfd65"]
     organic_research.record_used(workspace, "ExampleEdu", [{"trend_id": full, "name": "Tung Tung Tung Sahur",
                                                           "kind": "topic_trend", "run": "2026-11-01_exampleedu-m2",
-                                                          "video": "m2"}])
+                                                          "video": "m2", "final": "04_final/m2_final_v01.mp4"}])
     found = _problems(run, exampleedu.proposals())
-    assert _fields(found) == ["m1.plugin.series"] and "2026-11-01_exampleedu-m2" in found[0].what
+    assert _fields(found) == ["m1.plugin.new_angle", "m1.trends"] and "2026-11-01_exampleedu-m2" in found[0].what
+    assert "no longer rising" in found[1].what
     data = exampleedu.proposals()
     data["proposals"][0]["plugin"]["series"] = "Co daje gra"
     assert _problems(run, data) == []
+    organic_research.record_used(workspace, "ExampleEdu", [{"trend_id": full, "name": "Tung Tung Tung Sahur",
+                                                          "kind": "topic_trend", "run": "2026-11-02_exampleedu-m3",
+                                                          "video": "m3"}])   # a start never delivered: not a use
+    assert len(organic_research.used(workspace, "exampleedu")) == 1
 
 
 def test_percentage_in_risk_refused(tmp_path):
@@ -343,9 +350,13 @@ def test_start_makes_one_run_per_produced_idea(tmp_path, capsys, monkeypatch):
     m5 = json.loads((made[1] / "00_raw" / "proposal.json").read_text(encoding="utf-8"))
     assert m5["trend_ids"] == [full["7d60086a"], full["3abc109a"]] and m5["product_level"] == "not shown"
 
+    assert organic_research.used(workspace, "exampleedu") == {}        # counted once a video or script is delivered
+    assert [r["trend_id"] for r in m5["used"]] == [full["7d60086a"], full["3abc109a"]]
+    assert organic_research.record_delivered(RunFolder.open(made[1]), "04_final/m5_script_pl_v01") == 2
     used = organic_research.used(workspace, "exampleedu")
-    assert set(used) == {full["0112ede8"], full["c20bfd65"], full["7d60086a"], full["3abc109a"]}
+    assert set(used) == {full["7d60086a"], full["3abc109a"]}
     assert used[full["7d60086a"]]["run"] == made[1].name and used[full["7d60086a"]]["kind"] == "hook_trend"
+    assert used[full["7d60086a"]]["production"] == "talking_character"
     history = organic_research.history(workspace, "exampleedu")
     assert history["decisions"] == 2       # M2-M4 and M6 are undecided: no decision is recorded
     assert history["by_production"] == {"animation": {"produce": 1, "later": 0, "skip": 0, "redo": 0},
@@ -554,23 +565,24 @@ def test_card_without_kind_stops_before_any_run(tmp_path, capsys):
 
 
 def _failing_record_used(monkeypatch):
+    """The start's last write fails after the folder is made (the used trends are recorded at delivery now)."""
     def fail(*args, **kwargs):
         raise OSError("disk full")
-    monkeypatch.setattr(organic_research, "record_used", fail)
+    monkeypatch.setattr(organic_proposals, "_save_started", fail)
 
 
 def test_failed_start_removes_its_run_and_never_duplicates(tmp_path, capsys, monkeypatch):
     run = _idea_run(tmp_path)
     _checked(run, capsys)
     _decided(run, {"m1": _doc()})
-    real = organic_research.record_used
+    real = organic_proposals._save_started
     _failing_record_used(monkeypatch)                                   # fails after the folder is made
     code, out = _start(capsys, run)
     assert code == 1 and "disk full" in out["message"]
     assert "runs/03-organic-ai-video/2026-11-07_exampleedu-m1 was not kept" in out["message"]
     assert _production_runs(run) == [] and not state.load(run).organic.get("started")
     assert organic_research.used(run.path.parents[2], "exampleedu") == {}
-    monkeypatch.setattr(organic_research, "record_used", real)
+    monkeypatch.setattr(organic_proposals, "_save_started", real)
     code, out = _start(capsys, run)                                     # the same day: it starts now
     assert code == 0 and [x["run"] for x in out["started"]] == ["2026-11-07_exampleedu-m1"]
     _next_day(monkeypatch)
@@ -583,7 +595,7 @@ def test_failed_cleanup_says_so_and_blocks_a_duplicate(tmp_path, capsys, monkeyp
     run = _idea_run(tmp_path)
     _checked(run, capsys)
     _decided(run, {"m1": _doc()})
-    real_used, real_rmtree = organic_research.record_used, organic_proposals.shutil.rmtree
+    real_used, real_rmtree = organic_proposals._save_started, organic_proposals.shutil.rmtree
     _failing_record_used(monkeypatch)
 
     def held(path, *args, **kwargs):
@@ -593,7 +605,7 @@ def test_failed_cleanup_says_so_and_blocks_a_duplicate(tmp_path, capsys, monkeyp
     assert code == 1 and "could not be removed" in out["message"] and "a file is held open" in out["message"]
     assert "runs/03-organic-ai-video/2026-11-07_exampleedu-m1" in out["message"] and "\\" not in out["message"]
     assert len(_production_runs(run)) == 1 and not state.load(run).organic.get("started")
-    monkeypatch.setattr(organic_research, "record_used", real_used)
+    monkeypatch.setattr(organic_proposals, "_save_started", real_used)
     monkeypatch.setattr(organic_proposals.shutil, "rmtree", real_rmtree)
     _next_day(monkeypatch)
     code, out = _start(capsys, run)                                     # the folder left behind is found
@@ -616,8 +628,11 @@ def test_rewritten_idea_is_new(tmp_path, capsys):
     code, out = _start(capsys, run)
     assert code == 2 and "already started" in out["message"]
     data["proposals"][0]["title"] = "Co daje dziecku nowa gra w Roblox"   # another idea, the same id
+    assert _problems(run, data) == []                                   # started, not delivered: not used yet
+    made = RunFolder.open(_production_runs(run)[0])
+    assert organic_research.record_delivered(made, "04_final/m1_script_pl_v01") == 2
     found = _problems(run, data)                                        # its trends are used now: by another idea
-    assert _fields(found) == ["m1.plugin.series", "m1.plugin.series"]
+    assert _fields(found) == ["m1.plugin.new_angle", "m1.trends", "m1.trends"]   # and neither rises now
     data["proposals"][0]["plugin"]["series"] = "Co daje gra"
     _checked(run, capsys, data)
     _decided(run, {"m1": _doc()})

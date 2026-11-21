@@ -738,6 +738,17 @@ def apply_fit(scored: dict, fit: dict | None) -> None:
                                             -r["score"], -(r["creators"] or 0), -(r["views"] or 0)))
 
 
+def mark_used(scored: dict, used: dict[str, dict]) -> None:
+    """Organic video (issue #142): a trend the channel already made a video or script from stays in its list, marked
+    `used: {run, date, production_type}` (`organic_research.used`'s row), so C1 may build one idea on it with a new
+    angle."""
+    for key in LISTS:
+        for r in scored.get(key) or []:
+            row = used.get(r.get("id"))
+            if row:
+                r["used"] = {"run": row.get("run"), "date": row.get("used"), "production_type": row.get("production")}
+
+
 AD_LICENCE_FLAGS = ("organic only: in ads use a licensed equivalent (CB9)", "licence unknown: treat as organic only (CB9)")
 
 
@@ -937,7 +948,7 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
               today: date | None = None, top: int = 10, min_topics: int = 3,
               sounds_commercial_only: bool = False, anchors: list[str] = (), sound_fit: bool = False,
               recent_days: int | None = None, organic: bool = False, fit: dict | None = None,
-              fit_file: str | None = None, split: dict | None = None) -> dict:
+              fit_file: str | None = None, split: dict | None = None, used: dict[str, dict] | None = None) -> dict:
     """Score `inputs` and write 03_wip/trend_shortlist_vNN.json and .md (the same NN, never over an
     earlier one). Returns the counts, the two files (run-relative) and the files skipped.
 
@@ -970,6 +981,7 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
     if organic:
         organic_words(scored)
         apply_fit(scored, fit)
+        mark_used(scored, used or {})
         notes = {"formats": i18n.t("trends.shortlist.formats_note"), "sounds": i18n.t("trends.shortlist.sounds_note"),
                  **({"hooks": i18n.t("trends.shortlist.hooks_by_fit")} if fit else {})}
     meta = {"today": today.isoformat(), "market_language": market, "terms": terms,
@@ -1104,15 +1116,16 @@ def run_shortlist(args: argparse.Namespace) -> int:
                                  "channel); Trend research ranks its hooks with tm research hook-fit.")
             path = run.given(args.fit)
             fit, fit_file = json.loads(path.read_text(encoding="utf-8-sig")), _shown(run, path)
-        split = None
+        split, used = None, {}
         if organic:
             from tm import organic_research        # it imports this module
             split = organic_research.channel_split(run)
+            used = organic_research.channel_used(run)
         out = write(run, inputs, terms, exclude=_terms(args.exclude_terms), market=market,
                         today=today, top=args.top, min_topics=args.min_topics,
                         sounds_commercial_only=args.sounds_commercial_only, anchors=_terms(args.anchor_terms),
                         sound_fit=args.sound_relevance, recent_days=args.recent_days, organic=organic,
-                        fit=fit, fit_file=fit_file, split=split)
+                        fit=fit, fit_file=fit_file, split=split, used=used)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return cli.fail(args, str(exc))
     skipped = f" Skipped (not readable JSON): {', '.join(out['skipped'])}." if out["skipped"] else ""

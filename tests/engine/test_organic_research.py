@@ -527,9 +527,11 @@ def test_the_proposals_page_says_why_a_kind_leads(ws, capsys):
 
 def test_used_trend_listed_and_series_continue(ws, capsys):
     rows = [{"trend_id": "c20bfd6594454889ab50eab2743364b0", "name": "Tung Tung Tung Sahur", "kind": "topic_trend",
-             "run": "2026-11-06_exampleedu-m1", "video": "M1", "used": "2026-11-06", "series": "Brainrot decoded"},
+             "run": "2026-11-06_exampleedu-m1", "video": "M1", "used": "2026-11-06", "series": "Brainrot decoded",
+             "final": "04_final/M1_final_v01.mp4"},          # written at the delivery (issue #142)
             {"trend_id": "0112ede8aaaa", "name": "what sounds in the head of _", "kind": "hook_trend",
-             "run": "2026-11-06_exampleedu-m1", "video": "M1", "used": "2026-11-06", "series": None}]
+             "run": "2026-11-06_exampleedu-m1", "video": "M1", "used": "2026-11-06", "series": None,
+             "final": "04_final/M1_final_v01.mp4"}]
     assert organic_research.record_used(ws, "ExampleEdu", rows) == 2
     path = ws / "library" / "organic" / "exampleedu" / "used_trends.jsonl"
     assert library.read_jsonl(path) == (rows, [])

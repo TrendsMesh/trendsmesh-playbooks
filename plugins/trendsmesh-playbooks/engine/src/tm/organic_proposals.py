@@ -40,8 +40,9 @@ A row equal to an earlier page version's is `carried` (PB02's rule, preflight P3
 C3. `tm organic start --run R [--keep-carried]` (`start`) reads the latest decisions file and starts one
 production run per idea marked produce: `<date>_<channel slug>-<pid lower>`, run.json
 `organic = {parent, proposal, channel, key}`, its outputs, its level, the idea run's config with `kind:
-production`, the output and the platforms, and `00_raw/proposal.json`. The channel's library gets the
-used trends (`organic_research.record_used`) and one `decisions.jsonl` row per decided proposal. An idea
+production`, the output and the platforms, and `00_raw/proposal.json` (with the idea's used-trend rows, which the
+channel's library gets once the run delivers its video or script: `organic_research.record_delivered`, issue #142),
+and one `decisions.jsonl` row per decided proposal. An idea
 is its id plus a hash of what it is (`idea_key`), so a proposal rewritten under the same id is a new
 idea. Everything a start writes is checked before any folder is made; a failure after that removes the
 folder, or says it could not. The idea run records each start in run.json `organic.started` (by
@@ -63,7 +64,7 @@ import yaml
 
 from tm import atlas, atlas_prompt, brand, brief_config, checkins, config, envtiers, flow, i18n, json_schema, \
     library, manifest, organic, organic_config, organic_guesses, organic_research, paths, playbooks, runfolder, state, \
-    stepchecks, trend_spool
+    stepchecks, trend_spool, trends
 from tm.config import Problem
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
@@ -128,6 +129,7 @@ PLUGIN: dict = {
         "channel_style": {"type": "object", "required": ["style", "why"],
                           "properties": {"style": {"type": ["string", "integer"]}, "why": {"type": "string"}}},
         "look": {"enum": ["channel", "other"]},
+        "new_angle": {"type": "object"},
     },
 }
 LOOKS = ("channel", "other")    # plugin.look (issue #138 item 1): the channel's own style, or another look
@@ -562,18 +564,87 @@ def _product(p: dict, pid: str, profile: dict | None, out: list[Problem]) -> Non
                            "Set the product level to not shown."))
 
 
-def _used(p: dict, pid: str, found: dict, used: dict[str, dict], own: str | None, out: list[Problem]) -> None:
-    """A trend the channel made a video from needs a series; the video this idea itself was started as
-    (`own`, its run) is not another use."""
-    if _text(p["plugin"]["series"]):
-        return
-    for tid in found:
-        row = used.get(tid)
-        if row and row.get("run") != own:
-            out.append(Problem(f"{pid}.plugin.series",
-                               f"{_name(p)} uses {row.get('name') or tid}, which the channel already made a video "
-                               f"from ({row.get('run')}, {row.get('used')}).",
-                               "Make it the next video of a series (plugin.series), or use another trend."))
+DIFFERS = ("topic", "hook", "format")   # what a new angle on a used trend changes (issue #142)
+
+
+def still_rising(run: RunFolder, tid: str, recent_days: int, today: date) -> bool:
+    """A used trend may be built on again only while it still rises strongly (issue #142): its card's momentum is
+    `rising`, and its newest evidence (the card's, or a saved video page's) is within `recent_days` of today."""
+    found = organic_research.card(run, tid)[0]
+    if not found or found.get("momentum") != "rising":
+        return False
+    from tm import shortlist   # trends' scoring: imported where it is used
+
+    days = [d for d in (shortlist.newest_evidence(found), shortlist.last_seen(found)) if d]
+    try:
+        days += [d for v in trends.load_videos(run, tid) for d in [shortlist.parse_dt(v.get("published"))] if d]
+    except (OSError, ValueError):
+        pass
+    return bool(days) and (today - max(days)).days <= recent_days
+
+
+def _angle(angle: object) -> bool:
+    if not isinstance(angle, dict):
+        return False
+    differs = angle.get("differs")
+    return (_text(angle.get("previous")) and _text(angle.get("why")) and isinstance(differs, list) and bool(differs)
+            and all(d in DIFFERS for d in differs))
+
+
+def recent_rising(run: RunFolder):
+    """`still_rising` for this run's `research.recent_days` and today, each trend read once."""
+    try:
+        cfg = config.load(run)
+    except ValueError:
+        cfg = {}
+    recent = config.get(cfg, "research.recent_days") or organic_config.DEFAULTS["research"]["recent_days"]
+    return functools.cache(lambda tid: still_rising(run, tid, recent, _today()))
+
+
+def _used(run: RunFolder, p: dict, where: str, found, used: dict[str, dict], own: str | None,
+          out: list[Problem]) -> None:
+    """`used_rule` for one idea under `where` (a week plan's slot or reserve: each is checked on its own)."""
+    used_rule([{**p, "id": where}], {where: list(found)}, {where: used}, {where: own}, recent_rising(run), out,
+              names={where: _name(p)})
+
+
+def used_rule(proposals: list, found: dict[str, list[str]], used_of: dict[str, dict[str, dict]],
+              own: dict[str, str | None], rising, out: list[Problem], names: dict[str, str] | None = None) -> None:
+    """A trend the channel already made a video or a script from (issue #142): an idea in a series continues it;
+    otherwise one idea per batch may build on a used trend, with `plugin.new_angle` {previous, differs: [topic | hook
+    | format, ...], why}, while the trend still rises (`rising(tid)`). `used_of[pid]` is the channel's used trends,
+    `own[pid]` the run this idea itself was started as (not another use)."""
+    first = None
+    named = lambda p: (names or {}).get(p["id"]) or _name(p)   # noqa: E731
+    for p in proposals:
+        pid = p["id"]
+        if _text(p["plugin"].get("series")):
+            continue
+        used = used_of.get(pid) or {}
+        hits = [(tid, used[tid]) for tid in found.get(pid) or [] if tid in used and used[tid].get("run") != own.get(pid)]
+        if not hits:
+            continue
+        tid, row = hits[0]
+        trend = row.get("name") or tid
+        if first is not None:
+            out.append(Problem(f"{pid}.trends", f"Only one idea per batch may build on a trend this channel already "
+                                                f"used; {named(p)} is the second. Use another trend.",
+                               "Build it on a trend the channel has not used, or make it the next video of a series "
+                               "(plugin.series)."))
+            continue
+        first = p
+        if not _angle(p["plugin"].get("new_angle")):
+            production = PRODUCTION_WORDS.get(row.get("production") or "", row.get("production") or "unknown type")
+            out.append(Problem(f"{pid}.plugin.new_angle",
+                               f"{named(p)} builds on {trend}, which the channel used in {row.get('run')} "
+                               f"({row.get('used')}, {production}): say in plugin.new_angle what is new (topic, hook "
+                               "or format).",
+                               'Write plugin.new_angle: {"previous": "<the earlier run>", "differs": ["topic", "hook" '
+                               'or "format"], "why": "<one line>"}.'))
+        for tid, row in hits:
+            if not rising(tid):
+                out.append(Problem(f"{pid}.trends", f"{row.get('name') or tid} is no longer rising, so a second video "
+                                                    "on it is not proposed.", "Use a trend rising now."))
 
 
 def _seed(p: dict, pid: str, found: dict, seed: tuple[str | None, str | None, str | None], out: list[Problem]) -> None:
@@ -831,10 +902,9 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
         _cost(p, pid, out)
         _production(p, pid, stack, out)
         _product(p, pid, profiles.get(slug) if slug else None, out)
-        if slug:
-            own = (started.get(idea_key(p)) or {}).get("run")
-            _used(p, pid, found, used.get(slug) or {}, own, out)
         _seed(p, pid, found, seed, out)
+    used_rule(proposals, resolved, {p["id"]: used.get(by_channel[p["id"]] or "") or {} for p in proposals},
+              {p["id"]: (started.get(idea_key(p)) or {}).get("run") for p in proposals}, recent_rising(run), out)
     _leading(run, proposals, by_channel, kinds, profiles, out)
     variety(proposals, resolved, rising_formats(run), by_channel,
             {slug: own_style(workspace, slug, profile) for slug, profile in profiles.items()}, channel_only(run), out)
@@ -1096,7 +1166,8 @@ def _plan(workspace: Path, run: RunFolder, data: dict, p: dict, row: dict, chann
     try:
         used = organic_research.used_rows([
             {"trend_id": tid, "name": card.get("name"), "kind": card.get("kind"), "run": run_id, "video": p["id"],
-             "series": p["plugin"]["series"], "used": today.isoformat()} for tid, card in resolved])
+             "series": p["plugin"]["series"], "used": today.isoformat(), "production": p["plugin"]["production"]}
+            for tid, card in resolved])
     except ValueError as exc:
         raise Stop(f"{_name(p)} cannot be recorded in the channel's used trends ({exc}). Fetch its trend cards again "
                    f"(get_trend) or fix the proposal and check it again. Nothing was started; {AGAIN}.") from None
@@ -1120,8 +1191,8 @@ def _remove(workspace: Path, prod: RunFolder, p: dict, exc: Exception) -> ValueE
 def _make(workspace: Path, run: RunFolder, cfg: dict, plan: dict, parent: str, proposals_rel: str, today: date,
           started: dict, *, organic_extra: dict | None = None) -> dict:
     """One production run from its checked plan: the folder, its state (run.json `organic`, plus `organic_extra`:
-    a week's slot names its week), config and 00_raw/proposal.json, the start recorded in the idea run, then the
-    used trends. Any failure once the folder exists removes it and the start again (`_remove`)."""
+    a week's slot names its week), config and 00_raw/proposal.json (its used-trend rows kept for the delivery), the
+    start recorded in the idea run. Any failure once the folder exists removes it and the start again (`_remove`)."""
     p, row, slug = plan["p"], plan["row"], plan["slug"]
     try:
         prod = RunFolder.create(workspace, plan["name"], today, playbook=ORGANIC_VIDEO)
@@ -1143,7 +1214,7 @@ def _make(workspace: Path, run: RunFolder, cfg: dict, plan: dict, parent: str, p
             new["mode"]["variant"] = "az" if row["level"] == "hands_off" else "gated"  # display only
         config.save(prod, new)
         kept = {"proposal": p, "decision": row, "trend_ids": plan["ids"], "channel": slug, "idea_run": parent,
-                "proposals_file": proposals_rel, "key": plan["key"],
+                "proposals_file": proposals_rel, "key": plan["key"], "used": plan["used"],
                 "product_level": PRODUCT_WORDS.get(str(p["product"]["level"]).strip().lower())}
         with open(prod.path / PROPOSAL_FILE, "x", encoding="utf-8") as fh:  # a new file in 00_raw
             fh.write(json.dumps(kept, ensure_ascii=False, indent=2) + "\n")
@@ -1152,8 +1223,7 @@ def _make(workspace: Path, run: RunFolder, cfg: dict, plan: dict, parent: str, p
         started[plan["key"]] = {"proposal": p["id"], "run": prod.path.name, "path": _ws_rel(workspace, prod.path),
                                 "channel": slug, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
                                 "kept_carried": bool(row.get("carried"))}
-        _save_started(run, started)
-        organic_research.record_used(workspace, slug, plan["used"])
+        _save_started(run, started)   # the used trends are recorded when the video or script is delivered (#142)
     except (OSError, ValueError) as exc:
         if started.pop(plan["key"], None) is not None:
             try:

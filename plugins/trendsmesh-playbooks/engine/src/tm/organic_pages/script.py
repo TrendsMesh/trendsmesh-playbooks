@@ -420,5 +420,8 @@ def build(run: RunFolder, file: Path) -> dict:
         raise
     out_rel = out.relative_to(run.path).as_posix()
     manifest.record(run, out_rel, page.FINAL, SOURCE, parent=rel, params={"script_sha256": stepchecks.sha256(path), "lang": built.lang})
+    from tm import organic_research   # the script is delivered: its trends count as used (issue #142)
+
+    organic_research.record_delivered(run, out_rel)
     return {"folder": out_rel, "files": page.files(out), "script": rel, "lang": built.lang, "markdown": md_name,
             "language_warning": built.warning}

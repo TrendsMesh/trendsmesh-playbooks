@@ -4,6 +4,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Organic AI video: a trend you used can come back once, with a new angle.** A trend counts as used only once a
+  video or a script was delivered from it; runs that were started and never finished no longer block it. The
+  shortlist keeps used trends, marked. One idea per batch may build on a used trend that is still rising, saying
+  what is new (topic, hook or format), and the proposals page shows which earlier video it was in.
 - **Organic AI video: the channel profile stays confirmed after the voice and music picks.** Saving the picked voice
   and music into the channel profile keeps the date you confirmed it, so the next run reuses the profile without
   asking again. Any other change to the profile still asks you to confirm it, and Claude says why.

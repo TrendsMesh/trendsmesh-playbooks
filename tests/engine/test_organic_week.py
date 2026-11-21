@@ -48,7 +48,8 @@ def _used_m1(ws: Path) -> None:
     tid = exampleedu.full_ids()["c20bfd65"]
     organic_research.record_used(ws, exampleedu.CHANNEL, [
         {"trend_id": tid, "name": "Tung Tung Tung Sahur Brainrot Memes", "kind": "topic_trend",
-         "run": "2026-11-06_walkthrough-exampleedu", "video": "m1", "series": "brainrot", "used": "2026-11-06"}])
+         "run": "2026-11-06_walkthrough-exampleedu", "video": "m1", "series": "brainrot", "used": "2026-11-06",
+         "final": "04_final/m1_final_v01.mp4"}])            # recorded when M1 was delivered (issue #142)
 
 
 def _week_run(tmp_path, level="big_calls", name=None):
@@ -220,9 +221,11 @@ def test_used_trend_slot_refused_unless_series(tmp_path, capsys):
     week["slots"][4]["plugin"]["series"] = None
     week["reserves"][0]["plugin"]["trends"] = [{"id": "c20bfd65"}]
     found = {p.field: p for p in _problems(run, week)}
-    assert set(found) == {"slots[4].plugin.series", "reserves[0].plugin.series"}
-    assert "already made a video" in found["slots[4].plugin.series"].what
-    assert "series" in found["slots[4].plugin.series"].todo
+    # issue #142: a used trend takes a new angle while it still rises; Tung Tung Tung Sahur's card names no momentum
+    assert set(found) == {"slots[4].plugin.new_angle", "slots[4].trends", "reserves[0].plugin.new_angle",
+                          "reserves[0].trends"}
+    assert "2026-11-06_walkthrough-exampleedu" in found["slots[4].plugin.new_angle"].what
+    assert "no longer rising" in found["slots[4].trends"].what
     code, out = _cli(capsys, "organic", "week", "check", "--run", str(run.path), "--file", str(_write(run, week)))
     assert code == 2 and out["status"] == "stop" and out["message"].endswith(AGAIN + ".")
 
@@ -868,8 +871,11 @@ def test_week_after_previous_reuses_profile(tmp_path, capsys):
     assert flow.next(now).step == "B1"                                      # A1 skipped
     exampleedu.save_trends(now)
     exampleedu.save_week_cards(now)
+    assert _problems(now, exampleedu.week()) == []                          # w1 started, not delivered yet
+    w1 = RunFolder.open(ws / "runs" / last.path.parent.name / "2026-11-07_exampleedu-w1")
+    assert organic_research.record_delivered(w1, "04_final/w1_final_v01.mp4") >= 1
     found = {p.field: p.what for p in _problems(now, exampleedu.week())}
-    assert set(found) == {"slots[0].plugin.series"} and "2026-11-07_exampleedu-w1" in found["slots[0].plugin.series"]
+    assert "slots[0].plugin.new_angle" in found and "2026-11-07_exampleedu-w1" in found["slots[0].plugin.new_angle"]
     idea = exampleedu.build(tmp_path / "other")
     s = state.load(idea)
     s.previous_run = last.path.relative_to(ws).as_posix()

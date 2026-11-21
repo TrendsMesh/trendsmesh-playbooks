@@ -252,8 +252,8 @@ at each part and every few calls, which part is running and how many are done ("
 
 1. **What this channel already used:** `tm organic used --channel <slug> --json` (the trends its
    videos were made from, and its running series) and `tm organic history --channel <slug>
-   --json` (what was produced, put off or skipped, per production type and approach): skip used
-   trends unless a series continues them; picks and skips rank the next ideas.
+   --json` (what was produced, put off or skipped, per production type and approach). Used trends (issue
+   #142): a trend counts as used once a video or a script was delivered from it (a run only started does not count); one idea per batch may build on a used trend, with `plugin.new_angle` (`{"previous": "<the earlier run>", "differs": ["topic" | "hook" | "format"], "why": "<one line>"}`), while it still rises (momentum rising, evidence within `research.recent_days`); a series continues one freely. Picks and skips rank the next ideas.
 2. **The queries**, from the bubble (OV2): the niche's anchor terms (the channel's subject: dog,
    puppy; parents, rodzice), the problems the catalogue solves, the channel's own formats; about 10
    to 17 searches, **in the audience language and in English**; then the rising lists of each
@@ -309,8 +309,9 @@ at each part and every few calls, which part is running and how many are done ("
    command again with `--fit 03_wip/trend_fit_v01.json`. Hooks and formats are ranked by their fit
    (the mean), each shown with its score and why; a fit under 3 is marked "weak fit for this
    channel" and comes last.
-3. Read the `.md`. **The used trends** (B1) are left out, unless a series continues them (a
-   proposal then names its series). Mark a transfer (a hook with evidence only in another subject
+3. Read the `.md`. **The used trends** (B1) stay in the lists, marked `used: {run, date, production_type}`
+   in the JSON: at most one idea builds on one, with a new angle, while it still rises (B1), or a series
+   continues it. Mark a transfer (a hook with evidence only in another subject
    or language) as a hypothesis: it lowers the expected reach, not the feasibility (lesson 20).
    News, tragedy and real people in topic trends: leave them out by judgement (the sensitivity
    filter is not built yet). "Evidence videos not pulled yet" means B3 has not pulled that trend's
@@ -383,7 +384,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      `video`), `risk_hits` (`[{item, mitigation}]`, the items `hands_on_objects`,
      `product_shape`, `same_character`, `fast_motion`, `physics`, `model_text`, `speech`,
      `long_takes`, `several_characters`; `case` where the risk has one), `transfer`, `weak_link` (an
-     Inspire or a transfer names it), `series` (a used trend continues a series), `seed` (the run's
+     Inspire or a transfer names it), `series` (a used trend continues a series), `new_angle` (the one idea
+     on a used trend that is not a series: `{previous, differs, why}`, B1), `seed` (the run's
      seed id, or null), `aesthetic`, `styles` (any production type, issue #138), `look` (`channel`: the
      channel's own style; `other`: another look). For
      example, ExampleEdu's talking-host idea: `{"production": "talking_character", "output": "script",
@@ -394,7 +396,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    schema, the count, the language, every trend resolving to a saved card and every pick to a
    saved video, the approach and its picks, the risk level against the weights, the look and an
    animation's styles, the production types the stack hides (for an AI video only), the product
-   level against the channel's store, used trends without a series, the seed, and that the file
+   level against the channel's store, used trends (one per batch with a new angle, still rising), the seed,
+   and that the file
    never says "no trend found". Exit 2 lists the problems: fix them in the next `_vNN`.
    **Variety** (issue #138): each idea names a format rising now among its trends (a `format_trend`
    of the shortlist whose momentum is rising), and no two ideas share a format and a production type
@@ -403,7 +406,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    least one is `other`, from a format rising now; with no rising format, a production type the
    channel-style ideas do not use. Only when the user says every idea keeps the channel's style:
    `tm organic looks --run R --channel-only --said "<their words>" --json` (`--clear` undoes it).
-   The page shows "N ideas in your channel's style, M in other styles" above the ideas.
+   The page shows "N ideas in your channel's style, M in other styles" above the ideas, and under an
+   idea on a used trend "Was in the video of <day> (<production type>); now <the new angle's why>".
 4. `tm done C1 --run R`.
 
 <a id="c2"></a>

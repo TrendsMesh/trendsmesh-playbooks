@@ -377,12 +377,13 @@ def localize(text: str, lang) -> str:
 
 
 def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = None, leads=(),
-           profile: dict | None = None, needs: dict | None = None) -> str:
+           profile: dict | None = None, needs: dict | None = None, used: dict | None = None) -> str:
     """The page in `lang` (else the language it is built in, `organic_pages.lang_of`): the original's `render`,
     then `localize`. `trends_of(id)` gives a proposal trend's (card, videos); `thumb_of(video)` its thumbnail's src.
     `leads`: the lines on why each channel's proposals lead with one kind (`channel_leads`), already in `lang`.
     `profile`: per proposal channel (as the file names it), what its profile gives (`video_style`); `needs`: per
-    proposal id, what an AI video of it needs installed (`organic_proposals.route_installs`)."""
+    proposal id, what an AI video of it needs installed (`organic_proposals.route_installs`); `used`: the channels'
+    used trends (`organic_research.channel_used`), for the line under an idea built on one (`used_line`)."""
     tr = i18n.translator(lang or organic_pages.lang_of(data))
     profile, needs = profile or {}, needs or {}
     picked = {p["id"]: organic_proposals.default_style(p, profile.get(p["channel"])) for p in data["proposals"]}
@@ -420,7 +421,7 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
 {decision_panel(p, levels, level, _added(p, tr, options=organic_proposals.style_options(p, profile.get(p["channel"])),
                                          picked=picked[p["id"]], needs=needs.get(p["id"]) or []))}
 <div class="cols"><div class="block" style="gap:16px">
-<p class="why">{esc(p['why'])}</p>
+<p class="why">{esc(p['why'])}</p>{_used_row(p, used or {}, tr)}
 <div class="block"><h3>The video</h3><ol class="beats">{''.join(f'<li>{esc(b)}</li>' for b in p['beats'])}</ol></div>
 <div class="block"><h3>Recipe</h3><dl class="recipe"><dt>Production</dt><dd>{esc(r['production'])}</dd>{_look_row(p, tr)}<dt>Voice</dt><dd>{esc(r['voice'])}</dd><dt>Music / sound</dt><dd>{esc(r['music'])}</dd><dt>Text</dt><dd>{esc(r['text'])}</dd><dt>Product</dt><dd><b>{esc(shown(p['product']['level'], "product", tr))}</b>: {esc(p['product']['note'])}</dd></dl></div>
 <div class="block"><h3>Risks</h3><ul class="plain">{''.join(f'<li>{esc(x)}</li>' for x in p['risk']['items'])}</ul>{_risk_line(p, tr)}</div>
@@ -458,6 +459,11 @@ def render(data: dict, trends_of, thumb_of, *, level: str, lang: str | None = No
 <script>window.__PROPOSALS__ = {proposals_js}; window.__RUN_ID__ = {run_js}; window.__DEFAULT_OUTPUT__ = {output_js}; window.__DEFAULT_LEVEL__ = {level_js}; window.__LEVELS__ = {_script(levels)};</script>
 <script>{JS}</script></body></html>""")
     return organic_pages.look(localize("".join(out), tr), tr)
+
+
+def _used_row(p: dict, used: dict, tr) -> str:
+    line = used_line(p, used, tr)
+    return f'<p class="hint" data-plugin>{esc(line)}</p>' if line else ""
 
 
 def _look_row(p: dict, tr) -> str:
@@ -589,6 +595,20 @@ def looks_line(data: dict, tr) -> str | None:
     return tr(_P + "looks_other", channel=tr.plural(_P + "looks_channel", own, n=own), n=looks.count("other"))
 
 
+def used_line(p: dict, used: dict[str, dict], tr) -> str | None:
+    """Under an idea built on a trend the channel used (issue #142): "Was in the video of 12.11 (an animation); now
+    <its new angle's why>"; None for any other idea."""
+    angle = (p.get("plugin") or {}).get("new_angle")
+    row = next((used[t["id"]] for t in p.get("trends") or [] if isinstance(t, dict) and t.get("id") in used), None)
+    if row is None or not isinstance(angle, dict):
+        return None
+    day = str(row.get("used") or "")
+    shown_day = f"{day[8:10]}.{day[5:7]}" if len(day) == 10 else day
+    production = row.get("production")
+    words = shown(production, "production", tr) if production in organic_proposals.PRODUCTIONS else (production or "?")
+    return tr("organic.proposals.used_before", date=shown_day, production=words, why=str(angle.get("why") or ""))
+
+
 def _needs(data: dict) -> dict[str, list[dict]]:
     """Per proposal, what an AI video of it needs installed and is not (issue #87), each production type read once."""
     by_type: dict[str, list[dict]] = {}
@@ -630,7 +650,8 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
                           level=level, lang=built.lang,
                           leads=channel_leads(run, data, built.lang)
                           + [x for x in [looks_line(data, i18n.translator(built.lang))] if x],
-                          profile=organic_proposals.profile_defaults(run, data), needs=_needs(data))
+                          profile=organic_proposals.profile_defaults(run, data), needs=_needs(data),
+                          used=organic_research.channel_used(run))
         except (KeyError, ValueError) as exc:   # the file's shape; anything else is the engine's, not the user's file
             raise Stop(f"{rel} is not in the page's shape ({type(exc).__name__}: {exc}); check it again (tm organic "
                        f"proposals check); {AGAIN}.") from None

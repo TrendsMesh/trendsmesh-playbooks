@@ -253,6 +253,10 @@ def finish(run: RunFolder, a: argparse.Namespace) -> tuple[dict, str]:
                       "id": None if ad else out.name.rsplit("_final_v", 1)[0], "lufs_target": target,
                       "true_peak": peak_max, "asmr": a.asmr, "gains": shown, "compress": a.compress},
              response={"first_pass": measured, "lufs": lufs, "peak": peak})
+    if not ad:
+        from tm import organic_research   # the final is delivered: its trends count as used (issue #142)
+
+        organic_research.record_delivered(run, rel)
     text = f"Wrote {rel}: 1080×1920, H.264, AAC 48 kHz, {_level(lufs, peak)} (target {target:g} LUFS)."
     if lufs is None or abs(lufs - target) > organic_final.LUFS_SLACK:
         text += " That is more than 1 LU from the target, so the final check will not pass: look at the render's sound."
