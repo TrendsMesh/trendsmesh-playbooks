@@ -6,9 +6,9 @@ the decisions taken on it.
     build(run, brief_path=None, *, single_file=False)   04_final/brief_pack_vNN/ or brief_pack_vNN.html
     creator_pdf(run, brief)        the creator PDF of the page built from that brief (CB13 reads its text)
     read_decisions(saved)          the decisions in a saved ArtifactData list (or db_list) answer or a copied text
-    verdicts(docs, concept_ids)    approved | changes | split | none per concept (plan Decision 8)
+    verdicts(docs, concept_ids)    approved | changes | dropped | split | none per concept (plan Decision 8)
     mark_carried(docs, earlier)    rows equal to the earlier decisions file's: carried over, not a new look
-    take_decisions / await_decisions / choose    `tm brief decisions`, `await`, `choose`
+    take_decisions / await_decisions / choose    `tm brief decisions`, `await`, `choose` (`--drop`)
     built_gap / chosen_gap         the step checks `page_built` and `concepts_chosen`
 
 The port keeps the original's body and script byte for byte (the LD dry run's `brief_pack_v05/index.html`
@@ -27,6 +27,11 @@ The page folder `04_final/brief_pack_vNN/` and the brief `04_final/brief_pack_vN
 stem, as in the reference dry run, and are numbered apart: `page._versions` takes the folder names,
 `RunFolder.latest(..., "json")` the files. Each build adds a manifest row (source SOURCE, parent =
 the brief file, with the brief's sha256), which `page_built` reads.
+
+Each person decides per concept (issue #145): Approve, Ask for changes (with a note) or Drop. There is no concept
+check-in: the first page people decide on is D3's (stage G3), with the briefs in full; the review pack alone is
+decided on C1's page (stage C1). `choose` records the concepts dropped and writes the next brief version without
+them, so they are left out of the production views and the hand-off.
 
 Decisions are read only whole (a paged, sorted, filtered or cut db answer is refused, by `tm.page`) and are
 matched to the concepts of the brief the published page was built from, which the decisions file
@@ -73,7 +78,7 @@ RENDERS = animatic.RENDERS                    # where `tm brief animatic --rende
 EVIDENCE = "02_research/evidence"             # where `tm brief evidence` saves the thumbnails
 MEDIA_DIRS = (RENDERS, EVIDENCE)
 WIP = "03_wip"
-STAGES = ("G2", "G3", "G4")
+STAGES = ("C1", "G3", "G4")    # the review pack alone (C1's page), the briefs, the production views
 SOURCES = ("page", "chat", "rule")
 FORMATS = ("9x16", "4x5")
 COLLECTION = "decisions"
@@ -110,6 +115,14 @@ WORDING: list[tuple[str, str]] = [
     ("'Decisions are kept on this page only. Open it from its claude.ai link to save them for the team.'",
      "'This copy can\\'t save decisions: tell Claude your decisions in chat (\"Copy my decisions\" helps), or "
      "open the page from its claude.ai link to save them for the team.'"),
+    # Drop, the third choice per concept (issue #145): its label, the hint, and the tally
+    ("const LABEL = { approve: 'Approved', change: 'Changes requested' };",
+     "const LABEL = { approve: 'Approved', change: 'Changes requested', drop: 'Dropped' };"),
+    ("'Choose Approve or Ask for changes first.'", "'Choose Approve, Ask for changes or Drop first.'"),
+    ("const a = rows.filter(d => d[c].d === 'approve').length, ch = rows.length - a;",
+     "const a = rows.filter(d => d[c].d === 'approve').length, dr = rows.filter(d => d[c].d === 'drop').length, "
+     "ch = rows.length - a - dr;"),
+    ("`${c}: ${a} approved, ${ch} changes requested`", "`${c}: ${a} approved, ${ch} changes requested, ${dr} dropped`"),
 ]
 
 
@@ -213,7 +226,8 @@ TEMPLATE_WORDS: list[tuple[str, str, str, dict[str, str]]] = [
     ("'Approved'", "brief.approved", "js", {}),
     ("'Changes requested'", "brief.changes_requested", "js", {}),
     ("'Not saved yet.'", "brief.not_saved_yet", "js", {}),
-    ("'Choose Approve or Ask for changes first.'", "brief.choose_first", "js", {}),
+    ("'Dropped'", "brief.dropped", "js", {}),
+    ("'Choose Approve, Ask for changes or Drop first.'", "brief.choose_first", "js", {}),
     (WORDING[0][1], "brief.cannot_save_here", "js", {}),
     ("'Your access is view-only. Ask the sender for Contributor access, or use \"Copy my decisions\".'",
      "brief.view_only", "js", {}),
@@ -222,8 +236,8 @@ TEMPLATE_WORDS: list[tuple[str, str, str, dict[str, str]]] = [
     ("'Not saved: the connection failed. Try again in a moment.'", "brief.save_failed", "js", {}),
     ("'You'", "brief.you", "js", {}),
     ("'Someone'", "brief.someone", "js", {}),
-    ("`${c}: ${a} approved, ${ch} changes requested`", "brief.tally_counts", "tpl",
-     {"id": "${c}", "approved": "${a}", "changes": "${ch}"}),
+    ("`${c}: ${a} approved, ${ch} changes requested, ${dr} dropped`", "brief.tally_counts", "tpl",
+     {"id": "${c}", "approved": "${a}", "changes": "${ch}", "dropped": "${dr}"}),
     ("`${c}: none yet`", "brief.tally_none", "tpl", {"id": "${c}"}),
     ("'Decisions on this concept:'", "brief.decisions_on_concept", "js", {}),
     ("'Decisions on \"{{TITLE_JS}}\"'", "brief.copy_header", "js", {"title": "{{TITLE_JS}}"}),
@@ -362,13 +376,14 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
     toggle = ''.join(f'<button aria-pressed="{"true" if f == default else "false"}" data-src="{E(a[f])}">{f.replace("x", ":")}</button>' for f in FORMATS if a.get(f))
     player = (_stills_html(stills.get(src) or [], tr) if stills is not None else
               f'<div class="player" data-player="{cid}"><video src="{E(src)}" controls muted playsinline preload="metadata"></video>'
-              f'<div class="toggle" role="group" aria-label="{A(tr, "brief.format")}">{toggle}</div></div>')
+              f'<div class="toggle" role="group" aria-label="{A(tr, "brief.format")}">{toggle}</div></div>' if src else
+              f'<div class="player"><div class="on-request">{W(tr, "brief.animatic_on_request")}</div></div>')
     out = [f'<section id="{cid.lower()}" class="concept">',
            '<header><div>',
            f'<p class="tag">{W(tr, "brief.concept_of", idx=idx, total=total)}</p>',
            f'<h2>{E(c["title"])}</h2>',
-           f'<p>{E(c["one_liner"])}</p>',
-           f'<p class="keymsg"><b>{W(tr, "brief.key_message")}</b> {E(c["key_message"])}</p>',
+           f'<p{v(*HEADER_FACTS_VIEWS)}>{E(c["one_liner"])}</p>',
+           f'<p class="keymsg"{v(*HEADER_FACTS_VIEWS)}><b>{W(tr, "brief.key_message")}</b> {E(c["key_message"])}</p>',
            f'<p class="hyp"{v("decision", "strategy", "media-buyer")}><b>{W(tr, "brief.what_this_tests")}</b> {E(c["hypothesis"])}</p>',
            '</div>',
            player,
@@ -433,7 +448,7 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
         out.append(f'<div{v("strategy", "editor")}><h3>{W(tr, "brief.before_live")}</h3><ul class="qa">{qa}</ul></div>')
     out.append(f'''<div class="decide" data-concept="{cid}"{v("decision", "strategy", "media-buyer")}>
     <h3>{W(tr, "brief.decision_on", id=cid)}</h3>
-    <div class="row"><button type="button" class="choice" data-d="approve" aria-pressed="false">{W(tr, "brief.approve")}</button><button type="button" class="choice" data-d="change" aria-pressed="false">{W(tr, "brief.ask_for_changes")}</button></div>
+    <div class="row"><button type="button" class="choice" data-d="approve" aria-pressed="false">{W(tr, "brief.approve")}</button><button type="button" class="choice" data-d="change" aria-pressed="false">{W(tr, "brief.ask_for_changes")}</button><button type="button" class="choice" data-d="drop" aria-pressed="false">{W(tr, "brief.drop")}</button></div>
     <label class="sr" for="note-{cid}">{W(tr, "brief.note_for", id=cid)}</label>
     <textarea id="note-{cid}" placeholder="{A(tr, "brief.note_placeholder")}"></textarea>
     <div class="row"><button type="button" class="save">{W(tr, "brief.save_decision")}</button><span class="status" role="status" aria-live="polite"></span></div>
@@ -475,7 +490,8 @@ def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None):
         title = f'<div class="who"{v("creator")}>{E(c["title"])}</div>' if c.get("phone_note", c["title"]) != c["title"] else ''
         shots = (stills or {}).get(phone) or []
         screen = ((f'<img class="still" src="{E(shots[min(1, len(shots) - 1)])}" alt="">' if shots else '') if stills is not None
-                  else f'<video src="{E(phone)}" autoplay muted loop playsinline aria-label="{A(tr, "brief.animatic_label", id=E(c["id"]))}"></video>')
+                  else f'<video src="{E(phone)}" autoplay muted loop playsinline aria-label="{A(tr, "brief.animatic_label", id=E(c["id"]))}"></video>'
+                  if phone else f'<div class="on-request">{W(tr, "brief.animatic_on_request")}</div>')
         out.append(f'<a class="phone" href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}"><div class="frame">{screen}</div>'
                    f'<div class="note">{E(c.get("phone_note", c["title"]))}</div>{title}<div class="who"{facts}>{E(c.get("for_whom"))}</div><div class="trendline"{facts}>{E(c.get("trend_line"))}</div></a>')
     out.append('</div></div></div>')
@@ -890,8 +906,8 @@ def creator_pdf(run: RunFolder, brief: dict) -> tuple[str, Path] | None:
 # --- decisions ---------------------------------------------------------------------------------
 
 _HEADER = 'Decisions on "'
-_CHOICES = ("approve", "change")
-_COPY_KEYS = ("brief.copy_header", "brief.approved", "brief.changes_requested", "brief.no_decision")
+_CHOICES = ("approve", "change", "drop")
+_COPY_KEYS = ("brief.copy_header", "brief.approved", "brief.changes_requested", "brief.dropped", "brief.no_decision")
 
 
 def _copy_words(lang: str | None) -> list[tuple[str, str, dict[str, str], re.Pattern]]:
@@ -905,7 +921,8 @@ def _copy_words(lang: str | None) -> list[tuple[str, str, dict[str, str], re.Pat
         head, _, tail = words["brief.copy_header"].partition("{title}")
         if not head.strip():                  # a header that starts with the title is not told from a line
             continue
-        labels = {words["brief.approved"]: "approve", words["brief.changes_requested"]: "change"}
+        labels = {words["brief.approved"]: "approve", words["brief.changes_requested"]: "change",
+                  words["brief.dropped"]: "drop"}
         said = "|".join(re.escape(x) for x in (*labels, words["brief.no_decision"]))
         line = re.compile(rf"^(?P<cid>[A-Za-z0-9_-]+): (?P<label>{said})(?: \| (?P<note>.*))?$")
         out.append((head, tail, labels, line))
@@ -980,16 +997,17 @@ def read_decisions(saved: dict | str, *, title: str | None = None, lang: str | N
 
 
 def verdicts(docs: list[dict], concept_ids: list[str]) -> dict[str, dict]:
-    """Per concept: approved (at least one approve, no change), changes (changes only), split
-    (both), none (no decision); the approve count and each change with its note."""
+    """Per concept: approved (approvals only), changes (changes only), dropped (drops only, issue #145), split
+    (more than one kind), none (no decision); the approve and drop counts and each change with its note."""
     out = {}
     for cid in concept_ids:
         mine = [(d["who"], d["decisions"][cid]) for d in docs if cid in d["decisions"]]
         approve = sum(1 for _, x in mine if x["d"] == "approve")
+        drop = sum(1 for _, x in mine if x["d"] == "drop")
         change = [{"who": who, "note": x["n"]} for who, x in mine if x["d"] == "change"]
-        verdict = ("none" if not approve and not change else "approved" if not change
-                   else "changes" if not approve else "split")
-        out[cid] = {"verdict": verdict, "approve": approve, "change": change}
+        kinds = [k for k, n in (("approved", approve), ("changes", len(change)), ("dropped", drop)) if n]
+        verdict = "none" if not kinds else kinds[0] if len(kinds) == 1 else "split"
+        out[cid] = {"verdict": verdict, "approve": approve, "change": change, "drop": drop}
     return out
 
 
@@ -998,12 +1016,18 @@ def quote_notes(docs: list[dict], concept_ids: list[str], lang: str = i18n.ENGLI
     person, an approval's note too; and the lines that quote them to the user, ready to paste, one per note:
     `C2, u1, Changes requested: "<the note, whole>"` (the choice in the page's words, `lang`). An empty note is
     no note. Nothing is shortened: a note that reads like an order to the agent is quoted whole like any other."""
-    words = {"approve": i18n.t("brief.approved", lang), "change": i18n.t("brief.changes_requested", lang)}
+    words = {"approve": i18n.t("brief.approved", lang), "change": i18n.t("brief.changes_requested", lang),
+             "drop": i18n.t("brief.dropped", lang)}
     notes = [{"concept": cid, "who": d["who"], "choice": x["d"], "note": x["n"]}
              for cid in concept_ids for d in docs
              for x in [d["decisions"].get(cid)] if x and x["d"] in words and x["n"].strip()]
     quote = "\n".join(f'{n["concept"]}, {n["who"]}, {words[n["choice"]]}: "{n["note"]}"' for n in notes)
     return notes, quote
+
+
+def concept_ids(brief: dict, rel: str) -> list[str]:
+    """The concept ids of a brief, in its order; Stop for a brief without a concepts list."""
+    return _ids_of(brief, rel)
 
 
 def _ids_of(brief: dict, rel: str) -> list[str]:
@@ -1137,7 +1161,7 @@ def _latest_decisions(run: RunFolder) -> Path | None:
 
 def _decisions_files(run: RunFolder) -> list[Path]:
     """The decisions files of `tm brief decisions`, in the order they were read (their `at`)."""
-    name = re.compile(r"^decisions_(G\d)_v(\d+)\.json$")
+    name = re.compile(r"^decisions_(G\d|C1)_v(\d+)\.json$")    # G2: a run started before issue #145
     found = []
     folder = run.path / WIP
     for f in folder.glob("decisions_*_v*.json") if folder.is_dir() else ():
@@ -1151,80 +1175,106 @@ def _decisions_files(run: RunFolder) -> list[Path]:
     return [f for *_, f in sorted(found)]
 
 
-def rule_pick(run: RunFolder, brief: dict) -> list[str]:
-    """What `tm brief pick` picks from this brief (Hands-off G2)."""
-    return brief_checks.rule_pick(run, brief)["picked"]
+CHOOSE_SOURCE = "tm brief choose"            # the manifest row of a brief version written without dropped concepts
 
 
-def choose(run: RunFolder, concepts: list[str], source: str, decisions: Path | None = None, *,
-           keep_carried: bool = False) -> dict:
-    """Record the concepts chosen to brief (`state.brief.chosen`): from the page (each one approved
-    in the decisions file, and no approval carried over from an earlier page unless the user kept
-    those in chat: `keep_carried`), the rule (exactly `tm brief pick`), or the user's word in chat.
+def choose(run: RunFolder, source: str, *, drop: list[str] | None = None, concepts: list[str] | None = None,
+           decisions: Path | None = None, keep_carried: bool = False) -> dict:
+    """Record what was decided per concept (`state.brief.chosen`, issue #145): the concepts dropped (`drop`), or
+    the ones kept (`concepts`, the rest dropped); neither keeps every concept. From the page, each kept concept
+    must be approved and each dropped one dropped in the decisions file, with no row carried over from an earlier
+    page unless the user kept those in chat (`keep_carried`); by rule (Hands-off) every concept is kept; or the
+    user's word in chat. Concepts dropped by an earlier choice stay dropped. With a drop, the next brief version
+    is written without the dropped concepts (`written`), so the production views and the hand-off leave them out.
     It never decides a check-in."""
     if source not in SOURCES:
         raise ValueError(f"--source is one of {', '.join(SOURCES)}, not {source!r}.")
     if keep_carried and source != "page":
         raise ValueError("--keep-carried keeps approvals carried over on the page: it goes with --source page.")
-    chosen = list(dict.fromkeys(concepts))
-    if not chosen:
-        raise ValueError("Name at least one concept, e.g. --concepts C1 C3.")
+    if drop and concepts:
+        raise ValueError("Give the concepts dropped (--drop) or the ones kept (--concepts), not both.")
     latest, rel, brief = load_brief(run, None)
     ids = _ids_of(brief, rel)
-    unknown = [c for c in chosen if c not in ids]
+    named = list(dict.fromkeys(drop or concepts or []))
+    unknown = [c for c in named if c not in ids]
     if unknown:
         raise ValueError(f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not a concept of the latest brief "
                          f"({rel}: {', '.join(ids)}).")
-    used, kept = None, []
+    dropped = [c for c in ids if (c not in named) == bool(concepts)] if named else []
+    kept = [c for c in ids if c not in dropped]
+    if not kept:
+        raise ValueError(f"That drops every concept of {rel}: a brief keeps at least one. Ask the user which to keep, "
+                         "or whether to end the run without a hand-off.")
+    used, held_kept = None, []
     if source == "page":
-        path = Path(decisions) if decisions is not None else _latest_decisions(run)
-        if path is None:
-            raise Stop("No decisions have been read from the page yet: read them with tm brief decisions first. The "
-                       "run continues from the same place.")
-        used = _rel(run, path)
-        try:
-            read = trends.read(path)
-            got = read.get("verdicts") or {}
-        except (ValueError, AttributeError):
-            raise Stop(f"{used} is not a decisions file of tm brief decisions; {AGAIN}.") from None
-        if read.get("brief") != rel or read.get("brief_sha256") != stepchecks.sha256(latest):
-            was = read.get("brief") or "an unknown brief"
-            raise Stop(f"The decisions in {used} were taken on the page built from {was}, and the brief is now {rel}. Rebuild the page (tm brief page) and publish it again, "
-                       "then let people decide on it and read their decisions; or ask the user in chat and record "
-                       "their answer with --source chat. The run continues from the same place.")
-        not_approved = [f"{c} ({(got.get(c) or {}).get('verdict', 'not on the page')})" for c in chosen
-                        if (got.get(c) or {}).get("verdict") != "approved"]
-        if not_approved:
-            raise Stop(f"Only a concept approved on the page is chosen from it, and {', '.join(not_approved)} "
-                       f"{'is' if len(not_approved) == 1 else 'are'} not, in {used}. Show the user the notes and "
-                       "ask in chat; record their answer with --source chat. The run continues from the same place.")
-        held: dict[str, list[str]] = {}
-        for d in read.get("docs") or []:
-            for c in chosen:
-                x = (d.get("decisions") or {}).get(c) if isinstance(d, dict) else None
-                if isinstance(x, dict) and x.get("d") == "approve" and x.get("carried"):
-                    held.setdefault(c, []).append(str(d.get("who")))
-        if held and not keep_carried:
-            n = sum(len(w) for w in held.values())
-            listed = "; ".join(f"{c}: {', '.join(map(str, w))}" for c, w in held.items())
-            raise Stop(f"{n} approval{'' if n == 1 else 's'} in {used} {'was' if n == 1 else 'were'} carried over from "
-                       f"an earlier page ({listed}): the page shows each person's earlier choice until they save "
-                       "again. Ask the user once whether to keep them; on a yes, choose again with --keep-carried. "
-                       "The run continues from the same place.")
-        kept = sorted(held)
-    elif source == "rule":
-        picked = rule_pick(run, brief)
-        if sorted(chosen) != sorted(picked):
-            raise Stop(f"The rule (tm brief pick) picks {', '.join(picked) or 'none'}, not {', '.join(chosen)}. "
-                       f"Choose what it picks, or ask the user and record their answer with --source chat. The run "
-                       "continues from the same place.")
-    record = {"concepts": chosen, "source": source, "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    if kept:
-        record["kept_carried"] = kept
+        used, held_kept = _from_page(run, latest, rel, kept, dropped, decisions, keep_carried)
+    elif source == "rule" and dropped:
+        raise Stop(f"Hands-off keeps every concept, so the rule drops none ({', '.join(dropped)} named). Choose with no "
+                   "--drop, or ask the user and record their answer with --source chat. The run continues from the "
+                   "same place.")
+    s = state.load(run)
+    before = ((s.brief or {}).get("chosen") or {}).get("dropped") or []
+    record = {"concepts": kept, "dropped": list(dict.fromkeys([c for c in before if c not in ids] + dropped)),
+              "source": source, "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    if held_kept:
+        record["kept_carried"] = held_kept
+    written = None
+    if dropped:
+        target = run.next_version(FINAL, STEM, "json")
+        new = {**brief, "concepts": [c for c in brief["concepts"]
+                                     if not (isinstance(c, dict) and c.get("id") in dropped)]}
+        animatic.write_new(target, json.dumps(new, ensure_ascii=False, indent=1) + "\n")
+        written = _rel(run, target)
+        manifest.record(run, written, FINAL, CHOOSE_SOURCE, parent=rel, params={"dropped": dropped})
     s = state.load(run)
     s.brief = {**(s.brief or {}), "chosen": record}
     state.save(run, s)
-    return {**record, "brief": rel, "decisions": used}
+    return {**record, "brief": rel, "written": written, "decisions": used}
+
+
+def _from_page(run: RunFolder, latest: Path, rel: str, kept: list[str], dropped: list[str],
+               decisions: Path | None, keep_carried: bool) -> tuple[str, list[str]]:
+    """`choose --source page`: the decisions file used and the concepts whose carried rows the user kept. Stop
+    unless each kept concept is approved and each dropped one dropped on the page built from the latest brief,
+    with no carried row unless `keep_carried`."""
+    path = Path(decisions) if decisions is not None else _latest_decisions(run)
+    if path is None:
+        raise Stop("No decisions have been read from the page yet: read them with tm brief decisions first. The "
+                   "run continues from the same place.")
+    used = _rel(run, path)
+    try:
+        read = trends.read(path)
+        got = read.get("verdicts") or {}
+    except (ValueError, AttributeError):
+        raise Stop(f"{used} is not a decisions file of tm brief decisions; {AGAIN}.") from None
+    if read.get("brief") != rel or read.get("brief_sha256") != stepchecks.sha256(latest):
+        was = read.get("brief") or "an unknown brief"
+        raise Stop(f"The decisions in {used} were taken on the page built from {was}, and the brief is now {rel}. Rebuild "
+                   "the page (tm brief page) and publish it again, then let people decide on it and read their "
+                   "decisions; or ask the user in chat and record their answer with --source chat. The run continues "
+                   "from the same place.")
+    wanted = {**{c: "approved" for c in kept}, **{c: "dropped" for c in dropped}}
+    off = [f"{c} ({(got.get(c) or {}).get('verdict', 'not on the page')})" for c, v in wanted.items()
+           if (got.get(c) or {}).get("verdict") != v]
+    if off:
+        raise Stop(f"From the page, a concept is kept only when it is approved there and dropped only when it is "
+                   f"dropped there, and {', '.join(off)} {'is' if len(off) == 1 else 'are'} not, in {used}. Show the "
+                   "user the verdicts and the notes and ask in chat; record their answer with --source chat. The run "
+                   "continues from the same place.")
+    held: dict[str, list[str]] = {}
+    for d in read.get("docs") or []:
+        for c in wanted:
+            x = (d.get("decisions") or {}).get(c) if isinstance(d, dict) else None
+            if isinstance(x, dict) and x.get("d") in ("approve", "drop") and x.get("carried"):
+                held.setdefault(c, []).append(str(d.get("who")))
+    if held and not keep_carried:
+        n = sum(len(w) for w in held.values())
+        listed = "; ".join(f"{c}: {', '.join(map(str, w))}" for c, w in held.items())
+        raise Stop(f"{n} decision{'' if n == 1 else 's'} in {used} {'was' if n == 1 else 'were'} carried over from "
+                   f"an earlier page ({listed}): the page shows each person's earlier choice until they save "
+                   "again. Ask the user once whether to keep them; on a yes, choose again with --keep-carried. "
+                   "The run continues from the same place.")
+    return used, sorted(held)
 
 
 # --- the step checks -------------------------------------------------------------------------------
@@ -1252,19 +1302,32 @@ def built_gap(run: RunFolder) -> str | None:
 
 
 def chosen_gap(run: RunFolder) -> str | None:
-    """`concepts_chosen`: a choice is recorded and its concepts are in the latest brief."""
+    """`concepts_chosen` (E1, E2): what was decided per concept is recorded (`tm brief choose`), every concept of
+    the latest brief is kept, and none of the dropped ones is in it. A choice recorded before issue #145 (no
+    `dropped`) needs only its concepts in the latest brief."""
     chosen = (state.load(run).brief or {}).get("chosen") or {}
     concepts = chosen.get("concepts") or []
     if not concepts:
-        return "the concepts to brief are chosen (tm brief choose)"
+        return ("the concepts are decided (tm brief choose: --drop the ones dropped on the page or in chat; no --drop "
+                "keeps every concept)")
     latest = run.latest(FINAL, STEM, "json")
     try:
         brief = json.loads(latest.read_text(encoding="utf-8-sig")) if latest else None
-        ids = {c["id"] for c in brief["concepts"]}
+        ids = [c["id"] for c in brief["concepts"]]
     except (OSError, ValueError, TypeError, KeyError):
         return f"the latest {STEM} is readable, with the chosen concepts in it"
     gone = [c for c in concepts if c not in ids]
     if gone:
         return (f"the chosen concepts are in the latest brief ({latest.name} has no {', '.join(gone)}): choose again "
                 "(tm brief choose)")
+    if "dropped" not in chosen:                        # a run started before issue #145
+        return None
+    back = [c for c in chosen["dropped"] if c in ids]
+    if back:
+        return (f"the dropped concepts are left out of the latest brief ({latest.name} has {', '.join(back)}): write it "
+                "without them, or, if the user keeps them now, choose again (tm brief choose --source chat)")
+    open_ = [c for c in ids if c not in concepts]
+    if open_:
+        return (f"every concept of the latest brief is decided ({', '.join(open_)} in {latest.name} "
+                f"{'is' if len(open_) == 1 else 'are'} not): choose again (tm brief choose)")
     return None

@@ -67,7 +67,7 @@ flow is `flow.md`; the rules `rules.md`. **What the plugin does with them:**
 | AI generation (later, outside PB2) | beats with visual descriptions are the prompt base; generation is out of scope at the brief stage | — |
 
 ## 6. Proposed order of tests
-1. Finish the LD dry run on the page (decisions at G2–G4) and produce one concept with a real creator.
+1. Finish the LD dry run on the page (decisions at G3 and G4) and produce one concept with a real creator.
 2. Live test of that concept through PB1 (R4), with `brief_id` in the results library (R5).
 3. A run on a product with tier A reviews (Shopify or Amazon).
 4. A run for a non-English market (PL).

@@ -106,7 +106,19 @@ def _per_view_header(reference: str) -> str:
     facts = f' data-v="{" ".join(brief_page.HEADER_FACTS_VIEWS)}"'
     reference = reference.replace("To send one view, open it and use Share, then Copy link.",
                                   brief_page.E(brief_page.PDF_WORDS["hint_no_pdf"]))
-    return re.sub(r'<div class="(who|trendline)">', lambda m: f'<div class="{m.group(1)}"{facts}>', reference)
+    reference = re.sub(r'<div class="(who|trendline)">', lambda m: f'<div class="{m.group(1)}"{facts}>', reference)
+    return _creator_fields_and_drop(reference)
+
+
+def _creator_fields_and_drop(reference: str) -> str:
+    """Issue #146: the creator view is built from the creator fields only, so a concept's one-liner and key message
+    are on every view but the creator's; issue #145: Drop, the third choice per concept."""
+    facts = f' data-v="{" ".join(brief_page.HEADER_FACTS_VIEWS)}"'
+    reference = re.sub(r'(<h2>[^<]*</h2>\n)<p>', lambda m: f"{m.group(1)}<p{facts}>", reference)
+    reference = reference.replace('<p class="keymsg">', f'<p class="keymsg"{facts}>')
+    change = 'data-d="change" aria-pressed="false">Ask for changes</button>'
+    return reference.replace(change, change + '<button type="button" class="choice" data-d="drop" '
+                                              'aria-pressed="false">Drop</button>')
 
 
 def _body_and_script(page_html: str) -> tuple[str, str]:
@@ -414,10 +426,11 @@ def test_db_list_text_and_copied_text_parse_to_same_verdicts():
     ids = ["C1", "C2", "C3", "C4"]
     from_db = brief_page.verdicts(brief_page.read_decisions({"raw": _db_text()}), ids)
     assert _plain(from_db) == {
-        "C1": {"verdict": "approved", "approve": 2, "change": []},
-        "C2": {"verdict": "changes", "approve": 0, "change": ["Shorter hook, please", "Show the book\nin the first second"]},
-        "C3": {"verdict": "split", "approve": 1, "change": [NOTE]},
-        "C4": {"verdict": "none", "approve": 0, "change": []}}
+        "C1": {"verdict": "approved", "approve": 2, "change": [], "drop": 0},
+        "C2": {"verdict": "changes", "approve": 0, "change": ["Shorter hook, please", "Show the book\nin the first second"],
+               "drop": 0},
+        "C3": {"verdict": "split", "approve": 1, "change": [NOTE], "drop": 0},
+        "C4": {"verdict": "none", "approve": 0, "change": [], "drop": 0}}
     assert [c["who"] for c in from_db["C2"]["change"]] == ["u1", "u2"]
     joined = brief_page.verdicts(brief_page.read_decisions({"raw": _db_text(pieces=True)}), ids)
     assert joined == from_db                                   # Task 5's carry: pieces with no newline
@@ -427,6 +440,12 @@ def test_db_list_text_and_copied_text_parse_to_same_verdicts():
     copied = brief_page.verdicts(brief_page.read_decisions(COPIED), ids)
     assert _plain(copied) == _plain(from_db)
     assert [c["who"] for c in copied["C2"]["change"]] == ["copied text 1", "copied text 2"]
+    # Drop (issue #145): from the db and from copied text alike; a drop beside an approval is a split
+    dropped = brief_page.read_decisions('Decisions on "T"\nC1: Dropped | too close to C2\nC2: Approved\n'
+                                        'Decisions on "T"\nC1: Dropped\nC2: Dropped\n')
+    assert dropped[0]["decisions"]["C1"] == {"d": "drop", "n": "too close to C2"}
+    got = brief_page.verdicts(dropped, ["C1", "C2"])
+    assert (got["C1"]["verdict"], got["C1"]["drop"], got["C2"]["verdict"]) == ("dropped", 2, "split")
     with pytest.raises(brief_page.Stop, match="Copy my decisions"):
         brief_page.read_decisions("C1: Approved")
     with pytest.raises(brief_page.Stop, match="one page of several"):
@@ -447,22 +466,22 @@ def _save_db(run: RunFolder, slug: str, text: str, at: str, tool: str = "db_list
 
 @pytest.mark.private_data
 def test_decisions_ignore_a_db_answer_of_another_slug(run, capsys):
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 2 and "tm page published" in out["message"]          # no publish recorded yet
     _published(run)
     other = "\n".join([_summary(1), _doc("x9", C1=("change", "not this page")), REMINDER])
     _save_db(run, OTHER_SLUG, other, _later(1))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 2 and out["status"] == "stop" and "read the decisions with an ArtifactData list first" in out["message"]
     assert not list((run.path / "03_wip").glob("decisions_*"))
 
     _save_db(run, SLUG, _db_text(), _later(2), tool="db_query")
     _save_db(run, OTHER_SLUG, other, _later(3))         # later, but another artifact's
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 0, out
-    assert out["from"] == "03_wip/decisions/db_query_v01.json" and out["file"] == "03_wip/decisions_G2_v01.json"
-    assert out["verdicts"]["C1"] == {"verdict": "approved", "approve": 2, "change": []}
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2",
+    assert out["from"] == "03_wip/decisions/db_query_v01.json" and out["file"] == "03_wip/decisions_C1_v01.json"
+    assert out["verdicts"]["C1"] == {"verdict": "approved", "approve": 2, "change": [], "drop": 0}
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1",
                      "--file", str(run.path / "03_wip/decisions/db_list_v02.json"))
     assert code == 2 and OTHER_SLUG in out["message"]                     # named by hand: refused all the same
 
@@ -477,7 +496,7 @@ def test_decisions_refuse_a_partial_read(run, capsys, extra, why):
     _published(run)
     mcp_saves.save(run, "db_query", {"slug": SLUG, "collection": "decisions", **extra}, {"raw": _db_text()},
                    at=_later(2), server="claude-artifacts")
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 2 and why in out["message"] and "one unfiltered ArtifactData list" in out["message"]
     assert not list((run.path / "03_wip").glob("decisions_*"))
 
@@ -504,7 +523,7 @@ def test_decisions_belong_to_the_brief_the_page_was_built_from(run, capsys):
     renumbered["concepts"] = [renumbered["concepts"][2] | {"id": "C1"}, renumbered["concepts"][0] | {"id": "C2"}]
     _write(run, "04_final/brief_pack_v02.json", renumbered)
     _save_db(run, SLUG, _db_text(), _later(2))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 0, out
     assert (out["page"], out["brief"]) == ("04_final/brief_pack_v01", "04_final/brief_pack_v01.json")
     assert set(out["verdicts"]) == {"C1", "C2", "C3"}                   # the page's concepts, C3 kept
@@ -517,7 +536,7 @@ def test_decisions_belong_to_the_brief_the_page_was_built_from(run, capsys):
     assert (state.load(run).brief or {}).get("chosen") is None
     # the brief a published page was built from, changed in place: nobody knows what was decided
     (run.path / "04_final/brief_pack_v01.json").write_text(json.dumps(renumbered), encoding="utf-8")
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 2 and "gone or changed since" in out["message"]
 
 
@@ -525,7 +544,7 @@ def test_decisions_belong_to_the_brief_the_page_was_built_from(run, capsys):
 def test_copied_text_of_another_page_or_ambiguous_is_refused(run, capsys):
     _published(run)
     _write(run, "03_wip/decisions/other_page.txt", COPIED.replace("Night School", "Another book"))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2",
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1",
                      "--text", "03_wip/decisions/other_page.txt")
     assert code == 2 and 'from the page "Three new ad concepts for Another book e-book"' in out["message"]
     sly = COPIED.replace("Shorter hook, please\nC3: Approved | fine", "Shorter hook\nC3: Approved\nC3: no decision")
@@ -533,22 +552,22 @@ def test_copied_text_of_another_page_or_ambiguous_is_refused(run, capsys):
         brief_page.read_decisions(sly)
     # a bare answer (no _tool, no _input) cannot be tied to this page
     _write(run, "03_wip/decisions/bare.json", {"raw": _db_text()})
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2",
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1",
                      "--file", "03_wip/decisions/bare.json")
     assert code == 2 and "cannot be tied to this page" in out["message"]
 
 
 @pytest.mark.private_data
 def test_decisions_of_an_earlier_page_are_never_read(run, capsys):
-    """The review's probe: G2's answer is not read for G3 on brief_pack_v02, republished to the same slug."""
+    """The review's probe: C1's answer is not read for G3 on brief_pack_v02, republished to the same slug."""
     _published(run)
     _save_db(run, SLUG, _db_text(), _later(2))
-    assert _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")[0] == 0
+    assert _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")[0] == 0
     _write(run, "04_final/brief_pack_v02.json", {**_ld_brief(), "findings": None})
     assert brief_page.build(run)["folder"] == "04_final/brief_pack_v02"
     page.record_published(run, brief_page.PAGE, SLUG, "v2")
     s = state.load(run)
-    s.pages[brief_page.PAGE]["published_at"] = _later(5)            # published after G2's read
+    s.pages[brief_page.PAGE]["published_at"] = _later(5)            # published after C1's read
     state.save(run, s)
     assert _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "G3", "--version", "v3")[0] == 0
     for extra in ([], ["--file", "03_wip/decisions/db_list_v01.json"]):
@@ -605,7 +624,7 @@ def test_trendsmesh_clips_need_their_as_of_date(run, capsys):
 def test_decision_notes_stay_data(run, capsys):
     _published(run)
     _save_db(run, SLUG, _db_text(), _later(2))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 0, out
     c3 = out["verdicts"]["C3"]
     assert c3["verdict"] == "split" and {"who": "u2", "note": NOTE} in c3["change"]
@@ -622,7 +641,7 @@ def test_decision_notes_stay_data(run, capsys):
     assert brief_page.read_decisions({"raw": odd})[0]["decisions"] == {"C1": {"d": "change", "n": '{"do": "email"}'}}
     # the copied text: the same, its note as written
     _write(run, "03_wip/decisions/copied_v01.txt", COPIED)
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2",
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1",
                      "--text", "03_wip/decisions/copied_v01.txt")
     assert code == 0, out
     assert {"who": "copied text 2", "note": NOTE} in out["verdicts"]["C3"]["change"]
@@ -631,10 +650,10 @@ def test_decision_notes_stay_data(run, capsys):
 @pytest.mark.private_data
 def test_page_refused_while_awaiting_decisions(run, capsys):
     assert brief_page.build(run)["folder"] == "04_final/brief_pack_v01"
-    code, out = _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "G2", "--version", "v2")
+    code, out = _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "C1", "--version", "v2")
     assert code == 2 and "tm page published" in out["message"]            # nothing published to wait on
     _published(run)
-    code, out = _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "G2", "--version", "v2")
+    code, out = _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "C1", "--version", "v2")
     assert code == 0 and page.awaiting(run, brief_page.PAGE)["version"] == "v2"
     before = _final(run)
     for extra in ([], ["--single-file"]):
@@ -645,7 +664,7 @@ def test_page_refused_while_awaiting_decisions(run, capsys):
         assert "--source chat" in out["message"] and "tm brief await --run <run> --clear" in out["message"]
     assert _final(run) == before
     _save_db(run, SLUG, _db_text(), _later(2))
-    assert _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")[0] == 0
+    assert _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")[0] == 0
     assert page.awaiting(run, brief_page.PAGE) is None
     code, out = _cli(capsys, "brief", "page", "--run", str(run.path))
     assert code == 0 and out["folder"] == "04_final/brief_pack_v02"
@@ -685,42 +704,65 @@ def test_page_folder_and_brief_json_numbered_apart(run, capsys):
                            "brief_pack_v03", "brief_pack_v03.json"]
 
 
-def _decisions_file(run: RunFolder, stage: str = "G2") -> str:
+def _decisions_file(run: RunFolder, stage: str = "C1") -> str:
     _published(run)
     _save_db(run, SLUG, _db_text(), _later(2))
     assert main(["brief", "decisions", "--run", str(run.path), "--stage", stage, "--json"]) == 0
     return f"03_wip/decisions_{stage}_v01.json"
 
 
+DROPPED = [_doc("u1", C1=("approve", ""), C2=("drop", ""), C3=("drop", "too close to C1")),
+           _doc("u2", C1=("approve", "Love it"), C2=("drop", ""), C3=("drop", ""))]
+
+
 @pytest.mark.private_data
-def test_choose_from_page_needs_approved(run, capsys):
-    assert brief_page.chosen_gap(run) == "the concepts to brief are chosen (tm brief choose)"
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "--source", "page")
+def test_choose_from_page_keeps_the_approved_and_drops_the_dropped(run, capsys):
+    """Issue #145: each concept is approved, sent back or dropped on the page; `tm brief choose --drop` records the
+    dropped ones (commas and spaces alike) and writes the next brief version without them."""
+    assert brief_page.chosen_gap(run).startswith("the concepts are decided (tm brief choose")
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C2", "--source", "page")
     assert code == 2 and "tm brief decisions" in out["message"]
-    _decisions_file(run)
+    _decisions_file(run)                         # C1 approved, C2 changes, C3 split
     capsys.readouterr()
-    for concepts, verdict in ((["C1", "C2"], "C2 (changes)"), (["C3"], "C3 (split)")):
-        code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", *concepts, "--source", "page")
-        assert code == 2 and verdict in out["message"] and "--source chat" in out["message"]
-        assert (state.load(run).brief or {}).get("chosen") is None
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "--source", "page")
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C2,C3", "--source", "page")
+    assert code == 2 and "C2 (changes)" in out["message"] and "C3 (split)" in out["message"]
+    assert "--source chat" in out["message"] and (state.load(run).brief or {}).get("chosen") is None
+    _save_db(run, SLUG, "\n".join([_summary(2), *DROPPED, REMINDER]), _later(3))   # the team decided again
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 0, out
-    assert out["decisions"] == "03_wip/decisions_G2_v01.json"
+    assert {cid: v["verdict"] for cid, v in out["verdicts"].items()} == {"C1": "approved", "C2": "dropped",
+                                                                         "C3": "dropped"}
+    assert out["verdicts"]["C3"] == {"verdict": "dropped", "approve": 0, "change": [], "drop": 2}
+    assert 'C3, u1, Dropped: "too close to C1"' in out["quote"]
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C2,", "C3", "--source", "page")
+    assert code == 0, out
+    assert out["written"] == "04_final/brief_pack_v02.json" and "without them" in out["message"]
     chosen = state.load(run).brief["chosen"]
-    assert (chosen["concepts"], chosen["source"]) == (["C1"], "page") and chosen["at"]
+    assert (chosen["concepts"], chosen["dropped"], chosen["source"]) == (["C1"], ["C2", "C3"], "page")
+    written = json.loads((run.path / out["written"]).read_text(encoding="utf-8"))
+    assert [c["id"] for c in written["concepts"]] == ["C1"] and written["meta"] == _ld_brief()["meta"]
     assert stepchecks.run("concepts_chosen", run) is None
     assert state.load(run).decisions == []                               # no check-in decided
-
-    # the user's word in chat counts; an unknown concept is a bad argument
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "C3", "--source", "chat")
-    assert code == 0 and state.load(run).brief["chosen"]["concepts"] == ["C1", "C3"]
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C9", "--source", "chat")
-    assert code == 1 and "C9" in out["message"]
-    # a later brief without a chosen concept reopens the choice
-    brief = _ld_brief()
-    brief["concepts"] = brief["concepts"][:2]
-    _write(run, "04_final/brief_pack_v02.json", brief)
-    assert "has no C3" in stepchecks.run("concepts_chosen", run)
+    # nothing is ever dropped to none; an unknown concept is a bad argument, named alone
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C1", "--source", "chat")
+    assert code == 1 and "drops every concept" in out["message"]
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C1,C9", "--source", "chat")
+    assert code == 1 and out["message"].startswith("C9 is not a concept of the latest brief")
+    # a later brief that brings a dropped concept back reopens the choice, until it is chosen again
+    _write(run, "04_final/brief_pack_v03.json", _ld_brief())
+    assert "has C2, C3" in stepchecks.run("concepts_chosen", run)
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--source", "chat")
+    assert code == 0 and out["written"] is None
+    assert (state.load(run).brief["chosen"]["concepts"], state.load(run).brief["chosen"]["dropped"]) == (
+        ["C1", "C2", "C3"], [])
+    assert stepchecks.run("concepts_chosen", run) is None
+    # the kept ones, named: the rest are dropped
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1 C3", "--source", "chat")
+    assert code == 0 and state.load(run).brief["chosen"]["dropped"] == ["C2"]
+    assert out["written"] == "04_final/brief_pack_v04.json"
+    # the kept ones or the dropped ones, never both (argparse refuses it)
+    assert main(["brief", "choose", "--run", str(run.path), "--concepts", "C1", "--drop", "C3", "--source", "chat"]) != 0
+    assert "not allowed with argument" in capsys.readouterr().err
 
 
 @pytest.mark.private_data
@@ -728,36 +770,35 @@ def test_decisions_carried_over_from_the_earlier_page_are_marked(run, capsys):
     """The page pre-fills each person's earlier choice, and the db keeps it across versions: a row
     equal to the one the earlier decisions file recorded for that person and concept is `carried`,
     and choosing from the page refuses it unless the user kept it in chat (--keep-carried)."""
-    first = _decisions_file(run)                                    # G2, round 1: nothing carried
+    first = _decisions_file(run)                                    # C1, round 1: nothing carried
     capsys.readouterr()
     saved = json.loads((run.path / first).read_text(encoding="utf-8"))
     assert saved["carried"] == {} and not any(x.get("carried") for d in saved["docs"]
                                               for x in d["decisions"].values())
-    # round 2 on a new page (rebuilt and republished): u1 saved C1 again with a note, u2 did not touch it
-    again = "\n".join([_summary(2), _doc("u1", C1=("approve", "still good"), C2=("change", "Shorter hook, please"),
-                                         C3=("approve", "fine")),
-                       DOCS[1], REMINDER])
+    # round 2 on a new page (rebuilt and republished): u1 saved C1 again with a note and dropped C2 and C3; u2
+    # dropped them too and did not touch C1
+    again = "\n".join([_summary(2), _doc("u1", C1=("approve", "still good"), C2=("drop", ""), C3=("drop", "")),
+                       _doc("u2", C1=("approve", "Love it"), C2=("drop", ""), C3=("drop", "")), REMINDER])
     _republished(run)
     _save_db(run, SLUG, again, _later(4))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 0, out
-    assert out["carried"] == {"C1": ["u2"], "C2": ["u1", "u2"], "C3": ["u1", "u2"]}
+    assert out["carried"] == {"C1": ["u2"]}
     assert "carried over" in out["message"] and "u2" in out["message"]
     second = json.loads((run.path / out["file"]).read_text(encoding="utf-8"))
     rows = {d["who"]: d["decisions"] for d in second["docs"]}
     assert "carried" not in rows["u1"]["C1"] and rows["u2"]["C1"]["carried"] is True
-    assert second["verdicts"]["C1"] == {"verdict": "approved", "approve": 2, "change": []}   # counts unchanged
+    assert second["verdicts"]["C1"] == {"verdict": "approved", "approve": 2, "change": [], "drop": 0}   # counted
     # C1's approval by u2 is carried: refused from the page, unless the user kept it in chat
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "--source", "page")
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C2", "C3", "--source", "page")
     assert code == 2 and "carried over" in out["message"] and "--keep-carried" in out["message"]
     assert (state.load(run).brief or {}).get("chosen") is None
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "--source", "page",
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C2", "C3", "--source", "page",
                      "--keep-carried")
     assert code == 0, out
     assert state.load(run).brief["chosen"]["kept_carried"] == ["C1"]
     # --keep-carried is for the page only
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "--source", "chat",
-                     "--keep-carried")
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--source", "chat", "--keep-carried")
     assert code == 1 and "--keep-carried" in out["message"]
 
 
@@ -765,7 +806,7 @@ def _republished(run: RunFolder) -> None:
     """The page built again into a new folder, published to the same slug and awaited (pages.md step 10)."""
     brief_page.build(run)
     page.record_published(run, brief_page.PAGE, SLUG, "v2", f"https://claude.ai/artifact/{SLUG}")
-    brief_page.await_decisions(run, "G2", "v2")
+    brief_page.await_decisions(run, "C1", "v2")
 
 
 @pytest.mark.private_data
@@ -776,35 +817,31 @@ def test_reading_the_same_page_again_marks_nothing_carried(run, capsys):
     capsys.readouterr()
     late = "\n".join([_summary(3), *DOCS, _doc("u3", C1=("approve", "")), REMINDER])     # u3 voted since
     _save_db(run, SLUG, late, _later(3))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 0, out
     assert out["file"] != first and out["carried"] == {} and "carried over" not in out["message"]
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "--source", "page")
-    assert code == 0, out
-    assert "kept_carried" not in state.load(run).brief["chosen"]
+    read = json.loads((run.path / out["file"]).read_text(encoding="utf-8"))
+    assert not any(x.get("carried") for d in read["docs"] for x in d["decisions"].values())
     # after a republish u2's untouched rows are carried, and stay carried when the new page is read again
     _republished(run)
     changed = "\n".join([_summary(3), _doc("u1", C1=("change", "now shorter")), DOCS[1],
                          _doc("u3", C1=("approve", "")), REMINDER])
     _save_db(run, SLUG, changed, _later(5))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert out["carried"] == {"C1": ["u2", "u3"], "C2": ["u2"], "C3": ["u2"]}
     _save_db(run, SLUG, changed, _later(6))
-    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "G2")
+    code, out = _cli(capsys, "brief", "decisions", "--run", str(run.path), "--stage", "C1")
     assert code == 0, out
     assert out["carried"] == {"C1": ["u2", "u3"], "C2": ["u2"], "C3": ["u2"]}
 
 
 @pytest.mark.private_data
-def test_choose_by_rule_must_equal_pick(run, capsys):
-    criteria = ("brand_fit", "persona_fit", "bridge", "lifecycle", "transfer", "sensitivity", "feasibility")
-    blocks = json.loads((FIXTURES / "ld_plugin_blocks.json").read_text(encoding="utf-8"))["concepts"]
-    cand = {cid: b["plugin"]["candidate"] for cid, b in blocks.items()}
-    _write(run, "03_wip/scores_v01.json", {cand["C1"]: {c: 4 for c in criteria}, cand["C2"]: {c: 5 for c in criteria},
-                                           cand["C3"]: {c: 2 for c in criteria}})
-    _write(run, "config.yaml", "concepts:\n  count: 2\n")
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "C3", "--source", "rule")
-    assert code == 2 and "picks C2, C1" in out["message"]
-    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--concepts", "C1", "C2", "--source", "rule")
+def test_choose_by_rule_keeps_every_concept(run, capsys):
+    """Hands-off keeps every concept (issue #145): the rule drops none."""
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--drop", "C3", "--source", "rule")
+    assert code == 2 and "Hands-off keeps every concept" in out["message"]
+    code, out = _cli(capsys, "brief", "choose", "--run", str(run.path), "--source", "rule")
     assert code == 0, out
-    assert state.load(run).brief["chosen"]["source"] == "rule"
+    chosen = state.load(run).brief["chosen"]
+    assert (chosen["concepts"], chosen["dropped"], chosen["source"]) == (["C1", "C2", "C3"], [], "rule")
+    assert stepchecks.run("concepts_chosen", run) is None

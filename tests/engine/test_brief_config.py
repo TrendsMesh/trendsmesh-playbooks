@@ -78,14 +78,14 @@ def test_defaults_match_playbook_numbers(run):
                                                          "transfer", "sensitivity", "feasibility")}}
     assert cfg["benchmark"] == {"source": "meta_ad_library"}
     assert cfg["concepts"] == {"count": 3, "min_axes_diff": 2}
-    assert cfg["outputs"] == ["review_pack", "briefs", "animatics", "page"]
+    assert cfg["outputs"] == ["review_pack", "briefs", "page"]
     assert cfg["delivery"] == {"channel": "artifact"}
     assert cfg["animatic"] == {"formats": None, "fps": 24}
     assert cfg["intake"] == {k: None for k in ("budget", "deadline", "approver", "rights", "fee")}
     assert cfg["seed"] is None
     assert set(brief_config.FIXED) == {"benchmark.source", "voice.tiers"}
     s = state.load(run)
-    assert (s.level, s.outputs) == ("big_calls", ["review_pack", "briefs", "animatics", "page"])
+    assert (s.level, s.outputs) == ("big_calls", ["review_pack", "briefs", "page"])
     assert brief_config.validate(run) == []
     assert config.validate(run) == []
 
@@ -99,24 +99,31 @@ def test_foreplay_not_supported_yet(run):
     assert "voice.tiers" in _problems(run)                # tier C never counts as evidence (CB5)
 
 
-def test_briefs_without_animatics_refused_and_page_required(run):
+def test_animatics_are_no_output_and_page_required(run):
+    """Issue #145: animatics are made on request, so the briefs need none (CB11); `animatics`, an output of a run
+    started before, is accepted and left out."""
     brief_config.write_from_intake(run, {**BASE, "outputs": ["briefs", "review_pack", "page"]})
-    problem = _problems(run)["outputs"]
-    assert "CB11" in problem.what and "animatics" in problem.what
-    brief_config.write_from_intake(run, {**BASE, "outputs": ["review_pack", "animatics", "page"]})
-    assert "CB11" in _problems(run)["outputs"].what       # and the reverse
+    assert brief_config.validate(run) == []
+    assert config.load(run)["outputs"] == ["review_pack", "briefs", "page"]
+    brief_config.write_from_intake(run, {**BASE, "outputs": ["review_pack", "briefs", "animatics", "page"]})
+    assert config.load(run)["outputs"] == ["review_pack", "briefs", "page"]   # the legacy output left out
+    assert "animatics" not in state.load(run).outputs
+    cfg = config.load(run)
+    cfg["outputs"] = ["review_pack", "briefs", "animatics", "page"]          # an old run's config.yaml
+    config.save(run, cfg)
+    assert brief_config.validate(run) == []
     brief_config.write_from_intake(run, {**BASE, "outputs": ["review_pack"]})
     assert "CB12" in _problems(run)["outputs"].what
-    for skipping in (["page"], ["animatics", "page"]):   # neither the review pack nor the briefs: no concepts
+    for skipping in (["page"],):                          # neither the review pack nor the briefs: no concepts
         brief_config.write_from_intake(run, {**BASE, "outputs": skipping})
         problems = [p for p in brief_config.validate(run) if p.field == "outputs"]
-        assert any("C1, G2" in p.what and p.todo.startswith("Add review_pack") for p in problems), skipping
-    brief_config.write_from_intake(run, {**BASE, "outputs": ["briefs", "animatics", "page"]})
+        assert any("(C1)" in p.what and p.todo.startswith("Add review_pack") for p in problems), skipping
+    brief_config.write_from_intake(run, {**BASE, "outputs": ["briefs", "page"]})
     assert brief_config.validate(run) == []               # everything but the review pack still has concepts
     brief_config.write_from_intake(run, {**BASE, "outputs": ["page", "review_pack"]})
     assert config.load(run)["outputs"] == ["review_pack", "page"]   # the review pack alone: playbook order
     assert brief_config.validate(run) == []
-    with pytest.raises(ValueError, match="review_pack, briefs, animatics, page"):
+    with pytest.raises(ValueError, match="review_pack, briefs, page"):
         brief_config.write_from_intake(run, {**BASE, "outputs": ["live_test"]})
 
 

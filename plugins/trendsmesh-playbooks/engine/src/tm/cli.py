@@ -44,6 +44,15 @@ def read_json(path) -> object:
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
+def ids_arg(values: list[str] | str | None) -> list[str]:
+    """Ids given on the command line, each value split on commas and spaces (`C1,C3`, `C1, C3` and `C1 C3` alike,
+    issues #134 and #145), each once, in the order given."""
+    if values is None:
+        return []
+    items = [values] if isinstance(values, str) else values
+    return list(dict.fromkeys(x for v in items for x in v.replace(",", " ").split()))
+
+
 def fail(args: argparse.Namespace, message: str) -> int:
     emit(args, {"status": "error", "message": message}, message)
     return 1

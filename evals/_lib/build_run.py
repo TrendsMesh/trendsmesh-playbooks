@@ -80,6 +80,7 @@ e-book, Canada, English, the account spends PLN): the LD dry run, anonymised (ge
   cb_at_c1_page_built  the same, with the dry run's brief (no animatics yet) evidenced, checked at the concepts
                  stage and the page v01 built, not published
   cb_at_c1_no_artifacts  the same for a review-pack run (outputs review_pack and page)
+  cb_at_c1_review_pack  the same review-pack run (its C1 page is the one people decide on, issue #145)
   cb_seed_expired  one full seed/1 row in library/seeds.jsonl (valid until 2026-10-30) and a run
                  started from it (--seed), driven to B3
 
@@ -942,7 +943,7 @@ def cb_run(ws: Path, level: str, outputs: list[str], seed: str | None = None) ->
     return run
 
 
-CB_RUN: dict = {"level": "every_step", "outputs": ["review_pack", "briefs", "animatics", "page"]}
+CB_RUN: dict = {"level": "every_step", "outputs": ["review_pack", "briefs", "page"]}   # animatics on request (#145)
 
 
 def _engine():
@@ -1076,8 +1077,8 @@ def cb_b4(ws: Path, run: Path) -> None:
 
 
 def cb_c1(ws: Path, run: Path) -> None:
-    """The dry run's brief (anonymised, with the plugin blocks) as the review pack: no animatics yet (they come at
-    D2), then the evidence, the concepts check and the page."""
+    """The dry run's brief (anonymised, with the plugin blocks) as the review pack: no animatics (they are made on
+    request after the briefs, D2), then the evidence, the concepts check and the page."""
     brief = _ld_brief()
     for c in brief["concepts"]:
         c.pop("animatic", None)
@@ -1152,6 +1153,7 @@ def cb_main(scn: str, ws: Path) -> tuple[Path, dict]:
         "cb_at_c1": ("every_step", CB_RUN_ALL, "C1"),
         "cb_at_c1_page_built": ("every_step", CB_RUN_ALL, "C1"),
         "cb_at_c1_no_artifacts": ("every_step", ["review_pack", "page"], "C1"),
+        "cb_at_c1_review_pack": ("every_step", ["review_pack", "page"], "C1"),
     }[scn]
     run = cb_run(ws, level, outputs)
     if scn == "cb_at_b3_guess":   # a guess run is the user's Free choice (issue #106), made at readiness
@@ -1161,12 +1163,12 @@ def cb_main(scn: str, ws: Path) -> tuple[Path, dict]:
         cb_landing(ws, run)
         return run, n
     n = cb_drive(ws, run, stop)
-    if scn in ("cb_at_c1_page_built", "cb_at_c1_no_artifacts"):
+    if scn in ("cb_at_c1_page_built", "cb_at_c1_no_artifacts", "cb_at_c1_review_pack"):
         cb_c1(ws, run)
     return run, n
 
 
-CB_RUN_ALL = ["review_pack", "briefs", "animatics", "page"]
+CB_RUN_ALL = ["review_pack", "briefs", "page"]
 
 
 # --- organic video (PB03) ------------------------------------------------------------------------

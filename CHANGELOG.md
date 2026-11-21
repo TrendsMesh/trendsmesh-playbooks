@@ -4,6 +4,24 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
+  any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
+  each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of
+  the next brief version, the production views and the hand-off. Hands-off keeps every concept. With the review pack
+  alone, the concepts are decided on its page the same way. Runs started earlier carry on as they are.
+- **Creative brief: animatics on request.** Animatics are no longer an output chosen on the intake card. After the
+  briefs are shown, Claude explains what an animatic is (a short moving storyboard of the ad, free, about a minute
+  per concept and format) and asks for which concepts you want one: all, some or none. Only those are drawn, then
+  the page is published again to the same link; a concept without one shows "Animatic on request". Hands-off makes
+  none.
+- **Creative brief: customer voice belongs to the ad brief.** The customer-voice step and its rule (CB5) are now said
+  to apply to the ad brief; a brief for an organic video will have no customer-voice step.
+- **Creative brief: the creator view checks data, not words.** The creator view is built from the creator fields
+  only, so hooks and ad copy are shown as written ("DO NOT show this to your competitors" passes) in every language
+  alike. Its check now refuses the run's own account figures (spend, cost per result, results) and the advertisers
+  seen in the Ad Library, naming the field and the value, in the page and in the creator PDF.
+- **`tm brief choose` takes a comma list.** `--drop C2,C3`, `C2, C3` and `C2 C3` all work, and so does
+  `--concepts`; an error names only the ids that are not in the brief.
 - **Free or Paid: you choose how the playbooks find trends.** When TrendsMesh isn't connected, a playbook asks one
   question: Paid (sign in to TrendsMesh, or the plan offer) or Free (Claude guesses the trends from what it can see,
   each guess labelled). Claude remembers the choice for the folder you work in and opens each Free run with one line

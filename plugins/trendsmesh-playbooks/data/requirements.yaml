@@ -78,7 +78,7 @@ checks:
   - id: tier_animatic
     name: Animatic tools (the animatic renderer)
     playbooks: [02-creative-brief, 03-organic-ai-video]
-    when: [{outputs: [animatics]}, {outputs: [organic_video], production: [animation]}]
+    when: [{outputs: [briefs]}, {outputs: [organic_video], production: [animation]}]   # briefs: animatics on request (#145)
     kind: env_tier
     tier: animatic
     fixer: agent
@@ -280,7 +280,7 @@ checks:
   - id: browser_for_animatics
     name: A browser for the animatics (Chrome or Edge)
     playbooks: [02-creative-brief]
-    when: [{outputs: [animatics]}]
+    when: [{outputs: [briefs]}]   # the animatics on request, at D2 (issue #145)
     kind: browser
     fixer: user
     fix:

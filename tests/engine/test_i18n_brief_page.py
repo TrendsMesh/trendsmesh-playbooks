@@ -139,7 +139,7 @@ def test_the_english_page_is_the_default():
     assert '<html lang="en">' in text and "Concept 1 of 2" in text and "<b>Key message:</b> KEY" in text
     assert "Customers' own words in this ad" in text and '<li>"PHRASE": HOOK (<a ' in text
     assert 'Budget: <span class="todo">to set</span> · Deadline: 1 XII · Approver: <span class="todo">to set</span>' in text
-    assert "const LABEL = { approve: 'Approved', change: 'Changes requested' };" in text
+    assert "const LABEL = { approve: 'Approved', change: 'Changes requested', drop: 'Dropped' };" in text
     assert brief_page.body_html(_brief()) == brief_page.body_html(_brief(), tr=i18n.translator("en"))
 
 
@@ -191,8 +191,9 @@ def test_a_page_in_polish_has_no_english_word_of_the_table(polish):
     assert not lower, lower
     assert "PL·CONCEPT 1 OF 2" in text and "PL·KEY MESSAGE:" in text
     assert "PL·BUDGET: <span class=\"todo\">PL·TO SET</span>" in text
-    assert "const LABEL = { approve: 'PL·APPROVED', change: 'PL·CHANGES REQUESTED' };" in text
-    assert "`PL·${c}: ${a} APPROVED, ${ch} CHANGES REQUESTED`" in text and "`PL·${c}: NONE YET`" in text
+    assert "const LABEL = { approve: 'PL·APPROVED', change: 'PL·CHANGES REQUESTED', drop: 'PL·DROPPED' };" in text
+    assert "`PL·${c}: ${a} APPROVED, ${ch} CHANGES REQUESTED, ${dr} DROPPED`" in text
+    assert "'PL·CHOOSE APPROVE, ASK FOR CHANGES OR DROP FIRST.'" in text and ">PL·DROP</button>" in text and "`PL·${c}: NONE YET`" in text
     assert "'PL·NOT SAVED: THIS COPY CAN\\'T SAVE DECISIONS." in text
     assert "const lines = ['PL·DECISIONS ON \"LUMEN: TWO CONCEPTS\"'];" in text      # the title filled after
 

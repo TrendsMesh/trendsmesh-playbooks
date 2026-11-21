@@ -34,8 +34,9 @@ hypothesis`), the voice file against the raw items (`tm voice check`: CB5), the 
 (`tm trends shortlist`: CB2), the seed re-check (`tm brief seed-check`), the fit scores and their
 weighted totals (`tm brief scores`: CB3), the saturation checks against the saved Ad Library
 answers (`tm brief saturation`: CB4), brief.json against CB1 to CB13 at each stage (`tm brief
-check`), the Hands-off pick (`tm brief pick`: CB6), the page (`tm brief page`: CB12, CB13), the
-decisions read from it (`tm brief decisions`), the animatics (`tm brief animatic --render`: CB11),
+check`), the page (`tm brief page`: CB12, CB13), the decisions read from it (`tm brief decisions`)
+and what was dropped (`tm brief choose --drop`), the animatics the user asked for (`tm decide
+animatics make --concepts <ids> --said "<their words>"`, `tm brief animatic --render`: CB11),
 the clips' thumbnails and as-of dates (`tm brief evidence`: CB8) and the hand-off (`tm brief
 handoff`). Yours to keep: the product pick list and the card, the brand draft, the hypothesis,
 the theme coding and the language bank, the search phrases, the scores, the Ad Library reading,
@@ -124,6 +125,8 @@ Each trend is scored 1–5 on: brand fit, persona fit, credible bridge to the pr
 - **Foreplay plan (planned for PB2, user, 2026-11-04):** the dry run showed that the Meta Ad Library API returns titles only, so a hook cannot be checked in paid ads. With Foreplay (MCP, transcripts and on-screen text of ads) step 4 adds, per candidate hook: how many paid ads in the category already use this hook structure, on which platforms, and how long the longest one has run (a long run = proven in paid). The result goes into the "Competition" row of Evidence at a glance ("in paid: N ads, longest running D days" or "not found in paid"). Cost: Foreplay plan from $59/month (1 ad = 1 credit). Status: no account yet; the user creates the account and connects the MCP.
 
 ### CB5. Customer voice is the source of the angle
+CB5 applies to the ad brief. A brief for an organic video has no customer-voice step.
+
 **Intake (part of the confirmation card; the agent searches the sources itself):**
 - the landing URL comes from the product's ads, else the ad sets' Pixel or the Ad Library (asked only when no landing URL can be found, see Inputs);
 - optional: links to where customers leave reviews (store, Amazon, Trustpilot, Google, App Store), any export (reviews, support tickets, surveys, DMs), social profiles, competitor names or URLs;
@@ -167,13 +170,12 @@ Each trend is scored 1–5 on: brand fit, persona fit, credible bridge to the pr
 The brief is written once as **`brief.json`** (schema: `schema/brief.schema.json`); every view, the page and the animatic are generated from it. Its content: concept, angle with the customer evidence, trend with clips and numbers, hook (2–3 variants for testing), structure by seconds, formats (R6), primary text, headline, thumbnail (R7), why it should work (data), valid-until date, `brief_id` and a one-sentence test hypothesis ("this concept tests whether angle X works"), so a later test can be linked back to the brief. PB2 itself has no measurement step.
 The creator part (rendered as the creator view, the former shot list): role, casting (age, look, persona), setting and props, shot by shot (framing, action, takes), lines to say (key points + sample lines, natural, not read out), hook versions as extra takes, deliverables: **raw footage without burned-in captions, separate VO / audio track**, both formats. (Clean sources make a later PB1 refresh much easier.) The editor and media-buyer parts follow CB13.
 
-### CB11. Animatic in every brief
-- Each brief includes an **animatic**: an animated storyboard of the structure (shots, timing, on-screen text, hook, CTA), rendered from HTML to MP4 in the target formats. No API cost.
-- It shows structure and pacing, not realistic footage. No AI generation at the brief stage.
+### CB11. Animatic on request
+An animatic is offered after the concepts and briefs are shown. It is made only for the concepts the user names. When made, it is an animated storyboard of the structure (shots, timing, on-screen text, hook, CTA), rendered from HTML to MP4 in the target formats, at no API cost. It shows structure and pacing, not realistic footage.
 
 ### CB12. Delivery: one shareable page (user decision, 2026-11-04)
-- The recipient (growth lead, creator, client) gets **one page**, not a folder of markdown files: the review pack and the briefs with the animatics playing, each concept opening with **Evidence at a glance** (trend: name, ID, status, momentum, creators, views, median view lift, active since / last seen, language; customer theme with frequency; the account number; saturation), details after.
-- **Default channel: a private Artifact** (claude.ai link; works on a phone; videos and evidence thumbnails uploaded with the page). It starts private; the user shares it from claude.ai (people, organization or public). Decisions for G2/G3 are made **on the page**: per concept Approve / Ask for changes plus a note, saved to the artifact's shared database (`db` capability), visible to everyone who opens the link with their name, and read back by the agent (`db_query`). A static "leave a comment" note is not enough (user, 2026-11-04).
+- The recipient (growth lead, creator, client) gets **one page**, not a folder of markdown files: the review pack or the briefs (with an animatic for each concept the user asked for), each concept opening with **Evidence at a glance** (trend: name, ID, status, momentum, creators, views, median view lift, active since / last seen, language; customer theme with frequency; the account number; saturation), details after.
+- **Default channel: a private Artifact** (claude.ai link; works on a phone; videos and evidence thumbnails uploaded with the page). It starts private; the user shares it from claude.ai (people, organization or public). Decisions for G3 and G4 (the review pack alone: on C1's page) are made **on the page**: per concept Approve / Ask for changes plus a note / Drop, saved to the artifact's shared database (`db` capability), visible to everyone who opens the link with their name, and read back by the agent (`db_query`). A static "leave a comment" note is not enough (user, 2026-11-04).
 - **Fallback:** one self-contained HTML file (videos embedded) when the recipient has no claude.ai access.
 - `brief.json` in the run is the source of truth; the page is generated from it (`build_brief_pack.py`) and republished on every change.
 
@@ -188,6 +190,8 @@ The creator part (rendered as the creator view, the former shot list): role, cas
 | Creator | UGC creator, on-camera talent | the product in plain words, their role, what to say (key points + sample lines), shots, props, look, do / don't, deliverables and deadline, usage rights and fee | **account data, results, competitors, customer research** (confidential) |
 | Editor | video editor | animatic, timeline with verbatim on-screen text, timings and text style, captions, music and licence, formats and safe zones, hook versions to cut, file specs, QA | evidence and strategy |
 | Media buyer | the person who runs the ads | hypothesis, decision metric, KPI vs the account baseline, minimum events and estimated test spend, variants (hooks, copy), placements and formats, audience, control ad | production details |
+
+The creator view is built from the creator fields only, so it never contains competition, Ad Library results, spend or the account's results. Hooks and ad copy are shown as written.
 
 - **Standard brief fields** (agency creative brief + UGC creator brief), present in the data source and routed to the views above: single-minded **key message**; **tone of voice and mandatories / don'ts**; **KPI** in business terms (decision metric vs baseline, minimum events, R4); **budget, deadline, approver**; **usage rights and creator fee**.
 - Money shown to recipients is in USD at a stated rate (account data in PLN is converted; project rule for outward communication).

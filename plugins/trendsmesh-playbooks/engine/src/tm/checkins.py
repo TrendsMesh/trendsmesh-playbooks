@@ -18,7 +18,7 @@ from tm.playbooks import REFRESH_AD
 LEVEL_IDS = ("every_step", "big_calls", "hands_off")
 ROUTES = ("own", "card", "rule", "stop")
 CARD_ASK = ("first", "last", "before_first_spend")
-EFFECTS = ("end", "stop", "measure_days", "needs", "skips", "requires", "back_to")
+EFFECTS = ("end", "stop", "measure_days", "needs", "skips", "requires", "back_to", "concepts")
 
 
 @dataclass(frozen=True)
@@ -110,6 +110,8 @@ def _parse(path: Path) -> Catalogue:
                 raise _bad(path, f"{cid}: on_choice {choice!r} is not one of its choices")
             if not set(effect) <= set(EFFECTS):
                 raise _bad(path, f"{cid}: on_choice {choice!r} has an unknown effect")
+            if "concepts" in effect and effect["concepts"] is not True:
+                raise _bad(path, f"{cid}: on_choice {choice!r}: concepts is true (the choice names them) or absent")
             unknown = [n for n in effect.get("requires") or () if n not in stepchecks.NAMES]
             if unknown:
                 raise _bad(path, f"{cid}: on_choice {choice!r} requires an unknown check: "

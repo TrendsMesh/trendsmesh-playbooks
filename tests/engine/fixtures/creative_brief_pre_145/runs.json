@@ -1,0 +1,207 @@
+{
+ "_about": "run.json fields of creative brief runs started before issue #145 (0.14.0-rc.1): G2 was the concept check-in after C1, animatics an output made at D2 between D1 and D3. Made-up runs.",
+ "runs": {
+  "g2_open_after_c1": {
+   "playbook": "02-creative-brief",
+   "level": "every_step",
+   "outputs": [
+    "review_pack",
+    "briefs",
+    "animatics",
+    "page"
+   ],
+   "evidence": "trendsmesh",
+   "step": "D1",
+   "decisions": [
+    {
+     "checkin": "G0",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T09:00:00+00:00"
+    },
+    {
+     "checkin": "G1",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T10:00:00+00:00"
+    }
+   ]
+  },
+  "g2_decided_at_d1": {
+   "playbook": "02-creative-brief",
+   "level": "every_step",
+   "outputs": [
+    "review_pack",
+    "briefs",
+    "animatics",
+    "page"
+   ],
+   "evidence": "trendsmesh",
+   "step": "D1",
+   "decisions": [
+    {
+     "checkin": "G0",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T09:00:00+00:00"
+    },
+    {
+     "checkin": "G1",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T10:00:00+00:00"
+    },
+    {
+     "checkin": "G2",
+     "choice": "accept",
+     "by": "user",
+     "note": "C1 and C3 from the page",
+     "at": "2026-10-02T10:00:00+00:00"
+    }
+   ],
+   "brief": {
+    "chosen": {
+     "concepts": [
+      "C1",
+      "C3"
+     ],
+     "source": "page",
+     "at": "2026-10-02T09:55:00+00:00"
+    }
+   }
+  },
+  "at_old_d2": {
+   "playbook": "02-creative-brief",
+   "level": "every_step",
+   "outputs": [
+    "review_pack",
+    "briefs",
+    "animatics",
+    "page"
+   ],
+   "evidence": "trendsmesh",
+   "step": "D2",
+   "decisions": [
+    {
+     "checkin": "G0",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T09:00:00+00:00"
+    },
+    {
+     "checkin": "G1",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T10:00:00+00:00"
+    },
+    {
+     "checkin": "G2",
+     "choice": "accept",
+     "by": "user",
+     "note": "C1 and C3 from the page",
+     "at": "2026-10-02T10:00:00+00:00"
+    }
+   ],
+   "brief": {
+    "chosen": {
+     "concepts": [
+      "C1",
+      "C3"
+     ],
+     "source": "page",
+     "at": "2026-10-02T09:55:00+00:00"
+    }
+   }
+  },
+  "at_e1_animatics_made": {
+   "playbook": "02-creative-brief",
+   "level": "every_step",
+   "outputs": [
+    "review_pack",
+    "briefs",
+    "animatics",
+    "page"
+   ],
+   "evidence": "trendsmesh",
+   "step": "E1",
+   "decisions": [
+    {
+     "checkin": "G0",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T09:00:00+00:00"
+    },
+    {
+     "checkin": "G1",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T10:00:00+00:00"
+    },
+    {
+     "checkin": "G2",
+     "choice": "accept",
+     "by": "user",
+     "note": "C1 and C3 from the page",
+     "at": "2026-10-02T10:00:00+00:00"
+    },
+    {
+     "checkin": "G3",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-03T10:00:00+00:00"
+    }
+   ],
+   "brief": {
+    "chosen": {
+     "concepts": [
+      "C1",
+      "C3"
+     ],
+     "source": "page",
+     "at": "2026-10-02T09:55:00+00:00"
+    }
+   }
+  },
+  "review_pack_g2_decided": {
+   "playbook": "02-creative-brief",
+   "level": "every_step",
+   "outputs": [
+    "review_pack",
+    "page"
+   ],
+   "evidence": "trendsmesh",
+   "step": "E2",
+   "decisions": [
+    {
+     "checkin": "G0",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T09:00:00+00:00"
+    },
+    {
+     "checkin": "G1",
+     "choice": "accept",
+     "by": "user",
+     "at": "2026-10-01T10:00:00+00:00"
+    },
+    {
+     "checkin": "G2",
+     "choice": "accept",
+     "by": "user",
+     "note": "C1 and C3 from the page",
+     "at": "2026-10-02T10:00:00+00:00"
+    }
+   ],
+   "brief": {
+    "chosen": {
+     "concepts": [
+      "C1",
+      "C3"
+     ],
+     "source": "page",
+     "at": "2026-10-02T09:55:00+00:00"
+    }
+   }
+  }
+ }
+}

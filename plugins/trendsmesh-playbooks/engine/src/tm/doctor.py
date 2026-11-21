@@ -17,7 +17,8 @@ picks them: trend research is Paid only, so there TrendsMesh and its Agent plan 
 the user chooses Free or Paid (issue #106), and on Free (`--mode free`, else the workspace's `tm mode`) a playbook with
 a Free mode shows TrendsMesh as one line, "Free mode, your choice", with what Free misses (`evidence.NOTICES` short);
 Meta Ads blocks refresh-ad and creative brief. A playbook other than refresh-ad needs the tiers of
-its env_tier rows whose `when` holds (creative brief's animatic tier only with animatics), and a
+its env_tier rows whose `when` holds (creative brief's animatic tier only with the briefs: animatics are made on
+request at D2, issue #145; `animatics`, an output before then, is read and left out), and a
 `browser` row asks `tm.atlas` for the user's own Chrome or Edge.
 
 A key row with `check` (the Replicate token, the ElevenLabs key) asks the provider with one free call
@@ -557,7 +558,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     p.add_argument("--playbook", help="the playbook to check for, its id or skill (default: refresh-ad)")
     p.add_argument("--outputs", help="comma list of the playbook's outputs (needed unless --general); "
                    "refresh-ad: creative_brief,edited_video,ai_video,live_test; creative-brief: "
-                   "review_pack,briefs,animatics,page; trend-research: "
+                   "review_pack,briefs,page; trend-research: "
                    "category_report,weekly_digest,paid_view; organic-video: proposals,weekly_plan "
                    "(an idea or week run's A0), script_to_film or organic_video (a production run's D1)")
     p.add_argument("--voice", action="store_true")
@@ -595,6 +596,8 @@ def _run(args: argparse.Namespace) -> int:
             return cli.fail(args, f"Give --outputs (choose from: {', '.join(known)}), or --general for the check "
                                   "with no playbook chosen.")
         outputs = {o.strip() for o in args.outputs.split(",") if o.strip()}
+        if playbook == playbooks.CREATIVE_BRIEF:            # an output before issue #145 (brief_config.LEGACY_OUTPUTS)
+            outputs.discard("animatics")
         bad = outputs - set(known)
         if not outputs or bad:
             hints = [h for b in sorted(bad) if (h := _closest(b, known))]

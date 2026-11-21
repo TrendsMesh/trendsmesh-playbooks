@@ -8,8 +8,8 @@ Free: `NOT_CHOSEN`), and while it is `guess`:
 
 - `tm next` gives the playbook's notice (`NOTICES`) on its check-ins in `Notice.at` when they are
   shown to the user (Refresh an ad: the direction G2 and the launch G11; Creative brief: the
-  concepts G2; Create an ad: the concept; Organic AI video: the ideas page and the week), and in the final report of a run that made its changes (so Hands-off hears it
-  at the end, and at the launch, which every level asks). Creative brief's final report carries it only when G2 was not asked
+  briefs G3, alone or on the card "Approve the briefs"; Create an ad: the concept; Organic AI video: the ideas page and the week), and in the final report of a run that made its changes (so Hands-off hears it
+  at the end, and at the launch, which every level asks). Creative brief's final report carries it only when G3 was not asked
   (`Notice.repeat_at_end`), so every level hears it once; the doctor's readiness card shows its
   short form;
 - Refresh an ad: the change register cannot call a change "proof" (`tm register check`), and the
@@ -70,7 +70,7 @@ _ORGANIC_SHORT = ("Free mode: the ideas will be my guesses from what I can see (
                   "how early.")
 NOTICES = {
     REFRESH_AD: Notice(NOTICE_AT, NOTICE, NOTICE_SHORT),
-    CREATIVE_BRIEF: Notice(frozenset({"G2"}),  # choosing the concepts
+    CREATIVE_BRIEF: Notice(frozenset({"G3"}),  # deciding on the briefs (G2, the concepts, before issue #145)
                            "The hooks in these concepts are my guesses from your customers' own words, your ads and the "
                            "Ad Library. TrendsMesh would show which hooks and topics are repeating across creators right "
                            "now, and how early, so each concept could ride one that is still rising.", _BRIEF_SHORT,

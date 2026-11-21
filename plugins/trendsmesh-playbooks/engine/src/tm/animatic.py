@@ -350,26 +350,44 @@ def not_rendered(run: RunFolder, concepts: dict[str, dict], ids: list[str], form
     return out
 
 
+def wanted(run: RunFolder) -> list[str]:
+    """The concepts whose animatics the user asked for (issue #145): the latest `animatics` decision's `make`
+    concepts; none on `skip`, or before it is decided. A run started before animatics were on request has its
+    concepts recorded there (tm.state); a run with no `animatics` decision at all falls back to its chosen
+    concepts, as before."""
+    s = state.load(run)
+    last = next((d for d in reversed(s.decisions) if isinstance(d, dict) and d.get("checkin") == "animatics"), None)
+    if last is None:
+        return list(((s.brief or {}).get("chosen") or {}).get("concepts") or [])
+    named = last.get("concepts") if last.get("choice") == "make" else None
+    return [c for c in named if isinstance(c, str)] if isinstance(named, list) else []
+
+
 def rendered_gap(run: RunFolder) -> str | None:
-    """`animatics_rendered`: every chosen concept in the latest brief names an MP4 per format
-    (`formats_of`), and each is in 03_wip/animatic/renders/."""
-    chosen = ((state.load(run).brief or {}).get("chosen") or {}).get("concepts") or []
+    """`animatics_rendered` (D2, on `animatics make`): each concept the user named (`wanted`) is in the latest
+    brief and names an MP4 per format (`formats_of`), each in 03_wip/animatic/renders/. The other concepts need
+    none."""
+    chosen = wanted(run)
     if not chosen:
-        return ("the concepts to brief are chosen (tm brief choose) and their animatics rendered "
-                "(tm brief animatic --render)")
+        return ("the concepts whose animatics the user asked for are named (tm decide animatics make --concepts "
+                "C1,C3) and rendered (tm brief animatic --render --concepts C1,C3)")
     latest = run.latest(FINAL, STEM, "json")
     if latest is None:
         return f"{FINAL}/{STEM}_vNN.json is written and its animatics rendered (tm brief animatic --render)"
     try:
         concepts = {x["id"]: x for x in json.loads(latest.read_text(encoding="utf-8-sig"))["concepts"]}
     except (ValueError, KeyError, TypeError):
-        return f"the latest {STEM}, {latest.name}, is readable, with the chosen concepts' animatics in it"
+        return f"the latest {STEM}, {latest.name}, is readable, with the named concepts' animatics in it"
+    gone = [c for c in chosen if c not in concepts]
+    if gone:
+        return (f"the concepts named for animatics are in the latest brief ({latest.name} has no {', '.join(gone)}): "
+                "name them again (tm decide animatics make --change --concepts ...)")
     try:
         drawn = formats_of(run)
     except ValueError as exc:
         return f"the formats to draw are known: {exc}"
     missing = not_rendered(run, concepts, chosen, drawn)
     if missing:
-        return (f"every chosen concept in {latest.name} names its animatic MP4 in each format ({', '.join(drawn)}), "
+        return (f"every concept named for animatics in {latest.name} names its MP4 in each format ({', '.join(drawn)}), "
                 f"rendered into {RENDERS} (tm brief animatic --render); missing: {', '.join(missing)}")
     return None

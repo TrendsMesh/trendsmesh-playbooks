@@ -79,7 +79,7 @@ cases:
     proves: "each concept's animatic is drawn by the browser the person has, in both shapes, without page errors"
     needs: [human_verdict]
     steps:
-      - "Go on from B4's run folder to the concepts and their animatics (CB11), drawn with the person's own browser. On Windows, use Edge only, if the person has it."
+      - "Go on from B4's run folder to the briefs, and when the animatics are offered (CB11, on request), answer: all of them. They are drawn with the person's own browser. On Windows, use Edge only, if the person has it."
       - "Give the person the path of each concept's animatics."
     pass: >-
       A 9:16 and a 4:5 MP4 exist for each concept, with no page errors.

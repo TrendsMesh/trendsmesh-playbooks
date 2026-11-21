@@ -1,6 +1,6 @@
 # Template: one-page concept brief (PB2, check-in G3)
 
-**A concept brief describes a new ad to be made from scratch.** It is the PB2 variant of the shared creative brief (`skills/refresh-ad/templates/creative_brief_template.md` in the plugin): same core (executors, specification, **why: data**, deliverables, QA), but there is no source video and no "was → to be". It must be enough for every executor (creator, operator, editor, voice artist, graphic designer, later an AI pipeline) to do their part without follow-up questions. The animatic (CB11) is attached to it.
+**A concept brief describes a new ad to be made from scratch.** It is the PB2 variant of the shared creative brief (`skills/refresh-ad/templates/creative_brief_template.md` in the plugin): same core (executors, specification, **why: data**, deliverables, QA), but there is no source video and no "was → to be". It must be enough for every executor (creator, operator, editor, voice artist, graphic designer, later an AI pipeline) to do their part without follow-up questions. An animatic (CB11) is attached to it when the user asks for one.
 
 ---
 
@@ -55,13 +55,13 @@ Per role: raw footage **without burned-in captions**, separate VO / audio track,
 ## 10. QA checklist
 Yes/no items: hook in the first frame, text legible in feed preview, safe zones, product shown before the CTA, claims match the landing page, sound licensed, formats delivered, clean files delivered.
 
-## 11. Animatic
-File(s) in `03_wip/animatic/renders/` (the page plays them), style used, what it shows (beats, timing, on-screen text) and what it does not (realistic footage).
+## 11. Animatic (on request)
+Only for the concepts the user named at the animatics question (CB11); otherwise the page shows "Animatic on request". File(s) in `03_wip/animatic/renders/` (the page plays them), style used, what it shows (beats, timing, on-screen text) and what it does not (realistic footage).
 
 ## Generation rules (for the agent)
 - No data, no element: every beat, hook and copy line names its source (trend, customer voice tier, Meta, Ad Library).
 - Hooks reproduce the trend structure from its evidence videos (CB7), not our paraphrase.
-- At Check every step the brief and animatic are shown for acceptance (G3) before the shot list is written; at Just the big calls G3 is asked with G4 ("Approve the briefs"), after the production views.
+- At Check every step every brief is shown on the page for a decision per concept (G3: approve, ask for changes or drop) before the shot list is written, and the animatics are offered after it; at Just the big calls G3 is asked with G4 ("Approve the briefs"), after the production views.
 
 ## Views (CB13)
 The brief is one data source. The page renders a view for each recipient ticked at intake: Decision, Strategy, Creator, Editor, Media buyer (contents and exclusions: `PLAYBOOK.md`, CB13). The creator view never shows account data, results, competitors or customer research.

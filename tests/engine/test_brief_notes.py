@@ -63,7 +63,7 @@ def test_decisions_hand_over_the_notes_ready_to_quote(run, capsys):
     at = (datetime.now(timezone.utc) + timedelta(minutes=2)).isoformat(timespec="seconds")
     mcp_saves.save(run, "db_list", {"slug": SLUG, "collection": "decisions"}, {"raw": _db_text()}, at=at,
                    server="claude-artifacts")
-    assert main(["brief", "decisions", "--run", str(run.path), "--stage", "G2", "--json"]) == 0
+    assert main(["brief", "decisions", "--run", str(run.path), "--stage", "G3", "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert [n["note"] for n in out["notes"]] == ["Love it", ORDER, LONG]
     assert out["quote"] in out["message"]

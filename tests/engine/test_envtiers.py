@@ -31,7 +31,7 @@ def test_the_ocr_tier_is_never_asked_for_by_a_route():
     teardown says when it would help, and the playbook offers it once."""
     from tm import doctor, playbooks
 
-    every = {"creative_brief", "edited_video", "ai_video", "live_test", "animatics", "organic_video", "video_ad",
+    every = {"creative_brief", "edited_video", "ai_video", "live_test", "organic_video", "video_ad",
              "review_pack", "briefs", "page", "proposals", "weekly_plan", "script_to_film", "category_report",
              "weekly_digest", "paid_view"}
     assert "ocr" not in tiers_for(every, voice=True)

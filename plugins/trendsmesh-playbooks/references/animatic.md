@@ -1,8 +1,9 @@
-# Animatics: an animated storyboard of every brief (shared: PB02; later PB03)
+# Animatics: an animated storyboard of a brief, on request (shared: PB02; later PB03)
 
-Every brief has an animatic (CB11): a pencil storyboard of the ad's structure (the shots, the
+An animatic is offered after the briefs and made only for the concepts the user names (CB11, the
+`animatics` check-in before D2): a pencil storyboard of the ad's structure (the shots, the
 timing, the on-screen text, the hook, the call to action), rendered to MP4 on the user's own
-computer, at no cost. It shows structure and pacing, never realistic footage: no AI generation at
+computer, at no cost. A concept without one shows "Animatic on request" on the page. It shows structure and pacing, never realistic footage: no AI generation at
 the brief stage.
 
 ## From beats to scenes
@@ -84,7 +85,8 @@ length) for a quick look.
 `tm brief animatic --run R --render --json` writes the storyboard files to `03_wip/animatic/`, the
 MP4s and stills to `03_wip/animatic/renders/<concept>_animatic_<format>_vNN.mp4`, and a new brief
 version that names them (the page plays them). Without `--render` it writes the storyboard files
-only. Up to 15 minutes per animatic, and one call renders every concept in every format, which
+only. Up to 15 minutes per animatic, and one call renders every concept it is given (`--concepts
+C1,C3`: the ones the user named) in every format, which
 passes the Bash tool's 10-minute limit: run it in the background and wait for it, or render one
 concept at a time (`--concepts C1`) with the longest timeout. `--formats` draws only some
 formats.
@@ -93,8 +95,8 @@ It draws in the **user's own Chrome or Edge** (Chromium on Linux), found on the 
 is downloaded for it but the small renderer package (the animatic tools, installed once, after
 the user's yes). Without a browser the doctor says what to install (Microsoft Edge or Google
 Chrome on Windows; Google Chrome on macOS and Linux), and the animatic step waits: the run
-continues from the same place once it is there, and nothing else is lost. A review pack alone
-needs no animatic.
+continues from the same place once it is there, and nothing else is lost (or the user skips the
+animatics). A review pack alone, a skip and Hands-off need no animatic.
 
 After a render, look at the stills: text must not overlap or run off the frame, and each beat must
 read. A fix is a change to the beats in a new brief version, then render again.
