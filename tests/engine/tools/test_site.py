@@ -191,6 +191,25 @@ def test_what_the_site_does_not_give_goes_to_the_asset_list(ad, web, monkeypatch
 
 # --- capture --------------------------------------------------------------------------------------
 
+def test_the_browser_never_touches_the_keychain(monkeypatch, tmp_path):
+    """Its fresh profile runs with a stand-in keychain: with a home folder that has none (an eval case), macOS
+    asks for one and the capture waits until it is stopped."""
+    seen = []
+
+    class Proc:
+        returncode = 0
+
+        def __init__(self, argv, **kwargs):
+            seen.append(argv)
+
+        def communicate(self, timeout=None):
+            return "", ""
+
+    monkeypatch.setattr(site.subprocess, "Popen", Proc)
+    site.chrome(["--dump-dom"], SITE, browser=tmp_path / "chrome")
+    assert "--use-mock-keychain" in seen[0] and "--password-store=basic" in seen[0]
+
+
 @pytest.fixture
 def browser(monkeypatch):
     """A browser stand-in: it draws a test picture at the view's size times the scale."""

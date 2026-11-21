@@ -77,6 +77,9 @@ _AGAIN = AGAIN_SENTENCE
 SHELL_NAMES = ("chrome-headless-shell", "chrome-headless-shell.exe")
 TIMEOUT_S = 15 * 60          # one page; LD's take 20-50 s
 GRACE_S = 10                 # after SIGTERM, for puppeteer to close its Chrome, before SIGKILL
+# A headless browser's fresh profile never touches the keychain (macOS asks for one when the home folder has
+# none, as in an eval case, and the browser waits on that dialog), nor a Linux keyring.
+NO_KEYCHAIN = ("--use-mock-keychain", "--password-store=basic")
 # What Chrome says when its sandbox cannot run here (root, or no user namespaces for a downloaded binary).
 SANDBOX_ERRORS = ("No usable sandbox", "without --no-sandbox", "Running as root without")
 

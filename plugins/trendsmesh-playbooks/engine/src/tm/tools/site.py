@@ -101,7 +101,7 @@ def chrome(args: list[str], url: str, *, browser: Path | None = None) -> subproc
     profile = Path(tempfile.mkdtemp(prefix="tm-site-"))
     argv = [str(browser), "--headless" if atlas.is_headless_shell(browser) else "--headless=new", "--disable-gpu",
             "--hide-scrollbars", "--no-first-run", "--no-default-browser-check", "--disable-extensions",
-            "--mute-audio", f"--user-data-dir={profile}",
+            "--mute-audio", f"--user-data-dir={profile}", *atlas.NO_KEYCHAIN,
             *(["--no-sandbox"] if atlas.needs_no_sandbox(browser) else []), *args, url]
     group = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt"
              else {"start_new_session": True})

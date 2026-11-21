@@ -6,6 +6,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 - **Reading a page built by JavaScript no longer asks for a keychain.** The headless Chrome or Edge that reads it
   now runs with a stand-in keychain, so macOS never shows "keychain cannot be found" for it.
+- **The creative brief's PDFs print in seconds again, and product-site captures never ask for a keychain.** The
+  headless browser that prints the brief's PDFs, and the one that captures the product's site, use the same stand-in
+  keychain. Without one, a home folder with no login keychain left each PDF waiting 2 minutes and the page came
+  without its download buttons.
 - **Pages publish faster: Claude reads only this run's page.** The theme, the page scripts, the trend report's
   stylesheet and script and the catalogue of our 49 animation styles are now files of their own beside the page, the
   same in every run, and `tm page files` says which ones they are. Before publishing, Claude reads only `index.html`:

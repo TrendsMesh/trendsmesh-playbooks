@@ -81,7 +81,7 @@ def _argv(browser_path: Path, url: str, out: Path, profile: Path) -> list[str]:
     if not atlas.is_headless_shell(browser_path):
         argv.append("--headless=new")
     argv += ["--disable-gpu", "--no-first-run", "--no-default-browser-check", "--disable-extensions",
-             f"--user-data-dir={profile}", f"--print-to-pdf={out}", "--no-pdf-header-footer",
+             f"--user-data-dir={profile}", *atlas.NO_KEYCHAIN, f"--print-to-pdf={out}", "--no-pdf-header-footer",
              f"--virtual-time-budget={VIRTUAL_TIME_MS}"]
     if atlas.needs_no_sandbox(browser_path):
         argv.append("--no-sandbox")

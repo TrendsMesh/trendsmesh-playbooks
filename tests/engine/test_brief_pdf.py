@@ -352,6 +352,15 @@ def test_a_relative_run_path_prints_every_pdf(run, monkeypatch, capsys):
     assert "vb-dl" in (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
 
 
+def test_the_print_never_touches_the_keychain(run, monkeypatch, capsys):
+    """Each PDF's fresh profile runs with a stand-in keychain: with a home folder that has none (an eval case),
+    macOS asks for one and Chrome prints nothing until the 120 s timeout."""
+    calls = _absolute_only_browser(monkeypatch)
+    _write_brief(run, _with_animatics(run, _brief(), stills=False))
+    assert main(["brief", "page", "--run", str(run.path), "--json"]) == 0
+    assert calls and all("--use-mock-keychain" in a and "--password-store=basic" in a for a in calls)
+
+
 def test_no_pdfs_tells_the_user_the_page_has_no_download_buttons(run, monkeypatch, capsys):
     """A print that fails is never silent: the answer says to tell the user the page has no download buttons,
     and why."""

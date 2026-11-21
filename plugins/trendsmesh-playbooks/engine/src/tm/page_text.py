@@ -208,10 +208,7 @@ def render(url: str) -> str:
     headless = "--headless" if atlas.is_headless_shell(browser) else "--headless=new"
     with tempfile.TemporaryDirectory(prefix="tm-page-") as profile:
         argv = [str(browser), headless, "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-                "--disable-extensions", "--mute-audio", f"--user-data-dir={profile}",
-                # The fresh profile never touches the keychain (macOS would ask for one when the
-                # home folder has none, as in an eval case), nor a Linux keyring.
-                "--use-mock-keychain", "--password-store=basic",
+                "--disable-extensions", "--mute-audio", f"--user-data-dir={profile}", *atlas.NO_KEYCHAIN,
                 f"--virtual-time-budget={RENDER_WAIT_MS}", "--dump-dom", url]
         if atlas.needs_no_sandbox(browser):
             argv.insert(1, "--no-sandbox")
