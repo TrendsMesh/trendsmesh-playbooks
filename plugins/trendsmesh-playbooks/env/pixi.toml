@@ -4,18 +4,35 @@ channels = ["conda-forge"]
 platforms = ["win-64", "osx-arm64", "osx-64", "linux-64"]
 
 [dependencies]
-python = "3.11.*"
 ffmpeg = "8.*"
+
+# Python and every Python package are for macOS and Linux only. On Windows tm runs on python.org's Python, signed
+# by the Python Software Foundation (bootstrap/install-python.ps1), in one venv per tier filled from the hash-pinned
+# env/win-64/<tier>.txt files (issue #123: Smart App Control blocked conda-forge's unsigned python.exe and .pyd
+# files). So the Windows environments keep only ffmpeg and node, which were never blocked. After changing a Python
+# package here and `pixi lock`, run `pixi run -e dev python ../../../.github/scripts/win64_requirements.py` (with uv on
+# PATH) so env/win-64 follows.
+[target.unix.dependencies]
+python = "3.11.*"
 pyyaml = "*"
 requests = "*"
 
-[pypi-dependencies]
+[target.unix.pypi-dependencies]
 tm = { path = "../engine", editable = true }
 
 [feature.dev.dependencies]
 pytest = "*"
 
-[feature.breakdown.pypi-dependencies]
+# dev is no tier (users never install it): on Windows it keeps conda-forge's Python, for CI's engine tests.
+[feature.dev.target.win-64.dependencies]
+python = "3.11.*"
+pyyaml = "*"
+requests = "*"
+
+[feature.dev.target.win-64.pypi-dependencies]
+tm = { path = "../engine", editable = true }
+
+[feature.breakdown.target.unix.pypi-dependencies]
 faster-whisper = "==1.2.1"
 scenedetect = "==0.7.2"
 numpy = "*"
@@ -30,7 +47,7 @@ llvmlite = "==0.45.1"
 
 # OpenCV for the breakdown tier, in a feature of its own so dev-full can take another build.
 # Below 5: OpenCV 5 drops the Haar cascades the teardown's face check (speech_on_camera) uses.
-[feature.opencv.pypi-dependencies]
+[feature.opencv.target.unix.pypi-dependencies]
 opencv-python-headless = ">=4.12,<5"
 
 # Intel Mac: OpenCV 5's wheel needs macOS 14, so stay on 4.12.
@@ -39,7 +56,7 @@ opencv-python-headless = "==4.12.*"
 
 # dev-full puts breakdown and voice in one env. On an Intel Mac the voice set (torch 2.2.2, demucs)
 # needs numpy <2 and OpenCV 4.12 needs numpy >=2, so there dev-full takes OpenCV 4.11.
-[feature.opencv-full.pypi-dependencies]
+[feature.opencv-full.target.unix.pypi-dependencies]
 opencv-python-headless = ">=4.12,<5"
 
 [feature.opencv-full.target.osx-64.pypi-dependencies]
@@ -56,7 +73,7 @@ opencv-python = { version = "*", env-markers = "python_version < '0'" }
 [feature.video.dependencies]
 nodejs = "22.*"
 
-[feature.voice.pypi-dependencies]
+[feature.voice.target.unix.pypi-dependencies]
 torch = "==2.8.0"
 torchaudio = "==2.8.0"
 speechbrain = "==1.1.2"
@@ -68,10 +85,6 @@ numpy = "*"
 torch = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
 torchaudio = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
 
-[feature.voice.target.win-64.pypi-dependencies]
-torch = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
-torchaudio = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu" }
-
 # Intel Mac: torch 2.8 has no osx-64 wheels, so the pinned older voice set.
 [feature.voice.target.osx-64.pypi-dependencies]
 torch = "==2.2.2"
@@ -79,12 +92,12 @@ torchaudio = "==2.2.2"
 speechbrain = "==1.1.1"
 numpy = "<2"
 
-[feature.ai.pypi-dependencies]
+[feature.ai.target.unix.pypi-dependencies]
 replicate = "==1.0.7"
 
 # The optional OCR tier (issue 57): RapidOCR reads the teardown's unsure text rows. Pip only, no system
 # binary. Its models ship in the wheel. onnxruntime 1.23 is the last with wheels for macOS 13 and Intel Macs.
-[feature.ocr.pypi-dependencies]
+[feature.ocr.target.unix.pypi-dependencies]
 rapidocr = "==3.10.0"
 onnxruntime = "==1.23.2"
 numpy = "*"

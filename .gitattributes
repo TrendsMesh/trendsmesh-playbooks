@@ -48,3 +48,6 @@ plugins/trendsmesh-playbooks/atlas/layout_check.mjs text eol=lf
 # Their index (previews.json) is text, LF like the rest of the library.
 plugins/trendsmesh-playbooks/data/styles/previews/** binary
 plugins/trendsmesh-playbooks/data/styles/previews/*.json text eol=lf
+# Windows' hash-pinned Python packages (issue #123): LF on every system, so a venv's marker holds the same hash of
+# the file whatever the checkout.
+plugins/trendsmesh-playbooks/env/win-64/*.txt text eol=lf

@@ -154,10 +154,12 @@ _PROVIDERS = {"replicate_api_token": "replicate", "elevenlabs_api_key": "elevenl
 
 
 def child_argv(name: str, args: list[str]) -> list[str]:
-    tool = TOOLS[name]
+    """The tool's process: its tier's pixi environment (ffmpeg, node on PATH) running its python, which on Windows is
+    the tier's venv on python.org's signed Python (`paths.python_bin`, issue #123)."""
+    env = envtiers.TIERS[TOOLS[name].tier_for(args)].env
     return [str(paths.pixi_bin()), "run", "--as-is", "--manifest-path",
-            str(paths.plugin_root() / "env" / "pixi.toml"), "-e", envtiers.TIERS[tool.tier_for(args)].env,
-            "python", "-m", f"tm.tools.{name}", *args]
+            str(paths.plugin_root() / "env" / "pixi.toml"), "-e", env,
+            str(paths.python_bin(env)), "-m", f"tm.tools.{name}", *args]
 
 
 def _say(as_json: bool, status: str, message: str, code: int) -> int:

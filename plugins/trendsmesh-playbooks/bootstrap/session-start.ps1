@@ -70,6 +70,23 @@ try {
         exit 0
     }
 
+    # 4b. Python: tm runs on python.org's Python, signed by the Python Software Foundation, in the base tier's venv
+    #     (issue #123). After secrets.env, so a hook cut off during this download still leaves the keys in place.
+    #     What it prints goes to its log; on a failure its one-line reason is said. tm tries again later.
+    $pyWhy = $null
+    $env:CLAUDE_PLUGIN_ROOT = $root
+    try { & (Join-Path $PSScriptRoot 'install-python.ps1') -Tier base *>$null } catch { $pyWhy = $_.Exception.Message }
+    . (Join-Path $PSScriptRoot 'install-python.ps1') -Functions
+    $venv = Get-TmVenv $data $root 'base'
+    $python = Join-Path $venv 'Scripts\python.exe'
+    if (-not (Test-TmVenv $venv)) {
+        if (-not $pyWhy) { $pyWhy = 'unknown' }
+        $pyWhy = ($pyWhy -replace '[\x00-\x1f\x7f]', ' ')
+        if ($pyWhy.Length -gt 600) { $pyWhy = $pyWhy.Substring(0, 600) }
+        Write-Output "TrendsMesh playbooks: its tools could not be set up, because its Python did not install into the plugin's data folder, so tm cannot run yet. The reason: $pyWhy. Never install Python yourself or change PATH or global packages. Running tm tries the install again; /trendsmesh-playbooks:doctor does that and tells the user the reason above in plain words."
+        exit 0
+    }
+
     # 5. what is due: `tm due --quiet` prints one plain line per measurement due and nothing
     #    else. No inline Python: 5.1 strips the quotes of a native argument. Any failure means
     #    "nothing due". 'Continue', as 5.1 turns a native command's stderr into an error under 'Stop'.
@@ -82,7 +99,7 @@ try {
     #    failure that is said: in one line, from what tm or pixi wrote to stderr.
     $ErrorActionPreference = 'Continue'
     $errFile = [IO.Path]::GetTempFileName()
-    $due = & $pixi run --as-is --manifest-path $manifest -e base python -m tm due --quiet 2>$errFile
+    $due = & $pixi run --as-is --manifest-path $manifest -e base $python -m tm due --quiet 2>$errFile
     $rc = $LASTEXITCODE
     $err = ''
     try { $err = [IO.File]::ReadAllText($errFile) } catch { }

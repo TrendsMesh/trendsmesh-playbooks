@@ -32,13 +32,35 @@ case "$(uname -s 2>/dev/null)" in
   MINGW*|MSYS*|CYGWIN*) ;;
   *) exec "$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm "$@" ;;
 esac
-# Windows: Smart App Control can block a file of the plugin's Python (error 4551, issue #123). tm
-# says so itself when it got far enough to run (exit 86 here); any other failure gets one probe
-# in the same environment, and a block shows as the number or as Windows' own words for it.
-TM_BLOCK_EXIT=86 "$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm "$@"
+# Windows (issue #123): tm runs on python.org's Python, signed by the Python Software Foundation, in the base tier's
+# venv, <data>/venvs/base-<key>; pixi's environment gives it ffmpeg on PATH. <key>: the first 12 hex digits of the
+# SHA-256 of the plugin root with / made \ and no trailing \ (as install-python.ps1 and tm/paths.py work it out).
+winroot=$ROOT windata=$DATA
+command -v cygpath >/dev/null 2>&1 && winroot=$(cygpath -w "$ROOT") && windata=$(cygpath -w "$DATA")
+sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
+key=$(printf '%s' "$winroot" | tr '/' '\\' | sed 's/\\*$//' | sha256 | cut -c1-12)
+export TM_PLUGIN_ROOT="$winroot" TM_PLUGIN_DATA="$windata"   # tm works the same key out of the same text
+VENV="$DATA/venvs/base-$key"
+PY="$VENV/Scripts/python.exe"
+if [ ! -f "$PY" ] || [ ! -f "$VENV/tm-venv.json" ]; then
+  # Its install at session start failed or did not finish: try once more, so a new session is not needed. The
+  # folders go to PowerShell in Windows' own form, so it makes the venv where this script looks for it.
+  ps1="$ROOT/bootstrap/install-python.ps1"
+  command -v cygpath >/dev/null 2>&1 && ps1=$(cygpath -w "$ps1")
+  if ! why=$(CLAUDE_PLUGIN_DATA="$windata" CLAUDE_PLUGIN_ROOT="$winroot" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$ps1" -Tier base -Report 2>&1 >/dev/null) \
+      || [ ! -f "$VENV/tm-venv.json" ]; then
+    why=$(printf '%s' "$why" | tr '\n' ' ' | tr -d '\000-\037\177')
+    echo "tm: the plugin's tools are not set up: its Python did not install into the plugin's data folder, and trying again just now failed too. The reason: ${why:-unknown}. Tell the user that reason in plain words: when a site could not be reached, their network, a proxy or firewall, or the app they run Claude in blocks it, and the sites the reason lists must be allowed. Never install Python yourself or change PATH." >&2
+    exit 1
+  fi
+fi
+# Smart App Control can block a file of the plugin's Python (error 4551, issue #123). tm says so itself when it got
+# far enough to run (exit 86 here); any other failure gets one probe in the same environment, and a block shows as
+# the number or as Windows' own words for it.
+TM_BLOCK_EXIT=86 "$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base "$PY" -m tm "$@"
 code=$?
 case $code in 0|2) exit $code ;; 86) exit 1 ;; esac
-probe=$("$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -c "import ssl,_hashlib,_queue" 2>&1) && exit $code
+probe=$("$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base "$PY" -c "import ssl,_hashlib,_queue" 2>&1) && exit $code
 if ! printf '%s\n' "$probe" | grep -qiE '(os error|winerror|error)[^0-9a-z]{0,3}4551([^0-9]|$)'; then
   words=$(powershell.exe -NoProfile -Command '[ComponentModel.Win32Exception]::new(4551).Message' 2>/dev/null | tr -d '\r' | sed 's/[. ]*$//' | head -n 1)
   [ -n "$words" ] && printf '%s\n' "$probe" | grep -qiF -- "$words" || exit $code

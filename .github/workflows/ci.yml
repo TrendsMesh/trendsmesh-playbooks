@@ -87,6 +87,103 @@ jobs:
           "$d/pixi/bin/pixi.exe" --version | grep -q '0.84.1'
           test ! -e "$d/install-pixi.log"
 
+  # Issue #123: on Windows tm runs on python.org's Python, signed by the Python Software Foundation, in one venv per
+  # tier. A user's first session, for real: session-start.ps1 installs pixi, the Python package (its hash and
+  # signatures checked) and the base venv into a data folder with a space in its name; then tm doctor --general runs
+  # on that venv through tm.cmd and through bin/tm under Git Bash, and tm env install makes one more tier's venv.
+  windows-python:
+    name: signed Python on Windows (real install)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out as Git for Windows does
+        run: git config --global core.autocrlf true
+      - uses: actions/checkout@v4
+      - name: First session (session-start.ps1)
+        env:
+          TM_DATA: ${{ runner.temp }}\plugin data
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:CLAUDE_PLUGIN_ROOT = (Resolve-Path plugins/trendsmesh-playbooks).Path
+          $env:CLAUDE_PLUGIN_DATA = $env:TM_DATA
+          $out = (& powershell.exe -NoProfile -ExecutionPolicy Bypass -File plugins/trendsmesh-playbooks/bootstrap/session-start.ps1 | Out-String).Trim()
+          Write-Output $out
+          if ($out -match 'could not be set up') { throw "session start did not set the tools up: $out" }
+          if (Test-Path (Join-Path $env:TM_DATA 'install-python.log')) { Get-Content (Join-Path $env:TM_DATA 'install-python.log'); throw 'the log must go once Python installs' }
+      - name: The Python and its venv are python.org's, signed by the Python Software Foundation
+        env:
+          TM_DATA: ${{ runner.temp }}\plugin data
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = (Resolve-Path plugins/trendsmesh-playbooks).Path
+          . ./plugins/trendsmesh-playbooks/bootstrap/install-python.ps1 -Functions
+          $venv = Get-TmVenv $env:TM_DATA $root 'base'
+          if (-not (Test-TmVenv $venv)) { throw "no finished base venv at $venv" }
+          $rt = Join-Path $env:TM_DATA 'python\3.11.9'
+          foreach ($f in @('python.exe', 'python311.dll', 'DLLs\_ssl.pyd', 'DLLs\_hashlib.pyd', 'DLLs\_queue.pyd')) {
+            $s = Get-AuthenticodeSignature -LiteralPath (Join-Path $rt $f)
+            Write-Output "$f : $($s.Status) $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'CN=Python Software Foundation') { throw "$f is not signed by the PSF" }
+          }
+          $vpy = Join-Path $venv 'Scripts\python.exe'
+          $s = Get-AuthenticodeSignature -LiteralPath $vpy
+          if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'CN=Python Software Foundation') { throw "the venv's python.exe is not signed by the PSF" }
+          $got = (& $vpy -I -c "import sys, ssl, tm, yaml, requests; print(sys.version.split()[0]); print(sys.base_prefix); print(tm.__file__)" | Out-String)
+          Write-Output $got
+          if ($LASTEXITCODE -ne 0 -or $got -notmatch '^3\.11\.9' -or $got -notmatch [regex]::Escape($rt) -or $got -notmatch [regex]::Escape((Join-Path $root 'engine\src'))) {
+            throw 'the base venv must run python.org 3.11.9 with this plugin engine'
+          }
+      - name: tm doctor --general on the venv (tm.cmd)
+        env:
+          TM_DATA: ${{ runner.temp }}\plugin data
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'   # pixi writes its progress to stderr
+          $env:TM_PLUGIN_ROOT = (Resolve-Path plugins/trendsmesh-playbooks).Path
+          $env:TM_PLUGIN_DATA = $env:TM_DATA
+          $json = (& plugins\trendsmesh-playbooks\bin\tm.cmd doctor --general --report --json | Out-String)
+          $rc = $LASTEXITCODE
+          Write-Output $json
+          if ($rc -ne 0 -and $rc -ne 2) { throw "tm doctor --general exited $rc" }
+          $r = $json | ConvertFrom-Json
+          $base = @($r.items | Where-Object { $_.id -eq 'tier_base' })
+          if ($base.Count -ne 1 -or -not $base[0].ok) { throw 'the base tools must show as installed' }
+          $report = Get-Content -Raw -Encoding UTF8 $r.report
+          if ($report -notmatch '- Python: 3\.11\.9') { throw "tm did not run on python.org's 3.11.9: $report" }
+          # The base pixi environment pixi run just installed holds ffmpeg, not the engine's Python packages.
+          $conda = @(Get-ChildItem -Recurse -Directory -Filter 'yaml' -Path (Join-Path $env:TM_DATA 'envs') -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'site-packages' })
+          if ($conda.Count) { throw "a pixi environment holds conda-forge's pyyaml: $($conda[0].FullName)" }
+      - name: tm doctor --general on the venv (bin/tm under Git Bash)
+        env:
+          TM_DATA: ${{ runner.temp }}\plugin data
+        shell: bash
+        run: |
+          set -u
+          export TM_PLUGIN_ROOT="$(cygpath -m "$PWD/plugins/trendsmesh-playbooks")" TM_PLUGIN_DATA="$(cygpath -m "$TM_DATA")"
+          rc=0; sh plugins/trendsmesh-playbooks/bin/tm doctor --general --json > doctor.json || rc=$?
+          cat doctor.json
+          [ "$rc" = 0 ] || [ "$rc" = 2 ] || { echo "bin/tm doctor --general exited $rc" >&2; exit 1; }
+          sh plugins/trendsmesh-playbooks/bin/tm env status --json | tee status.json
+          grep -qF '"base": {"installed": true' status.json || { echo "the base tier must be installed" >&2; exit 1; }
+      - name: tm env install makes a tier's venv (ai)
+        env:
+          TM_DATA: ${{ runner.temp }}\plugin data
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $root = (Resolve-Path plugins/trendsmesh-playbooks).Path
+          $env:TM_PLUGIN_ROOT = $root
+          $env:TM_PLUGIN_DATA = $env:TM_DATA
+          $json = (& plugins\trendsmesh-playbooks\bin\tm.cmd env install ai --yes --json | Out-String)
+          Write-Output $json
+          if ($LASTEXITCODE -ne 0 -or ($json | ConvertFrom-Json).status -ne 'done') { throw 'tm env install ai failed' }
+          . ./plugins/trendsmesh-playbooks/bootstrap/install-python.ps1 -Functions
+          $vpy = Join-Path (Get-TmVenv $env:TM_DATA $root 'ai') 'Scripts\python.exe'
+          & $vpy -I -c "import replicate, tm; print(replicate.__name__, tm.__file__)"
+          if ($LASTEXITCODE -ne 0) { throw 'the ai venv cannot import replicate and tm' }
+
   tools:
     name: heavy tool tiers (manual)
     if: github.event_name == 'workflow_dispatch'
