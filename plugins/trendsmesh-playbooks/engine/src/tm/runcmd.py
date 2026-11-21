@@ -176,7 +176,10 @@ def _setup_record(p: argparse.ArgumentParser) -> None:
     p.add_argument("--run", required=True)
     p.add_argument("--file", required=True, help="relative to the run folder")
     p.add_argument("--stage", required=True)
-    p.add_argument("--source", required=True)
+    p.add_argument("--source", help="where the file came from (needed unless --copy-from gives it)")
+    p.add_argument("--copy-from", dest="copy_from", metavar="PATH",
+                   help="copy this file (any path: the brand folder, Downloads, a file dropped in the chat) to --file "
+                        "first; its full path is the source (refresh-ad A2, issue #143). Never overwrites")
     p.add_argument("--parent")
     p.add_argument("--prompt")
     p.add_argument("--params", help="a JSON object, or the path of a JSON file holding one")
@@ -187,6 +190,24 @@ def _setup_record(p: argparse.ArgumentParser) -> None:
     p.add_argument("--json", action="store_true")
 
 
+def _copy_in(run: RunFolder, given: str, rel: str) -> str:
+    """Copy a file from anywhere to `rel` in the run (never over a file already there); its full path, the source."""
+    import shutil
+
+    src = Path(given).expanduser()
+    if not src.is_file():
+        raise ValueError(f"{src} is not a file: ask the user for the file's full path, or to drop it into the chat.")
+    target = run.given(rel, missing_ok=True)
+    if target.exists():
+        if target.resolve() == src.resolve():
+            return str(src.resolve())
+        raise ValueError(f"{rel} is already in the run; give a new name (a new version) for this file.")
+    run.assert_writable(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, target)
+    return str(src.resolve())
+
+
 def _run_record(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
@@ -194,7 +215,13 @@ def _run_record(args: argparse.Namespace) -> int:
         if params is not None and not isinstance(params, dict):
             raise ValueError("--params must be a JSON object, for example '{\"seconds\": 8}'.")
         raw = run.given(args.raw_response_file).read_text(encoding="utf-8") if args.raw_response_file else None
-        manifest.record(run, args.file, args.stage, args.source, args.parent, args.prompt, params,
+        source = args.source
+        if args.copy_from:
+            copied = _copy_in(run, args.copy_from, args.file)
+            source = source or copied
+        if not (source and source.strip()):
+            raise ValueError("Say where the file came from with --source, or copy it in with --copy-from <path>.")
+        manifest.record(run, args.file, args.stage, source, args.parent, args.prompt, params,
                         args.model, args.cost, args.before_after, raw_response=raw)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return _fail(args, str(exc))
