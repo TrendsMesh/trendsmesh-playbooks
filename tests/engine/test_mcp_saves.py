@@ -73,6 +73,7 @@ def test_saves_table_is_the_plans():
         "ads_get_ad_accounts": ("01_base/meta", "ads_get_ad_accounts"),
         "ads_get_ad_entities": ("01_base/meta", "ads_get_ad_entities"),
         "ads_get_creatives": ("01_base/meta", "ads_get_creatives"),
+        "ads_get_ad_videos": ("01_base/meta", "ads_get_ad_videos"),
         "db_list": ("03_wip/decisions", "db_list"),
         "db_query": ("03_wip/decisions", "db_query"),
         "publish_files": ("03_wip/publish", "publish_files"),
@@ -323,9 +324,9 @@ def test_an_as_level_read_is_never_saved(ws, tmp_path, capsys):
     assert _files(ws) == []
 
 
-def test_ingest_files_a_page_read_under_decisions_in_a_run_without_the_collector(tmp_path, monkeypatch, capsys):
-    """Refresh an ad has no collector, so its page's read reaches the run with `ingest`: where `tm page decision`
-    looks (03_wip/decisions), never 02_research/other. Its Meta reads still go where they went."""
+def test_ingest_files_a_page_read_under_decisions_in_a_refresh_ad_run(tmp_path, monkeypatch, capsys):
+    """A refresh-ad page read that reaches the run with `ingest` goes where `tm page decision` looks
+    (03_wip/decisions), never 02_research/other; its Meta reads go where the collector keeps them (issue #128)."""
     from tm.playbooks import REFRESH_AD
     monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "data"))
     run = RunFolder.create(tmp_path / "ws", "ad 3", date(2026, 11, 7), playbook=REFRESH_AD)
@@ -340,4 +341,4 @@ def test_ingest_files_a_page_read_under_decisions_in_a_run_without_the_collector
     meta.write_text('{"data": []}', encoding="utf-8")
     assert main(["trends", "ingest", "--run", str(run.path), "--tool", "ads_get_creatives", "--input", "{}",
                  "--file", str(meta), "--json"]) == 0
-    assert json.loads(capsys.readouterr().out)["file"].startswith("02_research/other/")
+    assert json.loads(capsys.readouterr().out)["file"] == "01_base/meta/ads_get_creatives_v01.json"
