@@ -4,6 +4,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Organic video: the text fits the animation's style.** When an animation's style belongs to a family that another
+  text set suits better (marker for hand-drawn and paper styles, block for explainer, data and print styles, pop for
+  retro ones), the text look shows that set beside the channel's: "The channel's set is outline; for a Hand-drawn
+  style, marker fits better." The saved set stays as it is. When the animation draws its own headings, the top
+  overlay is off, so it no longer covers them or repeats them; you can turn it back on.
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of

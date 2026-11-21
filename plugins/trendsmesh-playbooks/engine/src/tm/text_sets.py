@@ -61,6 +61,17 @@ FIT = {
 }
 
 
+# The set that fits an animation's style family (issue #139): each `category` of data/styles/styles.json. A set that
+# draws over a hand-drawn board in white with a stroke fights the board; `tm organic text look` suggests this one
+# beside the saved set, and the saved set is never changed by it.
+FAMILY_LOOKS = {
+    "Hand-drawn": "marker", "Painterly": "marker", "Paper and craft": "marker", "Illustration": "marker",
+    "Clean explainer": "block", "Data": "block", "Product and UI": "block",
+    "Design movements": "block", "Print": "block", "Type and pattern": "block", "Collage": "block",
+    "Retro digital": "pop", "Retro desktop": "pop",
+    "Dimensional": "outline", "Light and imaging": "outline", "Cosmic": "outline",
+}
+
 accent_ink = oe.accent_ink   # the text drawn on the accent, dark or white by contrast
 
 

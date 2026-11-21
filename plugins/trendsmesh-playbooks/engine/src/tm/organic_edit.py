@@ -42,12 +42,18 @@ saved), and `--look`/`--accent` draw another set for one video (a ranking, a qui
 time, one call per set.
 
     tm organic text look --run R --picture <the first frame> [--style S | --caption T --overlay T [--look L]
-                         [--accent C]] [--at SEC]
+                         [--accent C] [--overlays on|off]] [--at SEC] [--item I]
         the style (the saved set, or the default, with the given samples when no --style: the next
         text_style_vNN.json) drawn on the
         picture: `03_wip/text_look_vNN.props.json` and its still `03_wip/text_look_vNN.png` (`tm render still`, free).
         It is the latest OrganicCaptions still in 03_wip, so the images page shows it beside every item
-        (`organic_gates._still`); a chat card shows the PNG.
+        (`organic_gates._still`); a chat card shows the PNG. For an animation (issue #139; the item is the
+        picture's `03_wip/<item>/` folder, else the idea): when the set chosen is not the one its style family fits
+        (`text_sets.FAMILY_LOOKS`, by the build prompt's style), that set is drawn first as a `suggestion`, so the
+        chosen one stays the latest; the saved set is not changed. When any panel of its frames list carries
+        `overlay` text the animation draws its own headings, and the new style turns the top overlay off
+        (`overlays.on: false`: not on the sample, and `tm organic captions` keeps only an end card) unless
+        `--overlays on`.
     tm organic text approve --run R --style S [--by user|rule] --note "<their words>"
         the user's yes to the latest style once its look was drawn: run.json `checked["text_style"]` (`stepchecks.mark`,
         with `by`, `note` and `look`). Their changes are a new style version, drawn and shown again.
@@ -212,6 +218,9 @@ def style_problems(style: object) -> list[str]:
         if not (_number(width) and 300 <= width <= SAFE_WIDTH):
             out.append(f"{layer}.width must be a number from 300 to {SAFE_WIDTH} (the safe zone's width), "
                        f"not {width!r}.")
+        if layer == "overlays" and "on" in group and not isinstance(group["on"], bool):
+            out.append(f"overlays.on must be true or false (false: no top overlay), or left out, not "
+                       f"{group['on']!r}.")
     caps = style.get("captions") if isinstance(style.get("captions"), dict) else {}
     lit = caps.get("highlight")
     if "captions" in style and lit is not None and not (isinstance(lit, str) and COLOUR.fullmatch(lit)):
@@ -308,30 +317,51 @@ def _stamp(rel: str, path: Path) -> dict:
     return {"file": rel, "sha256": _sha(path)}
 
 
-def look(run: RunFolder, picture: str, *, style: str | None, caption: str | None, overlay: str | None,
-         at: float = 0.0, look_id: str | None = None, accent: str | None = None) -> dict:
-    """The style drawn on the picture (the module docstring): {style, props, still, text_set}."""
-    from tm import render, text_sets   # they read organic modules: imported where they are used
+def overlays_off(style: dict) -> bool:
+    """The style turns the top overlay off (`overlays.on: false`: the animation draws its own headings)."""
+    group = style.get("overlays") if isinstance(style.get("overlays"), dict) else {}
+    return group.get("on") is False
 
-    _, pic = _inside(run, picture, "picture")
-    saved = None
-    if style is None:
-        if not (caption and caption.strip() and overlay and overlay.strip()):
-            raise Stop("Without --style, give the two sample lines the look draws: --caption \"<a line of the "
-                       f"voiceover>\" --overlay \"<the hook>\", in the audience language; {AGAIN}.")
-        if accent is not None and not COLOUR.fullmatch(accent):
-            raise Stop(f"--accent must be a colour as #RRGGBB (the brand's), not {accent!r}; {AGAIN}.")
-        saved = text_sets.for_run(run)
-        kit = text_sets.into_run(run, saved) if saved else {}
-        chosen = look_id or kit.get("look") or DEFAULT_LOOK
-        target = run.next_version("wip", STYLE_STEM, "json")
-        c.write_json(target, default_style(caption=caption.strip(), overlay=overlay.strip(), look=chosen,
-                                           accent=(accent.upper() if accent else kit.get("accent")),
-                                           font=kit.get("font"), logo=kit.get("logo")), newline="\n")
-        c.record(run, target, "tm organic text look", None,
-                 params={"default": saved is None, "look": chosen, "text_set": saved["file"] if saved else None},
-                 cost="free")
-        style = c.rel(run, target)
+
+def _item_of(run: RunFolder, pic: str) -> str | None:
+    """The item a picture belongs to: `03_wip/<item>/...`, else the run's idea."""
+    parts = pic.split("/")
+    if len(parts) >= 3 and parts[0].casefold() == WIP:
+        return parts[1]
+    return organic_final.idea_id(run)
+
+
+def animation_style(run: RunFolder, item: str | None) -> dict | None:
+    """The library style an animation item is built in (its latest build prompt's `style`), or None for an item
+    that is not an animation (no prompt, or a stills layout)."""
+    if not item:
+        return None
+    from tm import atlas_prompt, organic   # organic reads this module: imported where it is used
+    params = organic._prompt_params(run, item)
+    if not params or params.get("layout") or not isinstance(params.get("style"), str):
+        return None
+    try:
+        return atlas_prompt.find_style(params["style"].split()[-1])
+    except ValueError:
+        return None
+
+
+def draws_headings(run: RunFolder, item: str | None) -> bool:
+    """Any panel of the item's latest frames list (`03_wip/<item>/frames_vNN.json`) carries `overlay` text: the
+    animation draws its own headings."""
+    found = run.latest(f"{WIP}/{item}", "frames", "json") if item else None
+    try:
+        rows = json.loads(found.read_text(encoding="utf-8-sig")) if found else []
+    except (OSError, ValueError):
+        return False
+    return any(isinstance(r, dict) and isinstance(r.get("overlay"), str) and r["overlay"].strip()
+               for r in rows if isinstance(rows, list))
+
+
+def _draw(run: RunFolder, pic: str, style: str, at: float) -> dict:
+    """One style drawn on the picture: {style, props, still}."""
+    from tm import render   # it reads organic modules: imported where it is used
+
     path, rel, data = _style_at(run, style)
     sample = data.get("sample") or {}
     if not (sample.get("caption", "").strip() and sample.get("overlay", "").strip()):
@@ -341,19 +371,72 @@ def look(run: RunFolder, picture: str, *, style: str | None, caption: str | None
     step = 0.2      # each sample word 0.2 s: at the still's frame the second word is the one spoken
     words = [{"text": w, "from": round(i * step, 3), "to": round((i + 1) * step, 3)} for i, w in enumerate(text)]
     start = max(float(at), 0.0)
+    tops = [] if overlays_off(data) else [caption_entry("overlays", data["overlays"], sample["overlay"].strip(), 0,
+                                                        LOOK_SECONDS, look=data.get("look"),
+                                                        accent=data.get("accent"))]
     props = {"width": 1080, "height": 1920, "fps": 24,
              "segments": [{"src": pic, "start": start, "end": start + LOOK_SECONDS}],
-             "captions": [caption_entry("overlays", data["overlays"], sample["overlay"].strip(), 0, LOOK_SECONDS,
-                                        look=data.get("look"), accent=data.get("accent")),
-                          caption_entry("captions", data["captions"], " ".join(text), 0, LOOK_SECONDS, words,
-                                        look=data.get("look"), accent=data.get("accent"))],
+             "captions": tops + [caption_entry("captions", data["captions"], " ".join(text), 0, LOOK_SECONDS, words,
+                                               look=data.get("look"), accent=data.get("accent"))],
              "textStyle": _stamp(rel, path), **({"brandFont": data["font"]} if data.get("font") else {})}
     target = run.next_version("wip", LOOK_STEM, "props.json")
     c.write_json(target, props, newline="\n")
     png = target.with_name(target.name.removesuffix(".props.json") + ".png")
     done = render.still(run, "OrganicCaptions", target, LOOK_FRAME, png)
-    return {"style": rel, "props": c.rel(run, target), "still": c.rel(run, done),
-            "text_set": saved["file"] if saved else None}
+    return {"style": rel, "props": c.rel(run, target), "still": c.rel(run, done)}
+
+
+def look(run: RunFolder, picture: str, *, style: str | None, caption: str | None, overlay: str | None,
+         at: float = 0.0, look_id: str | None = None, accent: str | None = None, item: str | None = None,
+         overlays: str | None = None) -> dict:
+    """The style drawn on the picture (the module docstring): {style, props, still, text_set, family_look,
+    style_family, suggestion, overlays_off, headings}. For an animation item (`item`, else the picture's folder, else
+    the idea), a new style starts with the top overlay off when its frames draw their own headings (`overlays`
+    "on" keeps it), and the set that fits its style family (`text_sets.FAMILY_LOOKS`) is drawn first as a
+    suggestion when it is not the set chosen; the saved set is never changed."""
+    from tm import text_sets   # it reads organic modules: imported where it is used
+
+    _, pic = _inside(run, picture, "picture")
+    if overlays not in (None, "on", "off"):
+        raise Stop(f"--overlays is on or off, not {overlays!r}; {AGAIN}.")
+    item = item or _item_of(run, pic)
+    anim = animation_style(run, item)
+    family = text_sets.FAMILY_LOOKS.get(anim["category"]) if anim else None
+    headings = draws_headings(run, item)
+    saved = suggestion = None
+    if style is None:
+        if not (caption and caption.strip() and overlay and overlay.strip()):
+            raise Stop("Without --style, give the two sample lines the look draws: --caption \"<a line of the "
+                       f"voiceover>\" --overlay \"<the hook>\", in the audience language; {AGAIN}.")
+        if accent is not None and not COLOUR.fullmatch(accent):
+            raise Stop(f"--accent must be a colour as #RRGGBB (the brand's), not {accent!r}; {AGAIN}.")
+        saved = text_sets.for_run(run)
+        kit = text_sets.into_run(run, saved) if saved else {}
+        chosen = look_id or kit.get("look") or DEFAULT_LOOK
+        off = overlays == "off" or (headings and overlays != "on")
+
+        def write(chosen_look: str, extra: dict) -> str:
+            data = default_style(caption=caption.strip(), overlay=overlay.strip(), look=chosen_look,
+                                 accent=(accent.upper() if accent else kit.get("accent")), font=kit.get("font"),
+                                 logo=kit.get("logo"))
+            if off:
+                data["overlays"]["on"] = False
+            target = run.next_version("wip", STYLE_STEM, "json")
+            c.write_json(target, data, newline="\n")
+            c.record(run, target, "tm organic text look", None,
+                     params={"default": saved is None, "look": chosen_look,
+                             "text_set": saved["file"] if saved else None, "overlays": not off, **extra},
+                     cost="free")
+            return c.rel(run, target)
+
+        if family and look_id is None and family != chosen:      # drawn first: the saved set stays the latest
+            suggestion = _draw(run, pic, write(family, {"suggestion": anim["category"]}), at)
+        style = write(chosen, {})
+    out = _draw(run, pic, style, at)
+    drawn = _style_at(run, out["style"])[2]
+    return {**out, "text_set": saved["file"] if saved else None, "text_set_kind": saved.get("kind") if saved else None,
+            "look": drawn.get("look"), "family_look": family, "style_family": anim["category"] if anim else None,
+            "suggestion": suggestion, "overlays_off": overlays_off(drawn), "headings": headings}
 
 
 def approved_style(run: RunFolder) -> tuple[str, str, dict] | None:
@@ -538,10 +621,13 @@ def overlay_entries(overlays: list[dict], style: dict, *, total: float) -> list[
     look, accent = style.get("look"), style.get("accent")
     held = any(isinstance(o.get("overlay"), dict) and o["overlay"].get("hold") is True
                and o["overlay"].get("kind", "hook") == "hook" for o in overlays)
+    off = overlays_off(style)
     out = []
     for o in overlays:
         given = dict(o["overlay"]) if isinstance(o.get("overlay"), dict) else {}
         kind = given.get("kind") if given.get("kind") in OVERLAY_KINDS else "hook"
+        if off and kind != "end":
+            continue          # the animation draws its own headings: no top overlay, the end card stays
         group = dict(style["overlays"])
         end = float(o.get("to") or 0)
         if kind == "hook" and given.get("hold") is True:
@@ -619,6 +705,10 @@ def add_parsers(sub) -> None:
     a.add_argument("--look", choices=LOOKS, help="without --style: this text set instead of the saved one (one "
                                                "video's format, or each of the three sets shown the first time)")
     a.add_argument("--accent", help="without --style: the brand colour, #RRGGBB (default: the saved set's)")
+    a.add_argument("--item", help="the item the picture is of (default: its 03_wip/<item>/ folder, else the idea)")
+    a.add_argument("--overlays", choices=("on", "off"),
+                   help="without --style: the top overlay on or off (default: off when the animation's frames "
+                        "draw their own headings, else on)")
     a.add_argument("--json", action="store_true")
     a = ts.add_parser("approve", help="record the user's yes to the latest text style, once its look was shown")
     a.add_argument("--run", required=True)
@@ -640,9 +730,19 @@ def _text(args: argparse.Namespace) -> int:
     run = RunFolder.open(Path(args.run))
     if args.text_action == "look":
         out = look(run, args.picture, style=args.style, caption=args.caption, overlay=args.overlay, at=args.at,
-                   look_id=args.look, accent=args.accent)
+                   look_id=args.look, accent=args.accent, item=args.item, overlays=args.overlays)
         message = (f"Drew {out['style']} on {args.picture}: {out['still']}. Show it at the images check-in (the images "
                    "page shows it beside every item, or send the PNG); their changes are a new style version.")
+        if out["suggestion"]:
+            whose = {"channel": "The channel's set", "brand": "The brand's set"}.get(out["text_set_kind"],
+                                                                                  "The default set")
+            message += (f" {whose} is {out['look']}; for a {out['style_family']} style, {out['family_look']} fits "
+                        f"better. Both are drawn ({out['suggestion']['still']} and {out['still']}): show both. The "
+                        f"saved set is not changed; this video can use {out['family_look']} (--look "
+                        f"{out['family_look']}).")
+        if out["overlays_off"] and out["headings"]:
+            message += (" The animation draws its own headings, so the top overlay is off. Draw it with --overlays "
+                        "on if the user wants it.")
     else:
         out = approve(run, args.style, by=args.by, note=args.note)
         message = (f"Approved {out['style']} (its look {out['look']}). The edit's captions follow it "
