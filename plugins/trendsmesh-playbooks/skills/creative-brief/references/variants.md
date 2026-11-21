@@ -57,7 +57,7 @@ flow is `flow.md`; the rules `rules.md`. **What the plugin does with them:**
 | **One recipient only** (e.g. a creator) | page shows that view only, no view bar | untested |
 | **External creator** | share the creator view link; confidential parts are never in that view; Contributor access only for people who decide | tested (view check) |
 | **Recipient without claude.ai** | self-contained HTML file (videos embedded) as fallback (CB12); decisions via "Copy my decisions" | untested |
-| **Organic use only** (no ads) | media-buyer view off; sound trends allowed if licensed for organic; KPI becomes organic (views, saves, follows) | untested |
+| **Organic use only** (no ads) | built: the organic video brief (`flow.md#o1` to `#o8`): no ad account, no media-buyer view, a publisher view, organic measures (views, % watched to the end, saves, shares) | untested |
 
 ## 5. Production routes after the brief
 | Route | What the brief must contain | Status |

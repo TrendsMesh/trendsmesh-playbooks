@@ -52,19 +52,26 @@ runs: a brief is made once and has no schedule).
 
 ## 1. Readiness first (also `/trendsmesh-playbooks:doctor`)
 
-Follow the doctor's "Creative brief" section (`commands/doctor.md` in the plugin):
+Follow the doctor's "Creative brief" section (`commands/doctor.md` in the plugin). **The first thing
+`tm next` asks is what the brief is for** (the check-in "What is the brief for?", before A0): an ad on
+Meta (it reads the ad account) or an organic video for a channel (no ad account needed). Ask it as one
+plain question, record it with `tm decide brief_kind ad|organic --said "<their words>" --run R`, then
+the readiness below. **An organic video brief never checks or calls Meta**: skip the Meta Ads line, pass
+no `meta=` and no `--meta-account`, and use `--outputs organic_brief,page`.
 
 1. **TrendsMesh: Free or Paid, the user's choice** (`../refresh-ad/references/trendsmesh-sign-in.md`):
    `tm mode status --json` first; when TrendsMesh isn't ready and no Free was chosen, one question, Free or
    Paid, with what Paid adds to a brief. Free only after the user's yes (`tm mode free`). State: `ok`,
    `free`, `no_agents`, `inactive` or `missing`, and the choice. **Meta
-   Ads**: `ads_get_ad_entities` for one ad on the user's ad account (find the account with
+   Ads** (an ad brief only): `ads_get_ad_entities` for one ad on the user's ad account (find the account with
    `ads_get_ad_accounts` rather than asking): `ok`, `missing` or `not_enabled`, with the checked account's
    currency and the number of ad accounts (never a name or an id). **Artifacts**: `ok`
    when the `Artifact` tool (or the older `publish_files`) is among this session's tools, else
    `missing` (no call; never ask the user to add it through `/mcp`), or `denied` once a publish in this session was refused by Claude Code's permissions. Never guess a result.
-2. `tm doctor --playbook creative-brief --outputs <chosen, from review_pack,briefs,page>
-   --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> --meta-account currency=<code>,accounts=<n> [--mode free] --json`. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again.
+2. An ad brief: `tm doctor --playbook creative-brief --outputs <chosen, from review_pack,briefs,page>
+   --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> --meta-account currency=<code>,accounts=<n> [--mode free] --json`.
+   An organic video brief: `tm doctor --playbook creative-brief --outputs organic_brief,page
+   --mcp trendsmesh=<s>,artifacts=<s> [--mode free] --json`. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again.
    The first `tm` call on a computer installs
    the base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10
    minutes). Installs are yours after one yes with the size and time (`tm env install <tier>
@@ -72,8 +79,8 @@ Follow the doctor's "Creative brief" section (`commands/doctor.md` in the plugin
    If `tm` says Windows Smart App Control blocked a file of the plugin's Python, stop here: give the user its
    steps in plain words (it is no network or install failure), and never change Windows security settings yourself.
 3. Show its `card` in plain words.
-   - **Without Meta Ads the brief cannot start**: it reads the user's own account. Say the card's
-     step, then wait.
+   - **Without Meta Ads an ad brief cannot start**: it reads the user's own account. Say the card's
+     step, then wait. An organic video brief needs no Meta, and its card has no Meta row.
    - **On Free the run goes on as guesses**: the concepts' hooks are your guesses from the
      customers' own words, the user's ads and the Ad Library, labelled as guesses, never as rising
      trends (`tm evidence guess` at B3). Say the card's Free line once; the question and the offer

@@ -16,6 +16,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   none.
 - **Creative brief: customer voice belongs to the ad brief.** The customer-voice step and its rule (CB5) are now said
   to apply to the ad brief; a brief for an organic video will have no customer-voice step.
+- **Creative brief asks what the brief is for.** Its first question is whether the brief is for an ad on Meta (it
+  reads your ad account) or for an organic video on a channel (no ad account needed). For an organic video the
+  readiness check no longer asks for Meta Ads, and no Meta tool is called in the run. Runs started earlier are ad
+  briefs, as before.
 - **Creative brief: the creator view checks data, not words.** The creator view is built from the creator fields
   only, so hooks and ad copy are shown as written ("DO NOT show this to your competitors" passes) in every language
   alike. Its check now refuses the run's own account figures (spend, cost per result, results) and the advertisers

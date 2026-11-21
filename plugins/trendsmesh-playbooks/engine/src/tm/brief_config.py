@@ -36,6 +36,10 @@ RECIPIENTS = ("decision", "strategy", "creator", "editor", "media-buyer")  # CB1
 TREND_KINDS = ("hook", "topic", "format", "sound")  # CB2
 VOICE_TIERS = ["own_customers", "category", "brand"]  # CB5: tier C never counts
 REVIEW_PACK, PAGE, BRIEFS = "review_pack", "page", "briefs"
+ORGANIC_BRIEF = "organic_brief"   # the organic video brief (issue #136): O1 to O8
+AD, ORGANIC = "ad", "organic"     # brief.kind, the `brief_kind` check-in's choice
+KINDS = (AD, ORGANIC)
+ORGANIC_OUTPUTS = [ORGANIC_BRIEF, PAGE]
 LEGACY_OUTPUTS = ("animatics",)   # an output before issue #145: accepted and left out
 SEED_FILE = "00_raw/seed.json"
 LANDING = "landing_*"  # the landing page the agent saved at A1, 00_raw/landing_<name>.<ext>
@@ -55,7 +59,8 @@ DEFAULTS: dict = {
     "trends": {"kinds": list(TREND_KINDS), "min_relevant": 5, "terms": [], "exclude_terms": []},
     "persona": {"min_results_per_segment": 10},
     "formats": {"placement_share_min": 0.25},
-    "brief": {"valid_days_default": 14, "recipients": list(RECIPIENTS), "currency": "USD", "fx_rate": None},
+    "brief": {"kind": AD, "valid_days_default": 14, "recipients": list(RECIPIENTS), "currency": "USD",
+              "fx_rate": None},
     "scoring": {"weights": {c: 1 for c in CRITERIA}},
     "benchmark": {"source": "meta_ad_library"},
     "concepts": {"count": 3, "min_axes_diff": 2},
@@ -73,7 +78,7 @@ FIXED = {  # rules, not thresholds: path -> (the fixed value, why another value 
 }
 FOREPLAY = ("Foreplay is not supported yet: saturation uses the Meta Ad Library (tracked at "
             f"{ISSUES}).")
-CHOICES = {"delivery.channel": ("artifact", "html_file")}
+CHOICES = {"delivery.channel": ("artifact", "html_file"), "brief.kind": KINDS}
 _COUNT = (True, 1, None, True, True)  # a whole number from 1
 NUMBERS = {  # path: (integer?, lowest, highest, lowest allowed?, highest allowed?), as in config
     "voice.min_phrases_per_concept": _COUNT,
@@ -155,6 +160,13 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     _intake_open(s)
     answers = copy.deepcopy(answers)
     level = answers.pop("level", None) or s.level
+    said = flow.kind_of(s) if any(d.get("checkin") == "brief_kind" for d in s.decisions) else None
+    if said is not None:                                # the user's answer at `brief_kind` wins (issue #136)
+        brief = answers.get("brief") if isinstance(answers.get("brief"), dict) else {}
+        answers["brief"] = {**brief, "kind": said}
+    kind = (answers.get("brief") or {}).get("kind") if isinstance(answers.get("brief"), dict) else None
+    if kind == ORGANIC and "outputs" not in answers:
+        answers["outputs"] = list(ORGANIC_OUTPUTS)
     cfg = i18n.settle(config._merge(defaults(), answers))
     cfg["outputs"] = _outputs(cfg.get("outputs"))
     if isinstance(cfg.get("brief"), dict):
@@ -177,13 +189,22 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
 
 # --- validation -------------------------------------------------------------------
 
-def _outputs_problems(outputs: object, out: list[Problem]) -> None:
+def _outputs_problems(outputs: object, out: list[Problem], kind: object = AD) -> None:
     known = flow.output_ids(CREATIVE_BRIEF)
     if isinstance(outputs, list):                       # a run started before issue #145 lists animatics
         outputs = [o for o in outputs if o not in LEGACY_OUTPUTS]
     if not (isinstance(outputs, list) and set(outputs) <= set(known)):
         out.append(Problem("outputs", f"outputs must be some of: {', '.join(known)}.",
                            "Choose which outputs this run produces."))
+        return
+    if kind == ORGANIC:
+        if set(outputs) != set(ORGANIC_OUTPUTS):
+            out.append(Problem("outputs", f"An organic video brief makes {', '.join(ORGANIC_OUTPUTS)}, not "
+                               f"{', '.join(outputs) or 'nothing'}.", f"Set outputs to {', '.join(ORGANIC_OUTPUTS)}."))
+        return
+    if ORGANIC_BRIEF in outputs:
+        out.append(Problem("outputs", f"This is an ad brief (brief.kind {AD}), and {ORGANIC_BRIEF} is the organic "
+                           "video brief's output.", "Choose from review_pack, briefs and page."))
         return
     if PAGE not in outputs:
         out.append(Problem("outputs", "Every creative brief ends on the shared page (CB12), so outputs must "
@@ -242,7 +263,12 @@ def validate(run: RunFolder) -> list[Problem]:
             out.append(Problem(path, f"{path} must be a list of texts, not {value!r}.",
                                f"Give {path} as a list, or leave it empty."))
 
-    _outputs_problems(cfg.get("outputs"), out)
+    kind = config._get(cfg, "brief.kind") or AD
+    said = flow.kind_of(state.load(run))
+    if said is not None and kind in KINDS and kind != said:
+        out.append(Problem("brief.kind", f"brief.kind is {kind}, but the user chose an {said} brief at the start "
+                           "(what the brief is for).", f"Set brief.kind to {said}."))
+    _outputs_problems(cfg.get("outputs"), out, kind)
     out += i18n.language_problems(cfg)    # unset: an older config's account.language, else English
     recipients = config._get(cfg, "brief.recipients")
     if not (isinstance(recipients, list) and recipients):

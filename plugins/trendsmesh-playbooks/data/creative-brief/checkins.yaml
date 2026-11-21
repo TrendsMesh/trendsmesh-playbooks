@@ -34,6 +34,16 @@ cards:
     ask: last
 
 checkins:
+  # issue #136: what the brief is for, asked first (before A0, so the doctor knows whether to check Meta) and
+  # always by the user. `ad` is the ad brief (A1 to E2), `organic` the organic video brief (O1 to O8): each
+  # skips the other's steps (steps.yaml `skip_when`). Once the outputs are set the kind is read from them
+  # (`organic_brief`), so a run set up before this question is an ad brief.
+  - id: brief_kind
+    name: What is the brief for?
+    route: {every_step: own, big_calls: own, hands_off: own}
+    rule: "never by rule: the user says whether it is an ad or an organic video"
+    choices: [ad, organic]
+
   - id: G0
     name: Confirm the intake card
     card: approve_setup

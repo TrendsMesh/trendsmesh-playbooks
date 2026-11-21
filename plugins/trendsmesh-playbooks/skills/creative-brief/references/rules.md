@@ -22,7 +22,7 @@ How to read the copy in the plugin:
   check` refuses `benchmark.source: foreplay` with the issues link; saturation is always the Meta
   Ad Library), Goodreads reviews (CB5: its terms forbid scrapers; `references/voice.md` says
   why), the Shopify connector and Notion or Drive brand guides as connectors (an export or a file
-  the user has works), organic-only use (the media-buyer view off, an organic KPI), and comment
+  the user has works), and comment
   texts under ads (the Meta connection gives counts only).
 - **Decisions on the page** (CB12): the plugin reads them with `ArtifactData` (one unfiltered list; the older tools' `db_list`) and
   records them with `tm brief decisions` and `tm brief choose`; a decision written in chat always

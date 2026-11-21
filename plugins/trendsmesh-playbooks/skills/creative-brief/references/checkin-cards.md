@@ -30,6 +30,14 @@ choose`.
 
 ## The cards
 
+**What is the brief for?** (`brief_kind`, before A0: the first thing a run asks, at every level, never
+decided by rule). One question with two options: **An ad on Meta** ("reads your ad account": the ad
+brief, A1 to E2) and **An organic video for a channel** ("no ad account needed": the organic video
+brief, O1 to O8). When the user's first message already says which ("a brief for our TikTok video",
+"new ad concepts"), offer that one first as recommended, and still ask. Record `tm decide brief_kind
+ad|organic --said "<their words>" --run R`. It can be changed (`--change`) only until A0 is done; after
+that, a new run.
+
 **G0 · Confirm the intake card** (after A1). The card A1 showed: product, ad account, landing
 page, market, working language and market language (`references/languages.md`), category phrase, the brand draft (what it stands for, tone in three
 words, claims, off-limits), recipients, number of concepts, the level, the outputs, and budget,
