@@ -4,6 +4,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Create an ad: a sharp logo for the end card.** `tm tool site brand` takes the largest version of a logo the site
+  offers and prefers the brand's SVG wordmark. When the best logo is smaller than 600 px, Claude asks you for the logo
+  as an SVG or a larger PNG, instead of scaling it up on the end card.
 - **Create an ad: site captures without the cookie banner.** `tm tool site capture` hides the common cookie and
   consent banners (OneTrust, Cookiebot, Usercentrics and others) before it takes the picture, and says what it hid.
   For a site's own banner, add `--hide <its selector>`. When the page can't be drawn that way, it takes the plain

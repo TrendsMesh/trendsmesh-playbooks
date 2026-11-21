@@ -324,3 +324,47 @@ def test_a_copy_that_draws_almost_empty_falls_back_to_the_plain_capture(ad, monk
     assert [u.split(":")[0] for _, u in seen] == ["https", "file", "https"]
     assert out["hidden"] == [] and "plain capture" in out["message"]
     assert site.spread(ad.path / out["outputs"][0]) > site.BLANK_SPREAD
+
+
+# --- the logo for the end card (issue #144) ---------------------------------------------------------
+
+def _candidates(raw, url=SITE):
+    page = site._Page()
+    page.feed(raw)
+    return site.logo_candidates(page, raw, url)
+
+
+def test_the_largest_srcset_entry_is_taken():
+    raw = ('<img class="logo" alt="Acme Notes" srcset="/l-100.png 100w, /l-1200.png 1200w, /l-600.png 600w">'
+           '<img class="logo" alt="Acme Notes" src="/x.png" srcset="/d1.png 1x, /d3.png 3x, /d2.png 2x">')
+    found = _candidates(raw)
+    assert [x["url"] for x in found[:2]] == ["https://acme-notes.test/l-1200.png", "https://acme-notes.test/d3.png"]
+
+
+def test_an_svg_that_names_the_brand_ranks_above_a_raster_logo():
+    raw = ('<img class="logo" alt="Acme Notes" src="/logo-small.png">'
+           '<img class="site-logo" alt="Acme Notes wordmark" src="/brand/wordmark.svg">')
+    found = _candidates(raw)
+    assert found[0]["url"] == "https://acme-notes.test/brand/wordmark.svg" and found[0]["names_brand"]
+    assert found[1]["url"] == "https://acme-notes.test/logo-small.png"
+
+
+@pytest.mark.tools
+def test_a_small_raster_logo_asks_for_a_bigger_one(ad, tmp_path, monkeypatch, capsys):
+    raw = '<html><body><img class="logo" alt="Acme Notes" src="/logo.png"></body></html>'
+    pages = {SITE: raw.encode(), "https://acme-notes.test/logo.png": _png(tmp_path / "logo.png", "300x100")}
+    monkeypatch.setattr(site, "_get", lambda url, *, limit, binary=False: (
+        (pages[url], "") if binary else (pages[url].decode(), "")) if url in pages else
+        (_ for _ in ()).throw(c.ToolError("404")))
+    monkeypatch.setattr(site.atlas, "find_browser", lambda: None)
+    code, out = _run(capsys, "brand", "--run", str(ad.path), SITE)
+    assert code == 0, out
+    assert out["logos"][0]["width"] == 300 and out["logos"][0]["height"] == 100
+    assert out["brand"] == "acme-notes"
+    assert site.MIN_LOGO_PX == 600
+    small = [m for m in out["missing"] if m.startswith("the logo")]
+    assert small == ["the logo: the largest logo found is 300×100 px, too small for the end card without scaling up "
+                     "(CA10): ask the user for the logo as an SVG, or a PNG with transparency at least 600 px wide."]
+    pages["https://acme-notes.test/logo.png"] = _png(tmp_path / "big.png", "1200x400")
+    code, out = _run(capsys, "brand", "--run", str(ad.path), SITE)
+    assert not [m for m in out["missing"] if m.startswith("the logo")]

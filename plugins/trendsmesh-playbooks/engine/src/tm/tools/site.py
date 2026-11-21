@@ -23,8 +23,10 @@
   into `02_research/brand/`, and `02_research/brand_vNN.json` lists them: {"url", "read_with" (browser, server),
   "fonts": [{"family", "google_family" (its name there), "uses", "source" (site, google_fonts), "licence", "files":
   [{"file", "weight", "style", "url"}]}], "logos": [{"file", "png", "kind" (logo, svg_logo, icon, share_image),
-  "names_brand", "width", "height", "url"}],
-  "missing": [...], "message"}. What is missing goes into the asset list's question (S0): the user's own files.
+  "names_brand", "width", "height", "url"}], "brand" (the name: `--brand`, else the address's),
+  "missing": [...], "message"}. What is missing goes into the asset list's question (S0): the user's own files. A
+  logo image's file is its srcset's largest entry; an SVG that names the brand comes first; when the best logo that
+  names the brand is a raster under MIN_LOGO_PX on its longer side, `missing` asks for a bigger one (issue #144).
 
 Only http and https addresses are read. Free and local (the base tools and the user's browser).
 """
@@ -57,6 +59,7 @@ MAX_VIEW = 8000            # CSS px a view may grow to for a clip
 MAX_SHEETS, MAX_CSS = 40, 2_000_000
 MAX_FONT, MAX_IMAGE = 10_000_000, 5_000_000
 FAMILIES, WEIGHTS, LOGOS = 2, 4, 8
+MIN_LOGO_PX = 600          # a raster logo smaller on its longer side is scaled up on the end card (CA10, issue #144)
 BRAND_DIR = "02_research/brand"
 GOOGLE_CSS = "https://fonts.googleapis.com/css2?family={family}:wght@{weight}"
 DRAWABLE = (".ttf", ".otf", ".woff")
@@ -622,28 +625,45 @@ def brand_name(url: str) -> str:
     return labels[-2] if len(labels) >= 2 else (labels[0] if labels else "")
 
 
+def largest_src(srcset: str) -> str:
+    """The largest entry of an `<img>`'s srcset (issue #144: the first is usually the smallest), by its width
+    (`600w`) or density (`2x`); an entry without one counts as 1x."""
+    best, size = "", -1.0
+    for part in srcset.split(","):
+        bits = part.split()
+        if not bits:
+            continue
+        m = re.fullmatch(r"(\d+(?:\.\d+)?)([wx])", bits[1]) if len(bits) > 1 else None
+        value = float(m.group(1)) * (1 if m and m.group(2) == "w" else 1000) if m else 1000.0
+        if value > size:
+            best, size = bits[0], value
+    return best
+
+
 def logo_candidates(page: _Page, raw: str, url: str, name: str = "") -> list[dict]:
     """[{url | svg, kind, names_brand}], the likeliest first: the images and inline SVGs marked as a logo that name
-    the brand (the site's name, or `name`), then those that do not (a customer's logo may be one), each in page
-    order; then the icons, largest first, and the share image."""
+    the brand (the site's name, or `name`), an SVG (inline, or an image whose file is .svg) before a raster one (issue
+    #144), then those that do not name it (a customer's logo may be one), each in page order; then the icons, largest
+    first, and the share image. An image's file is its srcset's largest entry, else its src."""
     names = {v for n in (name, brand_name(url)) if n and len(n) > 1
              for v in (n.lower(), n.lower().replace("-", " "), n.lower().replace("-", ""))}
-    found: list[tuple[int, int, dict]] = []
+    found: list[tuple[int, int, int, dict]] = []
     for m in re.finditer(r"<img\b[^>]*>", raw, re.I):
         d = _attrs(m.group(0))
-        src = d.get("src") or (d.get("srcset", "").split(",")[0].split() or [""])[0]
-        own = urlsplit(src).path.rsplit("/", 1)[-1]        # the file's own name, not the folders it sits in
+        src = largest_src(d.get("srcset", "")) or d.get("src")
+        own = urlsplit(src or "").path.rsplit("/", 1)[-1]   # the file's own name, not the folders it sits in
         text = " ".join([own, *(d.get(k, "") for k in ("alt", "class", "id", "title", "aria-label"))]).lower()
         if src and "logo" in text:
-            found.append((0 if any(n in text for n in names) else 1, m.start(),
+            vector = 0 if own.lower().endswith(".svg") else 1
+            found.append((0 if any(n in text for n in names) else 1, vector, m.start(),
                           {"url": urljoin(url, src), "kind": "logo"}))
     for m in re.finditer(r"<svg\b[^>]*>.*?</svg>", raw, re.S | re.I):
         # its own attributes or title, or the link or box it sits in (`<a class="logo">`, `aria-label="Linear"`)
         text = (m.group(0)[:400] + raw[max(0, m.start() - 200):m.start()]).lower()
         if "logo" in text or any(f'"{n}' in text for n in names):
-            found.append((0 if any(n in text for n in names) else 1, m.start(),
+            found.append((0 if any(n in text for n in names) else 1, 0, m.start(),
                           {"svg": m.group(0), "kind": "svg_logo"}))
-    out = [dict(cand, names_brand=rank == 0) for rank, _, cand in sorted(found, key=lambda x: x[:2])]
+    out = [dict(cand, names_brand=rank == 0) for rank, _, _, cand in sorted(found, key=lambda x: x[:3])]
     named = [x for x in out if x["names_brand"]]
     out = (named + [x for x in out if not x["names_brand"]][:max(0, 3 - len(named))])[:LOGOS - 3]
     icons = []
@@ -735,7 +755,14 @@ def logos(run, page: _Page, raw: str, url: str, name: str = "") -> tuple[list[di
         out.append({"file": c.rel(run, dest), "png": c.rel(run, png) if png else None, "kind": cand["kind"],
                     "names_brand": cand["names_brand"], "width": size.get("width"), "height": size.get("height"),
                     "url": link})
-    if any(x["names_brand"] and x["png"] for x in out):
+    named = [x for x in out if x["names_brand"] and x["png"]]
+    vector = any(x["file"].endswith(".svg") for x in named)
+    biggest = max(named, key=lambda x: max(x["width"] or 0, x["height"] or 0), default=None)
+    if named and not vector and max(biggest["width"] or 0, biggest["height"] or 0) < MIN_LOGO_PX:
+        missing = [f"the logo: the largest logo found is {biggest['width']}×{biggest['height']} px, too small for the "
+                   "end card without scaling up (CA10): ask the user for the logo as an SVG, or a PNG with "
+                   f"transparency at least {MIN_LOGO_PX} px wide."]
+    elif named:
         missing = []
     elif any(x["kind"] in ("logo", "svg_logo") and x["png"] for x in out):
         missing = ["the logo: the page's logos do not name the brand (they may be its customers'): show them and "
@@ -766,8 +793,8 @@ def brand(run, a) -> tuple[dict, str]:
     said = (f"Fonts: {'; '.join(_said_font(f) for f in found_fonts) or 'none'}. Logos: "
             + ("; ".join(f"{x['png'] or x['file']} ({x['kind']}, {x['width']}×{x['height']})" for x in found_logos)
                or "none") + "." + (" Missing: " + "; ".join(missing) + "." if missing else ""))
-    data = {"url": url, "read_with": how, "fonts": found_fonts, "logos": found_logos, "missing": missing,
-            "message": said}
+    data = {"url": url, "brand": (a.brand or "").strip() or brand_name(url), "read_with": how, "fonts": found_fonts,
+            "logos": found_logos, "missing": missing, "message": said}
     c.write_json(out, data, newline="\n")
     for f in found_fonts:
         for x in f["files"]:

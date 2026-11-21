@@ -28,7 +28,10 @@ page and one in chat count the same. Rules: `rules.md`.
   `names_brand`; another may be a customer's), with a PNG of each. `02_research/brand_vNN.json` lists them. Show the
   font's name and the logo on the card and say where each came from; a font the site serves itself may be licensed
   for the web only, so ask whether the brand's licence covers its ads. What it could not take (`missing`) is asked
-  in question 4: the logo (SVG, or a PNG with transparency) and the font's TTF or OTF.
+  in question 4: the logo (SVG, or a PNG with transparency) and the font's TTF or OTF. It takes each logo image's
+  largest `srcset` file and puts an SVG that names the brand first; when the best logo is a raster under 600 px on
+  its longer side, `missing` says so, and question 4 asks for the logo as an SVG, or a PNG with transparency at
+  least 600 px wide (the end card never scales it up, CA10).
 - **Not live yet** (early access, a waitlist): warn now; `intake.live: false` and `intake.not_live` say what it is.
 - **The two languages** on the same card, filled from the defaults ("Working language: Polish · Market language:
   Polish"): `languages: {working, market}` as tags (`pl`, `pt-BR`). The working language is for the cards and
