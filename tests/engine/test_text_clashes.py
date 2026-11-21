@@ -162,7 +162,8 @@ def test_a_cover_caption_takes_the_approved_sets_family_accent_ink_and_font(ws, 
         {"from": 0, "to": 2, "text": "and nobody says it", "style": "caption"}]}
     out, said = cover_fit.styled(run, data)
     hook, cap = out["captions"]
-    assert hook["overlay"] == {"kind": "hook", "family": "outline", "accent": "#FFD84D", "ink": "#111111"}
+    assert hook["overlay"] == {"kind": "hook", "family": "outline", "accent": "#FFD84D", "ink": "#111111",
+                               "size": 72}            # the cover's own size, which a family would otherwise drop
     assert hook["text"] == "One *habit* fixes mornings"      # the marker stays, parsed by the look, never drawn
     assert cap["look"] == "outline" and cap["ink"] == "#111111"
     assert out["brandFont"] == {"family": "Brand Sans", "src": "03_wip/text_set/brand.ttf"}

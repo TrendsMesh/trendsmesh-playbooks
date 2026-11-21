@@ -222,6 +222,8 @@ def styled(run, data: dict) -> tuple[dict, str | None]:
             if ov.get("accent") and organic_edit.COLOUR.fullmatch(str(ov["accent"])):
                 ov.setdefault("ink", organic_edit.accent_ink(ov["accent"]))
             if ov.get("family"):
+                if given is None and isinstance(cap.get("fontSize"), (int, float)):
+                    ov.setdefault("size", cap["fontSize"])   # a family sizes by kind: keep the cover's own size
                 cap["overlay"] = ov
                 continue
         group = style.get("overlays") if isinstance(style.get("overlays"), dict) else {}
