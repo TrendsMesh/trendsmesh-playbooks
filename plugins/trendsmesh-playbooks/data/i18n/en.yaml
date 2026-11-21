@@ -1501,6 +1501,7 @@ ad:
       one: "Running for {n} day"
       other: "Running for {n} days"
     take_from: "What to take from it: {why}"
+    open_ad_library: Open in the Ad Library
     guess: My guess, not TrendsMesh data
     evidence: "Evidence: {links}"
     licence:

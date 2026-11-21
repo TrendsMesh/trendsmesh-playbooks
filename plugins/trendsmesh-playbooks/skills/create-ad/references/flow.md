@@ -75,7 +75,8 @@ page and one in chat count the same. Rules: `rules.md`.
   high]}]}` with 2–3 concepts, your recommendation first (the page selects it). The model ad gives the structure of its first seconds, not its length.
 - `tm ad clips --run R --file <it>` saves each model ad's thumbnail and first ~15 s from its saved Ad Library (or
   TrendsMesh) answer into `02_research/clips/`, so they play on the concepts page by themselves; it says which ad
-  has no video file (an image ad), whose card shows its thumbnail.
+  has no video file (an image ad, or an answer with only the snapshot page), whose card shows its thumbnail. Each
+  Ad Library ad gets its public Ad Library page (`link`), which its card shows as "Open in the Ad Library".
 - `tm ad check concepts --run R --file <it>`, then `tm done S1`. The concept check-in is the concepts page
   (`pages.md`) and its card, with the guess notice `tm next` gives; a concept picked on the page comes back with
   `tm page decision`. **Feedback loop:** notes or results are analysed and the

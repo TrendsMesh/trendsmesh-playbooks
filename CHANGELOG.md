@@ -4,6 +4,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Create an ad: every model ad from the Ad Library can be opened.** The concepts page shows each Ad Library model
+  ad with its thumbnail and an "Open in the Ad Library" link to its public page, also when the Ad Library gave no
+  video file.
 - **Create an ad: a planned continuous take is not reported as missing cuts.** Each paid take in the storyboard now
   names the cuts its prompt asks for (none for one continuous shot), and the take's QA measures against those cuts,
   never the scene times, so a single take no longer gets "no cut near 3 s" notes.
