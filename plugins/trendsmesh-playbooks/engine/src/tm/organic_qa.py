@@ -72,6 +72,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
@@ -457,7 +458,10 @@ def _board_counts(run: RunFolder, row: dict, checked_at: datetime | None) -> str
 def pick_mark(row: dict) -> dict:
     """What names one pick (its file, when it was made, when it was read from a page): a render made from it records
     this mark, and counts only while the item's current pick has the same one (Task 19 review I1)."""
-    return {"file": row.get("file"), "at": row.get("at"), "read_at": row.get("read_at")}
+    mark = {"file": row.get("file"), "at": row.get("at"), "read_at": row.get("read_at")}
+    if row.get("pick"):          # each pick's own id, so the same file picked again in the same second still differs;
+        mark["pick"] = row["pick"]   # older rows have none and keep the mark their renders recorded
+    return mark
 
 
 def _board_gap(run: RunFolder, item: str, done: dict[str, dict], checked_at: datetime | None) -> str | None:
@@ -715,7 +719,7 @@ def pick(run: RunFolder, stage: str, name: str, file: str, reason: str, by: str 
     else:
         rubric = {"against": list(IMAGE_RUBRIC)}
     row = {"stage": stage, "name": item["name"], "file": rel, "rubric": rubric, "reason": reason.strip(), "by": by,
-           "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+           "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "pick": uuid.uuid4().hex[:12]}
     organic_specs.az_rows(run)   # a damaged log is mended first, so a pick never lands after an unreadable line
     library.append_jsonl(run.path / AZ_LOG, [row])
     manifest.record(run, rel, rel.split("/", 1)[0], f"{stage} pick ({by})", parent=qa_rel,
@@ -731,7 +735,7 @@ def _pick_storyboard(run: RunFolder, pack: dict, name: str, rel: str, reason: st
                    + (f"that is {latest}" if latest else "none is drawn yet: tm organic storyboard") + "): pick the "
                    f"sheet.png of its latest storyboard; nothing was logged; {AGAIN}.")
     row = {"stage": STORYBOARD, "name": item, "file": rel, "rubric": {"against": list(STORYBOARD_RUBRIC)},
-           "reason": reason.strip(), "by": by, "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+           "reason": reason.strip(), "by": by, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "pick": uuid.uuid4().hex[:12]}
     organic_specs.az_rows(run)   # a damaged log is mended first, so a pick never lands after an unreadable line
     library.append_jsonl(run.path / AZ_LOG, [row])
     manifest.record(run, rel, rel.split("/", 1)[0], f"{STORYBOARD} pick ({by})", params={"item": item,
@@ -835,7 +839,7 @@ def upscale_check(run: RunFolder, name: str) -> dict:
     row = {"stage": TAKES, "name": item["name"], "file": rel,
            "rubric": {"qa": qa_rel, "upscale_of": source, "fails": [], "findings": []},
            "reason": f"the upscale of the accepted take {source}: the size, the frame rate and the sound checked",
-           "by": "rule", "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+           "by": "rule", "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "pick": uuid.uuid4().hex[:12]}
     organic_specs.az_rows(run)   # a damaged log is mended first, so a pick never lands after an unreadable line
     library.append_jsonl(run.path / AZ_LOG, [row])
     manifest.record(run, rel, rel.split("/", 1)[0], f"{TAKES} pick (rule)", parent=qa_rel,

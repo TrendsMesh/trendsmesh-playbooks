@@ -102,7 +102,7 @@ from tm.tools.replicate_run import FAILED
 
 WIP = "03_wip"
 AZ_LOG = f"{WIP}/az_log.jsonl"
-AZ_FIELDS = ("stage", "name", "file", "rubric", "reason", "by", "at")
+AZ_FIELDS = ("stage", "name", "file", "rubric", "reason", "by", "at", "pick")   # pick: the pick's own id
 IMAGES = "images"                     # the pack stage of images (the images check-in)
 IMAGES_DECISIONS = "decisions_gate_images"   # 03_wip/<this>_vNN.json: the images check-in page's decisions
 IMAGES_BUILD = "tm organic page gate_images"   # the manifest source of an images page build (organic_pages.gate)

@@ -682,7 +682,7 @@ def test_an_animation_drawn_under_an_old_script_fails_f2_after_a_re_pick(tmp_pat
     assert code == 0, out
     row = next(r for r in manifest.rows(run) if r["file"] == out["file"])
     board = organic_qa.picks(run, "storyboard")[common.stem_of("M1")]
-    assert json.loads(row["params"])["storyboard_pick"] == {"file": sheet, "at": board["at"], "read_at": None}
+    assert json.loads(row["params"])["storyboard_pick"] == {"file": sheet, "at": board["at"], "read_at": None, "pick": board["pick"]}
     assert stepchecks.run("takes_checked", run) is None
     pack = _m1_pack()
     pack["script"]["lines"][2]["shot"] += " Close-up."                    # a scene drawn otherwise
