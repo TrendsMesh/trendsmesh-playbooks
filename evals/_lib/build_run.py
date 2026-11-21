@@ -150,6 +150,7 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -160,6 +161,11 @@ import meta_data as m  # noqa: E402
 PY = os.environ.get("TM_PY", sys.executable)
 ROOT = os.environ["TM_PLUGIN_ROOT"]
 RUN_NAME = "2026-11-05_ad"  # the engine names a run after the real date; the case renames it
+# When the fixtures' TrendsMesh (and Ad Library) answers count as saved: yesterday, whatever the fixture's own day. A
+# run's trend data is valid 14 days from its last fetch (tm.trend_age, the resume question), so answers dated on the
+# fixtures' days (4, 6 and 7 November 2026) expire as those days age, and the agent then rightly asks to fetch again
+# instead of doing the case. tr_stale_at_b3 keeps its old date: its expiry is the case.
+FETCHED_AT = f"{date.today() - timedelta(days=1)}T09:00:00+00:00"
 # The engine tests sit beside the plugin, in the repository's tests/engine/ (evals/run.sh copies them along).
 ENGINE_TESTS = Path(ROOT).parents[1] / "tests" / "engine"
 RECUT_FIX = ENGINE_TESTS / "fixtures" / "recut"  # Ad 3 and ad_2 (engine tests)
@@ -590,7 +596,7 @@ def r1_15s_checked(ws: Path, run: Path) -> None:
 
 BEAUTY_FIX = HERE / "fixtures" / "beauty"                                        # gen_mocks.py --pb04
 TM_MOCKS = HERE.parent / "mocks" / "trendsmesh" / "fixtures"                     # the same video pages the mock serves
-TR_AT = "2026-11-04T10:00:00+00:00"
+TR_AT = FETCHED_AT
 TR_OUTPUTS = ["category_report", "paid_view"]
 PAGE_SLUG, PAGE_VERSION = "art_mock_1", "ver_mock_1"     # run 1's published page (tr_weekly_at_d1)
 
@@ -866,7 +872,7 @@ def tr_main(scn: str, ws: Path) -> tuple[Path, dict]:
 LD_FIX = HERE / "fixtures" / "ld"
 CB_CREATED = "2026-11-07"
 CB_NAME = "nightschool"
-CB_AT = "2026-11-07T09:00:00+00:00"      # when the fixture's TrendsMesh and Ad Library answers were saved
+CB_AT = FETCHED_AT                         # when the fixture's TrendsMesh and Ad Library answers count as saved
 CB_TERMS = "lucid dream,dream,sleep,night,journal,wake up,4am,consciousness"    # tests/engine/test_shortlist.py
 CB_BRAND = {
     "schema": "brand/1", "kind": "brand", "brand": "Night School",
@@ -1224,7 +1230,7 @@ OV_CREATED = "2026-11-06"                 # the walkthrough's day
 OV_PROD_CREATED = "2026-11-07"            # its production runs' day
 OV_NAME = "exampleedu"
 OV_IDEA = f"{OV_CREATED}_{OV_NAME}"
-OV_AT = "2026-11-06T09:00:00+00:00"       # when the walkthrough's TrendsMesh answers were saved
+OV_AT = FETCHED_AT                         # when the walkthrough's TrendsMesh answers count as saved
 # a made-up channel profile of the walkthrough's shape (00_raw/channel_profile_v02.md typed as channel/1)
 OV_PROFILE = {
     "schema": "channel/1", "kind": "channel", "channel": "ExampleEdu", "store": None,
