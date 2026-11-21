@@ -1,5 +1,5 @@
 ---
-description: "Check-every-step refresh run at the \"Accept the diagnosis\" check-in (G1a), with the check-in on the run page, published as art_mock_7. The artifacts tools are mocked: db_list holds the choice saved on the page (refresh, with the note \"Tylko nie ruszajcie logo na końcu\"). Refresh an ad has no collector (issue #54), so the agent reads the decisions with one unfiltered db_list, saves that read with tm trends ingest, records the choice with tm page decision --record, quotes the note back, and never republishes the page."
+description: "Check-every-step refresh run at the \"Accept the diagnosis\" check-in (G1a), with the check-in on the run page, published as art_mock_7. The artifacts tools are mocked: db_list holds the choice saved on the page (refresh, with the note \"Tylko nie ruszajcie logo na końcu\"). The agent turns collection on at the resume, reads the decisions with one unfiltered db_list, which the collector saves to 03_wip/decisions (or saves it with tm trends ingest when the hook says it did not), records the choice with tm page decision --record, quotes the note back, and never republishes the page."
 tags: [refresh-ad, pages, issue-54]
 max_turns: 40
 timeout_seconds: 1200

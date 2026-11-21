@@ -4,6 +4,8 @@ tags: [whole-run, guess-mode, free-paid]
 max_turns: 40
 timeout_seconds: 900
 allowed_tools: [Read, Glob, Grep, Skill]
+env:
+  EVAL_TM_SOURCE_ENGINE: "1"   # the collector hook runs the plugin's engine source with python3 (bootstrap/collect-mcp.sh)
 append_system_prompt: |
   Test harness notes, not from the user. If you are following the refresh-ad playbook: the
   engine command `tm` is not on PATH in this sandbox, so wherever the playbook says `tm ...`, run

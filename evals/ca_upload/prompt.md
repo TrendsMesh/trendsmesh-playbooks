@@ -4,6 +4,8 @@ tags: [create-ad, ca14, money, whole-run]
 max_turns: 40
 timeout_seconds: 1200
 allowed_tools: [Read, Glob, Grep, Write, Skill]
+env:
+  EVAL_TM_SOURCE_ENGINE: "1"   # the collector hook runs the plugin's engine source with python3 (bootstrap/collect-mcp.sh)
 append_system_prompt: |
   Test harness notes, not from the user. If you are following the create-ad playbook: the engine command
   `tm` is not on PATH in this sandbox, so wherever the playbook says `tm ...`, run `sh ./tm.sh ...` from the
