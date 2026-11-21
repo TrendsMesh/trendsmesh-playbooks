@@ -173,8 +173,9 @@ plainly if they are missing.
     `tm brief page`, publish, the declaration checked, a new wait, and the check-in asked again. A
     concept dropped later is a new choice: `tm brief choose --run R --drop <ids> --source chat`.
 11. **A decision in chat always counts.** When the team decided another way, or a read keeps
-    failing, take the user's answer in chat: `tm brief choose --run R [--drop <ids>] --source chat`,
-    then, at any stage, `tm brief await --run R --clear`, and `tm decide`.
+    failing, take the user's answer in chat: `tm brief choose --run R [--drop <ids>] --source chat`
+    (it ends the page's wait itself: no `--clear`), then `tm decide`, then `tm brief page` and a publish
+    to the same link ("A decision in chat" below).
 12. **Who can save:** a person needs Contributor access to the artifact to save a decision; with
     view access the page shows a message and lets them copy their decisions as text ("Copy my
     decisions"). Pasted to you, save that text to a file in `03_wip/` with the Write tool and read

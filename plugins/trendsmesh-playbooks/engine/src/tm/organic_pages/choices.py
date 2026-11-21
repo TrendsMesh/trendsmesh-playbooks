@@ -407,7 +407,7 @@ def build(run: RunFolder, data: dict, **params) -> dict:
                     params={"page": name, "data_sha256": stepchecks.sha256(kept), "lang": built.lang,
                             "built_at": _now(), **params})
     return {"folder": out_rel, "files": pages.files(out), "data": kept_rel, "lang": built.lang, "page": name,
-            "sections": len(data["sections"]), "language_warning": built.warning}
+            "sections": len(data["sections"]), "chat_answers": chat_answers(data), "language_warning": built.warning}
 
 
 # --- reading the answers ------------------------------------------------------------------------------------
@@ -440,10 +440,57 @@ _NOTE = re.compile(r"^note\s*:\s*(.*)$", re.IGNORECASE | re.S)
 _LINE = re.compile(r"^line\s+([A-Za-z0-9_.-]+)\s*:\s*(.*)$", re.IGNORECASE | re.S)
 
 
+def resolve(given: str, known: dict[str, set[str]], what: str) -> str | None:
+    """The id `given` names: an id itself, else the one id one of whose aliases it is (case and spacing ignored);
+    None when none is. An alias of more than one id is a Stop that lists them (issue #134)."""
+    if given in known:
+        return given
+    key = given.strip().lower()
+    hits = [i for i, names in known.items() if any(key == n.strip().lower() for n in names)]
+    if len(hits) > 1:
+        raise Stop(f"{given!r} fits more than one {what} ({', '.join(hits)}), so it is unclear which the user meant. "
+                   f"Ask them, and write the line with its id; {AGAIN}.")
+    return hits[0] if hits else None
+
+
+def _option_aliases(sec: dict) -> dict[str, set[str]]:
+    """Each option's other names in chat (issue #134): its label, and the file it offers (its run path and its file
+    name: `02_research/music/mixkit-cat-walk-371.mp3` for `track-mixkit-cat-walk-371`)."""
+    out: dict[str, set[str]] = {}
+    for o in sec.get("options") or []:
+        names = {str(o["label"])} if o.get("label") else set()
+        for m in o.get("media") or []:
+            src = m.get("src") if isinstance(m, dict) else None
+            if isinstance(src, str) and src:
+                names |= {src, Path(src).name}
+        out[o["id"]] = names - {o["id"]}
+    return out
+
+
+def chat_answers(data: dict) -> list[str]:
+    """One line per section of the page, the chat answers it takes (issue #134): `<title> = <id>: <option id>
+    (<label>) / …`, a text section's `<title> = <id>: <the text>`."""
+    lines = []
+    for sec in data["sections"]:
+        head = f"{sec.get('title') or sec['id']} = {sec['id']}: "
+        options = [o for o in sec.get("options") or [] if not o.get("disabled")]
+        if sec["kind"] == "text" or not options:
+            lines.append(head + "<the text>")
+            continue
+        joined = (", " if sec["kind"] == "many" else " / ").join(
+            o["id"] + (f" ({o['label']})" if o.get("label") and o["label"] != o["id"] else "") for o in options)
+        lines.append(head + joined + (" (one or more, comma-separated)" if sec["kind"] == "many" else "")
+                     + (" or <the text>" if sec.get("text") else ""))
+    return lines
+
+
 def parse_chat(text: str, data: dict) -> list[tuple[str, dict]]:
     """The user's answer in chat as documents: one line per section, `<section>: <option id>[, <option id>]` (a text
-    section's `<section>: <the text>`), then `; note: …` and `; line <id>: …`. A line naming no section is a Stop."""
+    section's `<section>: <the text>`), then `; note: …` and `; line <id>: …`. A section is named by its id or its
+    title, an option by its id, its label or its file (name or run path, issue #134); a name that fits more than one
+    is a Stop that lists them. A line naming no section is a Stop."""
     by_id = {s["id"]: s for s in data["sections"]}
+    titles = {sid: {str(s["title"])} if s.get("title") else set() for sid, s in by_id.items()}
     docs = []
     for raw in text.splitlines():
         line = raw.strip()
@@ -451,9 +498,11 @@ def parse_chat(text: str, data: dict) -> list[tuple[str, dict]]:
             continue
         sid, sep, rest = line.partition(":")
         sid = sid.strip()
+        if sep and sid not in by_id:
+            sid = resolve(sid, titles, "section of the page") or sid
         if not sep or sid not in by_id:
             raise Stop(f"The chat answer's line {line!r} does not start with a section of the page "
-                       f"({', '.join(by_id)}) and a colon. Write it again; {AGAIN}.")
+                       f"({', '.join(by_id)}) and a colon. Nothing was saved. Write it again; {AGAIN}.")
         sec = by_id[sid]
         parts = [p.strip() for p in rest.split(";")]
         doc: dict = {"section": sid, "note": "", "notes": {}}
@@ -461,7 +510,12 @@ def parse_chat(text: str, data: dict) -> list[tuple[str, dict]]:
         if sec["kind"] == "text":
             doc["text"], doc["choice"] = head, None
         else:
-            ids = [x.strip() for x in head.split(",") if x.strip()]
+            aliases = _option_aliases(sec)
+            given = [x.strip() for x in head.split(",") if x.strip()]
+            ids = [resolve(x, aliases, f"option of {sid}") or x for x in given]
+            if len(given) > 1 and not all(x in aliases for x in ids):   # a name with a comma in it, as one
+                whole = resolve(head.strip(), aliases, f"option of {sid}")
+                ids = [whole] if whole else ids
             known = {o["id"] for o in sec.get("options") or []}
             words = [x for x in ids if x not in known]
             if sec.get("text") and words and len(words) == len(ids):
@@ -610,6 +664,7 @@ def record(run: RunFolder, name: str, stem: str, body: dict, got: dict, *, stage
     rel = out.relative_to(run.path).as_posix()
     manifest.record(run, rel, stage.split("/")[0], DECISIONS_SOURCE, parent=got["from"],
                     params={"page": name, "folder": got["folder"], "source": got["source"]})
-    if got["source"] == "page":
-        pages.clear_await(run, name)
+    pages.clear_await(run, name)
+    if got["source"] == "chat":     # issue #134: the run page's wait ends too
+        pages.end_wait_for_chat(run, name)
     return rel

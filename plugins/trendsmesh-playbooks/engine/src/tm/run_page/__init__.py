@@ -43,6 +43,7 @@ from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
 PAGE = "run_page"
+PAGE_OF = {playbooks.TREND_RESEARCH: "report"}     # tm.research_report.PAGE: the report is the run page from E1 on
 COLLECTION = "decisions"
 ASKS = "03_wip/page"
 SOURCE = "tm page build"
@@ -74,6 +75,12 @@ _OPTION_KEYS = {"choice", "label", "means", "recommended"}
 _CHOICE = re.compile(r"^[A-Za-z0-9_.:@+-]{1,120}$")
 _ASK_FILE = re.compile(r"^ask_(.+)_v(\d+)$")
 MAX_TEXT = 4000
+
+
+def page_name(run: RunFolder) -> str:
+    """The run page's page name in this run's playbook (`tm page link`, `published`, `await`): trend research's check-ins
+    live on its report's link (issue #131, the owner's decision 8), so its run page is the page `report`."""
+    return PAGE_OF.get(state.load(run).playbook, PAGE)
 
 
 def _now() -> str:
@@ -352,10 +359,13 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
         stages.append((max((x[0] for x in stages), default="") + "~", final["key"], None, final["record"]))
     stages.sort(key=lambda x: (x[3] is None, x[0]))     # settled first by time, then the open ones
     now, settled = [], []
+    chat: list[str] = []
     for n, (_, key, ask, record) in enumerate(stages, 1):
+        before = len(ctx.chat)
         stage = {"key": key, "n": n, "name": name(key), "title": (ask or {}).get("title") or "",
                  "lede": (ask or {}).get("lede") or "", "blocks": stage_blocks(key, ask)}
         if record is None:
+            chat += ctx.chat[before:] or [chat_line(stage["name"], key, ask)]
             stage["decision"] = {"checkin": key, "ask": ask["_id"], "question": ask["question"],
                                  "context": ask.get("context") or "", "options": ask["options"]}
             stage["offer"] = details.merge([b.get("offer") for b in stage["blocks"]])
@@ -371,10 +381,17 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     m = {"lang": i18n.html_lang(lang), "warning": pl.warning, "title": t("top.title", lang, playbook=pb_name, run=run.path.name), "playbook": pb_name,
          "run": run.path.name, "updated": updated, "local": local, "build": folder.name if folder else "",
          "now": now, "settled": settled, "datasets": ctx.ds}
-    built = {"page": PAGE, "local": local, "lang": lang, "built_at": _now(),
-             "open": {st["key"]: st["decision"]["ask"] for st in now},
+    built = {"page": page_name(run), "local": local, "lang": lang, "built_at": _now(),
+             "open": {st["key"]: st["decision"]["ask"] for st in now}, "chat_answers": chat,
              "offer": {st["key"]: st["offer"] for st in now if st["offer"] and not local}}
     return m, built
+
+
+def chat_line(name: str, checkin: str, ask: dict) -> str:
+    """The answer an open check-in takes in chat (issue #134): `<its name> = <id>: <choice> (<label>) / …`, recorded
+    with `tm decide <id> <choice> --said "<their words>"`."""
+    options = " / ".join(f"{o['choice']} ({o['label']})" for o in ask.get("options") or [])
+    return f"{name} = {checkin}: {options} (tm decide {checkin} <choice> --said \"<their words>\")"
 
 
 class NoWords(ValueError):
@@ -411,7 +428,7 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
     """Save the ask (when given), then build `04_final/run_page_vNN/` from the run state. A build that would not
     publish (too big for the Artifact tool, or a mangled `/_blob/` reference) is removed and refused."""
     saved = save_ask(run, ask_file) if ask_file is not None else None
-    folder = page.new_folder(run, PAGE)
+    folder = page.new_folder(run, page_name(run))
     try:
         m, built = model(run, folder, local=local)
         text = template.render(m)
@@ -427,11 +444,52 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
     rel = folder.relative_to(run.path).as_posix()
     manifest.record(run, rel, "04_final", SOURCE, params={"open": ",".join(built["open"]) or None,
                                                           "local": local or None})
-    return {"folder": rel, "index": str((folder / "index.html").resolve()), "open": list(built["open"]),
+    return {"folder": rel, "page": built["page"], "index": str((folder / "index.html").resolve()), "open": list(built["open"]),
+            "chat_answers": built["chat_answers"],
             "settled": len(m["settled"]), "ask": saved["_id"] if saved else None, "local": local,
             "lang": m["lang"], "title": m["title"], **({"language_warning": m["warning"]} if m["warning"] else {}), "artifact": page.artifact_args(listed),
             **({} if local else {"capabilities": CAPABILITIES}),
-            "published": page.published(run, PAGE) if not local else None}
+            "published": page.published(run, page_name(run)) if not local else None}
+
+
+# --- after a decision in chat ------------------------------------------------------------------------
+
+def _shown(run: RunFolder) -> tuple[str | None, dict | None]:
+    """The run page build people see (the published folder, else the latest build) and its build record."""
+    name = page_name(run)
+    folder = (state.load(run).pages.get(name) or {}).get("folder")
+    if not folder:
+        latest = page.latest_folder(run, name)
+        folder = latest.relative_to(run.path).as_posix() if latest else None
+    return folder, (_read_json(run.path / folder / BUILD_FILE) if folder else None)
+
+
+def after_decision(run: RunFolder, checkin: str, by: str) -> dict | None:
+    """The run page again after `tm decide` (issue #131 items 5 and 6, #134): a decision the user gave in chat on a
+    check-in the page shows open ends the page's wait and builds it again with that check-in settled; the run's last
+    decision (the run done) builds it with nothing open. `{folder, local, page, ...}` of the new build, `{"brief":
+    True}` when the creative brief's page is the run's page now (`tm brief page` builds it), `{"error": words}` when
+    the build stopped, or None when nothing is to build. The decision is recorded either way."""
+    s = state.load(run)
+    done = s.status == "done"
+    if by != "user" and not done:
+        return None
+    if s.playbook == playbooks.CREATIVE_BRIEF and page.latest_folder(run, "brief_pack") is not None:
+        return {"brief": True}
+    folder, built = _shown(run)
+    if built is None:
+        return None
+    shown = built.get("open") or {}
+    asked = any(key == checkin or checkin in _members(run, key) for key in shown)
+    name = page_name(run)
+    if not (asked or done) or (page.awaiting(run, name) is not None and not asked and not done):
+        return None
+    page.clear_await(run, name)
+    try:
+        got = build(run, local=bool(built.get("local")))
+    except (ValueError, OSError) as exc:
+        return {"error": str(exc)}
+    return {**got, "page": name}
 
 
 # --- the choice saved on the page --------------------------------------------------------------------
@@ -460,19 +518,19 @@ def decision(run: RunFolder, checkin: str) -> dict:
     if not is_open(run, ask):
         raise Stop(f"{checkin} is already recorded, after its question was put on the page. Nothing to read. "
                    f"{_chat(checkin)}")
-    record = (state.load(run).pages.get(PAGE) or {})
+    record = (state.load(run).pages.get(page_name(run)) or {})
     if not record.get("slug"):
         raise Stop(f"The run page's publish is not recorded in this run, so its saved choices cannot be read: publish it "
-                   f"and record it with `tm page published --run <run> --page {PAGE}`. {_chat(checkin)}")
+                   f"and record it with `tm page published --run <run> --page {page_name(run)}`. {_chat(checkin)}")
     built = _read_json(run.path / str(record.get("folder") or "") / BUILD_FILE)
     if (built or {}).get("open", {}).get(checkin) != ask["_id"]:
         raise Stop(f"The published page does not show {checkin}'s latest question ({ask['_id']}): it was published "
-                   f"before it. Publish the latest build (tm page files --page {PAGE}), record it, and let the user "
+                   f"before it. Publish the latest build (tm page files --page {page_name(run)}), record it, and let the user "
                    f"choose there. {_chat(checkin)}")
-    source = page.saved_answer(run, PAGE, COLLECTION)
+    source = page.saved_answer(run, page_name(run), COLLECTION)
     if source is None:
         raise Stop(page.READ_AGAIN.format(collection=COLLECTION))
-    saved = page.whole_answer(run, PAGE, source, COLLECTION)
+    saved = page.whole_answer(run, page_name(run), source, COLLECTION)
     docs = dict(page.db_docs(saved, collection=COLLECTION, chat=_chat(checkin)))
     data = docs.get(checkin)
     if not isinstance(data, dict) or not data.get("choice"):

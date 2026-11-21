@@ -904,5 +904,6 @@ def write_decisions(run: RunFolder, decided: dict, docs: list[tuple[str, dict]],
     manifest.record(run, out_rel, WIP, DECISIONS_SOURCE, parent=rel,
                     params={"page": PAGE, "folder": decided["folder"], "proposals": decided["proposals"]})
     page.clear_await(run, PAGE)
+    after_chat = page.end_wait_for_chat(run, PAGE) if how == "chat" else None
     return {"file": out_rel, "from": rel, "page": PAGE, "folder": decided["folder"], "proposals": decided["proposals"],
-            "source": body["source"], "decisions": rows, "carried": carried}
+            "source": body["source"], "decisions": rows, "carried": carried, "after_chat": after_chat}

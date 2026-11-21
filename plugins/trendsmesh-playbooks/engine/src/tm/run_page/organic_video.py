@@ -167,6 +167,9 @@ def _keep(ctx: Context, folder: str, page: str, data: dict, **params) -> str:
     with open(kept, "x", encoding="utf-8", newline="\n") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=1)
     rel = ctx.rel(kept)
+    lines = organic_gates.chat_answers(data) if "items" in data else choices.chat_answers(data)
+    if lines:   # issue #134: what the stage takes in chat, and how it is read
+        ctx.chat += [*lines, f"(a file of these lines is read with tm organic decisions --page {page} --text <file>)"]
     if ctx.folder is not None:
         manifest.record(ctx.run, ctx.rel(ctx.folder), pages.FINAL, f"{gate_page.SOURCE} {page}", parent=rel,
                         params={"page": page, "data_sha256": stepchecks.sha256(kept), "lang": ctx.lang,

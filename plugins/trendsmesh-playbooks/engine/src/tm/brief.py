@@ -252,6 +252,8 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
                     "files), declaring the decisions db and the downloads (tm brief capabilities) in the same publish.")
     if got.get("language_warning"):
         message += " " + got["language_warning"]
+    if got.get("chat_answers"):
+        message += "\nAnswers in chat (one line each):\n" + "\n".join(f"  {x}" for x in got["chat_answers"])
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 
@@ -316,6 +318,10 @@ def _choose(args: argparse.Namespace, run: RunFolder) -> int:
                     "views and the hand-off leave them out: check it (tm brief check, the step's stage), build the page "
                     "and publish it to the same link")
     message += ". Close the check-in with tm decide."
+    if got.get("after_chat"):     # issue #134: a choice in chat ends the page's wait
+        message += (" A choice in chat counts as one on the page: nobody waits on the page any more. After tm decide, "
+                    "build the page again (tm brief page: it shows the check-in settled) and republish it to the same "
+                    "link (tm page link).")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

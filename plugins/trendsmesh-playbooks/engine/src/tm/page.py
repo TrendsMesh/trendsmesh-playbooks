@@ -422,6 +422,21 @@ def clear_await(run: RunFolder, page: str) -> None:
         state.save(run, s)
 
 
+AFTER_CHAT = ("A decision in chat counts as one on the page: nobody waits on the page any more. Record the check-in "
+              "(tm decide <id> <choice> --said \"<their words>\"): it builds the run page again with the check-in "
+              "settled, to republish to the same link (tm page link).")
+
+
+def end_wait_for_chat(run: RunFolder, page: str) -> str:
+    """A decision read from chat (issue #134, #131 item 6) ends the wait on its page and on the run page, so no
+    `tm page await --clear` is needed. The words that say what comes next."""
+    from tm import run_page   # it imports this module
+
+    for name in dict.fromkeys((page, run_page.page_name(run))):
+        clear_await(run, name)
+    return AFTER_CHAT
+
+
 def _objects(text: str, read_again: str) -> Iterable[Any]:
     """Every JSON value that starts at a `{` in the text, outermost first: the documents of a db
     answer, one per line, still found when its text blocks were joined without a newline. Stop for
@@ -735,16 +750,18 @@ def _build(args: argparse.Namespace, run: RunFolder) -> int:
     elif got["published"]:
         then = (f"Republish it to the same link ({got['published'].get('url') or got['published']['slug']}): list its "
                 f"files first, then the Artifact tool with that url, the artifact arguments and the capabilities; "
-                f"record it with tm page published --page {run_page.PAGE}.")
+                f"record it with tm page published --page {got['page']}.")
     else:
         then = (f"Publish it with the Artifact tool (the artifact arguments and the capabilities), then record it with "
-                f"tm page published --page {run_page.PAGE}.")
+                f"tm page published --page {got['page']}.")
     if got.get("language_warning"):
         then = f"{got['language_warning']} {then}"
     if got["open"] and not got["local"]:
         then = f"{then} {reply_line(run)}"
+    lines = got.get("chat_answers") or []
+    chat = ("\nAnswers in chat (one line each):\n" + "\n".join(f"  {x}" for x in lines)) if lines else ""
     cli.emit(args, {"status": "done", **got, "reply_button": reply_button(run), "message": then},
-             f"Built {got['folder']} (now: {now}; {got['settled']} settled). {then}")
+             f"Built {got['folder']} (now: {now}; {got['settled']} settled). {then}{chat}")
     return 0
 
 

@@ -4,6 +4,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **A decision you give in chat is saved exactly, or Claude asks again.** Every page build now lists the answers it
+  takes in chat, one line per item or section, with the name the page shows. You may name an image by its name in
+  the pack (`still_01`) and a track by its file (`mixkit-cat-walk-371.mp3`). A line Claude can't read, or a name that
+  fits two things, stops with the list of what the page offers; nothing is saved half-empty any more.
+- **A decision in chat updates the page.** Once Claude records it, the page stops waiting, is built again with that
+  check-in settled, and goes to the same link. No more "People are deciding on the page now" after a chat answer.
 - **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file
   names, theme codes such as T02, or a choice's internal name. A brief row's source reads like `TrendsMesh: Rising
   hook "who said _"` or `Meta Ad Library, query "lucid dream", US`; the ids and files behind it sit in a folded
