@@ -186,6 +186,9 @@ def test_render_runs_the_browser_headless_and_reads_its_dom(monkeypatch, tmp_pat
     assert argv[0] == str(browser) and argv[-1] == "https://example.com/duvet"
     assert "--dump-dom" in argv and any(a.startswith("--headless") for a in argv)
     assert any(a.startswith("--user-data-dir=") for a in argv) and kw["timeout"] > 0
+    # The fresh profile never touches the keychain: a run with a temporary home (an eval case) has
+    # none, and macOS would ask the user for one.
+    assert "--use-mock-keychain" in argv and "--password-store=basic" in argv
 
 
 @pytest.mark.parametrize("status", [401, 403, 429])
