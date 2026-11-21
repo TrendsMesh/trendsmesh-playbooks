@@ -235,9 +235,9 @@ def _layout_prompt(run, capsys, *extra):
 
 
 def _decide_up_to_video(run):
-    """The check-ins due before F2's (taste, pack, images) decided with their first choice, by the test."""
+    """The check-ins due before F2's (the script draft, taste, pack, images) decided with their first choice."""
     cat = checkins.load(playbook=ORGANIC_VIDEO)
-    for cid in ("taste", "pack", "images"):
+    for cid in ("script_draft", "taste", "pack", "images"):
         flow.decide(run, cid, cat.checkins[cid].choices[0], by="user", note="test data")
 
 

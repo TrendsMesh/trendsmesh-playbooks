@@ -312,7 +312,7 @@ def test_act_now_counts_the_recommended_trends_and_csv_asks_for_downloads(tmp_pa
     path = _picks_file(run, picks)
     assert main(["research", "report", "--run", str(run.path), "--picks", str(path), "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["capabilities"] == {"downloads": {}}
+    assert payload["capabilities"]["downloads"] == {}   # the CSV buttons (#133); the run page adds its db (#131)
     text = (run.path / payload["folder"] / "index.html").read_text(encoding="utf-8")
     assert "One trend to act on now" in text
     assert "<a class='count b-act_now' href='#act-now'><b>1</b>" in text

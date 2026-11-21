@@ -53,7 +53,7 @@ def test_trend_research_check_ins_are_versions_of_the_report_page(tmp_path):
     research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
     later = run_page.build(run, _ask(run, "G2"))                  # after E1: the report above the check-in
     html = (run.path / later["folder"] / "index.html").read_text(encoding="utf-8")
-    assert 'id="view-report"' in html and "<title>Uroda Trend Report</title>" in html
+    assert 'id="view-report"' in html and "<title>Trend report: " in html   # the title names category and market (#147)
     assert later["open"] == ["G2"] and (run.path / later["folder"] / "report.json").is_file()
     listed = {f["as"] for f in page.files(run.path / later["folder"])}
     assert ".report_parts.json" not in listed and ".build.json" not in listed
