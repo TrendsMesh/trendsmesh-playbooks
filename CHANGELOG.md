@@ -33,6 +33,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
   organic-video should make one of the videos. On a yes, the concept is handed on as a seed, and an organic video
   run started from it keeps the concept's hook, format, length and sound. Both skills now say which does what: the
   brief is for the people who film, organic-video makes the video itself.
+- **Creative brief ships an example brief file.** `templates/brief_pack_example.json` is a complete brief pack in
+  the shape the brief check holds it to, with its plugin blocks, an ad brief and an organic video brief. Claude
+  writes the run's brief from it, instead of from files that were only in the repository.
 - **Creative brief: the creator view checks data, not words.** The creator view is built from the creator fields
   only, so hooks and ad copy are shown as written ("DO NOT show this to your competitors" passes) in every language
   alike. Its check now refuses the run's own account figures (spend, cost per result, results) and the advertisers

@@ -34,8 +34,10 @@ choose`.
 **What is the brief for?** (`brief_kind`, before A0: the first thing a run asks, at every level, never
 decided by rule). One question with two options: **An ad on Meta** ("reads your ad account": the ad
 brief, A1 to E2) and **An organic video for a channel** ("no ad account needed": the organic video
-brief, O1 to O8). When the user's first message already says which ("a brief for our TikTok video",
-"new ad concepts"), offer that one first as recommended, and still ask. Record `tm decide brief_kind
+brief, O1 to O8). When the user's own words already say plainly which ("not an ad, a video we post
+ourselves", "new ad concepts for my Meta account"), those words are the answer: record them without
+asking again. When they only hint ("a brief for our TikTok video" may be an ad on TikTok's placements
+or an organic post), ask, with the hinted one first as recommended. Record `tm decide brief_kind
 ad|organic --said "<their words>" --run R`. It can be changed (`--change`) only until A0 is done; after
 that, a new run.
 

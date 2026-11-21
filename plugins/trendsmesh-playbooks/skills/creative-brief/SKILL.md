@@ -51,10 +51,12 @@ in Ad Library titles", "organic only", "directional", "to set", "Hook (agent's g
 
 **Where things are:** this skill's `references/` (`flow.md` every step, `checkin-cards.md`,
 `rules.md`, `variants.md`, `lessons.md`) and `templates/` (the review pack, the concept brief, the
-creator shot list, `intake_answers_example.json`); the shared references in the plugin's own
+creator shot list, `intake_answers_example.json`, and `brief_pack_example.json`: the shape of brief.json for
+both kinds of brief); the shared references in the plugin's own
 `references/` folder, two folders up from this skill (`../../references/`): `pages.md`
 (publishing the page and the decisions on it), `trend-collection.md` (how answers are saved),
-`brand-and-audience.md`, `voice.md`, `animatic.md`, and `schedule.md` (trend research's weekly
+`brand-and-audience.md`, `voice.md`, `animatic.md`, `posting-kit.md` (an organic brief's publisher view), and
+`schedule.md` (trend research's weekly
 runs: a brief is made once and has no schedule).
 
 ## 1. Readiness first (also `/trendsmesh-playbooks:doctor`)
@@ -311,6 +313,6 @@ finding. R6: formats follow placements. R7: primary text, headline and thumbnail
 `references/flow.md` (every step), `references/checkin-cards.md`, `references/rules.md`,
 `references/variants.md`, `references/lessons.md`; `templates/review_pack_template.md`,
 `templates/concept_brief_template.md`, `templates/shot_list_template.md`,
-`templates/intake_answers_example.json`. In the plugin's own `references/`: `pages.md`,
-`trend-collection.md`, `brand-and-audience.md`, `voice.md`, `animatic.md`, `schedule.md`. The
-living spec is `spec/02-creative-brief/` in the repository.
+`templates/intake_answers_example.json`, `templates/brief_pack_example.json` (the shape of brief.json, an ad
+brief and an organic video brief). In the plugin's own `references/`: `pages.md`, `posting-kit.md`,
+`trend-collection.md`, `brand-and-audience.md`, `voice.md`, `animatic.md`, `schedule.md`.

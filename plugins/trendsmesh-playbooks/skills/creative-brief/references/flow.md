@@ -358,9 +358,9 @@ CB3, CB4.
 <a id="c1"></a>
 ## C1 Concepts and the review pack
 
-CB5, CB6, CB7. The concepts go into **`04_final/brief_pack_v01.json`** (brief.json: the schema is
-`spec/02-creative-brief/schema/brief.schema.json`; the dry run's `04_final/brief_pack_v01.json` is
-the example). One file is the source of the page, the animatics and the hand-off (CB10). There is no concept
+CB5, CB6, CB7. The concepts go into **`04_final/brief_pack_v01.json`**. Its shape is
+`templates/brief_pack_example.json`, with the plugin blocks; the engine checks it against
+`pb2_brief.schema.json` (`tm brief check`). One file is the source of the page, the animatics and the hand-off (CB10). There is no concept
 check-in: with the briefs, C1 goes straight on to D1, which writes every concept in full, and the
 team decides per concept on D3's page.
 
@@ -382,8 +382,7 @@ team decides per concept on D3's page.
   "consistent"|"setup_payoff"|"contradiction", "why"}, "sound": {"licence", "organic_only",
   "licensed_equivalent"} | null, "thumbnail": "…", "directional": true|false}`. `awareness` is
   one of `unaware`, `problem_aware`, `solution_aware`, `product_aware`, `most_aware`. A
-  contradiction needs its `why` (CB7). The engine test fixture
-  `tests/engine/fixtures/creative_brief/ld_plugin_blocks.json` (in the repository) holds the dry run's.
+  contradiction needs its `why` (CB7), as in `templates/brief_pack_example.json`.
 - **CB6:** every two concepts differ on at least 2 of the five axes; none is a near-duplicate of
   an ad already running (the creatives read at B1). **CB5:** at least one language-bank phrase per
   concept, verbatim or minimally adapted (`adapted_from` naming the bank phrase), used in the hook,

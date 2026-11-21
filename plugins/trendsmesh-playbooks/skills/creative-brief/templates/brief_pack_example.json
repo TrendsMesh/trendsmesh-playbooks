@@ -1,0 +1,1100 @@
+{
+  "_about": "An example brief pack (brief.json, 04_final/brief_pack_vNN.json) in the shape tm brief check holds it to (pb2_brief.schema.json with the plugin blocks). The top level is an ad brief (meta.kind ad: stages concepts, brief, production). _organic_video_brief is an organic video brief (meta.kind organic: stages organic_concepts, organic_views). A run's brief is one of the two, written without the keys that start with _. Every value is a placeholder: never copy a figure or a name from it.",
+  "meta": {
+    "kind": "ad",
+    "pack_id": "PB2-EXAMPLE-US-20260101",
+    "title": "Example App: three-week concepts for paid social",
+    "market": "US",
+    "language": "en",
+    "prepared": "2026-01-01",
+    "valid_until": "2026-01-15",
+    "currency": "USD",
+    "fx_note": "<the rate, in the form rules.md CB13 shows>",
+    "recipients": [
+      "decision",
+      "strategy",
+      "creator",
+      "editor",
+      "media-buyer"
+    ],
+    "lede": {
+      "decision": "Two concepts to approve, each with the evidence behind it and what it tests.",
+      "strategy": "The full reasoning: trends, customer words, scores and copy.",
+      "creator": "What to film, what to say and what to send back.",
+      "editor": "Timeline, text, music and the files to deliver.",
+      "media-buyer": "What each concept tests, how to measure it and the test setup."
+    },
+    "product": {
+      "name": "Example App",
+      "landing_url": "https://example.com/app",
+      "plain_description": "A phone app that plans a week of meals from what is already in the fridge.",
+      "plan": [
+        "Free plan: 3 meal plans a week",
+        "Paid plan: unlimited plans and a shopping list"
+      ],
+      "price_note": "There is a free plan; the paid plan is billed monthly."
+    },
+    "sources_note": "Trend data from TrendsMesh, customer words from public reviews and forums, account figures from the Meta ad account (account currency EUR, shown in USD at the rate above).",
+    "animatic_note": "The animatics show structure and timing only, not the final look.",
+    "plugin": {
+      "evidence": "trendsmesh",
+      "account_currency": "EUR"
+    }
+  },
+  "findings": {
+    "items": [
+      {
+        "title": "Customers talk about wasted food, not recipes",
+        "text": "The most frequent theme in reviews and forum posts is throwing food away; recipes come second."
+      },
+      {
+        "title": "The running ads lead with recipes",
+        "text": "The ads running now open on dishes, so a waste-first angle is new for this account."
+      }
+    ],
+    "caveat": "The account has few results per segment, so the persona is directional."
+  },
+  "audience": {
+    "text": "Hypothesis before the data: busy parents aged 30 to 45. The data points to the same group, women 35 to 44 first.",
+    "facts": [
+      {
+        "value": "35-44",
+        "label": "age group with the lowest cost per result"
+      },
+      {
+        "value": "9:16",
+        "label": "format from the placement split"
+      }
+    ],
+    "source": "Meta ad account, age and gender breakdown, last 90 days"
+  },
+  "tone": {
+    "tone": "warm, practical, a little funny",
+    "must": [
+      "Show the fridge in the first 2 seconds",
+      "Say the free plan exists"
+    ],
+    "never": [
+      "Promise savings in money",
+      "Show a real brand's packaging"
+    ]
+  },
+  "concepts": [
+    {
+      "id": "C1",
+      "brief_id": "PB2-EXAMPLE-US-20260101-C1",
+      "title": "The fridge confession",
+      "one_liner": "A parent opens the fridge and admits what they throw away every week, then fixes it with the app.",
+      "phone_note": "What I throw away every week",
+      "for_whom": "Busy parents who plan meals at the last minute",
+      "trend_line": "Rising hook \"things I stopped doing\": 40 creators, 12M views",
+      "key_message": "Plan meals from what you already have, and stop throwing food away.",
+      "hypothesis": "This concept tests whether a food-waste angle beats the recipe angle of the running ads.",
+      "glance": [
+        {
+          "key": "trend",
+          "label": "Rising hook",
+          "text": "\"things I stopped doing\": rising, 40 creators, 12M views, median view lift 2.1x",
+          "source": "TrendsMesh trend card \"things I stopped doing\"",
+          "highlight": true
+        },
+        {
+          "key": "customers",
+          "label": "Customers",
+          "text": "Wasted food (category voice, 18 of 60 items)",
+          "source": "Customer voice themes: public reviews and forum posts"
+        },
+        {
+          "key": "account",
+          "label": "Account",
+          "text": "Closest running ad: cost per result <amount>",
+          "source": "Meta ad account, ad level, last 90 days"
+        },
+        {
+          "key": "competition",
+          "label": "Competition",
+          "text": "none found in Ad Library titles",
+          "source": "Meta Ad Library, query \"meal planner fridge\", US"
+        }
+      ],
+      "decision_facts": {
+        "goal": "More app sign-ups from cold audiences",
+        "effort": "One creator, one location, half a day of filming",
+        "budget": null,
+        "deadline": null,
+        "approver": null,
+        "risk": "The hook may read as negative if the delivery is too serious."
+      },
+      "hook": {
+        "text": "Things I stopped doing as a parent: throwing food away",
+        "style": "top",
+        "description": "On-screen text from frame 1 over the open fridge."
+      },
+      "length_s": 15,
+      "beats": [
+        {
+          "t0": 0,
+          "t1": 3,
+          "see": "A parent opens a full fridge and looks at the camera.",
+          "hear": "Things I stopped doing as a parent.",
+          "ost": "Things I stopped doing as a parent: throwing food away",
+          "ost_strong": true,
+          "why": "The trend's opening line, in its own structure.",
+          "animatic": {
+            "scene": "selfie_talk",
+            "label": "Hook",
+            "texts": [
+              {
+                "style": "top",
+                "str": "Things I stopped doing as a parent",
+                "at": 0
+              }
+            ]
+          }
+        },
+        {
+          "t0": 3,
+          "t1": 9,
+          "see": "The parent taps the app; a plan for the week appears from the fridge items.",
+          "hear": "I just tell it what's in the fridge and it plans the week.",
+          "ost": "It plans the week from your fridge",
+          "animatic": {
+            "scene": "product_phone",
+            "label": "Product",
+            "texts": [
+              {
+                "style": "box",
+                "str": "Plans the week from your fridge",
+                "at": 3
+              }
+            ]
+          }
+        },
+        {
+          "t0": 9,
+          "t1": 15,
+          "see": "A full table, then the end card with the app and the free plan.",
+          "hear": "Nothing in the bin this week. Try it free.",
+          "ost": "Try it free",
+          "ost_strong": true,
+          "animatic": {
+            "scene": "proof_card",
+            "label": "End card",
+            "texts": [
+              {
+                "style": "cta",
+                "str": "Try it free",
+                "at": 12
+              }
+            ]
+          }
+        }
+      ],
+      "note": {
+        "title": "Why the fridge first",
+        "text": "Customers name the fridge, not recipes, when they talk about the problem."
+      },
+      "why": [
+        {
+          "quote": "I throw away half a bag of vegetables every single week.",
+          "url": "https://example.com/review/1",
+          "source_label": "Public review of a comparable app"
+        }
+      ],
+      "customer_phrases": [
+        {
+          "phrase": "half a bag of vegetables every single week",
+          "url": "https://example.com/review/1",
+          "used_in": "creator line in beat 2"
+        }
+      ],
+      "copy_from_hook": {
+        "text": "Keep the trend's list structure: one thing stopped, said straight to camera.",
+        "evidence": [
+          {
+            "url": "https://www.example.com/video/1",
+            "thumb": "02_research/evidence/video1.jpg",
+            "views": "1.2M",
+            "caption": "things I stopped doing this year",
+            "plugin": {
+              "as_of": "2026-01-01"
+            }
+          }
+        ]
+      },
+      "ad_copy": {
+        "primary": "Plan the week from what's already in your fridge. Free plan included.",
+        "headline": "Stop throwing food away",
+        "button": "Install now"
+      },
+      "hooks_to_test": [
+        "Things I stopped doing as a parent: throwing food away",
+        "I used to throw away half a bag of vegetables every week"
+      ],
+      "casting": "A parent, 30 to 45, filmed at home in their own kitchen, natural light.",
+      "creator": {
+        "role": "You are the parent who finally stopped wasting food.",
+        "say_note": "Key points in your own words; the sample lines are a guide, not a script.",
+        "say": [
+          {
+            "moment": "Hook",
+            "key": "What you stopped doing",
+            "line": "Things I stopped doing as a parent: throwing food away."
+          },
+          {
+            "moment": "Product",
+            "key": "How the app plans the week",
+            "line": "I just tell it what's in the fridge and it plans the week."
+          },
+          {
+            "moment": "End",
+            "key": "Free to try",
+            "line": "Nothing in the bin this week. Try it free."
+          }
+        ],
+        "shots": [
+          {
+            "shot": "Open the fridge, look at the camera",
+            "framing": "selfie, chest up",
+            "takes": "3"
+          },
+          {
+            "shot": "Tap through the app",
+            "framing": "over the shoulder, phone screen readable",
+            "takes": "2"
+          }
+        ],
+        "extra_takes": "Say each hook from hooks to test once as an extra take.",
+        "look": "Everyday clothes, a real kitchen, no logos in view.",
+        "send_back": [
+          "Raw footage without burned-in captions",
+          "A separate voice track",
+          "Both 9:16 and 4:5"
+        ],
+        "deadline": null,
+        "usage": null
+      },
+      "editor": [
+        {
+          "label": "Length",
+          "text": "15 s; a 6 s cut-down from beats 1 and 3"
+        },
+        {
+          "label": "Captions",
+          "text": "Word-by-word captions in the lower third, outside the safe zones"
+        },
+        {
+          "label": "Formats",
+          "text": "9:16 with Reels safe zones; 4:5 for feed"
+        },
+        {
+          "label": "Versions",
+          "text": "One version per hook to test"
+        },
+        {
+          "label": "Files",
+          "text": "H.264 MP4, 1080 px wide, stereo audio"
+        }
+      ],
+      "media": [
+        {
+          "label": "Decision metric",
+          "text": "Cost per sign-up"
+        },
+        {
+          "label": "Baseline",
+          "text": "<amount>, the closest running ad"
+        },
+        {
+          "label": "Target",
+          "text": "At least 20% below the baseline"
+        },
+        {
+          "label": "Minimum before a decision",
+          "text": "30 sign-ups per variant"
+        },
+        {
+          "label": "Setup",
+          "text": "One ad set, the running ad as control, one variant per hook"
+        },
+        {
+          "label": "Placements",
+          "text": "Reels and Stories (9:16), feed (4:5)"
+        },
+        {
+          "label": "Audience",
+          "text": "Broad, US, ages 25 to 54"
+        }
+      ],
+      "qa": [
+        "Hook text on screen from the first frame",
+        "Free plan said and shown"
+      ],
+      "plugin": {
+        "candidate": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+        "trend": {
+          "trend_id": "a1b2c3d4e5f60718293a4b5c6d7e8f90",
+          "kind": "hook_trend",
+          "name": "things I stopped doing"
+        },
+        "axes": {
+          "angle": "food waste",
+          "hook_type": "confession list",
+          "format": "talking head",
+          "persona": "busy parent",
+          "awareness": "problem_aware"
+        },
+        "saturation": {
+          "verdict": "none_found",
+          "query": "meal planner fridge"
+        },
+        "hook_image": {
+          "relation": "consistent",
+          "why": null
+        },
+        "sound": null,
+        "thumbnail": "The parent at the open fridge with the hook text on top.",
+        "directional": true
+      }
+    },
+    {
+      "id": "C2",
+      "brief_id": "PB2-EXAMPLE-US-20260101-C2",
+      "title": "Before and after the shopping list",
+      "one_liner": "A screen recording turns a messy fridge photo into a week of meals and a short shopping list.",
+      "phone_note": "From fridge photo to meal plan",
+      "for_whom": "People who shop for the week on Sunday",
+      "trend_line": "Rising format \"before and after\": 25 creators, 6M views",
+      "key_message": "Snap the fridge, get the week planned and a shorter shopping list.",
+      "hypothesis": "This concept tests whether showing the app on screen beats a person on camera.",
+      "glance": [
+        {
+          "key": "trend",
+          "label": "Rising format",
+          "text": "\"before and after\": rising, 25 creators, 6M views, median view lift 1.6x",
+          "source": "TrendsMesh trend card \"before and after\"",
+          "highlight": true
+        },
+        {
+          "key": "customers",
+          "label": "Customers",
+          "text": "Long shopping lists (category voice, 11 of 60 items)",
+          "source": "Customer voice themes: public reviews and forum posts"
+        },
+        {
+          "key": "account",
+          "label": "Account",
+          "text": "Best running screen-recording ad: cost per result <amount>",
+          "source": "Meta ad account, ad level, last 90 days"
+        },
+        {
+          "key": "competition",
+          "label": "Competition",
+          "text": "competitor found: Example Rival",
+          "source": "Meta Ad Library, query \"shopping list app\", US"
+        }
+      ],
+      "decision_facts": {
+        "goal": "More app sign-ups from people already planning meals",
+        "effort": "Screen recording and editing only, no filming",
+        "budget": null,
+        "deadline": null,
+        "approver": null,
+        "risk": "A competitor runs a similar list message."
+      },
+      "hook": {
+        "text": "My fridge before and after this app",
+        "style": "center",
+        "description": "Split screen: the fridge photo, then the plan."
+      },
+      "length_s": 12,
+      "beats": [
+        {
+          "t0": 0,
+          "t1": 4,
+          "see": "A phone photo of a crowded fridge, split with an empty plan.",
+          "hear": "",
+          "ost": "My fridge before and after this app",
+          "ost_strong": true,
+          "animatic": {
+            "scene": "finger_tap",
+            "label": "Hook",
+            "texts": [
+              {
+                "style": "center",
+                "str": "Before and after this app",
+                "at": 0
+              }
+            ]
+          }
+        },
+        {
+          "t0": 4,
+          "t1": 9,
+          "see": "The plan fills in day by day; the shopping list shrinks to five items.",
+          "hear": "",
+          "ost": "A week planned, five things to buy",
+          "animatic": {
+            "scene": "product_phone",
+            "label": "Product",
+            "texts": [
+              {
+                "style": "box",
+                "str": "Five things to buy",
+                "at": 5
+              }
+            ]
+          }
+        },
+        {
+          "t0": 9,
+          "t1": 12,
+          "see": "End card with the app and the free plan.",
+          "hear": "",
+          "ost": "Try it free",
+          "ost_strong": true,
+          "animatic": {
+            "scene": "proof_card",
+            "label": "End card",
+            "texts": [
+              {
+                "style": "cta",
+                "str": "Try it free",
+                "at": 9
+              }
+            ]
+          }
+        }
+      ],
+      "note": {
+        "title": "No voice",
+        "text": "The format works with text and music only, so it can be made without a creator."
+      },
+      "why": [
+        {
+          "quote": "My shopping list is always twice as long as it needs to be.",
+          "url": "https://example.com/forum/2",
+          "source_label": "Forum post in the category"
+        }
+      ],
+      "customer_phrases": [
+        {
+          "phrase": "twice as long as it needs to be",
+          "url": "https://example.com/forum/2",
+          "used_in": "primary text"
+        }
+      ],
+      "copy_from_hook": {
+        "text": "Keep the format's split screen and the reveal at 4 s.",
+        "evidence": [
+          {
+            "url": "https://www.example.com/video/2",
+            "thumb": "02_research/evidence/video2.jpg",
+            "views": "800K",
+            "caption": "before and after my kitchen reset",
+            "plugin": {
+              "as_of": "2026-01-01"
+            }
+          }
+        ]
+      },
+      "ad_copy": {
+        "primary": "Is your shopping list twice as long as it needs to be? Snap the fridge and plan the week.",
+        "headline": "A shorter shopping list",
+        "button": "Install now"
+      },
+      "hooks_to_test": [
+        "My fridge before and after this app",
+        "Five things to buy instead of twenty"
+      ],
+      "casting": "No person on camera: a hand holding the phone at most.",
+      "creator": {
+        "role": "You record the phone screen and a hand tapping it.",
+        "say_note": "No lines: the on-screen text carries the message.",
+        "say": [],
+        "shots": [
+          {
+            "shot": "Photo of a crowded fridge",
+            "framing": "phone held straight, the whole fridge in view",
+            "takes": "2"
+          },
+          {
+            "shot": "Screen recording of the plan filling in",
+            "framing": "full screen",
+            "takes": "1"
+          }
+        ],
+        "extra_takes": "A second fridge, emptier, for the 'after' shot.",
+        "look": "A clean phone screen, notifications off.",
+        "send_back": [
+          "The screen recording without captions",
+          "The raw photos",
+          "Both 9:16 and 4:5"
+        ],
+        "deadline": null,
+        "usage": null
+      },
+      "editor": [
+        {
+          "label": "Length",
+          "text": "12 s"
+        },
+        {
+          "label": "Captions",
+          "text": "No voice, so no captions; on-screen text only"
+        },
+        {
+          "label": "Formats",
+          "text": "9:16 with Reels safe zones; 4:5 for feed"
+        },
+        {
+          "label": "Versions",
+          "text": "One version per hook to test"
+        },
+        {
+          "label": "Files",
+          "text": "H.264 MP4, 1080 px wide, licensed music track"
+        }
+      ],
+      "media": [
+        {
+          "label": "Decision metric",
+          "text": "Cost per sign-up"
+        },
+        {
+          "label": "Baseline",
+          "text": "<amount>, the best running screen-recording ad"
+        },
+        {
+          "label": "Target",
+          "text": "At least 15% below the baseline"
+        },
+        {
+          "label": "Minimum before a decision",
+          "text": "30 sign-ups per variant"
+        },
+        {
+          "label": "Setup",
+          "text": "Same ad set as C1, the running ad as control"
+        },
+        {
+          "label": "Placements",
+          "text": "Reels and Stories (9:16), feed (4:5)"
+        },
+        {
+          "label": "Audience",
+          "text": "Broad, US, ages 25 to 54"
+        }
+      ],
+      "qa": [
+        "The plan is readable on a phone",
+        "Music licensed for ads"
+      ],
+      "plugin": {
+        "candidate": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+        "trend": {
+          "trend_id": "0f1e2d3c4b5a69788796a5b4c3d2e1f0",
+          "kind": "format_trend",
+          "name": "before and after"
+        },
+        "axes": {
+          "angle": "shorter shopping list",
+          "hook_type": "before and after",
+          "format": "screen recording",
+          "persona": "weekly planner",
+          "awareness": "solution_aware"
+        },
+        "saturation": {
+          "verdict": "competitor_found",
+          "query": "shopping list app"
+        },
+        "hook_image": {
+          "relation": "setup_payoff",
+          "why": "The crowded fridge sets up the short list that pays it off."
+        },
+        "sound": null,
+        "thumbnail": "The split screen: the crowded fridge next to the short list.",
+        "directional": true
+      }
+    }
+  ],
+  "_organic_video_brief": {
+    "meta": {
+      "kind": "organic",
+      "pack_id": "PB2-EXAMPLE-BAKERY-US-20260101",
+      "title": "Example Bakery: three organic videos for the channel",
+      "market": "US",
+      "language": "en",
+      "prepared": "2026-01-01",
+      "valid_until": "2026-01-15",
+      "recipients": [
+        "decision",
+        "creator",
+        "editor",
+        "publisher"
+      ],
+      "lede": {
+        "decision": "Three videos to approve, each with the trend it rides and what it tests.",
+        "creator": "What to film, what to say and what to send back.",
+        "editor": "Length, captions, formats, safe zones and the sound.",
+        "publisher": "What to post where and when: the description, hashtags, time and sound per platform."
+      },
+      "product": {
+        "name": "Example Bakery",
+        "plain_description": "A home bakery channel: one loaf a week, from starter to slice."
+      },
+      "channel": {
+        "name": "Example Bakery",
+        "platforms": [
+          "tiktok",
+          "instagram"
+        ],
+        "url": null,
+        "description": "A home bakery channel: one loaf a week, filmed in a home kitchen.",
+        "business": true
+      },
+      "sources_note": "Trend data from TrendsMesh; the channel's context from its own description; the persona is a hypothesis from it (directional).",
+      "animatic_note": "Animatics are made on request and show structure and timing only.",
+      "plugin": {
+        "evidence": "trendsmesh"
+      }
+    },
+    "audience": {
+      "text": "Home bakers aged 25 to 45 who want a weekly loaf without fuss (directional: from the channel's description, no account data).",
+      "source": "The audience hypothesis, written from the channel's description"
+    },
+    "tone": {
+      "tone": "calm, hands-on, friendly",
+      "must": [
+        "Show the dough in the first second",
+        "Say the step in plain words"
+      ],
+      "never": [
+        "Name a flour brand",
+        "Promise a perfect loaf"
+      ]
+    },
+    "concepts": [
+      {
+        "id": "C1",
+        "brief_id": "PB2-EXAMPLE-BAKERY-US-20260101-C1",
+        "title": "Starter care in one take",
+        "one_liner": "One continuous shot of feeding the starter, with the three things nobody says.",
+        "phone_note": "Nobody tells you this about your starter",
+        "key_message": "A starter needs less than you think.",
+        "hypothesis": "This concept tests whether a one-take tutorial on the rising hook brings new followers.",
+        "glance": [
+          {
+            "key": "trend",
+            "label": "Rising hook",
+            "text": "\"nobody tells you this about\": rising, 30 creators, 8M views",
+            "source": "TrendsMesh trend card \"nobody tells you this about\"",
+            "highlight": true
+          },
+          {
+            "key": "channel",
+            "label": "Channel",
+            "text": "Weekly loaf videos, 30 to 45 seconds, filmed at home",
+            "source": "The channel's description, O2"
+          },
+          {
+            "key": "persona",
+            "label": "Persona",
+            "text": "Home bakers 25 to 45 (directional)",
+            "source": "The audience hypothesis, O3"
+          }
+        ],
+        "hook": {
+          "text": "Nobody tells you this about your starter",
+          "style": "top",
+          "description": "On-screen text from frame 1 over the jar."
+        },
+        "length_s": 30,
+        "beats": [
+          {
+            "t0": 0,
+            "t1": 3,
+            "see": "Hands lift the lid of the starter jar.",
+            "hear": "Nobody tells you this about your starter.",
+            "ost": "Nobody tells you this about your starter",
+            "ost_strong": true,
+            "animatic": {
+              "scene": "selfie_talk",
+              "label": "Hook"
+            }
+          },
+          {
+            "t0": 3,
+            "t1": 25,
+            "see": "Feeding, stirring and marking the jar in one take.",
+            "hear": "The three things that matter.",
+            "ost": "1. Warm water 2. Same time 3. Mark the jar",
+            "animatic": {
+              "scene": "notebook_closeup",
+              "label": "Steps"
+            }
+          },
+          {
+            "t0": 25,
+            "t1": 30,
+            "see": "The risen starter, then the loaf.",
+            "hear": "That's all it takes.",
+            "ost": "Follow for the loaf",
+            "ost_strong": true,
+            "animatic": {
+              "scene": "proof_card",
+              "label": "End"
+            }
+          }
+        ],
+        "copy_from_hook": {
+          "text": "Keep the hook's \"nobody tells you this about\" opening and its list of three.",
+          "evidence": [
+            {
+              "url": "https://www.example.com/video/3",
+              "thumb": "02_research/evidence/video3.jpg",
+              "views": "900K",
+              "caption": "nobody tells you this about bread",
+              "plugin": {
+                "as_of": "2026-01-01"
+              }
+            }
+          ]
+        },
+        "creator": {
+          "role": "You film yourself at your own kitchen counter.",
+          "say_note": "Say the three points in your own words.",
+          "say": [
+            {
+              "moment": "Hook",
+              "line": "Nobody tells you this about your starter."
+            },
+            {
+              "moment": "Steps",
+              "line": "Warm water, the same time every day, and mark the jar."
+            }
+          ],
+          "shots": [
+            {
+              "shot": "The jar and your hands, one continuous take",
+              "framing": "top-down",
+              "takes": "3"
+            },
+            {
+              "shot": "The finished loaf",
+              "framing": "close-up",
+              "takes": "2"
+            }
+          ],
+          "look": "Your own kitchen, daylight, no brand labels in view.",
+          "send_back": [
+            "Raw footage without burned-in captions, 9:16"
+          ],
+          "deadline": null,
+          "usage": null
+        },
+        "editor": [
+          {
+            "label": "Length",
+            "text": "30 s"
+          },
+          {
+            "label": "Captions",
+            "text": "Word-by-word captions, outside the platforms' safe zones"
+          },
+          {
+            "label": "Formats",
+            "text": "9:16 for TikTok and Instagram Reels"
+          },
+          {
+            "label": "Versions",
+            "text": "One"
+          },
+          {
+            "label": "Files",
+            "text": "H.264 MP4, 1080 x 1920, with the sound below"
+          }
+        ],
+        "plugin": {
+          "candidate": "b2c3d4e5f60718293a4b5c6d7e8f90a1",
+          "trend": {
+            "trend_id": "b2c3d4e5f60718293a4b5c6d7e8f90a1",
+            "kind": "hook_trend",
+            "name": "nobody tells you this about"
+          },
+          "axes": {
+            "angle": "starter care",
+            "hook_type": "nobody tells you",
+            "format": "one-take tutorial",
+            "persona": "beginner baker",
+            "awareness": "problem_aware"
+          },
+          "hook_image": {
+            "relation": "consistent",
+            "why": null
+          },
+          "sound": {
+            "licence": "commercial",
+            "organic_only": false,
+            "licensed_equivalent": null
+          },
+          "thumbnail": "The jar with the hook text on top.",
+          "directional": true
+        },
+        "organic": {
+          "topic": "starter care",
+          "format": "one-take tutorial",
+          "length_s": 30,
+          "sound": {
+            "name": "Calm kitchen track (commercial library)",
+            "trend_id": null,
+            "licence": "commercial"
+          }
+        },
+        "posting": {
+          "tiktok": {
+            "description": "Nobody tells you this about your sourdough starter. What did you learn the hard way?",
+            "hashtags": [
+              "#sourdough",
+              "#sourdoughstarter",
+              "#homebaking"
+            ],
+            "post_time": "Tue 18:00",
+            "sound": "Calm kitchen track (commercial library)"
+          },
+          "instagram": {
+            "description": "Three things your starter needs, in one take.",
+            "hashtags": [
+              "#sourdough",
+              "#homebaking"
+            ],
+            "post_time": "Wed 12:00",
+            "sound": "Calm kitchen track (commercial library)"
+          }
+        }
+      },
+      {
+        "id": "C2",
+        "brief_id": "PB2-EXAMPLE-BAKERY-US-20260101-C2",
+        "title": "A loaf, start to finish",
+        "one_liner": "A day in the life of one loaf, from the morning feed to the first slice.",
+        "phone_note": "One loaf, one day",
+        "key_message": "A weekly loaf fits into a normal day.",
+        "hypothesis": "This concept tests whether a day-in-the-life format keeps viewers to the end.",
+        "glance": [
+          {
+            "key": "trend",
+            "label": "Rising format",
+            "text": "\"day in the life\": rising, 50 creators, 20M views",
+            "source": "TrendsMesh trend card \"day in the life\"",
+            "highlight": true
+          },
+          {
+            "key": "channel",
+            "label": "Channel",
+            "text": "Weekly loaf videos, 30 to 45 seconds, filmed at home",
+            "source": "The channel's description, O2"
+          },
+          {
+            "key": "persona",
+            "label": "Persona",
+            "text": "Home bakers 25 to 45 (directional)",
+            "source": "The audience hypothesis, O3"
+          }
+        ],
+        "hook": {
+          "text": "One loaf, one normal day",
+          "style": "center"
+        },
+        "length_s": 40,
+        "beats": [
+          {
+            "t0": 0,
+            "t1": 4,
+            "see": "Morning light on the starter jar.",
+            "hear": "",
+            "ost": "One loaf, one normal day",
+            "ost_strong": true,
+            "animatic": {
+              "scene": "phone_alarm",
+              "label": "Hook"
+            }
+          },
+          {
+            "t0": 4,
+            "t1": 34,
+            "see": "Mix, fold, shape and bake, each with the time of day.",
+            "hear": "",
+            "ost": "8:00 mix, 12:00 fold, 18:00 bake",
+            "animatic": {
+              "scene": "desk_sticky_write",
+              "label": "The day"
+            }
+          },
+          {
+            "t0": 34,
+            "t1": 40,
+            "see": "The first slice.",
+            "hear": "",
+            "ost": "Your turn this week",
+            "ost_strong": true,
+            "animatic": {
+              "scene": "proof_card",
+              "label": "End"
+            }
+          }
+        ],
+        "creator": {
+          "role": "You film short clips through one baking day.",
+          "say": [
+            {
+              "moment": "None",
+              "line": "No lines: the on-screen times carry it."
+            }
+          ],
+          "shots": [
+            {
+              "shot": "Each step with a clock or phone showing the time",
+              "framing": "wide",
+              "takes": "2"
+            }
+          ],
+          "send_back": [
+            "Raw clips without captions, 9:16"
+          ],
+          "deadline": null,
+          "usage": null
+        },
+        "editor": [
+          {
+            "label": "Length",
+            "text": "40 s"
+          },
+          {
+            "label": "Captions",
+            "text": "On-screen times only"
+          },
+          {
+            "label": "Formats",
+            "text": "9:16"
+          },
+          {
+            "label": "Versions",
+            "text": "One"
+          },
+          {
+            "label": "Files",
+            "text": "H.264 MP4, 1080 x 1920"
+          }
+        ],
+        "plugin": {
+          "candidate": "c3d4e5f60718293a4b5c6d7e8f90a1b2",
+          "trend": {
+            "trend_id": "c3d4e5f60718293a4b5c6d7e8f90a1b2",
+            "kind": "format_trend",
+            "name": "day in the life"
+          },
+          "axes": {
+            "angle": "fits a normal day",
+            "hook_type": "statement",
+            "format": "day in the life",
+            "persona": "busy home baker",
+            "awareness": "solution_aware"
+          },
+          "hook_image": {
+            "relation": "consistent",
+            "why": null
+          },
+          "sound": {
+            "licence": "commercial",
+            "organic_only": false,
+            "licensed_equivalent": null
+          },
+          "thumbnail": "The first slice with the words 'one normal day'.",
+          "directional": true
+        },
+        "organic": {
+          "topic": "a loaf in a normal day",
+          "format": "day in the life",
+          "length_s": 40,
+          "sound": {
+            "name": "Morning acoustic (commercial library)",
+            "trend_id": null,
+            "licence": "commercial"
+          }
+        },
+        "posting": {
+          "tiktok": {
+            "description": "One sourdough loaf, one normal day. When do you bake?",
+            "hashtags": [
+              "#sourdough",
+              "#dayinthelife",
+              "#homebaking"
+            ],
+            "post_time": "Thu 19:00",
+            "sound": "Morning acoustic (commercial library)"
+          },
+          "instagram": {
+            "description": "A loaf fits into a normal day.",
+            "hashtags": [
+              "#sourdough",
+              "#homebaking"
+            ],
+            "post_time": "Fri 12:00",
+            "sound": "Morning acoustic (commercial library)"
+          }
+        }
+      }
+    ],
+    "plan": {
+      "posts": [
+        {
+          "concept": "C1",
+          "platform": "tiktok",
+          "date": "2026-01-06",
+          "time": "18:00"
+        },
+        {
+          "concept": "C1",
+          "platform": "instagram",
+          "date": "2026-01-07",
+          "time": "12:00"
+        },
+        {
+          "concept": "C2",
+          "platform": "tiktok",
+          "date": "2026-01-08",
+          "time": "19:00"
+        },
+        {
+          "concept": "C2",
+          "platform": "instagram",
+          "date": "2026-01-09",
+          "time": "12:00"
+        }
+      ],
+      "metrics": [
+        {
+          "name": "views",
+          "target": null,
+          "source": "to set: no channel data yet"
+        },
+        {
+          "name": "completion_rate",
+          "target": null,
+          "source": "to set: no channel data yet"
+        },
+        {
+          "name": "saves",
+          "target": null,
+          "source": "to set: no channel data yet"
+        },
+        {
+          "name": "shares",
+          "target": null,
+          "source": "to set: no channel data yet"
+        }
+      ]
+    }
+  }
+}
