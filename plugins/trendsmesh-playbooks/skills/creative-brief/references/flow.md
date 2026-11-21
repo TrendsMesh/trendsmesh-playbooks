@@ -444,7 +444,9 @@ CB10, CB13, R7, CB8. Only with the briefs (the review pack alone skips D1 to E1)
   account spends in another currency; money for recipients in USD.
 - Budget, deadline, approver, the creator's deadline and usage: only what the intake gave, else
   null (the page shows "to set").
-- No animatic yet: a concept without one shows "Animatic on request" on the page (CB11).
+- No animatic yet: a concept without one shows its hook in place of the player, in the concept and in the
+  header phones, never an empty video, with "Animatic on request" while one may still come (before the
+  animatics question, or a concept named on `make`; not after `skip`, nor in Hands-off) (CB11).
 - `tm brief check --run R --file 04_final/brief_pack_vNN.json --stage brief --json`; fix and check
   again until exit 0. `tm done D1 --run R`.
 

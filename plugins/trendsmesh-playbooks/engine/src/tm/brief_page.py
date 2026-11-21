@@ -377,19 +377,29 @@ def _tech(rows, tr: i18n.Translator) -> str:
             f'<ul>{items}</ul></details>') if items else ''
 
 
-def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
+def _placeholder(c: dict, ahead: set[str] | None, tr: i18n.Translator) -> str:
+    """Issue #133: what stands where a concept's animatic plays before there is one (they are made on request, CB11,
+    #145), never an empty player: the concept's hook, and "Animatic on request" while one may still come (`ahead`,
+    the concepts whose animatic is on request or asked for; None, every concept)."""
+    hook = c.get("hook") if isinstance(c.get("hook"), dict) else {}
+    text = f'<b>{E(hook["text"])}</b>' if hook.get("text") else ''
+    line = f'<span>{W(tr, "brief.animatic_on_request")}</span>' if ahead is None or c.get("id") in ahead else ''
+    return f'<div class="on-request">{text}{line}</div>'
+
+
+def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None, ahead: set[str] | None = None):
     """A concept's section; with `stills` ({animatic path: its stills}) the print mode's, its stills in
-    place of the player."""
+    place of the player. A concept without an animatic has its placeholder in both (`_placeholder`, `ahead`)."""
     tr = tr or _english()
     cid = E(c['id'])
     a = c.get('animatic', {})
     default = a.get('default', '9x16')
     src = a.get(default, '')
     toggle = ''.join(f'<button aria-pressed="{"true" if f == default else "false"}" data-src="{E(a[f])}">{f.replace("x", ":")}</button>' for f in FORMATS if a.get(f))
-    player = (_stills_html(stills.get(src) or [], tr) if stills is not None else
+    player = (f'<div class="player">{_placeholder(c, ahead, tr)}</div>' if not src else
+              _stills_html(stills.get(src) or [], tr) if stills is not None else
               f'<div class="player" data-player="{cid}"><video src="{E(src)}" controls muted playsinline preload="metadata"></video>'
-              f'<div class="toggle" role="group" aria-label="{A(tr, "brief.format")}">{toggle}</div></div>' if src else
-              f'<div class="player"><div class="on-request">{W(tr, "brief.animatic_on_request")}</div></div>')
+              f'<div class="toggle" role="group" aria-label="{A(tr, "brief.format")}">{toggle}</div></div>')
     out = [f'<section id="{cid.lower()}" class="concept">',
            '<header><div>',
            f'<p class="tag">{W(tr, "brief.concept_of", idx=idx, total=total)}</p>',
@@ -537,9 +547,10 @@ def _pdf_buttons(pdfs: dict[str, str], views: list[str], tr: i18n.Translator | N
             f'data-unavailable="{A(tr, "brief.pdf_unavailable")}" data-failed="{A(tr, "brief.pdf_failed")}" hidden></span>')
 
 
-def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None):
+def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None, ahead: set[str] | None = None):
     """The page's body and its views. `pdfs` ({"full" | view: served path}) adds the download buttons; `stills`
-    ({animatic path: its stills}) makes the print mode's body: a banner per PDF, stills in place of videos."""
+    ({animatic path: its stills}) makes the print mode's body: a banner per PDF, stills in place of videos. `ahead`:
+    the concepts whose animatic may still come (`animatics_ahead`; None, every concept)."""
     tr = tr or _english()
     m = p['meta']
     views = [x for x in ALL_VIEWS if x in m['recipients']]
@@ -559,9 +570,9 @@ def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None):
         # the creator's card: the title under the phone note (when the note is not the title), no account data
         title = f'<div class="who"{v("creator")}>{E(c["title"])}</div>' if c.get("phone_note", c["title"]) != c["title"] else ''
         shots = (stills or {}).get(phone) or []
-        screen = ((f'<img class="still" src="{E(shots[min(1, len(shots) - 1)])}" alt="">' if shots else '') if stills is not None
-                  else f'<video src="{E(phone)}" autoplay muted loop playsinline aria-label="{A(tr, "brief.animatic_label", id=E(c["id"]))}"></video>'
-                  if phone else f'<div class="on-request">{W(tr, "brief.animatic_on_request")}</div>')
+        screen = (_placeholder(c, ahead, tr) if not phone else
+                  (f'<img class="still" src="{E(shots[min(1, len(shots) - 1)])}" alt="">' if shots else '') if stills is not None
+                  else f'<video src="{E(phone)}" autoplay muted loop playsinline aria-label="{A(tr, "brief.animatic_label", id=E(c["id"]))}"></video>')
         out.append(f'<a class="phone" href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}"><div class="frame">{screen}</div>'
                    f'<div class="note">{E(c.get("phone_note", c["title"]))}</div>{title}<div class="who"{facts}>{E(c.get("for_whom"))}</div><div class="trendline"{facts}>{E(c.get("trend_line"))}</div></a>')
     out.append('</div></div></div>')
@@ -592,7 +603,7 @@ def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None):
         out.append(f'<section id="tone"{v("strategy", "creator", "editor")}><h2>{W(tr, "brief.tone_must")}</h2><div class="two"><div><h3>{W(tr, "brief.tone")}</h3><p>{E(t.get("tone"))}</p><h3>{W(tr, "brief.must_have")}</h3><ul class="plain">{must}</ul></div><div><h3>{W(tr, "brief.never")}</h3><ul class="plain">{never}</ul></div></div></section>')
     n = len(p['concepts'])
     for i, c in enumerate(p['concepts'], 1):
-        out.append(concept_html(c, i, n, stills, tr))
+        out.append(concept_html(c, i, n, stills, tr, ahead))
     if p.get('plan'):                       # an organic video brief's (issue #136)
         out.append(_plan_html(p['plan'], p['concepts'], tr))
     out.append(f'<footer><p{v("decision", "strategy", "media-buyer")}>{E(m.get("sources_note"))}</p><p>{E(m.get("animatic_note"))}</p></footer></main>')
@@ -656,12 +667,14 @@ def _shell(body: str, frame: dict | None, lang: str) -> str:
 
 
 def render(brief: dict, lang: str = i18n.ENGLISH, *, pdfs: dict[str, str] | None = None,
-           stills: dict[str, list[str]] | None = None, frame: dict | None = None) -> tuple[str, list[str]]:
+           stills: dict[str, list[str]] | None = None, frame: dict | None = None,
+           ahead: set[str] | None = None) -> tuple[str, list[str]]:
     """The page's HTML in `lang` and the views it shows (`meta.recipients` in the page's order). Stop for a
     brief the page cannot be built from; i18n.Missing when `lang` has no translation of a word of the page
     (`build` picks the language with `i18n.page_lang`). `pdfs` ({"full" | view: served path}) adds the buttons
     that download them; `stills` ({animatic path: its stills' paths}) makes the print mode the PDFs are printed
-    from; `frame` (tm.run_page.creative_brief.frame: the run's check-ins) puts it on the shared run page."""
+    from; `frame` (tm.run_page.creative_brief.frame: the run's check-ins) puts it on the shared run page; `ahead`
+    (`animatics_ahead`) names the concepts whose placeholder says their animatic is on request (None, every one)."""
     tr = i18n.translator(lang)
     miss = _required(brief)
     if miss:
@@ -669,7 +682,7 @@ def render(brief: dict, lang: str = i18n.ENGLISH, *, pdfs: dict[str, str] | None
                    f"(a new version) and check it (tm brief check), then build again. The run continues from the "
                    "same place.")
     try:
-        body, views = body_html(brief, pdfs, stills, tr)
+        body, views = body_html(brief, pdfs, stills, tr, ahead)
     except (KeyError, TypeError, ValueError, AttributeError, IndexError) as exc:
         raise Stop(f"The brief is not in its shape ({type(exc).__name__}: {exc}), so the page cannot be built from "
                    "it. Check it with tm brief check, fix it (a new version), then build again. The run continues "
@@ -836,9 +849,20 @@ def _data_uri(path: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
+def animatics_ahead(run: RunFolder) -> set[str] | None:
+    """The concepts whose animatic may still come (issue #133), for their placeholders' "Animatic on request": every
+    concept (None) before the `animatics` check-in (#145); the concepts named on `make`; none on `skip`, or in
+    Hands-off, which makes no animatic."""
+    s = state.load(run)
+    if s.level == "hands_off":
+        return set()
+    last = next((d for d in reversed(s.decisions) if isinstance(d, dict) and d.get("checkin") == "animatics"), None)
+    return None if last is None else set(animatic.wanted(run))
+
+
 def _print_pdfs(run: RunFolder, out: Path, brief: dict, served: dict[str, str], present: dict[str, Path],
                 missing: list[str], views: list[str], planned: dict[str, int],
-                lang: str = i18n.ENGLISH) -> tuple[dict[str, str], str | None]:
+                lang: str = i18n.ENGLISH, ahead: set[str] | None = None) -> tuple[dict[str, str], str | None]:
     """Print the page's PDFs into `out/pdf/` (`brief_pdf`): the print page `.print/print.html` (media from the
     page folder, each animatic's stills as JPEGs beside it), then one PDF per key of `brief_pdf.names`. Returns
     ({key: served path}, None), or ({}, why there are none): no browser, a print that failed, or a page the PDFs
@@ -852,7 +876,7 @@ def _print_pdfs(run: RunFolder, out: Path, brief: dict, served: dict[str, str], 
         if kind == "animatic" and ref in present and to_print[ref] not in shots:
             made = brief_pdf.stills(run.path, present[ref], out / brief_pdf.PRINT_DIR / "stills")
             shots[to_print[ref]] = [f"stills/{f.name}" for f in made]
-    print_page = brief_pdf.write_print_page(out, render(_swap(brief, to_print), lang, stills=shots)[0])
+    print_page = brief_pdf.write_print_page(out, render(_swap(brief, to_print), lang, stills=shots, ahead=ahead)[0])
     wanted = brief_pdf.names(views)
     try:
         for key, served_at in wanted.items():
@@ -883,6 +907,7 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     pl = i18n.page_lang(i18n.run_languages(run).working, *brief_checks.PAGE_AREAS)
     render(brief, pl.lang)                                # the brief can make a page: Stop before anything is written
     frame = creative_brief.frame(run, pl.lang)            # the run's check-ins around it (issue #60)
+    ahead = animatics_ahead(run)                          # whose placeholder says "Animatic on request" (#133)
     undated = _undated_clips(brief)
     if undated:
         raise Stop(f"{rel} cites {len(undated)} TrendsMesh clip{'' if len(undated) == 1 else 's'} with no as-of date "
@@ -904,13 +929,13 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     if single_file:
         # a standalone file cannot reach a thumbnail that is not there: its <img> is left out
         inline = {ref: _data_uri(f) for ref, f in present.items()} | {ref: "" for ref in missing}
-        html_text, views = render(_swap(brief, inline), pl.lang, frame=frame)
+        html_text, views = render(_swap(brief, inline), pl.lang, frame=frame, ahead=ahead)
         out = run.next_version(FINAL, STEM, "html")
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, "x", encoding="utf-8", newline="\n") as fh:    # never over an earlier file
             fh.write(html_text)
     else:
-        html_text, views = render(_swap(brief, served), pl.lang, frame=frame)
+        html_text, views = render(_swap(brief, served), pl.lang, frame=frame, ahead=ahead)
         planned = {"index.html": len(html_text.encode("utf-8"))}
         planned |= {served[ref]: f.stat().st_size for ref, f in present.items()}
         over = page.over_limits(planned)
@@ -926,12 +951,12 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(f, dest)
         try:
-            pdfs, pdf_note = _print_pdfs(run, out, brief, served, present, missing, views, planned, pl.lang)
+            pdfs, pdf_note = _print_pdfs(run, out, brief, served, present, missing, views, planned, pl.lang, ahead)
         except OSError as exc:                   # the page is written all the same: PDFs are its extra
             brief_pdf.remove(out)
             pdfs, pdf_note = {}, f"printing them failed: {exc}"
         if pdfs:
-            html_text = render(_swap(brief, served), pl.lang, pdfs=pdfs, frame=frame)[0]
+            html_text = render(_swap(brief, served), pl.lang, pdfs=pdfs, frame=frame, ahead=ahead)[0]
         with open(out / "index.html", "x", encoding="utf-8", newline="\n") as fh:
             fh.write(html_text)
     out_rel = out.relative_to(run.path).as_posix()

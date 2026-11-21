@@ -297,6 +297,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
   --from <the storyboard's module>` writes the prompt for the full animation: the accepted storyboard, your notes on
   it and the video's planned length, with no "stop after the storyboard". An animation is now as long as the pack
   planned, holding its last scene until the end, rather than ending with the voiceover's last word.
+- **Creative brief: no black boxes before the animatics.** A concept without an animatic shows its hook where the
+  video will play, in the concept and in the three phones at the top, with "Animatic on request" while one can still
+  be made. Once you skip the animatics, or in Hands-off, the hook stands alone. The PDFs show the same.
 
 ## 0.13.1
 
