@@ -699,7 +699,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     it.add_argument("--known", help="a JSON file of what the run already knows: {question id: value}")
     it.add_argument("--read", action="store_true", help="read the answers into 03_wip/start_answers_vNN.json")
     src = it.add_mutually_exclusive_group()
-    src.add_argument("--file", help="with --read: a saved ArtifactData answer (default: the newest on the page)")
+    src.add_argument("--file", help="with --read: a saved ArtifactData answer in the run folder (default: the newest "
+                                    "on the page)")
     src.add_argument("--text", help="with --read: a file in the run with the user's answer in chat, one line each")
     for sp in (bu, de, it):
         sp.add_argument("--run", required=True, help="the run folder")
