@@ -140,7 +140,7 @@ def price_of(price_file: Path, model: str, criteria: str | None = None) -> tuple
     """(price as a number, unit, checked) of `model` in a `tm tool replicate_price` file. `criteria` is
     a tier's criteria text as the file holds it ("target resolution=720p"); it may be left out only
     when the model has one tier. A ValueError names the tiers when the criteria match not exactly one."""
-    entries = json.loads(Path(price_file).read_text(encoding="utf-8"))
+    entries = json.loads(Path(price_file).read_text(encoding="utf-8-sig"))
     entry = next((e for e in entries if isinstance(e, dict) and e.get("model") == model), None)
     if entry is None:
         raise ValueError(f"{model} is not in {Path(price_file).name}.")

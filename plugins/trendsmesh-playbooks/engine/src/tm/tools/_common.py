@@ -177,14 +177,44 @@ def record(run: RunFolder, path: Path, source: str, parent: str | None = None, *
                     model=model, cost=cost, before_after=before_after, raw_response=raw)
 
 
-def local_file(value: object, base: Path) -> Path | None:
-    """A spec input that names an existing local file (absolute, or relative to `base`, the spec's
-    folder), else None: what replicate_run sends as a file, and what the organic guard checks."""
+# The kinds of file a spec sends: a missing one of these is an error, never sent as text (issue #126).
+LOCAL_SUFFIXES = frozenset(
+    ".png .jpg .jpeg .webp .gif .bmp .tif .tiff .heic .avif .svg .mp4 .mov .webm .mkv .m4v .avi .wav .mp3 .m4a "
+    ".aac .flac .ogg .opus .json .txt .srt .vtt .pdf .zip".split())
+
+
+def looks_local(value: object) -> bool:
+    """A spec input that reads as a local file's path: one line with no URL scheme, ending in a media or data
+    file's extension (`LOCAL_SUFFIXES`)."""
+    if not isinstance(value, str) or not value.strip() or "\n" in value or len(value) > 400:
+        return False
+    if "://" in value or value.startswith("data:"):
+        return False
+    return Path(value.strip().replace("\\", "/")).suffix.lower() in LOCAL_SUFFIXES
+
+
+def local_file(value: object, base: Path, run: RunFolder | None = None) -> Path | None:
+    """A spec input that names an existing local file, else None: what replicate_run sends as a file, and what the
+    organic guard checks. An absolute path as it is; a relative one in the run folder first (the one path rule,
+    `RunFolder.given`, issue #126), else beside the spec (`base`, its folder), as specs were written before."""
     if isinstance(value, str) and value and not value.startswith(("http://", "https://", "data:")):
+        if run is not None and not Path(value).is_absolute():
+            try:
+                found = run.given(value)
+            except (OSError, ValueError):
+                found = None
+            if found is not None and found.is_file():
+                return found
         p = Path(value) if Path(value).is_absolute() else Path(base) / value
         if p.is_file():
             return p
     return None
+
+
+def missing_local(value: object, base: Path, run: RunFolder | None = None) -> list[str]:
+    """The inputs (a value, or a list of them) that read as local files (`looks_local`) and are not found."""
+    values = value if isinstance(value, list) else [value]
+    return [v for v in values if looks_local(v) and local_file(v, base, run) is None]
 
 
 def name_of(path: Path | str) -> str:
@@ -192,9 +222,10 @@ def name_of(path: Path | str) -> str:
     return str(path).replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
 
 
-def resolve(run: RunFolder, text: Path | str) -> Path:
-    """An input path of a tool (`RunFolder.given`): inside the run when it is there, else from the current folder."""
-    return run.given(text)
+def resolve(run: RunFolder, text: Path | str, *, missing_ok: bool = False) -> Path:
+    """An input path of a tool (`RunFolder.given`): inside the run folder; NotInRun when it is not there (with
+    `missing_ok`, the path inside the run, for a caller that says itself what is missing)."""
+    return run.given(text, missing_ok=missing_ok)
 
 
 def inputs(run: RunFolder, args: argparse.Namespace, *names: str) -> None:
@@ -217,7 +248,7 @@ def read_json(run: RunFolder, text: Path | str | None, what: str, after: str = "
         return None
     name = name_of(text)
     try:
-        data = json.loads(resolve(run, text).read_text(encoding="utf-8"))
+        data = json.loads(resolve(run, text).read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
         raise ToolError(f"The {what} {name} does not exist.{after}") from None
     except json.JSONDecodeError as exc:

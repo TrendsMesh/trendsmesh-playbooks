@@ -620,6 +620,8 @@ def test_cli_marks_each_stage_and_never_rewrites_the_md(tmp_path, capsys):
                      "--today", "2026-11-07")
     assert (code, out["status"]) == (0, "done") and state.load(run).planned == {}
     assert stepchecks.run("recipe_written", run) is None and stepchecks.run("pack_checked", run) is not None
+    at = flow.next(run)                    # the step the run is really at, never a fixed "D1 can be done" (#126)
+    assert f"The run is now at {at.ref} {at.title}" in out["message"] and "D1 can be done" not in out["message"]
     code, out = _cli(capsys, "organic", "pack", "check", "--run", str(run.path), "--file", rel, "--stage", "pack",
                      "--today", "2026-11-07")
     assert (code, out["status"]) == (0, "done") and stepchecks.run("pack_checked", run) is None

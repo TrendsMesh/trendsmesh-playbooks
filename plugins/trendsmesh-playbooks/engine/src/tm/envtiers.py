@@ -10,11 +10,13 @@ run it first.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
 import stat
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -111,7 +113,7 @@ def clean_stale() -> list[Path]:
         manifests = []
         for marker in folder.glob("envs/*/conda-meta/pixi"):
             try:
-                manifests.append(json.loads(marker.read_text(encoding="utf-8"))["manifest_path"])
+                manifests.append(json.loads(marker.read_text(encoding="utf-8-sig"))["manifest_path"])
             except (OSError, ValueError, KeyError, TypeError):
                 manifests.append(None)  # unreadable: keep the folder
         if not manifests or any(m is None or Path(m).exists() for m in manifests):
@@ -135,29 +137,46 @@ def _size(mb: int) -> str:
     return f"{mb / 1000:.1f} GB" if mb >= 1000 else f"{mb} MB"
 
 
-def install(tier: str, yes: bool) -> int:
+def install(tier: str, yes: bool, as_json: bool = False) -> int:
+    """Install a tier. With `as_json` stdout is one JSON object, {"status": "done"|"stop"|"error", "tier",
+    "message"} (issue #126): the installer's own output goes to stderr. The exit codes are the same either way."""
+    if not as_json:
+        code, message = _install(tier, yes)
+        print(message)
+        return code
+    sys.stdout.flush()
+    saved = os.dup(1)
+    os.dup2(2, 1)                    # pixi, npm and their children write to fd 1: send it to stderr meanwhile
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            code, message = _install(tier, yes)
+    finally:
+        sys.stdout.flush()
+        os.dup2(saved, 1)
+        os.close(saved)
+    status = {0: "done", 2: "stop"}.get(code, "error")
+    print(json.dumps({"status": status, "tier": tier, "message": message}, ensure_ascii=False))
+    return code
+
+
+def _install(tier: str, yes: bool) -> tuple[int, str]:
     if tier not in TIERS:
-        print(f"Unknown tier '{tier}'. Choose one of: {', '.join(TIERS)}.")
-        return 1
+        return 1, f"Unknown tier '{tier}'. Choose one of: {', '.join(TIERS)}."
     t = TIERS[tier]
     if not yes:
         minutes = max(1, round(t.approx_mb / 500))
-        print(
-            f"Installing '{tier}' downloads about {_size(t.approx_mb)} and takes about "
-            f"{minutes} minute(s). Nothing was installed. Say yes, then run: "
-            f"tm env install {tier} --yes. The run continues from the same place."
-        )
-        return 2
+        return 2, (f"Installing '{tier}' downloads about {_size(t.approx_mb)} and takes about "
+                   f"{minutes} minute(s). Nothing was installed. Say yes, then run: "
+                   f"tm env install {tier} --yes. The run continues from the same place.")
     try:
         proc = subprocess.run(
             [str(paths.pixi_bin()), "install", "--frozen", "-e", t.env, "--manifest-path", str(_manifest())],
             env=_pixi_env(),
         )
     except OSError as exc:
-        print(f"Could not start the installer: {exc}")
-        return 1
+        return 1, f"Could not start the installer: {exc}"
     if proc.returncode != 0:
-        return 1
+        return 1, f"The installer stopped with exit code {proc.returncode}; its messages are above."
     if tier == "video":  # the Remotion packages and headless browser belong to this tier (and this yes)
         from tm import render
         from tm.tools import _common
@@ -165,8 +184,7 @@ def install(tier: str, yes: bool) -> int:
         try:
             render.setup()
         except (_common.ToolError, OSError, RuntimeError, ValueError) as exc:
-            print(f"The video tools are installed, but the Remotion setup did not finish: {exc}")
-            return 1
+            return 1, f"The video tools are installed, but the Remotion setup did not finish: {exc}"
     if tier == "animatic":  # puppeteer-core only: the browser is the user's own
         from tm import atlas
         from tm.tools import _common
@@ -174,10 +192,8 @@ def install(tier: str, yes: bool) -> int:
         try:
             atlas.setup()
         except (_common.ToolError, OSError, RuntimeError, ValueError) as exc:
-            print(f"The animatic tools are installed, but their setup did not finish: {exc}")
-            return 1
-    print(i18n.t("env.installed", what=i18n.t(f"env.tier.{tier}"), tier=tier))
-    return 0
+            return 1, f"The animatic tools are installed, but their setup did not finish: {exc}"
+    return 0, i18n.t("env.installed", what=i18n.t(f"env.tier.{tier}"), tier=tier)
 
 
 def _setup(parser: argparse.ArgumentParser) -> None:
@@ -187,6 +203,7 @@ def _setup(parser: argparse.ArgumentParser) -> None:
     inst = sub.add_parser("install")
     inst.add_argument("tier", choices=list(TIERS))
     inst.add_argument("--yes", action="store_true")
+    inst.add_argument("--json", action="store_true")
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -195,7 +212,7 @@ def _run(args: argparse.Namespace) -> int:
         if gone and not getattr(args, "json", False):
             print(f"Removed {len(gone)} environment folder(s) left by earlier plugin versions.")
     if args.env_command == "install":
-        return install(args.tier, args.yes)
+        return install(args.tier, args.yes, args.json)
     if args.env_command == "status":
         rows = {n: {"installed": installed(n), "approx_mb": t.approx_mb} for n, t in TIERS.items()}
         if args.json:
@@ -204,7 +221,7 @@ def _run(args: argparse.Namespace) -> int:
             for n, r in rows.items():
                 print(f"{n}: {'installed' if r['installed'] else 'not installed'} (about {_size(r['approx_mb'])})")
         return 0
-    print("Use: tm env status [--json] | tm env install <tier> --yes")
+    print("Use: tm env status [--json] | tm env install <tier> --yes [--json]")
     return 1
 
 

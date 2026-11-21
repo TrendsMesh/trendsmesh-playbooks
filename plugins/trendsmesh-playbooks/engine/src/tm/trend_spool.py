@@ -194,7 +194,7 @@ def find_workspace(start: Path, session: Any) -> Path | None:
 
 
 def _read_marker(marker: Path) -> dict:
-    data = json.loads(_shared(lambda: marker.read_text(encoding="utf-8")))
+    data = json.loads(_shared(lambda: marker.read_text(encoding="utf-8-sig")))
     if not isinstance(data, dict) or not isinstance(data.get("run"), str) or not data["run"]:
         raise ValueError(f"{marker} does not name a run; turn collection on again with tm trends collect on.")
     return data
@@ -311,7 +311,7 @@ def workspace_of(run: RunFolder) -> Path:
 def _marked(workspace: Path, session: str) -> Path | None:
     """The run folder this session's marker names, as written; None without a readable marker."""
     try:
-        run = json.loads(marker_path(workspace, session).read_text(encoding="utf-8")).get("run")
+        run = json.loads(marker_path(workspace, session).read_text(encoding="utf-8-sig")).get("run")
     except (OSError, ValueError, AttributeError):
         return None
     return Path(workspace) / run if isinstance(run, str) and run else None
@@ -643,8 +643,8 @@ def add_parsers(sub: argparse._SubParsersAction) -> None:
     i.add_argument("--run", required=True, help="the run folder")
     i.add_argument("--tool", required=True, help="the tool's name, short or full")
     i.add_argument("--input", required=True,
-                   help="the tool's input: a JSON object or a file holding one (from here first, else in the run)")
-    i.add_argument("--file", required=True, help="the answer as the tool gave it (from here first, else in the run)")
+                   help="the tool's input: a JSON object or a file holding one (relative to the run folder)")
+    i.add_argument("--file", required=True, help="the answer as the tool gave it (relative to the run folder)")
     i.add_argument("--json", action="store_true")
 
 
@@ -668,7 +668,7 @@ def _spool(args: argparse.Namespace) -> int:
             raise ValueError("the hook event is not a JSON object")
         tool = short_name(event.get("tool_name") or "?")
         cwd = event.get("cwd")
-        workspace = find_workspace(Path(cwd) if isinstance(cwd, str) and cwd else paths.workspace(),
+        workspace = find_workspace(Path(cwd) if isinstance(cwd, str) and cwd else paths.session_folder(),
                                    event.get("session_id"))
         result = handle(event, workspace) if workspace else None
     except Exception as exc:  # noqa: BLE001 - the hook never fails a tool call; the log says why
@@ -717,9 +717,9 @@ def _collect(args: argparse.Namespace) -> int:
         workspace = workspace_of(run)
         session = _session(args)
         if args.state == "on":
-            here = paths.workspace().resolve()     # the hook looks for the marker from Claude's folder
+            here = paths.session_folder().resolve()     # the hook looks for the marker from Claude's folder
             if here != workspace and workspace not in here.parents:
-                raise ValueError(f"{run.path} is not a run in this workspace ({paths.workspace()}).")
+                raise ValueError(f"{run.path} is not a run in this workspace ({paths.session_folder()}).")
             rel = collect_on(workspace, run.path, session)
             theirs = others(workspace, session)
             playbook = state.load(run).playbook
@@ -762,7 +762,7 @@ VIEWER_CHECK = ("This ArtifactData read was made with as_level, so it shows what
 def _ingest(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
-        given = args.input.strip()       # inline JSON, or a file: from here first, else in the run
+        given = args.input.strip()       # inline JSON, or a file in the run (RunFolder.given)
         tool_input = cli.json_arg(given if given[:1] in ("{", "[") else str(run.given(given)))
         if not isinstance(tool_input, dict):
             raise ValueError("--input must be a JSON object, for example '{\"trend_id\": \"t1\"}'.")

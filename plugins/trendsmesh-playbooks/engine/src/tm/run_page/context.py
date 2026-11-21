@@ -80,7 +80,7 @@ class Context:
         if path is None:
             return None
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
+            return json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             return None
 

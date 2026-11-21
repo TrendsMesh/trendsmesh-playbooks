@@ -198,7 +198,7 @@ def _load_steps(steps_path: Path, checkins_path: Path,
     """The playbook's outputs and steps, checked against its check-ins. `budgets` are the
     playbook's budget kinds (data/playbooks.yaml), the only ones a check-in's `yes_for` may name:
     checked here, since tm.checkins cannot import this module."""
-    data = yaml.safe_load(steps_path.read_text(encoding="utf-8")) or {}
+    data = yaml.safe_load(steps_path.read_text(encoding="utf-8-sig")) or {}
     outputs = tuple(data.get("outputs") or ())
     cat = checkins.load(checkins_path)
     for c in cat.checkins.values():
@@ -1567,7 +1567,7 @@ def due(workspace: Path, today: date) -> list[dict]:
     runs: list[tuple[Path, dict]] = []
     for path in sorted((Path(workspace) / "runs").glob("*/*/run.json")):
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         if isinstance(data, dict):

@@ -63,6 +63,29 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A model review every two weeks.** A scheduled check compares the public rankings and Replicate's and ElevenLabs'
   pages with the list and opens one issue for the owner with what is new, what changed price and what is gone.
   Nothing in the list changes without the owner's decision.
+- **One path rule for run files.** Every `tm` command with `--run` reads a relative path inside the run folder,
+  whatever folder it is started from, and a path written from the workspace (`runs/<playbook>/<run>/03_wip/…`)
+  works too. A missing file, or a relative path to a file outside the run, stops with one clear message: give it
+  relative to the run folder (`03_wip/<name>`), or as a full path. `tm ad check` and `tm organic text approve
+  --style` no longer say a file that is there "is not a file in the run", and `tm page build` no longer fails on a
+  relative `--run`.
+- **Commands find your project folder from anywhere inside it.** `tm brand show`, `tm organic used`, `tm organic
+  history` and the other commands without `--run` look up from the current folder for the workspace (the folder
+  with `runs/` or `.trendsmesh/`), and a command with `--run` uses that run's workspace. "No brand profile named …"
+  names the full folder it looked in.
+- **Brand logos are saved once, in the run's brand folder.** `tm tool site brand` no longer writes them under a
+  doubled `runs/…/runs/…` folder.
+- **A Replicate spec that names a missing file stops before anything is paid.** A spec input that reads as a
+  local file (an image, a clip, a sound) is found in the run folder first, else beside the spec; one that is not
+  there is an error, never sent to the model as text. The organic spec check says the same.
+- **JSON files saved by Windows PowerShell are read.** Files with a byte order mark (what PowerShell 5.1's
+  `Out-File -Encoding utf8` writes) are accepted by `tm trends shortlist --fit` and every other command that
+  reads JSON or YAML.
+- **`--json` on every command.** `tm env install` and `tm report check`, `send` and `github` take `--json` too;
+  `tm env install … --json` prints one object (`status`, `tier`, `message`), with the installer's own output on
+  stderr.
+- **`tm organic pack check --stage recipe` names the step the run is really at,** instead of always saying "D1
+  can be done", also after D2.
 
 ## 0.13.1
 

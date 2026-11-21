@@ -140,7 +140,7 @@ def _merge(base: dict, over: dict) -> dict:
 def load(run: RunFolder) -> dict:
     path = run.path / FILE
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
         raise ValueError(f"{FILE} does not exist yet. It is written from the intake answers.") from None
     except yaml.YAMLError as exc:
@@ -418,7 +418,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="action", required=True)
     w = sub.add_parser("write", help="write config.yaml from the intake answers")
     source = w.add_mutually_exclusive_group(required=True)
-    source.add_argument("--answers", help="a JSON file with the intake answers (from here first, else in the run)")
+    source.add_argument("--answers", help="a JSON file with the intake answers (relative to the run folder)")
     source.add_argument("--from-previous", action="store_true", dest="from_previous",
                         help="copy the config of the run this one follows (trend research; organic video's week run)")
     sub.add_parser("check", help="list what is missing or wrong in config.yaml")
@@ -451,7 +451,7 @@ def _run(args: argparse.Namespace) -> int:
             other.write_from_previous(run)
             return _report(args, validate(run), f"Copied {FILE} from the previous run.")
         if args.action == "write":
-            data = json.loads(run.given(args.answers).read_text(encoding="utf-8"))
+            data = json.loads(run.given(args.answers).read_text(encoding="utf-8-sig"))
             if not isinstance(data, dict):
                 raise ValueError("The answers file must hold one JSON object.")
             write_from_intake(run, data)

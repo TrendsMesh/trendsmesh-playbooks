@@ -3,6 +3,7 @@ runs/01-refresh-ad/2026-11-05_Ad-3/."""
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -19,6 +20,11 @@ _SHORT = {s.split("_", 1)[-1]: s for s in STAGES}
 
 class ReadOnlyError(Exception):
     pass
+
+
+class NotInRun(FileNotFoundError, ValueError):
+    """A path named on the command line that is not a file or folder of the run (issue #126). Both a ValueError (a
+    bad argument) and a FileNotFoundError, so every command's existing handler reports it."""
 
 
 class RunExists(FileExistsError):
@@ -47,6 +53,11 @@ def stage_dir(stage: str) -> str:
 @dataclass
 class RunFolder:
     path: Path
+
+    def __post_init__(self) -> None:
+        # Always absolute (issue #126): every relative_to(run.path) and every `run.path / rel` then agree, whatever
+        # the working folder and however --run was spelled. Recorded paths stay run-relative.
+        self.path = Path(self.path).resolve()
 
     @staticmethod
     def _path(workspace: Path, name: str, today: date, pb: playbooks.Playbook) -> Path:
@@ -125,17 +136,49 @@ class RunFolder:
         plain = folder / f"{stem}.{ext}"
         return plain if plain.is_file() else None
 
-    def given(self, path: Path | str) -> Path:
-        """A file or folder named on the command line of a command with `--run`: an absolute path as it is; a
-        relative one inside the run when it is there (a run-relative name such as 03_wip/edit_v01.props.json,
-        whatever the working folder, issue #90); else from the current folder when it is there (a path written
-        from the workspace, runs/.../03_wip/x.json); else inside the run, so a message names where it was looked
-        for. Every `tm` command that takes a run resolves its input paths here."""
+    def given(self, path: Path | str, *, missing_ok: bool = False) -> Path:
+        """A file or folder named on the command line of a command with `--run`; every `tm` command that takes a run
+        resolves its input paths here (issue #126, one rule):
+        - an absolute path as it is (spelled from the run folder when it is inside it);
+        - a relative path inside the run folder, whatever the working folder (issue #90). A path written from the
+          workspace (runs/<playbook>/<run>/03_wip/x.json) is cut to run-relative, and one written from a folder
+          inside the run (x.json from 03_wip) is found there too;
+        - anything else raises NotInRun: a missing file, and a relative path to a file outside the run (give that
+          one as an absolute path). With `missing_ok`, a path inside the run that does not exist yet is returned,
+          for a caller that says itself what is missing."""
+        given = path
         path = Path(path)
         if path.is_absolute():
-            return path
-        inside = self.path / path
-        return inside if inside.exists() or not path.exists() else path
+            return self._spelled_inside(path) or path
+        lead = ("runs", self.path.parent.name, self.path.name)
+        if len(path.parts) > 3 and tuple(p.casefold() for p in path.parts[:3]) == tuple(x.casefold() for x in lead):
+            path = Path(*path.parts[3:])
+        inside = self._spelled_inside(self.path / path, resolve=False)
+        if inside is not None and inside.exists():
+            return inside
+        here = Path.cwd() / path
+        if here.exists():
+            found = self._spelled_inside(here)
+            if found is not None:
+                return found
+        elif inside is not None and missing_ok:
+            return inside
+        name = Path(str(given).replace("\\", "/")).name or "<name>"
+        raise NotInRun(f"{Path(given).as_posix()} is not in the run folder {self.path}. Give it relative to the run "
+                       f"folder, for example 03_wip/{name}, or as an absolute path for a file outside the run.")
+
+    def _spelled_inside(self, path: Path, resolve: bool = True) -> Path | None:
+        """`path` spelled from the run folder when it is inside it (`..` folded, and with `resolve` links and other
+        spellings of the same folder too), else None."""
+        flat = Path(os.path.normpath(path))
+        if flat == self.path or self.path in flat.parents:
+            return flat
+        if resolve:
+            try:
+                return self.path / Path(path).resolve().relative_to(self.path)
+            except (ValueError, OSError):
+                return None
+        return None
 
     def unique_path(self, path: Path | str) -> Path:
         """Never overwrite (the handoff's trend_shortlist.py): x.json while it is free, else x_v02.json,

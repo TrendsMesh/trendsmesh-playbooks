@@ -508,7 +508,7 @@ def _flat(node: object, prefix: str = "") -> dict[str, str]:
 
 def _read(path: Path) -> dict:
     try:
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        data = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
         return {}
     except (OSError, yaml.YAMLError, UnicodeDecodeError) as exc:

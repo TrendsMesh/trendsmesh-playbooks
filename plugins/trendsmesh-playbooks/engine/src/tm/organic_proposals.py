@@ -246,7 +246,7 @@ def _approach(p: dict, pid: str, found: dict[str, list[int]], out: list[Problem]
 
 @functools.lru_cache(maxsize=None)
 def _weights(path: Path) -> dict:
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
     if tuple(data.get("levels") or ()) != RISK_LEVELS:
         raise ValueError(f"{path.name}: levels must be {', '.join(RISK_LEVELS)}, in that order.")
     risks = data.get("risks") or {}
@@ -931,7 +931,7 @@ def _left_over(workspace: Path, parent: str, key: str) -> list[Path]:
     found = []
     for run_json in sorted(folder.glob("*/run.json")) if folder.is_dir() else ():
         try:
-            mine = json.loads(run_json.read_text(encoding="utf-8")).get("organic") or {}
+            mine = json.loads(run_json.read_text(encoding="utf-8-sig")).get("organic") or {}
         except (OSError, ValueError, AttributeError):
             continue
         if isinstance(mine, dict) and mine.get("parent") == parent and mine.get("key") == key and not mine.get("dropped"):

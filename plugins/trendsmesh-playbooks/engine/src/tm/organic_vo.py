@@ -118,7 +118,7 @@ def compare(pack: dict, words: list[dict], cfg: dict, prompt: str | None = None,
 
 def words_of(path: Path) -> list[dict]:
     try:
-        words = json.loads(path.read_text(encoding="utf-8"))
+        words = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
         raise ValueError(i18n.t("vo_sync.bad_words", file=path.name, why=str(exc))) from None
     if not (isinstance(words, list) and all(isinstance(w, dict) and {"start", "end"} <= set(w) for w in words)):

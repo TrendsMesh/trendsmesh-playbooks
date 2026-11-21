@@ -103,7 +103,7 @@ def cover_of(run: RunFolder, pid: str, final: Path) -> Path | None:
 def made_for_final(cover: Path) -> str | None:
     """The final a cover's `tm tool deliver cover` record names (run-relative), else None."""
     try:
-        said = json.loads((cover.parent / f"{cover.name}.response.json").read_text(encoding="utf-8"))
+        said = json.loads((cover.parent / f"{cover.name}.response.json").read_text(encoding="utf-8-sig"))
         final = said["request"]["final"]
     except (OSError, ValueError, KeyError, TypeError):
         return None
@@ -117,7 +117,7 @@ def upload_of(final: Path) -> Path:
 def target_of(run: RunFolder, final: Path) -> float:
     """The loudness target `tm tool deliver finish` made this final for, else the run's `qa.lufs_target`."""
     try:
-        said = json.loads((final.parent / f"{final.name}.response.json").read_text(encoding="utf-8"))
+        said = json.loads((final.parent / f"{final.name}.response.json").read_text(encoding="utf-8-sig"))
         target = said["request"]["lufs_target"]
         if isinstance(target, (int, float)) and not isinstance(target, bool):
             return float(target)

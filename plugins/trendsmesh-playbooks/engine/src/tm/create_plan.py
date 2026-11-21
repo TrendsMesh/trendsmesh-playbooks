@@ -71,7 +71,7 @@ NEVER = ("A video is never regenerated automatically. Show the user the take and
 
 def _read(path: Path) -> tuple[dict | None, list[Problem]]:
     try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
         return None, [Problem(Path(path).name, f"{Path(path).name} cannot be read as JSON ({exc}).", "Write it again.")]
     if not isinstance(data, dict):
@@ -739,7 +739,7 @@ def _spec_model(run: RunFolder, spec: str | None) -> str | None:
     if not _text(spec):
         return None
     try:
-        data = json.loads(run.given(str(spec)).read_text(encoding="utf-8"))
+        data = json.loads(run.given(str(spec)).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     return data.get("model") if isinstance(data, dict) and _text(data.get("model")) else None
@@ -794,7 +794,7 @@ def _music_plan(run: RunFolder, value: str | None) -> object:
     try:
         if text[:1] in ("{", "["):
             return json.loads(text)
-        return json.loads(run.given(text).read_text(encoding="utf-8"))
+        return json.loads(run.given(text).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
 
@@ -860,7 +860,7 @@ def _audio_takes(run: RunFolder, stem: str) -> list[tuple[str, float | None]]:
             continue
         if m.group("record"):    # a music take's record (pending or done): the take is paid
             try:
-                data = json.loads((folder / name).read_text(encoding="utf-8"))
+                data = json.loads((folder / name).read_text(encoding="utf-8-sig"))
             except (OSError, ValueError):
                 data = {}
             used = data.get("credits_used") if isinstance(data, dict) else None

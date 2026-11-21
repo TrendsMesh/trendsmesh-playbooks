@@ -589,7 +589,7 @@ def music_resume(record_path: Path | str) -> dict:
     """Finish a paid take whose audio was not saved: fetch it from the account's history (free)."""
     record_path = Path(record_path)
     try:
-        record = json.loads(record_path.read_text(encoding="utf-8"))
+        record = json.loads(record_path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         raise c.ToolError(f"{record_path.name} is not a readable music record. Nothing was run.") from None
     if not isinstance(record, dict) or record.get("kind") not in ("music_pending", "music_take"):
@@ -982,7 +982,7 @@ def _cmd_music_compose(a: argparse.Namespace, run) -> int:
     rec = _record_path(out)
     if rec.exists():
         try:
-            kind = json.loads(rec.read_text(encoding="utf-8")).get("kind")
+            kind = json.loads(rec.read_text(encoding="utf-8-sig")).get("kind")
         except (OSError, ValueError, AttributeError):
             kind = None
         todo = (f" It is a paid take that was not saved: finish it for free with --resume {c.rel(run, rec)}."

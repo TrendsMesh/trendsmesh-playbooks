@@ -140,7 +140,7 @@ def latest(workspace: Path, kind: str, name: str) -> dict | None:
         return None
     path = versions[-1][1]
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except ValueError:
         raise Stop(f"{path.relative_to(Path(workspace)).as_posix()} is damaged (not JSON): save the text set again "
                    f"(tm brand text-style save); {AGAIN}.") from None
@@ -226,7 +226,8 @@ def add_parser(sub) -> None:
     t.add_argument("--run", help="the run folder (show: whose set it uses)")
     t.add_argument("--kind", choices=brand.KINDS)
     t.add_argument("--name", help="the brand's or channel's name")
-    t.add_argument("--style", help="save: the approved 03_wip/text_style_vNN.json (its look, accent, font, logo)")
+    t.add_argument("--style",
+                   help="save: the approved 03_wip/text_style_vNN.json (its look, accent, font, logo), relative to the run folder")
     t.add_argument("--look", choices=oe.LOOKS)
     t.add_argument("--accent", help="the brand colour, #RRGGBB")
     t.add_argument("--font", help="the brand's font file (TTF, OTF, WOFF, WOFF2), in the run")

@@ -76,7 +76,7 @@ AI_LABELS = ("required", "on", "not_required")
 
 
 def _load_rules() -> dict:
-    data = yaml.safe_load(RULES_FILE.read_text(encoding="utf-8"))
+    data = yaml.safe_load(RULES_FILE.read_text(encoding="utf-8-sig"))
     data["as_of"] = str(data["as_of"])
     return data
 
@@ -631,7 +631,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     md = sub.add_parser("md", help="write the .md beside a checked kit's JSON")
     for s in (c, md):
         s.add_argument("--run", required=True, help="the run folder")
-        s.add_argument("--file", required=True, help="the kit, 04_final/kits/<id>_kit_vNN.json")
+        s.add_argument("--file", required=True,
+                       help="the kit, 04_final/kits/<id>_kit_vNN.json, relative to the run folder")
         s.add_argument("--json", action="store_true")
     c.add_argument("--audience-language", help="the kit's language (default: the channel profile's)")
     c.add_argument("--account-type", choices=brand.ACCOUNT_TYPES, help="default: the channel profile's")

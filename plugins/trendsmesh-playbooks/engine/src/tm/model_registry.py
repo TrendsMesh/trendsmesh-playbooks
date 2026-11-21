@@ -55,7 +55,7 @@ def _text_dates(value):
 
 
 def _read(path: Path) -> dict:
-    return _text_dates(yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {})
+    return _text_dates(yaml.safe_load(Path(path).read_text(encoding="utf-8-sig")) or {})
 
 
 @functools.lru_cache(maxsize=None)
@@ -197,7 +197,7 @@ def live_price(price_file: Path | str, model_id: str, variant: str, *, data: dic
     var = _variant(model_id, variant, data)
     live, per = var.get("live") or {}, (var.get("price") or {}).get("per")
     name = Path(price_file).name
-    entries = json.loads(Path(price_file).read_text(encoding="utf-8"))
+    entries = json.loads(Path(price_file).read_text(encoding="utf-8-sig"))
     entry = next((e for e in entries if isinstance(e, dict) and e.get("model") == model_id), None)
     if entry is None:
         raise ValueError(f"{model_id} is not in {name}.")

@@ -194,7 +194,7 @@ def _read_saved(path: Path) -> list:
 
 def _secret_values() -> set[str]:
     try:
-        text = (paths.data_dir() / "secrets.env").read_text(encoding="utf-8")
+        text = (paths.data_dir() / "secrets.env").read_text(encoding="utf-8-sig")
     except (OSError, RuntimeError):
         return set()
     values = set()
@@ -308,12 +308,16 @@ def _run(args: argparse.Namespace) -> int:
 def _check_setup(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("file")
     parser.add_argument("--workspace", default=None)
+    parser.add_argument("--json", action="store_true",
+                        help='one JSON object: {"status": "clean"|"found", "findings": [...]}')
 
 
 def _check_run(args: argparse.Namespace) -> int:
     try:
         text = Path(args.file).read_text(encoding="utf-8-sig")
     except (OSError, ValueError) as exc:
+        if args.json:
+            print(json.dumps({"status": "error", "message": f"Cannot read {args.file}: {exc}"}))
         print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
         return 2
     root = Path(args.workspace) if args.workspace else paths.workspace()
@@ -322,6 +326,10 @@ def _check_run(args: argparse.Namespace) -> int:
         print(f"tm report check: stopped reading the workspace after {stopped} files; values in older runs "
               "were not checked", file=sys.stderr)
     found = findings(text, known)
+    if args.json:
+        print(json.dumps({"status": "found" if found else "clean",
+                          "findings": [{"line": n, "kind": k, "value": v} for n, k, v in found]}, ensure_ascii=False))
+        return 1 if found else 0
     if not found:
         print("clean")
         return 0
@@ -443,6 +451,7 @@ def _send_setup(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--kind", required=True, choices=["bug", "change"])
     _title_args(parser)
     parser.add_argument("--contact", default=None)
+    parser.add_argument("--json", action="store_true", help="accepted for every command: the answer is always JSON")
 
 
 def _send_run(args: argparse.Namespace) -> int:
@@ -450,6 +459,8 @@ def _send_run(args: argparse.Namespace) -> int:
         result = send(Path(args.file), args.kind, _title(args), args.contact or None,
                       os.environ.get("TM_REPORT_URL") or DEFAULT_URL)
     except (OSError, ValueError) as exc:
+        if args.json:
+            print(json.dumps({"outcome": "unreadable", "reason": f"Cannot read {args.file}: {exc}"}))
         print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result))
@@ -518,12 +529,15 @@ def _github_setup(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("file")
     parser.add_argument("--kind", required=True, choices=["bug", "change"])
     _title_args(parser)
+    parser.add_argument("--json", action="store_true", help="accepted for every command: the answer is always JSON")
 
 
 def _github_run(args: argparse.Namespace) -> int:
     try:
         result = github(Path(args.file), args.kind, _title(args))
     except (OSError, ValueError) as exc:
+        if args.json:
+            print(json.dumps({"outcome": "unreadable", "reason": f"Cannot read {args.file}: {exc}"}))
         print(f"Cannot read {args.file}: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result))

@@ -56,7 +56,7 @@ TIMEOUT = 60
 
 def the_set() -> dict:
     """data/sfx.yaml: {licence, licence_url, checked, effects: {name: {id, title, page}}}."""
-    return yaml.safe_load((paths.bundled_data() / SET_FILE).read_text(encoding="utf-8"))
+    return yaml.safe_load((paths.bundled_data() / SET_FILE).read_text(encoding="utf-8-sig"))
 
 
 def _get(url: str) -> str:
@@ -213,7 +213,7 @@ def _fetch(run, effect: dict, licence: dict) -> Path:
 
 def _copy(run, src: Path, licence: dict) -> str:
     try:
-        side = json.loads(src.with_name(src.name + ".json").read_text(encoding="utf-8"))
+        side = json.loads(src.with_name(src.name + ".json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         side = {}
     dest = run.path / RUN_SFX / src.name

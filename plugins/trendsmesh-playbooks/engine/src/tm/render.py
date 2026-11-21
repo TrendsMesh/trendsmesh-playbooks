@@ -230,7 +230,7 @@ def _check_props(run: RunFolder, comp: str, props: Path) -> dict:
     if comp not in COMPS:
         raise c.ToolError(f"Unknown composition '{comp}'. Choose one of: {', '.join(COMPS)}.")
     try:
-        data = json.loads(Path(props).read_text(encoding="utf-8"))
+        data = json.loads(Path(props).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
         raise c.ToolError(f"The props file {props} cannot be read as JSON: {exc}") from None
     if not isinstance(data, dict):
@@ -392,7 +392,7 @@ def _setup_cli(p: argparse.ArgumentParser) -> None:
         s = sub.add_parser(name)
         s.add_argument("--run", required=True)
         s.add_argument("--comp", required=True, choices=COMPS)
-        s.add_argument("--props", required=True, help="the props JSON file")
+        s.add_argument("--props", required=True, help="the props JSON file, relative to the run folder")
         s.add_argument("--out", default=None, help="output path relative to the run folder (default: next version)")
         s.add_argument("--json", action="store_true")
         if name == "still":

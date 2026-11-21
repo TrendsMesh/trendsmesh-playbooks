@@ -253,7 +253,8 @@ def checked_gap(run: RunFolder) -> str | None:
 def add_parser(sub: argparse._SubParsersAction) -> None:
     c = sub.add_parser("check", help="check the themes, quotes and language bank against the items (CB5)")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", required=True, help=f"the themes file, {voice.STAGE}/{STEM}_vNN.json")
+    c.add_argument("--file", required=True,
+                   help=f"the themes file, {voice.STAGE}/{STEM}_vNN.json, relative to the run folder")
     c.add_argument("--json", action="store_true")
 
 

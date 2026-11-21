@@ -597,7 +597,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
         r.add_argument("--json", action="store_true")
     i = sub.add_parser("import", help="review text, CSV or JSONL the user has (tier A or B)")
     i.add_argument("--run", required=True, help="the run folder")
-    i.add_argument("--file", required=True, help="the file to import (from here first, else in the run)")
+    i.add_argument("--file", required=True, help="the file to import (relative to the run folder)")
     i.add_argument("--format", required=True, choices=FORMATS, help="text: one item per blank-line block")
     i.add_argument("--source", required=True, help="a short label, e.g. amazon or survey: ids are <source>:<n>")
     i.add_argument("--tier", required=True, help="A (own customers) or B (category)")
@@ -634,7 +634,8 @@ def _reddit(args: argparse.Namespace, run: RunFolder) -> int:
 
 def _import(args: argparse.Namespace, run: RunFolder) -> int:
     name = Path(args.file).name
-    items = import_file(run.given(args.file), args.format, args.source, args.tier, text_column=args.text_column,
+    items = import_file(run.given(args.file, missing_ok=True), args.format,   # import_file says what is missing
+                        args.source, args.tier, text_column=args.text_column,
                         url=args.url)
     _refuse_relabel(run, items)
     added, dup = append_items(run, items)

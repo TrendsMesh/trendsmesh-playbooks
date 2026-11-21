@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     if len(args) != 2:
         print("Use: python -m tm.tools._ocr REQUEST.json RESULT.json", file=sys.stderr)
         return 1
-    request = json.loads(Path(args[0]).read_text(encoding="utf-8"))
+    request = json.loads(Path(args[0]).read_text(encoding="utf-8-sig"))
     Path(args[1]).write_text(json.dumps(read(request), ensure_ascii=False), encoding="utf-8")
     return 0
 
@@ -178,7 +178,7 @@ def read_with_tier(video: Path | str, crops: list[dict]) -> dict:
         if proc.returncode != 0 or not result.is_file():
             tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-3:]
             raise c.ToolError(c.scrub("OCR could not run: " + (" ".join(tail) or f"exit {proc.returncode}")))
-        return json.loads(result.read_text(encoding="utf-8"))
+        return json.loads(result.read_text(encoding="utf-8-sig"))
 
 
 # Which crops to read --------------------------------------------------------------------------

@@ -39,7 +39,7 @@ posts.
   of each run (C3, H1).
 - **JSON you write goes into a file** with the Write tool, a new `_vNN` for every change, never
   inline: inline JSON breaks on Windows. **Every `tm` command with `--run` reads a relative path in
-  the run folder first** (`03_wip/edit_v01.props.json`), whatever the working folder. Record each file you write with `tm record --run R --file
+  the run folder** (`03_wip/edit_v01.props.json`), whatever the working folder; a file outside the run is a full path. Record each file you write with `tm record --run R --file
   <path> --stage <stage> --source "<what it rests on>"`; the `tm` commands record their own.
 - Every number you write has its source next to it (R3). Pages and summaries in the chat
   language; post text and speech in the audience language.
@@ -983,10 +983,10 @@ The cheap stage is the test (OV9): the images show most problems before the take
 Show a task list with the times (two images about 1 minute) and a one-line status per item.
 
 1. **Every paid call goes through the guard**: write the item's spec as a new
-   `03_wip/<item>_vNN.json` (`{"model": "<owner/name>", "input": {...}}`, inputs as paths in the run,
-   relative to the spec), then `tm tool replicate_run --run R 03_wip/<item>_vNN.json --name <item>
+   `03_wip/<item>_vNN.json` (`{"model": "<owner/name>", "input": {...}}`, inputs as paths relative to the
+   run folder, `03_wip/…`, or full paths: a missing one stops the run before anything is paid), then `tm tool replicate_run --run R 03_wip/<item>_vNN.json --name <item>
    --cost <that item's line cost> --json`. The spec's path may be the run's own (`03_wip/…`, read in
-   the run whatever the working folder) or a full path. The item is the pack's (`stages[].items[].name`), the
+   the run folder whatever the working folder) or a full path. The item is the pack's (`stages[].items[].name`), the
    model its own, and `--cost` its cost line. The engine refuses a spec that breaks the model's
    rules, an item the checked pack does not make, a second paid run without the user's request,
    and any spend past the approved budget (exit 2: nothing ran, nothing was spent).

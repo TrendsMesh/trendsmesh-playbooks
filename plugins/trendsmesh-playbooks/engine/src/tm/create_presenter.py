@@ -69,7 +69,7 @@ def _price_files(run: RunFolder, plan: dict) -> list[Path]:
 def _tier(path: Path, model: str, words: tuple[str, ...]) -> str | None:
     """The criteria of the one tier of `model` in `path` holding all `words` (else its only tier), or None."""
     try:
-        entries = json.loads(path.read_text(encoding="utf-8"))
+        entries = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     entry = next((e for e in entries if isinstance(e, dict) and e.get("model") == model), None) \
@@ -143,7 +143,7 @@ def record(run: RunFolder, situation: str, model: object) -> str | None:
     its run-relative path; None when the pick leaves the plan as it is (or there is no checked plan)."""
     path = create_plan.checked_file(run, create_plan.PLAN)
     try:
-        plan = json.loads(path.read_text(encoding="utf-8"))
+        plan = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError, AttributeError, TypeError):
         return None
     if situation not in ROWS or not isinstance(plan, dict):

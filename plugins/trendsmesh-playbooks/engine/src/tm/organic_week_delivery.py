@@ -191,7 +191,7 @@ def delivered_gap(run: RunFolder) -> str | None:
     plan_rows = [r for r in manifest.rows(run) if r["source"] == SOURCE]
     if rows and plan_rows and plan_rows[-1]["parent"] == rows[-1]["file"]:
         try:
-            data = json.loads((run.path / rows[-1]["parent"]).read_text(encoding="utf-8"))
+            data = json.loads((run.path / rows[-1]["parent"]).read_text(encoding="utf-8-sig"))
             built = {v["run"]: v for v in data["plugin"]["slots"].values()}
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
             built = {}

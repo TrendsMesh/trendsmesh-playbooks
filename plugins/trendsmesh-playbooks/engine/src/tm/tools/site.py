@@ -631,7 +631,7 @@ def logos(run, page: _Page, raw: str, url: str, name: str = "") -> tuple[list[di
         if digest in kept:      # the same picture twice (a light and a dark copy of one file)
             continue
         kept.add(digest)
-        dest = run.unique_path(run.path / BRAND_DIR / f"{cand['kind']}_{n:02d}{ext}")
+        dest = run.unique_path(f"{BRAND_DIR}/{cand['kind']}_{n:02d}{ext}")   # run-relative (#126)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
         png = dest if ext == ".png" else dest.with_suffix(".png")

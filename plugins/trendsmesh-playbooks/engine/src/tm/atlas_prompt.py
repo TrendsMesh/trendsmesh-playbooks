@@ -45,7 +45,7 @@ CARD_FIELDS = (("Looks", "look"), ("Finishing passes, on every frame", "finish")
 
 @functools.lru_cache(maxsize=1)
 def _styles() -> tuple[dict, ...]:
-    return tuple(json.loads((ROOT / "styles.json").read_text(encoding="utf-8")))
+    return tuple(json.loads((ROOT / "styles.json").read_text(encoding="utf-8-sig")))
 
 
 def styles() -> list[dict]:
@@ -87,7 +87,7 @@ ENERGIES = ("calm", "medium", "high")
 
 @functools.lru_cache(maxsize=1)
 def _previews() -> dict:
-    return json.loads((PREVIEWS / "previews.json").read_text(encoding="utf-8"))
+    return json.loads((PREVIEWS / "previews.json").read_text(encoding="utf-8-sig"))
 
 
 def previews() -> dict:

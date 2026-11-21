@@ -43,7 +43,7 @@ def _fetched(run: RunFolder) -> date | None:
     latest = None
     for path in sorted(folder.rglob("*.json")) if folder.is_dir() else []:
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         if not isinstance(data, dict):
@@ -73,7 +73,7 @@ def _days(run: RunFolder) -> int:
 
 def _seed_until(run: RunFolder) -> date | None:
     try:
-        seed = json.loads((run.path / SEED_FILE).read_text(encoding="utf-8"))
+        seed = json.loads((run.path / SEED_FILE).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     return _day(seed.get("valid_until")) if isinstance(seed, dict) else None

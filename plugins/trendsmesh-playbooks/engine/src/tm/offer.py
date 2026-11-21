@@ -111,7 +111,7 @@ def fetch(url: str = PLANS_URL, timeout: float = TIMEOUT_S) -> object | None:
     saved = os.environ.get("TM_PLANS_FILE")
     if saved:
         try:
-            return json.loads(Path(saved).read_text(encoding="utf-8"))
+            return json.loads(Path(saved).read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             return None
     req = urllib.request.Request(url, headers={"Accept": "application/json",
@@ -149,7 +149,7 @@ def _prefs_file(workspace: Path) -> Path:
 
 def _prefs(workspace: Path) -> dict:
     try:
-        data = json.loads(_prefs_file(workspace).read_text(encoding="utf-8"))
+        data = json.loads(_prefs_file(workspace).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}
@@ -205,7 +205,7 @@ def record_offer(workspace: Path) -> None:
 def run_mode(run_path: Path) -> str | None:
     """A run's own choice (run.json `trendsmesh_mode`), else None."""
     try:
-        data = json.loads((Path(run_path) / "run.json").read_text(encoding="utf-8"))
+        data = json.loads((Path(run_path) / "run.json").read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     value = data.get("trendsmesh_mode") if isinstance(data, dict) else None
@@ -245,7 +245,7 @@ def _setup_offer(p: argparse.ArgumentParser) -> None:
 def _run_offer(args: argparse.Namespace) -> int:
     if args.plans_file:
         try:
-            data = json.loads(Path(args.plans_file).read_text(encoding="utf-8"))
+            data = json.loads(Path(args.plans_file).read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             return cli.fail(args, f"The plans file can't be read: {exc}")
     else:

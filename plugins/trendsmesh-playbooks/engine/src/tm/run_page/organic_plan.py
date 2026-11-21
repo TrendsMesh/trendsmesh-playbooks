@@ -536,7 +536,7 @@ def _week_write(run: RunFolder, got: dict) -> dict:
     from tm import run_page
     pages.clear_await(run, run_page.PAGE)
     path = run.latest(organic_week.WIP, organic_week.DECISIONS_STEM, "json")
-    body = json.loads(path.read_text(encoding="utf-8"))
+    body = json.loads(path.read_text(encoding="utf-8-sig"))
     rel = path.relative_to(run.path).as_posix()
     counts: dict[str, int] = {}
     for row in body["decisions"].values():

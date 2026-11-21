@@ -38,7 +38,7 @@ def _equal(a: object, b: object) -> bool:
 
 def load(path: Path) -> dict:
     """A schema file."""
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
 def _is(value: object, kind: str) -> bool:

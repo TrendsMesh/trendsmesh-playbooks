@@ -97,7 +97,7 @@ class Readiness:
 def _read_catalogue(path: Path) -> list[dict]:
     """The checks in `path`, refused when one names a playbook that is not registered or an MCP
     state its MCP never has (`ok_states`): a typo would otherwise drop a check without a word."""
-    checks = yaml.safe_load(path.read_text(encoding="utf-8"))["checks"]
+    checks = yaml.safe_load(path.read_text(encoding="utf-8-sig"))["checks"]
     known = {pb.id for pb in playbooks.all_playbooks()} | {GENERAL}
     for e in checks:
         unknown = [p for p in e.get("playbooks", [REFRESH_AD]) if p not in known]

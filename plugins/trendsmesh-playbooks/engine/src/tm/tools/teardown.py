@@ -1022,7 +1022,7 @@ def main(argv: list[str] | None = None) -> int:
     transcript_path: Path | None
     if a.transcript:
         transcript_path = Path(a.transcript)
-        transcript = json.loads(transcript_path.read_text(encoding="utf-8"))
+        transcript = json.loads(transcript_path.read_text(encoding="utf-8-sig"))
     elif a.no_transcribe:
         transcript_path, transcript = None, None
     else:

@@ -74,7 +74,7 @@ def _bad(path: Path, what: str) -> ValueError:
 
 
 def _parse(path: Path) -> Catalogue:
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
     levels = data.get("levels") or {}
     if set(levels) != set(LEVEL_IDS):
         raise _bad(path, f"levels must be exactly {', '.join(LEVEL_IDS)}")

@@ -72,17 +72,19 @@ def _setup(p: argparse.ArgumentParser) -> None:
                              ("saturation", "check the Ad Library saturation checks (CB4)")):
         c = sub.add_parser(action, help=helptext)
         c.add_argument("--run", required=True, help="the run folder")
-        c.add_argument("--file", required=True, help=f"the file, {_FILES[action][2]}")
+        c.add_argument("--file", required=True, help=f"the file, {_FILES[action][2]}, relative to the run folder")
         c.add_argument("--json", action="store_true")
     c = sub.add_parser("check", help="check brief.json at a stage (CB1-CB13); stages are cumulative")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", required=True, help=f"the brief, {brief_checks.FINAL}/{brief_checks.STEM}_vNN.json")
+    c.add_argument("--file", required=True,
+                   help=f"the brief, {brief_checks.FINAL}/{brief_checks.STEM}_vNN.json, relative to the run folder")
     c.add_argument("--stage", required=True, choices=brief_checks.STAGES,
                    help="concepts (C1), brief (D) or production (E1)")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("pick", help="Hands-off G2: the top concepts by score that differ enough (CB6)")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", required=True, help=f"the brief, {brief_checks.FINAL}/{brief_checks.STEM}_vNN.json")
+    c.add_argument("--file", required=True,
+                   help=f"the brief, {brief_checks.FINAL}/{brief_checks.STEM}_vNN.json, relative to the run folder")
     c.add_argument("--json", action="store_true")
     _setup_page(sub)
     _setup_media(sub)
@@ -91,7 +93,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
 def _setup_page(sub) -> None:
     c = sub.add_parser("page", help="build the page from brief.json: 04_final/brief_pack_vNN/ (CB12, CB13)")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", help=f"the brief (default: the latest {_BRIEF_FILE})")
+    c.add_argument("--file", help=f"the brief (default: the latest {_BRIEF_FILE}), relative to the run folder")
     c.add_argument("--single-file", action="store_true",
                    help="one 04_final/brief_pack_vNN.html with the media inlined, for a recipient without claude.ai")
     c.add_argument("--json", action="store_true")
@@ -107,7 +109,8 @@ def _setup_page(sub) -> None:
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--stage", required=True, choices=brief_page.STAGES, help="the check-in decided on the page")
     src = c.add_mutually_exclusive_group()
-    src.add_argument("--file", help="a saved ArtifactData list/query answer (default: the latest on this page)")
+    src.add_argument("--file",
+                     help="a saved ArtifactData list/query answer (default: the latest on this page), relative to the run folder")
     src.add_argument("--text", help="a file holding the page's \"Copy my decisions\" text, saved in the run")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("choose", help="record the concepts chosen to brief (it decides no check-in)")
@@ -324,7 +327,7 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
         message += (f" Rendered {len(items)} animatic{'' if len(items) == 1 else 's'} into {animatic.RENDERS} and "
                     f"wrote {brief}, which names them.")
         if args.concepts:                              # the others keep the paths of the brief they came from
-            concepts = {x["id"]: x for x in json.loads((run.path / brief).read_text(encoding="utf-8"))["concepts"]
+            concepts = {x["id"]: x for x in json.loads((run.path / brief).read_text(encoding="utf-8-sig"))["concepts"]
                         if isinstance(x, dict)}
             left = animatic.not_rendered(run, concepts, [cid for cid in concepts if cid not in args.concepts],
                                          formats)

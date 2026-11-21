@@ -135,7 +135,7 @@ def _hook_fit(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     given = Path(args.file.strip())
     fit_file = given.as_posix() if (run.path / given).is_file() else None
     path = research_growth.hook_fit(run, data, cfg, fit_file=fit_file)
-    out = json.loads(path.read_text(encoding="utf-8"))
+    out = json.loads(path.read_text(encoding="utf-8-sig"))
     ids = [r["id"] for r in out["shortlist"]]
     scored = len(out["shortlist"]) + len(out["not_shortlisted"]) + len(out["contradicted"])
     lines = [f"Wrote {_rel(run, path)}: the {len(ids)} best-fitting of {scored} hooks (fit 1-5, Creative brief's "
@@ -177,7 +177,7 @@ def _hooks(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     given = Path(args.file.strip())
     named = None if inline or not (run.path / given).is_file() else given.as_posix()
     path = research_growth.hooks(run, data, cfg, use_file=named)
-    out = json.loads(path.read_text(encoding="utf-8"))
+    out = json.loads(path.read_text(encoding="utf-8-sig"))
     candidates = research_growth.candidates_of(path)
     used = [r for r in out["kept"] if r["plugin"]["in_category"]]
     payload = {"status": "done", "json": _rel(run, path), "candidates": _rel(run, candidates),
@@ -199,7 +199,7 @@ def _hooks(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
 def _growth(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     as_of = date.fromisoformat(args.as_of or state.load(run).created)
     path = research_growth.compute(run, as_of, cfg, stem=args.stem)
-    out = json.loads(path.read_text(encoding="utf-8"))
+    out = json.loads(path.read_text(encoding="utf-8-sig"))
     snapshot = research_growth.snapshot_of(path, args.stem)
     counts = {b: sum(r["bucket"] == b for r in out["trends"]) for b in research_growth.BUCKETS}
     payload = {"status": "done", "json": _rel(run, path), "md": _rel(run, path.with_suffix(".md")),
@@ -219,7 +219,7 @@ def _growth(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
 
 def _backtest(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     path = research_growth.backtest(run, date.fromisoformat(args.as_of), cfg, horizon=args.horizon)
-    out = json.loads(path.read_text(encoding="utf-8"))
+    out = json.loads(path.read_text(encoding="utf-8-sig"))
     payload = {"status": "done", "json": _rel(run, path), "md": _rel(run, path.with_suffix(".md")),
                "as_of": out["as_of"], "ref": out["ref"], "horizon": out["horizon"], "summary": out["summary"]}
     lines = [f"Wrote {payload['json']} and {payload['md']}: stages as of {out['ref']} (the videos known then), new "
@@ -313,7 +313,7 @@ def _digest(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
                 "last run's), or rebuild the previous week with tm research rebuild-previous --as-of <date>; "
                 f"{AGAIN}.")
     path = research_digest.diff(run, prev, cfg)
-    out = json.loads(path.read_text(encoding="utf-8"))
+    out = json.loads(path.read_text(encoding="utf-8-sig"))
     plug = out["plugin"]
     counts = {k: len(out[k]) for k in ("new", "reidentified", "up", "down", "ended")}
     payload = {"status": "done", "json": _rel(run, path), "prev": plug["prev_snapshot"], **counts,
@@ -426,7 +426,7 @@ def _report(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
                                    backtests=[_in_run(run, f) for f in args.backtest], cfg=cfg)
     listed = page.files(folder)
     rel = _rel(run, folder)
-    report = json.loads((folder / "report.json").read_text(encoding="utf-8"))
+    report = json.loads((folder / "report.json").read_text(encoding="utf-8-sig"))
     images = sum(f["as"].startswith("assets/") for f in listed)
     views = ", ".join(report["outputs"])
     if research_checks.DIGEST in cfg["outputs"] and "digest" not in report["outputs"]:
@@ -489,11 +489,13 @@ def _setup(p: argparse.ArgumentParser) -> None:
     c.add_argument("--json", action="store_true")
     f = sub.add_parser("hook-fit", help="rank the hook candidates by the agent's fit scores, keep the shortlist (TR1)")
     f.add_argument("--run", required=True, help="the run folder")
-    f.add_argument("--file", required=True, help="the fit scores, 03_wip/hook_fit_vNN.json (or the JSON itself)")
+    f.add_argument("--file", required=True,
+                   help="the fit scores, 03_wip/hook_fit_vNN.json (or the JSON itself), relative to the run folder")
     f.add_argument("--json", action="store_true")
     a = sub.add_parser("hook-ads", help="check the shortlisted hooks' Ad Library checks (issue #58, CB4)")
     a.add_argument("--run", required=True, help="the run folder")
-    a.add_argument("--file", required=True, help="the checks, 02_research/hooks_ad_library_vNN.json (or the JSON itself)")
+    a.add_argument("--file", required=True,
+                   help="the checks, 02_research/hooks_ad_library_vNN.json (or the JSON itself), relative to the run folder")
     a.add_argument("--json", action="store_true")
     k = sub.add_parser("hook-captions", help="the shortlisted hooks' captions, for the agent's judgement (TR1)")
     k.add_argument("--run", required=True, help="the run folder")
@@ -501,7 +503,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     h = sub.add_parser("hooks", help="the hooks path: the shortlisted hooks, each with the agent's judgement (TR1)")
     h.add_argument("--run", required=True, help="the run folder")
     h.add_argument("--file", required=True,
-                   help="the judgement of each shortlisted hook, 03_wip/hook_use_vNN.json (or the JSON itself)")
+                   help="the judgement of each shortlisted hook, 03_wip/hook_use_vNN.json (or the JSON itself), "
+                        "relative to the run folder")
     h.add_argument("--json", action="store_true")
     g = sub.add_parser("growth", help="growth, stage and confidence of every trend, and the snapshot (TR2-TR4, TR8)")
     g.add_argument("--run", required=True, help="the run folder")
@@ -543,7 +546,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
         checks = w.add_subparsers(dest="what", required=True)
         c = checks.add_parser("check", help=f"check {what}")
         c.add_argument("--run", required=True, help="the run folder")
-        c.add_argument("--file", required=True, help=f"the file, {file} (or the JSON itself)")
+        c.add_argument("--file", required=True,
+                       help=f"the file, {file} (or the JSON itself), relative to the run folder")
         c.add_argument("--json", action="store_true")
     _setup_report(sub)
     sd = sub.add_parser("seeds", help="the accepted picks as seeds for the creative brief, library/seeds.jsonl (E3)")

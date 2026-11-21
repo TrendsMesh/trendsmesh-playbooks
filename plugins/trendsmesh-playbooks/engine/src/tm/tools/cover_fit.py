@@ -160,7 +160,7 @@ def _next_props(run, rel: str) -> Path:
 @c.guarded
 def main(argv: list[str] | None = None) -> int:
     p = c.parser("cover_fit", "The cover's text clear of the face: moved or made smaller, then drawn.")
-    p.add_argument("--props", required=True, help="the cover's OrganicCaptions props in the run")
+    p.add_argument("--props", required=True, help="the cover's OrganicCaptions props, relative to the run folder")
     p.add_argument("--frame", type=int, required=True, help="the frame of the props the cover is")
     p.add_argument("--face", action="append", default=[], help="X,Y,W,H of a face the detector missed (px, 1080×1920)")
     a = p.parse_args(argv)
