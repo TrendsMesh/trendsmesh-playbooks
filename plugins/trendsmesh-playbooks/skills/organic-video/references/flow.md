@@ -759,18 +759,21 @@ prompt carries its look.
    `tm tool elevenlabs voices --run R --mine --json` lists the voices on their account (their clones
    and the voices they saved, with previews; free). Each voice is offered with its preview clip
    saved in the run (each row's `preview_file`), `source: "mine"` for the user's own.
-3. **Music**: from the channel's music folder (the profile's `music.folder`, else
-   `library/channels/<channel>/music/`), indexed with `tm tool music_index --run R <the folder>
-   --json` (length, loudness, tempo, mood, licence, source, author), or a Mixkit track (the Mixkit
-   Stock Music Free License: commercial use, no credit needed), which the plugin fetches, never the
-   user: `tm tool music_fetch --run R --search "<the mood, in English>" --json` lists tracks (id,
-   title, author, length, tags, the preview to send); for the one you suggest, `tm tool music_fetch
-   --run R --mixkit <id> --page <the search page it printed> --json` shows its title, author,
-   length, size and licence and stops. Ask the user; after their yes, the same command with `--yes`
-   downloads it into the channel's music folder and indexes the folder, every field filled. The 2
-   to 3 tracks you offer are copied into the run by the engine, never by hand: `tm tool music_fetch
-   --run R --copy <file> --copy <file> --json` (into `02_research/music/`; a page shows only the
-   run's own files, and it cannot play a sound from another site). A trending sound is added in the
+3. **Music**, from the whole library: `tm tool music_index --run R --json` (no folder) indexes every
+   music folder of the workspace, the channel's own first (the profile's `music.folder`, else
+   `library/channels/<channel>/music/`), then the other channels' free-licence (Mixkit) tracks, each
+   row with its `channel` (length, loudness, tempo, mood, licence, source, author); a channel's own
+   or bought tracks stay with it. Or Mixkit tracks (the Mixkit Stock Music Free License: commercial
+   use in organic videos and ads, no credit needed), which the plugin fetches, never the user: `tm
+   tool music_fetch --run R --search "<the mood, in English>" --offer <id> --offer <id> --json`
+   lists the tracks and copies the 2 to 3 you suggest into `02_research/music/` with their licence
+   (each row's `licence_line` goes on the page with the track). No question first: the page is the
+   question, and the user's pick is the yes (`tm page decision taste --record` files the picked
+   track into the channel's music library and indexes it; the others stay only in the run). Tracks
+   of the library you offer are copied into the run by the engine, never by hand: `tm tool
+   music_fetch --run R --copy <file> --copy <file> --json` (into `02_research/music/`; a page shows
+   only the run's own files, and it cannot play a sound from another site); a track from another
+   channel's music keeps its index row's `channel` on the page. A trending sound is added in the
    app per the kit, never in the edit.
 4. **A style**, for every AI video: the one picked on the proposals page (`00_raw/proposal.json`
    `decision.style`) is offered first, selected (on the page: `recommended`); else 2 to 3 of our styles from
@@ -785,7 +788,7 @@ prompt carries its look.
 5. **The page** (issue #83): write what you offer as the next `03_wip/taste_options_vNN.json`:
    `{"styles": [{"id": <number or styleId>, "why", "recommended"}], "voices": [{"voice_id", "name",
    "why", "preview", "source": "library|mine", "recommended"}], "music": {"trending": {"name",
-   "link", "why"} | null, "tracks": [{"file", "title", "why", "licence", "recommended"}]}}`, every
+   "link", "why"} | null, "tracks": [{"file", "title", "why", "licence", "channel"?, "recommended"}]}}`, every
    file a run file (a track's `file` is the path `tm tool music_fetch --copy` printed, or the music index row's name, which the page finds there; voices only when someone speaks off screen). A
    voice may be a row of `tm tool elevenlabs voices --json` (the library's, or `--mine`) copied as
    it is, with your `why` and `recommended` added: its `preview_file` is its preview, and a `--mine`

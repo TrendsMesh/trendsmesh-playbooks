@@ -357,6 +357,7 @@ strings:
       music_hint: Popularny dźwięk dodajesz w aplikacji przy publikacji; wtyczka nie może go wstawić do pliku.
       no_track: Bez muzyki, dodam dźwięk w aplikacji
       no_track_means: Film dostajesz tylko z głosem.
+      from_channel: "z muzyki kanału {channel}"
       trending: "Popularny dźwięk: {name}"
       trending_means: Dodajesz go w aplikacji przy publikacji.
     models:

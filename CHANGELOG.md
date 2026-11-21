@@ -4,6 +4,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Music in one step, from your whole library.** At the style, voice and music step, Claude puts 2 to 3 free Mixkit
+  tracks straight on the page, each with its licence line, with no question asked first: the track you pick is your
+  yes, and it goes into the channel's music library. Free-licence tracks fetched for another of your channels are
+  offered too, marked with that channel's name; a channel's own or bought tracks stay with it.
+- **Create an ad: free Mixkit music works without a channel.** A track fetched in an ad run goes into the run's
+  audio folder and the brand's music library, so the brand's next ad finds it, with its licence. Before the
+  download, Claude says where the track will go.
 - **Organic AI video: a trend you used can come back once, with a new angle.** A trend counts as used only once a
   video or a script was delivered from it; runs that were started and never finished no longer block it. The
   shortlist keeps used trends, marked. One idea per batch may build on a used trend that is still rising, saying

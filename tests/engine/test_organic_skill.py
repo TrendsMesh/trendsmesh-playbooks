@@ -253,7 +253,8 @@ def test_ai_video_steps_name_the_engine_commands():
         "d1": ["tm tool elevenlabs credits", "tm organic stack", "tm brand packshot", "tm organic pack check",
                "--stage recipe"],
         "d2": ["tm tool elevenlabs voices", "--language", "tm tool music_index", "Mixkit", "tm brand save",
-               "tm tool music_fetch --run R --search", "--mixkit", "--yes", "tm tool music_fetch --run R --copy"],
+               "tm tool music_fetch --run R --search", "--offer", "tm page decision --run R taste --record",
+               "tm tool music_fetch --run R --copy"],   # issue #142: the offered tracks on the page, the pick the yes
         "e1": ["model-prompting/", "tm tool replicate_price", "the date", "kling-avatar-v2"],
         "e2": ["tm organic pack check", "--stage pack", "pack_vNN.md", "the resolution question",
                "Approve the generation pack and its cost", "tm decide pack approve", "tm budget approve ai_usd",

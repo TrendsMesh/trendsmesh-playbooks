@@ -858,6 +858,7 @@ organic:
     music_hint: A trending sound is added in the app when you post; the plugin can’t put it into the file.
     no_track: No track, I’ll add a sound in the app
     no_track_means: The video is delivered with the voice only.
+    from_channel: "from {channel}'s music"
     trending: "Trending sound: {name}"
     trending_means: You add it in the app when you post.
   # the Models page (after the idea is picked, before the pack; issue #86)

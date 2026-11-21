@@ -228,6 +228,31 @@ def test_a_track_music_fetch_copied_into_the_run_is_found_by_its_name(tmp_path):
     assert "media/calm_piano.mp3" in [f["as"] for f in got["files"]]
 
 
+def test_another_channels_track_says_whose_and_the_picked_offer_is_filed(tmp_path, capsys, monkeypatch):
+    """Issue #142: a track from another channel's music says so on the page; picking a track is the user's yes, so
+    the decision files a Mixkit offer into the library (`music_fetch.file_picked`)."""
+    from tm.tools import music_fetch
+
+    run = _run(tmp_path)
+    _recipe(run)
+    opts = _taste_options(run, trending=False)
+    opts["music"]["tracks"][0]["channel"] = "koty"
+    (run.path / "03_wip" / "taste_options_v02.json").write_text(json.dumps(opts), encoding="utf-8")
+    got = taste.build(run)
+    data = json.loads((run.path / got["data"]).read_text(encoding="utf-8"))
+    track = _section(data, "music")["options"][1]
+    assert "z muzyki kanału koty" in track["means"]                     # the pack is Polish: "from koty's music"
+    filed = []
+    monkeypatch.setattr(music_fetch, "file_picked",
+                        lambda run, rel: filed.append(rel) or {"file": "library/channels/x/music/a.mp3", "index": "i"})
+    _publish(run, "taste")
+    _save_db(run, "taste", _doc("voice", section="voice", choice="abc12345XYZ", text="", note="", notes={}),
+             _doc("music", section="music", choice=track["id"], text="", note="", notes={}))
+    code, out = _cli(capsys, "organic", "decisions", "--run", str(run.path), "--page", "taste")
+    assert code == 0, out
+    assert filed == ["02_research/music/calm_piano.mp3"]
+
+
 def test_without_a_trending_sound_the_recommended_track_is_the_default(tmp_path):
     run = _run(tmp_path)
     _recipe(run)

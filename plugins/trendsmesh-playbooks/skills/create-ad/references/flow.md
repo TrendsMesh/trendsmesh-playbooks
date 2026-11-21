@@ -185,6 +185,11 @@ page and one in chat count the same. Rules: `rules.md`.
   rate must fit the line, or nothing is sent. A take whose cost ElevenLabs does not report is booked at its length
   at the rate, and a take over the approved amount stops the run for the user. The gate shows each take to listen
   to. `tm done G2`.
+- **Free music**: `tm tool music_fetch --run R --search "<mood, in English>" --json`, then `--mixkit <id> --page <its
+  page> --json` (it stops and says where the track will go; on the user's yes, `--yes`): the track goes into
+  `03_wip/audio/` and the brand's music library (`library/brands/<brand>/music/`, indexed), with the Mixkit Stock
+  Music Free License (free in ads, no credit) in the manifest. The edit's music names that file. A track of the
+  brand's library from an earlier run: `tm tool music_fetch --run R --copy <file> --json`.
 - **Sound effects come from the plugin's small set**, never made up in ffmpeg (no pink-noise whoosh, no sine click):
   `tm tool sfx_fetch --run R --list` shows it (whoosh, sweep, click, pop, notification) with its licence, the Mixkit
   Sound Effects Free License (free in ads, no credit). `--effect <name>` (again for each, or `--all`) says what it
