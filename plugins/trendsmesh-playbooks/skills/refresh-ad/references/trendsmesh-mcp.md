@@ -47,7 +47,9 @@ reach, confidence, status, since, active for days, visible until, languages and
 - Organic clips are evidence and inspiration only, never footage for the ad. Trending sounds are
   usually not licensed for paid ads.
 - The internal "why" route of the old trend API is not used: clients cannot reach it.
-- Rate limits: check `get_usage` before a long pull; if a meter runs out, say so plainly and
+- Rate limits: the plugin paces every call to the per-second and per-minute limits itself
+  (`references/trend-collection.md`, pacing), so never add waits or retries. Check
+  `get_usage` before a long pull for the daily budget; if a meter runs out, say so plainly and
   continue when it resets, from the same place.
 
 ## Without TrendsMesh (Free, the user's choice)

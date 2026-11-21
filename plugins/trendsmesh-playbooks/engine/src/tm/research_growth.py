@@ -213,6 +213,65 @@ def _candidates(run: RunFolder) -> list[dict]:
     return list({c["id"]: c for c in hook_cards(run)}.values())
 
 
+CUT = "below the engine's cut"
+TO_SCORE_STEM = "hooks_to_score"
+SOURCE_TO_SCORE = "tm research hook-candidates"
+TO_SCORE_FIELDS = ("id", "name", "what_it_is", "reach", "momentum", "active_for_days", "status", "sensitivity_level")
+
+
+def _map_dropped(run: RunFolder) -> dict[str, str]:
+    """Trend id -> why the latest category map dropped it (noise, contradicted, a review), else {}."""
+    path = run.latest(trends.RESEARCH, research_map.STEM, "json")
+    cmap = trends.read(path) if path else {}
+    return {r["id"]: "; ".join(r.get("dropped_because") or []) for r in (cmap.get("dropped") or [])
+            if isinstance(r, dict) and r.get("id")} if isinstance(cmap, dict) else {}
+
+
+def hook_candidates(run: RunFolder, cfg: dict | None = None, *, cap: int | None = None) -> tuple[list[dict], list[dict]]:
+    """Issue #129 (the owner's #148 line 7.2): the hooks the agent scores for fit, and the rest. The hook cards,
+    de-duplicated, in TrendsMesh's rising order, then the hooks only a search found by their best match; a
+    contradicted hook and one the category map dropped (B3) are left out, and of the others the first
+    `hooks.max_candidates` (or `cap`) are scored. The rest are `{id, name, reason}`."""
+    cap = research_map.settings(cfg)["hooks"]["max_candidates"] if cap is None else cap
+    cards = _candidates(run)
+    order = rising_order(run)
+    match: dict[str, float] = {}
+    for f in trends.search_files(run):
+        for c in trends.search_cards(trends.unwrap(trends.read(f))):
+            if _is_hook(c):
+                match[c["id"]] = max(match.get(c["id"], 0.0), trends.match_score(c))
+    listed = [c for c in cards if c["id"] in order]
+    searched = sorted((c for c in cards if c["id"] not in order), key=lambda c: -match.get(c["id"], 0.0))
+    dropped = _map_dropped(run)
+    to_score, rest = [], []
+    for c in listed + searched:
+        if c.get("status") == "contradicted":
+            why = "contradicted (TR4)"
+        elif c["id"] in dropped:
+            why = f"dropped from the category map: {dropped[c['id']]}"
+        elif len(to_score) < cap:
+            to_score.append(c)
+            continue
+        else:
+            why = f"{CUT} (rank {cap + 1 + sum(r['reason'].startswith(CUT) for r in rest)})"
+        rest.append({"id": c["id"], "name": c.get("name"), "reason": why})
+    return to_score, rest
+
+
+def write_hook_candidates(run: RunFolder, cfg: dict) -> tuple[Path, list[dict], list[dict]]:
+    """02_research/hooks_to_score_vNN.json: one compact row per hook to score (`TO_SCORE_FIELDS`), and the
+    others with their reason; Stops when no hook is saved."""
+    cap = research_map.settings(cfg)["hooks"]["max_candidates"]
+    to_score, rest = hook_candidates(run, cfg)
+    if not to_score and not rest:
+        raise _no_hooks()
+    out = {"max_candidates": cap, "rows": [{k: c.get(k) for k in TO_SCORE_FIELDS} for c in to_score],
+           "not_scored": rest}
+    target = run.next_version(trends.RESEARCH, TO_SCORE_STEM, "json")
+    _write(run, target, _dump(out), {"max_candidates": cap}, SOURCE_TO_SCORE)
+    return target, to_score, rest
+
+
 def _no_hooks() -> Stop:
     return Stop("No hook trend is saved yet. List the rising hooks (TrendsMesh list_trends, sort rising, "
                 f"trend_type hook_trend) with collection on, then run the hooks path again; {AGAIN}.")
@@ -225,15 +284,18 @@ def _criteria() -> tuple[tuple[str, ...], dict]:
     return brief_config.CRITERIA, dict(brief_config.DEFAULTS["scoring"]["weights"])
 
 
-def check_hook_fit(run: RunFolder, data: object) -> list[Problem]:
-    """Everything wrong in the agent's hook fit scores (issue #8); empty when they hold. One row per
-    hook candidate, `{"<id>": {<the seven CB3 criteria>: 1-5, "why": "..."}}`, `why` optional."""
+def check_hook_fit(run: RunFolder, data: object, cfg: dict | None = None) -> list[Problem]:
+    """Everything wrong in the agent's hook fit scores (issue #8); empty when they hold. One row per hook
+    to score (`hook_candidates`, issue #129: at most `hooks.max_candidates`), `{"<id>": {<the seven CB3
+    criteria>: 1-5, "why": "..."}}`, `why` optional. A row for another hook card of the run (one set aside,
+    restored on request) is checked the same way and ranked with the others."""
     from tm import brief_research
     criteria, _ = _criteria()
     names = ", ".join(criteria)
     cards = {c["id"]: c for c in _candidates(run)}
     if not cards:
         raise _no_hooks()
+    wanted = {c["id"] for c in hook_candidates(run, cfg)[0]}
     if not isinstance(data, dict) or not data:
         return [Problem("hook_fit", "The fit scores must be one table {\"<hook id>\": {criterion: 1-5}}.",
                         f"Write a row per hook candidate with {names}, then check again.")]
@@ -250,13 +312,13 @@ def check_hook_fit(run: RunFolder, data: object) -> list[Problem]:
         if wrong:
             out.append(Problem(hid, f"{hid} ({cards[hid].get('name')!r}): its scores {'; '.join(wrong)}.",
                                f"Score it 1-5, as a whole number, on {names}; why, if given, is a sentence."))
-    missing = [c for hid, c in cards.items() if hid not in data]
+    missing = [c for hid, c in cards.items() if hid in wanted and hid not in data]
     if missing:
         shown = ", ".join(f"{c.get('name')!r} ({c['id']})" for c in missing[:10])
         more = f" and {len(missing) - 10} more" if len(missing) > 10 else ""
         out.append(Problem("hook_fit", f"{len(missing)} hook candidates are not scored: {shown}{more}.",
-                           "Score every hook candidate from its card (a hook that fits badly scores low, it is "
-                           "never left out)."))
+                           f"Score every row of tm research hook-candidates ({TO_SCORE_STEM}_vNN.json) from its card "
+                           "(a hook that fits badly scores low, it is never left out)."))
     return out
 
 
@@ -265,34 +327,39 @@ def hook_fit(run: RunFolder, data: object, cfg: dict, *, fit_file: str | None = 
     keep the top `hooks.shortlist` as the shortlist, the only hooks whose videos are fetched (issue
     #8). Ties keep the candidates' order (the rising list first: TrendsMesh's own ranking). A
     contradicted hook, or one whose fit is below `hooks.min_fit` (3, neutral), is never shortlisted.
-    Writes 02_research/hooks_shortlist_vNN.json and returns it; Stops, writing nothing, when no hook is
-    saved or a score is wrong."""
+    The hooks left unscored (issue #129: below the engine's cut, or dropped from the map) are listed in
+    `not_scored` with their reason. Writes 02_research/hooks_shortlist_vNN.json and returns it; Stops,
+    writing nothing, when no hook is saved or a score is wrong."""
     from tm import brief_research
     cfg = research_map.settings(cfg)
-    cards = _candidates(run)
-    problems = check_hook_fit(run, data)          # Stops first when no hook is saved
+    problems = check_hook_fit(run, data, cfg)     # Stops first when no hook is saved
     if problems:
         raise Stop(" ".join(f"{p.what} {p.todo}" for p in problems)
                    + f" Fix the file, save it as a new version and run this again; {AGAIN}.")
+    to_score, rest = hook_candidates(run, cfg)
+    by_id = {c["id"]: c for c in _candidates(run)}
+    cards = to_score + [by_id[r["id"]] for r in rest]                    # TrendsMesh's order, then the searches'
     criteria, weights = _criteria()
     totals = brief_research.totals({hid: {c: row[c] for c in criteria} for hid, row in data.items()}, weights)
     order = {c["id"]: i for i, c in enumerate(cards)}
-    ranked = sorted(cards, key=lambda c: (-totals[c["id"]], order[c["id"]]))
+    ranked = sorted((c for c in cards if c["id"] in totals), key=lambda c: (-totals[c["id"]], order[c["id"]]))
     size, floor = cfg["hooks"]["shortlist"], cfg["hooks"]["min_fit"]
     live = [c for c in ranked if c.get("status") != "contradicted"]
     short = [c for c in live if totals[c["id"]] >= floor][:size]
-    rest = [c for c in live if c not in short]
+    left = [c for c in live if c not in short]
     out = {"fit_file": fit_file, "criteria": list(criteria), "weights": weights, "shortlist_size": size,
-           "min_fit": floor,
+           "min_fit": floor, "max_candidates": cfg["hooks"]["max_candidates"],
            "shortlist": [{"rank": i, "id": c["id"], "name": c.get("name"), "fit": totals[c["id"]],
                           "scores": {k: data[c["id"]][k] for k in criteria}, "why": data[c["id"]].get("why")}
                          for i, c in enumerate(short, 1)],
-           "not_shortlisted": [{"id": c["id"], "name": c.get("name"), "fit": totals[c["id"]]} for c in rest],
-           "contradicted": [{"id": c["id"], "name": c.get("name"), "fit": totals[c["id"]]}
-                            for c in ranked if c.get("status") == "contradicted"]}
+           "not_shortlisted": [{"id": c["id"], "name": c.get("name"), "fit": totals[c["id"]]} for c in left],
+           "contradicted": [{"id": c["id"], "name": c.get("name"), "fit": totals.get(c["id"])}
+                            for c in ranked + [by_id[r["id"]] for r in rest if r["id"] not in totals]
+                            if c.get("status") == "contradicted"],
+           "not_scored": [r for r in rest if r["id"] not in totals and by_id[r["id"]].get("status") != "contradicted"]}
     target = run.next_version(trends.RESEARCH, SHORTLIST_STEM, "json")
-    _write(run, target, _dump(out), {"shortlist": size, "min_fit": floor, **({"fit_file": fit_file} if fit_file else {})},
-           SOURCE_FIT)
+    _write(run, target, _dump(out), {"shortlist": size, "min_fit": floor, "max_candidates": out["max_candidates"],
+                                     **({"fit_file": fit_file} if fit_file else {})}, SOURCE_FIT)
     return target
 
 
@@ -329,8 +396,11 @@ def _shortlisted(run: RunFolder) -> tuple[dict, list[tuple[dict, dict]], list[di
     if short is None:
         raise Stop("The rising hooks are not ranked yet. Score every hook candidate for fit (03_wip/hook_fit_vNN.json) "
                    f"and run tm research hook-fit, then fetch the shortlist's videos and run this again; {AGAIN}.")
-    scored = {r["id"] for r in short["shortlist"] + short["not_shortlisted"] + short["contradicted"]}
-    new = [c for c in cards if c["id"] not in scored]
+    scored = {r["id"] for r in short["shortlist"] + short["not_shortlisted"] + short["contradicted"]
+              + (short.get("not_scored") or [])}
+    cap = short.get("max_candidates")             # issue #129: the cut the scores were written for (none before)
+    wanted = hook_candidates(run, cap=cap)[0] if isinstance(cap, int) else cards
+    new = [c for c in wanted if c["id"] not in scored]
     if new:
         shown = ", ".join(f"{c.get('name')!r} ({c['id']})" for c in new[:10])
         raise Stop(f"{len(new)} hook candidates were saved after the fit scores ({short['path']}): {shown}. Score "

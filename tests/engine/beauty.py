@@ -106,9 +106,14 @@ def copy_input(run: RunFolder, rel: str) -> Path:
     return dest
 
 
+NO_CUT = 10_000
+
+
 def cfg(**sections) -> dict:
-    """The default config for "beauty, US", with `sections` updated (`buckets={"act_index": 2}`)."""
+    """The default config for "beauty, US", with `sections` updated (`buckets={"act_index": 2}`). The reference
+    dry run read every trend and scored every hook, so the engine's cuts (issue #129) are lifted here."""
     out = research_config.defaults()
+    out["review"]["max_trends"] = out["hooks"]["max_candidates"] = NO_CUT
     out["category"]["phrase"] = ROOT
     out["market"], out["language"] = "US", "en"
     for name, values in sections.items():

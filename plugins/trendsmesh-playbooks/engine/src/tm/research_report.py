@@ -758,7 +758,8 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
                                "note": t.get("seasonal_over") or moved.get(t["id"], "")} for t in by[b]] for b in LABEL},
               "paid": {"reading": picks.get("paid_reading", []), "checks": paid_rows},
               "digest": (digest | {"reading": picks.get("digest_reading", {})}) if digest is not None else None,
-              "category_map": {"queries": q, "dropped": cmap["dropped"], "min_match": cmap["min_match"]},
+              "category_map": {"queries": q, "dropped": cmap["dropped"], "min_match": cmap["min_match"],
+                               **({"set_aside": cmap["set_aside"]} if cmap.get("set_aside") else {})},   # #129
               "backtest": [b["summary"] | {"ref": b["ref"]} for b in backtest_data]}
     hook_use = {u: [t["id"] for t in sorted(rows, key=lambda t: (t.get("plugin") or {}).get("fit_rank") or 99)
                     if t.get("kind") == "hook_trend" and (t.get("plugin") or {}).get("use") == u]
@@ -878,6 +879,10 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
                     f"<td>{tr('report.split_further') if x['relevant'] < cmap['min_relevant'] else ''}</td></tr>"
                     for x in sorted(q, key=lambda x: ((x['parent'] or ''), x['query'])))
     dropped = "".join(f"<li>{E(r['name'])}: {E('; '.join(r['dropped_because']))}</li>" for r in cmap["dropped"])
+    aside = cmap.get("set_aside") or []           # issue #129: below the engine's cut, restored on request
+    aside_list = (f"<details><summary>{tr('report.set_aside', n=len(aside))}</summary><ul class=\"small-print\">"
+                  + "".join(f"<li>{E(r['name'])}: {E(r.get('set_aside_because') or '')}</li>" for r in aside)
+                  + "</ul></details>") if aside else ""
     root = cmap.get("root") or category
     root_relevant = next((x["relevant"] for x in q if x["query"] == root), 0)
     split = any(x.get("parent") for x in q)
@@ -964,7 +969,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
 {pg.hooks_section()}
 <section><div class="sec-head"><h2>{tr('report.mapped_heading')}</h2><p>{mapped_note}</p></div>
 <div class="tw"><table><tr><th>{tr('report.col_search')}</th><th>{tr('report.col_parent')}</th><th class="r">{tr('report.col_relevant')}</th><th class="r">{tr('report.col_kept')}</th><th></th></tr>{qrows}</table></div>
-<details><summary>{tr('report.left_out', n=len(cmap['dropped']))}</summary><ul class="small-print">{dropped}</ul></details></section>
+<details><summary>{tr('report.left_out', n=len(cmap['dropped']))}</summary><ul class="small-print">{dropped}</ul></details>{aside_list}</section>
 <section><div class="sec-head"><h2>{tr('report.sure_heading')}</h2><p>{tr('report.backtest_note')}</p></div>
 <div class="tw"><table><tr><th>{tr('report.col_ref_date')}</th><th>{tr('report.col_stage_then')}</th><th class="r">{tr('report.col_trends')}</th><th class="r">{tr('report.col_median_after')}</th><th class="r">{tr('report.col_share_3')}</th></tr>{bt_rows}</table></div>
 <p class="small-print">{tr('report.limits')}</p></section>

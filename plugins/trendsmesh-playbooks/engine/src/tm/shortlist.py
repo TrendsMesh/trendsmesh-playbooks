@@ -663,6 +663,8 @@ def apply_filters(scored: dict, pool: dict, terms: list[str], *, anchors: list[s
 MIN_FIT = 3.0             # Trend research's `hooks.min_fit`: neutral; below it a trend is a weak fit for the channel
 FIT_KINDS = ("hook_trend", "format_trend")
 TOPIC_FIT_CAP = 20        # issue #142, #148 line 23: the best topics the agent scores too, a cap of their own
+FIT_CAP = 50              # issue #129, #148 line 7.4: the hooks and formats the agent scores, both kinds together
+FIT_SET_ASIDE = "set aside: below the engine's cut"
 WEAK_FIT = "weak fit for this channel"
 FIT_NOT_SCORED = "fit not scored yet"
 
@@ -680,32 +682,52 @@ def _candidate(tid: str, t: dict, label: str) -> dict:
     return {"id": tid, "label": label, "name": t.get("name"), "what_it_is": t.get("what_it_is"), "example": ex}
 
 
-def fit_candidates(pool: dict, topics: list[str] = ()) -> list[dict]:
-    """Every hook and format of the pool the agent scores (a contradicted one is never ranked), then the shortlist's
-    best `TOPIC_FIT_CAP` topics (`topics`: the kept topics' ids in their ranked order, issue #142): `{id, label, name,
-    what_it_is, example}`, the example its first evidence hook text."""
+def _fit_pool(pool: dict, ranked: list[str] | None) -> list[str]:
+    """Every hook and format of the pool that may be ranked (never a contradicted one): in `ranked`'s order (the
+    engine's own score, best first) when given, else in the pool's."""
+    ids = [tid for tid, t in pool.items() if t.get("kind") in FIT_KINDS and t.get("status") != "contradicted"]
+    if ranked is None:
+        return ids
+    place = {tid: i for i, tid in enumerate(ranked)}
+    return sorted(ids, key=lambda tid: place.get(tid, len(place)))
+
+
+def fit_candidates(pool: dict, topics: list[str] = (), ranked: list[str] | None = None) -> list[dict]:
+    """The hooks and formats of the pool the agent scores, at most `FIT_CAP` (issue #129, the owner's #148 line 7.4:
+    the best by the engine's score, `ranked`, both kinds together; a contradicted one is never ranked), then the
+    shortlist's best `TOPIC_FIT_CAP` topics (`topics`: the kept topics' ids in their ranked order, issue #142, a cap
+    of their own, #148 line 23): `{id, label, name, what_it_is, example}`, the example its first evidence hook
+    text. The hooks and formats below the cut are `fit_set_aside`."""
     out = []
-    for tid, t in pool.items():
-        if t.get("kind") not in FIT_KINDS or t.get("status") == "contradicted":
-            continue
-        out.append(_candidate(tid, t, "hook" if t["kind"] == "hook_trend" else "format"))
+    for tid in _fit_pool(pool, ranked)[:FIT_CAP]:
+        out.append(_candidate(tid, pool[tid], "hook" if pool[tid]["kind"] == "hook_trend" else "format"))
     for tid in list(dict.fromkeys(topics))[:TOPIC_FIT_CAP]:
         if tid in pool:
             out.append(_candidate(tid, pool[tid], "topic"))
     return out
 
 
-def check_fit(data: object, pool: dict, topics: list[str] = ()) -> list[str]:
-    """What is wrong with the agent's fit scores for this pool; empty when every hook and format, and every topic of
-    `fit_candidates`, is scored."""
+def fit_set_aside(pool: dict, ranked: list[str] | None = None) -> list[dict]:
+    """The hooks and formats below the engine's cut (`FIT_CAP`), best first: `{id, label, name, reason}`. A row for
+    one of them in the fit scores restores it (it is ranked with the scored ones)."""
+    ids = _fit_pool(pool, ranked)
+    return [{"id": tid, "label": "hook" if pool[tid]["kind"] == "hook_trend" else "format", "name": pool[tid].get("name"),
+             "reason": f"{FIT_SET_ASIDE} (rank {i})"} for i, tid in enumerate(ids[FIT_CAP:], FIT_CAP + 1)]
+
+
+def check_fit(data: object, pool: dict, topics: list[str] = (), ranked: list[str] | None = None) -> list[str]:
+    """What is wrong with the agent's fit scores for this pool; empty when every hook, format and topic of
+    `fit_candidates` is scored. A row for a hook or format below the cut (`fit_set_aside`) is checked the same way:
+    it restores that one."""
     from tm import brief_research
     criteria, _ = _cb3()
-    wanted = {c["id"]: c for c in fit_candidates(pool, topics)}
+    wanted = {c["id"]: c for c in fit_candidates(pool, topics, ranked)}
+    allowed = {**wanted, **{c["id"]: c for c in fit_set_aside(pool, ranked)}}
     if not isinstance(data, dict):
         return ["the fit scores must be one table {\"<trend id>\": {criterion: 1-5, \"why\": \"...\"}}"]
     out = []
     for tid, row in data.items():
-        if tid not in wanted:
+        if tid not in allowed:
             out.append(f"{tid} is not a hook, format or scored topic of this shortlist's pool")
             continue
         scores = {k: v for k, v in row.items() if k != "why"} if isinstance(row, dict) else row
@@ -713,7 +735,7 @@ def check_fit(data: object, pool: dict, topics: list[str] = ()) -> list[str]:
         if isinstance(row, dict) and not (isinstance(row.get("why"), str) and row["why"].strip()):
             wrong.append("why is not one line on why it fits or not")
         if wrong:
-            out.append(f"{tid} ({wanted[tid]['name']!r}): its scores {'; '.join(wrong)}")
+            out.append(f"{tid} ({allowed[tid]['name']!r}): its scores {'; '.join(wrong)}")
     missing = [c for tid, c in wanted.items() if tid not in data]
     if missing:
         shown = ", ".join(f"{c['name']!r} ({c['id']})" for c in missing[:10])
@@ -726,7 +748,9 @@ def check_fit(data: object, pool: dict, topics: list[str] = ()) -> list[str]:
 def apply_fit(scored: dict, fit: dict | None) -> None:
     """Rank the hooks and formats by their fit for the channel (`fit`, checked by `check_fit`), then by the
     original's score; a fit under MIN_FIT last, flagged WEAK_FIT. Each row's `plugin.fit` is `{score, why}`
-    and its reason starts with them. Without `fit`, the rows say FIT_NOT_SCORED and keep their order."""
+    and its reason starts with them. Without `fit`, the rows say FIT_NOT_SCORED and keep their order. A hook or
+    format below the engine's cut with no row (issue #129) keeps `plugin.fit` None, is flagged FIT_SET_ASIDE and
+    comes after every scored one."""
     from tm import brief_research
     criteria, weights = _cb3()
     totals = brief_research.totals({tid: {c: row[c] for c in criteria} for tid, row in fit.items()},
@@ -737,13 +761,20 @@ def apply_fit(scored: dict, fit: dict | None) -> None:
                 r.setdefault("plugin", {})["fit"] = None
                 r["reason"] = f"{FIT_NOT_SCORED}; {hook_reason(r)}"
                 continue
+            if r["id"] not in totals:
+                r.setdefault("plugin", {})["fit"] = None
+                r["flags"].append(FIT_SET_ASIDE)
+                r["reason"] = f"{FIT_SET_ASIDE}, fit not scored; {hook_reason(r)}"
+                continue
             score = totals[r["id"]]
             r.setdefault("plugin", {})["fit"] = {"score": score, "why": fit[r["id"]]["why"].strip()}
             if score < MIN_FIT:
                 r["flags"].append(WEAK_FIT)
             r["reason"] = f"fit {score:.1f}/5: {fit[r['id']]['why'].strip()}; {hook_reason(r)}"
         if fit:
-            scored[key].sort(key=lambda r: (r["plugin"]["fit"]["score"] < MIN_FIT, -r["plugin"]["fit"]["score"],
+            scored[key].sort(key=lambda r: (r["plugin"]["fit"] is None,
+                                            r["plugin"]["fit"] is not None and r["plugin"]["fit"]["score"] < MIN_FIT,
+                                            -(r["plugin"]["fit"] or {"score": 0})["score"],
                                             -r["score"], -(r["creators"] or 0), -(r["views"] or 0)))
     if not fit:
         return
@@ -988,8 +1019,11 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
     scored = score_all(pool, found_by, terms, list(exclude), market, today, trends.DEFAULT_NOISE, min_topics,
                        sounds_commercial_only, anchors)
     topics = [r["id"] for r in scored["topics"]] if organic else []
+    # issue #129: the cut of hooks and formats to score goes by the engine's own score, both kinds together
+    ranked = [r["id"] for r in sorted(scored["hooks"] + scored["formats"],
+                                      key=lambda r: (-r["score"], -(r["creators"] or 0), -(r["views"] or 0)))]
     if organic and fit is not None:
-        wrong = check_fit(fit, pool, topics)
+        wrong = check_fit(fit, pool, topics, ranked)
         if wrong:
             raise ValueError(f"The fit scores{f' in {fit_file}' if fit_file else ''} do not hold: " + "; ".join(wrong)
                              + ". Fix them in a new version, then run the shortlist again; nothing was written.")
@@ -1020,7 +1054,8 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
         meta["plugin"].update(fit_file=fit_file if fit else None, min_fit=MIN_FIT)
     payload, md = build(scored, meta, top, notes)
     if organic:
-        payload["fit_candidates"] = fit_candidates(pool, topics)
+        payload["fit_candidates"] = fit_candidates(pool, topics, ranked)
+        payload["fit_set_aside"] = [r for r in fit_set_aside(pool, ranked) if not fit or r["id"] not in fit]
     if organic and split:
         pulled = pulls(scored, split)
         payload["split"] = {**split, "leading": pulled["leading"], "moved": pulled["moved"], "empty": pulled["empty"],
@@ -1052,7 +1087,8 @@ def write(run: RunFolder, inputs: list[Path], terms: list[str], *, exclude: list
             "sounds": len(scored["sounds"]), "dropped": scored["dropped"],
             "skipped": [_shown(run, f) for f in skipped],
             **({"anchor_dropped": len(dropped)} if anchors else {}),
-            **({"fit_scored": bool(fit), "fit_candidates": len(payload["fit_candidates"])} if organic else {}),
+            **({"fit_scored": bool(fit), "fit_candidates": len(payload["fit_candidates"]),
+                "fit_set_aside": len(payload["fit_set_aside"])} if organic else {}),
             **({"pulls": len(payload["pulls"]), "leading": payload["split"]["leading"]} if "pulls" in payload else {})}
 
 
@@ -1152,6 +1188,9 @@ def run_shortlist(args: argparse.Namespace) -> int:
     if "fit_scored" in out and not out["fit_scored"] and out["fit_candidates"]:
         fit = (f" The {out['fit_candidates']} hooks, formats and topics are not scored for the channel yet: score each one "
                f"(fit_candidates in {out['json']}) in 03_wip/trend_fit_v01.json, then run this again with --fit.")
+        if out.get("fit_set_aside"):
+            fit += (f" {out['fit_set_aside']} more hooks and formats are below the engine's cut of {FIT_CAP} (fit_set_aside):"
+                    " they are not scored; a row for one in the fit file brings it back.")
     cli.emit(args, {"status": "done", **out, **({"todo": fit.strip()} if fit else {})},
              f"Wrote {out['json']} and {out['md']}: {out['pool_size']} trends, {out['hooks']} hooks, "
              f"{out['topics']} topics, {out['formats']} formats, {out['sounds']} sounds.{skipped}{fit}")

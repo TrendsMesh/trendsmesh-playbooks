@@ -23,6 +23,17 @@
             "command": "Write-Verbose `# <#` 2>/dev/null; sh \"${CLAUDE_PLUGIN_ROOT}/bootstrap/guard-secrets.sh\"; exit $?; #>; & ([scriptblock]::Create([IO.File]::ReadAllText(\"${CLAUDE_PLUGIN_ROOT}/bootstrap/guard-secrets.ps1\"))); exit $LASTEXITCODE"
           }
         ]
+      },
+      {
+        "matcher": "mcp__(plugin_trendsmesh-playbooks_)?trendsmesh__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "timeout": 80,
+            "onFailure": "continue",
+            "command": "Write-Verbose `# <#` 2>/dev/null; sh \"${CLAUDE_PLUGIN_ROOT}/bootstrap/pace-mcp.sh\"; exit $?; #>; & ([scriptblock]::Create([IO.File]::ReadAllText(\"${CLAUDE_PLUGIN_ROOT}/bootstrap/pace-mcp.ps1\"))); exit $LASTEXITCODE"
+          }
+        ]
       }
     ],
     "PostToolUse": [

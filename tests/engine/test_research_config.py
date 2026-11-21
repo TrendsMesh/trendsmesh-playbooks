@@ -37,7 +37,8 @@ def test_config_defaults_match_playbook_numbers(run):
     cfg = config.load(run)
     assert cfg["trends"] == {"min_match": 40, "min_relevant": 10, "max_split_depth": 2,
                              "exclude_terms": []}   # TR1 wins: seasonal is a tag, not noise
-    assert cfg["hooks"] == {"shortlist": 8, "min_fit": 3}
+    assert cfg["hooks"] == {"shortlist": 8, "min_fit": 3, "max_candidates": 50}
+    assert cfg["review"] == {"max_trends": 50}          # issue #129
     assert cfg["growth"] == {"window_days": 14, "baseline_days": 28, "lag_days": 2}
     assert cfg["buckets"] == {
         "act_index": 1.3, "act_min_new": 3, "act_last_days": 5, "act_median_views": 5000,

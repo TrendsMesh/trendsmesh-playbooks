@@ -49,7 +49,10 @@ DEFAULTS: dict = {
                 "crowded_creators": 100, "crowded_age_days": 90, "active_days": 14,
                 "season_after_days": 60},
     "confidence": {"low_creators": 8, "low_top_share": 0.6, "high_creators": 15, "high_top_share": 0.4},
-    "hooks": {"shortlist": 8, "min_fit": 3},
+    # issue #129: the agent reviews at most `review.max_trends` mapped trends (B3) and scores at most
+    # `hooks.max_candidates` hooks (B4); the engine sets the rest aside, each restorable on request
+    "review": {"max_trends": 50},
+    "hooks": {"shortlist": 8, "min_fit": 3, "max_candidates": 50},
     "picks": {"act_now": 5, "still_rising": 5, "valid_days": 14},
     "paid": {"too_late_min_creators": 30},
     "scoring": {"weights": {c: 1 for c in CRITERIA}},
@@ -101,6 +104,8 @@ NUMBERS = {  # path: (integer?, lowest, highest, lowest allowed?, highest allowe
     "confidence.high_top_share": _SHARE,
     "hooks.shortlist": (True, 1, 20, True, True),
     "hooks.min_fit": (False, 1, 5, True, True),
+    "hooks.max_candidates": _COUNT,
+    "review.max_trends": _COUNT,
     "picks.act_now": _FROM0,
     "picks.still_rising": _FROM0,
     "picks.valid_days": _COUNT,
