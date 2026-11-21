@@ -4,6 +4,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Windows: the plugin runs on python.org's Python, signed by the Python Software Foundation.** Smart App Control
+  could block the unsigned conda-forge Python the plugin used, on one machine and day and not on another. On Windows
+  the plugin now installs python.org's Python 3.11.9 (its plain NuGet package: no installer, nothing in the Apps
+  list, a Python you have yourself is never touched) into its own data folder, checks the file's fingerprint and
+  every program's signature first, and gives each set of tools its own Python environment, with every package
+  checked against its fingerprint. The first session downloads about 17 MB more, from `api.nuget.org`; the tools'
+  packages come from `pypi.org` and `files.pythonhosted.org` (the voice tools also from `download.pytorch.org`).
+  macOS and Linux are unchanged.
 - **A decision you give in chat is saved exactly, or Claude asks again.** Every page build now lists the answers it
   takes in chat, one line per item or section, with the name the page shows. You may name an image by its name in
   the pack (`still_01`) and a track by its file (`mixkit-cat-walk-371.mp3`). A line Claude can't read, or a name that

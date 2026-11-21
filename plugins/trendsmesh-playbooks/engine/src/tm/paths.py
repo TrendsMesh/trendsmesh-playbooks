@@ -3,6 +3,7 @@ TM_PLUGIN_ROOT / TM_PLUGIN_DATA; each lookup tries the env var first, then the f
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -122,6 +123,54 @@ def pixi_bin() -> Path:
     if value:
         return Path(value)
     return data_dir() / "pixi" / "bin" / ("pixi.exe" if os.name == "nt" else "pixi")
+
+
+# Windows (issue #123): tm runs on python.org's Python, signed by the Python Software Foundation, not on conda-forge's,
+# which Smart App Control can block. bootstrap/install-python.ps1 installs it into <data>/python/<version>/ and each
+# tier's venv into <data>/venvs/<environment>-<key>/ (env/win-64/<environment>.txt); the pixi environments there hold
+# only ffmpeg and node. macOS and Linux keep the pixi environment's own python.
+WIN_PYTHON = "3.11.9"
+# The pixi environments whose tools run Python, each with its venv on Windows (video and animatic run only node).
+WIN_VENVS = ("base", "breakdown", "voice", "ai", "ocr")
+VENV_MARKER = "tm-venv.json"
+
+
+def is_windows() -> bool:
+    return os.name == "nt"
+
+
+def venv_key(root: str | Path) -> str:
+    """The plugin root's part of a venv's folder name: the first 12 hex digits of the SHA-256 of its UTF-8 text, with
+    / made \\ and no trailing \\. bin/tm and bootstrap/install-python.ps1 work it out the same way. Each plugin version
+    has its own root, so its own venvs (their tm.pth names its engine), as each has its own pixi environments."""
+    text = str(root).replace("/", "\\").rstrip("\\")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def win_python() -> Path:
+    """The python.org python.exe the venvs are made from (Windows)."""
+    return data_dir() / "python" / WIN_PYTHON / "python.exe"
+
+
+def venvs_dir() -> Path:
+    return data_dir() / "venvs"
+
+
+def venv_dir(env: str) -> Path:
+    """The venv of a pixi environment (base, breakdown, ...) on Windows, for this plugin version."""
+    return venvs_dir() / f"{env}-{venv_key(plugin_root())}"
+
+
+def win_requirements(env: str) -> Path:
+    return plugin_root() / "env" / "win-64" / f"{env}.txt"
+
+
+def python_bin(env: str) -> str:
+    """The python a tool runs on inside `pixi run -e <env>`: on Windows the environment's venv (by its full path), else
+    the pixi environment's own `python`."""
+    if not is_windows():
+        return "python"
+    return str(venv_dir(env) / "Scripts" / "python.exe")
 
 
 def child_environ(env: dict[str, str]) -> dict[str, str]:

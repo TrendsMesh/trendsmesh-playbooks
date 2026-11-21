@@ -251,3 +251,12 @@ def _i18n_cache(tmp_path_factory, monkeypatch):
     from tm import i18n
     folder = tmp_path_factory.mktemp("i18n")
     monkeypatch.setattr(i18n, "cache_dir", lambda: folder)
+
+
+@pytest.fixture(autouse=True)
+def _pixi_python(monkeypatch):
+    """On Windows tm runs on python.org's Python in one venv per tier (issue #123, `paths.is_windows`): the tests run
+    the engine in the dev environment's own Python on every system, so they take the macOS and Linux way, with the
+    pixi environment's python. A test of the Windows way patches `paths.is_windows` again."""
+    from tm import paths
+    monkeypatch.setattr(paths, "is_windows", lambda: False)

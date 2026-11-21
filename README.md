@@ -148,7 +148,8 @@ small file, `~/.trendsmesh/paths.json` (three folder paths, no keys), and pixi k
 
 These installs need the internet. Behind a firewall or proxy, or in an app that limits which sites Claude may
 reach, allow `pixi.sh`, `pixi.prefix.dev`, `github.com` and `release-assets.githubusercontent.com` (pixi itself),
-and `conda.anaconda.org`, `pypi.org` and `files.pythonhosted.org` (the tools). If an install fails, Claude tells you
+and `conda.anaconda.org`, `pypi.org` and `files.pythonhosted.org` (the tools); on Windows also `api.nuget.org`
+(python.org's Python, signed by the Python Software Foundation, which the plugin runs on there). If an install fails, Claude tells you
 the reason and where its log is; running `/trendsmesh-playbooks:doctor` tries it again.
 
 ## Report a problem

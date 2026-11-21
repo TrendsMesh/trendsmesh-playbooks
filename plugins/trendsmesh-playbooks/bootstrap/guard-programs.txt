@@ -29,9 +29,16 @@ envs/*/envs/*/node.exe
 envs/*/envs/*/npm.cmd
 envs/*/envs/*/npx.cmd
 
+# Windows (issue #123): tm and its tools run on python.org's Python, signed by the Python Software Foundation
+# (python/<version>/, from bootstrap/install-python.ps1), in one venv per tier (venvs/<tier>-<key>/), not on the
+# environments' own python.exe
+python/*/python.exe
+venvs/*/Scripts/python.exe
+
 # Remotion's headless browser, which the renders use when the user has no Chrome or Edge
 remotion/node_modules/.remotion/chrome-headless-shell/*/chrome-headless-shell-*/chrome-headless-shell
 remotion/node_modules/.remotion/chrome-headless-shell/*/chrome-headless-shell-*/chrome-headless-shell.exe
 
-# The user's own: Chrome or Edge, GitHub's gh (report-issue), and ps and taskkill (a render's clean-up)
-outside: browser gh ps taskkill
+# The user's own: Chrome or Edge, GitHub's gh (report-issue), ps and taskkill (a render's clean-up), and Windows
+# PowerShell (install-python.ps1, for a tier's venv on Windows)
+outside: browser gh ps taskkill powershell

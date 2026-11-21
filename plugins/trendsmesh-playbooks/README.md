@@ -65,7 +65,8 @@ saved in the folder you run Claude from (`runs/` and `library/`).
 
 The tools the playbooks run are installed on first use into the plugin's own data folder, which downloads from
 `pixi.sh` and `github.com` (the [pixi](https://pixi.sh) package manager), `conda.anaconda.org`, `pypi.org` and
-`files.pythonhosted.org` (Python and ffmpeg), and only after your yes for the larger tiers: `download.pytorch.org`
+`files.pythonhosted.org` (Python and ffmpeg; on Windows the plugin's Python is python.org's, from `api.nuget.org`),
+and only after your yes for the larger tiers: `download.pytorch.org` and `download-r2.pytorch.org`
 and `huggingface.co` (voice and speech models) and `registry.npmjs.org` (Remotion, for video cards, with the headless browser Remotion fetches for itself). These downloads
 send nothing about you or your work.
 

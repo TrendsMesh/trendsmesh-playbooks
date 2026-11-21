@@ -7,7 +7,8 @@ when the `ocr` tier is installed (`reader()`), it saves the unsure rows' frames 
 
     pixi run --as-is --manifest-path <root>/env/pixi.toml -e ocr python -m tm.tools._ocr REQUEST.json RESULT.json
 
-(argv, never a shell string), which reads each row's box, grown by MARGIN, on up to MAX_FRAMES frames (the row's
+(argv, never a shell string; on Windows the python is the ocr venv's, on python.org's signed Python, issue #123),
+which reads each row's box, grown by MARGIN, on up to MAX_FRAMES frames (the row's
 first, middle and last; for changing captions the middle of up to three of their spans, where words are on screen).
 Nothing is downloaded or spent. A failed read never fails the teardown: its rows stay to check, and `ocr.error`
 says why.
@@ -140,7 +141,8 @@ def worker_argv(request: Path, result: Path) -> list[str]:
     from tm import envtiers, paths
 
     return [str(paths.pixi_bin()), "run", "--as-is", "--manifest-path", str(paths.plugin_root() / "env" / "pixi.toml"),
-            "-e", envtiers.TIERS[TIER].env, "python", "-m", "tm.tools._ocr", str(request), str(result)]
+            "-e", envtiers.TIERS[TIER].env, str(paths.python_bin(envtiers.TIERS[TIER].env)), "-m", "tm.tools._ocr",
+            str(request), str(result)]
 
 
 def worker_env() -> dict[str, str]:

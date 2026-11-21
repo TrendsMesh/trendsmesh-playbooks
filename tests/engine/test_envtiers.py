@@ -45,7 +45,7 @@ def test_the_ocr_environment_pins_rapidocr_and_stays_out_of_the_others():
     from pathlib import Path
 
     manifest = tomllib.loads(((Path(__file__).resolve().parents[2] / "plugins" / "trendsmesh-playbooks") / "env" / "pixi.toml").read_text(encoding="utf-8"))
-    deps = manifest["feature"]["ocr"]["pypi-dependencies"]
+    deps = manifest["feature"]["ocr"]["target"]["unix"]["pypi-dependencies"]   # Windows: env/win-64/ocr.txt (#123)
     assert deps["rapidocr"].startswith("==") and deps["onnxruntime"].startswith("==")
     envs = manifest["environments"]
     assert "ocr" in envs["ocr"]["features"]

@@ -15,6 +15,19 @@ case "$(uname -s 2>/dev/null)" in
   MINGW*|MSYS*|CYGWIN*) WIN=1 ;;
   *) WIN= ;;
 esac
+# A finished base venv as install-python.ps1 leaves it on Windows (issue #123), so bin/tm and tm.ps1 go on without
+# installing Python: <data>/venvs/base-<key>/Scripts/python.exe and tm-venv.json. <key>: the first 12 hex digits of
+# the SHA-256 of the plugin root as the launchers see it, with / made \ and no trailing \. Prints the venv.
+sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi; }
+venv_key() {
+  r=$1; command -v cygpath >/dev/null 2>&1 && r=$(cygpath -w "$r")
+  printf '%s' "$r" | tr '/' '\\' | sed 's/\\*$//' | sha256 | cut -c1-12
+}
+fake_venv() {  # fake_venv <data folder>
+  v="$1/venvs/base-$(venv_key "$ROOT")"
+  mkdir -p "$v/Scripts"; : > "$v/Scripts/python.exe"; echo '{}' > "$v/tm-venv.json"
+  printf '%s' "$v"
+}
 
 export HOME="$TMP/home dir"
 mkdir -p "$HOME"
@@ -107,11 +120,21 @@ case "$*" in
 esac
 STUB
   chmod +x "$PD/pixi/bin/pixi.exe"
+  PV=$(fake_venv "$PD")
   ps() { env "$@" TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$PD" $PWSH -NoProfile -File "$HERE/tm.ps1" doctor; }  # ps VAR=value...
   if ps TM_STUB_WORDS="error 4551" 2> "$TMP/err"; then fail "tm.ps1 must fail when Python is blocked"; fi
   grep -qF "Windows blocked a file of the plugin's Python (_hashlib)" "$TMP/err" \
     && grep -qF "Never change Windows security settings yourself" "$TMP/err" || fail "tm.ps1 must say the block: $(cat "$TMP/err")"
   grep -qx 'tm:86' "$PD/pixi/bin/calls" || fail "tm.ps1 must tell tm how to say it said the block"
+  # tm.ps1 finds the base venv by the same key as bin/tm (issue #123): with none, it asks install-python.ps1.
+  mv "$PV/tm-venv.json" "$PV/tm-venv.off"
+  : > "$PD/pixi/bin/calls"
+  if ps CLAUDE_PLUGIN_DATA= TM_TEST_PYTHON_PACKAGE="$TMP/no such package.zip" 2> "$TMP/err"; then fail "tm.ps1 with no venv and no Python must fail"; fi
+  grep -qF "its Python did not install into the plugin's data folder, and trying again just now failed too" "$TMP/err" \
+    && grep -qF "Never install Python yourself" "$TMP/err" && ! grep -qF 'The reason: unknown' "$TMP/err" \
+    || fail "tm.ps1 with no venv must try install-python.ps1 again and say why: $(cat "$TMP/err")"
+  [ ! -s "$PD/pixi/bin/calls" ] || fail "tm.ps1 must not run tm with no venv"
+  mv "$PV/tm-venv.off" "$PV/tm-venv.json"
   : > "$PD/pixi/bin/calls"
   ps 2> "$TMP/err" && fail "tm.ps1 must pass a failure on"
   ! grep -q "Smart App Control" "$TMP/err" || fail "tm.ps1 said a block for another failure: $(cat "$TMP/err")"
@@ -129,11 +152,17 @@ cat > "$CLAUDE_PLUGIN_DATA/pixi/bin/pixi" <<'STUB'
 #!/bin/sh
 for a in "$@"; do printf '[%s]\n' "$a"; done
 STUB
+FV=$(fake_venv "$CLAUDE_PLUGIN_DATA")   # on Windows bin/tm runs the base venv's python (issue #123)
 got=$(TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$CLAUDE_PLUGIN_DATA" sh "$ROOT/bin/tm" run "two words" --x=1)
 echo "$got" | grep -qF '[two words]' || fail "bin/tm lost an argument with a space"
 echo "$got" | grep -qF '[--x=1]' || fail "bin/tm lost --x=1"
 echo "$got" | grep -qF '[--frozen]' || fail "bin/tm must pass --frozen (never re-solve the lock)"
 echo "$got" | grep -qF '[-e]' || fail "bin/tm should use -e base"
+if [ -n "$WIN" ]; then
+  echo "$got" | grep -qF "[$FV/Scripts/python.exe]" || fail "Windows: bin/tm must run the base venv's python: $got"
+else
+  echo "$got" | grep -qxF '[python]' || fail "bin/tm must run the environment's python: $got"
+fi
 # Falls back to paths.json when the env vars are absent.
 if [ -n "$WIN" ]; then  # session-start.ps1 writes it there
   mkdir -p "$HOME/.trendsmesh"
@@ -287,6 +316,7 @@ case "$*" in
 esac
 STUB
 chmod +x "$WD2/pixi/bin/pixi"
+FV2=$(fake_venv "$WD2")
 wtm() { env "$@" TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$WD2" PATH="$TMP/winbin2:$PATH" sh "$ROOT/bin/tm" doctor; }  # wtm VAR=value...
 for words in "An Application Control policy has blocked this file." "[WinError 4551] Zasady zablokowały plik"; do
   : > "$WD2/pixi/bin/calls"; rc=0
@@ -304,6 +334,30 @@ for c in 86:1 2:2 0:0; do
   wtm TM_STUB_RC="${c%%:*}" 2> "$TMP/err" || rc=$?
   [ "$rc" = "${c#*:}" ] && ! grep -q probe "$WD2/pixi/bin/calls" || fail "Windows: tm exit ${c%%:*} must give ${c#*:} with no probe, got $rc"
 done
+# bin/tm under Git Bash with no finished base venv (issue #123): it asks install-python.ps1 -Tier base -Report once,
+# passes its reason on when that fails, and runs tm on the venv once it is there.
+mkdir -p "$TMP/winbin3"
+cp "$TMP/fakebin/uname" "$TMP/winbin3/uname"
+cat > "$TMP/winbin3/powershell.exe" <<'STUB'
+#!/bin/sh
+for a in "$@"; do printf '[%s]' "$a"; done >> "$TM_TEST_ARGS"
+if [ -n "${TM_TEST_VENV:-}" ]; then mkdir -p "$TM_TEST_VENV/Scripts"; : > "$TM_TEST_VENV/Scripts/python.exe"; echo '{}' > "$TM_TEST_VENV/tm-venv.json"; exit 0; fi
+echo "trendsmesh-playbooks: could not download Python 3.11.9 from https://api.nuget.org/x. The install needs api.nuget.org (Python)" >&2
+exit 1
+STUB
+chmod +x "$TMP/winbin3/powershell.exe"
+rm -rf "$FV2"; : > "$WD2/pixi/bin/calls"; : > "$TMP/winargs3"
+if TM_TEST_ARGS="$TMP/winargs3" TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$WD2" PATH="$TMP/winbin3:$PATH" sh "$ROOT/bin/tm" ping 2> "$TMP/err"; then
+  fail "Windows: bin/tm with no venv must fail when install-python.ps1 fails"
+fi
+grep -qF "its Python did not install into the plugin's data folder, and trying again just now failed too. The reason: trendsmesh-playbooks: could not download Python 3.11.9" "$TMP/err" \
+  && grep -qF "Never install Python yourself" "$TMP/err" || fail "Windows: bin/tm lost install-python.ps1's reason: $(cat "$TMP/err")"
+grep -q 'install-python.ps1\]\[-Tier\]\[base\]\[-Report\]' "$TMP/winargs3" || fail "Windows: bin/tm did not call install-python.ps1 -Tier base -Report: $(cat "$TMP/winargs3")"
+[ ! -s "$WD2/pixi/bin/calls" ] || fail "Windows: bin/tm must not run tm with no venv"
+: > "$TMP/winargs3"
+TM_TEST_VENV="$FV2" TM_TEST_ARGS="$TMP/winargs3" TM_STUB_RC=0 TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$WD2" PATH="$TMP/winbin3:$PATH" \
+  sh "$ROOT/bin/tm" ping 2> "$TMP/err" || fail "Windows: bin/tm must run once install-python.ps1 made the venv: $(cat "$TMP/err")"
+grep -qx 'tm:86' "$WD2/pixi/bin/calls" || fail "Windows: bin/tm did not run tm after making the venv"
 
 if [ -z "$WIN" ]; then
 

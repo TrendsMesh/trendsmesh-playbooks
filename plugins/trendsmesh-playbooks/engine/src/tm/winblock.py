@@ -1,7 +1,9 @@
 """Windows Smart App Control blocking a file of the plugin's Python (Windows error 4551, issue #123).
 
 Smart App Control judges an unsigned file by Microsoft's cloud reputation of it, so a new conda-forge Python build
-can be stopped on one machine and day and not on another. It shows up as pixi's "(os error 4551)" when python.exe
+can be stopped on one machine and day and not on another. Since part 1 tm runs on python.org's Python on Windows,
+signed by the Python Software Foundation (bootstrap/install-python.ps1); the packages in a tier's venv come from PyPI,
+and their compiled files (numpy's, pydantic-core's, torch's ...) carry no signature, so they can still be blocked. It shows up as pixi's "(os error 4551)" when python.exe
 itself is blocked, or as `ImportError: DLL load failed while importing _ssl: <Windows' text>` when one of its
 modules is: that text is Windows' own message for error 4551, in the user's language, with no number.
 

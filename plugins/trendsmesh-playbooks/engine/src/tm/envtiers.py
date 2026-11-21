@@ -5,12 +5,18 @@ manifest's path, and that path changes with every plugin version, so each versio
 tiers again (mostly from pixi's package cache) into a new `<data>/envs/<name>-<hash>/` folder.
 `clean_stale` removes the folders whose manifest is gone; `tm env status` and `tm env install`
 run it first.
+
+On Windows (issue #123) the pixi environments hold only ffmpeg and node, and a tier whose tools run Python
+(`paths.WIN_VENVS`) also needs its venv on python.org's signed Python: `tm env install` makes it after
+`pixi install` (bootstrap/install-python.ps1), `installed` asks for its marker, and `clean_stale` removes the venvs
+of plugin versions that are gone.
 """
 
 from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import json
 import os
 import shutil
@@ -72,6 +78,8 @@ def installed(tier: str) -> bool:
     one check is what the doctor and the renderers ask."""
     if not _env_installed(TIERS[tier].env):
         return False
+    if paths.is_windows() and TIERS[tier].env in paths.WIN_VENVS and not venv_installed(TIERS[tier].env):
+        return False
     if tier == "video":
         from tm import render
 
@@ -99,17 +107,49 @@ def _env_installed(env: str) -> bool:
     return False
 
 
+def venv_installed(env: str) -> bool:
+    """Windows (issue #123): the environment's venv is finished (its marker, written last by
+    bootstrap/install-python.ps1) and was filled from the requirements file this plugin version ships."""
+    try:
+        venv = paths.venv_dir(env)
+        marker = json.loads((venv / paths.VENV_MARKER).read_text(encoding="utf-8-sig"))
+        wanted = hashlib.sha256(paths.win_requirements(env).read_bytes()).hexdigest()
+    except (OSError, ValueError, RuntimeError):
+        return False
+    return (isinstance(marker, dict) and marker.get("requirements_sha256") == wanted
+            and (venv / "Scripts" / "python.exe").is_file())
+
+
+def _install_venv(env: str) -> tuple[int, str]:
+    """Windows: make the environment's venv with bootstrap/install-python.ps1 (python.org's Python, its signature
+    checked, then pip with every file's hash). What it prints goes to its log; a failure is its one line."""
+    script = paths.plugin_root() / "bootstrap" / "install-python.ps1"
+    env_vars = {**paths.child_environ(dict(os.environ)), "CLAUDE_PLUGIN_ROOT": str(paths.plugin_root()),
+                "CLAUDE_PLUGIN_DATA": str(paths.data_dir())}
+    try:
+        proc = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
+                               "-Tier", env, "-Report"], env=env_vars, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return 1, f"Could not start the Python installer: {exc}"
+    if proc.returncode != 0:
+        why = " ".join((proc.stderr or proc.stdout or "").split())[:600] or f"exit code {proc.returncode}"
+        return 1, f"The Python packages of the '{env}' tools did not install. The reason: {why}"
+    return 0, ""
+
+
 def clean_stale() -> list[Path]:
     """Remove the environment folders of plugin versions that are gone: a folder under
     `<data>/envs` whose every finished environment (conda-meta/pixi) names a manifest that no
     longer exists. A folder with no finished environment may be an install under way: kept.
+    On Windows also each venv under `<data>/venvs` whose marker names a plugin root that is gone.
     Returns the folders removed. Cheap: a directory listing and a few small files."""
     try:
         root = paths.data_dir() / "envs"
         folders = [p for p in root.iterdir() if p.is_dir()] if root.is_dir() else []
     except (OSError, RuntimeError):
         return []
-    removed = []
+    removed = _clean_venvs()
     for folder in sorted(folders):
         manifests = []
         for marker in folder.glob("envs/*/conda-meta/pixi"):
@@ -118,6 +158,28 @@ def clean_stale() -> list[Path]:
             except (OSError, ValueError, KeyError, TypeError):
                 manifests.append(None)  # unreadable: keep the folder
         if not manifests or any(m is None or Path(m).exists() for m in manifests):
+            continue
+        shutil.rmtree(folder, onerror=_force)
+        if not folder.exists():
+            removed.append(folder)
+    return removed
+
+
+def _clean_venvs() -> list[Path]:
+    """The venvs (Windows) of plugin versions that are gone: their marker names a plugin root that no longer exists.
+    One with no marker may be an install under way: kept."""
+    try:
+        root = paths.venvs_dir()
+        folders = [p for p in root.iterdir() if p.is_dir()] if root.is_dir() else []
+    except (OSError, RuntimeError):
+        return []
+    removed = []
+    for folder in sorted(folders):
+        try:
+            owner = json.loads((folder / paths.VENV_MARKER).read_text(encoding="utf-8-sig"))["plugin_root"]
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        if not isinstance(owner, str) or not owner or Path(owner).exists():
             continue
         shutil.rmtree(folder, onerror=_force)
         if not folder.exists():
@@ -178,6 +240,10 @@ def _install(tier: str, yes: bool) -> tuple[int, str]:
         return 1, f"Could not start the installer: {exc}"
     if proc.returncode != 0:
         return 1, f"The installer stopped with exit code {proc.returncode}; its messages are above."
+    if paths.is_windows() and t.env in paths.WIN_VENVS and not venv_installed(t.env):
+        code, message = _install_venv(t.env)   # Windows: the tier's Python packages, in its venv (issue #123)
+        if code:
+            return code, message
     if tier == "video":  # the Remotion packages and headless browser belong to this tier (and this yes)
         from tm import render
         from tm.tools import _common

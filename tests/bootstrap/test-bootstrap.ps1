@@ -23,6 +23,34 @@ function Invoke-Native([scriptblock]$Block) {
     return $o
 }
 function Fail($m) { [Console]::Error.WriteLine("FAIL: $m"); throw $m }
+# A finished Python and base venv as install-python.ps1 leaves them (issue #123), so session-start.ps1 goes on with
+# no download: the runtime's python.exe and .tm-installed, the venv's python.exe and its marker with the hash of the
+# requirements file it was filled from.
+. (Join-Path $here 'install-python.ps1') -Functions
+function Fake-Python([string]$Data) {
+    $rt = Join-Path $Data 'python\3.11.9'
+    New-Item -ItemType Directory -Force -Path $rt | Out-Null
+    [IO.File]::WriteAllText((Join-Path $rt 'python.exe'), '')
+    [IO.File]::WriteAllText((Join-Path $rt '.tm-installed'), 'x')
+    $v = Get-TmVenv $Data $root 'base'
+    New-Item -ItemType Directory -Force -Path (Join-Path $v 'Scripts') | Out-Null
+    [IO.File]::WriteAllText((Join-Path $v 'Scripts\python.exe'), '')
+    $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $root 'env\win-64\base.txt')).Hash.ToLowerInvariant()
+    [IO.File]::WriteAllText((Join-Path $v 'tm-venv.json'), "{`"requirements_sha256`": `"$sha`"}")
+    return $v
+}
+# A python.org-like package: a zip whose tools\ folder is the Python installation (here a few dummy files).
+function Fake-Package([string]$Path, [string[]]$Names) {
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    if (Test-Path $Path) { Remove-Item -Force $Path }
+    $zip = [IO.Compression.ZipFile]::Open($Path, 'Create')
+    try {
+        foreach ($n in $Names) {
+            $w = New-Object IO.StreamWriter(($zip.CreateEntry($n)).Open())
+            try { $w.Write('MZ not a real program') } finally { $w.Dispose() }
+        }
+    } finally { $zip.Dispose() }
+}
 try {
     # Folder names with a space, as a real profile can have.
     $env:USERPROFILE = Join-Path $tmp 'home dir'
@@ -40,6 +68,7 @@ try {
     $real = (Get-Command pixi -ErrorAction Stop).Source
     New-Item -ItemType Directory -Force -Path (Join-Path $data 'pixi\bin') | Out-Null
     Copy-Item $real (Join-Path $data 'pixi\bin\pixi.exe')
+    $null = Fake-Python $data
 
     $line = 'TrendsMesh playbooks: never search for, read or show the Replicate or ElevenLabs keys, not even masked; tm doctor says whether each is set.'
     $out = Invoke-Native { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $here 'session-start.ps1') }
@@ -83,6 +112,7 @@ try {
     $apo = Join-Path $tmp "o'brien data"
     New-Item -ItemType Directory -Force -Path (Join-Path $apo 'pixi\bin') | Out-Null
     Copy-Item $real (Join-Path $apo 'pixi\bin\pixi.exe')
+    $null = Fake-Python $apo
     $env:CLAUDE_PLUGIN_DATA = $apo
     $env:CLAUDE_ENV_FILE = Join-Path $tmp 'envfile2'
     New-Item -ItemType File -Path $env:CLAUDE_ENV_FILE | Out-Null
@@ -96,6 +126,7 @@ try {
     $pl = Join-Path $tmp (([string][char]0x0141) + 'ukasz Nowak data')
     New-Item -ItemType Directory -Force -Path (Join-Path $pl 'pixi\bin') | Out-Null
     Copy-Item $real (Join-Path $pl 'pixi\bin\pixi.exe')
+    $null = Fake-Python $pl
     $env:CLAUDE_PLUGIN_DATA = $pl
     $env:CLAUDE_ENV_FILE = Join-Path $tmp 'envfile3'
     New-Item -ItemType File -Path $env:CLAUDE_ENV_FILE | Out-Null
@@ -165,6 +196,72 @@ try { throw 'no network' } catch { Write-Host "Error: 'https://github.com/x.zip'
     if ($script:instMsg) { Fail "a working installer must not fail: $($script:instMsg)" }
     if (-not (Test-Path (Join-Path $d 'pixi\config.toml'))) { Fail 'config.toml after the install' }
     if (Test-Path (Join-Path $d 'install-pixi.log')) { Fail 'the log must go once pixi installs' }
+    # install-python.ps1 (issue #123), offline: a local package in place of the download. A package that is not the
+    # pinned one, one whose files are not signed by the Python Software Foundation, and one with a path out of its
+    # folder all install nothing, and say why with the sites and the log.
+    function Try-Python([string]$Package, [string]$Sha) {
+        $d = Join-Path $tmp ('py data ' + [guid]::NewGuid().ToString('N').Substring(0, 6))
+        $env:CLAUDE_PLUGIN_DATA = $d
+        $env:TM_TEST_PYTHON_PACKAGE = $Package
+        if ($Sha) { $env:TM_TEST_PYTHON_SHA256 = $Sha }
+        $script:pyMsg = $null
+        try { & (Join-Path $here 'install-python.ps1') -Tier base *>$null } catch { $script:pyMsg = $_.Exception.Message }
+        Remove-Item Env:TM_TEST_PYTHON_PACKAGE, Env:TM_TEST_PYTHON_SHA256 -ErrorAction SilentlyContinue
+        return $d
+    }
+    $pkg = Join-Path $tmp 'fake python.zip'
+    Fake-Package $pkg @('tools/python.exe', 'tools/python311.dll', 'tools/python3.dll', 'tools/pythonw.exe', 'tools/DLLs/_ssl.pyd', 'tools/Lib/os.py')
+    $d = Try-Python $pkg ''
+    if ($script:pyMsg -notmatch 'is not the one expected' -or $script:pyMsg -notmatch 'api\.nuget\.org' -or $script:pyMsg -notmatch 'Full log: ') {
+        Fail "a package with another SHA-256 must be refused, with the sites and the log: $($script:pyMsg)"
+    }
+    if (Test-Path (Join-Path $d 'python\3.11.9')) { Fail 'a refused package must install nothing' }
+    $sha = (Get-FileHash -Algorithm SHA256 -LiteralPath $pkg).Hash
+    $d = Try-Python $pkg $sha
+    if ($script:pyMsg -notmatch 'is not signed by Python Software Foundation') { Fail "an unsigned package must be refused: $($script:pyMsg)" }
+    if (Test-Path (Join-Path $d 'python\3.11.9')) { Fail 'an unsigned package must install nothing' }
+    if (@(Get-ChildItem -Path (Join-Path $d 'python') -Force).Count -ne 0) { Fail 'a refused package must leave no download or unpacked folder behind' }
+    if (-not (Test-Path (Join-Path $d 'install-python.log'))) { Fail 'the log must stay when the install fails' }
+    $slip = Join-Path $tmp 'slip python.zip'
+    Fake-Package $slip @('tools/python.exe', 'tools/../../outside.txt')
+    $d = Try-Python $slip (Get-FileHash -Algorithm SHA256 -LiteralPath $slip).Hash
+    if ($script:pyMsg -notmatch 'holds a file outside its folder') { Fail "a path out of the package's folder must be refused: $($script:pyMsg)" }
+    if (Test-Path (Join-Path $d 'outside.txt')) { Fail 'a path out of the package must never be written' }
+    # Python and the venv in place: nothing is downloaded (no package is given), and nothing is said.
+    $d = Join-Path $tmp 'py data ready'
+    $null = Fake-Python $d
+    $env:CLAUDE_PLUGIN_DATA = $d
+    try { & (Join-Path $here 'install-python.ps1') -Tier base *>$null } catch { Fail "a finished venv must need nothing: $($_.Exception.Message)" }
+    # -Report (how bin/tm and the engine ask): exit 1 and the reason on stderr, nothing on stdout.
+    $env:CLAUDE_PLUGIN_DATA = Join-Path $tmp 'py data report'
+    $env:TM_TEST_PYTHON_PACKAGE = $pkg
+    $errFile = Join-Path $tmp 'py-report-err.txt'
+    $rp = Start-Process -FilePath 'powershell.exe' -Wait -PassThru -NoNewWindow -RedirectStandardError $errFile `
+        -RedirectStandardOutput (Join-Path $tmp 'py-report-out.txt') `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$(Join-Path $here 'install-python.ps1')`"", '-Tier', 'base', '-Report')
+    if ($rp.ExitCode -ne 1) { Fail "install-python.ps1 -Report must exit 1 when the install fails, got $($rp.ExitCode)" }
+    if ((Get-Content -Raw $errFile) -notmatch 'is not the one expected') { Fail 'install-python.ps1 -Report must give the reason on stderr' }
+    if (Get-Content -Raw (Join-Path $tmp 'py-report-out.txt')) { Fail 'install-python.ps1 -Report must print nothing on stdout' }
+    # session-start.ps1 with pixi in place and the Python install failing: one line for Claude, exit 0, keys saved.
+    $pd = Join-Path $tmp 'no python data'
+    New-Item -ItemType Directory -Force -Path (Join-Path $pd 'pixi\bin') | Out-Null
+    Copy-Item $real (Join-Path $pd 'pixi\bin\pixi.exe')
+    $env:CLAUDE_PLUGIN_DATA = $pd
+    $out = Invoke-Native { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $here 'session-start.ps1') }
+    if ($script:rc -ne 0) { Fail 'session-start.ps1 must exit 0 when Python fails' }
+    if ($out -notmatch "its Python did not install into the plugin's data folder" -or $out -notmatch 'Never install Python yourself' -or $out -notmatch 'is not the one expected') {
+        Fail "session-start.ps1 is silent about the failed Python install: $out"
+    }
+    if (-not (Test-Path (Join-Path $pd 'secrets.env'))) { Fail 'secrets.env must be written before Python is installed' }
+    # tm.cmd with pixi but no Python: it tries install-python.ps1 again and says why.
+    $env:TM_PLUGIN_ROOT = $root
+    $env:TM_PLUGIN_DATA = $pd
+    $out = Invoke-Native { & (Join-Path $root 'bin\tm.cmd') doctor --json }
+    if ($script:rc -ne 1) { Fail "tm.cmd without Python must exit 1, got $($script:rc)" }
+    if ($out -notmatch "its Python did not install into the plugin's data folder, and trying again just now failed too" -or $out -notmatch 'is not the one expected') {
+        Fail "tm.cmd without Python must try again and say why: $out"
+    }
+    Remove-Item Env:TM_PLUGIN_ROOT, Env:TM_PLUGIN_DATA, Env:TM_TEST_PYTHON_PACKAGE
     $env:CLAUDE_PLUGIN_DATA = $bad
     # tm.cmd (what `tm` resolves to on Windows; tm.ps1 is no longer in bin\) says the same.
     if (Test-Path (Join-Path $root 'bin\tm.ps1')) { Fail 'tm.ps1 must not be in bin\, where PowerShell would run it directly' }
