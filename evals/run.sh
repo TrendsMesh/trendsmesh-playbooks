@@ -74,8 +74,8 @@ rsync -aL "${COPY_EXCLUDES[@]}" --exclude /results "$EVALS/" "$STAGED/evals/"
 rsync -aL "${COPY_EXCLUDES[@]}" "$REPO/tests/engine" "$STAGE/tests/"
 
 # The TrendsMesh pacer hook (bootstrap/pace-mcp.sh, issue #129) waits each call into TrendsMesh's rate limits; the
-# mocks have none, so the cases run unpaced.
-export EVAL_TM_PACE=off
+# mocks have none, so the cases run unpaced (EVAL_TM_PACE=on evals/run.sh ... runs them paced).
+export EVAL_TM_PACE="${EVAL_TM_PACE:-off}"
 
 claude plugin eval "$STAGED" --runs 1 --max-cost-usd 15 --no-publish \
   --mocks record --scaffold --allow-tools Bash Write Edit ${LOCAL_GRANT[@]+"${LOCAL_GRANT[@]}"} --trust-plugin \
