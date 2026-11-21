@@ -391,20 +391,21 @@ def _read(files: list[str], what: str, *, once: bool = False) -> tuple[dict[str,
     week fetched again: only the later file's row counts. Rows of one file are never dropped."""
     ads: dict[str, list[Row]] = {}
     readable = False
-    later: set[tuple[str, date, date]] = set()
     parts = []
     for f in files:
         data = _answer(f)
         parts.append((f, data, load_ads(data)))
+    counted = [part for _, _, part in parts]           # the rows each file adds
     if once:
-        for i in range(len(parts) - 1, -1, -1):
-            f, data, part = parts[i]
-            kept = {ad: [r for r in rows if (r.ad_id or ad, r.start, r.stop) not in later]
-                    for ad, rows in part.items()}
-            later |= {(r.ad_id or ad, r.start, r.stop) for ad, rows in part.items() for r in rows}
-            parts[i] = (f, data, part, {ad: rows for ad, rows in kept.items() if rows})
-    for item in parts:
-        f, data, part = item[:3]
+        def key(ad: str, r: Row) -> tuple[str, date, date]:
+            return r.ad_id or ad, r.start, r.stop
+        later: set[tuple[str, date, date]] = set()
+        for i in range(len(parts) - 1, -1, -1):          # newest first: its rows stand
+            part = parts[i][2]
+            counted[i] = {ad: kept for ad, rows in part.items()
+                          if (kept := [r for r in rows if key(ad, r) not in later])}
+            later |= {key(ad, r) for ad, rows in part.items() for r in rows}
+    for (f, data, part), use in zip(parts, counted):
         if not any(part.values()):
             raise ValueError(f"{Path(f).name} holds no {what} rows of a Meta read (rows with a date). {_AGAIN}")
         empty = next((ad for ad, rows in part.items() if not rows), None)
@@ -415,7 +416,7 @@ def _read(files: list[str], what: str, *, once: bool = False) -> tuple[dict[str,
         if raw is None:   # {ad_id: [rows]}
             raw = [r for rs in data.values() for r in rs if isinstance(r, dict)]
         readable = readable or any(results_readable(r.get("results")) for r in raw)
-        for ad_id, rows in (item[3] if once else part).items():
+        for ad_id, rows in use.items():
             ads.setdefault(ad_id, []).extend(rows)
     return ads, readable
 
