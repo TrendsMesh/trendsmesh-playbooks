@@ -421,6 +421,57 @@ def test_single_file_inlines_media(run, capsys):
     assert out["file"] == "04_final/brief_pack_v02.html"                 # never over the first
 
 
+_PLACEHOLDER = re.compile(r'<div class="on-request">(.*?)</div>', re.S)
+
+
+def _no_animatics(brief: dict) -> dict:
+    for c in brief["concepts"]:
+        c.pop("animatic", None)
+    return brief
+
+
+@pytest.mark.private_data
+def test_no_empty_player_before_the_animatics(ws):
+    """Issue #133: before the animatics exist (they are made on request, #145), no concept and no header phone has a
+    `<video>`: each shows the concept's hook in a placeholder, with "Animatic on request" while one may still come
+    (no `animatics` decision yet, or the concept named on `make`), and without it once none will (`skip`, a concept
+    not named, Hands-off). Once rendered, the players are back."""
+    run = RunFolder.create(ws, ld.NAME, ld.CREATED, playbook=CREATIVE_BRIEF)
+    brief = _no_animatics(_ld_brief())
+    _write(run, "04_final/brief_pack_v01.json", brief)
+    hooks = [html.escape(c["hook"]["text"], quote=True) for c in brief["concepts"]]
+    line = "Animatic on request"
+
+    def built() -> list[str]:
+        out = brief_page.build(run)
+        text = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
+        assert "<video" not in text and 'class="toggle"' not in text
+        return _PLACEHOLDER.findall(text)
+
+    cards = built()                    # three header phones, then one per concept
+    assert len(cards) == 3 + len(hooks)
+    assert all(h in cards[i] for i, h in enumerate(hooks[:3])) and all(h in cards[3 + i] for i, h in enumerate(hooks))
+    assert all(line in c for c in cards)
+    state_ = state.load(run)
+    state_.decisions = [{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C1"]}]
+    state.save(run, state_)
+    cards = built()
+    assert [line in c for c in cards] == [True, False, False, True, False, False]
+    state_.decisions = [{"checkin": "animatics", "choice": "skip", "by": "user"}]
+    state.save(run, state_)
+    assert not any(line in c for c in built()) and all(h in c for h, c in zip(hooks, built()))
+    state_.decisions, state_.level = [], "hands_off"            # Hands-off makes no animatic
+    state.save(run, state_)
+    assert not any(line in c for c in built())
+    # the print mode (the PDFs) has the same placeholder where a concept has no animatic
+    printed = brief_page.render(brief, stills={})[0]
+    assert "<video" not in printed and len(_PLACEHOLDER.findall(printed)) == 3 + len(hooks)
+    # rendered, the players play the animatics as before
+    full = _ld_brief()
+    rendered = brief_page.render(full)[0]
+    assert not _PLACEHOLDER.findall(rendered) and rendered.count("<video") == 3 + len(full["concepts"])
+
+
 @pytest.mark.private_data
 def test_capabilities_are_handoff_verbatim(capsys):
     text = (HANDOFF / "HANDOFF.md").read_text(encoding="utf-8")

@@ -352,11 +352,13 @@ def _presenter(ctx: Context, data: dict, lines: list[dict]) -> list[dict]:
 
 # --- the gates: visual, audio, takes --------------------------------------------------------------
 
-def _outputs(ctx: Context, item: str) -> list[Path]:
-    """A plan item's outputs: the media of its latest Replicate record (`03_wip/<item>_vNN.run.json`, the item's name
-    as replicate_run's `--name` makes it), and its ElevenLabs takes `03_wip/audio/<item>_vNN.<ext>` (`--out`)."""
+def _outputs(ctx: Context, item: str, calls: object = 1) -> list[Path]:
+    """A plan item's outputs: the media of its latest batch of Replicate records (`03_wip/<item>_vNN.run.json`, the
+    item's name as replicate_run's `--name` makes it; a line of `calls: N` is its last N records, issue #133), and its
+    ElevenLabs takes `03_wip/audio/<item>_vNN.<ext>` (`--out`)."""
     stem = tools_common.stem_of(item)
-    latest, _ = organic_specs.outputs(ctx.run, stem)
+    n = calls if isinstance(calls, int) and not isinstance(calls, bool) and calls >= 1 else 1
+    latest = organic_specs.batch_outputs(ctx.run, stem, n)
     found = [ctx.run.path / rel for rel in latest if Path(rel).suffix.lower() in MEDIA_EXT]
     audio = ctx.run.path / WIP / "audio"
     names = {re.escape(item), re.escape(stem)}
@@ -416,7 +418,7 @@ def _gate(checkin: str):
         cards, keys = [], []
         options = [{"value": c, "label": _w(ctx, "item." + c)} for c in ITEM_CHOICES]
         for item, line in _gate_items(ctx, checkin):
-            outs = _outputs(ctx, item)
+            outs = _outputs(ctx, item, line.get("calls", 1))
             for n, f in enumerate(outs, 1):
                 key = f.stem
                 served = ctx.put(ctx.rel(f))
@@ -533,13 +535,17 @@ def _storyboard(ctx: Context) -> list[dict]:
 # --- review ---------------------------------------------------------------------------------------
 
 def _versions(ctx: Context) -> list[Path]:
+    """The latest 1–4 versions of the edit (`03_wip/edit_vNN.mp4`) that passed `tm ad check edit`
+    (create_qa.passed_edits, issue #133), oldest first: a version that failed is never shown."""
     folder = ctx.run.path / WIP
-    found = [p for p in folder.glob("edit_v*.mp4") if re.fullmatch(r"edit_v\d+", p.stem)] if folder.is_dir() else []
+    passed = {e.casefold() for e in create_qa.passed_edits(ctx.run)}
+    found = [p for p in folder.glob("edit_v*.mp4") if re.fullmatch(r"edit_v\d+", p.stem)
+             and ctx.rel(p).casefold() in passed] if folder.is_dir() else []
     return sorted(found, key=lambda p: int(p.stem.split("_v")[1]))[-REVIEW_VERSIONS:]
 
 
 def _review(ctx: Context) -> list[dict]:
-    items, keys = [], []
+    items, keys, rels = [], [], {}
     for f in _versions(ctx):
         served = ctx.put(ctx.rel(f))
         if not served:
@@ -547,28 +553,27 @@ def _review(ctx: Context) -> list[dict]:
         n = int(f.stem.split("_v")[1])
         label = _w(ctx, "version", n=n)
         keys.append(f.stem)
+        rels[f.stem] = ctx.rel(f)
         items.append({"key": f.stem, "label": label, "src": served, "caption": ""})
     if not items:
         return [{"kind": "text", "text": _w(ctx, "no_version")}]
-    report = create_qa.edit_report(ctx.run, i18n.translator(ctx.lang))
-    checked = Path(str((report or {}).get("edit") or "")).stem
-    best = checked if checked in keys else keys[-1]        # the checked edit, else the latest version
+    best = keys[-1]                                         # the newest version that passed
+    report = create_qa.edit_report(ctx.run, i18n.translator(ctx.lang), edit=rels[best])
     blocks = [{"kind": "versions", "title": _w(ctx, "versions"), "items": items,
                "pick": {"path": ["version"], "label": _w(ctx, "pick_version"), "default": best},
                "pins": {"path": ["pins"], "label": _w(ctx, "pin_label"), "button": _w(ctx, "pin_button"),
                         "heading": _w(ctx, "pins"), "empty": _w(ctx, "no_pins")},
                "offer": {"version": {"type": "pick", "values": keys, "default": best},
                          "pins": {"type": "pins", "versions": keys}}}]
-    return blocks + _checked_edit(ctx)
+    return blocks + _checked_edit(ctx, report)
 
 
-def _checked_edit(ctx: Context) -> list[dict]:
-    """What was checked (S7), from create_qa.edit_report: the checked edit's loudness, true peak and transcript match,
-    and each CA11 check with its result and note."""
-    report = create_qa.edit_report(ctx.run, i18n.translator(ctx.lang))
+def _checked_edit(ctx: Context, report: dict | None) -> list[dict]:
+    """What was checked (S7), from create_qa.edit_report (the picked version's): the edit's loudness, true peak and
+    transcript match, and each CA11 check with its result and note."""
     if not report:
         return []
-    src = ctx.rel(create_plan.checked_file(ctx.run, create_plan.EDIT_QA))
+    src = report.get("file") or ""
     edit = str(report.get("edit") or "")
     version = _w(ctx, "version", n=int(Path(edit).stem.split("_v")[1])) if "_v" in edit else edit
     tiles = [{"label": _w(ctx, "qa." + k), "value": report.get(k)} for k in ("lufs", "peak", "match")

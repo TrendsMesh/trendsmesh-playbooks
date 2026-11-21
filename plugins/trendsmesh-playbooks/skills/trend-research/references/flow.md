@@ -541,7 +541,8 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   `Artifact` tool's `file_path` and `files`; the run's first page (G0's) is a new private artifact,
   every later version and a weekly page go to the same `url` from `tm page link` (its files listed
   first, the ones this week's
-  page lacks removed with `null`); then `tm page published --run R --page report --url <url>
+  page lacks removed with `null`), each time with `capabilities` = the `capabilities` object
+  `tm research report --json` returned (the decisions, and `downloads` for the CSV buttons); then `tm page published --run R --page report --url <url>
   --version <the version id> --json`. With the older `publish_files`: the same slug and
   `base_version`, `--slug` in the record. Never republish while the user is still deciding on the
   page.

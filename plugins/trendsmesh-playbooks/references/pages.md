@@ -52,8 +52,9 @@ in this session was refused by Claude Code's permissions. A refused publish is a
    version id the publish returned> --json`. Next week's run finds it there.
 6. Give the user the link (and, the first time, that it is private until they share it).
 
-A read-only page (PB04's report) stores nothing and asks for nothing, so it declares no
-`capabilities`. PB04's report is built on the shared run page (below) with nothing to save: its
+PB04's report stores nothing and takes no decisions; it declares only `downloads`, for its CSV
+buttons (the `capabilities` `tm research report --json` returns, at every publish to the same URL).
+PB04's report is built on the shared run page (below) with nothing to save: its
 settled check-ins are read-only summaries under the report, and every check-in is answered in chat. A page that takes decisions declares them in its publish: "Pages that take
 decisions" below.
 

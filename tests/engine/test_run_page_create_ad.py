@@ -206,22 +206,69 @@ def test_the_storyboard_page_shows_one_scene_at_a_time_with_the_exact_prompt_and
     assert "ArrowLeft" in template.SCRIPT and "pg.step" in template.SCRIPT
 
 
+def _edit_version(run, n, *, collisions=()) -> list:
+    """Edit version `n` as S6 and S7 leave it: levelled, its layers checked (with `collisions`), measured, and its
+    edit QA checked by `tm ad check edit`; the check's problems."""
+    rel = _media(run, f"03_wip/edit_v{n:02d}.mp4")
+    finish_and_check_layers(run, rel, collisions=collisions)
+    _take_qa(run, rel, lufs=-14.2, peak=-1.8)
+    return _edit_qa(run, edit=rel, qa=f"03_wip/qa/edit_v{n:02d}_qa_v01.json")
+
+
 def test_the_review_page_shows_up_to_four_versions_with_a_pick_and_pinned_notes(run):
     for n in range(1, 6):
-        _media(run, f"03_wip/edit_v{n:02d}.mp4")
-    finish_and_check_layers(run, "03_wip/edit_v05.mp4")
-    _take_qa(run, "03_wip/edit_v05.mp4", lufs=-14.2, peak=-1.8)
-    assert _edit_qa(run, edit="03_wip/edit_v05.mp4", qa="03_wip/qa/edit_v05_qa_v01.json") == []
+        assert _edit_version(run, n) == []
     built = run_page.build(run, _ask(run, "review"))
     now = _now(_html(run, built))
     assert "Version 1" not in now and all(f"Version {n}" in now for n in (2, 3, 4, 5))
     assert 'style="--n:4"' in now and "Pin to {version} at {time}" in now and "Your notes" in now
     assert "What was checked: Version 5" in now and "True peak (dBFS)" in now       # create_qa.edit_report
-    assert "Motion at every cut" in now and "looked at cuts" in now and "What was checked: 03_wip/edit_qa_v01.json</li>" in now
+    assert "Motion at every cut" in now and "looked at cuts" in now and "What was checked: 03_wip/edit_qa_v05.json</li>" in now
     assert _paths(now) == {"version", "pins"}
     offer = _built(run, built)["offer"]["review"]
     assert offer["pins"]["versions"] == ["edit_v02", "edit_v03", "edit_v04", "edit_v05"]
     assert offer["version"]["default"] == "edit_v05" and _checked_values(now) == {"version": ["edit_v05"]}
+
+
+def test_the_review_page_shows_only_the_versions_that_passed_the_edit_check(run):
+    """Issue #133: versions 4 and 5 failed `tm ad check edit` (a collision in their layer check), so the review shows
+    version 3 alone, picked, with what was checked for it; an edit that never passed shows nothing to pick."""
+    _media(run, "03_wip/edit_v01.mp4")                                 # never checked
+    assert _edit_version(run, 2) == [] and _edit_version(run, 3) == []
+    hit = {"kind": "collision", "message": "the caption covers the face"}
+    assert _edit_version(run, 4, collisions=[hit]) and _edit_version(run, 5, collisions=[hit])
+    built = run_page.build(run, _ask(run, "review"))
+    now = _now(_html(run, built))
+    assert all(f"Version {n}" not in now for n in (1, 4, 5)) and "Version 2" in now and "Version 3" in now
+    offer = _built(run, built)["offer"]["review"]
+    assert offer["version"] == {"type": "pick", "values": ["edit_v02", "edit_v03"], "default": "edit_v03"}
+    assert _checked_values(now) == {"version": ["edit_v03"]}
+    assert "What was checked: Version 3" in now and "What was checked: 03_wip/edit_qa_v02.json</li>" in now
+
+
+def test_a_review_with_no_passed_version_says_there_is_none_yet(run):
+    _media(run, "03_wip/edit_v01.mp4")
+    built = run_page.build(run, _ask(run, "review"))
+    now = _now(_html(run, built))
+    assert "Version 1" not in now and "No version of the edit has passed its check yet." in now
+
+
+def test_the_visual_gate_of_a_line_of_several_calls_shows_every_output_of_its_batch(run):
+    """Issue #133: a plan line of `calls: 3` is three Replicate records; the gate shows the outputs of the item's last
+    three, each with its own choice, never only the last call's."""
+    _checked_through(run, "board")
+    lines = plan()["lines"]
+    lines[0] |= {"calls": 3, "cost_per_call": 0.4, "cost": 1.2}
+    assert _check(run, "production_plan", plan(lines=lines)) == []
+    for n in range(1, 5):                                              # v01 is an earlier batch's
+        _media(run, f"03_wip/casting_v{n:02d}_0.png")
+        _write(run, f"03_wip/casting_v{n:02d}.run.json", {"status": "done", "outputs": [f"casting_v{n:02d}_0.png"]})
+    built = run_page.build(run, _ask(run, "visual"))
+    now = _now(_html(run, built))
+    keys = ["casting_v02_0", "casting_v03_0", "casting_v04_0"]
+    assert _built(run, built)["offer"]["visual"]["items"]["keys"] == keys
+    assert all(f"Casting, option {n}" in now for n in (1, 2, 3)) and "Casting, option 4" not in now
+    assert _checked_values(now) == {"items": ["accept"] * 3}
 
 
 def test_the_copy_page_shows_every_text_editable_with_its_live_count_and_keep_tick(run):
@@ -461,7 +508,7 @@ def test_a_rejected_plan_keeps_its_versions_as_they_are(run, capsys):
 
 def test_review_notes_pinned_at_a_time_and_gate_choices_go_into_the_note(run, capsys):
     for n in (1, 2):
-        _media(run, f"03_wip/edit_v{n:02d}.mp4")
+        assert _edit_version(run, n) == []                            # the review shows versions that passed
     _to(run, "review")
     run_page.build(run, _ask(run, "review"))
     _publish(run)

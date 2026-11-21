@@ -47,6 +47,9 @@ WIP = create_config.WIP
 RESEARCH = "02_research"
 CONCEPTS, CLAIMS, BOARD, PLAN, STORYBOARD = "concepts", "claims", "board", "production_plan", "storyboard"
 EDIT_QA = "edit_qa"   # S7's file, checked by tm.create_qa (`tm ad check edit`)
+# In the edit QA's run.json `checked` entry: each edit that passed -> the edit QA it passed with (issue #133: the
+# review shows only those; create_qa.passed_edits). The entry itself names only the latest check.
+PASSED = "passed"
 WHAT = {CONCEPTS: "the concepts", CLAIMS: "the claims", BOARD: "the script-board", PLAN: "the production plan",
         STORYBOARD: "the filled storyboard", EDIT_QA: "the edit QA"}
 KEY = {stem: f"ad_{stem}" for stem in WHAT}   # run.json `checked` keys
@@ -598,7 +601,11 @@ def check(run: RunFolder, stem: str, file: str | Path) -> tuple[str, list[Proble
     problems = CHECKS[stem](run, data)
     if problems:
         return rel, problems
-    stepchecks.mark(run, KEY[stem], path)
+    extra = None
+    if stem == EDIT_QA:                  # every edit that passed is kept, not only the latest (PASSED, issue #133)
+        from tm import create_qa
+        extra = {PASSED: {**create_qa.passed_edits(run), str(data["edit"]): rel}}
+    stepchecks.mark(run, KEY[stem], path, extra=extra)
     if stem in (PLAN, STORYBOARD):
         plan = data if stem == PLAN else checked(run, PLAN)
         lines = plan_lines(plan, "pre_video") + (data.get("videos") or [] if stem == STORYBOARD else [])

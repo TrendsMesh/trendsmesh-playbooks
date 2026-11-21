@@ -436,12 +436,12 @@ def _report(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
             f"{len(report['act_now'])} act now and {len(report['still_rising'])} still rising picks, {images} evidence "
             "thumbnails. It is the run page from now on (issue #131): publish it with the Artifact tool to the run "
             f"page's link (tm page link --run RUN --page {research_report.PAGE}; tm page files gives its file_path and "
-            "files), with the capabilities, and record it with tm page published"
+            "files), with the capabilities (the decisions and, for the CSV buttons, downloads), and record it with tm page published"
             + (". No publishing tool (--local): give the local index.html." if args.local else "."))
     payload = {"status": "done", "folder": rel, "files": listed}
     if not args.local:
         from tm import run_page
-        payload["capabilities"] = run_page.CAPABILITIES
+        payload["capabilities"] = {**run_page.CAPABILITIES, **research_report.CAPABILITIES}   # + CSV (#133)
     warning = research_report.page_language(run).warning     # issue #3: built in English, not the working language
     if warning:
         text += " " + warning
