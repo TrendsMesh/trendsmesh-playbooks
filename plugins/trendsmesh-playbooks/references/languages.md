@@ -48,7 +48,7 @@ translated once, by you, and kept in the plugin data folder for every later run 
 
 `tm i18n check --lang <tag>` says what is still missing. When an English string changes in a later version, its
 translation counts as missing again, so a page never mixes an old translation with new English silently. The table
-also holds `checks.creator_words` (CB13, below) and `trends.weekly_phrase`; translate them like the rest.
+also holds `trends.weekly_phrase`; translate it like the rest.
 
 The plugin ships Polish for Organic AI video's pages, the pack's and the posting kit's Markdown included
 (`data/i18n/pl.yaml`); a translation you import wins over it.
@@ -60,10 +60,11 @@ list is shown as stored.
 
 ## What the checks do in other languages
 
-- **CB13** (Creative brief, nothing confidential in the creator view) looks for ad and research words in English
-  and in the working and market languages' translated `checks.creator_words` (a comma-separated list; `word*`
-  matches any ending, for languages that inflect). `tm brief check --stage production` says which languages it
-  read and names any it could not: then read the creator view yourself, or translate the table and check again.
+- **CB13** (Creative brief, nothing confidential in the creator view) reads data, not words (issue #146): the
+  creator view is built from the creator fields only, and `tm brief check --stage production` refuses it, or its
+  PDF, when it shows one of the run's own account figures (spend, cost per result, results, from its saved Meta
+  reads) or an advertiser of its Ad Library answers. It works the same in every language: there is no word list to
+  translate.
 - **Glance rows** (Creative brief): the engine finds the trend, Account and Competition rows by their `key`
   (`trend`, `guess`, `customers`, `account`, `competition`), so a brief in another language labels them in that
   language and keys each row. A row without a key must carry the English label.

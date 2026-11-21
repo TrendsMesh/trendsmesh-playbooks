@@ -26,7 +26,7 @@ PLUGIN = (Path(__file__).resolve().parents[2] / "plugins" / "trendsmesh-playbook
 ANIMATIC_GEN = ld.LD / "03_wip" / "animatic_gen"
 Usage = namedtuple("Usage", "total used free")
 CB = "02-creative-brief"
-ALL = {"review_pack", "briefs", "animatics", "page"}
+ALL = {"review_pack", "briefs", "page"}   # the animatics come with the briefs, on request (issue #145)
 CB_MCP = {"trendsmesh": "ok", "meta": "ok", "artifacts": "ok"}
 
 
@@ -456,7 +456,7 @@ def test_trend_research_tiers_unchanged(world, monkeypatch):
 
 
 def test_animatic_tier_shares_video_env(tmp_path, monkeypatch):
-    assert envtiers.TIERS["animatic"] == envtiers.Tier("animatic", "video", ["base"], 150, {"animatics"})
+    assert envtiers.TIERS["animatic"] == envtiers.Tier("animatic", "video", ["base"], 150, {"briefs"})
     assert envtiers.TIERS["base"].outputs == {"creative_brief", "edited_video", "ai_video", "live_test"}
     monkeypatch.setattr(envtiers.paths, "plugin_root", lambda: tmp_path)
     monkeypatch.setattr(envtiers.paths, "pixi_bin", lambda: tmp_path / "pixi")

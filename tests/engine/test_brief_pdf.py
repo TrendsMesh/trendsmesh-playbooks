@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 from conftest import video_asked_for
-from test_brief_creator_view import _brief
+from test_brief_creator_view import SPEND, _account, _brief
 from tm import atlas, brief_checks, brief_page, brief_pdf, manifest, page
 from tm.cli import main
 from tm.playbooks import CREATIVE_BRIEF
@@ -387,12 +387,15 @@ def _built_with(run, monkeypatch, creator_text: str) -> dict:
 
 
 def test_production_check_reads_the_creator_pdf(run, monkeypatch):
-    brief = _built_with(run, monkeypatch, "View: Creator\nYour part\nKeep the spend low")
+    _account(run)
+    brief = _built_with(run, monkeypatch, "View: Creator\nYour part\nKeep it under 1,234.56 a month")
     said = _said(brief_checks._production_checks(run, brief, {}))
-    assert "creator PDF" in said and '"spend"' in said and "pdf/brief_pack-creator.pdf" in said
-    # a word whose letters change font: the text objects on one baseline, joined
-    brief = _built_with(run, monkeypatch, "View: Creator\nOur CT\tR doubled")
-    assert '"ctr"' in _said(brief_checks._production_checks(run, brief, {}))
+    assert "creator PDF" in said and f'"{SPEND}"' in said and "pdf/brief_pack-creator.pdf" in said
+    # a figure whose digits change font: the text objects on one baseline, joined
+    brief = _built_with(run, monkeypatch, "View: Creator\nOur 1,23\t4.56 total")
+    assert f'"{SPEND}"' in _said(brief_checks._production_checks(run, brief, {}))
+    brief = _built_with(run, monkeypatch, "View: Creator\nKeep the spend low, the CTR high")   # words pass (#146)
+    assert brief_checks._production_checks(run, brief, {}) == []
 
 
 def test_production_check_passes_a_clean_creator_pdf_and_keeps_the_usage_exception(run, monkeypatch):
@@ -408,14 +411,15 @@ def test_production_check_passes_a_clean_creator_pdf_and_keeps_the_usage_excepti
     assert brief_checks._production_checks(run, brief, {}) == []
 
 
-def test_production_check_names_a_word_once_and_refuses_an_unreadable_pdf(run, monkeypatch):
-    brief = _built_with(run, monkeypatch, "View: Creator\nLower cost per checkout")
+def test_production_check_names_a_value_once_and_refuses_an_unreadable_pdf(run, monkeypatch):
+    _account(run)
+    brief = _built_with(run, monkeypatch, "View: Creator\nWe spent 1,234.56 on this")
     changed = copy.deepcopy(brief)
-    changed["concepts"][0]["key_message"] = "Lower cost per checkout"
+    changed["concepts"][0]["hook"]["text"] = "We spent 1,234.56 on this"
     path = _write_brief(run, changed, 2)
     brief_page.build(run, path)
     problems = brief_checks._production_checks(run, changed, {})
-    assert [p.field for p in problems if '"checkout"' in p.what] == ["concepts[0].key_message"]   # not again as PDF
+    assert [p.field for p in problems if f'"{SPEND}"' in p.what] == ["concepts[0].hook.text"]   # not again as PDF
     pdf = brief_page.creator_pdf(run, changed)[1]
     pdf.write_bytes(b"not a pdf")
     said = _said(brief_checks._production_checks(run, changed, {}))
@@ -425,7 +429,8 @@ def test_production_check_names_a_word_once_and_refuses_an_unreadable_pdf(run, m
 
 
 def test_production_check_reads_only_the_pdf_of_this_brief(run, monkeypatch):
-    brief = _built_with(run, monkeypatch, "View: Creator\nThe spend")
+    _account(run)
+    brief = _built_with(run, monkeypatch, "View: Creator\nThe 1,234.56")
     newer = copy.deepcopy(brief)
     newer["concepts"][0]["one_liner"] = "A new one-liner."
     assert brief_page.creator_pdf(run, newer) is None                     # no page built from it yet

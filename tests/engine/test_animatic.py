@@ -249,7 +249,8 @@ def test_render_writes_new_brief_version_with_paths(run, capsys, renderer):
 
 @pytest.mark.private_data
 def test_rendered_gap(run, capsys, renderer):
-    assert "chosen" in animatic.rendered_gap(run)
+    assert "tm decide animatics make" in animatic.rendered_gap(run)
+    # a run with no animatics decision (started before issue #145) needs its chosen concepts' animatics
     _set(run, brief={"chosen": {"concepts": ["C1", "C3"], "source": "chat"}})
     assert "C1 9x16" in animatic.rendered_gap(run)       # the v01 brief's v03 paths are not rendered here
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C3")
@@ -258,6 +259,16 @@ def test_rendered_gap(run, capsys, renderer):
     assert "C1 9x16" in gap and "C1 4x5" in gap and "C3" not in gap
     _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
     assert animatic.rendered_gap(run) is None            # C2 is not chosen, so its old paths do not count
+    # on request (issue #145): only the concepts the user named count; skip names none
+    _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C2"]}])
+    assert animatic.wanted(run) == ["C2"] and "C2 9x16" in animatic.rendered_gap(run)
+    _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C3"]}])
+    assert animatic.rendered_gap(run) is None
+    _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C9"]}])
+    assert "has no C9" in animatic.rendered_gap(run)
+    _set(run, decisions=[{"checkin": "animatics", "choice": "skip", "by": "user"}])
+    assert animatic.wanted(run) == [] and "tm decide animatics make" in animatic.rendered_gap(run)
+    _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C1", "C3"]}])
 
     _set(run, audience={"formats": ["9x16"]})            # one format chosen: the 4x5 renders are not needed
     (run.path / brief_page.RENDERS / "C3_animatic_4x5_v01.mp4").unlink()
@@ -356,10 +367,15 @@ def test_one_format_render_takes_the_drawn_default_and_the_phone_plays_it(run, c
 
 @pytest.mark.private_data
 def test_render_of_some_concepts_names_the_others_not_rendered(run, capsys, renderer):
+    """The concepts the user asked animatics for (issue #145) and not rendered yet are named; the others need none."""
+    _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C1", "C2", "C3"]}])
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C2")
     assert code == 0, out
-    assert "not rendered in this run: C1 9x16, C1 4x5, C3 9x16, C3 4x5" in out["message"]
-    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1", "C3")
+    assert "not rendered yet: C1 9x16, C1 4x5, C3 9x16, C3 4x5" in out["message"]
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1,C3")
+    assert code == 0 and "not rendered" not in out["message"], out
+    _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C2"]}])
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C2")
     assert code == 0 and "not rendered" not in out["message"], out
 
 

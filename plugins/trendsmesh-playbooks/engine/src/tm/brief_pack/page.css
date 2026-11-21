@@ -79,6 +79,7 @@
 .brief .hyp { background: var(--cream); border-radius: 12px; padding: 12px 14px; }
 .brief .player { width: 210px; }
 .brief .player video { width: 100%; border-radius: 14px; background: var(--ink); display: block; }
+.brief .on-request { aspect-ratio: 9 / 16; display: flex; align-items: center; justify-content: center; padding: 12px; text-align: center; border-radius: 14px; background: var(--ink); color: #fff; font-size: 14px; }
 .brief .toggle { display: flex; gap: 6px; margin-top: 8px; }
 .brief .toggle button { flex: 1; font-size: 13px; padding: 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); }
 .brief .toggle button[aria-pressed="true"] { background: var(--ink); color: var(--cream); border-color: var(--ink); }

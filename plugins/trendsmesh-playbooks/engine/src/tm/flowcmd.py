@@ -57,6 +57,8 @@ def _setup_decide(p: argparse.ArgumentParser) -> None:
     p.add_argument("--note")
     p.add_argument("--by", choices=("user", "rule"), default="user")
     p.add_argument("--change", action="store_true", help="change a decision already taken")
+    p.add_argument("--concepts", nargs="+",
+                   help="the concepts a choice is for, e.g. C1,C3 (creative brief: animatics make)")
     _with_run(p)
 
 
@@ -64,7 +66,8 @@ def _setup_decide(p: argparse.ArgumentParser) -> None:
 def _decide(args: argparse.Namespace) -> int:
     run = _open(args)
     before = len(state.load(run).decisions)
-    flow.decide(run, args.checkin, args.choice, by=args.by, note=args.note, change=args.change)
+    flow.decide(run, args.checkin, args.choice, by=args.by, note=args.note, change=args.change,
+                concepts=cli.ids_arg(args.concepts) or None)
     s = state.load(run)
     payload = {"status": "done", "checkin": args.checkin, "choice": args.choice,
                "run_status": s.status}

@@ -5,8 +5,10 @@ its validation, the `intake_written` step check, and a run started from a trend 
 The schema is PLAYBOOK.md "Config" with the numbers of CB1-CB13 named one by one. As in the other
 playbooks, the config changes thresholds, never a rule: a key that is not in the schema fails
 validation, and so does a changed fixed value (the saturation source, the voice tiers). CB11 and
-CB12 are rules too (the plan's decision 4): every run makes the page, and briefs come with their
-animatics. So a run is the review pack alone, or everything.
+CB12 is a rule too (the plan's decision 4): every run makes the page. So a run is the review pack alone, or
+everything. Animatics are no output (CB11, issue #145): they are offered after the briefs, at the `animatics`
+check-in. A run started before that lists `animatics` among its outputs: a legacy output, read and left out
+(`LEGACY_OUTPUTS`).
 
 A run can start from a seed, a pick trend research handed on (`tm run new --seed <seed_id>`):
 the whole `seed/1` row is kept as `00_raw/seed.json`, run.json `brief` names it, and the intake
@@ -33,7 +35,8 @@ CRITERIA = ("brand_fit", "persona_fit", "bridge", "lifecycle", "transfer", "sens
 RECIPIENTS = ("decision", "strategy", "creator", "editor", "media-buyer")  # CB13, the schema's spelling
 TREND_KINDS = ("hook", "topic", "format", "sound")  # CB2
 VOICE_TIERS = ["own_customers", "category", "brand"]  # CB5: tier C never counts
-REVIEW_PACK, PAGE, BRIEFS, ANIMATICS = "review_pack", "page", "briefs", "animatics"
+REVIEW_PACK, PAGE, BRIEFS = "review_pack", "page", "briefs"
+LEGACY_OUTPUTS = ("animatics",)   # an output before issue #145: accepted and left out
 SEED_FILE = "00_raw/seed.json"
 LANDING = "landing_*"  # the landing page the agent saved at A1, 00_raw/landing_<name>.<ext>
 # a seed's Ad Library level -> the hint the B4 card shows beside the fresh check (never in its place)
@@ -56,7 +59,7 @@ DEFAULTS: dict = {
     "scoring": {"weights": {c: 1 for c in CRITERIA}},
     "benchmark": {"source": "meta_ad_library"},
     "concepts": {"count": 3, "min_axes_diff": 2},
-    "outputs": [REVIEW_PACK, BRIEFS, ANIMATICS, PAGE],
+    "outputs": [REVIEW_PACK, BRIEFS, PAGE],
     "delivery": {"channel": "artifact"},
     "animatic": {"formats": None, "fps": 24},
     "intake": {"budget": None, "deadline": None, "approver": None, "rights": None, "fee": None},
@@ -102,9 +105,9 @@ def _intake_open(s: state.RunState) -> None:
 
 
 def _outputs(outputs: object) -> list[str]:
-    """The chosen outputs in the playbook's order. CB11 and CB12 are `validate`'s."""
+    """The chosen outputs in the playbook's order, a legacy output left out. CB12 is `validate`'s."""
     known = flow.output_ids(CREATIVE_BRIEF)
-    if not isinstance(outputs, list) or not set(outputs) <= set(known):
+    if not isinstance(outputs, list) or not set(outputs) <= set(known) | set(LEGACY_OUTPUTS):
         raise ValueError(f"outputs must be some of: {', '.join(known)}.")
     return [o for o in known if o in outputs]
 
@@ -176,6 +179,8 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
 
 def _outputs_problems(outputs: object, out: list[Problem]) -> None:
     known = flow.output_ids(CREATIVE_BRIEF)
+    if isinstance(outputs, list):                       # a run started before issue #145 lists animatics
+        outputs = [o for o in outputs if o not in LEGACY_OUTPUTS]
     if not (isinstance(outputs, list) and set(outputs) <= set(known)):
         out.append(Problem("outputs", f"outputs must be some of: {', '.join(known)}.",
                            "Choose which outputs this run produces."))
@@ -183,15 +188,11 @@ def _outputs_problems(outputs: object, out: list[Problem]) -> None:
     if PAGE not in outputs:
         out.append(Problem("outputs", "Every creative brief ends on the shared page (CB12), so outputs must "
                            "include page.", "Add page to outputs."))
-    if (BRIEFS in outputs) != (ANIMATICS in outputs):
-        out.append(Problem("outputs", "Briefs and animatics come together (CB11): every brief has its animatic, "
-                           "and an animatic is made from a brief.",
-                           "Choose both briefs and animatics, or neither (the review pack alone)."))
     if REVIEW_PACK not in outputs and BRIEFS not in outputs:
         out.append(Problem("outputs", "A creative brief makes the review pack, the briefs or both, so the page has "
-                           "concepts to show; outputs without review_pack or briefs skip the concepts (C1, G2).",
+                           "concepts to show; outputs without review_pack or briefs skip the concepts (C1).",
                            "Add review_pack (the review pack alone: review_pack and page), or choose everything "
-                           "(review_pack, briefs, animatics, page)."))
+                           "(review_pack, briefs, page)."))
 
 
 def _currency(value: object) -> bool:

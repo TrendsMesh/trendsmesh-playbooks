@@ -15,23 +15,24 @@ from tm.flow import complete, decide, set_level
 from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
 from tm.runfolder import RunFolder
 
-ALL = ["review_pack", "briefs", "animatics", "page"]
-STEP_IDS = ["A0", "A1", "B1", "B2", "B3", "B4", "C1", "D1", "D2", "D3", "E1", "E2"]
-TABLE = {  # id: (title, outputs, checkins, requires), the plan's Task 1
+ALL = ["review_pack", "briefs", "page"]
+STEP_IDS = ["A0", "A1", "B1", "B2", "B3", "B4", "C1", "D1", "D3", "D2", "E1", "E2"]
+TABLE = {  # id: (title, outputs, checkins, requires), the plan's Task 1 and issue #145
     "A0": ("Stack check and run folder", ALL, [], []),
     "A1": ("Product and intake card", ALL, ["G0"], ["intake_written"]),
     "B1": ("Account context and persona", ALL, ["G1"], ["audience_picked"]),
     "B2": ("Customer voice", ALL, [], ["voice_checked"]),
     "B3": ("Rising trends", ALL, [], ["trends_or_guess"]),
     "B4": ("Fit scoring and saturation", ALL, [], ["scores_and_saturation"]),
-    "C1": ("Concepts and the review pack", ["review_pack", "briefs"], ["G2"],
+    "C1": ("Concepts and the review pack", ["review_pack", "briefs"], [],
            ["concepts_checked", "page_built"]),
-    "D1": ("Briefs", ["briefs"], [], ["concepts_chosen", "brief_checked"]),
-    "D2": ("Animatics", ["animatics"], [], ["animatics_rendered"]),
-    "D3": ("Page with briefs and animatics", ["briefs"], ["G3"], ["page_built"]),
-    "E1": ("Production views", ["briefs"], ["G4"], ["production_checked", "page_built"]),
-    "E2": ("Hand-off", ALL, [], ["concepts_chosen", "handed_off"]),
+    "D1": ("Briefs", ["briefs"], [], ["brief_checked"]),
+    "D3": ("Page with the briefs", ["briefs"], ["G3"], ["page_built"]),
+    "D2": ("Animatics on request", ["briefs"], [], ["animatics_rendered", "page_built"]),
+    "E1": ("Production views", ["briefs"], ["G4"], ["concepts_chosen", "production_checked", "page_built"]),
+    "E2": ("Hand-off", ALL, [], ["concepts_chosen", "page_built", "handed_off"]),
 }
+ANSWER = {"animatics": "skip"}   # what _walk answers where the first choice needs more (make names concepts)
 
 
 @pytest.fixture
@@ -80,7 +81,7 @@ def _walk(run, until=None, notices=None):
             decide(run, nxt.checkin.card, cat.checkins[nxt.checkin.ids[0]].choices[0], by=by, note=note)
         else:
             for cid in nxt.checkin.ids:
-                decide(run, cid, cat.checkins[cid].choices[0], by=by, note=note)
+                decide(run, cid, ANSWER.get(cid, cat.checkins[cid].choices[0]), by=by, note=note)
     raise AssertionError("the run never ended")
 
 
@@ -101,13 +102,15 @@ def test_creative_brief_steps_match_the_plan():
     assert flow.flows(CREATIVE_BRIEF) == set()
     for st in every:
         assert (st.title, list(st.outputs), list(st.checkins), list(st.requires)) == TABLE[st.id], st.id
-        assert not st.spends and st.budget is None and not st.before and not st.skip_when, st.id
+        assert not st.spends and st.budget is None, st.id
+        assert (st.before, st.skip_when) == ((("animatics",), (("animatics", "skip"),)) if st.id == "D2" else ((), ())), st.id
         assert st.ref == f"skills/creative-brief/references/flow.md#{st.id.lower()}"
     named = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO, CREATE_AD) for st in flow.steps(pb) for name in st.requires}
     chosen = {name for pb in (CREATIVE_BRIEF, ORGANIC_VIDEO, CREATE_AD)
               for c in checkins.load(playbook=pb).checkins.values()
               for effect in c.on_choice.values() for name in effect.get("requires") or ()}
     assert chosen == {"profile_confirmed", "week_in_budget",   # organic video's reuse_profile reuse, week approve
+                      "concepts_chosen",                       # creative brief's G3 accept (issue #145)
                       "ad_upload_proposed",                    # create an ad's upload create,
                       "ad_takes_accepted", "ad_edit_checked"}  # takes accept, review accept
     assert set(stepchecks.NAMES) == named | chosen   # every check is required; none registered unused
@@ -116,7 +119,7 @@ def test_creative_brief_steps_match_the_plan():
 
 def test_creative_brief_catalogue():
     cat = checkins.load(playbook=CREATIVE_BRIEF)
-    assert list(cat.checkins) == ["G0", "G1", "G2", "G3", "G4"]
+    assert list(cat.checkins) == ["G0", "G1", "G3", "animatics", "G4"]
     assert cat.levels == checkins.load(playbook=TREND_RESEARCH).levels
     assert {c.id: (c.name, c.ask) for c in cat.cards.values()} == {
         "approve_setup": ("Approve the setup", "last"),
@@ -128,15 +131,20 @@ def test_creative_brief_catalogue():
         "G1": ("Accept the persona and target segment", "approve_setup", big,
                "≥ 10 results per segment (lowest cost per result), else the thin-data fallback: "
                "largest directional cluster, cross-checked, marked directional (`tm audience pick`)"),
-        "G2": ("Choose the concepts", None, {"every_step": "own", "big_calls": "own", "hands_off": "rule"},
-               "top N by score, diversity passed (`tm brief pick`)"),
-        "G3": ("Accept the briefs and animatics", "approve_briefs", big, "published as is"),
+        "G3": ("Decide on the briefs", "approve_briefs", big,
+               "published as is, every concept kept (`tm brief choose --source rule`)"),
         "G4": ("Accept the production views", "approve_briefs", big, "published as is"),
     }
     for cid, (name, card, route, rule) in want.items():
         c = cat.checkins[cid]
         assert (c.name, c.card, c.route, c.rule, c.choices, c.money) == (
             name, card, route, rule, ("accept",), False), cid
+    assert cat.checkins["G3"].on_choice == {"accept": {"requires": ["concepts_chosen"]}}
+    a = cat.checkins["animatics"]       # issue #145: on request, after the briefs; Hands-off makes none
+    assert (a.name, a.card, a.route, a.choices, a.on_choice) == (
+        "Make animatics?", None, {"every_step": "own", "big_calls": "own", "hands_off": "rule"}, ("make", "skip"),
+        {"make": {"concepts": True}})
+    assert a.rule.startswith("skip")
 
 
 @pytest.mark.parametrize("bad", ["true", "yes", 1, 0, None, []])
@@ -311,18 +319,39 @@ def test_skill_names_only_commands_and_flags_tm_has():
 
 # --- the levels ---------------------------------------------------------------------
 
-def test_every_step_asks_g0_to_g4_one_by_one(tmp_path, checks_pass):
+WORKED = [sid for sid in STEP_IDS if sid != "D2"]   # D2 is skipped on `animatics skip`
+
+
+def _checks(worked: list[str]) -> list[str]:
+    """The step checks asked in a walk: each worked step's, and G3's `concepts_chosen` after D3's."""
+    out = []
+    for sid in worked:
+        out += TABLE[sid][3] + (["concepts_chosen"] if sid == "D3" else [])
+    return out
+
+
+def test_every_step_asks_each_check_in_one_by_one_with_no_concept_check_in(tmp_path, checks_pass):
+    """Issue #145: C1 goes straight on to D1 (no G2), G3 follows D3's page, and the animatics question comes
+    after it, before D2, which `skip` skips."""
     run = _brief(tmp_path, "every_step")
     seen, worked, end = _walk(run)
     assert seen == [("A1", "ask", ["G0"], None), ("B1", "ask", ["G1"], None),
-                    ("C1", "ask", ["G2"], None), ("D3", "ask", ["G3"], None),
+                    ("D3", "ask", ["G3"], None), ("D2", "ask", ["animatics"], None),
                     ("E1", "ask", ["G4"], None)]
-    assert worked == STEP_IDS and end.action == "done"
+    assert worked == WORKED and end.action == "done"
+    assert worked[worked.index("C1") + 1] == "D1"
     assert all(d["by"] == "user" for d in state.load(run).decisions)
-    assert checks_pass == [name for sid in STEP_IDS for name in TABLE[sid][3]]  # each, in order
+    assert checks_pass == _checks(WORKED)
 
 
-def test_big_calls_asks_setup_card_after_b1_g2_alone_and_briefs_card_after_e1(tmp_path, checks_pass):
+def test_decide_g2_is_refused_as_an_unknown_check_in(tmp_path, checks_pass):
+    run = _brief(tmp_path, "every_step")
+    _walk(run, until="D1")
+    with pytest.raises(ValueError, match="'G2' is not a check-in or a card"):
+        decide(run, "G2", "accept", by="user", note=None)
+
+
+def test_big_calls_asks_setup_card_animatics_alone_and_briefs_card_after_e1(tmp_path, checks_pass):
     run = _brief(tmp_path, "big_calls")
     seen, worked, nxt = _walk(run, until="B1")
     assert seen == [] and worked == ["A0", "A1"]   # G0 waits for the setup card
@@ -332,8 +361,8 @@ def test_big_calls_asks_setup_card_after_b1_g2_alone_and_briefs_card_after_e1(tm
     assert (nxt.step, nxt.action, nxt.checkin.ids, nxt.checkin.name) == (
         "B1", "ask", ["G0", "G1"], "Approve the setup")
     seen, worked, nxt = _walk(run, until="E1")
-    assert seen == [("B1", "ask", ["G0", "G1"], "approve_setup"), ("C1", "ask", ["G2"], None)]
-    assert worked == ["B2", "B3", "B4", "C1", "D1", "D2", "D3"]   # G3 waits for the briefs card
+    assert seen == [("B1", "ask", ["G0", "G1"], "approve_setup"), ("D2", "ask", ["animatics"], None)]
+    assert worked == ["B2", "B3", "B4", "C1", "D1", "D3"]   # G3 waits for the briefs card
     assert (nxt.checkin.ids, nxt.checkin.card) == (["G3", "G4"], "approve_briefs")
     complete(run, "E1")
     nxt = flow.next(run)
@@ -343,32 +372,61 @@ def test_big_calls_asks_setup_card_after_b1_g2_alone_and_briefs_card_after_e1(tm
     assert seen == [("E1", "ask", ["G3", "G4"], "approve_briefs")]
     assert worked == ["E2"] and end.action == "done"
     assert [(d["checkin"], d["choice"], d["by"]) for d in state.load(run).decisions] == [
-        (cid, "accept", "user") for cid in ("G0", "G1", "G2", "G3", "G4")]
+        ("G0", "accept", "user"), ("G1", "accept", "user"), ("animatics", "skip", "user"),
+        ("G3", "accept", "user"), ("G4", "accept", "user")]
 
 
-def test_hands_off_decides_all_by_rule(tmp_path, checks_pass):
+def test_hands_off_decides_all_by_rule_and_makes_no_animatic(tmp_path, checks_pass):
     run = _brief(tmp_path, "hands_off")
     seen, worked, end = _walk(run)
     assert seen == [("A1", "auto", ["G0"], None), ("B1", "auto", ["G1"], None),
-                    ("C1", "auto", ["G2"], None), ("D3", "auto", ["G3"], None),
+                    ("D3", "auto", ["G3"], None), ("D2", "auto", ["animatics"], None),
                     ("E1", "auto", ["G4"], None)]
-    assert worked == STEP_IDS and end.action == "done"
+    assert worked == WORKED and end.action == "done"
     cat = checkins.load(playbook=CREATIVE_BRIEF)
     decisions = state.load(run).decisions
-    assert [(d["checkin"], d["by"]) for d in decisions] == [
-        (cid, "rule") for cid in ("G0", "G1", "G2", "G3", "G4")]
+    assert [(d["checkin"], d["choice"], d["by"]) for d in decisions] == [
+        ("G0", "accept", "rule"), ("G1", "accept", "rule"), ("G3", "accept", "rule"),
+        ("animatics", "skip", "rule"), ("G4", "accept", "rule")]
     assert all(d["rule"] == cat.checkins[d["checkin"]].rule for d in decisions)
 
 
 @pytest.mark.parametrize("level", ["every_step", "big_calls", "hands_off"])
 def test_review_pack_only_run_skips_d1_to_e1(tmp_path, checks_pass, level):
+    """The review pack alone: C1's page is the run's only page and is decided there (no check-in), then E2."""
     run = _brief(tmp_path, level, ["review_pack", "page"])
     seen, worked, end = _walk(run)
-    assert worked == ["A0", "A1", "B1", "B2", "B3", "B4", "C1", "E2"]   # C1 -> G2 -> E2
-    assert [ids for _, _, ids, _ in seen] == (
-        [["G0", "G1"], ["G2"]] if level == "big_calls" else [["G0"], ["G1"], ["G2"]])
-    assert seen[-1][0] == "C1" and end.action == "done"
-    assert {d["checkin"] for d in state.load(run).decisions} == {"G0", "G1", "G2"}
+    assert worked == ["A0", "A1", "B1", "B2", "B3", "B4", "C1", "E2"]
+    assert [ids for _, _, ids, _ in seen] == ([["G0", "G1"]] if level == "big_calls" else [["G0"], ["G1"]])
+    assert end.action == "done"
+    assert {d["checkin"] for d in state.load(run).decisions} == {"G0", "G1"}
+    assert checks_pass[-3:] == ["concepts_chosen", "page_built", "handed_off"]
+
+
+def test_animatics_make_names_its_concepts(tmp_path, checks_pass):
+    """`make` takes the concepts the user named (`--concepts`, commas or spaces), each a concept of the latest
+    brief; `skip` takes none; Hands-off's rule is skip."""
+    run = _brief(tmp_path, "every_step")
+    _walk(run, until="D3")
+    complete(run, "D3")
+    decide(run, "G3", "accept", by="user", note=None)
+    nxt = flow.next(run)
+    assert (nxt.step, nxt.action, nxt.checkin.ids) == ("D2", "ask", ["animatics"])
+    final = run.path / "04_final"
+    final.mkdir(exist_ok=True)
+    (final / "brief_pack_v02.json").write_text(json.dumps({"concepts": [{"id": "C1"}, {"id": "C2"}, {"id": "C3"}]}),
+                                               encoding="utf-8")
+    with pytest.raises(ValueError, match="give them with --concepts"):
+        decide(run, "animatics", "make", by="user", note=None)
+    with pytest.raises(ValueError, match="names no concepts"):
+        decide(run, "animatics", "skip", by="user", note=None, concepts=["C1"])
+    with pytest.raises(ValueError, match=r"^C9 is not a concept of the latest brief"):
+        decide(run, "animatics", "make", by="user", note=None, concepts=["C1", "C9"])
+    assert main(["decide", "animatics", "make", "--concepts", "C1,", "C3", "--run", str(run.path), "--json"]) == 0
+    d = state.load(run).decisions[-1]
+    assert (d["checkin"], d["choice"], d["concepts"]) == ("animatics", "make", ["C1", "C3"])
+    nxt = flow.next(run)
+    assert (nxt.step, nxt.action) == ("D2", "work")
 
 
 # --- checks a step requires -------------------------------------------------------
@@ -424,7 +482,7 @@ def test_the_first_gap_of_several_stops_the_step(tmp_path, monkeypatch):
     assert asked == ["concepts_checked", "page_built"] and state.load(run).step == "C1"
 
 
-# --- guess mode: the evidence window B3 to C1 and the notice at G2 (Task 4) -------------------
+# --- guess mode: the evidence window B3 to C1 and the notice at G3 (Task 4, issue #145) -----------
 
 # Issue #106: the notice says what the guess missed, not only that it is a guess.
 CB_NOTICE = ("The hooks in these concepts are my guesses from your customers' own words, your ads and the Ad Library. "
@@ -437,14 +495,14 @@ CB_NOTICE_SHORT = ("Free mode: the hooks in these concepts will be my guesses fr
 
 def test_brief_notice_is_the_plans_text():
     n = evidence.NOTICES[CREATIVE_BRIEF]
-    assert (n.at, n.text, n.short) == (frozenset({"G2"}), CB_NOTICE, CB_NOTICE_SHORT)
+    assert (n.at, n.text, n.short) == (frozenset({"G3"}), CB_NOTICE, CB_NOTICE_SHORT)
     assert n.repeat_at_end is False and evidence.NOTICES[REFRESH_AD].repeat_at_end is True
     assert evidence.NOTICES[REFRESH_AD] == evidence.Notice(
         evidence.NOTICE_AT, evidence.NOTICE, evidence.NOTICE_SHORT)
 
 
 @pytest.mark.parametrize("level", ["every_step", "big_calls", "hands_off"])
-def test_guess_recorded_on_brief_run_and_notice_at_g2_only(tmp_path, checks_pass, capsys, level):
+def test_guess_recorded_on_brief_run_and_notice_at_g3_only(tmp_path, checks_pass, capsys, level):
     run = _brief(tmp_path, level)
     assert main(["evidence", "guess", "--run", str(run.path), "--why", "no Agent plan", "--json"]) == 0
     assert json.loads(capsys.readouterr().out) == {"status": "done", "evidence": "guess"}
@@ -453,29 +511,28 @@ def test_guess_recorded_on_brief_run_and_notice_at_g2_only(tmp_path, checks_pass
     notices = []
     seen, _, done = _walk(run, notices=notices)
     asked = [(step, ids) for step, action, ids in notices if action != "done"]
-    # of all the check-ins, only G2 when it is shown to the user; never one decided by rule
-    assert asked == ([] if level == "hands_off" else [("C1", ["G2"])])
-    # once in all: at G2 when it is asked, else in the final report (Hands-off)
+    # of all the check-ins, only G3 when it is shown to the user (alone, or on the briefs card); never by rule
+    assert asked == {"hands_off": [], "every_step": [("D3", ["G3"])], "big_calls": [("E1", ["G3", "G4"])]}[level]
+    # once in all: at G3 when it is asked, else in the final report (Hands-off)
     assert done.action == "done"
     assert done.notice == (CB_NOTICE if level == "hands_off" else None)
     assert len(notices) == 1
-    assert ("C1", "ask" if level != "hands_off" else "auto", ["G2"], None) in seen
     assert state.load(run).register is None
 
 
 @pytest.mark.parametrize("first,then", [("hands_off", "every_step"), ("every_step", "hands_off")])
-def test_notice_once_when_the_level_changes_after_g2(tmp_path, checks_pass, first, then):
-    """What happened at G2 counts, not the level at the end: a run switched after G2 still hears
+def test_notice_once_when_the_level_changes_after_g3(tmp_path, checks_pass, first, then):
+    """What happened at G3 counts, not the level at the end: a run switched after G3 still hears
     the notice exactly once."""
     run = _brief(tmp_path, first)
     evidence.record(run, "guess", "no Agent plan")
     notices = []
-    _walk(run, until="D1", notices=notices)          # G2 is decided (by rule in Hands-off)
+    _walk(run, until="E1", notices=notices)          # G3 is decided (by rule in Hands-off)
     set_level(run, then)
     _, _, done = _walk(run, notices=notices)
     assert done.action == "done"
     assert len(notices) == 1
-    assert notices[0][0] == ("E2" if first == "hands_off" else "C1")
+    assert notices[0][0] == ("E2" if first == "hands_off" else "D3")
 
 
 def test_trendsmesh_brief_run_has_no_notice(tmp_path, checks_pass):

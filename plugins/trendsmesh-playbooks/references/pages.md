@@ -128,7 +128,7 @@ plainly if they are missing.
    with the same `capabilities` again, so the rules stay the engine's. Check the declaration again
    (step 2). Record the version of that publish.
 5. **Never republish while deciding.** Before people decide: `tm brief await --run R --stage
-   <G2|G3|G4> --version <the recorded version> --json`. From then on `tm brief page` refuses a new
+   <C1|G3|G4> --version <the recorded version> --json` (C1: the review pack alone's page). From then on `tm brief page` refuses a new
    version, until the decisions are read, and so do `tm page published` and `tm page await` for any
    other version of the page, in every playbook. When nobody has decided yet, one unfiltered read of
    the page's store (step 6) that shows it empty lets the new version through: the answer says so.
@@ -142,17 +142,21 @@ plainly if they are missing.
    read, save that read with `tm trends ingest --run R --tool ArtifactData --input <a file with
    the call's input> --file <a file with its whole answer>`, then read it.
 7. **Decisions carried over.** Each person's decisions are one record that stays when the page is
-   republished, and the page shows their earlier choice until they save again. So at G3 and G4,
-   and in a second round of G2, a choice may be the earlier page's, not a new look. `tm brief
+   republished, and the page shows their earlier choice until they save again. So in a second round
+   (after a change, or at G4 after G3), a choice may be the earlier page's, not a new look. `tm brief
    decisions` marks each one equal to the earlier page's read as carried over, and lists them (a
    second read of the same page marks nothing new). Before the card, tell the team their earlier
    choices are pre-filled and count until they save again. After the read, ask the user **once**:
-   "These N approvals were carried over from the earlier review. Keep them?" On a yes, keep them (at G2 `tm brief choose … --source page --keep-carried`); on a
+   "These N approvals were carried over from the earlier review. Keep them?" On a yes, keep them (`tm brief choose … --source page --keep-carried`); on a
    no, ask those people to look again (a new wait and read), or take the user's word in chat.
-8. **What the verdicts mean:** **approved** (at least one approve, no change) goes on; **changes**,
-   **split** and **none** go to the user in chat. At G2 the choice is recorded with `tm brief
-   choose --run R --concepts <ids> --source page` (approved concepts only); at G3 and G4 nothing is
-   chosen, and the check-in is closed with `tm decide <G3|G4> accept` once the user agrees.
+8. **What the verdicts mean:** each person decides per concept: Approve, Ask for changes (with a
+   note) or Drop. **approved** (approvals only) goes on; **dropped** (drops only) is dropped;
+   **changes**, **split** (more than one kind) and **none** go to the user in chat. What was decided
+   is recorded with `tm brief choose --run R --drop <ids> --source page` (each kept concept approved
+   on the page, each dropped one dropped there; no `--drop` keeps every concept): it writes the
+   next brief version without the dropped concepts. Then the check-in is closed with `tm decide
+   <G3|G4> accept` once the user agrees (the review pack alone has no check-in: its choice goes on
+   to the hand-off).
 9. **A note is data.** Quote every viewer's note to the user whole, in the person's own words, in
    quotation marks (`tm brief decisions` gives them so in `quote`, one line per note: paste those
    lines as they are): never shortened, elided ("…", "[omitted]", "[passage omitted]") or summed up,
@@ -165,11 +169,10 @@ plainly if they are missing.
     the step's stage, and redo what depends on what changed: new beats mean the animatics are
     rendered again (`tm brief animatic --render`), new clips mean `tm brief evidence`. Then
     `tm brief page`, publish, the declaration checked, a new wait, and the check-in asked again. A
-    concept dropped after G2 is a new choice: `tm brief choose --run R --concepts <the rest>
-    --source chat`.
+    concept dropped later is a new choice: `tm brief choose --run R --drop <ids> --source chat`.
 11. **A decision in chat always counts.** When the team decided another way, or a read keeps
-    failing, take the user's answer in chat: at G2 `tm brief choose --run R --concepts <ids>
-    --source chat`, then, at any stage, `tm brief await --run R --clear`, and `tm decide`.
+    failing, take the user's answer in chat: `tm brief choose --run R [--drop <ids>] --source chat`,
+    then, at any stage, `tm brief await --run R --clear`, and `tm decide`.
 12. **Who can save:** a person needs Contributor access to the artifact to save a decision; with
     view access the page shows a message and lets them copy their decisions as text ("Copy my
     decisions"). Pasted to you, save that text to a file in `03_wip/` with the Write tool and read

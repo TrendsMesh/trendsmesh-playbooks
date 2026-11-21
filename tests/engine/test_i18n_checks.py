@@ -1,8 +1,9 @@
-"""Issue #3 outside the pages: CB13's words in the run's languages, glance rows named by key, the shortlist's market
+"""Issue #3 outside the pages: no CB13 word list (issue #146), glance rows named by key, the shortlist's market
 language, the weekly phrase and file names that keep their letters."""
 
 import argparse
 from datetime import date
+from pathlib import Path
 
 import yaml
 
@@ -19,38 +20,15 @@ def _translate(tmp_path, lang, strings):
 
 # --- CB13 -------------------------------------------------------------------------------------------
 
-def test_creator_words_in_english_only_say_so():
-    cfg = {"languages": {"working": "en", "market": "en"}}
-    assert brief_checks.language_words(cfg) == ([], [])
-    assert brief_checks.language_note(cfg) == "CB13 read the creator view for ad and research words in English."
-
-
-def test_an_uncovered_language_is_named():
-    cfg = {"languages": {"working": "pl", "market": "de"}}
-    words, uncovered = brief_checks.language_words(cfg)
-    assert words == [] and uncovered == ["pl", "de"]
-    note = brief_checks.language_note(cfg)
-    assert "in English." in note and "Polish (pl) and German (de) is not covered" in note
-    assert "tm i18n export --lang pl" in note
-
-
-def test_the_translated_table_adds_words(tmp_path):
-    _translate(tmp_path, "pl", {"checks.creator_words": "koszt na, wydat*, konkurenc*, ctr"})
-    cfg = {"languages": {"working": "pl", "market": "pl"}}
-    assert brief_checks.language_words(cfg) == (["koszt na", "wydat*", "konkurenc*"], [])
-    assert brief_checks.language_note(cfg) == ("CB13 read the creator view for ad and research words in English and "
-                                               "Polish.")
-    brief = {"meta": {"plugin": {"account_currency": "PLN"}}}
-    words = dict(brief_checks._creator_words(cfg, brief, []))
-    assert words["wydat*"].search("nasze wydatki rosną") and words["wydat*"].search("wydatków")
-    assert not words["wydat*"].search("przewydatny")                 # a whole word, any ending
-    assert words["koszt na"].search("koszt na klienta") and not words["koszt na"].search("koszt nauki")
-    assert words["konkurenc*"].search("konkurencja")
-
-
-def test_an_older_config_reads_its_account_language():
-    cfg = {"account": {"language": "Polish"}}
-    assert brief_checks.language_words(cfg) == ([], ["pl"])
+def test_no_creator_word_list_in_any_language():
+    """Issue #146: CB13 reads the run's data, never words, so no table holds a creator word list."""
+    root = Path(i18n.__file__).parents[3] / "data" / "i18n"
+    for table in sorted(root.glob("*.yaml")):
+        text = table.read_text(encoding="utf-8")
+        assert "creator_words" not in text, table.name
+    assert "checks.creator_words" not in i18n.english()
+    for gone in ("CREATOR_WORDS", "language_words", "language_note", "_creator_words", "_creator_view_words"):
+        assert not hasattr(brief_checks, gone), gone
 
 
 # --- glance rows by key -------------------------------------------------------------------------------

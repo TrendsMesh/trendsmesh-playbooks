@@ -145,7 +145,8 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
    The run continues from the same place once TrendsMesh is ready: run the doctor again then.
 5. Tell the user where the support report was saved, as in step 5 above.
 
-**Creative brief.** The outputs are the review pack, the briefs, the animatics and the page.
+**Creative brief.** The outputs are the review pack, the briefs and the page (animatics are made on
+request, after the briefs).
 
 1. Check three connections, never guessing a result (a call you could not make is `missing`):
    - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`: Free or Paid, the user's choice). It gives `ok`, `free`, `no_agents`,
@@ -160,7 +161,7 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
 2. Run:
 
    ```
-   tm doctor --playbook creative-brief --outputs review_pack,briefs,animatics,page --mcp trendsmesh=<result>,meta=<result>,artifacts=<result> --report --json
+   tm doctor --playbook creative-brief --outputs review_pack,briefs,page --mcp trendsmesh=<result>,meta=<result>,artifacts=<result> --report --json
    ```
 
    Exit codes and the first `tm` call are as in step 3 above.
@@ -175,7 +176,7 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
    - Shared page links are a warning too: say the card's line once (without a publishing tool the
      page is a local file, and the team's decisions are taken here in chat).
    - The animatic tools and a browser (Chrome or Edge) are needed only for the animatics, late in
-     the run: when they are all that is missing, offer the tools' install once, say which browser
+     the run and only when the user asks for them: when they are all that is missing, offer the tools' install once, say which browser
      to install, and go on. The run waits for them only at the animatic step.
    - With several ad accounts the doctor checks one of them; the user picks the account the brief
      reads when the run starts.

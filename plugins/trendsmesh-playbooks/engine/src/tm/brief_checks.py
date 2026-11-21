@@ -1,5 +1,6 @@
 """`04_final/brief_pack_vNN.json` (brief.json) of a creative brief run against CB1-CB13, and the
-Hands-off pick of concepts at G2.
+pick of the top concepts by score that stay distinct (`tm brief pick` was Hands-off's G2 before issue #145: Hands-off
+keeps every concept now).
 
     check(run, brief, stage, cfg)   the problems at a stage: concepts (C1), brief (D), production (E1)
     pick(brief, totals, count, min_axes)   the top concepts by score that stay distinct (CB6)
@@ -8,6 +9,12 @@ Hands-off pick of concepts at G2.
     landing_quotes(run, brief)      R3 for the landing page: a quote given as its is on the saved page
                                     text (`tm page fetch`), never from a WebFetch summary (stage brief)
     media_rows(concept)             its media-buyer rows by label, as the production check reads them
+    account_figures(run), advertisers_seen(run, brief)   CB13's data: what the creator view never shows
+
+CB13's check of the creator view (issue #146) reads data, never words: the creator view is built from the creator
+fields only (brief_page), and the check refuses a view, or its PDF, that shows one of the run's own account figures
+(spend, cost per result, results, from the saved Meta reads) or an advertiser of the run's Ad Library answers, with
+the field and the value. Hooks and ad copy are shown as written, in every language alike.
 
 The stages are cumulative: `brief` runs the concepts checks too, and `production` runs both, so the
 brief Task 13 rewrites with the animatic paths is checked in full at E1. `tm brief check` marks the
@@ -79,8 +86,12 @@ MEDIA_ROWS = ("Decision metric", "Baseline", "Target", "Minimum before a decisio
 EDITOR_ROWS = ("Length", "Captions", "Formats", "Versions", "Files")
 # the areas of the string table the brief's page is built from (its own, and the shared run page's: issue #60)
 PAGE_AREAS = ("brief", "run_page")
-CREATOR_WORDS = ("cost per", "cpa", "ctr", "roas", "spend", "checkout", "conversion", "ad library", "competitor",
-                 "reddit", "goodreads", "r/")
+# CB13's data check (issue #146): the creator view never shows the run's own account figures. The fields of the
+# saved Meta reads (01_base/meta/) that hold them, and what each is called in the problem.
+FIGURE_KEYS = {"spend": "spend", "amount_spent": "spend", "cost_per_result": "cost per result", "cpa": "cost per result",
+               "cost_per_action": "cost per result", "cost_per_purchase": "cost per result", "results": "results",
+               "purchases": "results", "conversions": "results"}
+FIGURE_DIGITS = 3            # a figure is looked for once it has this many digits: "7" or "12" alone says nothing
 INTAKE_FIELDS = (("decision_facts", "budget", "budget"), ("decision_facts", "deadline", "deadline"),
                  ("decision_facts", "approver", "approver"), ("creator", "deadline", "deadline"))
 BANNED = {
@@ -784,50 +795,112 @@ def warnings(brief: dict) -> list[Problem]:
 
 # --- stage production ----------------------------------------------------------------------------
 
-def _creator_words(cfg: dict, brief: dict, advertisers: list[str]) -> list[tuple[str, re.Pattern]]:
-    """(the word as said, its pattern) of what the creator view never says: whole words, a plural
-    or -ing ending allowed for the listed words ("electric" is not "ctr")."""
-    def pattern(word: str, endings: str) -> re.Pattern:
-        end = (endings + r"(?!\w)") if re.match(r"\w", word[-1]) else ""
-        start = r"(?<!\w)" if re.match(r"\w", word[0]) else ""
-        return re.compile(start + re.escape(_norm(word)) + end)
-    account = brief_research._setting(cfg, "account.currency") or brief["meta"]["plugin"]["account_currency"]
-    words = [(w, pattern(w, "(?:s|es|ing)?")) for w in CREATOR_WORDS]
-    words += [(w, pattern(w.rstrip("*"), r"\w*" if w.endswith("*") else ""))   # "wydat*": any ending
-              for w in language_words(cfg)[0] if w.rstrip("*")]
-    return words + [(w, pattern(w, "")) for w in [account, *advertisers] if _filled(w)]
+def _number_forms(raw: object) -> list[str]:
+    """The ways a figure read as `raw` (93.2, "1234.56", {"value": "93.22"}) may be written in a text: as read, with
+    two decimals (a whole count: none) and, from 100 on, rounded to a whole number; with "." or "," before the decimals and no, ",", "."
+    or " " between thousands. Forms with fewer than `FIGURE_DIGITS` digits, and zero, are left out."""
+    value = raw.get("value") if isinstance(raw, dict) else raw
+    if isinstance(value, bool) or value is None:
+        return []
+    if isinstance(value, str):
+        text = value.strip().rstrip("%").strip()
+        try:
+            number = float(text)
+        except ValueError:
+            return []
+    elif isinstance(value, (int, float)):
+        number, text = float(value), None
+    else:
+        return []
+    if not number or number != number or abs(number) in (float("inf"),):
+        return []
+    number = abs(number)
+    bases = {f"{number:.2f}"} if number != int(number) or (text is not None and "." in text) else set()
+    if text is not None and re.fullmatch(r"\d+(?:\.\d+)?", text.lstrip("-")):
+        bases.add(text.lstrip("-"))
+    if number == int(number) or number >= 100:
+        bases.add(str(round(number)))
+    out = set()
+    for base in bases:
+        whole, _, cents = base.partition(".")
+        groups = [whole[max(0, k - 3):k] for k in range(len(whole), 0, -3)][::-1]
+        for sep in ("", ",", ".", " "):
+            for point in (".", ","):
+                if sep == point:
+                    continue
+                form = sep.join(groups) + (point + cents if cents else "")
+                if sum(ch.isdigit() for ch in form) >= FIGURE_DIGITS:
+                    out.add(form)
+    return sorted(out, key=lambda f: (-len(f), f))
 
 
-def language_words(cfg: dict) -> tuple[list[str], list[str]]:
-    """CB13's words in the run's working and market languages other than English, from their translated tables
-    (`checks.creator_words`, tm i18n): (the words, the languages no table covers yet)."""
-    langs = i18n.languages_of(cfg)
-    words: list[str] = []
-    uncovered: list[str] = []
-    for lang in dict.fromkeys((langs.working, langs.market)):
-        if i18n.is_english(lang):
+def _figure_pattern(forms: list[str]) -> re.Pattern:
+    """`forms` where they stand on their own: no digit, or digit and separator, on either side."""
+    return re.compile(r"(?<!\d)(?<!\d[.,])(?:" + "|".join(re.escape(f) for f in forms) + r")(?!\d)(?![.,]\d)")
+
+
+def account_figures(run: RunFolder) -> list[tuple[str, str, str, re.Pattern]]:
+    """The run's own account figures (CB13, issue #146): each spend, cost per result and results value in the saved
+    Meta reads of `01_base/meta/` (a list sent as a JSON text included), as (the value as read, what it is, the file,
+    its pattern). Each value once; never a generic word, so it reads the same in every language."""
+    found: dict[str, tuple[str, str, str, re.Pattern]] = {}
+
+    def add(raw: object, what: str, rel: str) -> None:
+        forms = _number_forms(raw)
+        if forms:
+            shown = str(raw.get("value") if isinstance(raw, dict) else raw)
+            found.setdefault(forms[0], (shown, what, rel, _figure_pattern(forms)))
+
+    def walk(node: object, rel: str) -> None:
+        if isinstance(node, str) and node.lstrip().startswith(("[", "{")):
+            try:
+                node = json.loads(node)
+            except ValueError:
+                return
+        if isinstance(node, dict):
+            for k, v in node.items():
+                what = FIGURE_KEYS.get(k) if isinstance(k, str) else None
+                if what is None:
+                    walk(v, rel)
+                    continue
+                if isinstance(v, dict) and isinstance(v.get("values"), list):   # Meta's results
+                    v = v["values"]
+                for x in v if isinstance(v, list) else [v]:
+                    if isinstance(x, dict) and "value" not in x:
+                        walk(x, rel)
+                    elif not isinstance(x, list):
+                        add(x, what, rel)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, rel)
+
+    folder = run.path / META
+    for f in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        try:
+            data = json.loads(f.read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
             continue
-        text = i18n.table(lang).get("checks.creator_words")
-        if text is None:
-            uncovered.append(lang)
-        else:
-            words += [w.strip() for w in text.split(",") if w.strip() and w.strip() not in CREATOR_WORDS]
-    return words, uncovered
+        answer = data.get("answer", data) if isinstance(data, dict) and "_input" in data else data
+        walk(answer, f.relative_to(run.path).as_posix())
+    return list(found.values())
 
 
-def language_note(cfg: dict) -> str:
-    """What CB13's word check read, said plainly: the languages it covers, and the ones it does not."""
-    langs = i18n.languages_of(cfg)
-    words, uncovered = language_words(cfg)
-    covered = ["English"] + [i18n.name(x) for x in dict.fromkeys((langs.working, langs.market))
-                             if not i18n.is_english(x) and x not in uncovered]
-    note = f"CB13 read the creator view for ad and research words in {_list(covered)}."
-    if uncovered:
-        names = _list([f"{i18n.name(x)} ({x})" for x in uncovered])
-        note += (f" {names} is not covered: its words for spend, CPA, competitors and the like are unknown, so read "
-                 f"the creator view yourself, or translate the table (tm i18n export --lang {uncovered[0]}, then "
-                 "tm i18n import) and check again.")
-    return note
+def advertisers_seen(run: RunFolder, brief: dict) -> list[str]:
+    """The advertisers the run's saturation answers name (CB4's file), the product itself aside: the creator view
+    never names them (CB13, issue #146)."""
+    checks = _saturation(run)[0] or []
+    product = _norm(((brief.get("meta") or {}).get("product") or {}).get("name"))
+    names = {a.strip() for r in checks for a in r.get("advertisers") or [] if isinstance(a, str) and a.strip()}
+    return sorted(a for a in names if _norm(a) != product)
+
+
+def _creator_data(run: RunFolder, brief: dict) -> list[tuple[str, str, re.Pattern]]:
+    """What the creator view never shows, as (the value, what it is, its pattern on normalised text): the run's own
+    account figures and the advertisers it saw in the Ad Library."""
+    out = [(shown, f"the account's {what} in {rel}", pattern) for shown, what, rel, pattern in account_figures(run)]
+    out += [(name, "an advertiser in the run's Ad Library answers", _whole(_norm(name)))
+            for name in advertisers_seen(run, brief)]
+    return out
 
 
 def _production_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
@@ -840,37 +913,21 @@ def _production_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
             out += [Problem(f"concepts[{i}].{label}", f"{c['id']} lacks the {label} row {row} (CB13, the {view} "
                                                       "view).", f"Add the row {row!r}.")
                     for row in rows if _norm(row) not in have]
-    checks = _saturation(run)[0] or []
-    advertisers = sorted({a for r in checks for a in r.get("advertisers") or [] if isinstance(a, str)})
-    words = _creator_words(cfg, brief, advertisers)
-    places: list[tuple[str, str, str, object]] = []   # (whose, field prefix, root, value)
-    for i, c in enumerate(brief["concepts"]):
-        creator = {k: v for k, v in (c.get("creator") or {}).items() if k != "usage"}   # usage may name the fee
-        places += [(f"{c['id']}'s", f"concepts[{i}].", "creator", creator),
-                   (f"{c['id']}'s", f"concepts[{i}].", "casting", c.get("casting"))]
-    product = meta["product"]
-    places += [("The brief's", "", "meta.product", {k: product.get(k) for k in ("plain_description", "plan",
-                                                                                 "price_note")}),
-               ("The brief's", "", "tone", brief.get("tone"))]
-    found: set[tuple[str, str]] = set()          # (field, word) said
-    for whose, prefix, root, value in places:
-        for where, text in research_checks.strings(value, root):
-            low = _norm(text)
-            for word, pattern in words:
-                if pattern.search(low):
-                    found.add((prefix + where, word))
-                    out.append(_creator_word(whose, prefix, where, word))
     if "creator" in meta["recipients"]:
-        out += _creator_view_words(brief, words, found,
-                                   i18n.page_lang(i18n.languages_of(cfg).working, *PAGE_AREAS).lang)   # as built
-        out += _creator_pdf_words(run, brief, words, out)
+        data = _creator_data(run, brief)            # the PDF is read even with no data: never sent unread
+        if data:
+            out += _creator_view_data(brief, data,
+                                      i18n.page_lang(i18n.languages_of(cfg).working, *PAGE_AREAS).lang)   # as built
+        out += _creator_pdf_data(run, brief, data, out)
     return out
 
 
-def _creator_word(whose: str, prefix: str, where: str, word: str) -> Problem:
-    return Problem(prefix + where, f"{whose} creator view says \"{word}\" in {where} (CB13: the creator sees no ad "
-                                   "numbers, research sources, competitors or the account's currency).",
-                   "Say it the way a creator needs it, without that word.")
+def _shown(whose: str, field: str, value: str, what: str) -> Problem:
+    """A value of the run's data in the creator view: the field it is in, and the value."""
+    m = _CONCEPT_FIELD.match(field)
+    return Problem(field, f"{whose} creator view shows \"{value}\" in {m.group(2) if m else field}: {what} (CB13: the "
+                          "creator view holds no account figures, results or competitors).",
+                   "Say it the way a creator needs it, without that value.")
 
 
 _CONCEPT_FIELD = re.compile(r"^concepts\[(\d+)\]\.(.+)$")
@@ -883,13 +940,11 @@ def _whole(low: str) -> re.Pattern:
     return re.compile(start + re.escape(low) + end)
 
 
-def _creator_view_words(brief: dict, words: list[tuple[str, re.Pattern]], found: set[tuple[str, str]],
-                        lang: str = "en") -> list[Problem]:
-    """CB13 on the creator view as the page builds it (`brief_page.view_text`), the header included:
-    each of the brief's texts the view shows that says a word of `words` (a field and word in `found`
-    already said aside), then any such word in the rest of the view (the page's own text, a cut text).
-    The usage line may name the fee (as in the field scan). A brief the page cannot be built from is
-    left to the page's own check."""
+def _creator_view_data(brief: dict, data: list[tuple[str, str, re.Pattern]], lang: str = "en") -> list[Problem]:
+    """CB13's data check on the creator view as the page builds it (`brief_page.view_text`): each of the brief's
+    texts the view shows that holds a value of `data`, named by its field, then any such value in the rest of the
+    view (the page's own text, a cut text). The usage line may name the creator's fee. A brief the page cannot be
+    built from is left to the page's own check."""
     from tm import brief_page              # brief_page imports this module
     try:
         rest = "\n".join(_norm(t) for t in brief_page.view_text(brief, "creator", lang))
@@ -906,23 +961,18 @@ def _creator_view_words(brief: dict, words: list[tuple[str, re.Pattern]], found:
         if where.endswith(".creator.usage"):
             continue
         m = _CONCEPT_FIELD.match(where)
-        whose, prefix, field = ((f"{brief['concepts'][int(m.group(1))].get('id')}'s", f"concepts[{m.group(1)}].",
-                                 m.group(2)) if m else ("The brief's", "", where))
-        out += [_creator_word(whose, prefix, field, word) for word, pattern in words
-                if (where, word) not in found and pattern.search(low)]
-    out += [Problem("creator view", f"The page's creator view says \"{word}\" (CB13: the creator sees no ad numbers, "
-                                    "research sources, competitors or the account's currency).",
-                    "Find it in the creator view (tm brief page) and say it without that word.")
-            for word, pattern in words if pattern.search(rest)]
+        whose = f"{brief['concepts'][int(m.group(1))].get('id')}'s" if m else "The brief's"
+        out += [_shown(whose, where, value, what) for value, what, pattern in data if pattern.search(low)]
+    out += [_shown("The page", "creator view", value, what) for value, what, pattern in data if pattern.search(rest)]
     return out
 
 
-def _creator_pdf_words(run: RunFolder, brief: dict, words: list[tuple[str, re.Pattern]],
-                       said: list[Problem]) -> list[Problem]:
+def _creator_pdf_data(run: RunFolder, brief: dict, data: list[tuple[str, str, re.Pattern]],
+                      said: list[Problem]) -> list[Problem]:
     """CB13 on the creator PDF (issue #10): the text of the creator PDF the latest page built from this brief
-    printed (`brief_page.creator_pdf`), each word of `words` in it that no problem in `said` names already. The
-    usage line may name the fee, as in the field scan. A PDF that is gone or has no text to read is a problem
-    too: it is never sent unread. No page printed from this brief yet: nothing to read."""
+    printed (`brief_page.creator_pdf`), each value of `data` in it that no problem in `said` names already. The
+    usage line may name the fee, as in the view. A PDF that is gone or has no text to read is a problem too: it is
+    never sent unread. No page printed from this brief yet: nothing to read."""
     from tm import brief_page, brief_pdf          # brief_page imports this module
     found = brief_page.creator_pdf(run, brief)
     if found is None:
@@ -943,10 +993,10 @@ def _creator_pdf_words(run: RunFolder, brief: dict, words: list[tuple[str, re.Pa
         if _filled(usage):
             lows = [low.replace(_norm(usage), " ") for low in lows]
     named = " ".join(x.what for x in said)
-    return [Problem("creator PDF", f"The creator PDF {rel} says \"{word}\" (CB13: the creator sees no ad numbers, "
-                                   "research sources, competitors or the account's currency).",
-                    "Find it in the creator view, say it without that word, then build the page again (tm brief page).")
-            for word, pattern in words if any(pattern.search(low) for low in lows) and f'"{word}"' not in named]
+    return [Problem("creator PDF", f"The creator PDF {rel} shows \"{value}\": {what} (CB13: the creator view holds no "
+                                   "account figures, results or competitors).",
+                    "Find it in the creator view, say it without that value, then build the page again (tm brief page).")
+            for value, what, pattern in data if any(pattern.search(low) for low in lows) and f'"{value}"' not in named]
 
 
 # --- the check -----------------------------------------------------------------------------------
@@ -990,7 +1040,7 @@ def _greedy(brief: dict, totals: dict[str, float], count: int, min_axes: int) ->
 
 
 def pick(brief: dict, totals: dict[str, float], count: int, min_axes: int) -> list[str]:
-    """Hands-off G2: the concepts by their candidate's total (ties by concept id), each kept only
+    """The top concepts by their candidate's total (ties by concept id), each kept only
     when it differs from every one kept on at least `min_axes` axes (CB6), up to `count`. It may
     return fewer. A concept whose candidate has no total is not picked."""
     return _greedy(brief, totals, count, min_axes)[0]

@@ -1,4 +1,4 @@
-# Template: review pack (PB2, check-in G2)
+# Template: review pack (PB2: C1; decided per concept on the page with the briefs, G3, or on C1's page in the review pack alone)
 
 **Purpose:** the growth lead chooses which concepts go to production, on evidence. One page per concept, plus a comparison table. Every number has a source (R3); customer voice is labeled by tier (CB5).
 

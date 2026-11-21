@@ -34,7 +34,7 @@ def run(tmp_path, monkeypatch):
     monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "data"))
     run = RunFolder.create(ws, "lumen", date(2026, 11, 1), playbook=CREATIVE_BRIEF)
     s = state.load(run)
-    s.level, s.outputs = "every_step", ["review_pack", "briefs", "animatics", "page"]
+    s.level, s.outputs = "every_step", ["review_pack", "briefs", "page"]
     state.save(run, s)
     return run
 
@@ -50,9 +50,10 @@ def _decided(run: RunFolder, cid: str, *, by: str = "user", note: str | None = N
     state.save(run, s)
 
 
-def _chosen(run: RunFolder, concepts: list[str], source: str = "page") -> None:
+def _chosen(run: RunFolder, concepts: list[str], source: str = "page", dropped: list[str] | None = None) -> None:
     s = state.load(run)
-    s.brief = {**(s.brief or {}), "chosen": {"concepts": concepts, "source": source, "at": "2026-11-03T10:00:00+00:00"}}
+    s.brief = {**(s.brief or {}), "chosen": {"concepts": concepts, "source": source, "at": "2026-11-03T10:00:00+00:00",
+                                             **({"dropped": dropped} if dropped is not None else {})}}
     state.save(run, s)
 
 
@@ -150,13 +151,14 @@ def test_the_pdf_buttons_and_the_print_mode_stay():
 
 # --- the run's state on the page ----------------------------------------------------------------------
 
-def test_a_first_page_is_up_for_the_concepts(run):
+def test_a_first_page_is_up_for_the_briefs(run):
+    """No concept check-in (issue #145): the first page people decide on is up for the briefs, G3."""
     _write_brief(run, _with_animatics(run, _brief()))
     out, text = _built(run)
     head = _region(text, "now-head")
-    assert "Choose the concepts" in " ".join(head.texts) and "New" in head.texts
+    assert "Decide on the briefs" in " ".join(head.texts) and "New" in head.texts
     assert "Already settled" not in text
-    assert 'id="stage-G2"' in text
+    assert 'id="stage-G3"' in text
     assert out["lang"] == "en"
     footer = _region(text, "built")
     assert footer.texts == [f"Built from the run {run.path.name} on {footer.texts[0].split(' on ', 1)[1]}"]
@@ -166,24 +168,26 @@ def test_settled_check_ins_are_read_only_and_kept_from_the_creator(run):
     _write_brief(run, _with_animatics(run, _brief()))
     _decided(run, "G0", by="rule", note="the card as derived", at="2026-11-01T10:00:00+00:00")
     _decided(run, "G1", note="Night-shift nurses", at="2026-11-01T11:00:00+00:00")
-    rel = _decisions_file(run, "G2")
-    _chosen(run, ["C1"])
-    _decided(run, "G2", note="C1 chosen from the page", at="2026-11-03T10:30:00+00:00")
+    rel = _decisions_file(run, "G3")
+    _chosen(run, ["C1"], dropped=["C2"])
+    _decided(run, "G3", note="C1 kept from the page", at="2026-11-03T10:30:00+00:00")
     out, text = _built(run)
 
     head = " ".join(_region(text, "now-head").texts)
-    assert "Accept the briefs and animatics" in head and "4" in head          # the next check-in, after three
+    assert "Accept the production views" in head and "4" in head          # the next check-in, after three
     settled = _region(text, "settled")
     shown = " ".join(settled.texts)
     assert "Already settled (3)" in shown
-    assert "Choose the concepts: C1 chosen" in shown and "Chosen: C1, from the page." in shown
+    assert "Decide on the briefs: C1 kept" in shown and "Kept: C1, from the page." in shown
+    assert "Dropped: C2." in shown
     assert f"The team's decisions, as read from the page ({rel}):" in shown
-    assert "<b>C1</b>: approved (2)" in text and "<b>C2</b>: split, 1 approved and 1 asked for changes" in text
+    assert "<b>C1</b>: approved (2)" in text
+    assert "<b>C2</b>: split, 1 approved, 1 asked for changes, 0 dropped" in text
     assert f'C2, u1, Changes requested: "{ORDER}"' in shown                    # the note, whole
     assert "Confirm the intake card: Accepted" in shown and "by rule" in shown
     assert not {"input", "textarea", "button", "select"} & set(settled.tags)  # read-only: nothing to click
     # the newest first, and never in the creator's view
-    assert shown.index("Choose the concepts") < shown.index("Accept the persona") < shown.index("Confirm the intake")
+    assert shown.index("Decide on the briefs") < shown.index("Accept the persona") < shown.index("Confirm the intake")
     texts = brief_page._ViewText("creator")
     texts.feed(text)
     assert not any("Already settled" in t or ORDER in t for t in texts.texts)
@@ -194,21 +198,37 @@ def test_settled_check_ins_are_read_only_and_kept_from_the_creator(run):
 
 def test_a_settled_note_is_text_never_markup(run):
     _write_brief(run, _with_animatics(run, _brief()))
-    _decided(run, "G2", note="<script>alert(1)</script>", at="2026-11-03T10:30:00+00:00")
+    _decided(run, "G3", note="<script>alert(1)</script>", at="2026-11-03T10:30:00+00:00")
     _, text = _built(run)
     assert "<script>alert(1)" not in text and "&lt;script&gt;alert(1)" in text
 
 
-def test_a_review_pack_run_has_nothing_open_after_the_concepts(run):
+def test_a_review_pack_run_is_up_for_its_concepts_until_they_are_decided(run):
+    """The review pack alone has no check-in on its page (issue #145): C1's page is up for its concepts until the
+    choice is recorded, then nothing is open."""
     s = state.load(run)
     s.outputs = ["review_pack", "page"]
     state.save(run, s)
     _write_brief(run, _with_animatics(run, _brief()))
-    _decided(run, "G2", at="2026-11-03T10:30:00+00:00")
+    _decided(run, "G1", at="2026-11-02T10:30:00+00:00")
     _, text = _built(run)
     head = " ".join(_region(text, "now-head").texts)
-    assert "Accept the briefs" not in head and "Choose the concepts" not in head
+    assert "Decide on the concepts" in head and "Decide on the briefs" not in head
+    _chosen(run, ["C1"], dropped=["C2"])
+    _, text = _built(run)
+    head = " ".join(_region(text, "now-head").texts)
+    assert "Decide on the concepts" not in head and "Decide on the briefs" not in head
     assert "Already settled (1)" in text
+
+
+def test_a_run_started_before_issue_145_shows_its_g2_settled(run):
+    _write_brief(run, _with_animatics(run, _brief()))
+    _chosen(run, ["C1"])
+    _decided(run, "G2", at="2026-11-03T10:30:00+00:00")
+    _, text = _built(run)
+    shown = " ".join(_region(text, "settled").texts)
+    assert "Already settled (1)" in shown and "Choose the concepts: C1 kept" in shown
+    assert "Decide on the briefs" in " ".join(_region(text, "now-head").texts)
 
 
 def test_just_the_big_calls_names_the_card(run):
@@ -216,7 +236,6 @@ def test_just_the_big_calls_names_the_card(run):
     s.level = "big_calls"
     state.save(run, s)
     _write_brief(run, _with_animatics(run, _brief()))
-    _decided(run, "G2", at="2026-11-03T10:30:00+00:00")
     _, text = _built(run)
     assert "Approve the briefs" in " ".join(_region(text, "now-head").texts)
 
@@ -228,12 +247,12 @@ def test_hands_off_names_no_check_in_to_decide(run):
     _write_brief(run, _with_animatics(run, _brief()))
     _, text = _built(run)
     head = " ".join(_region(text, "now-head").texts)
-    assert "Choose the concepts" not in head and "Updated" in head
+    assert "Decide on the briefs" not in head and "Updated" in head
 
 
 def test_a_single_file_has_the_same_frame(run):
     _write_brief(run, _with_animatics(run, _brief()))
-    _decided(run, "G2", at="2026-11-03T10:30:00+00:00")
+    _decided(run, "G3", at="2026-11-03T10:30:00+00:00")
     out = brief_page.build(run, single_file=True)
     text = (run.path / out["file"]).read_text(encoding="utf-8")
     assert "Already settled (1)" in text and template.mark_svg() in text
@@ -244,18 +263,18 @@ def test_a_single_file_has_the_same_frame(run):
 def test_creative_brief_is_a_playbook_of_the_run_page(run):
     assert run_page.COMPONENTS[CREATIVE_BRIEF] is creative_brief.materials
     assert run_page.OUTCOMES[CREATIVE_BRIEF] is creative_brief.outcome
-    _decisions_file(run, "G2")
+    _decisions_file(run, "G3")
     _chosen(run, ["C1", "C2"], source="chat")
-    _decided(run, "G2", at="2026-11-03T10:30:00+00:00")
+    _decided(run, "G3", at="2026-11-03T10:30:00+00:00")
     out = run_page.build(run, local=True)
     text = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
-    assert "Creative brief" in text and "C1, C2 chosen" in text and "Chosen: C1, C2, in chat." in text
+    assert "Creative brief" in text and "C1, C2 kept" in text and "Kept: C1, C2, in chat." in text
     assert "<b>C1</b>: approved (2)" in text
 
 
 def test_the_words_come_from_the_table():
     en = i18n.english()
-    for key in ("run_page.playbook.creative_brief", "run_page.creative_brief.stage.G2", "brief.settled_read", "brief.footer_built"):
+    for key in ("run_page.playbook.creative_brief", "run_page.creative_brief.stage.G3", "brief.settled_read", "brief.footer_built"):
         assert key in en
 
 

@@ -528,7 +528,7 @@ def test_refresh_ad_card_unchanged(monkeypatch):
 # --- creative brief (plan Task 4): Meta blocks, TrendsMesh and the artifacts connector warn ---
 
 CB = "02-creative-brief"
-CB_OUTPUTS = "review_pack,briefs,animatics,page"
+CB_OUTPUTS = "review_pack,briefs,page"
 CB_ARTIFACTS_NOTE = ("Without shared page links you get the page as a local file, and "
                      "decisions are taken here in chat.")
 CB_ROWS = ["tier_base", "tier_animatic", "disk_free", "mcp_trendsmesh_brief", "trendsmesh_agent_plan_brief",
@@ -806,3 +806,15 @@ def test_the_cli_reads_the_workspace_choice(tmp_path, monkeypatch, capsys):
                      "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["mode"] == "paid" and "mcp_trendsmesh" in out["warnings"]
+
+
+def test_creative_brief_reads_the_legacy_animatics_output(capsys, bundled_skills):
+    """`animatics`, an output before issue #145 (the animatics are made on request now), is read and left out."""
+    rows = []
+    for outputs in (CB_OUTPUTS, "review_pack,briefs,animatics,page"):
+        code = cli.main(["doctor", "--playbook", "creative-brief", "--outputs", outputs,
+                         "--mcp", "trendsmesh=ok,meta=ok,artifacts=ok", "--json"])
+        out = json.loads(capsys.readouterr().out)
+        assert code in (0, 2), out
+        rows.append([i["id"] for i in out["items"]])
+    assert rows[0] == rows[1] and "browser_for_animatics" in rows[0] and "tier_animatic" in rows[0]

@@ -2,7 +2,9 @@
 
 A check-in is a decision the user makes. Which ones the user sees depends on the level; the
 engine decides that (`data/creative-brief/checkins.yaml`) and says `ask`, `auto` or `stop` in `tm
-next`. A creative brief has five, and none spends anything: nothing in it costs money.
+next`. A creative brief has five (G0, G1, G3, the animatics question, G4), and none spends anything:
+nothing in it costs money. There is no concept check-in: the concepts are decided per concept on
+the page with the briefs (G3).
 
 ## How a card looks
 
@@ -22,8 +24,9 @@ its label.
 The user can always answer something else ("drop the third one", "from now on, just the big
 calls"). Redo the work as a new version and show the card again; record only the final answer. A
 level change is `tm level <every_step|big_calls|hands_off> --run R`; a decision changed later
-needs `tm decide <id> <choice> --change --run R`. Every check-in's choice is `accept`: what
-changes is recorded in brief.json and with `tm brief choose`.
+needs `tm decide <id> <choice> --change --run R`. Every check-in's choice is `accept` but the
+animatics question's (`make` or `skip`): what changes is recorded in brief.json and with `tm brief
+choose`.
 
 ## The cards
 
@@ -43,26 +46,32 @@ running ads, and every divergence between hypothesis and data, named as a findin
 segment reaches 10 results, say **"directional"** and why ("28 results in all, no segment reaches
 10"). Choice: `accept` (after any change the user asks for).
 
-**G2 · Choose the concepts** (after C1). Per concept, in order: its title, then **Evidence at a
-glance first**, before any line describing the idea, one row each as the brief's `glance` has them
-(the trend row: "Rising hook" and its name, status, creators, views, view lift; in a guess run
-"Hook (agent's guess)"; Customers: the theme with its frequency; Account: this concept's own
-number from the account, e.g. the closest running ad's cost per result, never only the
-persona's numbers said once for all; Competition: "competitor found: <the advertisers, named as
-the saturation file names them>" or "none found in Ad Library titles"), then the idea, the angle, the customer phrase it uses and where, the saturation verdict
-("competitor found: <advertisers>" or "none found in Ad Library titles"; a trend pick's earlier
-level beside it, as a hint), and the fit score (the weighted total and the weakest criterion).
-Then the page link and how to decide on it: each person opens the link, picks Approve or Ask for
-changes per concept with a note, and saves (they need Contributor access to save; with view
-access the page lets them copy their decisions as text and send them); then tell me the team has
-decided. Or answer here: a decision in chat always counts. Without the page tools, the local
-page's path instead, and the decision here. Choice: `accept` (after `tm brief choose`).
+**G3 · Decide on the briefs** (after D3: the first page anyone decides on). Per concept, in order:
+its title, then **Evidence at a glance first**, before any line describing the idea, one row each as
+the brief's `glance` has them (the trend row: "Rising hook" and its name, status, creators, views,
+view lift; in a guess run "Hook (agent's guess)"; Customers: the theme with its frequency; Account:
+this concept's own number from the account, e.g. the closest running ad's cost per result, never
+only the persona's numbers said once for all; Competition: "competitor found: <the advertisers,
+named as the saturation file names them>" or "none found in Ad Library titles"), then the brief:
+the idea and its angle, the key message and hypothesis, the hook and its variants, the beats with
+their on-screen text, the customer phrase it uses and where, the copy, the saturation verdict (a
+trend pick's earlier level beside it, as a hint) and the fit score (the weighted total and the
+weakest criterion). Then the page link (or the local path) and how to decide on it: each person
+opens the link and, **per concept, picks Approve, Ask for changes (with a note) or Drop**, and
+saves (they need Contributor access to save; with view access the page lets them copy their
+decisions as text and send them); then tell me the team has decided. Or answer here: a decision in
+chat always counts. Earlier choices on the page are pre-filled and count until each person saves
+again. Without the page tools, the local page's path instead, and the decision here. Choice:
+`accept` (after `tm brief choose`, which records the concepts dropped).
 
-**G3 · Accept the briefs and animatics** (after D3). The page link (or the local path), that each
-person's earlier choices on the page are pre-filled and count until they save again, and what
-to look at: each brief's key message and hypothesis, the hook and its variants, the beats with
-their on-screen text, the copy, and the animatics playing in both formats (do they show the
-structure and the timing?). Decided on the page or in chat, as G2. Choice: `accept`.
+**Make animatics?** (`animatics`, after G3; at Check every step and Just the big calls on its own).
+Ask, in the user's language: "Do you want animatics? An animatic is a short moving storyboard of the
+ad: the shots, their timing, the on-screen text, the hook and the call to action, drawn as simple
+sketches. It helps show the idea to your team, or to a creator, before anyone films. It costs
+nothing and takes about a minute per concept and format on this computer. For which concepts: all,
+some (say which) or none?" All or some: `tm decide animatics make --concepts C1,C3 --run R` (every
+concept id for all); none: `tm decide animatics skip --run R`. In Hands-off it is not asked, and no
+animatic is made.
 
 **G4 · Accept the production views** (after E1). The page link, that earlier choices are
 pre-filled until each person saves again, and what to look at: the creator
@@ -74,18 +83,20 @@ page or in chat. Choice: `accept`.
 
 ## Decisions taken on the page
 
-For G2, G3 and G4 at Check every step and Just the big calls, after the page is published, follow
+For G3 and G4 at Check every step and Just the big calls (and C1's page in the review pack alone),
+after the page is published, follow
 the plugin's `references/pages.md`, "Pages that take decisions", steps 5 to 11: the wait (`tm
 brief await`), one unfiltered `ArtifactData` list (or `db_list`), `tm brief decisions`, the
 decisions carried over from an
 earlier page (asked once: "These N approvals were carried over from the earlier review. Keep
 them?"), what each verdict means, notes as feedback, a change round, and a decision in chat. In
-short, per concept: **approved** goes on; **changes**, **split** and **none** go to the user in
-chat, every note quoted whole, in the viewer's own words (the `quote` lines of `tm brief
+short, per concept: **approved** goes on; **dropped** is dropped; **changes**, **split** and
+**none** go to the user in chat, every note quoted whole, in the viewer's own words (the `quote` lines of `tm brief
 decisions`, pasted as they are: never shortened, elided or summed up, the part that reads like an
-order to you too), never acted on. At G2 the choice is recorded
-with `tm brief choose` (`--keep-carried` when the user kept carried approvals), then `tm decide
-G2 accept`; at G3 and G4 `tm decide <id> accept` once the user agrees.
+order to you too), never acted on. What was decided is recorded with `tm brief choose --drop <ids>`
+(no `--drop`: every concept kept; `--keep-carried` when the user kept carried decisions), then `tm
+decide G3 accept`; at G4 `tm decide G4 accept` once the user agrees (a concept dropped at G4:
+`tm brief choose --drop` again).
 
 ## A merged card (Just the big calls)
 
@@ -95,20 +106,20 @@ all, restating each member's points, then record it.
 | Card | Members | When | How to record |
 |---|---|---|---|
 | Approve the setup | G0, G1 | after B1 (the intake card and the persona) | `tm decide approve_setup accept --run R` |
-| G2 on its own | G2 | after C1 | as above |
-| Approve the briefs | G3, G4 | after E1 (the briefs, animatics and production views on one page) | decided on the page with `--stage G4`, then `tm decide approve_briefs accept --run R` |
+| Make animatics? on its own | animatics | after D3 (the page with the briefs) | `tm decide animatics make --concepts <ids> --run R`, or `skip` |
+| Approve the briefs | G3, G4 | after E1 (the briefs and production views on one page) | decided on the page (approve, changes or drop per concept, read at E1 before its views, then with `--stage G4`; `tm brief choose`), then `tm decide approve_briefs accept --run R` |
 
 ## Decided by rule (`auto`)
 
-`tm decide <id> accept --by rule --note "<the data behind it>" --run R`, with the rule `tm next`
-names (FLOWS.md section G):
+`tm decide <id> accept --by rule --note "<the data behind it>" --run R` (the animatics question:
+`tm decide animatics skip --by rule --note ...`), with the rule `tm next` names (FLOWS.md section G):
 
 | Id | Rule | The note says |
 |---|---|---|
 | G0 | logged: the card as derived | the product, market, category phrase, recipients |
 | G1 | at least 10 results per segment (lowest cost per result), else the thin-data fallback, marked directional (`tm audience pick`) | the segment, its results and cost, or "directional" and why |
-| G2 | the top N by score that pass diversity: `tm brief pick`, then `tm brief choose --source rule` | the picks with their weighted totals; fewer than N when diversity fails |
-| G3 | published as is | the page version |
+| G3 | published as is, every concept kept: `tm brief choose --source rule` | the page version |
+| animatics | skip: Hands-off makes no animatic | "Hands-off makes no animatic" |
 | G4 | published as is | the page version |
 
 Every decision by rule is listed in the final report with its rule and its data, and shown at the

@@ -39,9 +39,6 @@ trends:
     no_type: no type in the profile yet (an even split)
 
 checks:
-  # CB13 (Creative brief): words the creator view never says. Comma-separated; a translation lists the same
-  # ideas in its language (and may keep the English ones that are used as they are, such as CTR or ROAS).
-  creator_words: cost per, cpa, ctr, roas, spend, checkout, conversion, ad library, competitor, reddit, goodreads, r/
   # CA3 (Create an ad, engine/src/tm/create_copy.py): promises the Meta copy makes only when a checked claim says
   # them too, read in the copy's market language. Comma-separated phrases, whole words in any case; a word ending in
   # * takes any ending. A translation lists the same promises as that language makes them (not word for word).
@@ -116,6 +113,8 @@ brief:
   # the page's header and view bar
   meta_line: "Market: {market}, {language}. Prepared {prepared}. Trend data valid until {valid_until}."
   animatic_label: "{id} animatic"
+  # a concept without an animatic (they are made on request, CB11, issue #145)
+  animatic_on_request: Animatic on request
   choose_view: Choose your view
   i_am_the: I am the
   # the PDFs (issue #10): the view bar's buttons and hint, the print mode's banners and stills caption
@@ -188,6 +187,7 @@ brief:
   decision_on: Your decision on {id}
   approve: Approve
   ask_for_changes: Ask for changes
+  drop: Drop
   note_for: Note for {id}
   note_placeholder: What should change? Optional when you approve.
   save_decision: Save decision
@@ -201,12 +201,13 @@ brief:
   # the page's script: what a decision box and the side bar say while people decide
   approved: Approved
   changes_requested: Changes requested
-  tally_counts: "{id}: {approved} approved, {changes} changes requested"
+  dropped: Dropped
+  tally_counts: "{id}: {approved} approved, {changes} changes requested, {dropped} dropped"
   decisions_on_concept: "Decisions on this concept:"
   you: You
   someone: Someone
   not_saved_yet: Not saved yet.
-  choose_first: Choose Approve or Ask for changes first.
+  choose_first: Choose Approve, Ask for changes or Drop first.
   cannot_save_here: "Not saved: this copy can't save decisions. Open the page from its claude.ai link to save them for the team, or tell Claude your decisions in chat (\"Copy my decisions\" helps)."
   view_only: 'Your access is view-only. Ask the sender for Contributor access, or use "Copy my decisions".'
   saving: Saving…
@@ -230,15 +231,17 @@ brief:
   card_approve_setup: Approve the setup
   card_approve_briefs: Approve the briefs
   outcome_accepted: Accepted
-  outcome_chosen: "{concepts} chosen"
+  outcome_chosen: "{concepts} kept"
   chosen_page: from the page
   chosen_chat: in chat
   chosen_rule: by rule
-  settled_chosen: "Chosen: {concepts}, {source}."
+  settled_chosen: "Kept: {concepts}, {source}."
+  settled_dropped: "Dropped: {concepts}."
   settled_read: "The team's decisions, as read from the page ({file}):"
   verdict_approved: "**{id}**: approved ({approve})"
   verdict_changes: "**{id}**: changes requested ({change})"
-  verdict_split: "**{id}**: split, {approve} approved and {change} asked for changes"
+  verdict_dropped: "**{id}**: dropped ({drop})"
+  verdict_split: "**{id}**: split, {approve} approved, {change} asked for changes, {drop} dropped"
   verdict_none: "**{id}**: no decision"
   settled_note: '{id}, {who}, {choice}: "{note}"'
   footer_built: Built from the run {run} on {when}.
@@ -1218,8 +1221,11 @@ run_page:
     stage:
       G0: Confirm the intake card
       G1: Accept the persona and target segment
+      # G2: a run started before issue #145 (no longer a check-in); C1: the review pack alone, decided on C1's page
       G2: Choose the concepts
-      G3: Accept the briefs and animatics
+      C1: Decide on the concepts
+      G3: Decide on the briefs
+      animatics: Make animatics?
       G4: Accept the production views
   stage_name:
     hook: The start (hook)

@@ -1109,7 +1109,7 @@ def _offered(run: RunFolder, result: NextStep) -> NextStep:
 def _with_notice(s: state.RunState, result: NextStep) -> NextStep:
     """The guess-mode notice, on what the user sees: a check-in shown to them (never one decided
     by rule, so Hands-off gets it only in the final report) and the final report of a run that
-    made its changes (Creative brief: only when its G2 was not asked, `Notice.repeat_at_end`)."""
+    made its changes (Creative brief: only when its G3 was not asked, `Notice.repeat_at_end`)."""
     ids = result.checkin.ids if result.checkin and result.action == "ask" else None
     done = result.action == "done" and not _ended_early(s)
     result.notice = evidence.notice_for(s, ids, done=done)
@@ -1266,15 +1266,18 @@ def recut_refusal(run: RunFolder, s: state.RunState) -> str | None:
 
 
 def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "rule"],
-           note: str | None, *, today: date | None = None, change: bool = False) -> None:
+           note: str | None, *, today: date | None = None, change: bool = False,
+           concepts: list[str] | None = None) -> None:
     """Record a decision. A card id records one entry per check-in it covers.
 
     A decision by rule needs `note`: the data behind it. Deciding again needs `change`.
     A choice may end the run (G1a do_not_refresh, accepted from G1a's own step even when its
     card comes later), stop it (E2b red), set the measurement dates (G11 activate, from
     `today`; keep_paused clears them), need another decision first (activate needs a green
-    E2b), need step checks to pass first (`requires`, organic video's reuse_profile reuse) or skip
-    the steps it no longer allows (a reject at a spending check-in). A money
+    E2b), need step checks to pass first (`requires`, organic video's reuse_profile reuse), name the
+    concepts it is for (`concepts`: creative brief's `animatics make --concepts C1,C3`, kept in the decision;
+    a choice without that effect takes none) or skip the steps it no longer allows (a reject at a spending
+    check-in). A money
     decision is refused (Held) while the run is stopped for something else; G10 approve and G11
     activate need a feasible R4 plan.
     """
@@ -1334,6 +1337,7 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
                 raise ValueError(f"No one answer fits every check-in the card {checkin_id} covers; "
                                  f"record each in order: {each}.")
             raise ValueError(f"{cid} takes one of: {', '.join(allowed)}.")
+    named = _named_concepts(run, s, [cat.checkins[cid] for cid in ids], choice, concepts)
     for cid in ids:
         c = cat.checkins[cid]
         if c.money:  # spending and the launch wait while the run is stopped (I1)
@@ -1362,6 +1366,8 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
             entry["note"] = note
         if cid in pic.latest:
             entry["change"] = True
+        if named is not None:
+            entry["concepts"] = named
         entry["at"] = _now()
         entry.update(_covers(run, s, cid, choice))
         s.decisions.append(entry)
@@ -1394,6 +1400,32 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
             if position[effect["back_to"]] < here:
                 s.step = effect["back_to"]
     state.save(run, s)
+
+
+def _named_concepts(run: RunFolder, s: state.RunState, cs: list, choice: str,
+                    concepts: list[str] | None) -> list[str] | None:
+    """The concepts a choice with the `concepts` effect names (each once, in the order given), else None.
+    ValueError for such a choice without any, for concepts given to a choice that takes none, and, in a creative
+    brief, for an id that is not a concept of the latest brief (only those ids are named)."""
+    takes = any(c.on_choice.get(choice, {}).get("concepts") for c in cs)
+    named = list(dict.fromkeys(concepts or []))
+    if not takes:
+        if named:
+            raise ValueError(f"{cs[0].id} {choice} names no concepts: leave out --concepts.")
+        return None
+    if not named:
+        raise ValueError(f"{cs[0].id} {choice} is for the concepts the user named: give them with --concepts "
+                         "(e.g. --concepts C1,C3).")
+    if s.playbook == playbooks.CREATIVE_BRIEF:
+        from tm import brief_page   # it builds its page with the run page, which imports this module
+
+        _, rel, brief = brief_page.load_brief(run, None)
+        ids = brief_page.concept_ids(brief, rel)
+        unknown = [x for x in named if x not in ids]
+        if unknown:
+            raise ValueError(f"{', '.join(unknown)} {'is' if len(unknown) == 1 else 'are'} not a concept of the latest "
+                             f"brief ({rel}: {', '.join(ids)}).")
+    return named
 
 
 def _check_unskip(s: state.RunState, cid: str, old: str, new: str) -> None:
