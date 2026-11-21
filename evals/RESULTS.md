@@ -56,6 +56,32 @@ name in a comment. A result folder from before the rename carries the old name.
 | `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
 | `vo_shortened_with_bridging_line` | `vo_bridging_line` |
 
+## The #123 to #147 run, one branch (all cases, 2026-11-21 and 22)
+
+Not a release run: issues #123 to #147 in four waves on `wave-9-123-147`. Every case once (`evals/run.sh
+--report-issue --ablation none -j 3 --max-cost-usd 500`), then each failing case again on its own.
+
+- **First run: 26 of 80 passed.** Almost every failure was in the scaffolds, which predated this batch's rules:
+  - `tm decide` with no `--said`;
+  - `brief_kind`;
+  - storyboard cuts;
+  - the 50-trend cap;
+  - the case limits.
+- **After the scaffold fixes: 75, then 68, then 75 of 82.** The final run took 3160 s.
+
+| Found | Kind | Fix |
+|---|---|---|
+| `cb_no_artifacts_local_page`, `cb_page_decisions_from_db`: every brief PDF timed out at 120 s. A run with a temporary home (each case) has no keychain, and headless Chrome waited on the macOS keychain dialog | **plugin** | the PDF printer, the site capture and the page reader start Chrome with `--use-mock-keychain --password-store=basic`. The scaffold now passes (12 s, not 121 s) |
+| `ca_quiet_line_not_missing`: a new take was offered before the Scribe check (the same on `dev`) | **plugin** | create-ad SKILL.md. Then 1.00 twice, 0.67 in the final run |
+| `ov_c1_look`: the ideas card read a medium risk as a count of two risks, and showed styles in place of a look | **plugin** | organic-video ideas card wording. Then 1.00 twice |
+| `tr_picks_card_relative_numbers`: the one-link run page at the picks check-in (#131) was counted as the report built early | grader | that clause only; still 0.50 at times, on wording |
+| `tr_no_artifacts_page`: the case's data are fixed-date, so the agent rightly warned that the picks' dates had passed, and the judges read that as unfinished | grader | the caution is allowed. Then 1.00 twice |
+| `tr_paid_wording`, `middle_recuts`, `ov_free_ideas`, `cb_concepts_diverse_with_phrases`, `cb_no_trendsmesh_guess` and six more, once each | variance | none: each passed on its own |
+| `ca_presenter_page`: the agent answered in chat instead of building the page; the same on `dev` | already on `dev` | none here |
+
+`tr_paid_wording`'s fixed mock gives the same four unrelated ads for every search. So the agent sometimes stops, rightly
+calling the search broken; it scored 0 in 3 of 8 runs. A per-search mock answer is a follow-up.
+
 ## The #115 + #116 + #117 run, one branch (all cases, 2026-11-17 and 18)
 
 Not a release run: the model registry (#115), the animation-style previews (#116, with @piotr-lezon's #118) and the text

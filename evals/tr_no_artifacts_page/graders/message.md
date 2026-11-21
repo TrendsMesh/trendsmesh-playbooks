@@ -11,4 +11,7 @@ the user may be in it already), if it says the run failed, is blocked or is wait
 nothing could be published, asks the user to add or connect an artifacts or publishing tool, gives
 a link that was never made, or gives no index.html path.
 
+The case's data are fixed-date while the real clock moves on, so a caution that the picks' validity date has
+passed, with an offer of a fresh run, is fine: it does not make the run unfinished, failed or blocked.
+
 The run's language is English; judge meaning, not exact wording.
