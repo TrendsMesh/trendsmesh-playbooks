@@ -10,21 +10,29 @@ lib/sound.js      window.SOUND   synthesized effects, the score scheduler, offli
 lib/player.js     window.Player  the page runtime: registers a style, seek/DURATION/scoreSound, player, storyboard
 lib/page.html     page template: {{TITLE}} {{FONTS_LINK}} {{CONFIG}} {{SCRIPTS}}
 styles/NN_<id>.js one reference animation per style card (10-14 s), the style guide Claude copies the rendering of
-prompt/*.md       the build prompt: build.md, then voiceover.md and/or storyboard.md, then card + code
+prompt/*.md       the build prompt: build.md, then voiceover.md, then storyboard.md, animation.md or layout.md,
+                  then card + code
 previews/         per style a poster JPG and a 4 s loop MP4 (atlas/previews.mjs), previews.json
 ```
 
 ## The page contract
 
-The page sets `window.TM_PAGE = { width, height, mode: "play" | "storyboard", panels, voiceover }` before any script,
+The page sets `window.TM_PAGE = { width, height, mode: "play" | "storyboard", panels, voiceover, pictures }` before any
+script,
 then inlines `brush.js`, `sound.js`, `player.js` (unchanged) and one style module, in that order.
 
 - **Play mode**: one `<canvas id="stage">` at `width` x `height` (the largest canvas on the page; every other canvas
   is detached), `window.seek(t)` draws the frame at `t` seconds, `window.DURATION`, `window.scoreSound(k)`,
   `window.SOUND.renderOffline(...)`. A player bar (play/pause, scrub, time, sound, loop, safe-area guides; keys:
   space, arrows, G) sits under the canvas scaled to fit. Headless rendering only calls `seek`; it never needs the player.
-- **Storyboard mode**: canvases `p1` ... `pN` at full size, one still per beat, `window.STORYBOARD_READY = true` once
-  drawn, `window.makeSheet()` returns a PNG data URL contact sheet.
+- **Storyboard mode**: canvases `p1` ... `pN` at full size, one still per beat (`panels: 0`; `window.STORYBOARD_PANELS`
+  is N), `window.STORYBOARD_READY = true` once drawn, `window.makeSheet()` returns a PNG data URL contact sheet. A
+  panel shows its beat's end, 0.2 s before the next beat starts (the length - 0.2 s for the last), where the scene is
+  complete; the animation's QA stills are taken at the same times (`Player.beatEnds()`).
+- **Pictures**: `pictures` maps a name to a data URL (the run's picked stills, for a stills video's layout).
+  `Player.ready` waits for them; `Player.picture(ctx, name, x, y, w, h, { fit: "cover" | "contain", radius, focus:
+  [fx, fy] })` draws one into a box (cover by default: filled and cropped around `focus`), and returns false when the
+  page has no such picture; `Player.pictures()` lists `{ name, width, height }`.
 - Same `t`, same pixels: all randomness is seeded (`Brush.rng`, `Brush.hash01`), never `Math.random` or the clock.
 - Fonts: the runtime calls `document.fonts.load` for every face in `fonts.faces` at once (so the font requests are
   part of page load), redraws when they arrive, and clears `Brush.layer` caches. Google Fonts is the only network use.
@@ -46,7 +54,7 @@ then inlines `brush.js`, `sound.js`, `player.js` (unchanged) and one style modul
     id: "flat-explainer", name: "Flat Vector Explainer", duration: DUR,
     fonts: { href: "https://fonts.googleapis.com/css2?family=...&display=swap", faces: ['800 20px "Baloo 2"'] },
     beats: BEATS, beatNames: ["Title", "Diagram", "Key number", "Three steps", "Rain returns", "Close"],
-    // stills: [1.1, 3.2, ...]  optional exact storyboard panel times (default: 60 % into each beat)
+    // stills: [1.1, 3.2, ...]  optional: one panel time per beat (default: each beat's end, next beat - 0.2 s)
     draw, score,
   });
 })();

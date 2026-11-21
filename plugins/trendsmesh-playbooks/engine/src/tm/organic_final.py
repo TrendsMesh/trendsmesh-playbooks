@@ -19,7 +19,8 @@ A video in sections (FLOWS.md F5, `organic_pack`'s sections) has a second G1 che
 (`sections_gap`, preflight P3-F7): the edit the latest final was made from (up the manifest's parents to its `tm render
 video` row, whose props it keeps) cuts the sections in their order, every segment's `src` from its own section's
 outputs, or made from one (a sped-up take): a footage or talking section's are the takes of its model (and their
-upscales), an animation's its `03_wip/<id>/renders/anim_vNN.mp4`, a stills section's the motion-graphics renders. The
+upscales), an animation's its `03_wip/<id>/renders/anim_vNN.mp4`, a stills section's the render F2 took (its layout's,
+drawn by `tm organic animate`, or a template's). The
 times are the edit's own: the cuts are judged on the takes, not on the plan's seconds. A pack with one section passes.
 
 The posting kit's check, `kit_checked` (G2), is `tm.kit.kit_gap`. All read only.
@@ -260,7 +261,8 @@ def _section_outputs(run: RunFolder, pack: dict, sec: dict) -> tuple[set[str], s
     if kind == "stills_motion":               # the render F2 took: the user's choice, else the latest (PR D M5)
         chosen = organic_qa.chosen_motion(run, sid)
         return ({chosen[0].casefold()} if chosen else set(),
-                f"{sid}: its {' or '.join(render.MOTION_COMPS)} render ({chosen[0] if chosen else 'none made'})")
+                f"{sid}: its layout's render (tm organic animate) or a {' or '.join(render.MOTION_COMPS)} render "
+                f"({chosen[0] if chosen else 'none made'})")
     return set(), f"{sid}: nothing"
 
 

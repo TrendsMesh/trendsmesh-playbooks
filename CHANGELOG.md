@@ -63,6 +63,21 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A model review every two weeks.** A scheduled check compares the public rankings and Replicate's and ElevenLabs'
   pages with the list and opens one issue for the owner with what is new, what changed price and what is gone.
   Nothing in the list changes without the owner's decision.
+- **Stills videos in any format.** A stills video is now laid out in the format the trend's own videos use (a tips
+  list, a before and after, a ranking, a quiz ...), not only as a quiz or a ranking: Claude builds the layout from the
+  trend's evidence like an animation, with your picked pictures in it, and it renders on your computer for free. It
+  shows on the video check-in with the voiceover under it and finishes the second stage once you pick it, so a stills
+  video whose pictures and voice you paid for always becomes a video. The quiz and ranking templates stay for a real
+  quiz or ranking.
+- **One storyboard panel per scene.** An animation's storyboard draws one panel per scene of the script, each at the
+  moment its scene is complete, labelled with that scene's name; the panel files and the contact sheet always match.
+  A storyboard whose scenes don't match the frames list is refused with what to fix, and `--panels` is gone (the
+  count comes from the storyboard). The animation's check stills are taken at the same moments, so the video
+  check-in compares the same frames as the storyboard you accepted.
+- **The full animation has its own prompt.** After the storyboard is accepted, `tm organic atlas-prompt --animation
+  --from <the storyboard's module>` writes the prompt for the full animation: the accepted storyboard, your notes on
+  it and the video's planned length, with no "stop after the storyboard". An animation is now as long as the pack
+  planned, holding its last scene until the end, rather than ending with the voiceover's last word.
 
 ## 0.13.1
 

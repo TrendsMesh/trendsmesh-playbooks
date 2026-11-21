@@ -17,8 +17,9 @@ the plugin's own `references/` folder, two folders up from this skill (`../../re
   - **an AI video** (`outputs: organic_video`): D1, D2, E1, E2, F1, F2, G1, G2, G4, H1. In this
     version an AI video is **AI footage** (with native sound, or an off-screen narrator), a
     **talking character**, an **animation** in one of our styles (`../../references/
-    animation-styles.md`), **stills with motion graphics** (a quiz or a ranking: pictures in
-    the handoff's `QuizGrid`, `RankingList` or `RankingSplit`) or a **video in sections** (each
+    animation-styles.md`), **stills with motion graphics** (the picked pictures laid out in the
+    format of the trend's own videos, a layout built like an animation; a real quiz or ranking may
+    use the tested `QuizGrid`, `RankingList` or `RankingSplit`) or a **video in sections** (each
     section by its own method, for example footage, an animation insert, footage).
 - **A week run** (`outputs: weekly_plan`, "plan my week of videos"): A0 to B3 as an idea run, then
   I2 to I5: the week page, the one approval, a production run per slot (made one after another), the
@@ -1031,30 +1032,39 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      setting replaced by the topic's and the style's rendering kept, text and key action above y
      1260, the only on-screen text allowed) and, beside it, **the frames list**
      `03_wip/<item>/frames_vNN.json`: one `{"panel", "from", "to", "line", "scene", "overlay"}` per
-     panel of the storyboard (its times, the voiceover line, what is seen, the only text on screen),
-     which the images page shows under each frame; then the prompt, `tm organic atlas-prompt --run R
+     scene of the content, one panel each (its times, the voiceover line, what is seen, the only text
+     on screen), which the images page shows under each frame; then the prompt, `tm organic atlas-prompt --run R
      --item <item> --style <the picked number> --voiceover --storyboard --aspect 9:16 --content
-     03_wip/<item>/content_v01.txt --srt <the word SRT> --json` (`<item>` is the pack's id). A
-     subagent writes the storyboard's style module from it, `03_wip/<item>/storyboard_v01.js` (5 to 6
-     panels, about 15 minutes; its brief is in the reference, and it appends each stage to
-     `03_wip/<item>/_progress.txt`); `tm organic atlas-page --run R --item <item> --module
+     03_wip/<item>/content_v01.txt --srt <the word SRT> --json` (`<item>` is the pack's id; the
+     prompt's `duration` is the pack's `script.seconds`, the voiceover's last cue said beside it). A
+     subagent writes the storyboard's style module from it, `03_wip/<item>/storyboard_v01.js` (one
+     beat per scene of the frames list, about 15 minutes; its brief is in the reference, and it appends
+     each stage to `03_wip/<item>/_progress.txt`); `tm organic atlas-page --run R --item <item> --module
      03_wip/<item>/storyboard_v01.js --storyboard --json` builds its page and runs the layout check (any
-     `layout.problems` are fixed in a new module version, page built again); then draw it:
-     `tm organic storyboard --run R --item <item> --page 03_wip/<item>/storyboard_v01.html --json`.
+     `layout.problems` are fixed in a new module version, page built again). It refuses a module whose
+     beats do not match the frames list's scenes ("The module has 6 beats and the frames list 5
+     scenes"): fix the module, never the count. Then draw it:
+     `tm organic storyboard --run R --item <item> --page 03_wip/<item>/storyboard_v01.html --json`:
+     one panel per beat, each at its beat's end (0.2 s before the next beat starts, where the scene is
+     complete), the count read from the page (there is no `--panels`), so the panel files and
+     `sheet.png` always match.
      Look at the sheet against the storyboard rubric (the style kept, the same characters, text
      above y 1260, a panel per beat) before it is shown.
      **An animation insert** in a video in sections is drawn the same way, its `<item>` the section's
      id (`--item S2`), and its prompt is made with `--aspect 9:16` only (the engine refuses
      another): it adds the caption band, so text and key action stay above y 1260 and the edit's
      captions sit below.
-   - **stills with motion graphics** (FLOWS F4: a quiz or a ranking): one GPT Image 2 card per
-     picture (`images: 1`, `output_format: "png"`, a square `aspect_ratio` for a quiz card, the
-     anchor as `input_images` when the same animal or character recurs), each through the guard as
-     above; or, without a Replicate key, the user's own pictures saved in the run. **The copied
-     look before the render** (OV3): with a style spec, render one still of the composition from
-     a first props file (`tm render still --run R --comp QuizGrid --props 03_wip/<item>_look_v01.props.json
-     --frame <a frame with the title and the cards> --json`, free), so the images page shows it
-     beside the evidence videos.
+   - **stills with motion graphics** (FLOWS F4: the format of the trend's own videos, read from
+     its saved evidence clips and the pack's `style_spec`: a tips list, a before and after, a
+     ranking, a quiz ...): one GPT Image 2 card per picture (`images: 1`, `output_format: "png"`, the
+     shape the format shows them in, the anchor as `input_images` when the same animal or character
+     recurs), each through the guard as above; or, without a Replicate key, the user's own pictures
+     saved in the run. There is no storyboard: the picked pictures are the first stage, and the
+     layout is built and drawn at F2. **The copied look before the render** (OV3), only when the
+     format is a real quiz or ranking drawn with a tested template: render one still of the
+     composition from a first props file (`tm render still --run R --comp QuizGrid --props
+     03_wip/<item>_look_v01.props.json --frame <a frame with the title and the cards> --json`, free),
+     so the images page shows it beside the evidence videos.
 3. **The images check-in**:
    - **The text style** (the edit's two text layers, [G1](#g1)) is one of the 8 text sets
      (`native`, `outline`, `pill`, `block`, `karaoke`, `pop`, `quiet`, `marker`: captions and
@@ -1168,18 +1178,36 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      ElevenLabs line (`tm tool elevenlabs tts … --timestamps --cost <credits>`), then the
      registry's ★ lip-sync model (its recipe, e.g. `kling-avatar-v2.md`) on the close-up frame; its contact sheet is
      checked for burned-in text.
-   - **an animation** (free, no take, no QA tool): a subagent writes the animation's style module,
-     `03_wip/<item>/explainer_v01.js`, from the same prompt and the accepted storyboard's module with
-     the user's notes on it (about 15 minutes, appending to `03_wip/<item>/_progress.txt`); `tm organic
-     atlas-page --run R --item <item> --module 03_wip/<item>/explainer_v01.js --json` builds its page
-     (`window.seek`, `window.DURATION`) and runs the layout check (fix every `layout.problems` first); then `tm
+   - **an animation** (free, no take, no QA tool): its own prompt first, `tm organic atlas-prompt
+     --run R --item <item> --style <the picked number> --voiceover --animation --from
+     03_wip/<item>/storyboard_vNN.js --aspect 9:16 --content 03_wip/<item>/content_v01.txt --srt <the
+     word SRT> --json` (refused until the storyboard is accepted; `--from` is the module the accepted
+     sheet was drawn from, and any other is refused; the prompt carries that module, the user's notes
+     on the storyboard from the images check-in and the pack's length, and asks for no storyboard).
+     A subagent writes the animation's style module from it, `03_wip/<item>/explainer_v01.js` (about
+     15 minutes, appending to `03_wip/<item>/_progress.txt`); `tm organic atlas-page --run R --item
+     <item> --module 03_wip/<item>/explainer_v01.js --json` builds its page (`window.seek`,
+     `window.DURATION`) and runs the layout check (fix every `layout.problems` first); then `tm
      organic animate --run R --item <item> --page 03_wip/<item>/explainer_v01.html --json` renders
-     it at 30 fps into `03_wip/<item>/renders/anim_vNN.mp4` with its stills (about 2.5 minutes for
-     750 frames). It is refused until the storyboard is accepted (F1). Look at the stills: text
+     it at 30 fps into `03_wip/<item>/renders/anim_vNN.mp4` with a still at each beat's end, the
+     storyboard panels' moments (`anim_vNN_still_bNN.png`; about 2.5 minutes for 750 frames). It is
+     refused until the storyboard is accepted (F1). Look at the stills beside the storyboard: text
      inside the safe zone, the storyboard's fixes, no page errors.
-   - **stills with motion graphics** (free, no take): the props file `03_wip/<item>_vNN.props.json`
-     for the handoff's composition, every picture the picked card (`03_wip/<the pick>.png`) or the
-     user's own: **`QuizGrid`** for a "Guess the _" quiz (`title`, four `options` each with
+   - **stills with motion graphics** (free, no take): **the layout, in the format of the trend's
+     videos**, built as a style module the way an animation is: `tm organic atlas-prompt --run R
+     --item <item> --style <the channel's or the closest style> --layout [--voiceover --srt <the word
+     SRT>] --aspect 9:16 --content 03_wip/<item>/content_v01.txt --json` (the prompt part
+     `layout.md`: the style spec, the timing, and the picked pictures by name with their sizes; the
+     user's own pictures, when the pack takes them, with `--picture <name>=<file>`). A subagent
+     writes `03_wip/<item>/layout_v01.js` (one beat per item of the format, each picture drawn with
+     `Player.picture`); `tm organic atlas-page --run R --item <item> --module
+     03_wip/<item>/layout_v01.js --json` builds its page with the picked pictures inlined and runs the
+     layout check; then `tm organic animate --run R --item <item> --page 03_wip/<item>/layout_v01.html
+     --json` draws it into `03_wip/<item>/renders/anim_vNN.mp4` with a still at each beat's end (no
+     storyboard is needed). That render is the item's F2 output. **A tested template**, only when the
+     evidence really is a quiz or a ranking (a faster render): the props file
+     `03_wip/<item>_vNN.props.json` for the handoff's composition, every picture the picked card
+     (`03_wip/<the pick>.png`) or the user's own: **`QuizGrid`** for a "Guess the _" quiz (`title`, four `options` each with
      `label`, `name`, `img` and `note`, `answer` the right option's index, `answerLine`,
      `gridInSec`, `countdownSec`, `revealSec`, `durationSec`, `music` `{src, volume}`,
      `background`); **`RankingSplit`** for a ranking in the look copied from the evidence (a
@@ -1210,10 +1238,10 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      `tm organic decisions --page gate_video --text`), each take with
      its QA findings and, for a narrator or an animation, **played with the voiceover laid under it**
      at the pack's times and the take's own sound turned down (a mux on this computer, free, into
-     `showcase/<take>__<voiceover>_vo.mp4`; no edit, the music comes in G1), each animation's renders and each stills item's motion-graphics renders,
-     the latest marked (a redo with a note is a new animation or render version, free). The
-     user's accept of a motion-graphics render, its choice, is the one F2 checks and the edit
-     cuts, until a newer render is made. The user's pick: `tm organic pick --run R --stage takes --name <item> --file
+     `showcase/<take>__<voiceover>_vo.mp4`; no edit, the music comes in G1), each animation's renders and each stills item's renders
+     (its layout's, with the voiceover laid under it, or a template's), the latest marked (a redo
+     with a note is a new animation, layout or render version, free). The user's accept of a stills
+     render, its choice, is the one F2 checks and the edit cuts, until a newer render is made. The user's pick: `tm organic pick --run R --stage takes --name <item> --file
      03_wip/<take>.mp4 --reason "<their words>" --by user --json`.
    - **Just the big calls and Hands-off**: the rubric (a transcript at least 90 % of the script, the
      cuts on time, consistency, no burned-in text, a usable loudness): `tm organic pick --run R
@@ -1252,9 +1280,9 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
    Then `tm done F2 --run R` closes the step
    (refused until the video check-in is decided, and each video item has a pick that counts: its
    latest take, with that take's latest QA; each animation is drawn from its accepted storyboard;
-   and the latest motion-graphics render of stills shows the cards' current picks, every one of
-   them, and a picture the pack did not make only when it takes the user's own; never one of
-   `03_wip/gates/`).
+   and the stills item's render (its layout's from `tm organic animate`, or a template's) shows
+   the cards' current picks, every one of them, and a picture the pack did not make only when it
+   takes the user's own; never one of `03_wip/gates/`).
 
 <a id="g1"></a>
 ## G1 Edit, mix, captions

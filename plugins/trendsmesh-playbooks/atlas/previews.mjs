@@ -9,7 +9,8 @@
 //
 // The best moment: the card's previewAt if it has one ({ poster: t, loop: t0 }), else the beat named like a key
 // number ("number", "stat", "%"), else the title beat, at the style's own storyboard still time for that beat
-// (style.stills, else 60 % into the beat). The loop is the 4 s around it, and its last 0.5 s cross-fades into its
+// (style.stills, else 60 % into the beat: a preview keeps this moment of its own, while a storyboard panel is its beat's
+// end, player.js). The loop is the 4 s around it, and its last 0.5 s cross-fades into its
 // first frame so it plays round without a jump.
 import puppeteer from "puppeteer-core";
 import { spawn } from "node:child_process";

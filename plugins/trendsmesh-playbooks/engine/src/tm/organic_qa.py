@@ -46,11 +46,15 @@ contact_sheet, lines, heard_by}. Here:
   counts (`accepted_storyboard`), into `03_wip/<item>/renders/anim_vNN.mp4`, its manifest row naming that sheet and
   that pick (`pick_mark`): F2 takes the animation only while the item's current storyboard pick is that same pick, so
   a sheet picked again after a script change needs a new animation (Task 19 review I1).
-- Stills with motion graphics (`organic_pack.stills`: the pack's id, or a stills section's) are drawn at F2 by a free
-  `tm render video` of a motion-graphics composition (`render.MOTION_COMPS`; `motion_renders`): its pictures
-  (QuizGrid's `options[].img`, a ranking's `items[].src`) show every generated item's current pick (the cards, or a
-  ranking's takes), and nothing else the pack made; a picture the pack did not make only when it takes the user's own
-  (an item with no model), and never one of the check-in pages' (`03_wip/gates/`, PR D review I1).
+- Stills with motion graphics (`organic_pack.stills`: the pack's id, or a stills section's) are drawn at F2 for free,
+  in the format of the trend's own videos: the layout the agent built as a style module (`tm organic atlas-prompt
+  --layout`, `tm organic atlas-page`, which inlines the picked pictures), drawn by `tm organic animate` into
+  `03_wip/<item>/renders/anim_vNN.mp4` (`render.LAYOUT_COMP`, its pictures the manifest row's `props.pictures`), or,
+  when the evidence really is a quiz or a ranking, a `tm render video` of a tested template (`render.MOTION_COMPS`).
+  Either is the item's render (`motion_renders`): its pictures (the layout's, QuizGrid's `options[].img`, a ranking's
+  `items[].src`) show every generated item's current pick (the cards, or a ranking's takes), and nothing else the
+  pack made; a picture the pack did not make only when it takes the user's own (an item with no model), and never one
+  of the check-in pages' (`03_wip/gates/`, PR D review I1).
 - An upscale (the pack's upscale-stage item, its upscaler the Models page's or the registry's, issue #90) is an
   automatic step after the user accepted the take: `upscale_check` (`tm organic upscale`) finds the item's latest output and the accepted take it
   was made from (the current takes pick its record names as input), checks only what an upscale may change (the
@@ -59,7 +63,8 @@ contact_sheet, lines, heard_by}. Here:
   output's pick by rule. `tm organic pick` refuses an upscale item: it is never a take to judge.
 - Step checks: `images_gap` (`images_picked`, F1: each image item's pick, and each animated item's storyboard) and
   `takes_gap` (`takes_checked`, F2: each take's pick, each animated item's animation drawn from its current
-  storyboard, and the latest motion-graphics render from the current picks for stills). Both read only.
+  storyboard, and each stills item's render, its layout's or a template's, from the current picks). Both read
+  only.
 """
 
 from __future__ import annotations
@@ -359,6 +364,58 @@ def animation_item(pack: dict, name: str) -> str:
     return found
 
 
+def stills_item(pack: dict, name: str) -> str | None:
+    """The pack's stills item called `name` (in any case), in the pack's spelling, or None."""
+    return next((i for i in organic_pack.stills(pack) if i.lower() == str(name).strip().lower()), None)
+
+
+def drawn_item(pack: dict, name: str) -> tuple[str, bool]:
+    """(the item, whether it is a stills item) for a page the Atlas renderer draws: an animation (`animation_item`), or a
+    stills item whose layout the agent builds as a style module (issue 138 item 2); a Stop names both kinds."""
+    found = stills_item(pack, name)
+    if found is None:
+        if not organic_pack.animated(pack) and organic_pack.stills(pack):
+            raise Stop(f"{name} is not a stills item of the checked pack (its stills items: "
+                       f"{', '.join(organic_pack.stills(pack))}): a stills video's layout is built for the pack's id "
+                       f"when the whole video is stills, else for a stills section's id; nothing was done; {AGAIN}.")
+        return animation_item(pack, name), False
+    if why := organic_pack.id_gap(found):
+        raise Stop(f"The stills item {why}, and it would name the folder 03_wip/<item>/: nothing was written. Give it "
+                   "such an id in a new version of the pack and check it again (tm organic pack check --stage recipe, "
+                   f"then --stage pack); {AGAIN}.")
+    return found, True
+
+
+def layout_pictures(run: RunFolder, pack: dict, own: dict[str, str] | None = None) -> dict[str, str]:
+    """The pictures a stills item's layout shows, by name: each generated image item's current pick (its name the
+    item's stem), then the user's own (`own`, name -> run file; only when the pack takes the user's own pictures, an
+    images item with no model). A Stop when a generated item has no pick that counts."""
+    checked_at = _checked_at(run)
+    done = picks(run, IMAGES)
+    out: dict[str, str] = {}
+    missing = []
+    for wanted in _wanted(pack, False):
+        stem = c.stem_of(wanted["name"])
+        row = done.get(stem)
+        if row is None or current(run, row, checked_at=checked_at) is not None:
+            missing.append(wanted["name"])
+        else:
+            out[stem] = posix(row["file"])
+    if missing:
+        raise Stop(f"A stills video's layout shows the picked pictures, and {', '.join(missing)} "
+                   f"{'has' if len(missing) == 1 else 'have'} no pick that counts yet: pick them at the images "
+                   f"check-in first (F1); nothing was written; {AGAIN}.")
+    if own and not _own(pack, False):
+        raise Stop("The pack takes none of the user's own pictures (an images item with no model), so a layout shows "
+                   f"only the picked cards: leave --picture out; nothing was written; {AGAIN}.")
+    for name, file in (own or {}).items():
+        if name in out:
+            raise ValueError(f"--picture {name}: that name is a generated item's pick; give the user's picture "
+                             "another name.")
+        out[name] = posix(file)
+    return out
+
+
 def storyboards(run: RunFolder, item: str) -> list[Path]:
     """The item's drawn storyboards, `03_wip/<item>/storyboard_vNN/` holding a `sheet.png`, oldest first."""
     folder = run.path / WIP / item
@@ -464,7 +521,7 @@ def made_under(run: RunFolder, comp: str, props: dict) -> dict:
         checked = _checked_at(run)
         since = {item: _iso(organic_specs.item_checked_at(run, organic_pack.motion_key(item), checked))
                  for item in organic_pack.stills(pack)}
-        shown = {f.casefold() for f in motion_files(comp, props)} if comp in render.MOTION_COMPS else set()
+        shown = {f.casefold() for f in motion_files(comp, props)} if comp in render.STILLS_COMPS else set()
         marks = {posix(row["file"]).casefold(): pick_mark(row) for stage in (IMAGES, TAKES)
                  for row in picks(run, stage).values() if posix(row["file"]).casefold() in shown}
     except Stop:
@@ -472,20 +529,27 @@ def made_under(run: RunFolder, comp: str, props: dict) -> dict:
     return {"at": at, "since": since, "picks": marks}
 
 
-def motion_renders(run: RunFolder) -> list[tuple[str, str, dict, dict]]:
-    """Every motion-graphics render still in the run (`tm render video --comp QuizGrid|RankingList|RankingSplit`),
-    oldest first: (its run-relative file, the composition, the props it was rendered from, and what it was made under
-    (`made_under`), as its manifest row keeps them)."""
+def motion_renders(run: RunFolder, item: str | None = None) -> list[tuple[str, str, dict, dict]]:
+    """Every render of a stills item still in the run, oldest first: a layout drawn by `tm organic animate` (its
+    composition `render.LAYOUT_COMP`; with `item`, only that item's) and a template's (`tm render video --comp
+    QuizGrid|RankingList|RankingSplit`): (its run-relative file, the composition, the props it was rendered from, and
+    what it was made under (`made_under`), as its manifest row keeps them)."""
     out = []
     for row in manifest.rows(run):
-        if row["model"] != RENDERED or not row["params"]:
+        layout = row["source"] == ANIMATE
+        if (row["model"] != RENDERED and not layout) or not row["params"]:
             continue
         try:
             params = json.loads(row["params"])
         except ValueError:
             continue
-        if (isinstance(params, dict) and params.get("composition") in render.MOTION_COMPS
-                and (run.path / row["file"]).is_file()):
+        if not isinstance(params, dict):
+            continue
+        comp = params.get("composition")
+        if layout and (comp != render.LAYOUT_COMP or (item is not None
+                                                      and str(params.get("item", "")).casefold() != item.casefold())):
+            continue
+        if comp in (render.STILLS_COMPS if layout else render.MOTION_COMPS) and (run.path / row["file"]).is_file():
             props, under = params.get("props"), params.get("made_under")
             out.append((row["file"], params["composition"], props if isinstance(props, dict) else {},
                         under if isinstance(under, dict) else {}))
@@ -499,7 +563,10 @@ def posix(path: str) -> str:
 
 
 def motion_files(comp: str, props: dict) -> list[str]:
-    """The pictures (QuizGrid) or clips (a ranking) a motion-graphics render shows, run-relative with '/'."""
+    """The pictures (a layout, QuizGrid) or clips (a ranking) a stills render shows, run-relative with '/'."""
+    if comp == render.LAYOUT_COMP:
+        pictures = props.get("pictures")
+        return [posix(f) for f in pictures if isinstance(f, str)] if isinstance(pictures, list) else []
     key, field = ("options", "img") if comp == "QuizGrid" else ("items", "src")
     group = props.get(key)
     return [posix(x[field]) for x in group if isinstance(x, dict) and isinstance(x.get(field), str)] \
@@ -514,7 +581,7 @@ def chosen_motion(run: RunFolder, item: str) -> tuple[str, str, dict, dict] | No
     M5): the user's accept on the video check-in page, its choice, while that page was built (or the chat read) no
     earlier than the latest render was made (`made_under.at`), so the page showed it; else the latest render. A later
     drop or redo on the page ends the choice. None without a render."""
-    renders = motion_renders(run)
+    renders = motion_renders(run, item)
     if not renders:
         return None
     latest = renders[-1]
@@ -549,7 +616,7 @@ def _motion_gap(run: RunFolder, pack: dict, item: str, checked_at: datetime | No
     if chosen is None:
         return "it has no render"
     file, comp, props, under = chosen
-    video = comp != "QuizGrid"
+    video = comp not in ("QuizGrid", render.LAYOUT_COMP)
     shown = motion_files(comp, props)
     folded = {f.casefold() for f in shown}
     made: set[str] = set()
@@ -825,8 +892,11 @@ def _gap(run: RunFolder, stage: str, video: bool) -> str | None:
                     "storyboard --name <item> --file <its sheet.png> --reason \"<why>\"" + (", then tm organic animate"
                                                                                            if video else ""))
     if motion:
-        gaps.append(f"each stills item is rendered from its picked pictures ({'; '.join(motion)}): tm render video "
-                    f"--run <run> --comp {'|'.join(render.MOTION_COMPS)} --props <its props, naming the picks>")
+        gaps.append(f"each stills item is rendered from its picked pictures ({'; '.join(motion)}): its layout, in the "
+                    "format of the trend's videos (tm organic atlas-prompt --layout, atlas-page, then tm organic "
+                    "animate --run <run> --item <item> --page <its layout page>), or a template's render (tm render "
+                    f"video --run <run> --comp {'|'.join(render.MOTION_COMPS)} --props <its props, naming the "
+                    "picks>)")
     return "; and ".join(gaps)
 
 

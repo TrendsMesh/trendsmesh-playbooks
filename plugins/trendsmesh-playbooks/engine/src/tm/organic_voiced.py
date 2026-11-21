@@ -44,7 +44,7 @@ def narrated(pack: dict) -> bool:
 
 
 def offsets(pack: dict) -> dict[str, float]:
-    """Each video item's start in the whole video, by name; an animated item's by its id."""
+    """Each video item's start in the whole video, by name; an animated or stills item's by its id."""
     from tm import organic_pack
     sections = {str(s["id"]): float(s.get("from") or 0) for s in pack.get("sections") or []}
     out: dict[str, float] = {}
@@ -56,7 +56,7 @@ def offsets(pack: dict) -> dict[str, float]:
             sec = item.get("section")
             out[item["name"]] = sections.get(str(sec), at) if sec is not None else at
             at += float(item.get("seconds") or 0)
-    for item in organic_pack.animated(pack):
+    for item in organic_pack.animated(pack) + organic_pack.stills(pack):
         out[item] = sections.get(item, 0.0)
     return out
 

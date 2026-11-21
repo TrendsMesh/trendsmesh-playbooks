@@ -35,9 +35,10 @@ latest still of the pack's composition (`tm render still`, in 03_wip, after the 
 so the copied look is judged beside its evidence before the render (OV3, lesson 21); a take's item also shows the QA contact sheet of its picked (else latest) take.
 An animation's storyboard check-in is on the images page: each animated item's latest storyboard sheet (its accept
 is the storyboard's pick, `organic_qa`), with the voiceover beside it to listen to; the video page shows each animated
-item's animation renders (`03_wip/<item>/renders/anim_vNN.mp4`), the latest marked, and each stills item's
-motion-graphics renders (`organic_qa.motion_renders`), the one F2 and the edit take marked: the user's accept there is
-that choice (`organic_qa.chosen_motion`).
+item's animation renders (`03_wip/<item>/renders/anim_vNN.mp4`), the latest marked, and each stills item's renders
+(`organic_qa.motion_renders`: its layout drawn by `tm organic animate`, shown with the voiceover laid under it, or a
+template's), the one F2 and the edit take marked: the user's accept there is that choice
+(`organic_qa.chosen_motion`).
 
 The delivery page: first the final (`final`): the latest `04_final/<id>_final_vNN.mp4` shown by its preview, with
 its upload copy to download; the cover JPG to download; the latest posting kit, with the platform ticks and the
@@ -226,9 +227,9 @@ def _refs(run: RunFolder, pack: dict, t: dict) -> tuple[list[dict], list[str]]:
 
 
 def compositions(pack: dict) -> tuple[str, ...]:
-    """The compositions the pack's video is drawn with: the motion graphics of its stills, OrganicCaptions' edit for
-    the rest."""
-    return ((render.MOTION_COMPS if organic_pack.stills(pack) else ())
+    """The compositions the pack's video is drawn with: its stills' (their layout, or a tested template), OrganicCaptions'
+    edit for the rest."""
+    return ((render.STILLS_COMPS if organic_pack.stills(pack) else ())
             + (("OrganicCaptions",) if pack["production"] != "stills_motion" else ()))
 
 
@@ -390,26 +391,35 @@ def _animations(run: RunFolder, pack: dict, t: dict, voiced: str | None = None) 
     return items, plugin
 
 
-def _motions(run: RunFolder, pack: dict, t: dict) -> tuple[list, dict]:
-    """The stills' motion-graphics renders (one item per stills item of the pack), the one F2 and the edit take
-    marked (`organic_qa.chosen_motion`: the user's choice, else the latest)."""
-    files = [f for f, *_ in organic_qa.motion_renders(run)]
+def _motions(run: RunFolder, pack: dict, t: dict, voiced: str | None = None) -> tuple[list, dict]:
+    """The stills' renders (one item per stills item of the pack: its layout's and the templates'), the one F2 and the
+    edit take marked (`organic_qa.chosen_motion`: the user's choice, else the latest); with `voiced`, a layout render is
+    shown with the voiceover laid under it, as an animation is."""
+    starts = organic_voiced.offsets(pack) if voiced else {}
     items, plugin = [], {}
-    if not files:
-        return items, plugin
     taken: set[str] = set()
     for item in organic_pack.stills(pack):
+        renders = organic_qa.motion_renders(run, item)
+        if not renders:
+            continue
         ids: dict[str, str] = {}
         options = []
         marked = organic_qa.chosen_motion(run, item)[0]
-        for f in files:
+        laid_any = False
+        for f, comp, *_ in renders:
             oid = _option_id(f, ids)
             ids[oid] = f
-            options.append({"id": oid, "src": _preview(run, f), "caption": Path(f).stem,
+            src = _preview(run, f)
+            laid = (organic_voiced.laid_under(run, src, voiced, starts.get(item, 0.0))
+                    if voiced and comp == render.LAYOUT_COMP else None)
+            laid_any = laid_any or bool(laid)
+            options.append({"id": oid, "src": laid or src,
+                            "caption": t["cap_with_voiceover"].format(take=Path(f).stem) if laid else Path(f).stem,
                             **({"pick": True} if f == marked else {})})
         iid = item_id(f"motion-{item}", taken)
         items.append({"id": iid, "proposal": t["proposal"].format(id=pack["id"], channel=pack["channel"]),
-                      "label": t["label_motion"].format(name=item), "question": t["q_motion"], "options": options})
+                      "label": t["label_motion"].format(name=item),
+                      "question": t["q_animation_voiceover" if laid_any else "q_motion"], "options": options})
         plugin[iid] = {"kind": "motion", "name": item, "stem": f"{item}_motion", "files": ids}
     return items, plugin
 
@@ -428,7 +438,7 @@ def gate_json(run: RunFolder, gate: str) -> dict:
     items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + [r for r in (still,) if r] + looks,
                                  voiced=voiced if gate == "video" else None)
     if gate == "video" and organic_pack.stills(pack):
-        extra, entries = _motions(run, pack, t)
+        extra, entries = _motions(run, pack, t, voiced if gate == "video" else None)
         items += extra
         plugin.update(entries)
     animated = organic_pack.animated(pack)

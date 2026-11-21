@@ -486,7 +486,8 @@ def test_hidden_type_hint_names_only_what_can_be_made(tmp_path, monkeypatch):
     found = _problems(run, data)
     assert _fields(found) == ["m2.plugin.production"]
     todo = found[0].todo
-    assert "an animation" in todo and "stills with motion graphics (a quiz or a ranking) on the user's own pictures" in todo
+    assert "an animation" in todo
+    assert "stills with motion graphics (the format from the trend's videos) on the user's own pictures" in todo
     for word in ("AI footage", "a talking character", "a video in sections", "stills_motion", "sections need"):
         assert word not in todo, word
     monkeypatch.setattr(atlas, "missing", lambda: ("tier", "The animatic tools are not installed.", "install them"))

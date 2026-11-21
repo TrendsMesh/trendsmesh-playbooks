@@ -11,8 +11,8 @@ proposes 4 to 6 videos built on rising trends, each with its evidence videos and
 **proposals page**, and turns each idea the user picks into **a script to film** ($0: a script
 page with a Markdown download and a posting kit for TikTok, Instagram Reels, YouTube Shorts and
 Facebook Reels) or **a ready AI video** (AI footage, a talking character, an animation in one of the
-plugin's own styles, stills with motion graphics (a quiz or a ranking) or a video in sections, made in
-stages, each cost approved first: the images or the storyboard, the takes, the animation or the
+plugin's own styles, stills with motion graphics (in the format of the trend's videos) or a video in
+sections, made in stages, each cost approved first: the images or the storyboard, the takes, the animation or the
 render, the edit, then a delivery page with the video, its cover and its posting kit).
 **The weekly pack** ("plan my week of videos"): a week run plans the week's posting days on one week
 page with a live budget, the user approves the week once, and each slot becomes its own production
