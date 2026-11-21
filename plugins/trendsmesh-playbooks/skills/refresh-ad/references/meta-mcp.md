@@ -25,7 +25,7 @@ the video is never fetched through it (A2).
 | Step | Call | Notes |
 |---|---|---|
 | readiness | `ads_get_ad_entities`, one ad, the user's account | the cheap check: `ok`, `missing` or `not_enabled` |
-| A1 | `ads_get_ad_entities`, ad level, `time_increment=7`, today−92 to today−2 | weekly totals for every ad; R1's fields plus the retention ladder R2 reads (`video_play_actions`, `video_p50_watched_actions`, `video_p75_watched_actions`, `video_p95_watched_actions`, `video_p100_watched_actions`, `video_avg_time_watched_actions`); every page saved |
+| A1 | `ads_get_ad_entities`, ad level, `time_increment=7`, today−92 to today−2 | weekly totals for every ad; R1's fields plus the retention ladder R2 reads (`video_play_actions`, `video_p50_watched_actions`, `video_p75_watched_actions`, `video_p95_watched_actions`, `video_p100_watched_actions`, `video_avg_time_watched_actions`); every page, saved by the collector in `01_base/meta/` |
 | A1 | the same at account level | the account trend for R1; if empty, the ad files stand in |
 | A1 | `ads_get_ad_entities`, `time_increment=1`, the top 5 ads by spend and the chosen ad | daily evidence and the chart, R1's fields only (no ladder); never beside their weekly rows in `tm r1` |
 | A1a (R2b) | `ads_get_creatives` across the account; `ads_get_ad_videos` | the other ads with the same video: the same video id, or the same thumbnail and length (a re-upload gets a new id); the video's length for `tm structural --length-s` |
@@ -43,9 +43,10 @@ the video is never fetched through it (A2).
 
 Meta sends numbers as strings, with units and percent signs (`"14.24%"`,
 `{"value": "93.22", "unit": "PLN"}`), and sometimes without `results`. Never convert or round
-them yourself: save the answer verbatim and let `tm r1` read it. The Meta MCP answers
-`ads_get_ad_entities` as `{"ad_entities": "<the rows as a JSON text>", "client_conversation_id":
-"…"}`: give that file as it came, never unwrapped or rewritten by hand. `tm r1`, `tm formats` and
+them yourself: the collector saves each answer as it came (`01_base/meta/`, from A1 on) and
+`tm r1` reads it there. The Meta MCP answers `ads_get_ad_entities` as `{"ad_entities": "<the rows
+as a JSON text>", "client_conversation_id": "…"}`: a file saved by hand is given as it came, never
+unwrapped or rewritten. `tm r1`, `tm formats` and
 `tm audience pick` read that shape, a list of rows, a `{"data": [...]}` answer and several pages.
 When a file gives no ad rows, no spend or no results they can read, they stop with an error
 (exit 1) instead of an empty answer: fetch again with the fields the step names, don't work around

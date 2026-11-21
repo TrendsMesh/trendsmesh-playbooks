@@ -1,5 +1,5 @@
-"""The Meta reads and artifacts answers of a creative brief run, and the artifacts answers of an
-organic video run, saved by the collector.
+"""The Meta reads and artifacts answers of a creative brief or refresh-ad run, and the artifacts answers
+of an organic video or create-ad run, saved by the collector.
 
 The artifacts answers come from the Claude desktop app's built-in `Artifact` tool (a page's
 publish) and `ArtifactData` tool (a read of its database: `list` and `query` are saved as `db_list`
@@ -18,8 +18,9 @@ Each answer is written in PB04's envelope `{"_tool", "_input", "_at", "answer"}`
 `<folder>/<tool>_vNN.json`, never over an earlier one, with a manifest row. Later steps read them
 by their `_input` (the audience order, the near-duplicate check, the page's decisions).
 
-A run whose playbook has no collector (Refresh an ad) gets its page's reads with `tm trends ingest`, which
-files a database read (`page_read`) under `DECISIONS` in any run, where `tm page decision` looks.
+`tm trends ingest` files a database read (`page_read`) under `DECISIONS` in any run, where `tm page
+decision` looks, also in a run whose session had no collector (a refresh-ad or create-ad run started
+before those playbooks collected, issue #128), or for an answer the hook said it did not save.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from pathlib import Path
 from typing import Any
 
 from tm import manifest
-from tm.playbooks import CREATIVE_BRIEF, ORGANIC_VIDEO
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD
 from tm.runfolder import RunFolder
 
 META = "01_base/meta"
@@ -42,6 +43,7 @@ SAVES: dict[str, tuple[str, str]] = {
     "ads_get_ad_accounts": (META, "ads_get_ad_accounts"),
     "ads_get_ad_entities": (META, "ads_get_ad_entities"),
     "ads_get_creatives": (META, "ads_get_creatives"),
+    "ads_get_ad_videos": (META, "ads_get_ad_videos"),
     "db_list": (DECISIONS, "db_list"),
     "db_query": (DECISIONS, "db_query"),
     "publish_files": (PUBLISH, "publish_files"),
@@ -57,12 +59,16 @@ ACTIONS: dict[str, dict[str | None, str]] = {
 }
 BUILT_IN = tuple(ACTIONS)
 _PAGES = ("db_list", "db_query", "publish_files", "read_declaration", "declare_capabilities", *BUILT_IN)
+_META_READS = ("ads_get_ad_accounts", "ads_get_ad_entities", "ads_get_creatives", "ads_get_ad_videos")
 
-# Which of them each playbook's run keeps: an organic video run has pages and no Meta reads, so a
-# Meta read never claims, or lands in, its marker.
+# Which of them each playbook's run keeps: an organic video or create-ad run has pages and no Meta
+# reads, so a Meta read never claims, or lands in, its marker. A refresh-ad run keeps A1's Meta reads
+# (`tm r1` picks its weekly files from 01_base/meta) and its page's answers (issue #128).
 SAVED_BY: dict[str, tuple[str, ...]] = {
     CREATIVE_BRIEF: tuple(SAVES),
     ORGANIC_VIDEO: _PAGES,
+    REFRESH_AD: (*_META_READS, *_PAGES),
+    CREATE_AD: _PAGES,
 }
 
 _SERVERS = {META: "Meta Ads", DECISIONS: "claude.ai artifacts", PUBLISH: "claude.ai artifacts"}
@@ -110,7 +116,7 @@ def kept_by(playbook: str | None, tool: str, tool_input: Any = None) -> bool:
 
 def page_read(tool: str, tool_input: Any = None) -> bool:
     """Whether this is a read of a page's database that is kept (`where`: under `DECISIONS`): `ingest` files it
-    there in any run, also one whose playbook has no collector (Refresh an ad)."""
+    there in any run, also one whose session did not collect."""
     found = where(tool, tool_input)
     return found is not None and found[0] == DECISIONS
 

@@ -454,3 +454,84 @@ def test_a_real_ranking_with_nothing_fading_is_still_a_success(tmp_path, capsys)
     _, code = _r1(tmp_path, _mcp(B), _mcp(A + B))
     out = json.loads(capsys.readouterr().out)
     assert code == 0 and out["fading"] == [] and out["read"]["ads"] == 1
+
+
+# --- issue #128: tm r1 takes the collector's files from 01_base/meta ------------------------------------------
+
+def _saved(run, tool_input, rows):
+    """One ads_get_ad_entities answer as the collector keeps it (01_base/meta, its envelope, a manifest row)."""
+    from tm import mcp_saves
+    return mcp_saves.save(run, "ads_get_ad_entities", tool_input, _mcp(rows), server="claude_ai_Meta_Ads")
+
+
+WEEKLY_AD = {"level": "ad", "time_increment": 7, "since": "2026-08-07", "until": "2026-11-03"}
+WEEKLY_ACCOUNT = {**WEEKLY_AD, "level": "account"}
+
+
+def _picked(capsys, run, *extra):
+    capsys.readouterr()
+    code = main(["r1", "--run", str(run.path), "--today", "2026-11-05", "--json", *extra])
+    return code, json.loads(capsys.readouterr().out)
+
+
+def test_r1_picks_the_collectors_weekly_reads_by_their_input(tmp_path, capsys):
+    """Without --ads and --account, tm r1 takes the weekly ad and account reads the collector saved, chosen by
+    the input each was fetched with; daily, whole-life and total reads are left out (they would count twice)."""
+    run = RunFolder.create(tmp_path, "auto", date(2026, 11, 5))
+    _saved(run, {**WEEKLY_AD, "after": None}, A)                         # v01: page 1
+    _saved(run, {**WEEKLY_AD, "after": "cursor-2"}, B)                   # v02: page 2
+    _saved(run, {**WEEKLY_ACCOUNT, "time_increment": "7"}, A + B)        # v03: the account, 7 as text
+    _saved(run, {**WEEKLY_AD, "time_increment": 1, "ad_ids": ["A"]}, A)   # v04: daily rows
+    _saved(run, {"level": "ad", "time_increment": "all", "ad_ids": ["A"]}, A)   # v05: whole life (R2b)
+    _saved(run, {"level": "ad", "since": "2026-08-07", "until": "2026-11-03"}, A + B)   # v06: one total row
+    code, out = _picked(capsys, run)
+    assert code == 0, out
+    meta = "01_base/meta/ads_get_ad_entities_"
+    assert out["picked"]["ads"] == [f"{meta}v01.json", f"{meta}v02.json"]
+    assert out["picked"]["account"] == [f"{meta}v03.json"] and out["picked"]["account_from"] == "account"
+    assert {s["file"]: s["why"] for s in out["picked"]["skipped"]} == {
+        f"{meta}v04.json": "daily rows (time_increment 1)", f"{meta}v05.json": "not weekly (time_increment all)",
+        f"{meta}v06.json": "not weekly (no time_increment)"}
+    assert out["candidates"] == 2 and out["read"]["rows"] == 8 and out["read"]["account_rows"] == 8
+
+
+def test_r1_counts_a_fetched_again_week_once(tmp_path, capsys):
+    """The same ad's same week in two saved reads (a fetch made again) counts once: the later read's row."""
+    run = RunFolder.create(tmp_path, "again", date(2026, 11, 5))
+    _saved(run, WEEKLY_AD, [{**r, "amount_spent": "1"} for r in A] + B)
+    _saved(run, WEEKLY_AD, A)
+    _saved(run, WEEKLY_ACCOUNT, A + B)
+    code, out = _picked(capsys, run)
+    assert code == 0, out
+    assert out["read"]["ads"] == 2 and out["read"]["rows"] == 8
+    assert out["read"]["spend"] == 6400.0                               # A's rows from v02, B's from v01
+
+
+@pytest.mark.parametrize("account", [None, []])
+def test_r1_uses_the_ad_reads_as_the_account_when_there_is_none(tmp_path, capsys, account):
+    run = RunFolder.create(tmp_path, "noacc", date(2026, 11, 5))
+    _saved(run, WEEKLY_AD, A + B)
+    if account is not None:
+        _saved(run, WEEKLY_ACCOUNT, account)                            # the account level gave nothing
+    code, out = _picked(capsys, run)
+    assert code == 0, out
+    assert out["picked"]["account_from"] == "ads" and out["picked"]["account"] == out["picked"]["ads"]
+    assert out["read"]["account_rows"] == 8
+
+
+def test_r1_without_a_weekly_ad_read_says_what_to_fetch(tmp_path, capsys):
+    run = RunFolder.create(tmp_path, "none", date(2026, 11, 5))
+    _saved(run, {**WEEKLY_AD, "time_increment": 1}, A)
+    code, out = _picked(capsys, run)
+    assert code == 1 and out["status"] == "error"
+    assert "01_base/meta" in out["message"] and "time_increment 7" in out["message"] and "--ads" in out["message"]
+
+
+def test_r1_given_ad_files_takes_the_collected_account(tmp_path, capsys):
+    run = RunFolder.create(tmp_path, "mixed", date(2026, 11, 5))
+    ads = tmp_path / "ads.json"
+    ads.write_text(json.dumps(_mcp(A + B)), encoding="utf-8")
+    _saved(run, WEEKLY_ACCOUNT, A + B)
+    code, out = _picked(capsys, run, "--ads", str(ads))
+    assert code == 0, out
+    assert out["picked"]["ads"] == [str(ads)] and out["picked"]["account"] == ["01_base/meta/ads_get_ad_entities_v01.json"]

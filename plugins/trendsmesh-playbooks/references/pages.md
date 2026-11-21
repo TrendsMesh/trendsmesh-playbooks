@@ -203,11 +203,13 @@ rules above, with these calls:
    after the answer is recorded.
 3. **Read the choice** when the user says they chose on the page: one unfiltered `ArtifactData` read,
    `action: "list"`, the page's `url`, `collection: "decisions"`, `query: {"limit": 1000}`, nothing else
-   (no `as_level`: a read as a viewer sees none of the choices, and is never taken as them). A Refresh an ad
-   run has no collector, so save that read: write the call's input to `03_wip/ingest_input.json` and its
-   whole answer, verbatim, to `03_wip/ingest_answer.json` (the Write tool), then `tm trends ingest --run R
-   --tool ArtifactData --input 03_wip/ingest_input.json --file 03_wip/ingest_answer.json --json` (with the
-   older tools, `--tool db_list`; it files the read in `03_wip/decisions/`, in any run).
+   (no `as_level`: a read as a viewer sees none of the choices, and is never taken as them). The collector
+   saves that read in `03_wip/decisions/` (collection is on from A1 in Refresh an ad, from S1 in Create an
+   ad). Only when the hook says it was not saved (or this session never turned collection on), save it:
+   write the call's input to `03_wip/ingest_input.json` and its whole answer, verbatim, to
+   `03_wip/ingest_answer.json` (the Write tool), then `tm trends ingest --run R --tool ArtifactData --input
+   03_wip/ingest_input.json --file 03_wip/ingest_answer.json --json` (with the older tools, `--tool db_list`;
+   it files the read in `03_wip/decisions/`, in any run).
    Then `tm page decision --run R <id> --json` shows it and `--record` records it (`tm decide`, the note
    "(from the page)"). It refuses a read from before the latest publish, a choice made on an earlier
    version of the question, and a page published before the question was on it: read again, publish the

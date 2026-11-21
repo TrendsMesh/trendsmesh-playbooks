@@ -596,7 +596,7 @@ def test_collect_on_in_an_organic_run_says_what_it_keeps_and_its_help_names_it(o
     assert "page answers (03_wip/decisions, 03_wip/publish) are saved too" in out
     assert main(["trends", "--help"]) == 0
     help_text = " ".join(capsys.readouterr().out.split())
-    assert "trend research, creative brief or organic video run" in help_text
+    assert "trend research, creative brief, organic video, refresh-ad or create-ad run" in help_text
 
 
 def _event(ws, prefix, tool, tool_input, answer, session="s1"):

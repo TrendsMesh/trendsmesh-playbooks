@@ -16,9 +16,9 @@ from pathlib import Path
 
 import pytest
 
-from tm import manifest, state, trend_spool, trends
+from tm import manifest, mcp_saves, state, trend_spool, trends
 from tm.cli import main
-from tm.playbooks import CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
+from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
 from tm.runfolder import RunFolder
 
 PLUGIN = (Path(__file__).resolve().parents[2] / "plugins" / "trendsmesh-playbooks")
@@ -190,13 +190,13 @@ def test_same_phrase_twice_never_overwrites(ws, capsys):
     assert trends.answer_of(ws / second["saved_to"]) == {"data": [{"id": "b"}]}
 
 
-def test_done_run_or_pb01_run_is_ignored(ws, capsys):
-    ad = RunFolder.create(ws, "ad", date(2026, 11, 7), playbook=REFRESH_AD)
+def test_done_run_or_other_playbooks_run_is_ignored(ws, capsys, playbook_two):
+    ad = RunFolder.create(ws, "two", date(2026, 11, 7), playbook=playbook_two)
     assert main(["trends", "collect", "on", "--run", str(ad.path), "--json"]) == 1
-    # the three collecting playbooks are named, now that organic video's skill ships too
+    # every collecting playbook whose skill ships is named (issue #128: refresh-ad and create-ad too)
     message = json.loads(capsys.readouterr().out)["message"]
-    assert "Collection is only for runs of Trend research, Creative brief and Organic AI video." in message
-    _marker(ws, run="runs/01-refresh-ad/2026-11-07_ad")
+    assert "Collection is only for runs of Trend research, Creative brief, Organic AI video, Refresh an ad and Create an ad." in message
+    _marker(ws, run=ad.path.relative_to(ws).as_posix())
     event = _event(ws, "get_trend_videos", {"trend_id": "t1"}, {"data": [], "page": 1, "has_more": False})
     assert trend_spool.handle(event, ws) is None
     assert not (ad.path / "02_research" / "videos").exists()
@@ -403,14 +403,13 @@ def test_a_tool_result_envelope_is_unwrapped_and_kept_in_shape(ws):
 
 
 def test_only_collecting_playbooks_collect(ws, capsys, playbook_two, bundled_skills):
-    assert trend_spool.COLLECTING == (TREND_RESEARCH, CREATIVE_BRIEF, ORGANIC_VIDEO)
+    assert trend_spool.COLLECTING == (TREND_RESEARCH, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, CREATE_AD)
     two = RunFolder.create(ws, "two", date(2026, 11, 7), playbook=playbook_two)
-    ad = RunFolder.create(ws, "ad", date(2026, 11, 7), playbook=REFRESH_AD)
-    for other, name in ((two, "Playbook two"), (ad, "Refresh an ad")):
+    for other, name in ((two, "Playbook two"),):
         assert main(["trends", "collect", "on", "--run", str(other.path), "--json"]) == 1
         message = json.loads(capsys.readouterr().out)["message"]
         assert f"is a run of {name}" in message
-        assert message.endswith("Collection is only for runs of Trend research, Creative brief and Organic AI video.")
+        assert message.endswith("Collection is only for runs of Trend research, Creative brief, Organic AI video, Refresh an ad and Create an ad.")
         _marker(ws, run=other.path.relative_to(ws).as_posix())
         assert trend_spool.active_run(ws, "s1") is None
         assert trend_spool.handle(_event(ws, "search_trends", {"about": "x"}, {"data": []}), ws) is None
@@ -529,9 +528,9 @@ def test_run_new_turns_collection_off(ws, capsys, bundled_skills):
     assert _saved(ws) == []
 
 
-def test_run_new_of_another_playbook_leaves_collection_on(ws, capsys, bundled_skills):
+def test_run_new_of_another_playbook_leaves_collection_on(ws, capsys, bundled_skills, playbook_two):
     _on(ws, capsys)
-    assert main(["run", "new", "--playbook", REFRESH_AD, "--name", "ad", "--json"]) == 0
+    assert main(["run", "new", "--playbook", playbook_two, "--name", "two", "--json"]) == 0
     capsys.readouterr()
     assert _read_marker(ws)["run"] == RUN_REL
     event = _event(ws, "search_trends", {"about": "nails"}, {"data": []})
@@ -915,8 +914,8 @@ def _refused(ws: Path, event: dict) -> str:
                                    "missing", "relative"])
 def test_only_claude_codes_own_tool_results_are_read(ws, tmp_path, capsys, where):
     """The notice is parsed strictly: only a file in this session's own tool-results folder, named for this
-    tool, is read. A path an answer could plant (elsewhere, another session's, a link out) falls back to
-    today's message: save it with tm trends ingest."""
+    tool, is read. A path an answer could plant (elsewhere, another session's, a link out) is not read, and
+    Claude is told why and to save it with tm trends ingest (issue #128: never "it is not JSON")."""
     _on(ws, capsys)
     transcript, path = _big(tmp_path, "search_trends", SEARCH_PAGE)
     if where == "other_session":
@@ -942,7 +941,11 @@ def test_only_claude_codes_own_tool_results_are_read(ws, tmp_path, capsys, where
         path.unlink()
     elif where == "relative":
         path = Path("tool-results") / path.name
-    _refused(ws, _too_large(ws, "search_trends", {"about": "ai"}, transcript, path))
+    out = trend_spool.handle(_too_large(ws, "search_trends", {"about": "ai"}, transcript, path), ws)
+    note = out["hookSpecificOutput"]["additionalContext"]
+    assert "updatedToolOutput" not in out["hookSpecificOutput"]
+    assert note.startswith("This answer was not saved to the run: Claude Code saved it to a file")
+    assert _saved(ws) == ["collect_failures.log"]
 
 
 def test_a_notice_inside_other_text_is_not_read(ws, tmp_path, capsys):
@@ -973,3 +976,234 @@ def test_notice_parser():
     for text in ("Rate limit reached.", None, {"raw": "x"}, " " + _notice(Path(p)),
                  "Error: result (many characters) exceeds maximum allowed tokens. Output has been saved to /x.txt.\n"):
         assert trend_spool.too_large_path(text) is None
+
+
+# --- issue #128: Claude Code 2.1.326's notice (Windows), Meta reads, refresh-ad and create-ad --------------------
+
+NBSP = "\u00a0"
+SUFFIXED = "mcp-plugin_trendsmesh-playbooks_trendsmesh-{tool}-1793035416828-n61y6m.txt"
+
+
+def _notice_326(path: Path, chars: str = f"92{NBSP}793", schema: str = "{trends: [{...}], total: number}") -> str:
+    """Claude Code 2.1.326's notice, as it writes it on Windows: the count grouped with a no-break space, the
+    file named with a random suffix after the timestamp, and a "Format: JSON with schema" line."""
+    return (f"Error: result ({chars} characters) exceeds maximum allowed tokens. Output has been saved to {path}.\n"
+            f"Format: JSON with schema: {schema}\n"
+            "Use offset and limit to read the file in parts.")
+
+
+def _too_large_326(ws: Path, tool: str, tool_input: dict, transcript: Path, path: Path, **kw) -> dict:
+    return {**_event(ws, tool, tool_input, _notice_326(path), **kw), "transcript_path": str(transcript)}
+
+
+@pytest.mark.parametrize("chars", [f"92{NBSP}793", "92\u202f793", "92 793", "92.793", "92'793", "92,793",
+                                   f"1{NBSP}092{NBSP}793", "92793"])
+def test_the_2_1_326_notice_is_read_with_any_digit_grouping(chars):
+    p = "C:\\Users\\u\\.claude\\projects\\-ws\\s1\\tool-results\\" + SUFFIXED.format(tool="search_trends")
+    assert trend_spool.too_large_path(_notice_326(Path(p), chars=chars)) == str(Path(p))
+    across = f"Error: result ({chars} characters across 1{NBSP}204 lines) exceeds maximum allowed tokens. " \
+             f"Output has been saved to {p}.\r\nFormat: Plain text"
+    assert trend_spool.too_large_path(across) == p                      # a CRLF line end too
+    assert trend_spool.too_large_path(f"Error: result (x{chars} characters) exceeds maximum allowed tokens. "
+                                      f"Output has been saved to {p}.") is None
+
+
+def test_a_2_1_326_search_is_saved_from_its_suffixed_file_and_summarised(ws, tmp_path, monkeypatch, capsys):
+    """The acceptance case: a B1 search_trends with limit 50 too large to show comes back as the card summary,
+    the answer is in 02_research/search/, and collect_failures.log stays empty."""
+    _on(ws, capsys)
+    page = {"trends": [{"id": f"t{n}", "kind": "hook_trend", "name": f"H{n}", "match": {"score": 0.9},
+                        "reach": {"creators": n}, "status": "confirmed", "what_it_is": "x" * 2000}
+                       for n in range(50)], "total": 120}
+    transcript, path = _big(tmp_path, "search_trends", page, name=SUFFIXED.format(tool="search_trends"))
+    tool_input = {"about": "morning routine", "limit": 50}
+    out = _spool(monkeypatch, capsys, _too_large_326(ws, "search_trends", tool_input, transcript, path))
+    got = _summary(json.loads(out))
+    assert got["saved_to"] == f"{RUN_REL}/02_research/search/search_morning_routine.json"
+    assert (got["results"], got["total"], got["has_more"], got["page"]) == (50, 120, True, 1)
+    assert got["cards"][3] == {"id": "t3", "kind": "hook_trend", "name": "H3", "match": 0.9, "creators": 3,
+                               "status": "confirmed"}
+    assert "x" * 100 not in out
+    assert trends.answer_of(ws / got["saved_to"]) == page
+    assert not (ws / RUN_REL / trend_spool.FAILURES).exists()
+
+
+def test_a_2_1_326_video_page_is_saved_and_summarised(ws, tmp_path, capsys):
+    _on(ws, capsys)
+    page = {"data": [{"asset_id": f"a{n}", "creator": f"c{n % 3}", "published": f"2026-11-0{1 + n % 5}"}
+                     for n in range(40)], "page": 2, "has_more": True}
+    transcript, path = _big(tmp_path, "get_trend_videos", page, name=SUFFIXED.format(tool="get_trend_videos"))
+    event = _too_large_326(ws, "get_trend_videos", {"trend_id": "t9", "page": 2}, transcript, path)
+    got = _summary(trend_spool.handle(event, ws))
+    assert got["saved_to"] == f"{RUN_REL}/02_research/videos/t9_p02.json"
+    assert (got["videos"], got["has_more"], got["newest"], got["oldest"], got["creators_on_page"]) == (
+        40, True, "2026-11-05", "2026-11-01", 3)
+
+
+AD_RUN_REL = "runs/01-refresh-ad/2026-11-07_ad"
+META_PREFIX = "mcp__claude_ai_Meta_Ads__"
+ENTITIES = {"ad_entities": json.dumps([{"id": "a1", "date_start": "2026-10-01", "date_stop": "2026-10-07",
+                                        "amount_spent": "12.5"}] * 3), "client_conversation_id": "conv-1"}
+
+
+def _ad_on(ws: Path, capsys) -> RunFolder:
+    run = RunFolder.create(ws, "ad", date(2026, 11, 7), playbook=REFRESH_AD)
+    assert main(["trends", "collect", "on", "--run", str(run.path)]) == 0
+    assert "Its Meta reads (01_base/meta) and page answers" in capsys.readouterr().out
+    return run
+
+
+def test_a_refresh_ad_meta_read_too_large_to_show_is_saved_from_its_file(ws, tmp_path, capsys):
+    """Refresh an ad collects: A1's ads_get_ad_entities read, too large to show, is saved from Claude Code's file
+    into 01_base/meta in the collector's envelope, never as the notice; Claude is told it is saved."""
+    run = _ad_on(ws, capsys)
+    tool_input = {"level": "ad", "time_increment": 7, "since": "2026-08-07", "until": "2026-11-05"}
+    name = "mcp-claude_ai_Meta_Ads-ads_get_ad_entities-1793035416828-k2p9qz.txt"
+    transcript, path = _big(tmp_path, "ads_get_ad_entities", ENTITIES, name=name)
+    event = _too_large_326(ws, "ads_get_ad_entities", tool_input, transcript, path, prefix=META_PREFIX)
+    out = trend_spool.handle(event, ws)["hookSpecificOutput"]
+    assert "updatedToolOutput" not in out
+    assert out["additionalContext"].startswith("This answer was saved to the run")
+    assert f"{AD_RUN_REL}/01_base/meta/ads_get_ad_entities_v01.json" in out["additionalContext"]
+    saved = json.loads((run.path / "01_base" / "meta" / "ads_get_ad_entities_v01.json").read_text(encoding="utf-8"))
+    assert saved["_input"] == tool_input and saved["answer"] == ENTITIES
+    assert not (run.path / trend_spool.FAILURES).exists()
+
+
+def test_a_meta_read_that_fits_is_kept_as_before(ws, capsys):
+    run = _ad_on(ws, capsys)
+    for tool in ("ads_get_ad_accounts", "ads_get_creatives", "ads_get_ad_videos", "ads_get_ad_entities"):
+        assert trend_spool.handle(_event(ws, tool, {"ad_ids": ["a1"]}, {"data": []}, prefix=META_PREFIX), ws) is None
+    assert sorted(p.name for p in (run.path / "01_base" / "meta").iterdir()) == [
+        "ads_get_ad_accounts_v01.json", "ads_get_ad_entities_v01.json", "ads_get_ad_videos_v01.json",
+        "ads_get_creatives_v01.json"]
+
+
+def test_a_creative_brief_meta_read_too_large_is_never_saved_as_the_notice(ws, tmp_path, capsys):
+    """Before issue #128 the kept branch ran first, so the notice itself was saved as the answer."""
+    run = _brief_on(ws, capsys)
+    transcript, path = _big(tmp_path, "ads_get_ad_entities", ENTITIES,
+                            name="mcp-claude_ai_Meta_Ads-ads_get_ad_entities-1793035416828.txt")
+    event = _too_large_326(ws, "ads_get_ad_entities", {"level": "ad"}, transcript, path, prefix=META_PREFIX)
+    trend_spool.handle(event, ws)
+    saved = json.loads((run.path / "01_base" / "meta" / "ads_get_ad_entities_v01.json").read_text(encoding="utf-8"))
+    assert saved["answer"] == ENTITIES
+
+
+def test_a_meta_notice_whose_file_is_refused_is_not_saved_as_the_notice(ws, tmp_path, capsys):
+    run = _ad_on(ws, capsys)
+    planted = tmp_path / "ws" / "planted" / "s1" / "tool-results"
+    planted.mkdir(parents=True)
+    path = planted / "mcp-claude_ai_Meta_Ads-ads_get_ad_entities-1793035416828-k2p9qz.txt"
+    path.write_text(json.dumps(ENTITIES), encoding="utf-8")
+    event = _too_large_326(ws, "ads_get_ad_entities", {"level": "ad"}, tmp_path / "t.jsonl", path,
+                           prefix=META_PREFIX)
+    note = trend_spool.handle(event, ws)["hookSpecificOutput"]["additionalContext"]
+    assert "not in this session's own tool-results folder" in note
+    assert f"tm trends ingest --run {AD_RUN_REL} --tool ads_get_ad_entities" in note
+    assert not (run.path / "01_base" / "meta").exists()
+    assert "not in this session's own tool-results folder" in (run.path / trend_spool.FAILURES).read_text("utf-8")
+
+
+@pytest.mark.parametrize("where, why", [
+    ("other_session", "not in this session's own tool-results folder"),
+    ("lookalike", "not in this session's own tool-results folder"),
+    ("outside", "its name is not"),
+    ("other_tool", "its name is not"),
+    ("not_mcp", "its name is not"),
+    ("symlink", "it is a link"),
+    ("missing", "it is not a file"),
+    ("relative", "the notice names a relative path"),
+    ("too_big", "it is larger than"),
+])
+def test_a_refused_file_says_the_check_that_failed(ws, tmp_path, monkeypatch, capsys, where, why):
+    """When the notice is Claude Code's but its file is not read, the message and collect_failures.log name the
+    check that failed, never "it is not JSON"."""
+    _on(ws, capsys)
+    transcript, path = _big(tmp_path, "search_trends", SEARCH_PAGE, name=SUFFIXED.format(tool="search_trends"))
+    if where == "other_session":
+        path = _big(tmp_path, "search_trends", SEARCH_PAGE, session="s2", name=path.name)[1]
+    elif where == "outside":
+        path = tmp_path / "planted.txt"
+        path.write_text(json.dumps(SEARCH_PAGE), encoding="utf-8")
+    elif where == "lookalike":
+        fake = tmp_path / "ws" / "planted" / "s1" / "tool-results"
+        fake.mkdir(parents=True)
+        path = fake / path.name
+        path.write_text(json.dumps(SEARCH_PAGE), encoding="utf-8")
+    elif where == "other_tool":
+        path = _big(tmp_path, "get_usage", SEARCH_PAGE, name=SUFFIXED.format(tool="get_usage"))[1]
+    elif where == "not_mcp":
+        path = _big(tmp_path, "search_trends", SEARCH_PAGE, name="search_trends.txt")[1]
+    elif where == "symlink":
+        outside = tmp_path / "planted.txt"
+        outside.write_text(json.dumps(SEARCH_PAGE), encoding="utf-8")
+        path.unlink()
+        path.symlink_to(outside)
+    elif where == "missing":
+        path.unlink()
+    elif where == "relative":
+        path = Path("tool-results") / path.name
+    elif where == "too_big":
+        monkeypatch.setattr(trend_spool, "MAX_SAVED_BYTES", 10)
+    out = trend_spool.handle(_too_large_326(ws, "search_trends", {"about": "ai"}, transcript, path), ws)
+    note = out["hookSpecificOutput"]["additionalContext"]
+    assert "updatedToolOutput" not in out["hookSpecificOutput"]
+    assert note.startswith("This answer was not saved to the run: Claude Code saved it to a file") and why in note
+    assert "not JSON" not in note
+    assert f"tm trends ingest --run {RUN_REL} --tool search_trends" in note and json.dumps({"about": "ai"}) in note
+    assert _saved(ws) == ["collect_failures.log"]
+    line = (ws / RUN_REL / trend_spool.FAILURES).read_text(encoding="utf-8")
+    assert line.split("\t")[1] == "search_trends" and why in line
+
+
+def test_a_notice_naming_the_home_folder_is_read(ws, tmp_path, monkeypatch, capsys):
+    """The notice may name the file from the home folder (`~/.claude/projects/...`)."""
+    _on(ws, capsys)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+    project = tmp_path / ".claude" / "projects" / "-ws"
+    (project / "s1" / "tool-results").mkdir(parents=True)
+    name = SUFFIXED.format(tool="search_trends")
+    (project / "s1" / "tool-results" / name).write_text(json.dumps(SEARCH_PAGE), encoding="utf-8")
+    (project / "s1.jsonl").write_text("", encoding="utf-8")
+    home = Path("~") / ".claude" / "projects" / "-ws" / "s1" / "tool-results" / name
+    event = _too_large_326(ws, "search_trends", {"about": "ai"}, project / "s1.jsonl", home)
+    assert _summary(trend_spool.handle(event, ws))["results"] == 15
+
+
+def test_refresh_ad_and_create_ad_collect(ws, capsys):
+    assert trend_spool.COLLECTING == (TREND_RESEARCH, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, CREATE_AD)
+    assert "ads_get_ad_entities" in mcp_saves.SAVED_BY[REFRESH_AD] and "db_list" in mcp_saves.SAVED_BY[REFRESH_AD]
+    assert "ads_get_ad_videos" in mcp_saves.SAVED_BY[REFRESH_AD]
+    assert "db_list" in mcp_saves.SAVED_BY[CREATE_AD] and "ads_get_ad_entities" not in mcp_saves.SAVED_BY[CREATE_AD]
+
+
+def test_a_create_ad_run_saves_its_trend_cards_by_itself(ws, capsys):
+    """create-ad S1: a get_trend call writes 02_research/trend_<id>.json with no ingest; searches are summarised;
+    Ad Library answers and the page's decisions read are saved; its Meta reads are not its to keep."""
+    run = RunFolder.create(ws, "ad2", date(2026, 11, 7), playbook=CREATE_AD)
+    assert main(["trends", "collect", "on", "--run", str(run.path), "--json"]) == 0
+    capsys.readouterr()
+    card = {"id": "t7", "kind": "hook_trend", "name": "Wait for it"}
+    assert trend_spool.handle(_event(ws, "get_trend", {"trend_id": "t7"}, card), ws) is None
+    assert trends.answer_of(run.path / "02_research" / "trend_t7.json") == card
+    found = _summary(trend_spool.handle(_event(ws, "search_trends", {"about": "serum"}, {"data": [card]}), ws))
+    assert found["saved_to"].endswith("02_research/search/search_serum.json")
+    trend_spool.handle(_event(ws, "ads_library_search", {"search_terms": "serum"}, {"data": []},
+                              prefix=META_PREFIX), ws)
+    assert (run.path / "02_research" / "ad_library" / "ads_serum.json").is_file()
+    assert trend_spool.handle(_event(ws, "ads_get_ad_entities", {"level": "ad"}, {"data": []},
+                                     prefix=META_PREFIX), ws) is None
+    assert not (run.path / "01_base" / "meta").exists()
+    read = {"action": "list", "url": "https://claude.ai/artifact/abc", "collection": "decisions"}
+    trend_spool.handle({**_event(ws, "ArtifactData", read, "3 documents"), "tool_name": "ArtifactData"}, ws)
+    assert (run.path / "03_wip" / "decisions" / "db_list_v01.json").is_file()
+
+
+def test_the_hook_matcher_takes_ad_videos():
+    hooks = json.loads((PLUGIN / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    import re
+    matcher = hooks["hooks"]["PostToolUse"][0]["matcher"]
+    assert re.fullmatch(matcher, "mcp__claude_ai_Meta_Ads__ads_get_ad_videos")
+    assert set(mcp_saves.SAVES) >= {"ads_get_ad_videos"}

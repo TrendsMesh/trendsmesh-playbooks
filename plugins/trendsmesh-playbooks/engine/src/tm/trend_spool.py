@@ -1,6 +1,7 @@
-"""The collector: a PostToolUse hook saves every TrendsMesh answer of a trend research, creative
-brief or organic video run (`COLLECTING`), a creative brief run's Meta reads and artifacts answers,
-and an organic video run's artifacts answers (`mcp_saves.SAVED_BY`).
+"""The collector: a PostToolUse hook saves every TrendsMesh and Ad Library answer of a run of a
+`COLLECTING` playbook (trend research, creative brief, organic video, refresh-ad, create-ad), the Meta
+reads of a creative brief or refresh-ad run, and the artifacts answers of all but trend research
+(`mcp_saves.SAVED_BY`).
 
     tm trends collect on|off --run RUN [--session ID] [--json]
     tm trends spool [--event FILE]           the hook's command: one event on stdin (or in FILE)
@@ -12,8 +13,8 @@ runs in, so several sessions in one workspace each collect into their own run. T
 `--session`, else `CLAUDE_CODE_SESSION_ID`, which Claude Code sets for every command it runs to the
 same id its hooks receive as `session_id`; without one `collect on` refuses, as nothing could tie
 the answers to a session. A hook event is saved only into the run its own session's marker names: no
-marker for the event's `session_id`, nothing saved, so a refresh-ad session in the same workspace
-never sees summaries or feeds a run. `collect off` and `tm run new` for a `COLLECTING` playbook's run
+marker for the event's `session_id`, nothing saved, so another session in the same workspace never
+sees summaries or feeds a run it did not turn collection on for. `collect off` and `tm run new` for a `COLLECTING` playbook's run
 remove this session's marker only (another playbook's `run new` leaves it); another session's
 marker is never written or removed while its run is unfinished. A marker whose run is finished, or
 gone, or that cannot be read is stale: the hook removes its own session's marker of a finished run,
@@ -31,9 +32,10 @@ answer (`mcp_saves.SAVES`) is saved by `mcp_saves.save` in a run whose playbook 
 (`mcp_saves.SAVED_BY`) and never replaced; in any other run it is ignored.
 
 An answer too large for Claude Code to show reaches the hook as Claude Code's notice naming the file
-it saved the answer to (issue #84): `spool` reads that file (`saved_by_claude_code`: only this
-session's own tool-results folder, never a path an answer could plant), saves the answer with the
-hook's tool input and summarises it as usual, so nothing is asked of Claude.
+it saved the answer to (issues #84, #128): `spool` reads that file (`claude_code_file`: only this
+session's own tool-results folder, never a path an answer could plant), for every tool it keeps (a
+Meta read too), saves the answer with the hook's tool input and summarises it as usual, so nothing is
+asked of Claude. A file it refuses is never saved as the notice: Claude is told the check that failed.
 
 `spool` never fails a tool call. When an answer of the collecting session cannot be saved, Claude is
 told (`additionalContext`: save it with `tm trends ingest`), a line goes to the run's
@@ -66,7 +68,8 @@ LOCK = ".collect.lock"
 WINDOWS = os.name == "nt"
 FAILURES = Path(trends.RESEARCH) / "collect_failures.log"
 STALE_LOCK_S = 5.0
-COLLECTING = (playbooks.TREND_RESEARCH, playbooks.CREATIVE_BRIEF, playbooks.ORGANIC_VIDEO)
+COLLECTING = (playbooks.TREND_RESEARCH, playbooks.CREATIVE_BRIEF, playbooks.ORGANIC_VIDEO, playbooks.REFRESH_AD,
+              playbooks.CREATE_AD)
 
 
 def _now() -> str:
@@ -384,12 +387,17 @@ def parse_answer(response: Any) -> tuple[Any, bool]:
 #   Error: result (143,210 characters across 1 line) exceeds maximum allowed tokens. Output has been saved
 #   to <config>/projects/<project>/<session>/tool-results/mcp-<server>-<tool>-<ms>.txt.
 # then "Format: Plain text" (the answer's text) or, in older versions, "Format: JSON array ..." (its content
-# blocks), and advice on reading it. The file is read only when the notice is the whole answer from its
-# first character and names a regular file, not a link, directly in this session's own tool-results folder,
-# named for this tool: no path an answer could plant elsewhere is ever read.
+# blocks), and advice on reading it. Claude Code 2.1.326 on Windows (issue #128) groups the count with a
+# no-break space ("92 793 characters"), names the file with a random suffix after the timestamp
+# (mcp-<server>-<tool>-<ms>-n61y6m.txt) and writes "Format: JSON with schema: ...". The count may be grouped
+# any way (`_GROUPED`), and the file may be named from the home folder (~/.claude/...). The file is read only
+# when the notice is the whole answer from its first character and names a regular file, not a link,
+# directly in this session's own tool-results folder, named for this tool: no path an answer could plant
+# elsewhere is ever read. A file refused names the check that failed (`claude_code_file`).
 
-_TOO_LARGE = re.compile(r"Error: result \(\d[\d,]* characters(?: across \d[\d,]* lines?)?\) exceeds maximum "
-                        r"allowed tokens\. Output has been saved to (?P<path>[^\n]+?)\.(?:\n|$)")
+_GROUPED = r"\d[\d,.'    ]*"     # 143,210 / 92 793 (no-break, narrow, thin space) / 92.793 / 92'793
+_TOO_LARGE = re.compile(rf"Error: result \({_GROUPED} characters(?: across {_GROUPED} lines?)?\) exceeds maximum "
+                        r"allowed tokens\. Output has been saved to (?P<path>[^\r\n]+?)\.\r?(?:\n|$)")
 TOOL_RESULTS = "tool-results"
 CONFIG_ENV = "CLAUDE_CONFIG_DIR"            # Claude Code's config folder, else ~/.claude
 MAX_SAVED_BYTES = 64 * 1024 * 1024
@@ -399,6 +407,12 @@ def too_large_path(text: Any) -> str | None:
     """The file Claude Code's too-large notice names, when `text` is that notice; else None."""
     m = _TOO_LARGE.match(text) if isinstance(text, str) else None
     return m["path"] if m else None
+
+
+def saved_name(tool: str) -> re.Pattern:
+    """The name Claude Code gives the file of a too-large answer of `tool`: mcp-<server>-<tool>-<ms>, then a
+    random suffix in 2.1.326 (-n61y6m), .txt or .json."""
+    return re.compile(rf"mcp-.+-{re.escape(tool)}-\d+(?:-[A-Za-z0-9]+)?\.(?:txt|json)")
 
 
 def _own_folder(event: dict, session: str, folder: Path) -> bool:
@@ -416,25 +430,42 @@ def _own_folder(event: dict, session: str, folder: Path) -> bool:
     return projects.is_dir() and folder.parent.parent.parent == projects.resolve()
 
 
-def saved_by_claude_code(event: dict, tool: str, text: Any) -> Path | None:
-    """The file of a too-large answer, when `text` is Claude Code's notice naming a regular file (not a
-    link) directly in this session's own tool-results folder, named `mcp-...-<tool>-<digits>.txt|.json`;
-    else None."""
+def claude_code_file(event: dict, tool: str, text: Any) -> tuple[Path | None, str | None]:
+    """(the file, None) when `text` is Claude Code's notice naming a regular file (not a link) directly in this
+    session's own tool-results folder, named for this tool (`saved_name`), at most MAX_SAVED_BYTES; (None, the
+    check that failed) when it is the notice but its file is refused; (None, None) when it is no notice."""
     named = too_large_path(text)
+    if named is None:
+        return None, None
     session = safe_session(event.get("session_id"))
-    if named is None or session is None:
-        return None
+    if session is None:
+        return None, "the hook event names no session"
     path = Path(named)
-    if not path.is_absolute() or not re.fullmatch(rf"mcp-.+-{re.escape(tool)}-\d+\.(?:txt|json)", path.name):
-        return None
+    if named[:2] in ("~/", "~\\"):
+        path = path.expanduser()                      # ~/.claude/projects/...: the same folder checks follow
+    if not path.is_absolute():
+        return None, "the notice names a relative path"
+    if not saved_name(tool).fullmatch(path.name):
+        return None, f"its name is not Claude Code's for a {tool} answer (mcp-<server>-{tool}-<digits>[-<suffix>].txt)"
     try:
-        if path.is_symlink() or not path.is_file():
-            return None
+        if path.is_symlink():
+            return None, "it is a link"
+        if not path.is_file():
+            return None, "it is not a file (gone, or a folder)"
         real = path.resolve(strict=True)
-        ok = _own_folder(event, session, real.parent) and real.stat().st_size <= MAX_SAVED_BYTES
-    except OSError:
-        return None
-    return real if ok else None
+        if not _own_folder(event, session, real.parent):
+            return None, "it is not in this session's own tool-results folder"
+        if real.stat().st_size > MAX_SAVED_BYTES:
+            cap = MAX_SAVED_BYTES
+            return None, f"it is larger than {f'{cap // 1048576} MiB' if cap >= 1048576 else f'{cap} bytes'}"
+    except OSError as exc:
+        return None, f"it cannot be read ({type(exc).__name__})"
+    return real, None
+
+
+def saved_by_claude_code(event: dict, tool: str, text: Any) -> Path | None:
+    """The file of a too-large answer that `claude_code_file` accepts, else None."""
+    return claude_code_file(event, tool, text)[0]
 
 
 def _raw_text(answer: Any) -> Any:
@@ -560,6 +591,24 @@ def _not_json(run: str, tool: str, tool_input: Any) -> dict:
     return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": text}}
 
 
+def _unread(run: str, tool: str, tool_input: Any, why: str) -> dict:
+    """The hook output for Claude Code's notice whose file the collector refused (`claude_code_file`): the
+    check that failed, and how to save that file by hand."""
+    text = (f"This answer was not saved to the run: Claude Code saved it to a file, but the collector did not read "
+            f"that file because {why}. Save that file whole with tm trends ingest --run {run} --tool {tool} "
+            f"--input <file with the tool's input> --file <the file the notice names>; the tool's input was "
+            f"{json.dumps(tool_input, ensure_ascii=False)}. The run continues from the same place.")
+    return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": text}}
+
+
+def _from_file(saved_to: str) -> dict:
+    """The hook output for an answer saved from Claude Code's file that has no summary: Claude sees only the
+    notice, so it is told the answer is saved."""
+    return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": (
+        f"This answer was saved to the run ({saved_to}) from the file Claude Code saved it to, so there is "
+        "nothing to ingest by hand. Read that file only for what this step needs from it.")}}
+
+
 def _failed(run: RunFolder, tool: str, reason: str) -> None:
     """One line in the run's collect_failures.log, for a later check to read."""
     try:
@@ -573,12 +622,17 @@ def handle(event: dict, workspace: Path) -> dict | None:
     """Save one PostToolUse event's answer into the run its own session collects for (the marker
     named by the event's `session_id`); an event of a session without a marker is never saved
     anywhere. Returns the hook output: the summary that replaces a search, a list or a video page; a
-    note to Claude when the answer could not be saved; else None. A `mcp_saves.SAVES` tool is kept
-    by `mcp_saves.save` in a run whose playbook keeps it (`mcp_saves.SAVED_BY`; None: Claude sees it
+    note to Claude when the answer could not be saved; else None.
+
+    Claude Code's notice for an answer too large to show is resolved first, for every tool: its file
+    (`claude_code_file`) is the answer, and a file refused is never saved, nor the notice in its place:
+    the check that failed is logged and said (`_unread`). Then a `mcp_saves.SAVES` tool is kept by
+    `mcp_saves.save` in a run whose playbook keeps it (`mcp_saves.SAVED_BY`; None: Claude sees it
     unchanged), its answer as it came, and ignored in any other run, before `_save` could file it
     under 02_research/other/. Any other (TrendsMesh, Ad Library) answer that is not JSON is not saved:
     it is logged and Claude is told how to ingest the whole answer (`_not_json`); an isError result
-    is the tool's answer and is saved."""
+    is the tool's answer and is saved. An answer saved from Claude Code's file is summarised as usual
+    (a search, a list, a video page) or, for any other tool, Claude is told it is saved (`_from_file`)."""
     session = safe_session(event.get("session_id"))
     if session is None or not marker_path(workspace, session).is_file():
         return None
@@ -595,43 +649,51 @@ def handle(event: dict, workspace: Path) -> dict | None:
         return None                                   # not this playbook's (a trend research run keeps no Meta read)
     tool_input = mcp_saves.own_input(given)            # never the desktop app's own keys (`__artifact*`)
     response = event.get("tool_response")
+    rel_run = run.path.relative_to(Path(workspace)).as_posix()
     try:
         answer, parsed = parse_answer(response)
-        if kept:
-            _keep(run, tool, tool_input, answer, server=mcp_saves.server_of(tool_name))
-            return None
         big = None
         if not parsed and "error" not in answer:      # {"raw": ...}: a notice or a message, no data
-            big = saved_by_claude_code(event, tool, _raw_text(answer))
-            if big is not None:                       # Claude Code's notice: its file holds the answer
-                answer, parsed = parse_answer(big.read_text(encoding="utf-8-sig"))
-            if not parsed and "error" not in answer:
-                reason = "the answer is not JSON (Claude Code's notice for a large answer, or the tool's message)"
+            big, why = claude_code_file(event, tool, _raw_text(answer))
+            if why is not None:                       # Claude Code's notice, its file refused: never the notice
+                reason = f"Claude Code saved the answer to a file that was not read: {why}"
                 _failed(run, tool, reason)
                 _log(f"{tool}: {reason}")
-                return _not_json(run.path.relative_to(Path(workspace)).as_posix(), tool, tool_input)
+                return _unread(rel_run, tool, tool_input, why)
+            if big is not None:                       # Claude Code's notice: its file holds the answer
+                answer, parsed = parse_answer(big.read_text(encoding="utf-8-sig"))
+        if kept:                                      # a Meta read or a page answer, text or not, as it came
+            path = _keep(run, tool, tool_input, answer, server=mcp_saves.server_of(tool_name))
+            return None if big is None else _from_file(path.relative_to(Path(workspace)).as_posix())
+        if not parsed and "error" not in answer:
+            reason = ("the file Claude Code saved the answer to is not JSON" if big is not None else
+                      "the answer is not JSON (the tool's message, or a notice that is not Claude Code's)")
+            _failed(run, tool, reason)
+            _log(f"{tool}: {reason}")
+            return _not_json(rel_run, tool, tool_input)
         path = _save(run, tool, tool_input, answer)
     except (OSError, ValueError) as exc:              # TimeoutError is an OSError
         reason = f"{type(exc).__name__}: {exc}"
         _failed(run, tool, reason)
         _log(f"{tool}: {reason}")
-        return _not_saved(str(exc), run.path.relative_to(Path(workspace)).as_posix(), tool)
+        return _not_saved(str(exc), rel_run, tool)
     saved_to = path.relative_to(Path(workspace)).as_posix()
-    shaped = _shaped(response, summary(tool, tool_input, answer, saved_to)) if summarisable(tool, answer) else None
-    if shaped is not None:
-        return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "updatedToolOutput": shaped}}
-    if big is not None:                               # Claude sees only the notice: say it is saved
-        return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": (
-            f"This answer was saved to the run ({saved_to}) from the file Claude Code saved it to, so there is "
-            "nothing to ingest by hand. Read that file only for what this step needs from it.")}}
-    return None
+    if summarisable(tool, answer):
+        gist = summary(tool, tool_input, answer, saved_to)
+        shaped = _shaped(response, gist)
+        if shaped is None and big is not None:        # the notice in a shape of its own: the summary as text
+            shaped = json.dumps(gist, ensure_ascii=False)
+        if shaped is not None:
+            return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "updatedToolOutput": shaped}}
+    return _from_file(saved_to) if big is not None else None
 
 
 # --- command line -----------------------------------------------------------------------------
 
 def add_parsers(sub: argparse._SubParsersAction) -> None:
-    c = sub.add_parser("collect", help="save every TrendsMesh answer to a trend research, creative "
-                                       "brief or organic video run (or stop)")
+    c = sub.add_parser("collect", help="save every TrendsMesh, Ad Library, Meta and page answer of this session "
+                                       "to a trend research, creative brief, organic video, refresh-ad or "
+                                       "create-ad run (or stop)")
     c.add_argument("state", choices=("on", "off"))
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--session", help=f"the Claude Code session that collects (default: ${SESSION_ENV}, "
@@ -723,11 +785,12 @@ def _collect(args: argparse.Namespace) -> int:
             rel = collect_on(workspace, run.path, session)
             theirs = others(workspace, session)
             playbook = state.load(run).playbook
-            brief = playbook == playbooks.CREATIVE_BRIEF
+            keeps = mcp_saves.SAVED_BY.get(playbook, ())
+            meta = any(mcp_saves.SAVES[t][0] == mcp_saves.META for t in keeps)
             also = (" Its Meta reads (01_base/meta) and page answers (03_wip/decisions, 03_wip/publish) "
-                    "are saved too, and Claude sees them whole." if brief else
+                    "are saved too, and Claude sees them whole." if meta else
                     " Its page answers (03_wip/decisions, 03_wip/publish) are saved too, and Claude sees them whole."
-                    if playbook in mcp_saves.SAVED_BY else "")
+                    if keeps else "")
             payload = {"status": "done", "collecting": True, "run": Path(rel).name}
             if theirs:
                 payload["other_sessions"] = [{"run": Path(o["run"]).name} for o in theirs]

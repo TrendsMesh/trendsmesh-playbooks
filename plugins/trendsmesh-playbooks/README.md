@@ -82,8 +82,9 @@ same `hooks/hooks.json` works on every system.
   environment variables, and tells Claude about a check-in that is due. It never prints a key.
 - **PreToolUse** (`guard-secrets.sh` / `.ps1`): denies a tool call that would read the Replicate or ElevenLabs keys
   (their files, the variables that hold them, or a dump of the whole environment). Local only; it sends nothing.
-- **PostToolUse** (`collect-mcp.sh` / `.ps1`): while a research run is collecting, saves the TrendsMesh, Meta
-  and artifacts answers Claude received into that run's folder. Local only; it sends nothing.
+- **PostToolUse** (`collect-mcp.sh` / `.ps1`): while a playbook run is collecting, saves the TrendsMesh, Ad Library,
+  Meta and artifacts answers Claude received into that run's folder (an answer too large to show, from the file
+  Claude Code saved it to in this session's own folder). Local only; it sends nothing.
 
 `env/pixi.lock` pins every package of every tool tier on every platform, so each install gets exactly the tested
 versions (`pixi run --frozen`). That is why it is larger than the other files.

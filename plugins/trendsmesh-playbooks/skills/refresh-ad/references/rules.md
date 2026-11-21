@@ -7,7 +7,7 @@ values, never the rule. Where the rule says "HITL" read "Check every step" and "
 calls"; where it says "AUTO" read "Hands-off"; "gate" is a check-in.
 
 R1's "90 days of daily metrics for all ads" is fetched as weekly totals for every ad plus
-daily rows for the top 5 ads by spend (and the chosen ad), so the data fits the context
+daily rows for the top 5 ads by spend (and the chosen ad), so the fetch stays small
 (SKILL.md section 6, `flow.md#a1`). The windows are the same 7-day windows, so the ranking is
 the same. R2's retention ladder (plays, p25 to p100) comes from the same weekly rows: the peak and
 latest windows of the ranking, not daily rows. R2's "the hook holds" is the hook rate (p25 /
@@ -36,7 +36,7 @@ While the run is stopped, the engine refuses spending, budget approvals and the 
 | fading when | cost per result in the last window **≥ +30%** versus the peak **and** the change is **significant (p < 0.1)** for "results per zloty spent", **after subtracting the trend of the whole account** in the same period | the % threshold alone, with a small number of events, falls within noise (30 → 18 purchases is p ≈ 0.09); a drop of the whole account is not creative fatigue |
 | supporting signals | drop in CTR, ThruPlay / impressions, rise in frequency | help in the diagnosis (R2), but do not qualify an ad on their own |
 | ranking | by **value to recover**: winner's scale at the peak (results or spend) × rise in cost per result | ads where a refresh will give the most come first |
-| evidence | ranking saved in the run: `01_base/winner_ranking.json` (all candidates with windows, test and value) + `01_base/<ad>_meta_daily.json` of the selected one | the choice must be verifiable; in the Ad 3 run there was no ranking |
+| evidence | ranking saved in the run: `01_base/winner_ranking_vNN.json` (all candidates with windows, test and value) + the selected one's daily read (`01_base/meta/`, `time_increment` 1) | the choice must be verifiable; in the Ad 3 run there was no ranking |
 
 ### R2. Funnel diagnosis is a gate (end of step 1, before research)
 We choose the creative change **only** according to which funnel stage is fading. The diagnosis is built from the R1 data and saved in `strategy_brief.md` with the numbers.

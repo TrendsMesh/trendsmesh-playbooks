@@ -233,7 +233,15 @@ reorder or cut inside one continuous shot at level 0 (offer the regenerated shot
   account, so it is part of the approved test plan. Nothing goes live before a green R8 check
   and the launch check-in. **We never host files publicly.**
 
-## 6. The A1 fetch (fits the context)
+## 6. The A1 fetch
+
+**`tm trends collect on --run R` right before A1's first Meta call** (and again at every resume,
+right before the next Meta, TrendsMesh, Ad Library or page call): the collector saves every Meta
+answer in `01_base/meta/` (`ads_get_ad_entities_vNN.json` and so on, with the call's input and a
+manifest row), also an answer too large to show (Claude Code's file), and its TrendsMesh, Ad
+Library and page answers too, so you never save one by hand. If the hook says an answer was not
+saved, save it with `tm trends ingest` as it says (`references/trend-collection.md`).
+`tm trends collect off --run R` when the run ends.
 
 Weekly totals first, for every ad: `ads_get_ad_entities` at ad level, `time_increment=7`, from
 today−92 to **today−2** (13 weeks that line up with R1's windows), only the fields R1 needs **plus
@@ -243,9 +251,10 @@ the retention ladder R2 reads**: `video_play_actions`, `video_p50_watched_action
 fades). Then account-level weekly totals the same way. Then daily rows (`time_increment=1`)
 **only for the top 5 ads by spend, and for the chosen ad if it is not among them**, with R1's
 fields only: they are the bulk of the fetch (91 rows per ad against 13), so the six ladder fields
-(about 200 characters a row) go on the weekly rows alone and the fetch still fits. Save every
-answer verbatim in `01_base/` and pass the weekly files to
-`tm r1 --run R --ads <weekly files> --account <account files> --json`. The average watch time is
+(about 200 characters a row) go on the weekly rows alone and the fetch stays small. Then
+`tm r1 --run R --json`: it takes the weekly ad and account reads from `01_base/meta/` by the input
+each was fetched with (`level`, `time_increment=7`), never the daily rows, and its `picked` says
+which files it read and which it left out. The average watch time is
 whole seconds per day from Meta: never present it as precise. Details, fields, the structural
 check's fetch (R2b) and the "Pick the ad" card: `references/flow.md#a1` and `#a1a`,
 `references/meta-mcp.md`.

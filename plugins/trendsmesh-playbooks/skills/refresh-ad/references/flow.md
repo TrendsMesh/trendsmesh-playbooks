@@ -77,7 +77,12 @@ background (SKILL.md section 1: long commands).
 <a id="a1"></a>
 ## A1 Fading winners (R1)
 
-Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the tool's quirks):
+Read `rules.md` first (`meta-mcp.md` has the tool's quirks). **`tm trends collect on --run R
+--json` right before the first Meta call** (and at every resume, right before the next MCP call):
+the collector saves each Meta answer as `01_base/meta/ads_get_ad_entities_vNN.json` (the call's
+input beside the answer, a manifest row), every page and every answer too large to show, so none is
+saved by hand. Only when the hook says an answer was not saved, save it with `tm trends ingest` as
+it says.
 
 1. Dates: `last` = today − 2 (R1 cuts the last two days), `first` = last − 90 days. That is 13
    whole weeks ending on `last`, the same 7-day windows the engine uses.
@@ -88,19 +93,21 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
    reads: `video_play_actions`, `video_p50_watched_actions`, `video_p75_watched_actions`,
    `video_p95_watched_actions`, `video_p100_watched_actions`, `video_avg_time_watched_actions`.
    Without the ladder `tm diagnose` falls back to the old ThruPlay rule and can't see which part
-   of the middle fades. Save each page verbatim as
-   `01_base/meta_weekly_ads_p01.json`, `_p02` ... and record each (source: the tool and its
-   parameters).
-3. **Account weekly totals:** the same call at account level → `01_base/meta_weekly_account.json`.
-   If the account level gives nothing, pass the ad files as the account too: the engine sums them.
+   of the middle fades. Fetch every page; the collector saves each.
+3. **Account weekly totals:** the same call at account level. If the account level gives nothing,
+   `tm r1` sums the ad rows for the account by itself.
 4. **Daily rows for the top 5 ads by spend only** (`time_increment=1`, same dates, R1's fields
    from step 2 without the ladder: R2 reads the weekly windows, and the daily rows are the bulk of
-   the fetch) → `01_base/<ad_id>_meta_daily.json`. They are the evidence for the chosen ad (R1) and its daily
-   chart. Do not pass them to `tm r1` beside the weekly rows of the same ad: they would count
-   twice. If the ad chosen at G1 is not in the top 5, fetch its daily rows the same way before
-   A1a.
-5. `tm r1 --run R --ads 01_base/meta_weekly_ads_p01.json [more pages] --account
-   01_base/meta_weekly_account.json --json` writes `01_base/winner_ranking_vNN.json`.
+   the fetch), one call per ad (`ad_ids`). They are the evidence for the chosen ad (R1) and its
+   daily chart, saved in `01_base/meta/` like the rest; `tm r1` never reads them (`time_increment`
+   1), so they never count twice beside the weekly rows. If the ad chosen at G1 is not in the top 5,
+   fetch its daily rows the same way before A1a.
+5. `tm r1 --run R --json` writes `01_base/winner_ranking_vNN.json`. It takes the collector's
+   weekly reads from `01_base/meta/` by their input (`level` ad or account, `time_increment` 7;
+   a week fetched again counts once, the later read) and says what it took in `picked` (`ads`,
+   `account`, `account_from`: `ads` when the account read held no rows, and `skipped`: every other
+   read, with why). Check `picked` and `read` against what you fetched. Files saved by hand (a run
+   started without the collector) are given as before: `--ads <files> --account <files>`.
 6. Prepare "Pick the ad" (G1): the fading ads by rank (spend, cost per result peak → now, the
    rise, p-value, account trend, value to recover, fatigue signals CTR, ThruPlay, frequency),
    then the stable ones, then "not enough data" (never ranked). Every figure from the ranking
@@ -127,7 +134,7 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
   of those ads and the chosen ad: `ads_get_ad_entities`, ad level, the ad's whole life (one total
   row, or its rows), the fields `video_play_actions`, `video_p25_watched_actions` to
   `video_p100_watched_actions` (p25, p50, p75, p95, p100), with `date_start` and `date_stop`.
-  Save every answer verbatim in `01_base/` and record it. Then write `03_wip/retention/uploads_v01.json`, one object of ad id to
+  The collector saves every answer in `01_base/meta/`. Then write `03_wip/retention/uploads_v01.json`, one object of ad id to
   that ad's Meta rows, copied unchanged from the saved answers (where Meta wraps the rows in a
   string, the decoded list): `{"<ad id>": [{"date_start": "...", "date_stop": "...",
   "video_play_actions": "...", ...}], "<ad id>": [...]}`. Record it (source: the files it is
@@ -282,7 +289,9 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
   `hook_source` (speech or on screen), `appears_at_s`, caption position →
   `02_research/hook_<name>_analysis_v01.md`. Rank by creators and view lift, not views alone;
   EN TikTok trends in another market are a hypothesis (lesson 5). Library results move ranks.
-- Save every answer: `02_research/trend_<id>.json`, `videos_<id>_pNN.json`.
+- The collector saves every answer (`02_research/trend_<id>.json`, `search/`, `lists/`,
+  `videos/<id>_pNN.json`): searches, lists and video pages come back as a short summary with
+  `saved_to`; read a saved file only for what a step needs (`references/trend-collection.md`).
 - No matching trend: fall back to evergreen hook structures from the Ad Library and the
   account's own winners, and say so. Those hooks are guesses in the change register.
 - **Without TrendsMesh (a guess run):** the candidates are evergreen hook structures from the
