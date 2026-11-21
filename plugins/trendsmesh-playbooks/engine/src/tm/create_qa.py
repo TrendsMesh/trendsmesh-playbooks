@@ -39,6 +39,8 @@ layer_check`, `<edit dir>/qa/<stem>_layers_vNN.json`) must find no layer over a 
 scaled up. Step check `ad_edit_checked` (S7,
 `edit_gap`), also required by `review accept`: the latest edit QA is the checked one, unchanged, and still names the
 latest edit and its latest QA. `edit_report` is the review page's "what was checked". All read only but the check.
+Each edit that passed is kept with the edit QA it passed with (`passed_edits`, issue #133): the review shows those
+versions alone, never one that failed.
 """
 
 from __future__ import annotations
@@ -413,10 +415,41 @@ def edit_gap(run: RunFolder) -> str | None:
     return None
 
 
-def edit_report(run: RunFolder, tr: i18n.Translator | None = None) -> dict | None:
-    """The review page's "what was checked" (pages.md "Review"): the checked edit QA's edit, its loudness and true
-    peak, and each CA11 check with its label, result and note, in the page's language. None before it is checked."""
-    data = _checked_edit(run)
+def _edit_qa_of(run: RunFolder, rel: object, edit: str | None = None) -> dict | None:
+    """The edit QA file `rel` (run-relative), when it is readable and names `edit` (any edit: None)."""
+    path = run.path / rel if isinstance(rel, str) and rel else None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig")) if path else None
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) and (edit is None or data.get("edit") == edit) else None
+
+
+def passed_edits(run: RunFolder) -> dict[str, str]:
+    """Each edit version that passed `tm ad check edit` -> the edit QA file it passed with, run-relative, oldest
+    first, as the check keeps them (run.json `checked`, `create_plan.PASSED`, issue #133). A run checked before then
+    has the edit of its checked edit QA alone, while that file is unchanged."""
+    entry = state.load(run).checked.get(KEY_EDIT) or {}
+    kept = entry.get(create_plan.PASSED)
+    if isinstance(kept, dict):
+        return {e: q for e, q in kept.items() if isinstance(e, str) and isinstance(q, str)}
+    path = run.path / entry["file"] if isinstance(entry.get("file"), str) else None
+    if path is None or not path.is_file() or stepchecks.sha256(path) != entry.get("sha256"):
+        return {}
+    data = _edit_qa_of(run, entry["file"])
+    return {data["edit"]: entry["file"]} if data and isinstance(data.get("edit"), str) else {}
+
+
+def edit_report(run: RunFolder, tr: i18n.Translator | None = None, edit: str | None = None) -> dict | None:
+    """The review page's "what was checked" (pages.md "Review"): the checked edit QA's edit (with `edit`, that
+    run-relative edit's passed QA, `passed_edits`), its loudness and true peak, and each CA11 check with its label,
+    result and note, in the page's language, and the edit QA's `file`. None before it is checked."""
+    if edit is None:
+        file = create_plan.checked_file(run, EDIT_QA)
+        data, rel = _checked_edit(run), _rel(run, file) if file else None
+    else:
+        rel = passed_edits(run).get(edit)
+        data = _edit_qa_of(run, rel, edit)
     if data is None:
         return None
     tr = tr or _english()
@@ -424,7 +457,7 @@ def edit_report(run: RunFolder, tr: i18n.Translator | None = None) -> dict | Non
         qa = json.loads((run.path / data["qa"]).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError, KeyError, TypeError):
         qa = {}
-    return {"edit": data.get("edit"), "qa": data.get("qa"), "lufs": qa.get("lufs"), "peak": qa.get("peak"),
+    return {"edit": data.get("edit"), "qa": data.get("qa"), "file": rel, "lufs": qa.get("lufs"), "peak": qa.get("peak"),
             "match": qa.get("match"), "title": tr("ad.qa.checked_title"),
             "checked": [{"check": r["check"], "label": tr(f"ad.qa.check_{r['check']}"), "result": r["result"],
                          "result_label": tr(f"ad.qa.result_{r['result']}"), "note": r["note"]}

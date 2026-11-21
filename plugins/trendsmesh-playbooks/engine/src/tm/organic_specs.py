@@ -277,6 +277,14 @@ def outputs(run: RunFolder, stem: str) -> tuple[set[str], set[str]]:
     return latest, every
 
 
+def batch_outputs(run: RunFolder, stem: str, calls: int = 1) -> set[str]:
+    """The outputs of the item's last `calls` records that have any, run-relative: Create an ad's gate, where a plan
+    line of `calls: N` is N records (issue #133). A damaged record is a Stop (`records`)."""
+    made = [{f"{WIP}/{name}" for name in record.get("outputs") or [] if isinstance(name, str)}
+            for _, record in _records(run, stem)]
+    return set().union(*[m for m in made if m][-max(calls, 1):])
+
+
 def _decisions_files(run: RunFolder, stem: str) -> list[Path]:
     """`03_wip/<stem>_vNN.json`, oldest first (by version)."""
     folder = run.path / WIP

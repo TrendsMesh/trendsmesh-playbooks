@@ -222,6 +222,29 @@ def test_a_green_edit_qa_passes_s7(run):
     assert "edit_v02.mp4" in stepchecks.run("ad_edit_checked", run)
 
 
+def test_every_edit_that_passed_is_kept_with_its_qa(run):
+    """Issue #133: the check names only its latest file, so each edit that passed is kept with the edit QA it passed
+    with (the review shows those alone); a failed check keeps them, and a run checked before has its checked one."""
+    _edit(run)
+    _qa(run, EDIT, lufs=-14.2, peak=-1.8)
+    assert _edit_qa(run) == []
+    assert create_qa.passed_edits(run) == {EDIT: "03_wip/edit_qa_v01.json"}
+    s = state.load(run)
+    del s.checked[create_qa.KEY_EDIT][create_plan.PASSED]                  # as a run checked before issue #133
+    state.save(run, s)
+    assert create_qa.passed_edits(run) == {EDIT: "03_wip/edit_qa_v01.json"}
+    v2 = _edit(run, 2)
+    _qa(run, v2, lufs=-14.2, peak=-1.8)
+    assert _edit_qa(run, edit=v2, qa="03_wip/qa/edit_v02_qa_v01.json") == []
+    v3 = _edit(run, 3, collisions=[{"kind": "collision", "message": "the caption covers the face"}])
+    _qa(run, v3, lufs=-14.2, peak=-1.8)
+    assert _edit_qa(run, edit=v3, qa="03_wip/qa/edit_v03_qa_v01.json")      # fails: kept out
+    assert create_qa.passed_edits(run) == {EDIT: "03_wip/edit_qa_v01.json", v2: "03_wip/edit_qa_v02.json"}
+    report = create_qa.edit_report(run, edit=v2)
+    assert report["edit"] == v2 and report["file"] == "03_wip/edit_qa_v02.json" and report["lufs"] == -14.2
+    assert create_qa.edit_report(run) is None and create_qa.edit_report(run, edit=v3) is None
+
+
 @pytest.mark.parametrize("qa,fragment", [
     ({"lufs": -18.0}, "-18.0 LUFS"),
     ({"peak": -0.5}, "true peak"),

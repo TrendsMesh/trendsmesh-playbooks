@@ -304,6 +304,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   permission, so a CSV button saves the file instead of doing nothing.
 - **Trend research: one act-now number.** The "Act now" tile and the act-now table count and list only the trends
   the report recommends, the same number as the heading. The other act-now trends stay in the list under the cards.
+- **Create an ad: the image gate shows the whole batch.** A plan line of several calls shows every image of its
+  latest batch side by side, each with its own accept, redo or drop, not only the last call's.
+- **Create an ad: the review shows only versions that passed their check.** A version of the edit that failed
+  `tm ad check edit` is never shown at the review; the newest version that passed is picked first, with what was
+  checked for it.
 
 ## 0.13.1
 

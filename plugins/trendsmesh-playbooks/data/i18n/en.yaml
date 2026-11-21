@@ -1862,7 +1862,7 @@ ad:
     pin_button: "Pin to {version} at {time}"
     pins: Your notes
     no_pins: No notes yet.
-    no_version: No version of the edit yet.
+    no_version: No version of the edit has passed its check yet.
     # copy
     fact:
       ad_name: Ad name
