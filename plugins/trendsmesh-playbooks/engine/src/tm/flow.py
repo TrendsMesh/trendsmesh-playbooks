@@ -1317,7 +1317,7 @@ def recut_refusal(run: RunFolder, s: state.RunState) -> str | None:
 
 def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "rule"],
            note: str | None, *, today: date | None = None, change: bool = False, said: str | None = None,
-           concepts: list[str] | None = None, stage: str | None = None) -> None:
+           concepts: list[str] | None = None, stage: str | None = None) -> dict | None:
     """Record a decision. A card id records one entry per check-in it covers.
 
     A decision by rule needs `note`: the data behind it. Deciding again needs `change`. `said`: the user's own
@@ -1332,7 +1332,9 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
     check-in). A money
     decision is refused (Held) while the run is stopped for something else; G10 approve and G11
     activate need a feasible R4 plan. G1a `override` (issue #143) is the user's refresh against the diagnosis: it
-    takes `stage` and their words, from G1a's own step on, and sets the diagnosis' target (`_override`).
+    takes `stage` and their words, from G1a's own step on, and sets the diagnosis' target (`_override`). G1a
+    `do_not_refresh` writes the diagnosis report and builds the run page again (`diagnosis_report.finish`), and
+    returns what it wrote; every other decision returns None.
     """
     if by not in ("user", "rule"):
         raise ValueError(f"--by must be user or rule, not {by!r}.")
@@ -1466,6 +1468,10 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
             if position[effect["back_to"]] < here:
                 s.step = effect["back_to"]
     state.save(run, s)
+    if pb01 and "G1a" in ids and choice == "do_not_refresh":   # issue #143: the run's result is the report
+        from tm import diagnosis_report   # it reads this module's _blocking
+        return diagnosis_report.finish(run)
+    return None
 
 
 def _check_override(s: state.RunState, checkin_id: str, by: str, said: str | None, stage: str | None) -> None:

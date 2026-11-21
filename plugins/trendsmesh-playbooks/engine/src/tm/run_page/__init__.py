@@ -58,6 +58,8 @@ COMPONENTS = {playbooks.REFRESH_AD: refresh_ad.materials, playbooks.CREATE_AD: c
 OUTCOMES = {playbooks.REFRESH_AD: refresh_ad.outcome,     # a decided choice in words, when no ask labels it
             playbooks.CREATE_AD: create_ad.outcome, playbooks.TREND_RESEARCH: trend_research.outcome,
             playbooks.ORGANIC_VIDEO: organic_video.outcome, playbooks.CREATIVE_BRIEF: creative_brief.outcome}
+# a done run's last stage ("Done": how it ended, issue #143), and every stage of a done run settled
+FINALS = {playbooks.REFRESH_AD: refresh_ad.final}
 # what a stage's detail adds when its choice is recorded: the lines of its note (a Stop there refuses the answer
 # before anything is recorded), and the files it writes (with `then`, a line for the agent)
 RECORDED = {playbooks.CREATE_AD: (create_ad.note_lines, create_ad.write_files),
@@ -300,17 +302,27 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
 
     stages = []                      # (when, key, ask or None, record or None)
     asked_members = set()
+    ended = s.status == "done" and s.playbook in FINALS   # a done run asks nothing more (issue #143)
     for key, ask in found.items():
         members = _members(run, key)
-        if is_open(run, ask, decided):
+        if is_open(run, ask, decided) and not ended:
             stages.append((ask.get("_at") or "", key, ask, None))
         else:
-            d = decided[members[-1]]
-            stages.append((d.get("at") or "", key, ask, _record(ask, d, worded(members[-1], d))))
+            got = [m for m in members if m in decided]
+            if got:
+                last = max(got, key=lambda m: decided[m].get("at") or "")
+                d = decided[last]
+                stages.append((d.get("at") or "", key, ask, _record(ask, d, worded(last, d))))
+            else:                       # asked, and the run ended before it was answered
+                stages.append((ask.get("_at") or "", key, ask, {"choice": None, "label": t("record.not_answered", lang),
+                                                                "note": None, "at": None, "by": None, "rule": None}))
         asked_members.update(members)
     for cid, d in decided.items():
         if cid not in asked_members and cid in cat.checkins:
             stages.append((d.get("at") or "", cid, None, _record(None, d, worded(cid, d))))
+    final = FINALS.get(s.playbook, lambda c: None)(ctx) if ended else None
+    if final:                           # the run's end, after its last decision
+        stages.append((max((x[0] for x in stages), default="") + "~", final["key"], None, final["record"]))
     stages.sort(key=lambda x: (x[3] is None, x[0]))     # settled first by time, then the open ones
     now, settled = [], []
     for n, (_, key, ask, record) in enumerate(stages, 1):
