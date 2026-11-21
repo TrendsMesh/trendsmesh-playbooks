@@ -697,17 +697,13 @@ def tr_b4(ws: Path, run: Path) -> None:
 
 def tr_b3(ws: Path, run: Path) -> None:
     """The dry run's relevance review. The dry run read every trend; the engine now sets aside the ones below the
-    best review.max_trends by match (issue #129), among them trends the dry run's picks and Ad Library checks name
-    (the Sephora sale hauls, the Karseell skits): the review restores those, as an agent restores a trend it
-    keeps."""
+    best review.max_trends by match (issue #129), among them trends the dry run's picks, Ad Library checks and calls
+    name (the Sephora sale hauls, the Karseell skits): the review restores every one it does not drop, as the engine
+    tests lift the cut for the dry run (tests/engine/beauty.py NO_CUT), so the run past B3 is the dry run's."""
     review = _fix("map_review_v01.json")
     cmap = json.loads(sorted((run / "02_research").glob("category_map_v*.json"))[-1].read_text(encoding="utf-8"))
-    picks = _fix("picks_v04.json")
-    named = ({p.get("id") for k in ("act_now", "act_now_other", "still_rising", "watch_next")
-              for p in picks.get(k) or [] if isinstance(p, dict)}
-             | {c.get("trend_id") for c in _fix("ad_library_summary_v02.json")["checks"]})
-    restore = {r["name"]: "the dry run's review kept it: a pick of the dry run (eval fixture)"
-               for r in cmap.get("set_aside") or [] if r["id"] in named and r["name"] not in review.get("drop", {})}
+    restore = {r["name"]: "the dry run read every trend (eval fixture)"
+               for r in cmap.get("set_aside") or [] if r["name"] not in review.get("drop", {})}
     if restore:
         review["restore"] = {**review.get("restore", {}), **restore}
     place(ws, run, "03_wip/map_review_v01.json", review, "the relevance review (eval fixture: the dry run's map_review_v01)")
