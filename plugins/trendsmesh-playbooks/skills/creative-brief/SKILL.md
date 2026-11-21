@@ -58,11 +58,13 @@ Follow the doctor's "Creative brief" section (`commands/doctor.md` in the plugin
    Paid, with what Paid adds to a brief. Free only after the user's yes (`tm mode free`). State: `ok`,
    `free`, `no_agents`, `inactive` or `missing`, and the choice. **Meta
    Ads**: `ads_get_ad_entities` for one ad on the user's ad account (find the account with
-   `ads_get_ad_accounts` rather than asking): `ok`, `missing` or `not_enabled`. **Artifacts**: `ok`
+   `ads_get_ad_accounts` rather than asking): `ok`, `missing` or `not_enabled`, with the checked account's
+   currency and the number of ad accounts (never a name or an id). **Artifacts**: `ok`
    when the `Artifact` tool (or the older `publish_files`) is among this session's tools, else
    `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result.
-2. `tm doctor --playbook creative-brief --outputs <chosen, or review_pack,briefs,animatics,page>
-   --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> [--mode free] --json`. The first `tm` call on a computer installs
+2. `tm doctor --playbook creative-brief --outputs <chosen, from review_pack,briefs,animatics,page>
+   --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> --meta-account currency=<code>,accounts=<n> [--mode free] --json`. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again.
+   The first `tm` call on a computer installs
    the base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10
    minutes). Installs are yours after one yes with the size and time (`tm env install <tier>
    --yes`): the animatic tools for the animatics.

@@ -53,9 +53,9 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
    **Meta Ads**: one `ads_library_search` call: `ok`, `missing` or `not_enabled`. **Artifacts**:
    `ok` when the `Artifact` tool (or the older `publish_files`) is among this session's tools,
    else `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result.
-2. `tm doctor --playbook trend-research --outputs <chosen, or all three> --mcp
+2. `tm doctor --playbook trend-research --outputs <chosen, from category_report,weekly_digest,paid_view> --mcp
    trendsmesh=<s>,meta=<s>,artifacts=<s> --json` (no `--report`: the support report is
-   `/trendsmesh-playbooks:doctor`'s). The first `tm` call on a computer installs the
+   `/trendsmesh-playbooks:doctor`'s). Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The first `tm` call on a computer installs the
    base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10 minutes).
 3. Show its `card` in plain words. **Without TrendsMesh, trend research stops: it is Paid only.**
    Its stages, its "act now" and "too late" calls and the weekly check of last week's calls are

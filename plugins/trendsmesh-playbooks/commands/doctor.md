@@ -32,7 +32,9 @@ name none, a short general check; and write a support report they can read and s
      choice.
    - Meta Ads: `ads_get_ad_entities` for one ad on the user's ad account (ask which ad account,
      if you don't know it). It answers → `ok`. Not connected or not signed in → `missing`.
-     It refuses this ad account → `not_enabled`.
+     It refuses this ad account → `not_enabled`. From `ads_get_ad_accounts`, note the checked
+     account's currency and how many ad accounts the user has, for `--meta-account
+     currency=<ISO 4217 code>,accounts=<n>`; never pass an account's name or id.
    Never guess a result: a call you could not make is `missing`.
 2. If the user has already said whether their ElevenLabs plan includes voice cloning, note it
    as `cloning` or `no_cloning`; otherwise `unknown` (the doctor then reads the plan from the key's
@@ -43,14 +45,19 @@ name none, a short general check; and write a support report they can read and s
 3. Run:
 
    ```
-   tm doctor --outputs creative_brief,edited_video,ai_video,live_test --voice --caption-removal --mcp trendsmesh=<result>,meta=<result> --fact elevenlabs_plan=<fact> --report --json
+   tm doctor --outputs creative_brief,edited_video,ai_video,live_test --voice --caption-removal --mcp trendsmesh=<result>,meta=<result> --meta-account currency=<code>,accounts=<n> --fact elevenlabs_plan=<fact> --report --json
    ```
 
-   Exit 0 means ready, 2 means something is missing, 1 is an error (say what failed, plainly).
+   Exit 0 means ready, 2 means something is really missing, 1 is an error (say what failed, plainly).
+   Exit 0 can list `pending` rows (⏳ "checking in a moment"): connections you did not pass in
+   `--mcp`. Check them now, then run the doctor again with their results; they need nothing from the user.
    Exit 0 can still carry `warnings` (TrendsMesh, a voice-cloning plan that is unknown or has no
    cloning): the run can go on without them.
    The first `tm` call installs the base tools (about 0.5 GB): say so, and give it the Bash
-   tool's longest timeout (10 minutes). If the session started with "its tools could not be set
+   tool's longest timeout (10 minutes). When the video editing tools are installed, the first check
+   after their install or a plugin update makes a 1-second test render (about a minute; later checks
+   skip it): say so too. A failed test render shows the video editing tools as something you set up
+   again after the user's yes (`tm env install video --yes`). If the session started with "its tools could not be set
    up", run `tm` anyway: it tries the install again, and often that is all it takes. If `tm` then
    says "trying again just now failed too", stop the check there and tell the user the reason it
    gives, in plain words, without guessing at another one. When a site could not be reached, say
@@ -153,14 +160,14 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
    - Meta Ads: as in step 1 above (`ads_get_ad_entities` for one ad on the user's ad account),
      but find the account with `ads_get_ad_accounts` rather than asking: the brief's intake asks
      only which product. It answers → `ok`. Not connected or not signed in → `missing`. It refuses this ad account
-     → `not_enabled`.
+     → `not_enabled`. Pass the checked account's currency and the number of accounts as in step 1 above.
    - Artifacts: `ok` when `Artifact` (or the older `publish_files`) is among this session's tools,
      else `missing`, as for trend research. No call is needed, and never ask the user to add it
      through `/mcp`.
 2. Run:
 
    ```
-   tm doctor --playbook creative-brief --outputs review_pack,briefs,animatics,page --mcp trendsmesh=<result>,meta=<result>,artifacts=<result> --report --json
+   tm doctor --playbook creative-brief --outputs review_pack,briefs,animatics,page --mcp trendsmesh=<result>,meta=<result>,artifacts=<result> --meta-account currency=<code>,accounts=<n> --report --json
    ```
 
    Exit codes and the first `tm` call are as in step 3 above.
@@ -242,12 +249,12 @@ check, and what it passes decides what is installed:
 its PAUSED upload.
 
 1. Check the connections: TrendsMesh as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`),
-   Meta Ads as in step 1 above (`ok`, `missing` or `not_enabled`), and artifacts (`ok` when `Artifact`, or the
+   Meta Ads as in step 1 above (`ok`, `missing` or `not_enabled`, with the account's currency and count), and artifacts (`ok` when `Artifact`, or the
    older `publish_files`, is among this session's tools, else `missing`; no call).
 2. Run:
 
    ```
-   tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<result>,meta=<result>,artifacts=<result> --report --json
+   tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<result>,meta=<result>,artifacts=<result> --meta-account currency=<code>,accounts=<n> --report --json
    ```
 
    Exit codes and the first `tm` call are as in step 3 above.

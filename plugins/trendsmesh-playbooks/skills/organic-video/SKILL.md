@@ -69,11 +69,14 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
    **Artifacts**: `ok` when the `Artifact` tool (or the older `publish_files`) is among this
    session's tools, else `missing` (no call; never ask the user to add it through `/mcp`). Never guess a result. The Replicate token,
    the ElevenLabs key and the browser are read by the doctor itself.
-2. At A0 of an idea run: `tm doctor --playbook organic-video --outputs proposals --mcp
-   trendsmesh=<s>,artifacts=<s> --json`. At D1 of a production run, the production run's own
-   output: `script_to_film` (the base tools alone) or `organic_video` (the video breakdown, video
+2. At A0 of an idea run: `tm doctor --playbook organic-video --outputs <one of proposals|weekly_plan> --mcp
+   trendsmesh=<s>,artifacts=<s> --json` (`weekly_plan` for a week run). At D1 of a production run, the production
+   run's own output, `--outputs <one of script_to_film|organic_video>`: `script_to_film` (the base tools alone) or
+   `organic_video` (the video breakdown, video
    editing, voice and AI video tools, installed after the user's yes with their size and time;
-   then the ElevenLabs credits, `tm tool elevenlabs credits --run R --json`, free). The first `tm`
+   then the ElevenLabs credits, `tm tool elevenlabs credits --run R --json`, free; with the video editing tools
+   installed, the first check after their install or an update makes a 1-second test render, about a minute: say
+   so). Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The first `tm`
    call on a computer installs the base tools (about 0.5 GB): say so, and give it the Bash tool's
    longest timeout (10 minutes).
 3. Show its `card` in plain words. **Without TrendsMesh and without the user's choice, organic

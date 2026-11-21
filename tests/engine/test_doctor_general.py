@@ -97,8 +97,8 @@ def test_the_general_check_reads_the_trendsmesh_plan():
 def test_trendsmesh_not_checked_stays_on_claudes_list():
     r = general({})
     it = item(r, "mcp_trendsmesh_general")
-    assert it.unchecked and it.fixer == "agent"
-    assert "I still need to check these" in doctor.card(r, general=True)
+    assert it.unchecked and it.fixer == "agent" and it.pending
+    assert "- ⏳ TrendsMesh connected and signed in: checking in a moment" in doctor.card(r, general=True)
 
 
 # --- the card ---------------------------------------------------------------------------------------------------

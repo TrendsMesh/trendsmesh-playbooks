@@ -43,10 +43,11 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
 
 1. Find each connector's state without guessing: TrendsMesh (Free or Paid, the user's choice:
    `../refresh-ad/references/trendsmesh-sign-in.md`; `tm mode status --json` first, and when TrendsMesh isn't ready
-   and no Free was chosen, one question, Free or Paid), Meta Ads (one cheap `ads_get_ad_entities` call), and
+   and no Free was chosen, one question, Free or Paid), Meta Ads (one cheap `ads_get_ad_entities` call; from
+   `ads_get_ad_accounts`, the checked account's currency and the number of ad accounts, never a name or an id), and
    artifacts (`ok` when the `Artifact` tool is among this session's tools).
-2. `tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<s>,meta=<s>,artifacts=<s> [--mode free]
-   --json`, and show its `card` in plain words. The media tools are installed after the user's yes, with their size
+2. `tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<s>,meta=<s>,artifacts=<s>
+   --meta-account currency=<code>,accounts=<n> [--mode free] --json`, and show its `card` in plain words. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The media tools are installed after the user's yes, with their size
    and time.
 3. **On Free the run goes on as labelled guesses** (`tm evidence guess`, refused until the user chose Free): model
    ads from the Meta Ad Library where it returns any (its search covers mainly ads shown in the EU) and formats you

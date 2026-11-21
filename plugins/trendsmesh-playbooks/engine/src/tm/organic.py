@@ -26,7 +26,10 @@ Here, the stack check. The doctor (`tm doctor --playbook organic-video`) says wh
 connected; `tm organic stack` records what that means for this run in run.json `organic.stack`:
 
     {"replicate": ok|missing, "elevenlabs": ok|missing|no_credits|unchecked,
-     "artifacts": ok|missing, "browser": ok|missing, "at": <ISO time>}
+     "artifacts": ok|missing|denied, "browser": ok|missing, "at": <ISO time>}
+
+(`denied`: a page publish in this session was refused by Claude Code's permissions, issue #125; the pages are then
+local files, as with `missing`.)
 
 - A0 records it from the doctor's rows, with `--elevenlabs ok|missing` (the credits are not read yet,
   so a key that is set is `ok` there and the credits stay unchecked until D1).
@@ -54,7 +57,7 @@ from tm.stops import AGAIN, Stop
 
 STACK_VALUES = {"replicate": ("ok", "missing"),
                 "elevenlabs": ("ok", "missing", "no_credits", "unchecked"),
-                "artifacts": ("ok", "missing"),
+                "artifacts": ("ok", "missing", "denied"),
                 "browser": ("ok", "missing")}
 ELEVENLABS_ROUTES = ("elevenlabs_narrator", "elevenlabs_lipsync")  # the speech routes that need ElevenLabs
 ORGANIC_VIDEO_OUTPUT = "organic_video"   # the production run's output that makes an AI video

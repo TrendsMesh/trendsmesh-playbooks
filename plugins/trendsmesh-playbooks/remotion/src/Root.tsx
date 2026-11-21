@@ -1,4 +1,4 @@
-import { Composition } from "remotion";
+import { AbsoluteFill, Composition } from "remotion";
 import { HookSwap, HookSwapProps, hookSwapDefaults } from "./HookSwap";
 import { WordCaptions, WordCaptionsProps, wordCaptionsDefaults } from "./WordCaptions";
 import { OrganicCaptions, OrganicCaptionsProps, organicCaptionsDefaults, totalSeconds } from "./OrganicCaptions";
@@ -6,9 +6,14 @@ import { RankingList, RankingListProps, rankingListDefaults, rankingSeconds } fr
 import { RankingSplit, RankingSplitProps, rankingSplitDefaults, rankingSplitSeconds } from "./RankingSplit";
 import { QuizGrid, QuizGridProps, quizGridDefaults } from "./QuizGrid";
 
+// The doctor's test render (`tm.render.probe`, issue #124): 1 s of one colour, no props and no files, so a pass
+// shows that Node, the packages and the headless browser can render.
+const Probe: React.FC = () => <AbsoluteFill style={{ backgroundColor: "#2b6cb0" }} />;
+
 // Props come from a JSON file per run (--props), so every render is documented next to its assets.
 export const RemotionRoot: React.FC = () => (
   <>
+  <Composition id="Probe" component={Probe} width={160} height={90} fps={30} durationInFrames={30} />
   <Composition
     id="HookSwap"
     component={HookSwap}

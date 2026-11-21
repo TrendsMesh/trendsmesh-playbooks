@@ -40,9 +40,13 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    `inactive` or `missing`, and the choice.
    **Meta Ads:** `ads_get_ad_entities` for one ad on the user's ad account (ask for the ad
    account first if you don't know it): `ok`, `missing` (not connected or not signed in) or
-   `not_enabled` (Meta refuses this ad account).
-2. `tm doctor --outputs <chosen or all four> --mcp trendsmesh=<s>,meta=<s> [--mode free] [--voice]
-   [--caption-removal] [--fact elevenlabs_plan=cloning|no_cloning|unknown] --json`. The first
+   `not_enabled` (Meta refuses this ad account). From `ads_get_ad_accounts`: the checked account's currency
+   and the number of ad accounts, never a name or an id.
+2. `tm doctor --outputs <chosen, from creative_brief,edited_video,ai_video,live_test> --mcp trendsmesh=<s>,meta=<s>
+   --meta-account currency=<code>,accounts=<n> [--mode free] [--voice]
+   [--caption-removal] [--fact elevenlabs_plan=cloning|no_cloning|unknown] --json`. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. With the
+   video editing tools installed, the first check after their install or an update makes a 1-second test render
+   (about a minute): say so. The first
    `tm` call on a computer, and the first after a plugin update, installs the base tools first
    (about 0.5 GB; after an update mostly from the download cache): say so before it, and give it
    the Bash tool's longest timeout (10 minutes).

@@ -163,9 +163,21 @@ def install(tier: str, yes: bool) -> int:
         from tm.tools import _common
 
         try:
+            fresh = not render.setup_done()
             render.setup()
         except (_common.ToolError, OSError, RuntimeError, ValueError) as exc:
             print(f"The video tools are installed, but the Remotion setup did not finish: {exc}")
+            return 1
+        try:   # a test render (issue #124): the files of a setup can be in place while a render fails
+            try:
+                render.probe()
+            except _common.ToolError:
+                if fresh:
+                    raise
+                render.setup(force=True)   # an earlier setup's files: set them up again from scratch, then test again
+                render.probe()
+        except (_common.ToolError, OSError, RuntimeError, ValueError) as exc:
+            print(f"The video tools are installed, but a test render failed: {exc}")
             return 1
     if tier == "animatic":  # puppeteer-core only: the browser is the user's own
         from tm import atlas

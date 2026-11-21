@@ -63,6 +63,20 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A model review every two weeks.** A scheduled check compares the public rankings and Replicate's and ElevenLabs'
   pages with the list and opens one issue for the owner with what is new, what changed price and what is gone.
   Nothing in the list changes without the owner's decision.
+- **The doctor tests a render before it says the video editing tools are ready.** A setup whose files are in place
+  but cannot render (as when the Remotion setup stopped halfway) now shows as something Claude sets up again after
+  your yes, with what failed. The test takes about a minute, once per plugin version; `tm env install video` runs
+  it too, and sets Remotion up again from scratch when an earlier setup's files do not render.
+- **Connections Claude has not checked yet no longer read as missing.** They show as ⏳ "checking in a moment", and
+  the card still says "Ready to go"; the doctor stops (exit 2) only for something really missing.
+- **"Free or Paid is your choice" shows only while you have not chosen.** With Paid saved, the TrendsMesh row says its
+  own next step.
+- **Each playbook names its exact output ids for the readiness check,** and a wrong name gets a hint: "Unknown output
+  brief. Did you mean creative_brief?"
+- **One support report, `trendsmesh-support.md`, written again each time,** so the current one is never in doubt. It
+  now names the plugin version next to the engine's.
+- **The doctor says which Meta ad account it checked,** by its currency and the number of accounts ("EUR; 1 of 2
+  accounts checked"), on the card and in the report; never an account name or id.
 
 ## 0.13.1
 
