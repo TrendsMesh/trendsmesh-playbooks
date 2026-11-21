@@ -13,7 +13,7 @@ from test_research_report import BLASK, DZIEN, POV, _cfg, _hook, _uroda, _with_h
 from tm import i18n, page, research_report, run_page, state
 from tm.cli import main
 from tm.playbooks import TREND_RESEARCH
-from tm.run_page import words
+from tm.run_page import static, words
 
 
 @pytest.fixture(autouse=True)
@@ -44,8 +44,10 @@ def _settled(html: str) -> str:
 def test_the_report_has_the_trendsmesh_look_and_keeps_its_views(tmp_path):
     run, _ = _uroda(tmp_path)
     html = _build(run)
+    folder = sorted((run.path / "04_final").glob("report_v*"))[-1]
+    theme = (folder / static.served("theme.css")).read_text(encoding="utf-8")       # a fixed part (issue #129)
     for token in ("#fff4e6", "#fffbf6", "#16110d", "#ff4f8b", "#d6246e", "#ffe14a"):     # assets/page/theme.css
-        assert token in html
+        assert token in theme
     assert '<header class="top">' in html and "<svg" in html and '<span class="pill dark">Trend research</span>' in html
     assert "<title>Trend report: Uroda (PL)</title>" in html                       # the report's own title
     assert "fonts.googleapis" not in html and "fonts.gstatic" not in html   # a shared report never calls Google
@@ -54,7 +56,8 @@ def test_the_report_has_the_trendsmesh_look_and_keeps_its_views(tmp_path):
     assert html.index('<header class="top">') < html.index('<nav class="views"')
     assert "What is moving in Uroda" in html and "Trend data: TrendsMesh, 4 Nov 2026." in html
     # the report's own styles keep to its part of the page, the run page's to theirs
-    assert ".report .card" in html and "--act:" in html
+    css = (folder / static.served("trend-report.css")).read_text(encoding="utf-8")
+    assert static.served("trend-report.css") in html and ".report .card" in css and "--act:" in css
     assert "Nothing to decide right now." not in html                       # the report is the page's content
     assert "Every number shows its source when you hover" not in html       # not said of the report's numbers
 

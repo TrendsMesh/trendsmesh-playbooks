@@ -137,7 +137,8 @@ def test_files_lists_index_and_assets_for_publish(tmp_path, capsys):
     assert main(["page", "files", "--run", str(run.path), "--page", "report", "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out == {"status": "done", "folder": "04_final/report_v02", "files": page.files(empty),
-                   "artifact": {"file_path": str((empty / "index.html").resolve()), "files": {}}}
+                   "artifact": {"file_path": str((empty / "index.html").resolve()), "files": {}},
+                   "summary": page.summary(page.files(empty))}
     assert main(["page", "files", "--run", str(run.path), "--page", "brief", "--json"]) == 1
     message = json.loads(capsys.readouterr().out)["message"]
     assert "04_final/brief_vNN" in message and "continues from the same place" in message
@@ -317,6 +318,27 @@ def test_files_gives_the_artifact_tool_its_arguments(tmp_path, capsys):
     assert out["artifact"] == {"file_path": str((folder / "index.html").resolve()),
                                "files": {"assets/a.png": str((folder / "assets" / "a.png").resolve())}}
     assert [f["as"] for f in out["files"]] == ["index.html", "assets/a.png"]
+
+
+def test_files_says_to_read_only_index_html_and_sums_up_the_rest(tmp_path, capsys):
+    """Issue #129: the agent reads index.html before publishing, and the summary tells it what the other files are
+    instead of reading them (the run's media, the run's data beside the page)."""
+    run = _run(tmp_path)
+    folder = _built(run)
+    (folder / "assets" / "a.png").write_bytes(b"xx")
+    (folder / "assets" / "media").mkdir()
+    (folder / "assets" / "media" / "take.mp4").write_bytes(b"xyz")
+    (folder / "report.json").write_text("{}", encoding="utf-8")
+    assert main(["page", "files", "--run", str(run.path), "--page", "report", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    size = (folder / "index.html").stat().st_size
+    assert out["summary"] == {"read": {"as": "index.html", "bytes": size},
+                              "media": {"files": 2, "bytes": 5}, "data": [{"as": "report.json", "bytes": 2}],
+                              "fixed": [], "not_fixed": []}
+    assert all(set(f) == {"as", "path"} for f in out["files"])          # the older publish_files takes these alone
+    assert main(["page", "files", "--run", str(run.path), "--page", "report"]) == 0
+    text = capsys.readouterr().out
+    assert "Read index.html" in text and "2 media files" in text and "report.json" in text
 
 
 def test_limits_are_the_artifact_tools():

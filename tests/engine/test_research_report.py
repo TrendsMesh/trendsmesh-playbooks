@@ -23,6 +23,7 @@ import beauty
 from tm import config, page, research_config, research_growth, research_map, research_report, trends
 from tm.cli import main
 from tm.playbooks import TREND_RESEARCH
+from tm.run_page import static, template
 from tm.runfolder import RunFolder
 
 AS_OF = beauty.CREATED
@@ -108,7 +109,8 @@ def test_page_has_three_views_and_switch(beauty_run, tmp_path):
     text = (_build_beauty(run) / "index.html").read_text(encoding="utf-8")
     for view in ("report", "digest", "paid"):
         assert f'id="view-{view}"' in text and f"<a href='#{view}'>" in text
-    assert '<nav class="views"' in text and "window.addEventListener('hashchange'" in text
+    assert '<nav class="views"' in text and static.served("trend-report.js") in text       # the switch (issue #129)
+    assert "window.addEventListener('hashchange'" in research_report.SCRIPT
     assert "<title>Trend report: beauty (US)</title>" in text and "What is moving in beauty" in text
     assert "Valid until 18 Nov 2026" in text and "Meta Ad Library (US)" in text
     assert "fonts.googleapis" not in text and "fonts.gstatic" not in text           # no call to Google (GDPR)
@@ -166,7 +168,8 @@ def test_second_build_writes_report_v02(beauty_run, tmp_path, capsys):
     assert main(args) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "done" and payload["folder"] == "04_final/report_v02"
-    assert [f["as"] for f in payload["files"]] == ["index.html", "report.json"]
+    assert [f["as"] for f in payload["files"]] == ["index.html", *sorted(static.served(n) for n in (
+        "page.js", "theme.css", "trend-report.css", "trend-report.js")), "report.json"]
     assert payload["files"] == page.files(run.path / "04_final" / "report_v02")
     assert (first / "index.html").read_bytes() == before                      # the first build is never touched
     assert _strip(_read(run.path / "04_final" / "report_v02" / "report.json")) == \
@@ -322,7 +325,8 @@ def test_act_now_counts_the_recommended_trends_and_csv_asks_for_downloads(tmp_pa
     assert "Serum z witaminą C" in others
     data = json.loads(text.split('<script type="application/json" id="tm-page">', 1)[1].split("</script>", 1)[0])
     assert data["downloads"] is True
-    assert "P.downloads" in text and "P.local ? null : await use('downloads')" not in text
+    assert static.served("page.js") in text
+    assert "P.downloads" in template.SCRIPT and "P.local ? null : await use('downloads')" not in template.SCRIPT
 
 
 def test_rebuilt_previous_week_is_said(tmp_path):
@@ -372,7 +376,7 @@ def test_offline_thumbnails_still_build_the_page(tmp_path, monkeypatch):
     run, picks = _uroda(tmp_path)
     folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
     text = (folder / "index.html").read_text(encoding="utf-8")
-    assert "<img" not in text and list((folder / "assets").iterdir()) == []
+    assert "<img" not in text and [f.name for f in (folder / "assets").iterdir()] == ["static"]   # the fixed parts
     assert "Poranna rutyna z kremem." in text                                    # the card is there, without images
 
     # online: the thumbnails are the page's own files, chosen by the picks' date, never today's. As of
@@ -477,10 +481,10 @@ def _fake_fetch(monkeypatch):
 def test_thumbnails_stop_at_the_publish_limit(tmp_path, monkeypatch):
     run, picks = _uroda(tmp_path)
     _fake_fetch(monkeypatch)
-    monkeypatch.setattr(page, "MAX_FILES", 3)                  # index.html, report.json and one image
+    monkeypatch.setattr(page, "MAX_FILES", 7)          # index.html, report.json, the 4 fixed parts and one image
     folder = research_report.build(run, _picks_file(run, {**picks, "as_of": "2026-05-10"}), cfg=_cfg(run))
-    assert len(list((folder / "assets").iterdir())) == 1
-    assert len(page.files(folder)) == 3                        # publishable as it is
+    assert len([f for f in (folder / "assets").iterdir() if f.name != "static"]) == 1
+    assert len(page.files(folder)) == 7                        # publishable as it is
     assert '"thumbnails_missing": 1' in (run.path / "manifest.md").read_text(encoding="utf-8")   # the one left out
 
 

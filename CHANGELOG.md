@@ -4,6 +4,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Pages publish faster: Claude reads only this run's page.** The theme, the page scripts, the trend report's
+  stylesheet and script and the catalogue of our 49 animation styles are now files of their own beside the page, the
+  same in every run, and `tm page files` says which ones they are. Before publishing, Claude reads only `index.html`:
+  a three-idea ideas page went from 152 KB to 23 KB, a trend report from 49 KB to 17 KB. The pages look and work as
+  before, also when opened as a local file.
+- **Organic AI video: the style gallery once on the ideas page.** All 49 styles are shown once, under the ideas,
+  instead of again for every idea. Each idea keeps its suggested styles and has a list to pick any other one.
 - **A decision you give in chat is saved exactly, or Claude asks again.** Every page build now lists the answers it
   takes in chat, one line per item or section, with the name the page shows. You may name an image by its name in
   the pack (`still_01`) and a track by its file (`mixkit-cat-walk-371.mp3`). A line Claude can't read, or a name that

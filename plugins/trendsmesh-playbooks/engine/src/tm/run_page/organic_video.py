@@ -51,7 +51,7 @@ from pathlib import Path
 from tm import (atlas_prompt, json_schema, kit as kits, manifest, organic_gates, organic_pages, page as pages, state,
                 stepchecks)
 from tm.organic_pages import choices, gate as gate_page, taste
-from tm.run_page import organic_plan, styles as style_previews
+from tm.run_page import organic_plan, static, styles as style_previews
 from tm.run_page.context import Context
 from tm.run_page.template import E, media_tag, register_block
 from tm.run_page.words import tx
@@ -842,8 +842,8 @@ def _choices(b: dict, ds, lang: str, live: bool) -> str:
         if live and sec.get("gallery"):
             g = sec["gallery"]
             picked = next((o["id"] for o in sec["options"] if o["default"]), None)
-            parts.append(style_previews.gallery_html(f"ovs-{sid}", _path("picks", sid), g["groups"], picked,
-                                                     w["styles"], taken=set(g["taken"]), ids=g["ids"]))
+            parts.append(style_previews.gallery_html(f"ovs-{sid}", _path("picks", sid), picked, w["styles"],
+                                                     taken=set(g["taken"]), ids=g["ids"]))
         if live and sec.get("text"):
             parts.append(f'<label class="small soft note-l">{E(sec["text"].get("label") or "")}<textarea class="detail-note" '
                          f'data-detail="{_path("texts", sid)}" disabled>{E(sec["text"].get("value") or "")}</textarea></label>')
@@ -851,15 +851,23 @@ def _choices(b: dict, ds, lang: str, live: bool) -> str:
             parts.append(f'<label class="small soft note-l">{E(sec["note"])}<textarea class="detail-note" '
                          f'data-detail="{_path("notes", sid)}" disabled></textarea></label>')
         out.append(f'<article class="card ov-section">{"".join(parts)}</article>')
-    return _assets(b) + f'<div class="ov-items">{"".join(out)}</div>'
+    return _assets(b) + f'<div class="ov-items">{"".join(out)}</div>' + (style_previews.TAIL if _styled(b) else "")
+
+
+def _styled(b: dict) -> bool:
+    """True when the first organic block shows our styles: a gallery, or a style's loop."""
+    return bool(b.get("assets")) and any(
+        sec.get("gallery") or any(m.get("loop") for o in sec.get("options") or [] for m in o.get("media") or [])
+        for sec in b.get("sections") or [])
 
 
 def _assets(b: dict) -> str:
+    """The stylesheets and this page's script (issue #129: the plugin's fixed files, tm.run_page.static); the style
+    catalogue's script comes after the block (`styles.TAIL`)."""
     if not b.get("assets"):
         return ""
-    styled = any(sec.get("gallery") or any(m.get("loop") for o in sec.get("options") or [] for m in o.get("media") or [])
-                 for sec in b.get("sections") or [])
-    return f"<style>{CSS}</style><script>{SCRIPT}</script>" + (style_previews.ASSETS if styled else "")
+    return (static.link("organic-video.css") + (style_previews.HEAD if _styled(b) else "")
+            + static.script("organic-video.js"))
 
 
 register_block("ov_items", _items)

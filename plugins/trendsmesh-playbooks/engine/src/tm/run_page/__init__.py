@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from tm import checkins, flow, i18n, manifest, page, plain_words, playbooks, state
-from tm.run_page import (create_ad, creative_brief, detail as details, organic_video, refresh_ad, template,
+from tm.run_page import (create_ad, creative_brief, detail as details, organic_video, refresh_ad, static, template,
                          trend_research, words)
 from tm.run_page.context import MEDIA_EXT, Context
 from tm.run_page.words import t
@@ -506,6 +506,7 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
         if bad:
             raise Stop(page.MANGLED.format(refs=", ".join(bad[:3])))
         (folder / "index.html").write_text(text, encoding="utf-8")
+        static.put(folder)             # the fixed parts it loads (issue #129)
         (folder / BUILD_FILE).write_text(json.dumps(built, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         listed = page.files(folder)
     except BaseException:

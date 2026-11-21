@@ -34,6 +34,7 @@ import re
 from pathlib import Path
 
 from tm import paths
+from tm.run_page import static
 from tm.run_page.words import label as _label, t
 
 THEME = paths.bundled_data().parent / "assets" / "page"
@@ -538,8 +539,10 @@ def top_bar(playbook: str, brand: str) -> str:
 def render(model: dict) -> str:
     """The page. A playbook whose page is a document of its own (Trend research's report) also gives `body`: its
     HTML, built and escaped by that playbook's own renderer, placed between the "Now" block and "Already settled"
-    (no "nothing to decide" panel then), with `css` after the theme, `footer` for the footer line and `fonts: False`
-    to leave out the Google Fonts link (a shared page that must not call Google)."""
+    (no "nothing to decide" panel then), with `styles` (its fixed stylesheets, tm.run_page.static) after the theme,
+    `css` (a stylesheet of its own, kept inline), `footer` for the footer line and `fonts: False` to leave out the
+    Google Fonts link (a shared page that must not call Google). The theme and this script are fixed parts, loaded
+    from `assets/static/` (issue #129): the page's writer puts them there (`static.put`)."""
     lang, ds, local = model.get("lang") or "en", model["datasets"], bool(model.get("local"))
     body = model.get("body") or ""
     now = "".join(_now(s, ds, lang, local, model["updated"]) for s in model["now"])
@@ -554,13 +557,16 @@ def render(model: dict) -> str:
     fonts = (f'<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="{E(FONTS)}">'
              if model.get("fonts", True) else "")
     footer = model.get("footer") or t("footer.built", lang, run=model["run"], when=model["updated"])
+    styles = static.link("theme.css") + "".join(static.link(n) for n in model.get("styles") or ())
+    if model.get("css"):     # a report kept from before its stylesheet was a fixed part
+        styles += f'<style>{model["css"]}</style>'
     return (f'<!doctype html><html lang="{E(lang)}"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1"><title>{E(model["title"])}</title>'
-            f'{fonts}<style>{theme_css()}{model.get("css") or ""}</style></head><body><div class="wrap">'
+            f'{fonts}{styles}</head><body><div class="wrap">'
             f'{top_bar(model["playbook"], t("top.brand", lang))}<main>{now}{body}'
             f'{_settled(model["settled"], ds, lang)}</main>'
             f'<footer>{E(footer)}</footer></div>'
-            f'<script type="application/json" id="tm-page">{_script_json(data)}</script><script>{SCRIPT}</script>'
+            f'<script type="application/json" id="tm-page">{_script_json(data)}</script>{static.script("page.js")}'
             f'</body></html>')
 
 
@@ -683,6 +689,7 @@ SCRIPT = r"""
       if (el.type === 'radio') { if (!el.checked) return; v = el.value; }
       else if (el.type === 'checkbox') v = el.checked;
       else if (el.hasAttribute('data-json')) { try { v = JSON.parse(el.value || 'null'); } catch (e) { v = null; } }
+      else if (el.hasAttribute('data-or') && !el.value) return;   // stands in for the radios on its path: empty, saves nothing
       else v = el.value;
       let o = out;
       for (let i = 0; i < path.length - 1; i++) o = (o[path[i]] = (o[path[i]] && typeof o[path[i]] === 'object') ? o[path[i]] : {});

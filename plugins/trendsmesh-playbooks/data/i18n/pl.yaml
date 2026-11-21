@@ -166,6 +166,10 @@ strings:
       styles_hint: Kliknij plakat, aby zobaczyć ruch. Wybierz styl, aby użyć go zamiast proponowanych.
       styles_suggested: proponowany wyżej
       styles_play: Odtwórz
+      # issue 129: on the ideas page the gallery is shown once, under the ideas; each idea names its style in a list
+      styles_browse: Kliknij plakat, aby zobaczyć ruch. Aby użyć stylu w pomyśle, wybierz go z listy przy tym pomyśle.
+      styles_other: "Albo inny z naszych stylów (wszystkie są pod pomysłami):"
+      styles_choose: Wybierz styl…
       risk_from: "Największe ryzyko: {risk}, w {production} ({weight})"
       risk_from_none: Po zabezpieczeniu wymienionych ryzyk nie zostaje żadne
       looks_channel:
