@@ -67,7 +67,10 @@ def _to(run, checkin):
             if nxt.action == "work" and nxt.checkin:                  # a check-in decided before `tm done`
                 cat = checkins.load(playbook=ORGANIC_VIDEO)
                 for cid in nxt.checkin.ids:
-                    flow.decide(run, cid, cat.checkins[cid].choices[0], by="user", note=None)
+                    try:
+                        flow.decide(run, cid, cat.checkins[cid].choices[0], by="user", note=None)
+                    except ValueError as exc:                          # the next step's `before` (script_draft)
+                        assert "not reached yet" in str(exc)
                 flow.complete(run, nxt.step)
             elif nxt.action == "work":
                 flow.complete(run, nxt.step)

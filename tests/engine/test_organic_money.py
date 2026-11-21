@@ -136,7 +136,7 @@ def test_pack_reject_skips_spending_and_refuses_approval(tmp_path, capsys):
         complete(run, nxt.step)
     assert nxt.step == "H1" and walked == []   # E2 was worked before the pack was asked
     s = state.load(run)
-    assert {d["checkin"] for d in s.decisions} == {"taste", "pack"}
+    assert {d["checkin"] for d in s.decisions} == {"script_draft", "taste", "pack"}
     assert s.spend == {} and s.budgets == {}
 
 

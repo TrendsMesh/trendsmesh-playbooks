@@ -78,6 +78,16 @@ checkins:
       by_hand:
         skips: "No schedule was set up: say 'plan my week of videos' each week."
 
+  # issue #131: the voiceover script as drafted, seen on the run page right after the idea is picked (before D2's
+  # style, voice and music); `script` is another check-in (the script to film). Asked on its own at Check every
+  # step, on the plan card at Just the big calls, by rule at Hands-off.
+  - id: script_draft
+    name: Look at the script draft
+    card: plan
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "the pack's script as drafted (logged): its lines go on to the voice and the takes"
+    choices: [accept]
+
   - id: taste
     name: Pick the style, voice and music
     card: plan

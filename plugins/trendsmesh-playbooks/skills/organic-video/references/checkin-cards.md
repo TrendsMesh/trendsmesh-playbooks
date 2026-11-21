@@ -92,6 +92,7 @@ built and published to the same link, and the card again.
 
 | Check-in | Check every step | Just the big calls | Hands-off |
 |---|---|---|---|
+| `script_draft` (before D2) | the run page's script stage | in the plan card (after E2) | rule |
 | `taste` (after D2) | its card | in the plan card (after E2) | rule |
 | `pack` 💰 (after E2) | its card | in the plan card | its card |
 | `images` (after F1) | the images page (an animation: its storyboard) | rule | rule |
@@ -200,7 +201,7 @@ with the user's words as its note: the card is not decided as one.
 
 | Card | Members | When | How to record |
 |---|---|---|---|
-| Approve the plan for this video | `taste` ("Pick the style, voice and music"), `pack` ("Approve the generation pack and its cost") | after E2, in an AI video production run | `tm decide taste accept --said "<their words>" --run R --note ...`, then `tm decide pack approve --said "<their words>" --run R --note ...` (or `reject`), in the order the message gives; then `tm budget approve` for each planned amount |
+| Approve the plan for this video | `script_draft` ("Look at the script draft"), `taste` ("Pick the style, voice and music"), `pack` ("Approve the generation pack and its cost") | after E2, in an AI video production run | `tm decide script_draft accept --said "<their words>" --run R`, then `tm decide taste accept --said "<their words>" --run R --note ...`, then `tm decide pack approve --said "<their words>" --run R --note ...` (or `reject`), in the order the message gives; then `tm budget approve` for each planned amount |
 
 The plan card restates both members' points (the taste picks, then the whole pack card with its
 costs and the resolution question) and asks one question: "Make this video, with these picks, at
@@ -215,6 +216,7 @@ names (FLOWS.md section J; the plugin's words after it):
 |---|---|---|
 | `reuse_profile` (Hands-off) | reuse when a confirmed profile exists, else new | each channel's saved profile and the date it was confirmed, or "no saved profile" |
 | `script` (Hands-off) | delivered | the page version and the script file |
+| `script_draft` (Hands-off) | the pack's script as drafted (logged) | the pack version and its line count |
 | `taste` (Hands-off) | the profile's saved picks, else your pick, logged with the reason | the picks and why (the pack's `taste.why`) |
 | `images` (Just the big calls, Hands-off) | the rubric's pick; one automatic redo per item; the suggested text style | each item's pick and its reason against the rubric (`tm organic pick`); the text style approved by rule (`tm organic text approve --by rule`): the channel's saved set, else the first of the three suggested, saved for the channel (`tm brand text-style save`) |
 | `video` (Just the big calls, Hands-off) | the rubric's pick; a take that fails QA goes to the user (`fails_qa`) | each take's pick with its QA, or the findings that failed it |

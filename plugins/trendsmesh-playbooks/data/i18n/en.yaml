@@ -1159,6 +1159,35 @@ organic:
     total: Total
     week_cost: "{total} of {budget}"
     rec_total: "The week's choices cost {total} of {budget}"
+    # the profile, the script draft and the pack as stages of the run page (issue #131)
+    profile_channel: Channel
+    profile_platforms: Platforms
+    profile_account: Account type
+    profile_topic: Topic and bubble
+    profile_audience: Audience
+    profile_tone: Tone and style
+    profile_performed: What performed
+    profile_catalogue: Products
+    profile_product_role: Product role
+    profile_video_style: The channel's own look
+    profile_rules: Content rules
+    script_idea: The idea picked
+    script_words: Words
+    script_seconds: Seconds
+    script_lines: The voiceover script, line by line
+    script_at: Time
+    script_text: Line
+    script_shot: Shot
+    pack_lines: What is paid, item by item
+    pack_what: Item
+    pack_model: Model
+    pack_units: Units
+    pack_price: Unit price (USD)
+    pack_cost: Cost (USD)
+    pack_checked: Price checked
+    pack_total: Total
+    pack_voice: ElevenLabs credits
+    pack_cap: Budget cap per run
 
 # --- Refresh an ad's run page: engine/src/tm/run_page/ (issue #19) ---
 # decision.saved_at's {time} and decision.save_error's {error} are filled on the page itself.
@@ -1185,6 +1214,7 @@ run_page:
       pack: Generation pack and its cost
       plan: The plan for this video
       script: Script to film
+      script_draft: The script draft
       images: Images
       video: Takes
       final_edit: Final video and posting kit
@@ -1341,6 +1371,8 @@ run_page:
       reject: Not approved
     script:
       accept: Delivered
+    script_draft:
+      accept: Seen and accepted
     images:
       accept: Accepted
       redo: Make it again

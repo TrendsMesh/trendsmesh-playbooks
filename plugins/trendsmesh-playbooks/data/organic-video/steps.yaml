@@ -48,7 +48,7 @@ steps:
   - {id: I5, title: Weekly schedule, outputs: [weekly_plan], before: [schedule], skip_when: {schedule: by_hand}, spends: false, ref: "skills/organic-video/references/flow.md#i5"}
   # D. Recipe and taste (step 3): a production run starts here
   - {id: D1, title: "Recipe: production type and product", outputs: [script_to_film, organic_video], spends: false, requires: [credits_recorded, recipe_written], ref: "skills/organic-video/references/flow.md#d1"}
-  - {id: D2, title: Taste picks, outputs: [organic_video], checkins: [taste], spends: false, ref: "skills/organic-video/references/flow.md#d2"}
+  - {id: D2, title: Taste picks, outputs: [organic_video], before: [script_draft], checkins: [taste], spends: false, ref: "skills/organic-video/references/flow.md#d2"}
   # E. Pack or script (steps 4 and 5)
   - {id: E1, title: Model and speech route, outputs: [organic_video], spends: false, ref: "skills/organic-video/references/flow.md#e1"}
   - {id: E2, title: Generation pack and cost, outputs: [organic_video], checkins: [pack], spends: false, requires: [pack_checked], ref: "skills/organic-video/references/flow.md#e2"}

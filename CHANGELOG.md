@@ -18,6 +18,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   start questions on one page, each with its default ticked, as Organic AI video does. It is the run's first page:
   every later check-in goes to the same link, with your start answers shown as settled. Answering in chat still
   works.
+- **Organic AI video: the channel profile, the script draft and the pack on the page.** The profile's fields, the
+  voiceover script line by line with its times (shown right after the idea is picked, before the style, voice and
+  music), and the generation pack with each paid item's model and price, the total and the budget cap are now
+  stages of the run page. The script draft is a new check-in: its own question at "Check every step", part of the
+  plan card at "Just the big calls", and decided by rule at "Hands-off".
 - **The last version of every run's page has nothing open.** After the last decision the page is built once more:
   every decision under "Already settled", ending with "Done".
 - **A decision in chat updates the page.** Once Claude records it, the page stops waiting, is built again with that

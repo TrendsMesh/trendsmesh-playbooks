@@ -48,7 +48,8 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import atlas_prompt, json_schema, kit as kits, manifest, organic_gates, page as pages, state, stepchecks
+from tm import (atlas_prompt, json_schema, kit as kits, manifest, organic_gates, organic_pages, page as pages, state,
+                stepchecks)
 from tm.organic_pages import choices, gate as gate_page, taste
 from tm.run_page import organic_plan, styles as style_previews
 from tm.run_page.context import Context
@@ -72,7 +73,14 @@ SHARED_UI = ("decision", "post_to", "post_note", "copy", "copied", "saved_check"
 KIT_UI = ("posting_kit", "you_post", "at_posting", "paste", "title", "description_hashtags", "tags", "cover",
           "ai_label", "sound", "product", "search_phrase", "search_check")
 PAGE_UI = ("how_gate", "how_taste", "undecided", "decided_items", "picks", "line", "rec_item", "rec_note",
-           "rec_frame", "rec_platforms", "rec_thumbnail", "rec_pick")
+           "rec_frame", "rec_platforms", "rec_thumbnail", "rec_pick",
+           # the profile, the script draft and the pack (issue #131)
+           "profile_channel", "profile_platforms", "profile_account", "profile_topic", "profile_audience",
+           "profile_tone", "profile_performed", "profile_catalogue", "profile_product_role", "profile_video_style",
+           "profile_rules", "script_idea", "script_words", "script_seconds", "script_lines", "script_at",
+           "script_text", "script_shot", "pack_lines", "pack_what", "pack_model", "pack_units", "pack_price",
+           "pack_cost", "pack_checked", "pack_total", "pack_voice", "pack_cap")
+INTAKE_UI = ("account_creator", "account_business")
 CHOICES_UI = ("recommended", "line_note", "open_page", "cannot")
 TASTE_UI = ("no_track", "trending", "style", "voice", "music")
 
@@ -81,7 +89,8 @@ def keys() -> set[str]:
     """Every organic key of the string table this module reads."""
     return ({f"organic.gate.{k}" for k in GATE_UI} | {f"organic.{k}" for k in SHARED_UI}
             | {f"organic.kit.{k}" for k in KIT_UI} | {f"organic.page.{k}" for k in PAGE_UI}
-            | {f"organic.choices.{k}" for k in CHOICES_UI} | {f"organic.taste.{k}" for k in TASTE_UI})
+            | {f"organic.choices.{k}" for k in CHOICES_UI} | {f"organic.taste.{k}" for k in TASTE_UI}
+            | {f"organic.intake.{k}" for k in INTAKE_UI})
 
 
 def stage_keys() -> set[str]:
@@ -118,9 +127,116 @@ def _open_ask(ctx: Context, checkin: str) -> dict | None:
     return ask if ask is not None and run_page.is_open(ctx.run, ask) else None
 
 
+def _latest_pack(ctx: Context) -> tuple[str, dict] | None:
+    """The run's latest pack (`03_wip/pack_vNN.json`): (run-relative path, its data), or None."""
+    path = ctx.run.latest("03_wip", "pack", "json")
+    data = ctx.json(path) if path else None
+    return (ctx.rel(path), data) if isinstance(data, dict) else None
+
+
+def _profile(ctx: Context) -> list[dict]:
+    """The channel profile check-in (A1, issue #131): the drafted profile's fields, from the library's latest
+    profile of the run's channel."""
+    from tm import brand, config, trend_spool
+    from tm.organic_pages import intake
+    try:
+        channels = config.load(ctx.run).get("channels") or []
+    except (OSError, ValueError):
+        channels = []
+    found = brand.latest_saved(trend_spool.workspace_of(ctx.run), str(channels[0]), "channel") if channels else None
+    if not found:
+        return []
+    p, path = found
+    c = p.get("context") if isinstance(p.get("context"), dict) else {}
+    account = {"creator": _w(ctx, "intake.account_creator"), "business": _w(ctx, "intake.account_business")}
+    rules = p.get("content_rules")
+    rows = [(_w(ctx, "page.profile_channel"), p.get("channel")),
+            (_w(ctx, "page.profile_platforms"), ", ".join(intake.PLATFORM_NAMES.get(x, str(x))
+                                                          for x in p.get("platforms") or [])),
+            (_w(ctx, "page.profile_account"), account.get(p.get("account_type"), p.get("account_type"))),
+            (_w(ctx, "page.profile_topic"), c.get("topic")), (_w(ctx, "page.profile_audience"), c.get("audience")),
+            (_w(ctx, "page.profile_tone"), c.get("style")),
+            (_w(ctx, "page.profile_performed"), ", ".join(map(str, c.get("performed_links") or []))),
+            (_w(ctx, "page.profile_catalogue"), p.get("store")),
+            (_w(ctx, "page.profile_product_role"),
+             str(organic_pages.value(p.get("product_role"), "product", ctx.lang)) if p.get("product_role") else None),
+            (_w(ctx, "page.profile_video_style"), p.get("video_style")),
+            (_w(ctx, "page.profile_rules"), "; ".join(map(str, rules)) if isinstance(rules, list) else rules)]
+    rows = [(k, v) for k, v in rows if v not in (None, "", [])]
+    try:
+        source = path.resolve().relative_to(trend_spool.workspace_of(ctx.run).resolve()).as_posix()
+    except ValueError:
+        source = path.name
+    return [{"kind": "facts", "rows": rows, "source": source}] if rows else []
+
+
+def _script_draft(ctx: Context) -> list[dict]:
+    """The script draft (issue #131): the picked idea and the pack's voiceover script, line by line with its time,
+    seen before the style, voice and music; a note on it is saved with the check-in."""
+    found = _latest_pack(ctx)
+    if found is None:
+        return []
+    rel, pack = found
+    script = pack.get("script") if isinstance(pack.get("script"), dict) else {}
+    lines = [x for x in script.get("lines") or [] if isinstance(x, dict) and x.get("text")]
+    out = [{"kind": "facts", "rows": [(k, v) for k, v in (
+        (_w(ctx, "page.script_idea"), pack.get("title")), (_w(ctx, "page.script_words"), script.get("words")),
+        (_w(ctx, "page.script_seconds"), script.get("seconds"))) if v not in (None, "")], "source": rel}]
+    if lines:
+        rows = [{"at": "–".join(f"{float(t):g}" for t in x["at"]) + " s" if isinstance(x.get("at"), list) else "",
+                 "text": str(x["text"]), "shot": str(x.get("shot") or "")} for x in lines]
+        did = ctx.ds.add(_w(ctx, "page.script_lines"), rel, [("at", _w(ctx, "page.script_at"), "text"),
+                                                            ("text", _w(ctx, "page.script_text"), "text"),
+                                                            ("shot", _w(ctx, "page.script_shot"), "text")], rows)
+        out.append({"kind": "table", "title": _w(ctx, "page.script_lines"), "data": did})
+    return out
+
+
+def _pack_cost(ctx: Context) -> list[dict]:
+    """The pack and its cost (E2, issue #131): one row per paid item with its model, units and the registry's price
+    (the pack's own lines, exact to the third decimal, issue #137), the total and the budget cap."""
+    from tm import config, organic_pack
+    found = _latest_pack(ctx)
+    if found is None:
+        return []
+    rel, pack = found
+    cost = pack.get("cost") if isinstance(pack.get("cost"), dict) else {}
+    rows = [{"what": str(x.get("what") or x.get("item") or ""), "model": str(x.get("model") or ""),
+             "units": f"{x.get('units')} × {x.get('unit') or ''}".strip(), "price": x.get("unit_price"),
+             "cost": x.get("cost"), "checked": str(x.get("checked") or "")}
+            for x in cost.get("lines") or [] if isinstance(x, dict)]
+    out = []
+    if rows:
+        did = ctx.ds.add(_w(ctx, "page.pack_lines"), rel, [
+            ("what", _w(ctx, "page.pack_what"), "text"), ("model", _w(ctx, "page.pack_model"), "text"),
+            ("units", _w(ctx, "page.pack_units"), "text"), ("price", _w(ctx, "page.pack_price"), "num"),
+            ("cost", _w(ctx, "page.pack_cost"), "num"), ("checked", _w(ctx, "page.pack_checked"), "text")], rows)
+        out.append({"kind": "table", "title": _w(ctx, "page.pack_lines"), "data": did})
+    totals = cost.get("totals") if isinstance(cost.get("totals"), dict) else {}
+    try:
+        cap = config.value(config.load(ctx.run), "budget.per_run_usd")
+    except (OSError, ValueError, KeyError):
+        cap = None
+    if not isinstance(cap, (int, float)):         # the run's approved AI budget, when the config has none
+        cap = (state.load(ctx.run).budgets or {}).get("ai_usd")
+    facts = [(_w(ctx, "page.pack_total"), organic_pack._usd(totals["ai_usd"])
+              if isinstance(totals.get("ai_usd"), (int, float)) else None),
+             (_w(ctx, "page.pack_voice"), totals.get("voice_credits") or None),
+             (_w(ctx, "page.pack_cap"), organic_pack._usd(cap) if isinstance(cap, (int, float)) else None)]
+    facts = [(k, v) for k, v in facts if v not in (None, "")]
+    if facts:
+        out.append({"kind": "facts", "rows": facts, "source": rel})
+    return out
+
+
+STAGES_131 = {"profile": _profile, "script_draft": _script_draft, "pack": _pack_cost}
+
+
 def materials(ctx: Context, checkin: str) -> list[dict]:
     """The blocks the check-in's stage shows: its page's items with their inputs while it is open, else what was
     decided (none for a check-in this module does not show)."""
+    if checkin in STAGES_131:
+        return STAGES_131[checkin](ctx)
     if checkin in GATES:
         return _gate(ctx, checkin) if _open_ask(ctx, checkin) else _gate_settled(ctx, checkin)
     if checkin == TASTE:
