@@ -4,6 +4,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Create an ad: a planned continuous take is not reported as missing cuts.** Each paid take in the storyboard now
+  names the cuts its prompt asks for (none for one continuous shot), and the take's QA measures against those cuts,
+  never the scene times, so a single take no longer gets "no cut near 3 s" notes.
 - **Create an ad: a sharp logo for the end card.** `tm tool site brand` takes the largest version of a logo the site
   offers and prefers the brand's SVG wordmark. When the best logo is smaller than 600 px, Claude asks you for the logo
   as an SVG or a larger PNG, instead of scaling it up on the end card.

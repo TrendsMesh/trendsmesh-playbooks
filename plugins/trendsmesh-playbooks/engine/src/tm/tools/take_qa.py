@@ -8,7 +8,8 @@ speaks: a text file, or the pack (`pack_vNN.json`): its lines said (`speaker` no
 the model (`organic_qa.SPEECH_IN_TAKE`) and it has one video item; otherwise give a text file of this take's
 lines. Leave --script out for a take that carries no spoken lines (a narrated or silent route: the voice comes
 in the edit): it is not transcribed, and its transcript keys are null. L is the audio language. --brackets are
-the times the script cuts at, in seconds (the board's marks). S is this take's ElevenLabs Scribe transcript
+the times the script cuts at, in seconds (the board's marks); in a Create an ad run, the cuts the storyboard item's
+prompt asks for (`cuts`, issue #144), its default, and none for a continuous shot. S is this take's ElevenLabs Scribe transcript
 (`tm tool elevenlabs scribe`, paid): its words are used instead of local Whisper's.
 
 Writes `<take dir>/qa/<stem>_qa_vNN.json` (the next version, never an overwrite):
@@ -107,6 +108,35 @@ def cuts(take: Path) -> list[float]:
     from tm.tools import teardown
 
     return [start for start, _ in teardown.scenes(take)[1:]]
+
+
+def wanted_brackets(run, take: Path, text: str | None) -> list[float]:
+    """The marks a take's cuts are measured against: in a Create an ad run, the cuts the checked storyboard's item asks
+    for (issue #144: `cuts`, none for a continuous shot), and `--brackets`, when given, must be that list; elsewhere
+    `--brackets` as given."""
+    given = brackets(text) if text else None
+    cuts = None
+    try:
+        from tm import create_qa, state
+        from tm.playbooks import CREATE_AD
+
+        if state.load(run).playbook == CREATE_AD:
+            video = create_qa.board_video(run, take)
+            cuts = create_qa.board_cuts(run, take)
+    except (OSError, ValueError):
+        cuts = None
+    if cuts is None:
+        return given or []
+    if given is None:
+        return cuts
+    if len(given) != len(cuts) or any(abs(a - b) > 0.05 for a, b in zip(sorted(given), sorted(cuts))):
+        if not cuts:
+            raise c.ToolError(f"{video['item']} is planned as one continuous shot (the storyboard's cuts: []), so its "
+                              "QA takes no brackets: leave --brackets out. Nothing was measured.")
+        shown = ",".join(f"{x:g}" for x in cuts)
+        raise c.ToolError(f"The storyboard plans {video['item']}'s cuts at {shown} s: --brackets is that list "
+                          f"(--brackets {shown}), never the scene times. Nothing was measured.")
+    return cuts
 
 
 def offsets(found: list[float], wanted: list[float]) -> list[dict]:
@@ -309,7 +339,7 @@ def main(argv: list[str] | None = None) -> int:
     if a.scribe and script is None:
         raise c.ToolError("--scribe needs --script: Scribe's words are checked against the lines the take speaks.")
     scribe = scribe_words(run, c.resolve(run, a.scribe), take) if a.scribe else None
-    wanted = brackets(a.brackets)
+    wanted = wanted_brackets(run, take, a.brackets)
     info = c.probe(take)
     if not info.get("is_video"):
         raise c.ToolError(f"{c.name_of(take)} is not a video.")

@@ -91,7 +91,7 @@ def storyboard(**over):
             "videos": [{"item": "presenter_take", "model": "gemini-omni", "prompt": "a different, non-identifiable "
                         "person, handheld, natural light, says: ...", "prompt_rules": "references/model-prompting/x.md",
                         "cost": 1.5, "budget": "ai_usd", "checked": TODAY,
-                        "price_file": "02_research/prices_v01.json"}]}
+                        "price_file": "02_research/prices_v01.json", "cuts": []}]}   # one continuous take
     base.update(over)
     return base
 

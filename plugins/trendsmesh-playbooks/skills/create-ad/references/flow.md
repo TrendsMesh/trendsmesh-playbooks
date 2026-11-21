@@ -216,7 +216,8 @@ page and one in chat count the same. Rules: `rules.md`.
   again with `--hide <its CSS selector>` (again for each).
 - `03_wip/storyboard_vNN.json`: `{"frames": [{"scene", "file"}], "placeholder_render", "audio": {...}, "videos":
   [{"item", "model", "prompt" (exact), "params", "prompt_rules" (the guide used), "cost", "budget", "price_file",
-  "checked", "speaks" (optional: true when the take says the lines, false when its voice comes in the edit; left
+  "checked", "cuts" (required: the cuts its prompt asks for, in seconds of the take, `[]` for one continuous shot),
+  "speaks" (optional: true when the take says the lines, false when its voice comes in the edit; left
   out, it follows the voice route: native and clone_take speak)}]}`; an ad without video: `"videos": []` with
   `no_video_reason`. One character = one take: one speaker's lines in one take, the cuts between places written into
   its prompt ("selfie, then a hard cut to a whispered close-up"); lines over the model's length go on in a next take
@@ -232,7 +233,9 @@ page and one in chat count the same. Rules: `rules.md`.
   take is resumed for free (`--resume`), never run again. The engine refuses a video before the storyboard's yes and
   a second take of an item the user did not ask for.
 - **Every take goes back raw** on the gate with its transcript and QA notes: `tm tool take_qa --run R <take> --lang
-  <market language> --script <its lines, one a line> --brackets <the board's cut times>` (cuts, the transcript,
+  <market language> --script <its lines, one a line> --brackets <the cuts the take's prompt asks for>` (none for a
+  continuous shot: the storyboard item's `cuts`, which the tool takes when `--brackets` is left out and refuses
+  any other list for; never the scene times) (cuts, the transcript,
   pace, loudness, contact sheet; leave `--script` out for a take that does not speak) and ElevenLabs Scribe word
   timestamps (verbatim, keeps repeats; Whisper hid a repeat and ran early): `tm tool elevenlabs scribe --run R
   <take> --cost <credits>` (about 330 credits a minute, from the `voice_credits` budget), then the QA again with
