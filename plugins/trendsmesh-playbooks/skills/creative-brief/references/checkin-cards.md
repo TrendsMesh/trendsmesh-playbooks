@@ -108,6 +108,22 @@ target with its source or "to set"). Decided on the page per concept (Approve, A
 Drop; read with `--stage G4`) or in chat, recorded with `tm brief choose`, then `tm decide G4o accept
 --said "<their words>"`. Choice: `accept`.
 
+## The run page: one link from the start card
+
+Every check-in is on one link (the plugin's `references/pages.md`, "The run page"). The start card is
+published first (`tm page intake`, `references/pages.md`); then **G0** (A1) and **G1** (B1) are run page
+stages: write `03_wip/ask_<G0|G1>.json` (the shape: `skills/refresh-ad/references/checkin-cards.md`, "The
+run page", step 1), `tm page build --run R --ask <file> --json` (G0 shows the intake card's facts; G1 the
+hypothesis beside the age × gender results, the placements, and the account context with the winners,
+losers and the divergence), publish to the link `tm page link --run R --page run_page` gives, with the
+build's `capabilities`, and record it (`tm page published --page run_page`). The answer: `tm page decision
+--run R <id> --record`, or in chat. From C1 on, `tm brief page` is published to the same link (`tm page
+link --run R --page brief_pack`), with G0 and G1 under "Already settled" (the decision maker's and
+strategist's views only). **A decision in chat** follows `references/pages.md`, "A decision in chat":
+`tm brief choose --source chat` ends the page's wait, `tm decide` records the check-in, then `tm brief
+page` and a publish to the same link show it settled. After the last decision (`tm next` says `done`), build
+the page once more and publish it, so nothing is open on it.
+
 ## Decisions taken on the page
 
 For G3 and G4 at Check every step and Just the big calls (and C1's page in the review pack alone),

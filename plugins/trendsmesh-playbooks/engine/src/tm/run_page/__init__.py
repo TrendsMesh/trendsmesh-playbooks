@@ -77,6 +77,16 @@ _ASK_FILE = re.compile(r"^ask_(.+)_v(\d+)$")
 MAX_TEXT = 4000
 
 
+START_PAGE = "intake"          # the start card, the first page of a run (tm.start_card, tm.organic_pages.intake)
+
+
+def linked(playbook: str | None) -> tuple[str, ...]:
+    """The pages of a run in `playbook` that share one link (issue #131): the start card first, then the run page,
+    then (creative brief) the brief's page, which is the run page from C1 on."""
+    own = PAGE_OF.get(playbook, PAGE)
+    return (START_PAGE, own, "brief_pack") if playbook == playbooks.CREATIVE_BRIEF else (START_PAGE, own)
+
+
 def page_name(run: RunFolder) -> str:
     """The run page's page name in this run's playbook (`tm page link`, `published`, `await`): trend research's check-ins
     live on its report's link (issue #131, the owner's decision 8), so its run page is the page `report`."""
@@ -336,7 +346,7 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
 
     stages = []                      # (when, key, ask or None, record or None)
     asked_members = set()
-    ended = s.status == "done" and s.playbook in FINALS   # a done run asks nothing more (issue #143)
+    ended = s.status == "done"          # a done run asks nothing more (issue #143, #131 item 5)
     for key, ask in found.items():
         members = _members(run, key)
         if is_open(run, ask, decided) and not ended:
@@ -354,7 +364,7 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     for cid, d in decided.items():
         if cid not in asked_members and cid in cat.checkins:
             stages.append((d.get("at") or "", cid, None, record(None, cid, d)))
-    final = FINALS.get(s.playbook, lambda c: None)(ctx) if ended else None
+    final = (FINALS.get(s.playbook, lambda c: None)(ctx) or _finished(ctx, decided)) if ended else None
     if final:                           # the run's end, after its last decision
         stages.append((max((x[0] for x in stages), default="") + "~", final["key"], None, final["record"]))
     stages.sort(key=lambda x: (x[3] is None, x[0]))     # settled first by time, then the open ones
@@ -385,6 +395,14 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
              "open": {st["key"]: st["decision"]["ask"] for st in now}, "chat_answers": chat,
              "offer": {st["key"]: st["offer"] for st in now if st["offer"] and not local}}
     return m, built
+
+
+def _finished(ctx: Context, decided: dict[str, dict]) -> dict:
+    """The "Done" stage of a done run in any playbook (issue #131 item 5; Refresh an ad's own at the diagnosis is
+    `FINALS`'): after its last decision, with nothing open above it."""
+    last = max(decided.values(), key=lambda d: d.get("at") or "", default={})
+    return {"key": "done", "record": {"choice": "done", "label": ctx.t("record.finished"), "note": None,
+                                      "at": last.get("at"), "by": None, "rule": None}}
 
 
 def chat_line(name: str, checkin: str, ask: dict) -> str:
@@ -431,6 +449,11 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
     folder = page.new_folder(run, page_name(run))
     try:
         m, built = model(run, folder, local=local)
+        if state.load(run).playbook == playbooks.TREND_RESEARCH:     # the report is the page's content from E1 on
+            from tm import research_report
+            parts = research_report.carry_report(run, folder)
+            if parts is not None:
+                m = research_report.with_report(run, m, parts)
         text = template.render(m)
         bad = page.mangled_blob_refs(text)
         if bad:

@@ -8,6 +8,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   takes in chat, one line per item or section, with the name the page shows. You may name an image by its name in
   the pack (`still_01`) and a track by its file (`mixkit-cat-walk-371.mp3`). A line Claude can't read, or a name that
   fits two things, stops with the list of what the page offers; nothing is saved half-empty any more.
+- **Trend research: every check-in on the report's link.** The seed phrases, the category map, the picks, the
+  report's approval and the weekly schedule are now asked on one page, the report's own link, which stays the same
+  every week. From the moment the report is built, it is the page's content and each later question sits under it.
+- **Creative brief: the intake card and the persona on the page.** Both are stages of the run's page now, with the
+  persona's hypothesis next to the account's data. The brief's page later goes to the same link, with them under
+  "Already settled" (only in the decision maker's and strategist's views).
+- **The last version of every run's page has nothing open.** After the last decision the page is built once more:
+  every decision under "Already settled", ending with "Done".
 - **A decision in chat updates the page.** Once Claude records it, the page stops waiting, is built again with that
   check-in settled, and goes to the same link. No more "People are deciding on the page now" after a chat answer.
 - **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file

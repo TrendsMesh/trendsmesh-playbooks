@@ -269,6 +269,17 @@ brief:
   settled_chosen: "Kept: {concepts}, {source}."
   settled_dropped: "Dropped: {concepts}."
   settled_read: "The team's decisions, as read from the page:"
+  # G0 and G1 on the run page (issue #131): the intake card's facts, and the account context beside the persona
+  intake_product: Product
+  intake_landing: Landing page
+  intake_category: Category phrase
+  intake_market: Market
+  intake_languages: Working / market language
+  intake_concepts: Concepts
+  intake_recipients: Views for
+  intake_level: How involved
+  account_context: The account context (winners, losers and the divergence from the hypothesis)
+  account_context_open: Show the account context
   verdict_approved: "**{id}**: approved ({approve})"
   verdict_changes: "**{id}**: changes requested ({change})"
   verdict_dropped: "**{id}**: dropped ({drop})"
@@ -1178,6 +1189,7 @@ run_page:
       video: Takes
       final_edit: Final video and posting kit
       refused_reference: A refused reference image
+      done: Done
   footer:
     built: Built from the run {run} on {when}. Each stage's sources are under its Technical details.
     built_from: Built from the run {run} on {when}.
@@ -1210,6 +1222,8 @@ run_page:
     note: Note
     saved: Saved
     not_answered: Not answered (the run ended)
+    # the last stage of a done run (issue #131 item 5): every check-in settled, nothing open
+    finished: Every check-in is settled and the run is done.
   # A decided choice in words, when the check-in's ask has no label for it (issue #132: the page never shows a choice
   # id): choice.<check-in>.<choice>, one for every choice of every catalogue (data/**/checkins.yaml; a test checks
   # it). A check-in with no fixed choices (an ad, a direction) shows the playbook's own words, else `decided`.
@@ -1420,6 +1434,11 @@ run_page:
       G3: Decide on the briefs
       animatics: Make animatics?
       G4: Accept the production views
+  # how involved the user is (the run's level), as the start card and the intake stage show it (issue #131)
+  level:
+    every_step: Check every step
+    big_calls: Just the big calls
+    hands_off: Hands-off
   stage_name:
     hook: The start (hook)
     middle: The middle

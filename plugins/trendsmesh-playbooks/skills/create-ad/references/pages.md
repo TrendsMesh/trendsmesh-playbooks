@@ -38,8 +38,10 @@ English with `language_warning` (translate once: the plugin's `references/langua
 **Without a publishing tool** (neither `Artifact` nor `publish_files`): `tm page build --run R --ask <file>
 --local` and the path of its `index.html`; its questions are answered in chat. **When the page cannot be built**
 (a stop you cannot fix now), the check-in is the chat card alone. **A decision on the page and one in chat count
-the same**: an answer in chat is `tm decide` as usual (their words in `--note`), and the next build shows it as
-settled.
+the same**: an answer in chat is `tm decide` as usual (their words in `--said`); it builds the page again with the
+check-in settled, to publish to the same link (the plugin's `references/pages.md`, "A decision in chat"). The start
+card (`tm page intake`) is the run's first page, and the run page goes to its link. After the last decision the
+page is built once more with nothing open ("After the last decision").
 
 **The question card in chat** restates every point of its page, so the user can answer without opening it: a
 concept card its beats, length and cost; the plan card each asset type's model, price and date, and the talking

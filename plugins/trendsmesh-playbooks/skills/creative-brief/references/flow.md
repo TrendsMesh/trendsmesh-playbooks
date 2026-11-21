@@ -166,7 +166,8 @@ The user gives one thing: the product. Everything else you derive and show on on
 8. `tm done A1 --run R`: it is refused until the level and the outputs are set (the answers
    carry them), the config passes, the account currency is set, the brand profile is a saved one
    that passes the check, and the landing page is in `00_raw`. G0
-   follows (`checkin-cards.md`).
+   follows, on the run page (`checkin-cards.md`, "The run page": `tm page build --ask`, published to the
+   start card's link).
 
 <a id="b1"></a>
 ## B1 Account context and persona
@@ -200,7 +201,8 @@ first, when the Meta connection has it (HANDOFF §4), and read each tool's own s
    source.
 6. **The results library**, if the workspace has `library/results.jsonl`: read it; trends and
    angles that lost in this category rank lower.
-7. Prepare the G1 card. `tm done B1 --run R`.
+7. Prepare the G1 card: a run page stage (`checkin-cards.md`, "The run page"), the same link. `tm done B1
+   --run R`.
 
 <a id="b2"></a>
 ## B2 Customer voice

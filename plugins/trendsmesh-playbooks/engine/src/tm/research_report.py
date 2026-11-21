@@ -42,6 +42,7 @@ import copy
 import html
 import json
 import re
+import shutil
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -58,6 +59,7 @@ SCHEMA_FILE = Path(__file__).with_name("schemas") / "pb4_report.schema.json"
 CSS_FILE = Path(__file__).with_name("research_report.css")
 PAID_STEM = "ad_library_summary"
 SOURCE = "tm research report"
+REPORT_PARTS = ".report_parts.json"   # in the folder: the report's title, CSS and body (hidden, never published)
 AREAS = ("report", "common")         # the page's words (data/i18n/en.yaml): its own and the month names
 RECENT_DAYS = 45                     # the cards' thumbnails: videos of the 45 days before as_of first
 
@@ -663,7 +665,7 @@ def _paid_rows(raw: list, rows: dict[str, dict], market: str, tr: i18n.Translato
 
 
 def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_snapshot: Path | None = None,
-          backtests: list[Path] = (), cfg: dict) -> Path:
+          backtests: list[Path] = (), cfg: dict, local: bool = False) -> Path:
     """Build the page into a new 04_final/report_vNN/ (index.html, report.json, assets/) and return
     the folder. Nothing is written when an input is missing or the report breaks its schema."""
     cfg = research_map.settings(cfg)
@@ -758,7 +760,7 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
     prev_snap = _json(Path(prev), "the previous snapshot") if digest is not None and prev else {}
     title, css, body = _render(pg, picks, report, cmap, gj, by, moved_page, picked, totals, scale, backtest_data,
                                digest, prev_snap, valid_until_page)
-    (out / "index.html").write_text(_on_the_run_page(run, out, title, css, body), encoding="utf-8")
+    (out / "index.html").write_text(_on_the_run_page(run, out, title, css, body, local=local), encoding="utf-8")
     (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     rel = out.relative_to(run.path).as_posix()
     manifest.record(run, rel, page.FINAL, SOURCE,
@@ -767,22 +769,64 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
     return out
 
 
-def _on_the_run_page(run: RunFolder, out: Path, title: str, css: str, body: str) -> str:
+def _on_the_run_page(run: RunFolder, out: Path, title: str, css: str, body: str, *, local: bool = False) -> str:
     """The report on the shared run page (issue #60): the TrendsMesh top bar and theme, the report as the page's
     content, and the run's check-ins under it, settled ones as read-only summaries (an open one, put on the page
-    with `tm page build --ask`, says to answer in chat). The page saves nothing (`local`): the report is read-only,
-    and it is never published while a check-in about it is open. No Google Fonts: every view of a shared page would
-    call Google (GDPR), so the theme's system fallbacks are used.
+    with `tm page build --ask`, is the run page's own decision block). Trend research's check-ins live on the report's
+    link (issue #131, the owner's decision 8): the report is the run page, `report`, from E1 on, published with the
+    run page's capabilities (its `decisions` db), so it is never a local build unless the session cannot publish
+    (`local`). Its title, CSS and body are kept in the folder (`REPORT_PARTS`, hidden, never published), so every
+    later `tm page build` puts the same report under its check-ins (`run_page.build`). No Google Fonts: every view of
+    a shared page would call Google (GDPR), so the theme's system fallbacks are used.
 
     The run page is imported here, not at the top: it loads every playbook's page code, and this module is loaded
     by the Organic AI video engine (organic -> audience -> ... -> seeds -> research_report), so a top-level import
     made a cycle that broke `tm tool deliver`, `tm kit` and ten other modules loaded first
     (test_imports.py)."""
     from tm import run_page
-    m, _ = run_page.model(run, out, local=True)
-    m.update(title=title, css=css, body=body, fonts=False,
-             footer=run_page.words.t("footer.built_from", page_language(run).lang, run=run.path.name, when=m["updated"]))
-    return run_page.template.render(m)
+    parts = {"title": title, "css": css, "body": body}
+    (out / REPORT_PARTS).write_text(json.dumps(parts, ensure_ascii=False) + "\n", encoding="utf-8")
+    m, built = run_page.model(run, out, local=local)
+    (out / run_page.BUILD_FILE).write_text(json.dumps(built, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return run_page.template.render(with_report(run, m, parts))
+
+
+def with_report(run: RunFolder, m: dict, parts: dict) -> dict:
+    """The run page's model `m` with the report as its content (`parts`: its title, CSS and body)."""
+    from tm import run_page
+    return {**m, **parts, "fonts": False,
+            "footer": run_page.words.t("footer.built_from", page_language(run).lang, run=run.path.name,
+                                       when=m["updated"])}
+
+
+def latest_parts(run: RunFolder, before: Path) -> tuple[Path, dict] | None:
+    """The newest report build before the folder `before` that kept its parts (`REPORT_PARTS`): (its folder, the
+    parts), or None while no report is built (trend research before E1)."""
+    found = sorted((int(m.group(1)), f) for f in (run.path / page.FINAL).glob(f"{PAGE}_v*")
+                   if (m := re.fullmatch(rf"{PAGE}_v(\d+)", f.name)) and f != before and (f / REPORT_PARTS).is_file())
+    for _, folder in reversed(found):
+        try:
+            parts = json.loads((folder / REPORT_PARTS).read_text(encoding="utf-8-sig"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(parts, dict) and all(isinstance(parts.get(k), str) for k in ("title", "css", "body")):
+            return folder, parts
+    return None
+
+
+def carry_report(run: RunFolder, out: Path) -> dict | None:
+    """Put the latest report into the new run page folder `out` (issue #131): its assets, report.json and parts, so
+    the page shows the report above its check-ins. The parts, or None before the first report."""
+    found = latest_parts(run, out)
+    if found is None:
+        return None
+    folder, parts = found
+    if (folder / "assets").is_dir():
+        shutil.copytree(folder / "assets", out / "assets", dirs_exist_ok=True)
+    for name in ("report.json", REPORT_PARTS):
+        if (folder / name).is_file():
+            shutil.copyfile(folder / name, out / name)
+    return parts
 
 
 def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict, moved: dict, picked: set,

@@ -638,6 +638,7 @@ strings:
         video: Ujęcia
         final_edit: Gotowy film i zestaw do publikacji
         refused_reference: Odrzucony obraz referencyjny
+        done: Gotowe
     footer:
       built: Zbudowane z runu {run} {when}. Źródła każdego etapu są w jego Szczegółach technicznych.
       built_from: Zbudowane z runu {run} {when}.
@@ -670,6 +671,7 @@ strings:
       note: Uwaga
       saved: Zapisano
       not_answered: Bez odpowiedzi (przebieg się zakończył)
+      finished: Wszystkie decyzje są podjęte, a przebieg jest zakończony.
     # Organic AI video's choices in words (issue #132): run_page.choice.<check-in>.<choice>
     choice:
       decided: Zdecydowano

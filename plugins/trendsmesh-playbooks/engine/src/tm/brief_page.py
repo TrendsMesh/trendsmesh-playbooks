@@ -650,7 +650,9 @@ def _shell(body: str, frame: dict | None, lang: str) -> str:
             + (f'<span class="soft small"{deciding}>{E(stage["n"])} · {E(stage["name"])}</span>' if stage else "")
             + '</div>')
     sid = f' id="stage-{E(stage["key"])}"' if stage else ""
-    settled = f'<div class="settled-group"{deciding}>{frame["settled"]}</div>' if frame.get("settled") else ""
+    # the settled check-ins hold G1's account figures (issue #131): the decision maker's and strategist's views only
+    settled = (f'<div class="settled-group"{v(*creative_brief.SETTLED_VIEWS)}>{frame["settled"]}</div>'
+               if frame.get("settled") else "")
     built = f'<footer class="built">{E(i18n.t("brief.footer_built", lang, run=frame["run"], when=frame["updated"]))}</footer>'
     return f'<div class="wrap">{top}<section class="panel now brief"{sid}>{head}{body}</section>{settled}{built}</div>'
 

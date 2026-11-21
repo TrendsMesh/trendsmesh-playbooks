@@ -285,7 +285,10 @@ def published(run: RunFolder, page: str) -> dict | None:
     workspace = run.path.parents[2]            # runs/<playbook>/<run>
     current, s = run, state.load(run)
     seen = {run.path.resolve()}
-    while page not in s.pages:
+    group = linked(s.playbook, page)
+    found = (lambda st: page in st.pages) if len(group) == 1 else \
+        (lambda st: any((st.pages.get(p) or {}).get("slug") for p in group))
+    while not found(s):
         if not s.previous_run:
             return None
         try:
@@ -300,7 +303,19 @@ def published(run: RunFolder, page: str) -> dict | None:
                 "new artifact if a new link is wanted. The run continues from the same place.") from None
         seen.add(before.path.resolve())
         current, s = before, before_state
-    return s.pages[page]
+    if len(group) == 1:
+        return s.pages[page]
+    newest = max((p for p in group if (s.pages.get(p) or {}).get("slug")),
+                 key=lambda p: (str(s.pages[p].get("published_at") or ""), p == page))
+    return s.pages[newest] if newest == page else {**s.pages[newest], "page": newest}
+
+
+def linked(playbook: str | None, page: str) -> tuple[str, ...]:
+    """The pages of a run that share one link (issue #131): the start card, the run page and (in a creative brief)
+    the brief's page, each published to the link the first of them got; any other page has its own."""
+    from tm import run_page   # it imports this module
+    group = run_page.linked(playbook)
+    return group if page in group else (page,)
 
 
 # --- decisions taken on a page ------------------------------------------------------------------

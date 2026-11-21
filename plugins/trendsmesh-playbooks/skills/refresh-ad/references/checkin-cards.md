@@ -53,7 +53,10 @@ the run state; never write or patch its HTML.
    run page", step 3; the collector saves the read), then
    `tm page decision --run R <id> --record`, which records it with the note "(from the page)".
    Quote the user's note back whole, as their words. An answer in chat always counts: `tm decide`
-   as usual, and the next build shows it as settled.
+   as usual; it builds the page again with the check-in settled, to publish to the same link
+   (`references/pages.md`, "A decision in chat"). The start card (`tm page intake`) is the run's
+   first page, and the run page goes to its link. After the last decision the page is built once
+   more with nothing open ("After the last decision").
 
 ## A merged card (Just the big calls)
 
