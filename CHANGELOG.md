@@ -20,6 +20,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Creative brief: an animatic's hook keeps clear of the phone and the face.** Before an animatic is rendered, a hook
   that would cover a face, the product screen or the brand's name is moved to the free place (top, centre or
   bottom), or made smaller, and Claude tells you what it changed.
+- **Refresh an ad: the new text uses the brand's text set.** When the brand has a saved text set, the refreshed
+  ad's new opening and ending cards, and its rebuilt captions, are drawn in it: its colours, its font, its logo on
+  the ending card, and the key word in the brand colour.
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of

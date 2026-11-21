@@ -289,3 +289,77 @@ def test_tm_brief_animatic_moves_the_hook_before_rendering_and_names_the_change(
     js = (run.path / animatic.WIP / "C1_anim_v01.js").read_text(encoding="utf-8")
     assert json.loads(js.removeprefix("window.ANIM = ").rstrip().rstrip(";"))["beats"][0]["texts"][0]["style"] == "top"
     assert out["hook_changes"] and "moved from center to top" in out["message"]
+
+
+# --- 5. refresh-ad uses the brand's text set ------------------------------------------------------------
+
+def _refresh(ws, product="Pet Store", name="refresh"):
+    import copy
+
+    from tm.playbooks import REFRESH_AD
+
+    run = RunFolder.create(ws, name, date(2026, 11, 17), playbook=REFRESH_AD)
+    cfg = copy.deepcopy(config.DEFAULTS)
+    cfg["product"]["name"] = product
+    config.save(run, cfg)
+    return run
+
+
+def test_a_refresh_ad_run_reads_its_brands_set(ws):
+    run = _refresh(ws)
+    assert text_sets.owners(run) == [("brand", "Pet Store")]
+    assert text_sets.for_run(run) is None
+    text_sets.save(ws, "brand", "Pet Store", look="pill", accent="#2E7D32", run=None, note="the green pill")
+    assert text_sets.for_run(run)["look"] == "pill"
+    assert text_sets.owners(_refresh(ws, product=None, name="no product")) == []
+
+
+def _hookswap(run, **extra):
+    (run.path / "01_base").mkdir(exist_ok=True)
+    (run.path / "01_base" / "ad_original.mp4").write_bytes(b"the original")
+    props = {"base": "01_base/ad_original.mp4", "width": 1080, "height": 1920, "durationSec": 8,
+             "cards": [{"from": 0, "to": 3, "top": 190, "height": 113, "fullBleed": True,
+                        "lines": [{"at": 0, "text": "Your cat drinks too little"}]}], "inserts": [], **extra}
+    path = run.path / "03_wip" / "edit_a_v01.props.json"
+    path.write_text(json.dumps(props), encoding="utf-8")
+    return "03_wip/edit_a_v01.props.json"
+
+
+def test_hookswap_and_wordcaptions_are_drawn_in_the_brands_set(ws, remotion, capsys):
+    run = _refresh(ws)
+    logo = run.path / "01_base" / "logo.png"
+    logo.parent.mkdir(exist_ok=True)
+    logo.write_bytes(b"\x89PNG logo")
+    font = run.path / "01_base" / "Pet-Bold.ttf"
+    font.write_bytes(b"\x00\x01\x00\x00 font")
+    text_sets.save(ws, "brand", "Pet Store", look="pill", accent="#2E7D32", font=font, logo=logo, run=None,
+                   note="the green pill")
+    seen = []
+    real = render._sh
+
+    def spy(argv, cwd, what):
+        given = next(a for a in argv if a.startswith("--props=")).removeprefix("--props=")
+        seen.append(json.loads(Path(given).read_text(encoding="utf-8")))
+        return real(argv, cwd, what)
+
+    render._sh = spy
+    try:
+        code, out = _cli(capsys, "render", "still", "--run", str(run.path), "--comp", "HookSwap", "--props",
+                         _hookswap(run), "--frame", "10")
+    finally:
+        render._sh = real
+    assert code == 0, out
+    used = seen[-1]["textSet"]
+    assert used["look"] == "pill" and used["accent"] == "#2E7D32" and used["ink"] == "#FFFFFF"
+    assert used["font"] == {"family": "Pet-Bold", "src": "03_wip/text_set/pet-bold_v01.ttf"}
+    assert used["logo"] == "03_wip/text_set/logo_v01.png" and (run.path / used["logo"]).is_file()
+    row = [r for r in manifest.rows(run) if r["model"] == "remotion still"][-1]
+    assert json.loads(row["params"])["props"]["textSet"] == used          # the record says which set drew it
+    # the props' own choice stands: null keeps the original's look
+    render._sh = spy
+    try:
+        code, out = _cli(capsys, "render", "still", "--run", str(run.path), "--comp", "HookSwap", "--props",
+                         _hookswap(run, textSet=None), "--frame", "10")
+    finally:
+        render._sh = real
+    assert code == 0 and seen[-1]["textSet"] is None

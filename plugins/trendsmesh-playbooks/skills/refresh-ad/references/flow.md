@@ -691,6 +691,15 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   `text`), `inserts` (`src`, `from`, `to`, `trimStart`). Paths are relative to the run folder.
   An ending card is a card in the last seconds. Example:
   `handoff`'s Ad 3 v05: one `fullBleed` card from 0 to 6.45 s at top 190, height 113.
+- **The brand's text set** (`tm brand text-style show --run R --json`; the brand is the product,
+  `product.name`): when one is saved, `tm render` draws the HookSwap cards in it, and the
+  WordCaptions words too. It fills `textSet` (look, accent, ink, font, logo) into the props it
+  renders and records it, and copies the font and logo into `03_wip/text_set/`. Cards take the
+  set's colours and font; a card with `"logo": true` shows the logo (use it on an ending card).
+  WordCaptions keep the matched size, stroke and place, take the set's font, and draw a word marked
+  `"key": true` in the accent. To keep the original ad's look on purpose (a card that must match
+  a burned-in overlay exactly), write `"textSet": null` in the props. No set saved: the cards look
+  as before.
 - `tm render still --run R --comp HookSwap --props <props> --frame <N> --json` at the key frames:
   the first frame, the old overlay's first and last frames (± a few), the first frame after the
   card leaves. Look at every still.
