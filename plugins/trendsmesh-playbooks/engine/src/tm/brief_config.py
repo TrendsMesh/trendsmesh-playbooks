@@ -438,6 +438,8 @@ def find_seed(workspace: Path, seed_id: str, *, playbook: str = CREATIVE_BRIEF) 
     other = f"pick another seed (tm seeds list --source {seeds.PB4}) or start {run_name} without --seed"
     _, damaged = library.read_jsonl(Path(workspace) / seeds.FILE)
     found = seeds.rows(workspace, source=seeds.PB4)
+    if playbook == ORGANIC_VIDEO:      # and an organic video brief's concepts (issue #136): a ready concept
+        found += seeds.rows(workspace, source=seeds.PB2)
     row = next((r for r in found if r.get("seed_id") == seed_id), None)
     if row is not None:
         try:
@@ -445,6 +447,8 @@ def find_seed(workspace: Path, seed_id: str, *, playbook: str = CREATIVE_BRIEF) 
         except ValueError as exc:
             raise ValueError(f"The seed {seed_id} in {where} breaks seed/1: {exc} Run trend research's E3 again "
                              f"(tm research seeds), or {other}.") from None
+        if row["source"] == seeds.PB2 and row["kind"] is None:
+            return row                 # a guess run's concept: no trend, the concept itself is the seed
         if row["kind"] not in SEED_KINDS:
             raise ValueError(f"The seed {seed_id} is a {row['kind']}; {builder} builds on a "
                              f"{', '.join(SEED_KINDS)} only. So {other}.")

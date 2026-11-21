@@ -162,7 +162,7 @@ is no customer-voice step and no Ad Library check.
 - **O7:** the creator, editor and publisher views and the posting plan, checked with `tm brief check
   --stage organic_views`; G4o is decided on the page per concept. **O8:** the posting plan in plain
   words, then one question: hand a concept to organic-video to make the video? On a yes, `tm brief
-  handoff` hands it on (the seed comes in the next version).
+  handoff --to-video <ids>` adds a seed the user starts organic-video from.
 
 ## 3. The loop
 

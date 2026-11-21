@@ -689,7 +689,7 @@ follows: the views are decided on the page per concept (Approve, Ask for changes
 - **One question:** "Do you want organic-video to make one of these videos?" (organic-video makes the
   video itself; this brief is for the people who film it).
 - `tm brief handoff --run R --json` writes `05_results/handoff_vNN.json` and the briefs library rows,
-  as at E2. **On a yes**, with the concepts the user named: `tm brief handoff --run R
+  as at E2. **On a yes**, with the concepts the user named: `tm brief handoff --run R --to-video C2
   --json` also writes a `seed/1` row per concept with `source: pb2` (its trend id, kind, hook, format,
   length, sound and `brief_id`) to `library/seeds.jsonl`. The user then starts organic-video from it
   (`tm seeds list --source pb2`, `tm run new --playbook organic-video --name <name> --seed <seed_id>`).

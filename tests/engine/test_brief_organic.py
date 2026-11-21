@@ -9,7 +9,7 @@ from datetime import date
 import pytest
 
 from tm import (audience, brief, brief_checks, brief_config, brief_organic, brief_page, checkins, flow, manifest,
-                page_text, seeds, state, stepchecks)
+                page_text, paths, seeds, state, stepchecks)
 from tm.cli import main
 from tm.flow import complete, decide
 from tm.playbooks import CREATIVE_BRIEF
@@ -336,3 +336,84 @@ def test_the_page_has_the_publisher_view_and_the_posting_plan():
     assert "#sourdough" in text and "Calm kitchen track" in text
     creator = " ".join(brief_page.view_text(organic_brief(), "creator"))
     assert "#sourdough" not in creator
+
+
+# --- O8: the hand-off to organic video ------------------------------------------------------------------------
+
+def _checked(run, capsys) -> None:
+    """The organic brief written, checked at organic_views and every concept kept, as at O7 and G4o."""
+    path = run.path / "04_final" / "brief_pack_v01.json"
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(organic_brief()), encoding="utf-8")
+    assert main(["brief", "check", "--run", str(run.path), "--file", str(path), "--stage", "organic_views",
+                 "--json"]) == 0
+    capsys.readouterr()
+    brief_page.choose(run, "chat")
+
+
+def test_the_hand_off_writes_a_pb2_seed_for_the_concept_named(run, ws, capsys):
+    _checked(run, capsys)
+    got = brief.handoff(run, to_video=["C2"])
+    assert got["test_plan"] is False and got["seeds"] == [f"{run.path.name}:PB2-BAKERY-C2"]
+    rows = seeds.rows(ws, source=seeds.PB2)
+    assert len(rows) == 1
+    row = rows[0]
+    seeds.check(row)
+    assert (row["source"], row["brief_id"], row["concept"], row["run"]) == ("pb2", "PB2-BAKERY-C2", "C2",
+                                                                         run.path.name)
+    assert (row["hook"], row["format"], row["length_s"], row["sound"]) == (
+        "Nobody tells you this about shaping", "day in the life", 30,
+        {"name": "Calm kitchen track", "trend_id": None, "licence": "commercial"})
+    assert (row["category"], row["sub_category"], row["market"]) == ("sourdough baking", "sourdough baking", "US")
+    assert (row["trend_id"], row["kind"], row["valid_until"], row["paid_level"]) == (None, None, "2026-11-21",
+                                                                                      "not_checked")
+    assert brief.handoff_gap(run) is None
+    again = brief.handoff(run, to_video=["C2"])            # one seed per concept, never twice
+    assert again["seeds"] == [] and again["seeds_there"] == [row["seed_id"]]
+    assert len(seeds.rows(ws, source=seeds.PB2)) == 1
+
+
+def test_without_a_yes_no_seed_is_written(run, ws, capsys):
+    _checked(run, capsys)
+    assert brief.handoff(run)["seeds"] == []
+    assert seeds.rows(ws, source=seeds.PB2) == []
+
+
+def test_only_a_kept_concept_of_an_organic_brief_is_handed_to_video(run, capsys):
+    _checked(run, capsys)
+    with pytest.raises(ValueError, match="C9"):
+        brief.handoff(run, to_video=["C9"])
+
+
+def test_an_ad_brief_hands_no_concept_to_video(ws):
+    ad = RunFolder.create(ws, "ad", date(2026, 11, 7), playbook=CREATIVE_BRIEF)
+    s = state.load(ad)
+    s.outputs, s.brief = ["review_pack", "briefs", "page"], {"chosen": {"concepts": ["C1"]}}
+    state.save(ad, s)
+    with pytest.raises(ValueError, match="organic video brief"):
+        brief.handoff(ad, to_video=["C1"])
+
+
+def test_organic_video_starts_from_a_pb2_seed(run, ws, capsys, bundled_skills):
+    _checked(run, capsys)
+    seed_id = brief.handoff(run, to_video=["C1"])["seeds"][0]
+    assert main(["seeds", "list", "--source", "pb2", "--json"]) == 0
+    assert [r["seed_id"] for r in json.loads(capsys.readouterr().out)["seeds"]] == [seed_id]
+    assert main(["run", "new", "--playbook", "organic-video", "--name", "loaf", "--seed", seed_id, "--json"]) == 0
+    made = RunFolder.open(json.loads(capsys.readouterr().out)["path"])
+    kept = json.loads((made.path / "00_raw" / "seed.json").read_text(encoding="utf-8"))
+    assert (kept["source"], kept["hook"], kept["format"]) == ("pb2", "Nobody tells you this about starter care",
+                                                              "tutorial")
+    assert state.load(made).organic["seed"] == seed_id
+    with pytest.raises(ValueError, match="pb4"):          # a creative brief starts from trend research picks only
+        brief_config.find_seed(ws, seed_id)
+
+
+def test_both_skills_say_how_they_split_the_work():
+    root = paths.bundled_data().parent / "skills"
+    cb = (root / "creative-brief" / "SKILL.md").read_text(encoding="utf-8")
+    ov = (root / "organic-video" / "SKILL.md").read_text(encoding="utf-8")
+    assert ("creative-brief is the brief for the people who will film the video; to have the video made here, "
+            "that is organic-video.") in " ".join(cb.split())
+    assert ("To brief people who will film a video themselves, that is creative-brief's organic video brief; "
+            "organic-video makes the video itself.") in " ".join(ov.split())

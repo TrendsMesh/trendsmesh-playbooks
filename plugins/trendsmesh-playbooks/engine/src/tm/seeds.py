@@ -23,6 +23,13 @@ was written), `market` (the run's config), `report` (the artifact this run's pag
 at E2; null when the page was kept local, never an earlier run's version) and `evidence` (a glob,
 relative to the workspace, of the run's saved videos of the trend).
 
+A creative brief's organic video brief hands a concept to organic video the same way (issue #136): a row with
+`source: pb2`, `seed_id` `<run>:<brief_id>`, the trend fields of the concept's trend (null in a guess run),
+`category`, `sub_category` and `market` from the run's config, `bucket` and `band` from the trend research seed the
+brief started from (else `brief` and null), `paid_level` `not_checked`, and the concept itself: `brief_id`,
+`concept`, `hook`, `topic`, `format`, `length_s` and `sound` (`brief_organic.seed_rows`, written by `tm brief
+handoff --to-video`). organic video's A0 reads it as a ready concept.
+
     add       one row; False when its seed_id is there already
     rows      the readable rows, one per seed_id, of one source, still valid on a date
     from_run  E3 of a trend research run (`tm research seeds`): one seed per act now and still
@@ -47,6 +54,7 @@ from tm.stops import AGAIN, Stop
 SCHEMA = "seed/1"
 FILE = Path("library") / "seeds.jsonl"
 PB4 = "pb4"
+PB2 = "pb2"      # a concept of an organic video brief, handed to organic video (issue #136): `brief_organic.seed_rows`
 CONTRACT = ("source", "run", "category", "sub_category", "trend_id", "kind", "trend_name", "bucket", "band",
             "paid_level", "angle", "risk", "valid_until")
 REQUIRED = ("schema", "seed_id", "source", "run", "created", "category", "sub_category", "market", "trend_id", "kind",
@@ -257,7 +265,7 @@ def from_run(run: RunFolder, cfg: dict, *, today: date | None = None) -> dict:
 
 def _line(r: dict) -> str:
     where = " / ".join(str(x) for x in (r.get("category"), r.get("sub_category")) if x)
-    return (f"{r.get('seed_id')}  {r.get('trend_name')} ({research_growth.LABEL.get(r.get('bucket'), r.get('bucket'))}, "
+    return (f"{r.get('seed_id')}  {r.get('trend_name') or r.get('hook')} ({research_growth.LABEL.get(r.get('bucket'), r.get('bucket'))}, "
             f"{r.get('band')}, paid {r.get('paid_level')}), {where}, {r.get('market')}, valid until "
             f"{r.get('valid_until')}")
 
@@ -265,7 +273,8 @@ def _line(r: dict) -> str:
 def _setup(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="action", required=True)
     ls = sub.add_parser("list", help=f"the seeds in {FILE.as_posix()}, for the creative brief")
-    ls.add_argument("--source", help="one source only, e.g. pb4 (trend research)")
+    ls.add_argument("--source", help="one source only: pb4 (trend research's picks) or pb2 (an organic video brief's "
+                                     "concepts, for organic video)")
     ls.add_argument("--valid-on", help="YYYY-MM-DD: only the seeds still valid on that day")
     ls.add_argument("--workspace", help="default the current workspace")
     ls.add_argument("--json", action="store_true")

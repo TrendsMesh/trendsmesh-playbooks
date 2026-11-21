@@ -104,6 +104,42 @@ def posting_problems(brief: dict) -> list[Problem]:
     return out
 
 
+def seed_rows(run: RunFolder, brief: dict, concept_ids: list[str], cfg: dict, *, page_ref: dict | None,
+              today: date | None = None) -> list[dict]:
+    """The `seed/1` rows (`source: pb2`) of the concepts handed to organic video (O8), as `tm.seeds` describes
+    them: the concept's trend (null in a guess run), the run's category and market (config), the trend research
+    seed's bucket and band when the brief started from one, and the concept itself."""
+    from tm import library, seeds, trend_spool      # seeds imports the trend research modules: only here
+    workspace = trend_spool.workspace_of(run)
+    name = run.path.resolve().name
+    run_rel = run.path.resolve().relative_to(workspace).as_posix()
+    category = (cfg.get("product") or {}).get("category_phrase")
+    market = (cfg.get("account") or {}).get("market") or brief["meta"].get("market")
+    started = cfg.get("seed")
+    origin = next((r for r in library.read_jsonl(workspace / seeds.FILE)[0]
+                   if started and r.get("seed_id") == started), {}) if started else {}
+    concepts = {c["id"]: c for c in brief["concepts"]}
+    out = []
+    for cid in concept_ids:
+        c = concepts[cid]
+        trend = (c.get("plugin") or {}).get("trend") or {}
+        organic = c.get("organic") or {}
+        tid = trend.get("trend_id")
+        out.append({
+            "schema": seeds.SCHEMA, "seed_id": f"{name}:{c['brief_id']}", "source": seeds.PB2, "run": name,
+            "created": (today or date.today()).isoformat(), "category": category,
+            "sub_category": origin.get("sub_category") or category, "market": market,
+            "trend_id": tid, "kind": trend.get("kind"), "trend_name": trend.get("name"),
+            "bucket": origin.get("bucket") or "brief", "band": origin.get("band"), "paid_level": seeds.NOT_CHECKED,
+            "angle": c.get("one_liner"), "risk": (c.get("decision_facts") or {}).get("risk"),
+            "valid_until": brief["meta"]["valid_until"], "report": page_ref,
+            "evidence": f"{run_rel}/02_research/videos/{tid}*.json" if tid else "",
+            "brief_id": c["brief_id"], "concept": cid, "hook": (c.get("hook") or {}).get("text"),
+            "topic": organic.get("topic"), "format": organic.get("format"), "length_s": organic.get("length_s"),
+            "sound": organic.get("sound")})
+    return out
+
+
 def plan_problems(brief: dict) -> list[Problem]:
     """The posting plan (`plan`): which concept on which platform, the day and the time, and the organic measures
     with their targets and sources (R3)."""
