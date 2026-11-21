@@ -705,6 +705,10 @@ strings:
         accept: Zaakceptowano
         redo: Do ponownego wykonania
         drop: Pominięto
+      refused_reference:
+        retry: Jeszcze jedna próba
+        other_model: Inny model, który przyjmuje obraz referencyjny
+        no_reference: Bez obrazu referencyjnego
     data:
       source: 'Źródło: {file}'
       technical: Szczegóły techniczne

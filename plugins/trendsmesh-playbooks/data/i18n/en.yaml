@@ -1341,6 +1341,19 @@ run_page:
     GS:
       schedule: Every week, scheduled
       by_hand: By hand
+    # Create an ad and Organic AI video: a reference image refused twice (issue #137)
+    refused_reference:
+      retry: Try once more
+      other_model: Another model that takes the reference
+      no_reference: Without the reference image
+    # Creative brief: the brief's kind and the organic brief (issue #136)
+    brief_kind:
+      ad: An ad brief
+      organic: An organic video brief
+    G0o:
+      accept: Accepted
+    G4o:
+      accept: Accepted
   data:
     source: 'Source: {file}'
     # one folded block per stage with its sources' run files and its media files (issue #132)
