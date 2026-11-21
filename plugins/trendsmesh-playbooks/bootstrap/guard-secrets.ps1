@@ -47,6 +47,144 @@ $Q = $P -replace '["''`]', ''
 $N = $gp -replace '[\\"''`]', ''
 $TN = $targets -replace '[\\"''`]', ''
 $TP = $targets.Replace('\', '/')
+# The readings E and H of a command, as bootstrap/command-words.awk builds them (it says what they
+# hold): E (here $EW) for the dot-name glob, H ($HW) for the key-search rule. Other tools: E is Q.
+function NeutText($t) { $t -replace '[*?\[ ;|&()<>{}]', '_' }
+function BareText($t) { ($t -replace '["''`]', '') -replace "`n", ' ; ' }
+function ShellLine($t) { $t -match '(^|[ ;|&(/\\])(sh|bash|zsh|dash|ksh|mksh|fish|pwsh|powershell|cmd|source|eval|iex|\.)(\.exe)?([ ;|&)]|$)' }
+function RunsCode($c) {
+    ($c -match '(^|[ /\\])(sh|bash|zsh|dash|ksh|mksh|fish|pwsh|powershell|cmd)(\.exe)?( .*)? +(-[a-z]*c|-command|-c[a-z]*|/[ck]) *$') -or
+    ($c -match '(^| )(eval|iex|invoke-expression)( .*)? *$') -or ($c -match '(^| )/[ck] *$')
+}
+function PsGlob($t) { $t.Replace('\', '/') -match '^([^ ]*/)?\.[a-z0-9_-]*[*?][a-z0-9_.*?/-]*$' }
+function CommandWords([string]$s, [string]$mode) {
+    $NL = "`n"; $L = $s.Length; $e = New-Object Text.StringBuilder; $h = New-Object Text.StringBuilder
+    $cur = ''; $pend = @(); $ls = 0; $ar = 0
+    for ($i = 0; $i -lt $L; $i++) {
+        $c = $s[$i]
+        if ($c -eq "`n") {
+            [void]$e.Append(' ; '); [void]$h.Append(' ; '); $cur = ''
+            $p = $i + 1
+            if ($mode -eq 'ps') { $ls = $p; continue }
+            $line = $s.Substring($ls, $i - $ls)
+            foreach ($hd in $pend) {  # the heredoc bodies, one after the other
+                $body = New-Object Collections.Generic.List[string]; $q = $p
+                while ($q -lt $L) {
+                    $j = $s.IndexOf([char]10, $q); $end = if ($j -ge 0) { $j } else { $L }
+                    $ln = $s.Substring($q, $end - $q); $t = $ln
+                    if ($hd.Dash) { $t = $t -replace '^\t+', '' }
+                    $t = $t -replace '[ \t]+$', ''
+                    $q = $end + 1
+                    if ($t -ceq $hd.Word) { break }
+                    $body.Add($ln)
+                }
+                $b = $body -join $NL
+                if ((ShellLine $line) -or (-not $hd.Quoted -and $b -match '\$\(|`')) {
+                    [void]$e.Append((BareText $b) + ' ; '); [void]$h.Append(($b -replace $NL, ' ; ') + ' ; ')
+                }
+                $p = $q
+            }
+            $pend = @(); $i = $p - 1; $ls = $p
+            continue
+        }
+        if ($mode -eq 'ps') {
+            if ($c -eq '`') {  # PowerShell's escape: the next character as it is
+                $x = if ($i + 1 -lt $L) { [string]$s[$i + 1] } else { '' }; $i++
+                if ($x -ne $NL) { [void]$e.Append($x); $cur += $x }
+                [void]$h.Append("$c$x"); continue
+            }
+            if ($c -eq '@' -and $i + 1 -lt $L -and ($s[$i + 1] -eq "'" -or $s[$i + 1] -eq '"')) {
+                $qc = [string]$s[$i + 1]; $j = $s.IndexOf([char]10, $i + 2)
+                if ($j -ge 0 -and $s.Substring($i + 2, $j - $i - 2) -match '^[ \t]*$') {  # a here-string
+                    $k = $s.IndexOf("$NL$qc@", $j, [StringComparison]::Ordinal)
+                    $body = if ($k -ge 0) { $s.Substring($j + 1, $k - $j - 1) } else { $s.Substring($j + 1) }
+                    if ($qc -eq '"' -and $body -match '\$\(') { [void]$e.Append((BareText $body)); [void]$h.Append(($body -replace $NL, ' ; ')) }
+                    $i = if ($k -ge 0) { $k + 2 } else { $L }
+                    continue
+                }
+            }
+            if ($c -eq "'" -or $c -eq '"') {
+                $t = New-Object Text.StringBuilder; $j = $i + 1
+                while ($j -lt $L) {
+                    $x = $s[$j]
+                    if ($x -eq $c -and $j + 1 -lt $L -and $s[$j + 1] -eq $c) { [void]$t.Append($x); $j += 2; continue }
+                    if ($c -eq '"' -and $x -eq '`') { [void]$t.Append($s.Substring($j, [Math]::Min(2, $L - $j))); $j += 2; continue }
+                    if ($x -eq $c) { break }
+                    [void]$t.Append($x); $j++
+                }
+                $t = $t.ToString()
+                if ((RunsCode $cur) -or (PsGlob $t) -or ($c -eq '"' -and $t -match '\$\(')) { [void]$e.Append((BareText $t)) } else { [void]$e.Append((NeutText $t)) }
+                $w = $s.Substring($i, [Math]::Min($j, $L - 1) - $i + 1); [void]$h.Append($w); $cur += $w; $i = $j
+                continue
+            }
+            [void]$e.Append($c); [void]$h.Append($c); $cur += $c
+            if ($c -match '[;|&(]') { $cur = '' }
+            continue
+        }
+        # bash
+        if ($c -eq '\') {
+            $x = if ($i + 1 -lt $L) { [string]$s[$i + 1] } else { '' }; $i++
+            if ($x -match '^[*?\[]$') { [void]$e.Append('_') } elseif ($x -ne $NL) { [void]$e.Append("/$x") }
+            [void]$h.Append("$c$x"); $cur += "$c$x"; continue
+        }
+        if ($c -eq "'" -or ($c -eq '$' -and $i + 1 -lt $L -and $s[$i + 1] -eq "'")) {
+            $ansi = $c -eq '$'; if ($ansi) { $i++ }
+            $t = New-Object Text.StringBuilder; $j = $i + 1
+            while ($j -lt $L) {
+                $x = $s[$j]
+                if ($ansi -and $x -eq '\') { [void]$t.Append($s.Substring($j, [Math]::Min(2, $L - $j))); $j += 2; continue }
+                if ($x -eq "'") { break }
+                [void]$t.Append($x); $j++
+            }
+            $t = $t.ToString()
+            if (RunsCode $cur) { [void]$e.Append((BareText $t)) } else { [void]$e.Append((NeutText $t)) }
+            $w = $s.Substring($i, [Math]::Min($j, $L - 1) - $i + 1); if ($ansi) { $w = "`$$w" }
+            [void]$h.Append($w); $cur += $w; $i = $j
+            continue
+        }
+        if ($c -eq '"') {
+            $t = New-Object Text.StringBuilder; $j = $i + 1
+            while ($j -lt $L) {
+                $x = $s[$j]
+                if ($x -eq '\') { [void]$t.Append($s.Substring($j, [Math]::Min(2, $L - $j))); $j += 2; continue }
+                if ($x -eq '"') { break }
+                [void]$t.Append($x); $j++
+            }
+            $t = $t.ToString()
+            if ((RunsCode $cur) -or $t -match '\$\(|`') { [void]$e.Append((BareText $t)) } else { [void]$e.Append((NeutText $t)) }
+            $w = $s.Substring($i, [Math]::Min($j, $L - 1) - $i + 1); [void]$h.Append($w); $cur += $w; $i = $j
+            continue
+        }
+        if ($c -eq '`') { [void]$e.Append(' '); [void]$h.Append($c); $cur = ''; continue }
+        if ($c -eq '(' -and $i + 1 -lt $L -and $s[$i + 1] -eq '(') { $ar++ }
+        if ($c -eq ')' -and $i + 1 -lt $L -and $s[$i + 1] -eq ')' -and $ar -gt 0) { $ar-- }
+        if ($c -eq '<' -and $i + 1 -lt $L -and $s[$i + 1] -eq '<' -and -not ($i + 2 -lt $L -and $s[$i + 2] -eq '<') -and -not $ar) {
+            $j = $i + 2; $dash = $false
+            if ($j -lt $L -and $s[$j] -eq '-') { $dash = $true; $j++ }
+            while ($j -lt $L -and ($s[$j] -eq ' ' -or $s[$j] -eq "`t")) { $j++ }
+            $w = ''
+            while ($j -lt $L -and $s[$j] -notmatch '[ \t;|&()<>\n]') { $w += $s[$j]; $j++ }
+            if ($w) {
+                $pend += [pscustomobject]@{ Dash = $dash; Quoted = ($w -match '["''\\]'); Word = ($w -replace '["''\\]', '') }
+                $part = $s.Substring($i, $j - $i); [void]$e.Append($part); [void]$h.Append($part); $cur += $part; $i = $j - 1
+                continue
+            }
+        }
+        [void]$e.Append($c); [void]$h.Append($c); $cur += $c
+        if ($c -match '[;|&(]') { $cur = '' }
+    }
+    return @((($e.ToString().Replace('\', '/')) -replace "`n", ' ; '), ($h.ToString() -replace "`n", ' ; '))
+}
+# (EW and HW: PowerShell names are case-blind, and $h is taken.)
+$EW = $Q; $HW = $targets
+if ($tool -match '^(Bash|PowerShell)$' -and $in.PSObject.Properties['command']) {
+    try {
+        $two = CommandWords (([string]$in.command) -replace '[\r\t\f\x08]', ' ') $(if ($tool -eq 'PowerShell') { 'ps' } else { 'bash' })
+        $EW = $two[0]; $HW = $two[1]
+    } catch { $EW = $Q; $HW = $targets }
+}
+$HP = $HW.Replace('\', '/')
+$HQ = $HP -replace '["''`]', ''
 $data = ([string]$env:CLAUDE_PLUGIN_DATA).Replace('\', '/')
 $cwd = ([string]$call.cwd).Replace('\', '/')
 $dl = $data.ToLowerInvariant(); $cl = $cwd.ToLowerInvariant()
@@ -199,9 +337,11 @@ function StoreAt($dir) {  # does folder $dir hold .secrets/ or a .env file?
 if (-not $rule -and $tool -ne 'Glob') {
     $hit = MatchCi $Q '(^|[/ =(])\.secrets(/|[ ;|&)]|$)|api_keys\.env'
     if (-not $hit -and $workspace) {
-        $hit = MatchCi $Q '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|(^|[/ =(])\.[^/ .]*[*?]|api_keys'
+        $hit = MatchCi $Q '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|api_keys'
     }
-    if ($hit) { Deny 'key-store' "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" "Don't open, search or copy it: tm reads the keys itself. When it is only text in the command (a note in a heredoc, or a regex such as .* or .*?), write that text to a file with the Write tool and use the file (awk -f, python3 script.py, a note appended from it)." }
+    # A dot-name glob only as a whole word the shell expands (guard-secrets.sh says why).
+    if (-not $hit -and $workspace) { $hit = MatchCi $EW '(^|[ ;|&(<>{])([^ ;|&(<>{]*/)?\.[^/ .;|&()<>]*[*?]' }
+    if ($hit) { Deny 'key-store' "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" "Don't open, search or copy it: tm reads the keys itself. When it is only text in a note (a heredoc that names .secrets/ or .env), write that text to a file with the Write tool and use the file (a note appended from it)." }
 }
 if (-not $rule -and ($workspace -or $tool -eq 'Grep')) {
     $hit = ''
@@ -220,7 +360,30 @@ if (-not $rule -and ($workspace -or $tool -eq 'Grep')) {
             $rec += '|findstr [^|;&]*/s|(get-childitem|gci|dir|ls) [^|;&]*-r[^|;&]*\| *(select-string|sls)'
             $narrow = '(rg|ag|ack|find|grep|egrep|fgrep|findstr|select-string|sls|get-childitem|gci|dir|ls)( [^|;&>]*)? [a-z0-9_][^ |;&)>]*/'
             $rootish = '(^| )(\.|\./|\.\.|\.\./|\*|\.\*|\./\*|\*/)( |[;|&)]|$)'
-            if ((MatchCi $TP $rec) -and (-not (MatchCi $Q $narrow) -or (MatchCi $Q $rootish))) { $hit = MatchCi $TP $words }
+            # A full path is narrow when it is a folder or file outside the session's folder, and
+            # covers it when it is that folder or one above it (guard-secrets.sh says more).
+            $home0 = if ($HOME) { $HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { '' }
+            $home0 = $home0.Replace('\', '/')
+            $drive = $cl -match '^[a-z]:/'
+            function NormPath($t) {
+                if ($drive -and $t -match '^/[a-z](/|$)') { $t = $t.Substring(1, 1) + ':' + $t.Substring(2) }
+                if ($t -ne '/') { $t = $t -replace '/+$', '' }
+                $t
+            }
+            $cwdn = NormPath $cl; $wide = $false; $nar = $false
+            foreach ($line in ($HQ -split "`n")) {
+                $o = $line -replace '[0-9&]*[<>]+ *[^ ;|&()<>]*', ' '
+                foreach ($t in ($o -split '[ ;|&()=]+')) {
+                    if (-not $t) { continue }
+                    $m = [regex]::Match($t, '^(~|\$home|\$\{home\}|%userprofile%|\$env:userprofile|\$userprofile|\$env:home)', 'IgnoreCase')
+                    if ($home0 -and $m.Success) { $x = $t.Substring($m.Length); if (-not $x -or $x.StartsWith('/')) { $t = $home0 + $x } }
+                    $l = NormPath $t.ToLowerInvariant()
+                    if ($l -notmatch '^(/|[a-z]:(/|$))') { continue }
+                    if ($l -eq '/' -or $l -eq $cwdn -or ("$cwdn/").StartsWith("$l/", [StringComparison]::Ordinal)) { $wide = $true }
+                    else { try { if ((Test-Path -LiteralPath $t) -or (Test-Path -LiteralPath (NormPath $t))) { $nar = $true } } catch { } }
+                }
+            }
+            if ((MatchCi $HP $rec) -and ((-not (MatchCi $HQ $narrow) -and -not $nar) -or (MatchCi $HQ $rootish) -or $wide)) { $hit = MatchCi $HP $words }
         }
     }
     if ($hit) { Deny 'key-search' "this search covers a folder that holds the workspace's key store (.secrets/ or a .env file) and looks for a key word" "Search a narrower path such as runs/ (the Grep tool's path, or a path in the command), or one file." }

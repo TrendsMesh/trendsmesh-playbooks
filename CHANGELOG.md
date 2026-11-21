@@ -63,6 +63,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A model review every two weeks.** A scheduled check compares the public rankings and Replicate's and ElevenLabs'
   pages with the list and opens one issue for the owner with what is new, what changed price and what is gone.
   Nothing in the list changes without the owner's decision.
+- **The key guard no longer blocks regexes and notes.** In a workspace, a `.*` inside a quoted `sed` or `grep`
+  pattern, a note written with a heredoc or a PowerShell here-string, and a `find` over one of your own folders (one
+  with "keynote" in its path, or with `-not -path "*/.*"`) now run. `cat .env`, `cat .*`, `ls .s*`, a note that names
+  `secrets.env` and a search of a workspace that holds the keys are still blocked, by the same rules as before.
 
 ## 0.13.1
 
