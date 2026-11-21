@@ -691,8 +691,9 @@ def handle(event: dict, workspace: Path) -> dict | None:
 # --- command line -----------------------------------------------------------------------------
 
 def add_parsers(sub: argparse._SubParsersAction) -> None:
-    c = sub.add_parser("collect", help="save every TrendsMesh, Ad Library, Meta and page answer of this "
-                                       "session to its run (or stop)")
+    c = sub.add_parser("collect", help="save every TrendsMesh, Ad Library, Meta and page answer of this session "
+                                       "to a trend research, creative brief, organic video, refresh-ad or "
+                                       "create-ad run (or stop)")
     c.add_argument("state", choices=("on", "off"))
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--session", help=f"the Claude Code session that collects (default: ${SESSION_ENV}, "

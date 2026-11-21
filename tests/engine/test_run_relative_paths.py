@@ -162,7 +162,7 @@ def test_the_ranking_and_diagnosis_read_their_answers_in_the_run(run, monkeypatc
     assert r4._control(argparse.Namespace(account=["01_base/peak.json"], control=None), run) == "account"
     assert seen[-1] == [str(run.path / "01_base/peak.json")]
     read = []
-    monkeypatch.setattr(r1, "_read", lambda files, what: (read.append(files), (_ for _ in ()).throw(ValueError("x"))))
+    monkeypatch.setattr(r1, "_read", lambda files, what, **kw: (read.append(files), (_ for _ in ()).throw(ValueError("x"))))
     main(["r1", "--run", str(run.path), "--ads", "01_base/peak.json", "--account", "01_base/peak.json"])
     assert read and read[0] == [str(run.path / "01_base/peak.json")]
 
