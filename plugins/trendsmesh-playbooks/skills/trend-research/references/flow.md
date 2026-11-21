@@ -61,6 +61,14 @@ what each does in a weekly run is under the step. In order:
 
 - Readiness first (SKILL.md section 1). Then `tm run new --playbook trend-research --name
   <category, short> --json`: it gives the run folder `runs/04-trend-research/<date>_<name>/`.
+- **The start card** (issue #131): the batch below is one page, the run's first, under the link every
+  later check-in uses. `tm page intake --run R --json` (with `--known <file>`: what you already know, as
+  `{question id: value}`), publish it as a new private artifact (or to `tm page link --run R --page report`'s
+  link in a weekly run) with the answer's `capabilities`, `tm page published --page intake`, `tm page await
+  --page intake`, and the reply button. When the user is done: one unfiltered `ArtifactData` list
+  (collection `intake`), then `tm page intake --run R --read --json` (an answer in chat: one line per
+  question, `--read --text <file>`); it writes `03_wip/start_answers_vNN.json`, from which you write the
+  answers JSON below. Without a publishing tool, ask the batch in chat as below.
 - Ask the intake in **one batch**, each question with its default:
   - **"How involved do you want to be?"**: **Check every step** (each check-in on its own),
     **Just the big calls** (two: the category map, then the picks and the page; plus the weekly

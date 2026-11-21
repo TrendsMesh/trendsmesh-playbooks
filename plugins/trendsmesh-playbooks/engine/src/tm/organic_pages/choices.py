@@ -658,7 +658,8 @@ def record(run: RunFolder, name: str, stem: str, body: dict, got: dict, *, stage
     out = run.next_version(stage, stem, "json")
     out.parent.mkdir(parents=True, exist_ok=True)
     full = {"page": name, "folder": got["folder"], "data": got["data_file"], "from": got["from"],
-            "source": got["source"], "at": _now(), **body}
+            "source": got["source"], "at": _now(), "read": got.get("answers"), **body}   # read: the run page's
+                                                                                          # start stage (#131)
     with open(out, "x", encoding="utf-8", newline="\n") as fh:
         json.dump(full, fh, ensure_ascii=False, indent=2)
     rel = out.relative_to(run.path).as_posix()

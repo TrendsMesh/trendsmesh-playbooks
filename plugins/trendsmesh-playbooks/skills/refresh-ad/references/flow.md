@@ -21,6 +21,12 @@ background (SKILL.md section 1: long commands).
 ## A0 Intake and setup
 
 - Readiness (SKILL.md section 1) comes first; then `tm run new --name <name> --json`.
+- **The start card** (issue #131): the intake batch as one page, the run's first, under the link the run page
+  uses later: `tm page intake --run R [--known <file>] --json`, published as a new private artifact with the
+  answer's `capabilities`, `tm page published --page intake`, `tm page await --page intake`, the reply button;
+  then one unfiltered `ArtifactData` list (collection `intake`) and `tm page intake --run R --read --json` (an
+  answer in chat: `--read --text <file>`): `03_wip/start_answers_vNN.json`, from which you write the answers
+  below. The live test is never ticked on it. Without a publishing tool, the batch in chat.
 - Ask the intake batch (SKILL.md section 2). Answers JSON, the config's shape plus `level` and
   `flows` (leave out what the user did not change; defaults come from the engine):
 

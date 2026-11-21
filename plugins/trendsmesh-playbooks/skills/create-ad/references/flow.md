@@ -32,6 +32,12 @@ page and one in chat count the same. Rules: `rules.md`.
   largest `srcset` file and puts an SVG that names the brand first; when the best logo is a raster under 600 px on
   its longer side, `missing` says so, and question 4 asks for the logo as an SVG, or a PNG with transparency at
   least 600 px wide (the end card never scales it up, CA10).
+- **The card is the start card** (issue #131): `tm page intake --run R --known <file> --json` (what you
+  pre-filled, `{question id: value}`), published as the run's new private artifact with the answer's
+  `capabilities`, `tm page published --page intake`, `tm page await --page intake`, the reply button; then one
+  unfiltered `ArtifactData` list (collection `intake`) and `tm page intake --run R --read --json` (in chat:
+  `--read --text <file>`), which writes `03_wip/start_answers_vNN.json`. The run page goes to its link, and the
+  `intake` check-in's stage shows these answers. Without a publishing tool, the card in chat.
 - **Not live yet** (early access, a waitlist): warn now; `intake.live: false` and `intake.not_live` say what it is.
 - **The two languages** on the same card, filled from the defaults ("Working language: Polish · Market language:
   Polish"): `languages: {working, market}` as tags (`pl`, `pt-BR`). The working language is for the cards and

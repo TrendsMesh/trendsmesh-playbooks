@@ -1190,6 +1190,7 @@ run_page:
       final_edit: Final video and posting kit
       refused_reference: A refused reference image
       done: Done
+      intake: Start card
   footer:
     built: Built from the run {run} on {when}. Each stage's sources are under its Technical details.
     built_from: Built from the run {run} on {when}.
@@ -1224,6 +1225,8 @@ run_page:
     not_answered: Not answered (the run ended)
     # the last stage of a done run (issue #131 item 5): every check-in settled, nothing open
     finished: Every check-in is settled and the run is done.
+    # the start card's answers, the run page's first stage (issue #131)
+    start: Answered on the start card
   # A decided choice in words, when the check-in's ask has no label for it (issue #132: the page never shows a choice
   # id): choice.<check-in>.<choice>, one for every choice of every catalogue (data/**/checkins.yaml; a test checks
   # it). A check-in with no fixed choices (an ad, a direction) shows the playbook's own words, else `decided`.
@@ -1434,6 +1437,68 @@ run_page:
       G3: Decide on the briefs
       animatics: Make animatics?
       G4: Accept the production views
+  # The start card (issue #131, tm.start_card): each playbook's start questions, on the run's first page. A
+  # question's title is start.<id>, its hint start.<id>_hint, an option's start.<id>_<option>.
+  start:
+    title: '{playbook}: the start'
+    lede: Every start question on one page, each with its default ticked. Change what is not right, then press Done.
+    category: The category
+    category_hint: A short phrase, such as "beauty" or "nail art".
+    market: The market
+    market_hint: The country, such as US or PL.
+    languages: The working language and the market language
+    languages_hint: Two language tags, the working language first (for example pl, pl).
+    focus: The focus (optional)
+    focus_hint: Who reads the report, a brand or a sub-category; the data stays the category's.
+    outputs: What you get
+    outputs_category_report: The category report (always)
+    outputs_weekly_digest: The weekly digest, the same page next week
+    outputs_paid_view: Paid against organic (Meta Ad Library)
+    outputs_everything: The review pack, the briefs and the page
+    outputs_review_pack: The review pack alone
+    outputs_creative_brief: The creative brief
+    outputs_edited_video: The edited video
+    outputs_ai_video: The AI video
+    outputs_live_test: The live test (it spends ad money and publishes ads; its own budget)
+    currency: The currency for money on the page
+    level: How involved do you want to be?
+    level_every_step: Check every step
+    level_big_calls: Just the big calls
+    level_hands_off: Hands-off
+    product: The product
+    account: The ad account
+    landing: The landing page
+    brand: The brand (what it stands for, its tone, its claims)
+    recipients: Who the briefs are for
+    recipients_decision: Decision maker
+    recipients_strategy: Strategist
+    recipients_creator: Creator
+    recipients_editor: Editor
+    recipients_media_buyer: Media buyer
+    concepts: How many concepts
+    concepts_1: '1'
+    concepts_2: '2'
+    concepts_3: '3'
+    concepts_4: '4'
+    concepts_5: '5'
+    to_set: The budget, deadline, approver, creator rights and fee
+    to_set_hint: Each stays "to set" until someone gives it.
+    voice: Where customers speak (optional)
+    voice_hint: Links to reviews, exports, social profiles or competitors; without them the category's voice is used.
+    off_limits: Anything off-limits?
+    assets_dir: The folder with the brand's assets
+    rules: Brand and compliance rules
+    budget_ai: The AI budget in USD
+    budget_voice: The ElevenLabs credits
+    voice_rights: You have the rights to the voice in this ad
+    voice_rights_yes: Yes, I have them
+    voice_rights_no: 'No'
+    persona: Who the ad is for, and what they make or do
+    sells: What the ad sells (the product, one feature, the process or an offer)
+    length: The length and the placements
+    length_short: 15–20 s for Reels and Stories
+    length_feed: 30–45 s for the Feed
+    materials: The materials you have (music, a voice-over, footage, product shots, a logo, a brand guide)
   # how involved the user is (the run's level), as the start card and the intake stage show it (issue #131)
   level:
     every_step: Check every step

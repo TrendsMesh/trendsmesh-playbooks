@@ -78,6 +78,8 @@ MAX_TEXT = 4000
 
 
 START_PAGE = "intake"          # the start card, the first page of a run (tm.start_card, tm.organic_pages.intake)
+# the check-in whose stage shows the start card's answers; any other playbook's run page leads with its own stage
+START_AT = {playbooks.CREATIVE_BRIEF: "G0", playbooks.TREND_RESEARCH: "G0", playbooks.CREATE_AD: "intake"}
 
 
 def linked(playbook: str | None) -> tuple[str, ...]:
@@ -324,8 +326,10 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     decided = _latest_decisions(run)
     component = COMPONENTS.get(s.playbook, lambda c, cid: [])
 
+    start_key = START_AT.get(s.playbook, START_PAGE)
+
     def stage_blocks(key: str, ask: dict | None) -> list[dict]:
-        out = []
+        out = start_blocks(ctx) if key == start_key else []      # the start card's answers (issue #131)
         for cid in _members(run, key) if key in cat.cards else [key]:
             out += component(ctx, cid)
         return out + (_ask_blocks(ctx, ask) if ask else [])
@@ -364,6 +368,11 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     for cid, d in decided.items():
         if cid not in asked_members and cid in cat.checkins:
             stages.append((d.get("at") or "", cid, None, record(None, cid, d)))
+    started = start_answers(run) if start_key == START_PAGE else None
+    if started and not any(x[1] == START_PAGE for x in stages):     # its own first stage (issue #131)
+        stages.append((started.get("at") or "", START_PAGE, None,
+                       {"choice": None, "label": ctx.t("record.start"), "note": None, "at": started.get("at"),
+                        "by": None, "rule": None}))
     final = (FINALS.get(s.playbook, lambda c: None)(ctx) or _finished(ctx, decided)) if ended else None
     if final:                           # the run's end, after its last decision
         stages.append((max((x[0] for x in stages), default="") + "~", final["key"], None, final["record"]))
@@ -395,6 +404,44 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
              "open": {st["key"]: st["decision"]["ask"] for st in now}, "chat_answers": chat,
              "offer": {st["key"]: st["offer"] for st in now if st["offer"] and not local}}
     return m, built
+
+
+def start_answers(run: RunFolder) -> dict | None:
+    """The start card's answers as read last (`tm page intake --read`, `tm organic decisions --page intake`): the
+    record `choices.record` wrote, with `read` (each question's answer) and `data` (the page's data file), else
+    None (no start card, or one read before issue #131)."""
+    from tm.organic_pages import choices   # the organic pages load the run page's look
+    for row in reversed(manifest.rows(run)):
+        if row["source"] != choices.DECISIONS_SOURCE:
+            continue
+        try:
+            params = json.loads(row["params"]) if row["params"] else {}
+        except ValueError:
+            continue
+        if not (isinstance(params, dict) and params.get("page") == START_PAGE):
+            continue
+        got = _read_json(run.path / row["file"])
+        if got is not None and isinstance(got.get("read"), dict) and isinstance(got.get("data"), str):
+            return got
+    return None
+
+
+def start_blocks(ctx: Context) -> list[dict]:
+    """The start card's answers as facts (issue #131): each question with what was chosen or written."""
+    got = start_answers(ctx.run)
+    data = _read_json(ctx.run.path / got["data"]) if got else None
+    if not data:
+        return []
+    rows = []
+    for sec in data.get("sections") or []:
+        a = got["read"].get(sec.get("id")) or {}
+        labels = {o.get("id"): o.get("label") for o in sec.get("options") or []}
+        chosen = a.get("choice")
+        chosen = chosen if isinstance(chosen, list) else [chosen] if chosen else []
+        value = ", ".join(str(labels.get(c) or c) for c in chosen) or str(a.get("text") or "").strip()
+        if value:
+            rows.append((str(sec.get("title") or sec.get("id")), value))
+    return [{"kind": "facts", "rows": rows, "source": got["data"]}] if rows else []
 
 
 def _finished(ctx: Context, decided: dict[str, dict]) -> dict:

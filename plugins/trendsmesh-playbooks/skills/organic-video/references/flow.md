@@ -440,7 +440,7 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    the risk level comes from ("Highest risk: several characters, in AI footage (medium)"), and the video,
    the recipe, the risks, the cost and the trends behind it with their evidence videos. The build is C2's
    step check (`proposals_page_built`): it is made from the checked proposals.
-2. **Publish it**: an `Artifact` publish of the build's `artifact` (the first time a new artifact, its
+2. **Publish it**: an `Artifact` publish of the build's `artifact` (a new artifact only when `tm page link` finds none: the start card's link comes first, its
    `title` the build's; later the same `url`, `tm page link --run R --page run_page`) with `capabilities`
    = the build's `capabilities`, the declaration checked in its result (if the rules are refused, say so
    once, "the page can't save choices yet; tell me your picks here", and take the decisions in chat). It
@@ -1188,7 +1188,7 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      03_wip/ask_images.json --json`: `04_final/run_page_vNN/` with each image item (its options side
      by side, the pick marked, the product and the references beside them), each with Accept / Redo /
      Drop, an option and a note; `tm trends collect on --run R --json` right before its publish;
-     then an `Artifact` publish of the build's `artifact` (the first time a new artifact, its
+     then an `Artifact` publish of the build's `artifact` (a new artifact only when `tm page link` finds none: the start card's link comes first, its
      `title` the build's; later the same `url`, `tm page link --run R --page run_page`) with
      `capabilities` = the build's `capabilities`, the declaration checked in its result, then
      `tm page published --run R --page run_page --url <its URL> --version <the version id> --json`

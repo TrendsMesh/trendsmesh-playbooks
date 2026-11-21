@@ -14,6 +14,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Creative brief: the intake card and the persona on the page.** Both are stages of the run's page now, with the
   persona's hypothesis next to the account's data. The brief's page later goes to the same link, with them under
   "Already settled" (only in the decision maker's and strategist's views).
+- **A start card in every playbook.** Trend research, Creative brief, Refresh an ad and Create an ad now ask their
+  start questions on one page, each with its default ticked, as Organic AI video does. It is the run's first page:
+  every later check-in goes to the same link, with your start answers shown as settled. Answering in chat still
+  works.
 - **The last version of every run's page has nothing open.** After the last decision the page is built once more:
   every decision under "Already settled", ending with "Done".
 - **A decision in chat updates the page.** Once Claude records it, the page stops waiting, is built again with that
