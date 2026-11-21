@@ -559,6 +559,8 @@ def weekly(tool_input: object) -> tuple[str | None, str | None]:
         return level, None
     if step == "1":
         return None, "daily rows (time_increment 1)"
+    if step is None and level == "ad" and given.get("filtering"):
+        return None, "the ids of the ads that spent (flow.md#a1 step 2a), not weekly rows"
     return None, f"not weekly (time_increment {step})" if step else "not weekly (no time_increment)"
 
 

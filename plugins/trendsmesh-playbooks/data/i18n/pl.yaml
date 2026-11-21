@@ -657,6 +657,7 @@ strings:
       by_rule: Zdecydowano według reguły
       note: Uwaga
       saved: Zapisano
+      not_answered: Bez odpowiedzi (przebieg się zakończył)
     data:
       source: 'Źródło: {file}'
       download_csv: Pobierz CSV

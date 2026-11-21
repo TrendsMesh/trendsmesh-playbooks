@@ -170,3 +170,9 @@ def test_the_ranking_still_reads_as_before_for_old_pages():
     r = r1.rank({"A": normalise(A)}, normalise(A + B), CFG, TODAY)
     data = r.to_json()
     assert {"today", "last_day", "target_cpa", "config", "ranking", "candidates"} <= set(data)
+
+
+def test_the_spend_filtered_id_list_is_left_out_with_its_reason():
+    level, why = r1.weekly({"level": "ad", "filtering": [{"field": "spend", "operator": "GREATER_THAN", "value": 0}]})
+    assert level is None and "step 2a" in why
+    assert r1.weekly({"level": "ad", "ad_ids": ["A"], "time_increment": 7}) == ("ad", None)
