@@ -38,6 +38,9 @@ the run state; never write or patch its HTML.
    (`[{"file": "<a CSV or JSON in the run>", "title": "..."}]`: a table with its source). The stage's
    materials (the diagnosis, the audience, the trend cards, the register, the brief, the budgets, the
    before and after, the test plan, the pre-launch check) come from the run's files by themselves.
+   Plain words only (issue #132): no trend id, run file name or path, or theme id in what the page
+   shows, and an option's label says what it means, never its choice id; the page lists the files it
+   shows under a folded "Technical details" itself.
 2. **Build:** `tm page build --run R --ask <the file> --json`. It refuses an ask it cannot use and
    says why: fix the file, build again. The page's own words are in the working language once its
    table is translated; until then it is built in English and says so (`language_warning`: translate

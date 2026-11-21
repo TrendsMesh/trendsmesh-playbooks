@@ -311,8 +311,9 @@ def _gate_settled(ctx: Context, checkin: str) -> list[dict]:
         action = row.get("action")
         chips = [{"text": _w(ctx, "gate." + action) if action in ACTIONS else _w(ctx, "page.undecided"),
                   "style": "ok" if action == "accept" else "warn" if action == "redo" else ""}]
-        media = [{"src": served, "caption": Path(row["file"]).name}] \
+        media = [{"src": served, "caption": str(labels.get(iid) or ""), "file": row["file"]}] \
             if isinstance(row.get("file"), str) and (served := _put(ctx, _shown(ctx, row["file"]))) else []
+        # the item's label, never the file's name (issue #132): the file is in the stage's Technical details
         lines = [row["note"]] if row.get("note") else []
         lines += [f"{k}: {v}" for k, v in (row.get("frame_notes") or {}).items()]
         if row.get("platforms"):

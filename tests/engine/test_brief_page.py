@@ -121,6 +121,20 @@ def _creator_fields_and_drop(reference: str) -> str:
                                               'aria-pressed="false">Drop</button>')
 
 
+def _plain_sources(reference: str) -> str:
+    """Issue #132: each trend row's source in words (ld.plain_sources), and its id under the glance, folded."""
+    tech = '<details class="tech" data-v="decision strategy media-buyer"><summary>Technical details</summary><ul>'
+    for c in _ld_brief()["concepts"]:
+        row = c["glance"][0]
+        old = f'<span class="src">{brief_page.E(row["source_ref"])}</span>'
+        assert reference.count(old) == 1, old
+        reference = reference.replace(old, f'<span class="src">{brief_page.E(row["source"])}</span>')
+        glance_end = reference.index("</dl></div>", reference.index(brief_page.E(row["source"]))) + len("</dl></div>")
+        reference = (reference[:glance_end] + f'{tech}<li><b>{brief_page.E(row["label"])}</b> '
+                     f'{brief_page.E(row["source_ref"])}</li></ul></details>' + reference[glance_end:])
+    return reference
+
+
 def _body_and_script(page_html: str) -> tuple[str, str]:
     """A page's body as the template fills it (from `<body>` to its script) and the script after it."""
     head, _, rest = page_html.partition("<body>\n")
@@ -142,8 +156,10 @@ def test_page_rebuilds_ld_v05_exactly(run, capsys):
     assert code == 0, out
     assert out["folder"] == "04_final/brief_pack_v01"
     built = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
-    # the reference page, under the alias, with the header per view (#15) and the plugin's wording
-    reference = brief_page.worded(_per_view_header(private.alias(V05.read_text(encoding="utf-8").replace("\r", ""))))
+    # the reference page, under the alias, with the header per view (#15), the plugin's wording and the trend rows'
+    # sources in words (#132), their ids in the folded Technical details
+    reference = _plain_sources(brief_page.worded(_per_view_header(private.alias(
+        V05.read_text(encoding="utf-8").replace("\r", "")))))
     body, script = _body_and_script(reference)
     assert body and script
     assert '<section class="panel now brief"' in built                           # the run page's "Now" panel
@@ -159,6 +175,42 @@ def test_page_rebuilds_ld_v05_exactly(run, capsys):
     assert not (run.path / out["folder"] / "assets").exists()          # media sit under the brief's own paths
     assert {f["as"] for f in out["files"]} == {"index.html", *_animatics(_ld_brief())}
     assert "2 thumbnails" not in out["message"] and "9 thumbnails missing" in out["message"]
+
+
+_TECH = re.compile(r'<details class="tech"[^>]*>.*?</details>', re.S)
+
+
+@pytest.mark.private_data
+def test_technical_details_fold_the_source_refs_away_from_the_creator():
+    """Issue #132: the glance, the audience and "What the evidence changed" show their sources in words; the trend
+    ids, run files and queries (`source_ref`) sit in a folded "Technical details" under each, for the views that see
+    the sources, never the creator's."""
+    brief = _ld_brief()
+    brief["audience"]["source_ref"] = "01_base/account_context.md"
+    brief["findings"]["items"][1]["source_ref"] = "02_research/voice/voice_themes_v01.json, T02 and T05"
+    text, _ = brief_page.render(brief)
+    blocks = _TECH.findall(text)
+    assert len(blocks) == 3 + 2                                    # a glance per concept, the audience, the findings
+    assert all(b.startswith('<details class="tech" data-v="decision strategy media-buyer"><summary>Technical details')
+               for b in blocks)
+    assert "<b>Rising hook</b> TrendsMesh trend c2173b6a, pulled 4 November" in blocks[2]
+    shown = ""                                                     # what every view shows, Technical details aside
+    for view in brief_page.ALL_VIEWS:
+        parser = brief_page._ViewText(view)
+        parser.feed(_TECH.sub("", text))
+        shown += "\n".join(parser.texts)
+    for code in ("c2173b6a", "b4f8d078", "01_base/", "voice_themes_v01.json", "T05"):
+        assert code in text and code not in shown, code
+    assert 'TrendsMesh: Rising hook "day _ of _", pulled 4 November' in shown
+    creator = "\n".join(brief_page.view_text(brief, "creator"))
+    decision = "\n".join(brief_page.view_text(brief, "decision"))
+    assert "Technical details" not in creator and "c2173b6a" not in creator
+    assert "Technical details" in decision and "01_base/account_context.md" in decision
+    for row in (r for c in brief["concepts"] for r in c["glance"]):
+        row.pop("source_ref", None)
+    brief["audience"].pop("source_ref")
+    brief["findings"]["items"][1].pop("source_ref")
+    assert "Technical details" not in brief_page.render(brief)[0]           # nothing to fold: no block
 
 
 @pytest.mark.private_data

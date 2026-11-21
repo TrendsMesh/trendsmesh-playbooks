@@ -365,6 +365,18 @@ def _translated(p, tr: i18n.Translator) -> str:
     return f' <span class="src">({W(tr, "brief.phrase_translated", original=E(p.get("adapted_from")))})</span>'
 
 
+TECH_VIEWS = ("decision", "strategy", "media-buyer")     # the views that see the sources, never the creator's
+
+
+def _tech(rows, tr: i18n.Translator) -> str:
+    """Issue #132: the folded "Technical details" under a section: each `(label, source_ref)` as given (the trend id,
+    the run file, the query), for the views that see the sources; none without a `source_ref`."""
+    items = ''.join(f'<li>{f"<b>{E(label)}</b> " if label else ""}{E(ref)}</li>' for label, ref in rows
+                    if isinstance(ref, str) and ref.strip())
+    return (f'<details class="tech"{v(*TECH_VIEWS)}><summary>{W(tr, "brief.technical_details")}</summary>'
+            f'<ul>{items}</ul></details>') if items else ''
+
+
 def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
     """A concept's section; with `stills` ({animatic path: its stills}) the print mode's, its stills in
     place of the player."""
@@ -390,7 +402,8 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
            '</header>']
     # evidence at a glance
     rows = ''.join(f'<div class="g{" trend" if g.get("highlight") else ""}"><dt>{E(g["label"])}</dt><dd>{E(g["text"])}<span class="src">{E(g["source"])}</span></dd></div>' for g in c['glance'])
-    out.append(f'<div class="glance"{v("decision", "strategy", "media-buyer")}><h3>{W(tr, "brief.evidence_at_a_glance")}</h3><dl>{rows}</dl></div>')
+    out.append(f'<div class="glance"{v("decision", "strategy", "media-buyer")}><h3>{W(tr, "brief.evidence_at_a_glance")}</h3><dl>{rows}</dl></div>'
+               + _tech([(g.get("label"), g.get("source_ref")) for g in c['glance']], tr))
     d = c.get('decision_facts', {})
     if d:
         bda = W(tr, "brief.budget_line", budget=todo_or(d.get('budget'), tr), deadline=todo_or(d.get('deadline'), tr), approver=todo_or(d.get('approver'), tr))
@@ -506,11 +519,12 @@ def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None):
     if f:
         items = ''.join(f'<li><strong>{E(i["title"])}</strong> {E(i["text"])}</li>' for i in f.get('items', []))
         cav = f'<p class="caveat">{E(f["caveat"])}</p>' if f.get('caveat') else ''
-        out.append(f'<section id="evidence"{v("decision", "strategy", "media-buyer")}><h2>{W(tr, "brief.evidence_changed")}</h2><ul class="findings">{items}</ul>{cav}</section>')
+        tech = _tech([(i.get("title"), i.get("source_ref")) for i in f.get('items', [])], tr)
+        out.append(f'<section id="evidence"{v("decision", "strategy", "media-buyer")}><h2>{W(tr, "brief.evidence_changed")}</h2><ul class="findings">{items}</ul>{cav}{tech}</section>')
     au = p.get('audience')
     if au:
         facts = ''.join(f'<div class="fact"><b>{E(x["value"])}</b><span>{E(x["label"])}</span></div>' for x in au.get('facts', []))
-        out.append(f'<section id="audience"{v("decision", "strategy", "media-buyer")}><h2>{W(tr, "brief.audience")}</h2><p>{E(au.get("text"))}</p><div class="facts">{facts}</div><p class="src">{E(au.get("source"))}</p></section>')
+        out.append(f'<section id="audience"{v("decision", "strategy", "media-buyer")}><h2>{W(tr, "brief.audience")}</h2><p>{E(au.get("text"))}</p><div class="facts">{facts}</div><p class="src">{E(au.get("source"))}</p>{_tech([(None, au.get("source_ref"))], tr)}</section>')
     pr = m['product']
     plan = ''.join(f'<li>{E(x)}</li>' for x in pr.get('plan', []))
     out.append(f'<section id="product"{v("creator", "editor")}><h2>{W(tr, "brief.product_plain")}</h2><p><b>{E(pr["name"])}</b>. {E(pr.get("plain_description"))}</p><ul class="plain">{plan}</ul><p>{E(pr.get("price_note"))}</p></section>')

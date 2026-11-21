@@ -918,7 +918,15 @@ CB_SATURATION = [("C1", "dream diary", "none_found", [], "all noise (stationery 
 
 
 def _ld_brief() -> dict:
-    return json.loads((LD_FIX / "brief_pack_v01.json").read_text(encoding="utf-8"))
+    """The dry run's brief, its trend rows' sources in words and their trend ids in `source_ref` (issue #132: the
+    page shows no trend id, and tm brief check refuses one in a source)."""
+    brief = json.loads((LD_FIX / "brief_pack_v01.json").read_text(encoding="utf-8"))
+    for c in brief["concepts"]:
+        trend, row = (c.get("plugin") or {}).get("trend"), c["glance"][0]
+        if trend and "TrendsMesh trend" in row["source"]:
+            row["source_ref"] = row["source"]
+            row["source"] = f'TrendsMesh: {row["label"]} "{trend["name"]}", pulled 4 November'
+    return brief
 
 
 def _cb_candidates() -> dict[str, str]:

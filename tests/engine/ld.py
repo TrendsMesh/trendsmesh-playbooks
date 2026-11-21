@@ -45,12 +45,24 @@ PLUGIN_BLOCKS = Path(__file__).parent / "fixtures" / "creative_brief" / "ld_plug
 
 
 def brief() -> dict:
-    """The reference brief, its texts unchanged, with the plugin blocks of `PLUGIN_BLOCKS` merged in."""
+    """The reference brief, its texts unchanged, with the plugin blocks of `PLUGIN_BLOCKS` merged in and its trend
+    rows' sources in plain words (`plain_sources`)."""
     data = private.alias(json.loads(BRIEF.read_text(encoding="utf-8")))
     blocks = json.loads(PLUGIN_BLOCKS.read_text(encoding="utf-8"))
     data["meta"]["plugin"] = blocks["meta"]["plugin"]
     for concept in data["concepts"]:
         concept["plugin"] = blocks["concepts"][concept["id"]]["plugin"]
+    return plain_sources(data)
+
+
+def plain_sources(data: dict) -> dict:
+    """Issue #132: a trend row's source names the trend in words, and its trend id goes in `source_ref`. The
+    reference brief's "TrendsMesh trend <id>, pulled 4 November" becomes the row's `source_ref`."""
+    for concept in data["concepts"]:
+        trend, row = (concept.get("plugin") or {}).get("trend"), concept["glance"][0]
+        if trend and "TrendsMesh trend" in row["source"]:
+            row["source_ref"] = row["source"]
+            row["source"] = f'TrendsMesh: {row["label"]} "{trend["name"]}", pulled 4 November'
     return data
 
 

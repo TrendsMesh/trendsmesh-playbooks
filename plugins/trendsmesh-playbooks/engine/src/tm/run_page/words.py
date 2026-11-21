@@ -38,11 +38,19 @@ def page_lang(run) -> i18n.PageLang:
         if i18n.is_english(wanted):
             return i18n.PageLang(wanted, wanted, ())
         own = OWN_STAGES[playbook]
+        choices = (f"{PREFIX}choice.decided", *(f"{PREFIX}choice.{cid}." for cid in _checkins(playbook)))
         gaps = tuple(k for k in i18n.missing(wanted, (AREA,))
-                     if k.split(".")[1] in (*TEMPLATE, own) or k.removeprefix(PREFIX) == f"playbook.{own}")
+                     if k.split(".")[1] in (*TEMPLATE, own) or k.removeprefix(PREFIX) == f"playbook.{own}"
+                     or k.startswith(choices))
         gaps += tuple(i18n.missing(wanted, AREAS[playbook]))
         return i18n.PageLang(i18n.ENGLISH if gaps else wanted, wanted, gaps)
     return i18n.page_lang(i18n.run_languages(run).working, AREA, *AREAS.get(playbook, ()))
+
+
+def _checkins(playbook: str) -> tuple[str, ...]:
+    """The playbook's check-in ids: its choices' words (`run_page.choice.<id>.<choice>`, issue #132) are its own."""
+    from tm import checkins
+    return tuple(checkins.load(playbook=playbook).checkins)
 
 
 @lru_cache(maxsize=None)

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "playbook-02-creative-brief/schema/brief.schema.json",
   "title": "PB2 brief pack (one data source for the page, the recipient views and the animatics)",
-  "description": "Written by the agent in step 6 (and completed in step 7). build_brief_pack.py renders the shared page; build_animatic.py renders the animatics from concepts[].beats[].animatic. Every number in text fields has its source in a `source` field or in the run (rule R3). Money shown to recipients is in meta.currency. Missing intake values are null and render as 'to set'.",
+  "description": "Written by the agent in step 6 (and completed in step 7). build_brief_pack.py renders the shared page; build_animatic.py renders the animatics from concepts[].beats[].animatic. Every number in text fields has its source in a `source` field, in words, with the MCP call or the run file in `source_ref` (rule R3). Money shown to recipients is in meta.currency. Missing intake values are null and render as 'to set'.",
   "type": "object",
   "required": ["meta", "concepts"],
   "properties": {
@@ -39,7 +39,7 @@
       "type": "object",
       "description": "'What the evidence changed' (decision, strategy, media-buyer views)",
       "properties": {
-        "items": {"type": "array", "items": {"type": "object", "required": ["title", "text"], "properties": {"title": {"type": "string"}, "text": {"type": "string"}}}},
+        "items": {"type": "array", "items": {"type": "object", "required": ["title", "text"], "properties": {"title": {"type": "string"}, "text": {"type": "string"}, "source_ref": {"type": "string", "description": "the MCP call (tool and parameters) or the run file behind the finding: shown only under Technical details"}}}},
         "caveat": {"type": "string"}
       }
     },
@@ -48,7 +48,8 @@
       "properties": {
         "text": {"type": "string"},
         "facts": {"type": "array", "items": {"type": "object", "properties": {"value": {"type": "string"}, "label": {"type": "string"}}}},
-        "source": {"type": "string"}
+        "source": {"type": "string", "description": "where the audience data comes from, in words"},
+        "source_ref": {"type": "string", "description": "the MCP call (tool and parameters) or the run file: shown only under Technical details"}
       }
     },
     "tone": {
@@ -78,7 +79,7 @@
         "key_message": {"type": "string"},
         "hypothesis": {"type": "string"},
         "animatic": {"type": "object", "properties": {"9x16": {"type": "string"}, "4x5": {"type": "string"}, "default": {"enum": ["9x16", "4x5"]}}},
-        "glance": {"type": "array", "description": "Evidence at a glance: Rising hook (TrendsMesh, highlighted), Customers, Account, Competition", "items": {"type": "object", "required": ["label", "text", "source"], "properties": {"label": {"type": "string"}, "text": {"type": "string"}, "source": {"type": "string"}, "highlight": {"type": "boolean"}, "key": {"enum": ["trend", "guess", "customers", "account", "competition"], "description": "the row's name in any language; the label is then in the brief's language"}}}},
+        "glance": {"type": "array", "description": "Evidence at a glance: Rising hook (TrendsMesh, highlighted), Customers, Account, Competition", "items": {"type": "object", "required": ["label", "text", "source"], "properties": {"label": {"type": "string"}, "text": {"type": "string"}, "source": {"type": "string", "description": "where the row comes from, in words (the trend by its name, a theme by its title)"}, "source_ref": {"type": "string", "description": "the MCP call (tool and parameters), the run file or the trend id: shown only under Technical details"}, "highlight": {"type": "boolean"}, "key": {"enum": ["trend", "guess", "customers", "account", "competition"], "description": "the row's name in any language; the label is then in the brief's language"}}}},
         "decision_facts": {
           "type": "object",
           "properties": {

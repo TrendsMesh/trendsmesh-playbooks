@@ -52,6 +52,19 @@ def _html(run, built) -> str:
     return (run.path / built["folder"] / "index.html").read_text(encoding="utf-8")
 
 
+_TECH = re.compile(r'<details class="tech">.*?</details>', re.S)
+
+
+def _tech(html: str) -> str:
+    """The page's folded Technical details (issue #132), every stage's."""
+    return "".join(_TECH.findall(html))
+
+
+def _visible(html: str) -> str:
+    """The page's markup but its Technical details, its script and its data (what a person reads, with tags)."""
+    return re.sub(r"<script.*?</script>", "", _TECH.sub("", html), flags=re.S)
+
+
 def _section(html, cls) -> str:
     m = re.search(rf'<section class="{cls}".*?</section>', html, re.S)
     return m.group(0) if m else ""
@@ -94,7 +107,7 @@ def test_settled_stages_are_newest_first_and_rule_decisions_are_shown(run):
     state.save(run, s)
     html = _html(run, run_page.build(run))
     settled = _section(html, "settled")
-    assert settled.index("Diagnosis: refresh") < settled.index("Pick the ad: ad1")
+    assert settled.index("Diagnosis: Refresh it") < settled.index("Pick the ad: Decided")   # never an id (#132)
     assert "by rule" in settled and "the R2 table" in settled and "hook rate fell" in settled
 
 
@@ -104,8 +117,52 @@ def test_an_ad_picked_in_chat_is_named_by_the_ranking(run):
          "cost_increase": 0.51, "value_to_recover": 820}]}), encoding="utf-8")
     _decide(run, "G1", "a1")
     html = _html(run, run_page.build(run))
-    assert "Pick the ad: Spring video" in html and "Source: 01_base/winner_ranking_v01.json" in html
-    assert 'title="Source: 01_base/winner_ranking_v01.json">51.0%</td>' in html
+    assert "Pick the ad: Spring video" in html and "01_base/winner_ranking_v01.json" in _tech(html)
+    assert "01_base/" not in _visible(html) and ">51.0%</td>" in html          # the source folded away (#132)
+
+
+CATALOGUES = sorted((SRC.parents[3] / "data").glob("*/checkins.yaml")) + [SRC.parents[3] / "data" / "checkins.yaml"]
+
+
+def _choices(path: Path) -> list[tuple[str, str]]:
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return [(c["id"], choice) for c in data["checkins"] for choice in c.get("choices") or []]
+
+
+def test_every_catalogued_choice_has_words_and_organic_video_has_them_in_polish():
+    """Issue #132: the page never shows a choice id; a decided choice no ask labels is said in the table's words."""
+    assert len(CATALOGUES) == 5
+    missing = [f"run_page.choice.{cid}.{choice}" for path in CATALOGUES for cid, choice in _choices(path)
+               if not words.has(f"choice.{cid}.{choice}")]
+    assert not missing, missing
+    organic = [k for k in (f"run_page.choice.{cid}.{choice}"
+                           for cid, choice in _choices(SRC.parents[3] / "data" / "organic-video" / "checkins.yaml"))]
+    assert not [k for k in organic if k not in i18n.translator("pl").strings], organic
+    assert words.t("choice.reuse_profile.new") == "A new channel profile" and words.t("choice.pack.approve") == "Approved"
+    assert words.t("choice.reuse_profile.new", "pl") == "Nowy profil kanału"
+
+
+def test_a_settled_choice_is_said_in_words_never_as_its_id(run):
+    s = state.load(run)
+    s.decisions += [{"checkin": "VB", "choice": "approve", "by": "user", "at": "2026-11-05T10:00:00+00:00"},
+                    {"checkin": "G5", "choice": "c7f3a", "by": "rule", "rule": "green", "at": "2026-11-05T11:00:00+00:00"},
+                    {"checkin": "G1a", "choice": "refresh", "by": "user", "at": "2026-11-05T12:00:00+00:00"}]
+    state.save(run, s)
+    settled = _section(_html(run, run_page.build(run)), "settled")
+    assert "Voice cost: Approved" in settled and "Diagnosis: Refresh it" in settled
+    assert "Edited video: Decided" in settled                             # a free choice with no words of its own
+    assert ">approve<" not in settled and "c7f3a" not in settled and ">refresh<" not in settled
+
+
+def test_a_catalogued_choice_without_words_stops_the_build(run, monkeypatch, capsys):
+    real = words.has
+    monkeypatch.setattr(words, "has", lambda key, lang="en": key != "choice.VB.approve" and real(key, lang))
+    _decide(run, "VB", "approve")
+    assert main(["page", "build", "--run", str(run.path), "--json"]) == 1
+    said = capsys.readouterr()
+    assert "VB" in said.out + said.err and "'approve'" in said.out + said.err
+    assert "run_page.choice.VB.approve" in said.out + said.err
+    assert page.latest_folder(run, run_page.PAGE) is None                # no page with a choice id on it
 
 
 def test_a_new_ask_reopens_a_decided_check_in(run):
@@ -207,6 +264,35 @@ def test_a_bad_ask_is_refused_with_every_problem_and_nothing_saved(run):
         run_page.build(run, _ask(run, "Z9"))
 
 
+def test_an_ask_never_shows_a_code_a_run_file_or_a_choice_id(run):
+    """Issue #132: the ask's visible words are refused with a trend id, a run file or a theme id, and an option labelled
+    with its own choice id; each as one problem naming the field."""
+    (run.path / "02_research" / "voice").mkdir(parents=True, exist_ok=True)
+    (run.path / "02_research" / "trend_c2173b6a4e7f496093804bb8efb3e785.json").write_text("{}", encoding="utf-8")
+    themes = {"themes": [{"id": "T02", "title": "too much time scrolling"}]}
+    (run.path / "02_research" / "voice" / "voice_themes_v01.json").write_text(json.dumps(themes), encoding="utf-8")
+    ask = json.loads(_ask(run).read_text(encoding="utf-8"))
+    ask.update(title="Trend c2173b6a wins", lede="See 03_wip/decisions_gate_images_v01.json", question="Which?",
+               context="Themes T02 and more", points=["fine", "from winner_ranking_v01.json"])
+    ask["options"][0]["means"] = "the read 01_base/meta/ads_get_ad_entities_v03.json"
+    ask["options"][1]["label"] = "ad2"
+    problems = run_page.check_ask(run, ask)
+    assert problems == [
+        "option 2: its label is its choice id ('ad2'); say what it means, in the run's language.",
+        "title shows a trend id (c2173b6a): say it in words (a trend by its name, a theme by its title); the page lists "
+        "the files it shows under Technical details.",
+        "lede shows a run file (03_wip/decisions_gate_images_v01.json): say it in words (a trend by its name, a theme by "
+        "its title); the page lists the files it shows under Technical details.",
+        "context shows a theme id (T02): say it in words (a trend by its name, a theme by its title); the page lists the "
+        "files it shows under Technical details.",
+        "points[2] shows a run file (winner_ranking_v01.json): say it in words (a trend by its name, a theme by its "
+        "title); the page lists the files it shows under Technical details.",
+        "option 1 means shows a run file (01_base/meta/ads_get_ad_entities_v03.json): say it in words (a trend by its "
+        "name, a theme by its title); the page lists the files it shows under Technical details.",
+    ]
+    assert run_page.check_ask(run, json.loads(_ask(run).read_text(encoding="utf-8"))) == []
+
+
 def test_an_ask_adds_its_points_media_and_tables(run):
     (run.path / "03_wip" / "take 1.mp3").write_bytes(b"ID3")
     (run.path / "03_wip" / "credits.csv").write_text("item,credits\nline,1200\n", encoding="utf-8")
@@ -217,7 +303,9 @@ def test_an_ask_adds_its_points_media_and_tables(run):
     assert 'src="assets/media/01_take 1.mp3"' in html and "Ujęcie 1" in html
     assert (run.path / built["folder"] / "assets" / "media" / "01_take 1.mp3").is_file()
     assert "assets/media/01_take 1.mp3" in built["artifact"]["files"]
-    assert 'title="Source: 03_wip/credits.csv">1\u2009200</td>' in html
+    assert '<td class="num">1\u2009200</td>' in html and "Kredyty: 03_wip/credits.csv" in _tech(html)
+    assert "03_wip/" not in _visible(html)                          # the files folded away (#132)
+    assert "03_wip/take 1.mp3" in _tech(html)
 
 
 # --- datasets and sources -----------------------------------------------------------------------------
@@ -230,7 +318,8 @@ def test_the_diagnosis_shows_its_numbers_with_their_source(run):
                    "latest": {"p50/p25": 0.58, "p75/p50": 0.71, "p95/p75": 0.49}, "dropped": []}}), encoding="utf-8")
     html = _html(run, run_page.build(run, _ask(run, "G1a", options=[{"choice": "refresh", "label": "Tylko początek"}])))
     assert "Hook rate (25% watched)" in html and "31.0% → 22.0% (-29%)" in html
-    assert "Source: 04_final/diagnosis_v01.json" in html and "The start (hook)" in html
+    assert "04_final/diagnosis_v01.json" in _tech(html) and "The start (hook)" in html
+    assert "04_final/" not in _visible(html) and "Source:" not in html
     assert 'class="tile sticker"' in html
     data = json.loads(re.search(r'<script type="application/json" id="tm-page">(.*?)</script>', html, re.S).group(1))
     assert all(d["source"] for d in data["datasets"].values())
@@ -244,7 +333,8 @@ def test_money_and_test_plan_stages_read_run_json(run):
                    "thresholds": {"win": 0.1, "nested": {"x": 1}}, "calculation": "50 events at 14 per event"}
     state.save(run, s)
     vb = _html(run, run_page.build(run, _ask(run, "VB", options=[{"choice": "approve", "label": "Tak"}])))
-    assert "Budgets in this run" in vb and "Voice credits" in vb and 'title="Source: run.json">1\u2009200</td>' in vb
+    assert "Budgets in this run" in vb and "Voice credits" in vb and '<td class="num">1\u2009200</td>' in vb
+    assert "run.json" in _tech(vb) and "run.json" not in _visible(vb)
     _decide(run, "VB", "approve")
     g10 = _html(run, run_page.build(run, _ask(run, "G10", options=[{"choice": "approve", "label": "Tak"}])))
     now = _section(g10, "panel now")

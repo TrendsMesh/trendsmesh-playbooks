@@ -104,7 +104,7 @@ def materials(ctx: Context, checkin: str) -> list[dict]:
             if x.get("d") in CHOICES and isinstance(note, str) and note.strip():
                 lines.append(_w("brief.settled_note", lang, id=cid, who=d.get("who"), choice=_w(CHOICES[x["d"]], lang),
                                 note=note))
-    out.append({"kind": "text", "text": _w("brief.settled_read", lang, file=rel)})
+    out.append({"kind": "text", "text": _w("brief.settled_read", lang), "source": rel})   # the file: Technical details
     if lines:
         out.append({"kind": "list", "items": lines})
     return out
@@ -124,7 +124,9 @@ def frame(run, lang: str) -> dict:
     stages = []
     for n, (_, cid, d) in enumerate(sorted((d.get("at") or "", cid, d) for cid, d in decided.items()), 1):
         stages.append({"key": cid, "n": n, "name": name(ctx, cid), "title": "", "lede": "",
-                       "blocks": materials(ctx, cid), "record": _record(None, d, outcome(ctx, cid, d.get("choice")))})
+                       "blocks": materials(ctx, cid),
+                       "record": _record(None, d, outcome(ctx, cid, d.get("choice")), lang=lang,
+                                         fixed=cat.checkins[cid].choices if cid in cat.checkins else None)})
     stages.reverse()
     stage = None
     if "briefs" not in (s.outputs or []):                  # the review pack alone: no check-in, C1's page decides

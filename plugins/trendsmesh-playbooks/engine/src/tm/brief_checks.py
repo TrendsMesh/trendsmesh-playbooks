@@ -11,6 +11,10 @@ keeps every concept now).
     media_rows(concept)             its media-buyer rows by label, as the production check reads them
     account_figures(run), advertisers_seen(run, brief)   CB13's data: what the creator view never shows
 
+Every stage refuses a trend id, a run file or a theme id in a field the page shows (issue #132, `plain_words`): the
+page says its sources in words (`source`), and the MCP call, the run file or the trend id go in `source_ref`, which
+the page folds into "Technical details".
+
 CB13's check of the creator view (issue #146) reads data, never words: the creator view is built from the creator
 fields only (brief_page), and the check refuses a view, or its PDF, that shows one of the run's own account figures
 (spend, cost per result, results, from the saved Meta reads) or an advertiser of the run's Ad Library answers, with
@@ -47,7 +51,8 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
-from tm import animatic, brief_research, brand, i18n, json_schema, page_text, research_checks, state, stepchecks
+from tm import animatic, brief_research, brand, i18n, json_schema, page_text, plain_words, research_checks, state
+from tm import stepchecks
 from tm import trends, voice
 from tm import voice_themes
 from tm.brief_config import SEED_KINDS
@@ -412,11 +417,78 @@ def _trend_row(run: RunFolder, i: int, c: dict, evidence: str | None) -> list[Pr
                                                              f"card {where} says {card['kind']}.",
                                f"Set it to {card['kind']} and label the row \"Rising "
                                f"{str(card['kind']).removesuffix('_trend')}\"."))
-        if tid[:8].casefold() not in first["source"].casefold():
-            out.append(Problem(f"{field}.glance[0].source", f"The {want} row of {cid} does not name its trend: its "
-                                                            f"source holds the trend id's first characters, "
-                                                            f"{tid[:8]} (R3).",
-                               f"Write it like \"TrendsMesh trend {tid[:8]}, pulled <date>\"."))
+        ref = first.get("source_ref") if isinstance(first.get("source_ref"), str) else ""
+        named = _norm(trend["name"]) in _norm(first["source"]) if _filled(trend.get("name")) else True
+        if tid[:8].casefold() not in ref.casefold() or not named:
+            out.append(Problem(f"{field}.glance[0].source_ref" if named else f"{field}.glance[0].source",
+                               f"The {want} row of {cid} does not name its trend: its source names the trend "
+                               f"(\"{trend.get('name')}\") and its source_ref holds the trend id's first characters, "
+                               f"{tid[:8]} (R3).",
+                               "Name the trend in source (its name, in the page's language) and its id in source_ref, "
+                               f"like \"TrendsMesh trend {tid[:8]}, pulled <date>\"."))
+    return out
+
+
+# What the page shows of a brief (issue #132): never a trend id, a run file or a theme id. `source_ref` holds those.
+_SHOWN_CONCEPT = ("title", "one_liner", "key_message", "hypothesis")
+_SHOWN_BEAT = ("see", "hear", "ost", "why")
+
+
+def _shown_fields(brief: dict):
+    """(field path, text) of every brief field the page shows that `_visible` reads."""
+    meta = brief.get("meta") or {}
+    yield "meta.title", meta.get("title")
+    for k, text in (meta.get("lede") or {}).items() if isinstance(meta.get("lede"), dict) else ():
+        yield f"meta.lede.{k}", text
+    findings = brief.get("findings") or {}
+    for j, item in enumerate(findings.get("items") or []):
+        for k in ("title", "text"):
+            yield f"findings.items[{j}].{k}", (item or {}).get(k)
+    yield "findings.caveat", findings.get("caveat")
+    au = brief.get("audience") or {}
+    yield "audience.text", au.get("text")
+    yield "audience.source", au.get("source")
+    for j, fact in enumerate(au.get("facts") or []):
+        for k in ("value", "label"):
+            yield f"audience.facts[{j}].{k}", (fact or {}).get(k)
+    for i, c in enumerate(brief.get("concepts") or []):
+        at = f"concepts[{i}]"
+        for k in _SHOWN_CONCEPT:
+            yield f"{at}.{k}", c.get(k)
+        for j, row in enumerate(c.get("glance") or []):
+            for k in ("label", "text", "source"):
+                yield f"{at}.glance[{j}].{k}", (row or {}).get(k)
+        for k in ("text", "description"):
+            yield f"{at}.hook.{k}", (c.get("hook") or {}).get(k)
+        for j, beat in enumerate(c.get("beats") or []):
+            for k in _SHOWN_BEAT:
+                yield f"{at}.beats[{j}].{k}", (beat or {}).get(k)
+        note = c.get("note") if isinstance(c.get("note"), dict) else {}
+        for k in ("title", "text"):
+            yield f"{at}.note.{k}", note.get(k)
+        for j, why in enumerate(c.get("why") or []):
+            yield f"{at}.why[{j}].source_label", (why or {}).get("source_label")
+        for j, p in enumerate(c.get("customer_phrases") or []):
+            yield f"{at}.customer_phrases[{j}].used_in", (p or {}).get("used_in")
+
+
+def _visible(run: RunFolder, brief: dict) -> list[Problem]:
+    """Issue #132: a field the page shows holds no trend id, run file or theme id (`plain_words`); `source_ref` is
+    where they go, in the folded "Technical details"."""
+    have, out = plain_words.codes(run), []
+    for field, text in _shown_fields(brief):
+        hit = plain_words.found(text, have)
+        if hit is None:
+            continue
+        what, value = hit
+        if field.endswith(".source"):
+            thing = {plain_words.RUN_FILE: "file", plain_words.TREND_ID: "trend id"}.get(what, "theme id")
+            todo = f"Say the source in words in source, and put the {thing} in source_ref."
+        elif what == plain_words.THEME_ID:
+            todo = "Name the theme by its title, as the voice themes give it; its id goes in a source_ref."
+        else:
+            todo = "Say it in plain words (a trend by its name, a read by what it is); ids and files go in a source_ref."
+        out.append(Problem(field, f"{field} shows {what} ({value}).", todo))
     return out
 
 
@@ -1008,7 +1080,7 @@ def check(run: RunFolder, brief: dict, stage: Stage, cfg: dict) -> list[Problem]
     if problems:
         return problems
     evidence = state.load(run).evidence
-    out = _concept_checks(run, brief, evidence, cfg or {})
+    out = _concept_checks(run, brief, evidence, cfg or {}) + _visible(run, brief)
     if stage in ("brief", "production"):
         out += _brief_checks(run, brief, cfg or {})
     if stage == "production":

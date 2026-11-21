@@ -34,7 +34,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from tm import checkins, flow, i18n, manifest, page, playbooks, state
+from tm import checkins, flow, i18n, manifest, page, plain_words, playbooks, state
 from tm.run_page import (create_ad, creative_brief, detail as details, organic_video, refresh_ad, template,
                          trend_research, words)
 from tm.run_page.context import MEDIA_EXT, Context
@@ -160,7 +160,30 @@ def check_ask(run: RunFolder, ask: object) -> list[str]:
                 problems.append(f"{key} {n}: {rel!r} is not a file inside the run folder (a run-relative path).")
             elif path.suffix.lower() not in ext:
                 problems.append(f"{key} {n}: {rel} is not one of {', '.join(ext)}.")
-    return problems
+    return problems + _codes_shown(run, ask)
+
+
+def _codes_shown(run: RunFolder, ask: dict) -> list[str]:
+    """Issue #132: what the page shows of the ask holds no trend id, run file or theme id (`plain_words`), and no
+    option is labelled with its choice id. The files the ask names are listed in the stage's Technical details."""
+    have, out = plain_words.codes(run), []
+    shown = [(key, ask.get(key)) for key in ("title", "lede", "question", "context")]
+    points = ask.get("points") if isinstance(ask.get("points"), list) else []
+    shown += [(f"points[{n}]", p) for n, p in enumerate(points, 1)]
+    for key, field in (("media", "caption"), ("data", "title")):
+        items = ask.get(key) if isinstance(ask.get(key), list) else []
+        shown += [(f"{key} {n} {field}", m.get(field)) for n, m in enumerate(items, 1) if isinstance(m, dict)]
+    options = ask.get("options") if isinstance(ask.get("options"), list) else []
+    for n, o in enumerate(o for o in options if isinstance(o, dict)):
+        shown += [(f"option {n + 1} {field}", o.get(field)) for field in ("label", "means")]
+        if isinstance(o.get("label"), str) and isinstance(o.get("choice"), str) and o["label"].strip() == o["choice"]:
+            out.append(f"option {n + 1}: its label is its choice id ({o['choice']!r}); say what it means, in the "
+                       "run's language.")
+    for field, text in shown:
+        if (hit := plain_words.found(text, have)) is not None:
+            out.append(f"{field} shows {hit[0]} ({hit[1]}): say it in words (a trend by its name, a theme by its "
+                       "title); the page lists the files it shows under Technical details.")
+    return out
 
 
 def save_ask(run: RunFolder, source: Path) -> dict:
@@ -229,7 +252,7 @@ def _ask_blocks(ctx: Context, ask: dict) -> list[dict]:
     out = []
     if ask.get("points"):
         out.append({"kind": "list", "items": ask["points"]})
-    items = [{"src": served, "caption": m.get("caption") or ""} for m in ask.get("media") or []
+    items = [{"src": served, "caption": m.get("caption") or "", "file": m["file"]} for m in ask.get("media") or []
              if (served := ctx.put(m["file"]))]
     if items:
         out.append({"kind": "media", "items": items})
@@ -298,6 +321,10 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     def worded(cid: str, d: dict) -> str | None:
         return OUTCOMES.get(s.playbook, lambda c, i, x: None)(ctx, cid, d.get("choice"))
 
+    def record(ask: dict | None, cid: str, d: dict) -> dict:
+        known = cat.checkins.get(cid)
+        return _record(ask, d, worded(cid, d), lang=lang, fixed=known.choices if known else None)
+
     stages = []                      # (when, key, ask or None, record or None)
     asked_members = set()
     for key, ask in found.items():
@@ -306,11 +333,11 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
             stages.append((ask.get("_at") or "", key, ask, None))
         else:
             d = decided[members[-1]]
-            stages.append((d.get("at") or "", key, ask, _record(ask, d, worded(members[-1], d))))
+            stages.append((d.get("at") or "", key, ask, record(ask, members[-1], d)))
         asked_members.update(members)
     for cid, d in decided.items():
         if cid not in asked_members and cid in cat.checkins:
-            stages.append((d.get("at") or "", cid, None, _record(None, d, worded(cid, d))))
+            stages.append((d.get("at") or "", cid, None, record(None, cid, d)))
     stages.sort(key=lambda x: (x[3] is None, x[0]))     # settled first by time, then the open ones
     now, settled = [], []
     for n, (_, key, ask, record) in enumerate(stages, 1):
@@ -338,9 +365,30 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     return m, built
 
 
-def _record(ask: dict | None, d: dict, worded: str | None = None) -> dict:
+class NoWords(ValueError):
+    """A catalogued choice the table has no words for: the plugin's to fix, so the page is not built (exit 1)."""
+
+
+def choice_words(checkin: str, choice: object, lang: str, fixed: tuple[str, ...] | None) -> str:
+    """A decided choice in the table's words (issue #132: never its id): `run_page.choice.<checkin>.<choice>`. A
+    check-in with no fixed choices (`fixed` None: an ad, a direction) without such words is "Decided"; a fixed
+    choice without them is NoWords."""
+    key = f"choice.{checkin}.{choice}"
+    if words.has(key, lang):
+        return t(key, lang)
+    if fixed is not None and choice in fixed:
+        raise NoWords(f"The run page has no words for {checkin}'s choice {choice!r} (run_page.{key} is not in "
+                      "data/i18n/en.yaml), so the page was not built: it never shows a choice id. This is the "
+                      "plugin's to fix: tell the user, and offer to report it (the report-issue skill).")
+    return t("choice.decided", lang)
+
+
+def _record(ask: dict | None, d: dict, worded: str | None = None, *, lang: str = "en",
+            fixed: tuple[str, ...] | None = None) -> dict:
+    """A settled stage's decision; its `label` is the ask's option, else the playbook's words for it (`worded`), else
+    `choice_words` (`fixed`: the check-in's choices in the catalogue)."""
     labels = {o["choice"]: o["label"] for o in (ask or {}).get("options") or []}
-    label = labels.get(d.get("choice")) or worded or d.get("choice")
+    label = labels.get(d.get("choice")) or worded or choice_words(str(d.get("checkin")), d.get("choice"), lang, fixed)
     return {"choice": d.get("choice"), "label": label, "note": d.get("note"),
             "at": d.get("at"), "by": d.get("by"), "rule": d.get("rule")}
 

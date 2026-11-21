@@ -1,6 +1,6 @@
 """The shared page template (issue #19): one page per run, in the TrendsMesh look, that grows at every check-in.
 
-    Datasets()                    the page's numbers, each table with its source (hover, CSV download)
+    Datasets()                    the page's numbers, each table with its source (Technical details, CSV download)
     render(model)                 the page's HTML from a model (below); playbook-agnostic
 
 Layout, top to bottom: the top bar (the mark and name, a dark pill with the playbook's name), the "Now" block
@@ -13,7 +13,9 @@ answer in chat.
 The model is plain data: `{lang, title, playbook, run, updated, local, build, now: [stage], settled: [stage],
 datasets}`; a stage is `{key, n, name, title, lede, blocks, decision | record}`. A decision is `{checkin, ask,
 question, context, options: [{choice, label, means, recommended}]}`; a record (a settled stage's decision) is
-`{label, choice, note, at, by, rule}`. Blocks are listed in `_BLOCKS`. Every text is escaped here: what the agent
+`{label, choice, note, at, by, rule}`, shown by its label alone (issue #132: never a choice id). A block's `source`,
+its tables' sources and its media's `file`s are run files: each stage lists them in one folded "Technical details"
+(`tech`), never in its visible text. Blocks are listed in `_BLOCKS`. Every text is escaped here: what the agent
 wrote and what the run's files hold is data, never markup (a lede's `**bold**` is the one mark-up kept).
 
 The decision is saved in the artifact's db as `decisions/<checkin>` = `{checkin, ask, choice, label, note, detail,
@@ -92,19 +94,19 @@ class Datasets:
 # --- blocks -------------------------------------------------------------------------------------
 
 def _source_line(ds: dict, lang: str) -> str:
-    return (f'<div class="src"><span>{E(t("data.source", lang, file=ds["source"]))}</span>'
+    """The table's CSV download; its source is in the stage's Technical details (issue #132, `_tech`)."""
+    return (f'<div class="src"><span></span>'
             f'<button class="csv" type="button" data-set="{E(ds["id"])}">{E(t("data.download_csv", lang))}</button></div>')
 
 
-def _cell(value: object, kind: str, source: str, lang: str) -> str:
-    title = E(t("data.source", lang, file=source))
+def _cell(value: object, kind: str, lang: str) -> str:
     if kind == "link":
         url = value if isinstance(value, str) and re.match(r"^https?://[^\s\"'<>]+$", value) else ""
         return f'<td><a href="{E(url)}" target="_blank" rel="noopener">{E(t("data.open", lang))}</a></td>' if url \
             else "<td>—</td>"
     if kind in ("num", "pct"):
-        return f'<td class="num" title="{title}">{E(fmt(value, kind))}</td>'
-    return f'<td title="{title}">{E("—" if value in (None, "") else value)}</td>'
+        return f'<td class="num">{E(fmt(value, kind))}</td>'
+    return f'<td>{E("—" if value in (None, "") else value)}</td>'
 
 
 def _table(b: dict, ds: Datasets, lang: str) -> str:
@@ -112,17 +114,16 @@ def _table(b: dict, ds: Datasets, lang: str) -> str:
     if not d["rows"]:
         return f'<p class="soft">{E(t("data.empty", lang))}</p>'
     head = "".join(f'<th class="{"num" if c["kind"] in ("num", "pct") else ""}">{E(c["label"])}</th>' for c in d["columns"])
-    body = "".join("<tr>" + "".join(_cell(r.get(c["key"]), c["kind"], d["source"], lang) for c in d["columns"]) + "</tr>"
+    body = "".join("<tr>" + "".join(_cell(r.get(c["key"]), c["kind"], lang) for c in d["columns"]) + "</tr>"
                    for r in d["rows"])
     return f'<div class="tw"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>{_source_line(d, lang)}'
 
 
 def _tiles(b: dict, ds: Datasets, lang: str) -> str:
     d = ds.get(b["data"])
-    title = E(t("data.source", lang, file=d["source"]))
     out = []
     for r in d["rows"]:
-        out.append(f'<div class="tile{" sticker" if r.get("sticker") else ""}" title="{title}">'
+        out.append(f'<div class="tile{" sticker" if r.get("sticker") else ""}">'
                    f'<div class="k">{E(r.get("label"))}</div><div class="v">{E(fmt(r.get("value"), r.get("kind") or "num"))}</div>'
                    + (f'<div class="s">{E(r.get("sub"))}</div>' if r.get("sub") else "") + "</div>")
     return f'<div class="tiles">{"".join(out)}</div>{_source_line(d, lang)}'
@@ -131,7 +132,6 @@ def _tiles(b: dict, ds: Datasets, lang: str) -> str:
 def _compare(b: dict, ds: Datasets, lang: str) -> str:
     """Two values per row on one scale (the best window as a grey dot, the latest as a pink one)."""
     d = ds.get(b["data"])
-    title = E(t("data.source", lang, file=d["source"]))
     rows = []
     for r in d["rows"]:
         a, z = r.get(b["a"]), r.get(b["b"])
@@ -140,7 +140,7 @@ def _compare(b: dict, ds: Datasets, lang: str) -> str:
         top = max(abs(a), abs(z)) * 1.15 or 1
         kind = r.get("kind") or b.get("kind") or "num"
         change = f" ({(z - a) / a * 100:+.0f}%)" if a else ""
-        rows.append(f'<div class="cmp" title="{title}"><span>{E(r.get(b["label"]))}</span><div class="scale">'
+        rows.append(f'<div class="cmp"><span>{E(r.get(b["label"]))}</span><div class="scale">'
                     f'<span class="dot a" style="left:{abs(a) / top * 100:.1f}%"></span>'
                     f'<span class="dot b" style="left:{abs(z) / top * 100:.1f}%"></span></div>'
                     f'<span class="num">{E(fmt(a, kind))} → {E(fmt(z, kind))}{E(change)}</span></div>')
@@ -153,7 +153,6 @@ def _compare(b: dict, ds: Datasets, lang: str) -> str:
 
 def _bars(b: dict, ds: Datasets, lang: str) -> str:
     d = ds.get(b["data"])
-    title = E(t("data.source", lang, file=d["source"]))
     vals = [r.get(b["value"]) for r in d["rows"]]
     nums = [v for v in vals if isinstance(v, (int, float)) and not isinstance(v, bool)]
     if not nums:
@@ -161,7 +160,7 @@ def _bars(b: dict, ds: Datasets, lang: str) -> str:
     top = max(abs(v) for v in nums) or 1
     kind = b.get("kind") or "num"
     rows = "".join(
-        f'<div class="bar" title="{title}"><span>{E(r.get(b["label"]))}</span><div class="track"><div class="fill" '
+        f'<div class="bar"><span>{E(r.get(b["label"]))}</span><div class="track"><div class="fill" '
         f'style="width:{abs(v) / top * 100:.1f}%"></div></div><span class="num">{E(fmt(v, kind))}</span></div>'
         for r, v in zip(d["rows"], vals) if isinstance(v, (int, float)) and not isinstance(v, bool))
     return f'<div class="bars">{rows}</div>{_source_line(d, lang)}'
@@ -196,10 +195,9 @@ def _pair(b: dict, ds: Datasets, lang: str) -> str:
 
 
 def _text(b: dict, ds: Datasets, lang: str) -> str:
-    src = f'<div class="src"><span>{E(t("data.source", lang, file=b["source"]))}</span></div>' if b.get("source") else ""
     if b.get("pre"):
-        return f'<details><summary>{E(b.get("summary") or t("data.show_text", lang))}</summary><pre class="text">{E(b["text"])}</pre></details>{src}'
-    return "".join(f"<p>{bold(p)}</p>" for p in str(b["text"]).split("\n\n") if p.strip()) + src
+        return f'<details><summary>{E(b.get("summary") or t("data.show_text", lang))}</summary><pre class="text">{E(b["text"])}</pre></details>'
+    return "".join(f"<p>{bold(p)}</p>" for p in str(b["text"]).split("\n\n") if p.strip())
 
 
 def _list(b: dict, ds: Datasets, lang: str) -> str:
@@ -310,8 +308,7 @@ def _notes(b: dict, ds: Datasets, lang: str, live: bool) -> str:
 
 def _facts(b: dict, ds: Datasets, lang: str, live: bool = False) -> str:
     rows = "".join(f"<dt>{E(k)}</dt><dd>{bold(v)}</dd>" for k, v in b["rows"] if v not in (None, ""))
-    src = f'<div class="src"><span>{E(t("data.source", lang, file=b["source"]))}</span></div>' if b.get("source") else ""
-    return f'<div class="record facts"><dl>{rows}</dl></div>{src}'
+    return f'<div class="record facts"><dl>{rows}</dl></div>'
 
 
 def _pager(b: dict, ds: Datasets, lang: str, live: bool) -> str:
@@ -381,8 +378,7 @@ def _copy(b: dict, ds: Datasets, lang: str, live: bool) -> str:
                     items.append(f'<li><p>{E(it["text"])}</p>{count}</li>')
             parts.append(f'<h3 class="small">{E(lst["label"])}</h3><ol class="copy-list">{"".join(items)}</ol>')
         out.append(f'<article class="card">{"".join(parts)}</article>')
-    src = f'<div class="src"><span>{E(t("data.source", lang, file=b["source"]))}</span></div>' if b.get("source") else ""
-    return f'<div class="cards">{"".join(out)}</div>{src}'
+    return f'<div class="cards">{"".join(out)}</div>'
 
 
 _LIVE_BLOCKS = {"cards": _cards, "notes": _notes, "facts": _facts, "pager": _pager, "versions": _versions,
@@ -432,7 +428,7 @@ def _decision(d: dict, lang: str, local: bool) -> str:
 
 
 def _record(r: dict, lang: str) -> str:
-    rows = [(t("record.picked", lang), r.get("label") or r.get("choice"))]
+    rows = [(t("record.picked", lang), r.get("label"))]          # words, never the id (#132)
     if r.get("by") == "rule":
         rows.append((t("record.by_rule", lang), r.get("rule") or ""))
     if r.get("note"):
@@ -445,8 +441,40 @@ def _record(r: dict, lang: str) -> str:
 
 # --- the page -----------------------------------------------------------------------------------
 
+_DATA_KEYS = ("data", "table", "numbers", "confirmations", "videos")     # where a block names a dataset
+
+
+def _refs(node: object, ds: Datasets) -> list[str]:
+    """The run files behind a block: its datasets' sources (with their titles) and its media items' files."""
+    out: list[str] = []
+    if isinstance(node, dict):
+        if isinstance(node.get("src"), str) and isinstance(node.get("file"), str):
+            out.append(node["file"])
+        for k, v in node.items():
+            if k in _DATA_KEYS and isinstance(v, str) and v in ds.items:
+                d = ds.items[v]
+                if d["source"]:
+                    out.append(f'{d["title"]}: {d["source"]}' if d["title"] else d["source"])
+            elif k != "offer":
+                out += _refs(v, ds)
+    elif isinstance(node, (list, tuple)):
+        for v in node:
+            out += _refs(v, ds)
+    return out
+
+
+def tech(refs: list[str], lang: str) -> str:
+    """Issue #132: one folded "Technical details" with a stage's run files (its blocks' and tables' sources, its
+    media's files), never in the visible text; none without any."""
+    items = "".join(f"<li>{E(r)}</li>" for r in dict.fromkeys(r for r in refs if isinstance(r, str) and r.strip()))
+    return (f'<details class="tech"><summary>{E(t("data.technical", lang))}</summary><ul>{items}</ul></details>'
+            if items else "")
+
+
 def _stage_body(s: dict, ds: Datasets, lang: str, live: bool = False) -> str:
-    return "".join(_block(b, ds, lang, live) for b in s.get("blocks") or [])
+    blocks = s.get("blocks") or []
+    refs = [r for b in blocks for r in ([b["source"]] if isinstance(b.get("source"), str) else []) + _refs(b, ds)]
+    return "".join(_block(b, ds, lang, live) for b in blocks) + tech(refs, lang)
 
 
 def _now(s: dict, ds: Datasets, lang: str, local: bool, updated: str) -> str:
@@ -463,7 +491,7 @@ def _settled(stages: list[dict], ds: Datasets, lang: str) -> str:
     out = [f'<section class="settled"><h2>{E(t("settled.heading", lang, n=len(stages)))}</h2>']
     for s in stages:
         r = s["record"]
-        outcome = t("settled.outcome", lang, stage=s["name"], outcome=r.get("label") or r.get("choice"))
+        outcome = t("settled.outcome", lang, stage=s["name"], outcome=r.get("label"))
         status = t("settled.by_rule", lang) if r.get("by") == "rule" else t("settled.saved", lang)
         lede = f'<p>{bold(s["lede"])}</p>' if s.get("lede") else ""
         title = f'<h3>{E(s["title"])}</h3>' if s.get("title") else ""

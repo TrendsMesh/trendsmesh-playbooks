@@ -426,7 +426,7 @@ def _gate(checkin: str):
                 lines, qa, sheet = _qa(ctx, ctx.rel(organic_qa.qa_file(ctx.run, f))) \
                     if organic_qa.qa_file(ctx.run, f) else ([], None, [])
                 cards.append({"title": title, "chips": chips, "lines": lines,
-                              "media": [{"src": served, "caption": f.name}] + sheet, "table": qa,
+                              "media": [{"src": served, "caption": title, "file": ctx.rel(f)}] + sheet, "table": qa,   # #132
                               "choose": {"path": ["items", key], "label": title, "options": options,
                                          "default": ACCEPT}})
         if not cards:
@@ -468,7 +468,7 @@ def _takes(ctx: Context) -> list[dict]:
         lines += [_w(ctx, "qa_fail", text=f) for f in r.get("fails") or []]
         lines += [_w(ctx, "qa_finding", text=f) for f in r.get("findings") or []]
         cards.append({"title": title, "chips": chips, "lines": lines,
-                      "media": [{"src": served, "caption": Path(r["take"]).name}] + sheet, "table": qa,
+                      "media": [{"src": served, "caption": title, "file": r["take"]}] + sheet, "table": qa,   # #132
                       "choose": {"path": ["items", key], "label": title, "options": options,
                                  "default": defaults[key]}})
     if not cards:
