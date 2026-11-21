@@ -1,14 +1,18 @@
 """The product's site for the edit (Create an ad's S0 and G3, issue 96): sharp captures, and its font and logo.
 
     tm tool site capture --run RUN URL [--width 540] [--height 960] [--scale 2] [--clip X,Y,W,H] [--name STEM]
-                         [--wait SEC] [--json]
+                         [--wait SEC] [--hide SELECTOR ...] [--json]
     tm tool site brand   --run RUN URL [--brand NAME] [--json]
 
 - **capture**: the page drawn in the user's own Chrome or Edge (`tm.atlas.find_browser`, headless, a profile of its
   own that is deleted after) at a device scale of 2 or 3 (`--scale`), so a 540×960 view is a 1080×1920 picture and a
   card is never scaled up in the edit. `--clip` takes the element's own box (CSS px of the page, as the browser's
   `getBoundingClientRect()` plus the scroll gives it): the view grows to hold it and the picture is cut to it, at the
-  same scale. Writes the next `03_wip/site_<STEM>_vNN.png`.
+  same scale. Writes the next `03_wip/site_<STEM>_vNN.png`. The cookie banner is hidden first (issue #144): the page
+  is read in the browser (`--dump-dom`), and a local copy of it is drawn instead, with a `<base href>` to the page,
+  its scripts removed (so the banner does not come back), the common consent containers (`CONSENT`, and each
+  `--hide` selector) hidden and the page's scroll lock cleared. The answer lists what it hid (`hidden`). A copy that
+  draws almost empty (a page made by its scripts) falls back to the plain capture, and the answer says so.
 - **brand**: the page (in the browser when there is one, else as the server sends it), its style sheets and the
   Google Fonts it links, read for the font and the logo. **Fonts**: the families the style sheets use most (the
   generic and system ones left out), each weight's file from the site's own `@font-face` (TTF, OTF or WOFF: the
@@ -66,6 +70,12 @@ GENERIC = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"
 GOOGLE_LICENCE = "Google Fonts: an open licence (SIL Open Font License or Apache 2.0), free in ads"
 NOT_FAMILY = re.compile(r"weight|size|feature|variation|style|stretch|smooth|display|leading|line|letter|tracking|"
                         r"optical|synthesis|kerning|scale", re.I)
+# The common consent banners' containers (issue #144), each hidden in the capture's local copy of the page.
+CONSENT = ("#onetrust-banner-sdk", "#onetrust-consent-sdk", "#CybotCookiebotDialog", "#usercentrics-root", ".cc-window",
+           ".cky-consent-container", "#cookie-law-info-bar", ".fc-consent-root", "#didomi-host", '[id*="cookie" i]',
+           '[class*="cookie-banner" i]', '[class*="consent" i]', '[aria-label*="cookie" i]')
+BLANK_SPREAD = 3.0         # a capture whose grey levels spread less than this (0-255) is almost empty
+LOOK_AGAIN = "Look at the capture: if a banner still shows, run it again with --hide <its selector>."
 SITE_LICENCE = ("the brand's own font, served by its site: a font bought for the web may not cover video, so the "
                 "user confirms the brand's licence covers its ads")
 
@@ -141,6 +151,70 @@ def view_for(width: int, height: int, clip: tuple | None) -> tuple[int, int]:
     return need_w, need_h
 
 
+class _Tags(HTMLParser):
+    """Each start tag's attributes (lower-case names), to tell which consent containers a page holds."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tags: list[dict] = []
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.append({k.lower(): (v or "") for k, v in attrs})
+
+
+def _matches(selector: str, tags: list[dict]) -> bool:
+    """A selector of `CONSENT`'s forms (`#id`, `.class`, `[attr*="text" i]`) matching one of the tags."""
+    m = re.fullmatch(r'\[([\w-]+)\*="([^"]+)"\s*i?\]', selector)
+    if m:
+        return any(m.group(2).lower() in t.get(m.group(1), "").lower() for t in tags)
+    if selector.startswith("#"):
+        return any(t.get("id") == selector[1:] for t in tags)
+    if selector.startswith("."):
+        return any(selector[1:] in t.get("class", "").split() for t in tags)
+    return False
+
+
+def clean_copy(dom: str, url: str, hide: list[str] = ()) -> tuple[str, list[str]]:
+    """The page as a local copy for the capture (issue #144): its scripts removed, a `<base href>` to the page, a style
+    hiding the consent containers (`CONSENT` and `hide`) and clearing the scroll lock. (the copy, what it hid: the
+    containers the page holds, then each `--hide` selector as given)."""
+    text = re.sub(r"<script\b[^>]*>.*?</script\s*>", "", dom, flags=re.S | re.I)
+    text = re.sub(r"<script\b[^>]*/?>", "", text, flags=re.I)
+    text = re.sub(r"<base\b[^>]*>", "", text, flags=re.I)
+    parser = _Tags()
+    parser.feed(text)
+    selectors = list(dict.fromkeys([*CONSENT, *hide]))
+    hidden = [s for s in CONSENT if _matches(s, parser.tags)] + [s for s in dict.fromkeys(hide) if s not in CONSENT]
+    style = (f"<style>{', '.join(selectors)} {{ display: none !important; }} html, body {{ overflow: auto !important; "
+             "}</style>")
+    head = f'<base href="{html.escape(url, quote=True)}">{style}'
+    m = re.search(r"<head\b[^>]*>", text, flags=re.I)
+    if m:
+        text = text[:m.end()] + head + text[m.end():]
+    else:
+        m = re.search(r"<html\b[^>]*>", text, flags=re.I)
+        at = m.end() if m else 0
+        text = text[:at] + f"<head>{head}</head>" + text[at:]
+    return text, hidden
+
+
+def spread(png: Path) -> float:
+    """How far a picture's grey levels spread (their standard deviation, 0 to 255, on a 32×32 copy): a page drawn
+    almost empty is near 0."""
+    raw = subprocess.run([c.ffmpeg_bin(), "-nostdin", "-v", "error", "-i", c.media(png), "-vf",
+                          "scale=32:32,format=gray", "-frames:v", "1", "-f", "rawvideo", "-"],
+                         capture_output=True, check=True).stdout
+    if not raw:
+        return 0.0
+    mean = sum(raw) / len(raw)
+    return (sum((v - mean) ** 2 for v in raw) / len(raw)) ** 0.5
+
+
+def _shoot(target: str, shot: Path, view: tuple[int, int], a) -> subprocess.CompletedProcess:
+    return chrome([f"--force-device-scale-factor={a.scale}", f"--window-size={view[0]},{view[1]}",
+                   f"--virtual-time-budget={int(a.wait * 1000)}", f"--screenshot={shot}"], target)
+
+
 def capture(run, a) -> tuple[dict, str]:
     url = _url(a.url)
     if a.scale not in SCALES:
@@ -152,10 +226,27 @@ def capture(run, a) -> tuple[dict, str]:
     stem = _slug(a.name or "home")
     out = run.next_version("03_wip", f"site_{stem}", "png")
     scratch = Path(tempfile.mkdtemp(prefix="tm-shot-"))
+    hidden: list[str] = []
+    note = ""
     try:
         shot = scratch / "shot.png"
-        proc = chrome([f"--force-device-scale-factor={a.scale}", f"--window-size={view[0]},{view[1]}",
-                       f"--virtual-time-budget={int(a.wait * 1000)}", f"--screenshot={shot}"], url)
+        read = chrome([f"--virtual-time-budget={int(a.wait * 1000)}", f"--window-size={view[0]},{view[1]}",
+                       "--dump-dom"], url)
+        dom = read.stdout if read.returncode == 0 and "<" in (read.stdout or "") else ""
+        if dom:
+            copy, hidden = clean_copy(dom, url, a.hide or [])
+            page = scratch / "page.html"
+            page.write_text(copy, encoding="utf-8")
+            proc = _shoot(page.as_uri(), shot, view, a)
+            if shot.is_file() and spread(shot) < BLANK_SPREAD:
+                shot.unlink()
+                note = (" The copy without the page's scripts drew almost empty (the page is made by its scripts), so "
+                        "this is the plain capture: look for a banner, and crop it out with --clip.")
+                hidden = []
+        else:
+            note = " The page could not be read first, so this is the plain capture: look for a banner."
+        if not shot.is_file():
+            proc = _shoot(url, shot, view, a)
         if not shot.is_file():
             tail = " | ".join((proc.stderr or proc.stdout or "").strip().splitlines()[-3:])
             raise c.ToolError(f"The browser drew no picture of {url}: {tail}")
@@ -172,12 +263,15 @@ def capture(run, a) -> tuple[dict, str]:
         shutil.rmtree(scratch, ignore_errors=True)
     found = c.probe(out)
     size = [found.get("width"), found.get("height")]
-    params = {"url": url, "view": list(view), "scale": a.scale, "clip": list(clip) if clip else None, "size": size}
+    params = {"url": url, "view": list(view), "scale": a.scale, "clip": list(clip) if clip else None, "size": size,
+              "hidden": hidden}
     c.record(run, out, "tm tool site capture", None, params=params, model="the user's browser, headless",
              cost="0 (local)")
     rel = c.rel(run, out)
-    return ({"outputs": [rel], **params},
-            f"Wrote {rel}: {size[0]}×{size[1]} px of {url} at {a.scale}× (draw it at most that size in the edit).")
+    said = f" Hidden: {', '.join(hidden)}." if hidden else ""
+    text = (f"Wrote {rel}: {size[0]}×{size[1]} px of {url} at {a.scale}× (draw it at most that size in the edit).{said}"
+            f"{note} {LOOK_AGAIN}")
+    return {"outputs": [rel], **params, "message": text}, text
 
 
 # --- brand: reading the page --------------------------------------------------------------------
@@ -711,6 +805,8 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--clip", help="X,Y,W,H of the element in CSS px of the page")
             s.add_argument("--name", help="what the capture shows, for its file name (default home)")
             s.add_argument("--wait", type=float, default=5.0, help="seconds the page gets to draw (default 5)")
+            s.add_argument("--hide", action="append", help="a CSS selector of the site's own cookie banner to hide "
+                           "(again for each), beside the common ones")
         else:
             s.add_argument("--brand", help="the brand's name, when the address does not say it (the config's)")
     a = p.parse_args(argv)

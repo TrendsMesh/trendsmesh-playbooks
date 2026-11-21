@@ -208,7 +208,9 @@ page and one in chat count the same. Rules: `rules.md`.
 - **A screen of the product's site is the plugin's capture**: `tm tool site capture --run R <page> --name <what it
   shows>`, 1080×1920 at a device scale of 2 by default (`--scale 3` for a small element), or the element itself
   (`--clip X,Y,W,H`, its box in CSS px from the browser: `getBoundingClientRect()` plus the scroll): the next
-  `03_wip/site_<what>_vNN.png`. Draw it at most at its own size, never scaled up.
+  `03_wip/site_<what>_vNN.png`. Draw it at most at its own size, never scaled up. The capture hides the common
+  cookie banners first and lists what it hid (`hidden`); look at the capture for a banner: if one still shows, run it
+  again with `--hide <its CSS selector>` (again for each).
 - `03_wip/storyboard_vNN.json`: `{"frames": [{"scene", "file"}], "placeholder_render", "audio": {...}, "videos":
   [{"item", "model", "prompt" (exact), "params", "prompt_rules" (the guide used), "cost", "budget", "price_file",
   "checked", "speaks" (optional: true when the take says the lines, false when its voice comes in the edit; left

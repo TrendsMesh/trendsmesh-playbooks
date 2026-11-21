@@ -4,6 +4,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Create an ad: site captures without the cookie banner.** `tm tool site capture` hides the common cookie and
+  consent banners (OneTrust, Cookiebot, Usercentrics and others) before it takes the picture, and says what it hid.
+  For a site's own banner, add `--hide <its selector>`. When the page can't be drawn that way, it takes the plain
+  capture and says so.
 - **Organic AI video: topics are scored for your channel too.** Claude now scores up to 20 of the shortlist's topics
   for your channel, as it does hooks and formats. A topic that fits badly (for example "Temu product hauls" for an AI
   explainer channel) no longer takes a place among the trends whose evidence is pulled.
