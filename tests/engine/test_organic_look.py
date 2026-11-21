@@ -134,7 +134,7 @@ def test_an_animation_suggests_two_or_three_catalogue_styles():
                           (_styles(7, "no-such-style"), "m1.plugin.styles[1].style"),
                           ([{"style": 7, "why": " "}, {"style": 8, "why": "x"}], "m1.plugin.styles[0].why")):
         assert field in [x.field for x in _look(_proposal("animation", styles=styles))], styles
-    assert [x.field for x in _look(_proposal("ai_footage", styles=_styles(7, 8)))] == ["m1.plugin.styles"]
+    assert _look(_proposal("ai_footage", styles=_styles(7, 8))) == []      # issue #138: any production type
     assert _look(_proposal("sections", styles=_styles(7, 8))) == []                       # an animation insert
 
 
@@ -165,7 +165,8 @@ def test_the_channel_style_comes_first_and_is_picked_in_advance():
     assert own[0]["text"] == "paper cut-out collage"
     assert organic_proposals.default_style(p, _channel(video_style="paper cut-out collage")) == "channel"
     assert organic_proposals.default_style(p, _channel()) == organic_proposals.style_value(7)
-    assert organic_proposals.style_options(_proposal("ai_footage"), _channel(video_style="collage")) == []
+    assert [o["value"] for o in organic_proposals.style_options(_proposal("ai_footage"), _channel(
+        video_style="collage"))] == ["channel"]                       # issue #138: the channel's style for AI footage too
     old = _proposal("animation")                                         # no styles suggested: the channel's alone
     assert [o["value"] for o in organic_proposals.style_options(old, _channel(video_style="collage"))] == ["channel"]
 
