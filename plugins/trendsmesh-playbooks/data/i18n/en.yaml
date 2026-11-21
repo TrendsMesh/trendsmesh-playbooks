@@ -144,6 +144,8 @@ brief:
   what_this_tests: "What this tests:"
   format: Format
   evidence_at_a_glance: Evidence at a glance
+  # the folded block under a section with the sources' ids and run files (issue #132), never in the creator view
+  technical_details: Technical details
   goal: Goal
   effort: Effort
   budget_deadline_approver: Budget, deadline, approver
@@ -240,7 +242,7 @@ brief:
   chosen_rule: by rule
   settled_chosen: "Kept: {concepts}, {source}."
   settled_dropped: "Dropped: {concepts}."
-  settled_read: "The team's decisions, as read from the page ({file}):"
+  settled_read: "The team's decisions, as read from the page:"
   verdict_approved: "**{id}**: approved ({approve})"
   verdict_changes: "**{id}**: changes requested ({change})"
   verdict_dropped: "**{id}**: dropped ({drop})"
@@ -1138,7 +1140,7 @@ run_page:
       video: Takes
       final_edit: Final video and posting kit
   footer:
-    built: Built from the run {run} on {when}. Every number shows its source when you hover over it.
+    built: Built from the run {run} on {when}. Each stage's sources are under its Technical details.
     built_from: Built from the run {run} on {when}.
   from_page: (from the page)
   now:
@@ -1168,8 +1170,141 @@ run_page:
     by_rule: Decided by rule
     note: Note
     saved: Saved
+  # A decided choice in words, when the check-in's ask has no label for it (issue #132: the page never shows a choice
+  # id): choice.<check-in>.<choice>, one for every choice of every catalogue (data/**/checkins.yaml; a test checks
+  # it). A check-in with no fixed choices (an ad, a direction) shows the playbook's own words, else `decided`.
+  choice:
+    decided: Decided
+    # Refresh an ad
+    G1a:
+      refresh: Refresh it
+      do_not_refresh: Do not refresh it
+    G1b:
+      accept: Accepted
+    G2:
+      accept: Accepted
+      recut: Re-cut the middle
+    G3:
+      accept: Accepted
+      publish: Publish it
+      keep_local: Keep it a local file
+    G4:
+      accept: Accepted
+    G3r:
+      approve: Approved
+    VB:
+      approve: Approved
+      reject: Not approved
+    V1c:
+      voice_matches: The voice matches
+      none_matches: No voice matches
+      original_voice_found: The original voice was found
+    RB:
+      approve: Approved
+      reject: Not approved
+    G5:
+      approve: Approved
+    G5r:
+      approve: Approved
+    G6:
+      approve: Approved
+      reject: Not approved
+    G10:
+      approve: Approved
+      reject: Not approved
+    E2b:
+      green: Green, nothing to fix
+      red: Red, something to fix first
+    G11:
+      activate: Launched
+      keep_paused: Kept paused
+    # Create an ad
+    intake:
+      accept: Accepted
+    concept:
+      accept: Accepted
+    board:
+      accept: Accepted
+    plan:
+      approve: Approved
+      reject: Not approved
+    visual:
+      accept: Accepted
+      redo: Make it again
+      drop: Dropped
+    audio:
+      accept: Accepted
+      redo: Make it again
+      drop: Dropped
+    storyboard:
+      approve: Approved
+      reject: Not approved
+    takes:
+      accept: Accepted
+      redo: Make it again
+      drop: Dropped
+      fails_qa: Failed the quality check
+    review:
+      accept: Accepted
+      fix: To fix
+    copy:
+      accept: Accepted
+    upload_offer:
+      propose: Upload offered
+      skip: No upload
+    upload:
+      create: Uploaded, paused
+      skip: Not uploaded
+    # Creative brief (G1, G3 and G4 above)
+    G0:
+      accept: Accepted
+    G1:
+      accept: Accepted
+      changed_a_lot: The map changed a lot
+    animatics:
+      make: Make them
+      skip: No animatics
+    # Organic AI video (the plugin ships these in Polish)
+    reuse_profile:
+      reuse: The saved channel profile
+      new: A new channel profile
+    profile:
+      accept: Confirmed
+    proposals:
+      accept: Chosen
+    week:
+      approve: Approved
+    schedule:
+      schedule: Every week, scheduled
+      by_hand: By hand
+    taste:
+      accept: Chosen
+    pack:
+      approve: Approved
+      reject: Not approved
+    script:
+      accept: Delivered
+    images:
+      accept: Accepted
+      redo: Make it again
+      drop: Dropped
+    video:
+      accept: Accepted
+      redo: Make it again
+      drop: Dropped
+      fails_qa: Failed the quality check
+    final_edit:
+      accept: Accepted
+      redo: Make it again
+      drop: Dropped
+    # Trend research (G0 to G3 above)
+    GS:
+      schedule: Every week, scheduled
+      by_hand: By hand
   data:
     source: 'Source: {file}'
+    # one folded block per stage with its sources' run files and its media files (issue #132)
+    technical: Technical details
     download_csv: Download CSV
     open: open
     empty: No data yet.

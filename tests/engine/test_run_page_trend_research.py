@@ -97,7 +97,7 @@ def test_the_settled_stages_say_what_was_decided_from_the_runs_files(tmp_path):
     g2 = settled[settled.index('id="stage-G2"'):settled.index('id="stage-G1"')]
     assert "<dt>Act now</dt><dd>Krem z filtrem na co dzień</dd>" in g2
     assert "<dt>Still rising</dt><dd>Olejowanie włosów, pov _</dd>" in g2
-    assert "Source: 03_wip/picks_v01.json" in g2
+    assert "03_wip/picks_v01.json</li></ul></details>" in g2 and "Source:" not in g2   # folded (#132)
 
 
 def test_a_weekly_schedule_and_the_page_check_in_are_named_in_words(tmp_path):
@@ -147,7 +147,7 @@ def test_refresh_ad_stage_names_are_unchanged(tmp_path):
     r = RunFolder.create(tmp_path / "ws", "Ad 3", date(2026, 11, 5))
     _decide(r, "G1", "ad1")
     html = (r.path / run_page.build(r, local=True)["folder"] / "index.html").read_text(encoding="utf-8")
-    assert "Pick the ad: ad1" in html and "The category map" not in html
+    assert "Pick the ad: Decided" in html and "The category map" not in html
 
 
 def test_a_translated_report_with_settled_check_ins_has_no_english_left(tmp_path):

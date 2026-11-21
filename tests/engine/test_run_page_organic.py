@@ -266,6 +266,30 @@ def test_a_settled_stage_shows_what_was_decided_read_only(images, capsys):
     html = _html(images, run_page.build(images))
     settled = html.split('<section class="settled">')[1]
     assert "data-detail=\"" not in html and "host_v01_1.png" in settled and "ov-rest\"" not in html
+    # issue #132: the decisions file and the media's file names only in the stage's folded Technical details
+    stage = re.search(r'<details class="stage" id="stage-images">.*?</div></details>', settled, re.S).group(0)
+    tech = re.search(r'<details class="tech">.*?</details>', stage, re.S).group(0)
+    assert "03_wip/decisions_gate_images_v01.json" in tech and "host_v01_1.png</li>" in tech
+    shown = stage.replace(tech, "")
+    assert "decisions_gate_images" not in shown and "<figcaption>host_v01_1.png" not in shown
+
+
+@pytest.mark.parametrize("lang, profile, approved", [("en", "A new channel profile", "Approved"),
+                                                     ("pl", "Nowy profil kanału", "Zatwierdzono")])
+def test_settled_choices_are_said_in_words_never_as_their_ids(tmp_path, lang, profile, approved):
+    """Issue #132: "Saved channel profile: new" and "... cost: approve" were the choice ids; decided in chat (no ask
+    labels them), they are the table's words, in the run's language."""
+    run = _new(tmp_path, lang=lang)
+    _pack(run)
+    _to(run, "images")
+    s = state.load(run)
+    s.decisions.append({"checkin": "reuse_profile", "choice": "new", "by": "user", "at": "2026-11-07T10:00:00+00:00"})
+    state.save(run, s)
+    settled = _html(run, run_page.build(run)).split('<section class="settled">')[1]
+    names = {cid: words.t(f"organic_video.stage.{cid}", lang) for cid in ("reuse_profile", "pack")}
+    assert f'{names["reuse_profile"]}: {profile}</span>' in settled
+    assert f'{names["pack"]}: {approved}</span>' in settled
+    assert ": new</span>" not in settled and ": approve</span>" not in settled and ": accept</span>" not in settled
 
 
 def test_the_publish_guard_holds_while_people_decide_and_the_record_lifts_it(images):

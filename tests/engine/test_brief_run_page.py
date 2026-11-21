@@ -180,7 +180,9 @@ def test_settled_check_ins_are_read_only_and_kept_from_the_creator(run):
     assert "Already settled (3)" in shown
     assert "Decide on the briefs: C1 kept" in shown and "Kept: C1, from the page." in shown
     assert "Dropped: C2." in shown
-    assert f"The team's decisions, as read from the page ({rel}):" in shown
+    assert "The team's decisions, as read from the page:" in shown           # the file folded away (#132)
+    tech = _region(settled_html := text[text.index('class="settled-group"'):], "tech")
+    assert " ".join(tech.texts) == f"Technical details {rel}" and f"({rel})" not in settled_html
     assert "<b>C1</b>: approved (2)" in text
     assert "<b>C2</b>: split, 1 approved, 1 asked for changes, 0 dropped" in text
     assert f'C2, u1, Changes requested: "{ORDER}"' in shown                    # the note, whole

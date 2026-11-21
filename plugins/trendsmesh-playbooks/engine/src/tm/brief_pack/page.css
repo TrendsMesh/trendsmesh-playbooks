@@ -54,6 +54,7 @@
 .brief h3 { margin: 24px 0 8px; }
 .brief p { max-width: 72ch; }
 .brief .src { display: block; color: var(--ink-soft); font-size: 13px; margin: 2px 0 0; }
+.brief details.tech { max-width: 80ch; margin: 8px 0 0; }   /* under the glance, the audience, the findings (#132) */
 .brief .findings { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .brief .findings li { background: var(--cream); border-left: 4px solid var(--pink); padding: 12px 16px; border-radius: 0 12px 12px 0;
                       max-width: 80ch; }

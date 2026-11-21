@@ -627,7 +627,7 @@ strings:
         video: Ujęcia
         final_edit: Gotowy film i zestaw do publikacji
     footer:
-      built: Zbudowane z runu {run} {when}. Każda liczba pokazuje swoje źródło po najechaniu kursorem.
+      built: Zbudowane z runu {run} {when}. Źródła każdego etapu są w jego Szczegółach technicznych.
       built_from: Zbudowane z runu {run} {when}.
     from_page: (ze strony)
     now:
@@ -657,8 +657,44 @@ strings:
       by_rule: Zdecydowano według reguły
       note: Uwaga
       saved: Zapisano
+    # Organic AI video's choices in words (issue #132): run_page.choice.<check-in>.<choice>
+    choice:
+      decided: Zdecydowano
+      reuse_profile:
+        reuse: Zapisany profil kanału
+        new: Nowy profil kanału
+      profile:
+        accept: Potwierdzono
+      proposals:
+        accept: Wybrano
+      week:
+        approve: Zatwierdzono
+      schedule:
+        schedule: Co tydzień, według harmonogramu
+        by_hand: Ręcznie
+      taste:
+        accept: Wybrano
+      pack:
+        approve: Zatwierdzono
+        reject: Nie zatwierdzono
+      script:
+        accept: Dostarczono
+      images:
+        accept: Zaakceptowano
+        redo: Do ponownego wykonania
+        drop: Pominięto
+      video:
+        accept: Zaakceptowano
+        redo: Do ponownego wykonania
+        drop: Pominięto
+        fails_qa: Nie przeszło kontroli jakości
+      final_edit:
+        accept: Zaakceptowano
+        redo: Do ponownego wykonania
+        drop: Pominięto
     data:
       source: 'Źródło: {file}'
+      technical: Szczegóły techniczne
       download_csv: Pobierz CSV
       open: otwórz
       empty: Na razie brak danych.

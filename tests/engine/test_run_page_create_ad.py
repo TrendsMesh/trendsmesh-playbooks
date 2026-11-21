@@ -131,7 +131,7 @@ def test_the_plan_page_shows_models_prices_dates_own_files_and_totals(run):
     assert "gpt-image-2" in now and "flux" in now and "elevenlabs-music" in now and "ElevenLabs credits" in now
     assert "before the video" in now and "priced again on the storyboard" in now
     assert "Before the video (USD)" in now and "The video, estimated (USD)" in now and "your voice-over recording" in now
-    assert "Source: 03_wip/production_plan_v01.json" in now
+    assert "The production plan: 03_wip/production_plan_v01.json</li>" in now and "Source:" not in now   # #132
     assert "What your own files replace" in now
     assert _paths(now) == {"line_notes", "presenter", "presenter_model"}
 
@@ -214,7 +214,7 @@ def test_the_review_page_shows_up_to_four_versions_with_a_pick_and_pinned_notes(
     assert "Version 1" not in now and all(f"Version {n}" in now for n in (2, 3, 4, 5))
     assert 'style="--n:4"' in now and "Pin to {version} at {time}" in now and "Your notes" in now
     assert "What was checked: Version 5" in now and "True peak (dBFS)" in now       # create_qa.edit_report
-    assert "Motion at every cut" in now and "looked at cuts" in now and "Source: 03_wip/edit_qa_v01.json" in now
+    assert "Motion at every cut" in now and "looked at cuts" in now and "What was checked: 03_wip/edit_qa_v01.json</li>" in now
     assert _paths(now) == {"version", "pins"}
     offer = _built(run, built)["offer"]["review"]
     assert offer["pins"]["versions"] == ["edit_v02", "edit_v03", "edit_v04", "edit_v05"]

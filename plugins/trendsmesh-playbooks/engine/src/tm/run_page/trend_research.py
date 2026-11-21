@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from tm import config, i18n, research_config, research_growth, research_map, state, trends
 from tm.run_page.context import Context
+from tm.run_page import words
 from tm.run_page.words import tx
 
 W = "trend_research."
@@ -107,9 +108,9 @@ COMPONENTS = {"G0": (_seeds,), "G1": (_map,), "G2": (_picks,), "G3": (_views,), 
 
 
 def outcome(ctx: Context, checkin: str, choice: object) -> str | None:
-    """A decided choice in words (`accept` is "Accepted"), else None (shown as recorded)."""
+    """A decided choice in words (`accept` is "Accepted"), else None (the run page's words for it, issue #132)."""
     key = W + "choice." + str(choice)
-    return ctx.t_or(key, choice) if choice is not None else None
+    return ctx.t(key) if choice is not None and words.has(key, ctx.lang) else None
 
 
 def materials(ctx: Context, checkin: str) -> list[dict]:
