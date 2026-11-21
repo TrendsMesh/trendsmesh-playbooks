@@ -66,9 +66,11 @@ page's link (the ideas' stage; or the local page's path), then **every idea rest
 (Recreate or Inspire, and for an Inspire or a transfer its weaker link), why now with its numbers,
 the trends behind it with their evidence videos (on Free: each trend labelled a guess with where it
 was seen, no numbers of yours, and the `notice` from `tm next` on what TrendsMesh would show), the beats and length, the production type and
-recipe, the look in a few words, for an animation its 2 to 3 styles each with its one-line why
-(your pick first), the product level, the risk level from its highest risk after mitigation
-(never the count of risks) with each named item and its mitigation, the cost (a script
+recipe, the look in a few words (its `aesthetic`: every idea has one, a video in sections or with an
+animated part too, and its styles never stand in for it), for an animation (or an animated part) its
+2 to 3 styles each with its one-line why (your pick first), the product level, the risk level with the one risk it comes from, its highest
+after mitigation ("Risk: medium, from the host speaking in one long take"; when two weigh the same,
+still name one), never the count of risks, then any other named item with its mitigation, the cost (a script
 to film is $0; an AI video's range in USD, each cost approved before anything is paid), the facts
 to source, and the taste questions. Then how to decide: on the page, per idea, produce / maybe
 later / skip, the output (a script to film, or an AI video: AI footage, a talking character, an

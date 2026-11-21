@@ -10,6 +10,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   headless browser that prints the brief's PDFs, and the one that captures the product's site, use the same stand-in
   keychain. Without one, a home folder with no login keychain left each PDF waiting 2 minutes and the page came
   without its download buttons.
+- **Organic AI video: every idea in chat says how it will look, and its risk by the one risk it comes from.** A
+  video in sections or with an animated part no longer shows only its styles, and a medium risk no longer reads as a
+  count of two risks.
+- **Create an ad: a line the local transcription missed gets no new take offered before Scribe has checked it.**
+  The line may only be quiet, so the choices are the Scribe check, with its credits, or listening to the take.
 - **Pages publish faster: Claude reads only this run's page.** The theme, the page scripts, the trend report's
   stylesheet and script and the catalogue of our 49 animation styles are now files of their own beside the page, the
   same in every run, and `tm page files` says which ones they are. Before publishing, Claude reads only `index.html`:
