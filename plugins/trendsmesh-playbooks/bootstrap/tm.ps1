@@ -37,5 +37,33 @@ if (-not (Test-Path $cfg)) {
     $envs = (Join-Path $data 'envs') -replace '\\', '/'
     [System.IO.File]::WriteAllText($cfg, "detached-environments = `"$envs`"`n")
 }
-& $pixi run --frozen --manifest-path (Join-Path $root 'env\pixi.toml') -e base python -m tm @args
-exit $LASTEXITCODE
+$manifest = Join-Path $root 'env\pixi.toml'
+# Smart App Control can block a file of the plugin's Python (error 4551, issue #123). tm says so
+# itself when it got far enough to run (exit 86 here); any other failure gets one probe in the
+# same environment, and a block shows as the number or as Windows' own words for it.
+$env:TM_BLOCK_EXIT = '86'
+& $pixi run --frozen --manifest-path $manifest -e base python -m tm @args
+$code = $LASTEXITCODE
+Remove-Item Env:TM_BLOCK_EXIT -ErrorAction SilentlyContinue
+if ($code -eq 86) { exit 1 }
+if ($code -eq 0 -or $code -eq 2) { exit $code }
+$ErrorActionPreference = 'Continue'   # 5.1 turns a native command's stderr into an error under 'Stop'
+$probe = (& $pixi run --frozen --manifest-path $manifest -e base python -c 'import ssl,_hashlib,_queue' 2>&1 | ForEach-Object { "$_" }) -join "`n"
+if ($LASTEXITCODE -eq 0) { exit $code }
+$words = ''
+try { $words = ([ComponentModel.Win32Exception]::new(4551).Message).Trim().TrimEnd('.').Trim() } catch { }
+$isBlock = $probe -match '(?i)(os error|winerror|error)[^0-9a-z]{0,3}4551([^0-9]|$)'
+if (-not $isBlock -and $words -and $words -notmatch '^Unknown error') {
+    $isBlock = $probe.IndexOf($words, [StringComparison]::OrdinalIgnoreCase) -ge 0
+}
+if (-not $isBlock) { exit $code }
+$file = if ($probe -match 'while importing ([^\s:]+)') { $Matches[1] } else { 'python.exe' }
+$text = "Windows Smart App Control blocked a file of the plugin's Python ({file})."
+try {
+    $table = [IO.File]::ReadAllText((Join-Path $root 'data\i18n\en.yaml'), [Text.Encoding]::UTF8)
+    $m = [regex]::Match($table, '(?m)^\s*smart_app_control:\s*"(.*)"\s*$')
+    if ($m.Success) { $text = $m.Groups[1].Value }
+} catch { }
+[Console]::Error.WriteLine($text.Replace('{file}', $file))
+[Console]::Error.WriteLine('For Claude: tell the user these steps in plain words; it is no network or install failure. Never change Windows security settings yourself.')
+exit 1

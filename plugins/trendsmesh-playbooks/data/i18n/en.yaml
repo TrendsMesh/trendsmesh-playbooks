@@ -97,6 +97,9 @@ env:
     ai: AI video tools
     animatic: animatic tools
     ocr: OCR tools (reading the words on screen)
+  # Windows Smart App Control blocked the plugin's Python (issue #123, tm/winblock.py). bin/tm, bootstrap/tm.ps1
+  # and both session-start scripts read this line as it is, without yaml: keep it one double-quoted line.
+  smart_app_control: "Windows blocked a file of the plugin's Python ({file}). This is Smart App Control, a Windows 11 security feature that stops programs Microsoft does not know yet. Nothing in your projects changed. What you can do: 1. Update the plugin (/plugin > Installed > trendsmesh-playbooks > Update), then start a new session. 2. Or turn Smart App Control off (Windows Security > App & browser control > Smart App Control settings > Off), then start a new session. You can turn it back on in the same place later, with no Windows reinstall."
 doctor:
   general:
     ready: "**Ready to go.** The base tools are in place."

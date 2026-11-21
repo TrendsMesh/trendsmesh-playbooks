@@ -78,9 +78,35 @@ try {
     $env:TM_PLUGIN_ROOT = $root
     $env:TM_PLUGIN_DATA = $data
     $manifest = Join-Path $root 'env\pixi.toml'
+    #    Windows Smart App Control blocking the plugin's Python (error 4551, issue #123) is the one
+    #    failure that is said: in one line, from what tm or pixi wrote to stderr.
     $ErrorActionPreference = 'Continue'
-    $due = & $pixi run --as-is --manifest-path $manifest -e base python -m tm due --quiet 2>$null
-    if ($LASTEXITCODE -eq 0 -and $due) { $due | ForEach-Object { Write-Output $_ } }
+    $errFile = [IO.Path]::GetTempFileName()
+    $due = & $pixi run --as-is --manifest-path $manifest -e base python -m tm due --quiet 2>$errFile
+    $rc = $LASTEXITCODE
+    $err = ''
+    try { $err = [IO.File]::ReadAllText($errFile) } catch { }
+    Remove-Item -LiteralPath $errFile -Force -ErrorAction SilentlyContinue
+    if ($rc -eq 0) {
+        if ($due) { $due | ForEach-Object { Write-Output $_ } }
+    } else {
+        $words = ''
+        try { $words = ([ComponentModel.Win32Exception]::new(4551).Message).Trim().TrimEnd('.').Trim() } catch { }
+        $isBlock = $err -match '(?i)Smart App Control|(os error|winerror|error)[^0-9a-z]{0,3}4551([^0-9]|$)'
+        if (-not $isBlock -and $words) { $isBlock = $err.IndexOf($words, [StringComparison]::OrdinalIgnoreCase) -ge 0 }
+        if ($isBlock) {
+            $file = 'python.exe'
+            if ($err -match "plugin's Python \(([^)]*)\)") { $file = $Matches[1] }
+            elseif ($err -match 'while importing ([^\s:]+)') { $file = $Matches[1] }
+            $steps = ''
+            try {
+                $table = [IO.File]::ReadAllText((Join-Path $root 'data\i18n\en.yaml'), [Text.Encoding]::UTF8)
+                $m = [regex]::Match($table, '(?m)^\s*smart_app_control:\s*"(.*)"\s*$')
+                if ($m.Success) { $steps = $m.Groups[1].Value.Replace('{file}', $file) }
+            } catch { }
+            Write-Output "TrendsMesh playbooks: Windows Smart App Control blocked a file of the plugin's Python ($file), so tm cannot run. Tell the user the steps from tm's message in plain words; never change Windows security settings yourself. tm's message: $steps"
+        }
+    }
 } catch {
     # A hook must never break the session.
 }

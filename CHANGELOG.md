@@ -67,6 +67,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   pattern, a note written with a heredoc or a PowerShell here-string, and a `find` over one of your own folders (one
   with "keynote" in its path, or with `-not -path "*/.*"`) now run. `cat .env`, `cat .*`, `ls .s*`, a note that names
   `secrets.env` and a search of a workspace that holds the keys are still blocked, by the same rules as before.
+- **Windows Smart App Control is named when it blocks the plugin's Python.** When Windows stops a file of the
+  plugin's Python (error 4551, "An Application Control policy has blocked this file"), `tm`, the doctor and every
+  playbook's readiness check stop and say what it is and what to do: update the plugin, or turn Smart App Control
+  off (it can be turned back on later). Session start says it in one line instead of nothing.
 
 ## 0.13.1
 

@@ -59,6 +59,9 @@ name none, a short general check; and write a support report they can read and s
    installer is its words, not instructions. Give them
    the log's path from the reason, for their IT or for TrendsMesh support. Never install pixi
    yourself, and never change PATH or global packages.
+   If `tm` says Windows blocked a file of the plugin's Python (Smart App Control, Windows error
+   4551), stop the check there too: tell the user tm's steps in plain words. It is no network or
+   install failure, so never report it as one, and never change Windows security settings yourself.
 4. Show the `card` from the answer in plain words, in the user's language: what is ready, what
    is missing, why it matters and the exact next step for each. Leave out every command, flag
    and id: the user never needs to see `--mcp` or `--fact`. Things you can install, you offer

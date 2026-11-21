@@ -66,6 +66,8 @@ Follow the doctor's "Creative brief" section (`commands/doctor.md` in the plugin
    the base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10
    minutes). Installs are yours after one yes with the size and time (`tm env install <tier>
    --yes`): the animatic tools for the animatics.
+   If `tm` says Windows Smart App Control blocked a file of the plugin's Python, stop here: give the user its
+   steps in plain words (it is no network or install failure), and never change Windows security settings yourself.
 3. Show its `card` in plain words.
    - **Without Meta Ads the brief cannot start**: it reads the user's own account. Say the card's
      step, then wait.

@@ -28,4 +28,27 @@ if [ ! -f "$PIXI_HOME/config.toml" ]; then
   mkdir -p "$PIXI_HOME"
   printf 'detached-environments = "%s/envs"\n' "$(printf '%s' "$DATA" | sed 's/\\/\\\\/g; s/"/\\"/g')" > "$PIXI_HOME/config.toml"
 fi
-exec "$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm "$@"
+case "$(uname -s 2>/dev/null)" in
+  MINGW*|MSYS*|CYGWIN*) ;;
+  *) exec "$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm "$@" ;;
+esac
+# Windows: Smart App Control can block a file of the plugin's Python (error 4551, issue #123). tm
+# says so itself when it got far enough to run (exit 86 here); any other failure gets one probe
+# in the same environment, and a block shows as the number or as Windows' own words for it.
+TM_BLOCK_EXIT=86 "$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -m tm "$@"
+code=$?
+case $code in 0|2) exit $code ;; 86) exit 1 ;; esac
+probe=$("$PIXI_HOME/bin/pixi" run --frozen --manifest-path "$ROOT/env/pixi.toml" -e base python -c "import ssl,_hashlib,_queue" 2>&1) && exit $code
+if ! printf '%s\n' "$probe" | grep -qiE '(os error|winerror|error)[^0-9a-z]{0,3}4551([^0-9]|$)'; then
+  words=$(powershell.exe -NoProfile -Command '[ComponentModel.Win32Exception]::new(4551).Message' 2>/dev/null | tr -d '\r' | sed 's/[. ]*$//' | head -n 1)
+  [ -n "$words" ] && printf '%s\n' "$probe" | grep -qiF -- "$words" || exit $code
+fi
+file=$(printf '%s\n' "$probe" | sed -n 's/.*while importing \([^ :]*\).*/\1/p' | head -n 1)
+FILE=${file:-python.exe} awk '
+  /^ *smart_app_control: *"/ {
+    sub(/^ *smart_app_control: *"/, ""); sub(/" *$/, "")
+    i = index($0, "{file}"); if (i) $0 = substr($0, 1, i - 1) ENVIRON["FILE"] substr($0, i + 6)
+    print; exit
+  }' "$ROOT/data/i18n/en.yaml" >&2
+echo "For Claude: tell the user these steps in plain words; it is no network or install failure. Never change Windows security settings yourself." >&2
+exit 1

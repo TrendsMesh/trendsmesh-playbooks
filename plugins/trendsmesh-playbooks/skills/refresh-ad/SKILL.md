@@ -46,6 +46,8 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    `tm` call on a computer, and the first after a plugin update, installs the base tools first
    (about 0.5 GB; after an update mostly from the download cache): say so before it, and give it
    the Bash tool's longest timeout (10 minutes).
+   If `tm` says Windows Smart App Control blocked a file of the plugin's Python, stop here: give the user its
+   steps in plain words (it is no network or install failure), and never change Windows security settings yourself.
 3. Show its `card` in plain words, without the flags in it. For each missing piece say what is
    missing, why it matters for the chosen output and the exact next step. Installs are yours,
    after one yes with the size and time: `tm env install <tier> --yes`. **Long commands:** say up

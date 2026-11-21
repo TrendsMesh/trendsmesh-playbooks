@@ -57,6 +57,8 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
    trendsmesh=<s>,meta=<s>,artifacts=<s> --json` (no `--report`: the support report is
    `/trendsmesh-playbooks:doctor`'s). The first `tm` call on a computer installs the
    base tools (about 0.5 GB): say so, and give it the Bash tool's longest timeout (10 minutes).
+   If `tm` says Windows Smart App Control blocked a file of the plugin's Python, stop here: give the user its
+   steps in plain words (it is no network or install failure), and never change Windows security settings yourself.
 3. Show its `card` in plain words. **Without TrendsMesh, trend research stops: it is Paid only.**
    Its stages, its "act now" and "too late" calls and the weekly check of last week's calls are
    TrendsMesh numbers, so it has no Free mode, even when the user chose Free for the other
