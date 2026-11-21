@@ -443,7 +443,7 @@ def find_seed(workspace: Path, seed_id: str, *, playbook: str = CREATIVE_BRIEF) 
     row = next((r for r in found if r.get("seed_id") == seed_id), None)
     if row is not None:
         try:
-            seeds.check(row)
+            seeds.check(row, stored=True)     # a seed from before every seed named its category is still one
         except ValueError as exc:
             raise ValueError(f"The seed {seed_id} in {where} breaks seed/1: {exc} Run trend research's E3 again "
                              f"(tm research seeds), or {other}.") from None

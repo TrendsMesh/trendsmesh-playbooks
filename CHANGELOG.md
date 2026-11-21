@@ -4,6 +4,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **A brief or a video starts from the right research's picks.** Every pick trend research hands on now names its
+  category and the run it came from, and `tm research seeds` stops, writing nothing, when the run names no category.
+  Creative brief and Organic AI video offer the picks of the category you named; a pick from another research is
+  listed apart ("From another research (use it?)", with its category and run) and used only after you say yes.
+  Picks saved before this change are listed there as "category unknown".
 - **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file
   names, theme codes such as T02, or a choice's internal name. A brief row's source reads like `TrendsMesh: Rising
   hook "who said _"` or `Meta Ad Library, query "lucid dream", US`; the ids and files behind it sit in a folded

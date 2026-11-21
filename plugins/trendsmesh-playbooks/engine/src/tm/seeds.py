@@ -1,6 +1,11 @@
 """Seeds: picks one playbook hands on to another, `<workspace>/library/seeds.jsonl`.
 
-    tm seeds list [--source pb4] [--valid-on D] [--workspace W] [--json]   the seeds, as the creative brief reads them
+    tm seeds list [--source pb4] [--category P] [--valid-on D] [--workspace W] [--json]   the seeds, as the creative brief reads them
+
+With `--category`, the seeds whose `category` or `sub_category` is that phrase (trimmed, case-blind) come under
+`seeds` and the rest under `other_seeds`, each with its category and run, for the playbook to offer "from another
+research, use it?" (issue #130). A seed written before every seed named its category is one of those others,
+"category unknown"; it is never a damaged line.
 
 One JSON object per line, append-only: a row is never rewritten, and a row whose `seed_id` is in the
 file already is not added again. A line that is not a JSON object is named, and nothing is added
@@ -80,8 +85,14 @@ def _date(value: object) -> date | None:
         return None
 
 
-def check(row: object) -> None:
-    """Refuses (ValueError, naming the field) a row that breaks seed/1."""
+def _blank(value: object) -> bool:
+    return not (isinstance(value, str) and value.strip())
+
+
+def check(row: object, *, stored: bool = False) -> None:
+    """Refuses (ValueError, naming the field) a row that breaks seed/1. Every new seed names its category and its run
+    (issue #130); a `stored` row read back from the library may lack the category, as seeds written before that
+    rule do ("category unknown")."""
     if not isinstance(row, dict):
         raise ValueError("A seed must be a JSON object.")
     missing = [k for k in REQUIRED if k not in row]
@@ -103,6 +114,10 @@ def check(row: object) -> None:
     if report is not None and not (isinstance(report, dict) and set(report) == {"slug", "version"}
                                    and all(isinstance(v, str) and v.strip() for v in report.values())):
         raise ValueError(f"The seed's report is null or {{slug, version}} of the published page, not {report!r}.")
+    if not stored and _blank(row["category"]):
+        raise ValueError("The seed lacks its category (the research it came from).")
+    if _blank(row["run"]):
+        raise ValueError("The seed lacks its run (the run it came from).")
 
 
 def _pending(workspace: Path, new: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -230,6 +245,9 @@ def from_run(run: RunFolder, cfg: dict, *, today: date | None = None) -> dict:
     created = (today or date.today()).isoformat()
     valid_until = (as_of + timedelta(days=cfg["picks"]["valid_days"])).isoformat()
     category = str(picks.get("category") or cfg["category"].get("phrase") or "").strip()
+    if not category:                                     # issue #130: a seed is matched to a later run by it
+        raise Stop("This run's picks and config name no category, so its seeds could not be matched to a later run. "
+                   f"Add the category to the picks (`category`), check them again, then run this again; {AGAIN}.")
     market = str(cfg.get("market") or "").strip() or None
     out, seen = [], set()
     for bucket, p in listed:
@@ -263,11 +281,27 @@ def from_run(run: RunFolder, cfg: dict, *, today: date | None = None) -> dict:
 
 # --- command line -----------------------------------------------------------------------------
 
+UNKNOWN = "category unknown"     # a seed written before every seed named its category (issue #130)
+OTHER_HEAD = "From another research (use it?):"
+
+
+def _key(value: object) -> str:
+    return " ".join(value.split()).casefold() if isinstance(value, str) else ""
+
+
+def split(found: list[dict], category: str) -> tuple[list[dict], list[dict]]:
+    """(the seeds of `category`: their category or sub_category is it, trimmed and case-blind; the others)."""
+    want = _key(category)
+    mine = [r for r in found if want and want in (_key(r.get("category")), _key(r.get("sub_category")))]
+    return mine, [r for r in found if r not in mine]
+
+
 def _line(r: dict) -> str:
-    where = " / ".join(str(x) for x in (r.get("category"), r.get("sub_category")) if x)
+    where = (" / ".join(str(x) for x in (r.get("category"), r.get("sub_category")) if x)
+             if not _blank(r.get("category")) else UNKNOWN)
     return (f"{r.get('seed_id')}  {r.get('trend_name') or r.get('hook')} ({research_growth.LABEL.get(r.get('bucket'), r.get('bucket'))}, "
-            f"{r.get('band')}, paid {r.get('paid_level')}), {where}, {r.get('market')}, valid until "
-            f"{r.get('valid_until')}")
+            f"{r.get('band')}, paid {r.get('paid_level')}), {where}, {r.get('market')}, from {r.get('run')}, "
+            f"valid until {r.get('valid_until')}")
 
 
 def _setup(p: argparse.ArgumentParser) -> None:
@@ -275,6 +309,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     ls = sub.add_parser("list", help=f"the seeds in {FILE.as_posix()}, for the creative brief")
     ls.add_argument("--source", help="one source only: pb4 (trend research's picks) or pb2 (an organic video brief's "
                                      "concepts, for organic video)")
+    ls.add_argument("--category", help="the run's category: its seeds under `seeds`, the other researches' seeds "
+                                       "under `other_seeds`")
     ls.add_argument("--valid-on", help="YYYY-MM-DD: only the seeds still valid on that day")
     ls.add_argument("--workspace", help="default the current workspace")
     ls.add_argument("--json", action="store_true")
@@ -288,13 +324,19 @@ def _run(args: argparse.Namespace) -> int:
         found = _kept(read, args.source, valid_on)
     except (OSError, ValueError) as exc:
         return cli.fail(args, str(exc))
-    lines = [_line(r) for r in found] or ["No seeds" + (f" from {args.source}" if args.source else "")
-                                         + (f" valid on {valid_on.isoformat()}" if valid_on else "") + "."]
+    category = (args.category or "").strip()
+    mine, other = split(found, category) if category else (found, [])
+    lines = [_line(r) for r in mine] or ["No seeds" + (f" of {category}" if category else "")
+                                        + (f" from {args.source}" if args.source else "")
+                                        + (f" valid on {valid_on.isoformat()}" if valid_on else "") + "."]
+    if other:
+        lines += [OTHER_HEAD, *(_line(r) for r in other)]
     if damaged:
         lines.append(f"Lines {', '.join(map(str, damaged))} of {FILE.as_posix()} are damaged (not JSON rows) and not "
                      "listed; no seed is added until they are fixed or deleted.")
     text = "\n".join(lines)
-    cli.emit(args, {"status": "done", "seeds": found, "damaged": damaged, "message": text}, text)
+    cli.emit(args, {"status": "done", "seeds": mine, "other_seeds": other, "damaged": damaged, "message": text},
+             text)
     return 0
 
 

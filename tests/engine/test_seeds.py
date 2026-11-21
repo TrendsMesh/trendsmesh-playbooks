@@ -303,3 +303,85 @@ def test_no_picks_stops(grown, tmp_path, capsys):
         assert code == 2 and out["status"] == "stop" and said in out["message"] and "same place" in out["message"]
         (run.path / "03_wip" / "picks_v05.json").unlink()
     assert not _library(run).exists()
+
+
+# --- issue #130: every seed names its category and its run; a run takes its own category's seeds ----------------
+
+def test_check_refuses_a_seed_without_its_category_or_run(tmp_path):
+    for key in ("category", "run"):
+        for empty in ("", "  ", None):
+            with pytest.raises(ValueError, match=f"lacks its {key}"):
+                seeds.add(tmp_path, _row(**{key: empty}))
+    assert not (tmp_path / "library").exists()
+    seeds.check(_row(category=""), stored=True)          # a seed written before this rule is still read
+    with pytest.raises(ValueError, match="lacks its run"):
+        seeds.check(_row(run=""), stored=True)
+
+
+@pytest.mark.private_data
+def test_a_run_without_a_category_hands_nothing_on(grown, tmp_path):
+    run = _copy(grown, tmp_path)
+    picks = beauty.handoff("03_wip/picks_v04.json")
+    (run.path / "03_wip" / "picks_v05.json").write_text(json.dumps({**picks, "category": ""}), encoding="utf-8")
+    cfg = _cfg(run)
+    cfg = {**cfg, "category": {**cfg["category"], "phrase": ""}}
+    with pytest.raises(seeds.Stop, match="name no category") as stop:
+        seeds.from_run(run, cfg)
+    assert "same place" in str(stop.value)
+    assert not _library(run).exists() and not list((run.path / "04_final").glob("seeds_v*.json"))
+
+
+def _two_researches(ws):
+    nails = [_row(seed_id="2026-11-04_beauty:t1"),
+             _row(seed_id="2026-11-04_beauty:t2", trend_id="t2", trend_name="Lash clusters", sub_category="lashes")]
+    bread = _row(seed_id="2026-11-05_bread:t3", run="2026-11-05_bread", trend_id="t3", category="Sourdough",
+                 sub_category="starter", trend_name="Starter discard crackers")
+    old = _row(seed_id="2026-10-01_old:t4", run="2026-10-01_old", trend_id="t4", category="", sub_category=None,
+               trend_name="Glazed donut nails")
+    for r in (*nails, bread):
+        assert seeds.add(ws, r) is True
+    path = ws.joinpath(*LIBRARY)                      # a seed written before issue #130, with no category
+    path.write_text(path.read_text(encoding="utf-8") + json.dumps(old) + "\n", encoding="utf-8")
+    return nails, bread, old
+
+
+def test_list_by_category_splits_the_seeds(tmp_path, capsys):
+    ws = tmp_path / "ws"
+    nails, bread, old = _two_researches(ws)
+    capsys.readouterr()
+    assert main(["seeds", "list", "--source", "pb4", "--category", "  BEAUTY ", "--workspace", str(ws), "--json"]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got["seeds"] == nails and got["other_seeds"] == [bread, old] and got["damaged"] == []
+    assert [(r["category"], r["run"]) for r in got["other_seeds"]] == [("Sourdough", "2026-11-05_bread"),
+                                                                       ("", "2026-10-01_old")]
+    # the sub-category counts too, trimmed and case-blind
+    assert main(["seeds", "list", "--category", "Starter", "--workspace", str(ws), "--json"]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got["seeds"] == [bread] and got["other_seeds"] == [*nails, old]
+
+    assert main(["seeds", "list", "--source", "pb4", "--category", "beauty", "--workspace", str(ws)]) == 0
+    text = capsys.readouterr().out
+    head, other = text.split("From another research (use it?):")
+    assert "2026-11-04_beauty:t1" in head and "2026-11-04_beauty:t2" in head and "bread" not in head
+    assert ("2026-11-05_bread:t3  Starter discard crackers (Act now, top 25%, paid none), Sourdough / starter, US, "
+            "from 2026-11-05_bread, valid until 2026-11-18") in other
+    assert "Glazed donut nails (Act now, top 25%, paid none), category unknown, US, from 2026-10-01_old" in other
+
+    # without --category: every seed, each with its category and run, nothing split off
+    assert main(["seeds", "list", "--workspace", str(ws), "--json"]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got["seeds"] == [*nails, bread, old] and got["other_seeds"] == []
+    assert "From another research" not in got["message"]
+    assert "from 2026-11-04_beauty, valid until" in got["message"]
+
+    # no seed of the category: said, and the others still offered
+    assert main(["seeds", "list", "--category", "pets", "--workspace", str(ws)]) == 0
+    text = capsys.readouterr().out
+    assert text.startswith("No seeds of pets.") and "From another research (use it?):" in text
+
+
+def test_a_seed_from_before_the_category_rule_still_starts_a_run(tmp_path):
+    from tm import brief_config
+    ws = tmp_path / "ws"
+    _, _, old = _two_researches(ws)
+    assert brief_config.find_seed(ws, old["seed_id"]) == old

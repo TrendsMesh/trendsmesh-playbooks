@@ -216,9 +216,15 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
 ## 4. Starting from a trend pick
 
 When the user wants to brief a pick from their trend report ("turn the cat-eye nails pick into a
-brief"): `tm seeds list --source pb4 --json` (`{status, seeds, damaged, message}`). **Never pass
-`--valid-on`**: an expired pick is still listed, with its `valid_until`, and B3 re-checks it with a
-fresh trend card (`tm brief seed-check`). Name any damaged lines to the user (they are left out).
+brief"): `tm seeds list --source pb4 --category <the category the user names> --json` (`{status,
+seeds, other_seeds, damaged, message}`). Offer the picks under `seeds`: they are that category's.
+`other_seeds` come from another research, each with its `category` and `run` ("category unknown"
+for one written before seeds named it): for a pick the user names that is there, ask first, "This
+pick comes from another research (<category>, run <run>): use it?", and go on only after a yes.
+When the user has named no category yet, list every seed (`tm seeds list --source pb4 --json`)
+with its category and run, and ask which research to use. **Never pass `--valid-on`**: an expired
+pick is still listed, with its `valid_until`, and B3 re-checks it with a fresh trend card (`tm
+brief seed-check`). Name any damaged lines to the user (they are left out).
 Then `tm run new --playbook creative-brief --name <name> --seed <seed_id> --json`. The pick
 pre-fills the card's category and market; the product is still the user's one choice, and B1 to
 B4 still run for evidence. Its earlier Ad Library level is a hint beside B4's fresh check, never

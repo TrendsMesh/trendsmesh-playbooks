@@ -373,6 +373,19 @@ def test_the_hand_off_writes_a_pb2_seed_for_the_concept_named(run, ws, capsys):
     assert len(seeds.rows(ws, source=seeds.PB2)) == 1
 
 
+def test_a_pb2_seed_without_a_category_is_refused_before_anything_is_written(run, ws, capsys, monkeypatch):
+    """Issue #130: every seed names its category and its run, the organic brief's too; a config without the
+    category phrase hands nothing on."""
+    _checked(run, capsys)
+    cfg = brief.brief_research.run_config(run)
+    monkeypatch.setattr(brief.brief_research, "run_config",
+                        lambda r, **kw: {**cfg, "product": {**cfg["product"], "category_phrase": None}})
+    with pytest.raises(ValueError, match="lacks its category"):
+        brief.handoff(run, to_video=["C2"])
+    assert not (ws / "library" / "seeds.jsonl").exists()
+    assert not list((run.path / brief.HANDOFF_STAGE).glob(f"{brief.HANDOFF_STEM}_v*.json"))
+
+
 def test_without_a_yes_no_seed_is_written(run, ws, capsys):
     _checked(run, capsys)
     assert brief.handoff(run)["seeds"] == []
