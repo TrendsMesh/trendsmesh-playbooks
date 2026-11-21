@@ -7,7 +7,7 @@ The scope depends on the run: sometimes it is a single caption change for the ed
 ---
 
 ## Brief structure
-1. **Goal and diagnosis:** what the video is to achieve and why we are changing it, in 2–3 sentences with numbers (e.g. cost per purchase peak → now).
+1. **Goal and diagnosis:** what the video is to achieve and why we are changing it, in 2–3 sentences with numbers (e.g. cost per purchase peak → now). When the user overruled the diagnosis (run.json `diagnosis.override`), one labelled line in their words, the numbers unchanged: "**Diagnosis:** the landing page. **The user decided to refresh** image fatigue, because: <their words>."
 2. **Source material:** file(s), parameters (resolution, fps, length, audio), whether the captions are burned-in, whether a better or cleaner source exists (project, clean clips, higher resolution), the agent's reference version (if one was produced).
 3. **Executors and scope:** a "role → which changes → what they receive → what they deliver" table. Roles: content creator (performance, speaking to camera), operator (shooting the shots), editor, voice artist, AI generation, graphic designer. For each role, a list of card IDs.
 4. **Changes:** cards according to the type catalog, in the order of the video timeline.

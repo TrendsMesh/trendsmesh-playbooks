@@ -1196,6 +1196,7 @@ run_page:
     by_rule: Decided by rule
     note: Note
     saved: Saved
+    not_answered: Not answered (the run ended)
   # A decided choice in words, when the check-in's ask has no label for it (issue #132: the page never shows a choice
   # id): choice.<check-in>.<choice>, one for every choice of every catalogue (data/**/checkins.yaml; a test checks
   # it). A check-in with no fixed choices (an ad, a direction) shows the playbook's own words, else `decided`.
@@ -1361,6 +1362,7 @@ run_page:
     E2b: Pre-launch check
     G11: Launch
     G12: Results
+    done: Done
     pick_the_ad: Pick the ad
     approve_changes: The changes
     approve_spending: Spending
@@ -1411,6 +1413,13 @@ run_page:
     title: The ads checked
     checked: Ads checked
     fading: Fading winners
+    paused: paused
+    near: same site, another page (confirm the product)
+    others: Ads of other products, set aside
+    product: product
+    too_little_title: Too little data
+    too_little: 'Your {product} ads have too little data to judge: the best, {name}, has {results} of the {needed} results needed.'
+    too_little_peak: 'Your {product} ads have too little data to judge: the best, {name}, has {results} results, but not {needed} in an earlier window to compare with.'
   g1a:
     title: The diagnosis
     stage: Where it fades
@@ -1422,6 +1431,18 @@ run_page:
     ladder: Who keeps watching (each step among those who reached the previous one)
     dropped: dropped
     also_seen: Also seen
+    override_title: Refreshed against the diagnosis
+    override: 'Diagnosis: {diagnosed}. The user decided to refresh {stage}, because: {said}'
+    override_thin: 'Diagnosis: too little data. The user decided to refresh {stage}, because: {said}'
+  against:
+    title: Against the diagnosis
+    too_little: too little data
+    line: 'This run goes against the diagnosis ({diagnosed}): the user decided to refresh {stage}, because: {said}'
+  done:
+    title: How the run ended
+    verdict: 'Diagnosis: {verdict}. The run ended here, without a refresh.'
+    report: The diagnosis report
+    report_open: Show the report
   g1b:
     hypothesis: The audience as we expected it, written from the video before the data
     hypothesis_open: Show the hypothesis
@@ -1518,6 +1539,7 @@ run_page:
     basis: Evidence type
     evidence: Evidence
     because: Why
+    link: Link
     budget: Budget
     planned: Planned
     approved: Approved

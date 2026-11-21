@@ -39,13 +39,19 @@ def _ranking(ctx: Context) -> list[dict]:
         return []
     src = ctx.rel(path)
     order = {aid: n for n, aid in enumerate(data.get("ranking") or [], 1)}
-    rows = []
+    rows, others = [], []
     for c in data["candidates"]:
         if not isinstance(c, dict):
             continue
+        if c.get("verdict") == "other_product":   # issue #143: listed apart, never ranked
+            others.append({"ad": c.get("name") or c.get("ad_id"), "link": c.get("link"), "note": c.get("note")})
+            continue
         peak, latest = c.get("peak") or {}, c.get("latest") or {}
+        flags = [ctx.t(f"g1.{k}") for k in ("paused", "near") if (c.get("paused") if k == "paused"
+                                                                  else c.get("product") == "near")]
         rows.append({"rank": order.get(c.get("ad_id")), "ad": c.get("name") or c.get("ad_id"),
-                     "verdict": c.get("verdict"), "cpr_then": peak.get("cpr"), "cpr_now": latest.get("cpr"),
+                     "verdict": " · ".join([str(c.get("verdict")), *flags]), "cpr_then": peak.get("cpr"),
+                     "cpr_now": latest.get("cpr"),
                      "cost_increase": c.get("cost_increase"), "value_to_recover": c.get("value_to_recover"),
                      "note": c.get("note")})
     rows.sort(key=lambda r: (r["rank"] is None, r["rank"] or 0))
@@ -55,7 +61,19 @@ def _ranking(ctx: Context) -> list[dict]:
     table = ctx.ds.add(ctx.t("g1.title"), src, [(k, ctx.col(k), kind) for k, kind in (
         ("rank", "num"), ("ad", "text"), ("verdict", "text"), ("cpr_then", "num"), ("cpr_now", "num"),
         ("cost_increase", "pct"), ("value_to_recover", "num"), ("note", "text"))], rows)
-    return [{"kind": "tiles", "data": tiles}, {"kind": "table", "title": ctx.t("g1.title"), "data": table}]
+    blocks = [{"kind": "tiles", "data": tiles}, {"kind": "table", "title": ctx.t("g1.title"), "data": table}]
+    little = data.get("too_little_data")
+    if isinstance(little, dict) and _num(little.get("best_results")):
+        product = (data.get("product") or {}).get("name") or ctx.t("g1.product")
+        key = "g1.too_little" if little["best_results"] < (little.get("min_results") or 30) else "g1.too_little_peak"
+        blocks.insert(0, {"kind": "list", "title": ctx.t("g1.too_little_title"), "items": [ctx.t(
+            key, product=product, name=little.get("best_name") or little.get("best_ad"),
+            results=f"{little['best_results']:g}", needed=little.get("min_results") or 30)]})
+    if others:
+        did = ctx.ds.add(ctx.t("g1.others"), src, [("ad", ctx.col("ad"), "text"), ("link", ctx.col("link"), "link"),
+                                                   ("note", ctx.col("note"), "text")], others)
+        blocks.append({"kind": "table", "title": ctx.t("g1.others"), "data": did})
+    return blocks
 
 
 # --- G1a: the diagnosis ---------------------------------------------------------------------------
@@ -115,7 +133,78 @@ def _diagnosis(ctx: Context) -> list[dict]:
     seen = [ctx.t_or("stage_name." + str(s), s) for s in d.get("also_seen") or []]
     if seen:
         blocks.append({"kind": "list", "title": ctx.t("g1a.also_seen"), "items": seen})
+    line = _override_line(ctx)
+    if line:
+        blocks.insert(0, {"kind": "list", "title": ctx.t("g1a.override_title"), "items": [line]})
     return blocks
+
+
+def _override(ctx: Context) -> tuple[dict, dict] | None:
+    """The diagnosis (run.json) and the user's override at G1a in it (issue #143), or None."""
+    d = state.load(ctx.run).diagnosis
+    over = d.get("override") if isinstance(d, dict) else None
+    return (d, over) if isinstance(over, dict) else None
+
+
+def _stage(ctx: Context, stage: object) -> str:
+    return ctx.t_or("stage_name." + str(stage), stage)
+
+
+def _override_line(ctx: Context) -> str | None:
+    """"Diagnosis: the landing page. The user decided to refresh the opening, because: <their words>"."""
+    found = _override(ctx)
+    if not found:
+        return None
+    d, over = found
+    words = {"stage": _stage(ctx, over.get("stage")), "said": over.get("said") or ""}
+    if d.get("too_little_data"):
+        return ctx.t("g1a.override_thin", **words)
+    return ctx.t("g1a.override", diagnosed=_stage(ctx, over.get("diagnosed_stage") or d.get("stage")), **words)
+
+
+def _against(ctx: Context) -> list[dict]:
+    """On every money stage after the override (owner decision, #148 line 4): the run goes against the diagnosis."""
+    found = _override(ctx)
+    if not found:
+        return []
+    d, over = found
+    diagnosed = (ctx.t("against.too_little") if d.get("too_little_data")
+                 else _stage(ctx, over.get("diagnosed_stage") or d.get("stage")))
+    return [{"kind": "list", "title": ctx.t("against.title"), "items": [ctx.t(
+        "against.line", diagnosed=diagnosed, stage=_stage(ctx, over.get("stage")), said=over.get("said") or "")]}]
+
+
+# --- the end: a run that stopped at the diagnosis (issue #143) ----------------------------------------
+
+def _ended_at_g1a(ctx: Context) -> dict | None:
+    s = state.load(ctx.run)
+    last = [d for d in s.decisions if d.get("checkin") == "G1a"]
+    return last[-1] if s.status == "done" and last and last[-1].get("choice") == "do_not_refresh" else None
+
+
+def _done(ctx: Context) -> list[dict]:
+    if not _ended_at_g1a(ctx):
+        return []
+    d = state.load(ctx.run).diagnosis
+    verdict = _stage(ctx, d.get("stage")) if isinstance(d, dict) else ctx.t_or("stage_name.unclear", "unclear")
+    blocks = [{"kind": "list", "title": ctx.t("done.title"), "items": [ctx.t("done.verdict", verdict=verdict)]}]
+    path = ctx.latest("04_final", "diagnosis_report", "md")
+    text = ctx.text(path)
+    if text:
+        blocks.append({"kind": "text", "title": ctx.t("done.report"), "text": text, "pre": True,
+                       "summary": ctx.t("done.report_open"), "source": ctx.rel(path)})
+    return blocks
+
+
+def final(ctx: Context) -> dict | None:
+    """The "Done" stage of a run that ended at the diagnosis (G1a do_not_refresh): the verdict and the report."""
+    g1a = _ended_at_g1a(ctx)
+    if not g1a:
+        return None
+    d = state.load(ctx.run).diagnosis
+    verdict = _stage(ctx, d.get("stage")) if isinstance(d, dict) else ctx.t_or("stage_name.unclear", "unclear")
+    return {"key": "done", "record": {"choice": "done", "label": ctx.t("done.verdict", verdict=verdict),
+                                      "note": None, "at": g1a.get("at"), "by": g1a.get("by"), "rule": g1a.get("rule")}}
 
 
 # --- G1b: the audience ----------------------------------------------------------------------------
@@ -341,10 +430,11 @@ COMPONENTS = {
     "G1": (_ranking,), "G1a": (_diagnosis,), "G1b": (_audience,), "G2": (_trends,),
     "G3": (_register, lambda c: _doc(c, "strategy_brief", "g3.strategy")),
     "G4": (lambda c: _doc(c, "creative_brief", "g4.brief"), _register),
-    "G3r": (_register,), "VB": (_budgets,), "RB": (_budgets,), "G6": (_budgets,),
+    "G3r": (_register,), "VB": (_against, _budgets), "RB": (_against, _budgets), "G6": (_against, _budgets),
     "V1c": (_voice,), "GV": (_voice,), "G5": (_video, _qa), "G5r": (_video, _qa), "G9": (_video, _qa),
-    "G10": (_test_plan, _budgets), "E2b": (lambda c: _doc(c, "prelaunch_check", "e2b.check"),),
-    "G11": (lambda c: _doc(c, "prelaunch_check", "e2b.check"), _test_plan),
+    "G10": (_against, _test_plan, _budgets), "E2b": (lambda c: _doc(c, "prelaunch_check", "e2b.check"),),
+    "G11": (_against, lambda c: _doc(c, "prelaunch_check", "e2b.check"), _test_plan),
+    "done": (_done,),
 }
 
 

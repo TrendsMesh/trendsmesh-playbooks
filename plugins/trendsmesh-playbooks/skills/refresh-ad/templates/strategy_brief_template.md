@@ -34,6 +34,10 @@ numbers or commands in the brief itself.
 - The rise in cost per result and how sure it is; the whole account's trend over the same period.
 - **What is fading** and the decision: the part of the ad to change, or "do not refresh" with the
   reason outside the video. Other signals seen.
+- When the user overruled the diagnosis at "Accept the diagnosis" (run.json `diagnosis.override`),
+  one labelled line in their words, the figures above unchanged (they stay Meta's): "**Diagnosis:**
+  the landing page. **The user decided to refresh** image fatigue, because: <their words>." For an
+  ad with too little data: "**Diagnosis:** too little data. **The user decided to refresh** …".
 
 ## 2. Audience
 - **Hypothesis from the content**, written before the data: who, problem, promise, style.

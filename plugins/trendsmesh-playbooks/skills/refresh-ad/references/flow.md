@@ -86,36 +86,65 @@ it says.
 
 1. Dates: `last` = today − 2 (R1 cuts the last two days), `first` = last − 90 days. That is 13
    whole weeks ending on `last`, the same 7-day windows the engine uses.
-2. **Weekly totals for every ad:** `ads_get_ad_entities`, ad level, the user's account,
-   `time_increment=7`, `first`..`last`, fields only: id, name, spend (`amount_spent`),
-   impressions, frequency, cpm, `unique_link_clicks_ctr`, `video_p25_watched_actions`,
-   `video_thruplay_watched_actions`, results, `cost_per_result`, and the retention ladder R2
-   reads: `video_play_actions`, `video_p50_watched_actions`, `video_p75_watched_actions`,
-   `video_p95_watched_actions`, `video_p100_watched_actions`, `video_avg_time_watched_actions`.
-   Without the ladder `tm diagnose` falls back to the old ThruPlay rule and can't see which part
-   of the middle fades. Fetch every page; the collector saves each.
-3. **Account weekly totals:** the same call at account level. If the account level gives nothing,
-   `tm r1` sums the ad rows for the account by itself.
+2. **Weekly totals for the ads that spent, in two calls.** A call over every ad, unfiltered, can
+   come back with only the ads that did not spend and no page cursor, so:
+   - **a. The ids:** `ads_get_ad_entities`, ad level, the user's account, `first`..`last`, no
+     `time_increment`, fields id, name and `amount_spent`, filtered on `amount_spent` greater than 0
+     and sorted by `amount_spent` descending, with the tool's own filtering and sort parameters (read
+     its schema: for example `filtering: [{"field": "spend", "operator": "GREATER_THAN", "value": 0}]`
+     and a sort such as `spend_descending`, where the tool has one). Fetch every page. `tm r1` leaves
+     this read out by itself (no `time_increment`).
+   - **b. The weekly rows of those ids only:** the same call with `ad_ids` (those ids, in that
+     order), `time_increment=7`, fields only: id, name, spend (`amount_spent`), impressions,
+     frequency, cpm, `unique_link_clicks_ctr`, `video_p25_watched_actions`,
+     `video_thruplay_watched_actions`, results, `cost_per_result`, and the retention ladder R2
+     reads: `video_play_actions`, `video_p50_watched_actions`, `video_p75_watched_actions`,
+     `video_p95_watched_actions`, `video_p100_watched_actions`, `video_avg_time_watched_actions`.
+     Without the ladder `tm diagnose` falls back to the old ThruPlay rule and can't see which part
+     of the middle fades. Fetch every page; the collector saves each.
+   - **c. Each ad's link:** `ads_get_creatives` for the same ids. Write
+     `01_base/ad_links_v01.json`, one object of ad id to the ad's link (the creative's website link,
+     copied as it is: `{"<ad id>": "<link url>"}`, `null` when the creative has none) and record it
+     (source: the saved `ads_get_creatives` answers).
+3. **Account weekly totals:** the same weekly call at account level. If the account level gives
+   nothing, or no account row has a readable result (`results: "Not available"`), `tm r1` builds
+   the account trend from the ad rows by itself, and says so in each ad's note.
 4. **Daily rows for the top 5 ads by spend only** (`time_increment=1`, same dates, R1's fields
    from step 2 without the ladder: R2 reads the weekly windows, and the daily rows are the bulk of
    the fetch), one call per ad (`ad_ids`). They are the evidence for the chosen ad (R1) and its
    daily chart, saved in `01_base/meta/` like the rest; `tm r1` never reads them (`time_increment`
    1), so they never count twice beside the weekly rows. If the ad chosen at G1 is not in the top 5,
    fetch its daily rows the same way before A1a.
-5. `tm r1 --run R --json` writes `01_base/winner_ranking_vNN.json`. It takes the collector's
+5. `tm r1 --run R --links 01_base/ad_links_v01.json --json` writes `01_base/winner_ranking_vNN.json`.
+   It takes the collector's
    weekly reads from `01_base/meta/` by their input (`level` ad or account, `time_increment` 7;
    a week fetched again counts once, the later read) and says what it took in `picked` (`ads`,
    `account`, `account_from`: `ads` when the account read held no rows, and `skipped`: every other
    read, with why). Check `picked` and `read` against what you fetched. Files saved by hand (a run
-   started without the collector) are given as before: `--ads <files> --account <files>`.
+   started without the collector) are given as before: `--ads <files> --account <files>`. It
+   refuses (exit 1) ad rows with no spend while the account spent in the same weeks: step 2a was
+   missed or unfiltered, so fetch it as it says. `--links` compares each link with
+   `product.landing_url` (`config.yaml`) by host and path, never the query string or the tracking
+   parameters: another host is another product's ad (`other_product`, never ranked), the same host
+   with another path is a near match (`near_matches`) for the user to confirm.
 6. Prepare "Pick the ad" (G1): the fading ads by rank (spend, cost per result peak → now, the
    rise, p-value, account trend, value to recover, fatigue signals CTR, ThruPlay, frequency),
-   then the stable ones, then "not enough data" (never ranked). Every figure from the ranking
-   file. The choice is the ad id. Hands-off: #1 by rule.
+   then the stable ones, then "not enough data" (never ranked), each "paused" ad marked so (no
+   spend in the 14 days up to `last`), each near match with "same site, another page: is it
+   <product>?"; then, apart, "Ads of other products, set aside" (`other_products`). Every figure
+   from the ranking file. The choice is the ad id. Hands-off: #1 by rule.
+   **Too little data:** when the ranking's `too_little_data` is set (every ad of the product is
+   "not enough data"), the card says its `line` ("Your <product> ads have too little data to
+   judge: the best has 18 of the 30 results needed") and asks whether to refresh one of them
+   anyway, and which. On a yes, record that ad at G1 (`tm decide G1 <ad id> --said "<their
+   words>"`); at A1a it is diagnosed as "too little data" and the user picks the part to refresh
+   (`#a1a`). Hands-off never takes this on its own: it goes on as below, and the final report
+   says it.
 7. No ad is fading: say so plainly with the ranking, record `tm decide G1 none --said "<the user's words this rests on>" --note "<ranking
    file>: no fading ad"` (Hands-off: `--by rule` in place of `--said`; at Just the big calls skip this: G1 belongs to the "Pick the ad" card,
    which never comes, and the engine refuses it at A1), `tm done A1`, then at A1a `tm decide G1a
-   do_not_refresh --by rule --note "no fading winner"`: the run ends with no spend.
+   do_not_refresh --by rule --note "no fading winner"`: the run ends with no spend, and the
+   engine writes the diagnosis report (`04_final/diagnosis_report_v01.md`).
 
 <a id="a1a"></a>
 ## A1a Funnel diagnosis (R2)
@@ -127,6 +156,10 @@ it says.
   windows carry the retention ladder (plays and p50 to p100, from A1's weekly fields), R2 reads the
   middle from its conditional steps (p50/p25, p75/p50, p95/p75: a drop of 3 points or more with
   p < 0.1); the diagnosis' `ladder` holds the peak, the latest and the steps that dropped.
+- **An ad with too little data** that the user wants refreshed anyway (`#a1`, step 6): `tm diagnose
+  --run R --too-little-data --json`, with `--peak`, `--latest` and `--account-ratio` when the ranking
+  has both windows for it (their reading is kept as signals only). The diagnosis names no stage;
+  the engine waits at G1a for the part the user picks (the override, below).
 - **Then the structural check (R2b), always** (`rules.md`). The other ads that use the same video:
   `ads_get_creatives` across the account (each creative's video id and thumbnail), and
   `ads_get_ad_videos` for the length. The same video id is the same file; a re-upload of the file
@@ -145,13 +178,31 @@ it says.
   two. With no other upload, run it on the chosen ad alone: it records "not structural".
   **Then `tm next`.**
 - If `tm next` offers only `do_not_refresh`: relay the message (landing page or offer, the whole
-  account, the auction, an unclear cause, or a stage the plugin cannot refresh for this ad),
-  record it, and the run ends with the diagnosis report and no spend. An `unclear` stage is shown
-  to the user as it is. A structural weakness found in such a run is reported as an opportunity
-  in the same report.
+  account, the auction, an unclear cause, too little data, or a stage the plugin cannot refresh for
+  this ad) and recommend it. Recorded, the run ends with no spend: the engine writes
+  `04_final/diagnosis_report_v01.md` (`templates/diagnosis_report_template.md`: what was checked,
+  what the data shows, what to fix, what was spent) and, when the run has a page, builds it again
+  with G1a settled and a "Done" stage; publish it to the same URL and give the user the report. An
+  `unclear` stage is shown to the user as it is. A structural weakness found in such a run is
+  reported as an opportunity in the same report.
+- **The user may overrule the diagnosis** (owner decision): they know the cause is another one
+  (the landing page has not changed, the ad is worn out), or they want an ad with too little data
+  refreshed anyway. Offer it on the card as the second option, never as the recommendation, with
+  the refreshable parts named in plain words: the opening (`hook`), the middle (`middle`), the
+  promise or call to action (`promise_cta`), image fatigue (`fatigue`). On their yes: `tm decide
+  G1a override --stage <hook|middle|promise_cta|fatigue> --said "<their words>"`, at every level
+  (Hands-off too), and only with the user's own words: never by rule. The engine refuses a part
+  that has no supported change for this ad ("Refreshing <part> isn't supported yet for this ad;
+  pick another stage"): ask again. It keeps every figure Meta's, stores the override in the
+  diagnosis and sets `target_stage` to that part, and the run goes on. The strategy brief, the
+  creative brief and the run page say it in one line ("Diagnosis: the landing page. The user
+  decided to refresh image fatigue, because: <their words>"), and every later money question (the
+  costs, the live test's budget and plan, the launch) says that the run goes against the
+  diagnosis: `tm next` and `tm budget approve` give the line.
 - Otherwise write the "Diagnosis" section of `04_final/strategy_brief_v01.md`
   (`templates/strategy_brief_template.md`): funnel metrics peak → now, the retention steps, the
-  account trend, the verdict, the `target_stage` and why, with the numbers and their file.
+  account trend, the verdict, the `target_stage` and why, with the numbers and their file (after
+  an override, the labelled line with the user's words, from `diagnosis.override`).
   `also_seen` stages are supporting signals; the structural check is reported beside them, as an
   improvement opportunity, never as what is fading.
 - **The re-cut (flow R).** A `middle` target turns it on by itself. A structural weakness
@@ -164,7 +215,8 @@ it says.
   (exit 1, with the reason) a diagnosis that allows no re-cut, Hands-off without that setting, and
   a run past C1: that refusal is the answer, never something to work around. It is decided here.
 - "Accept the diagnosis" (G1a): `refresh` (note: the target stage, and "plus the re-cut of the
-  structural weakness" when flow R was turned on) or `do_not_refresh`. When the refresh is a
+  structural weakness" when flow R was turned on), `do_not_refresh`, or the user's `override`
+  (above). When the refresh is a
   re-cut (a middle target, or the re-cut offered for a structural weakness), the card says what it
   can offer before the breakdown: the kinds of variant `tm changes --stage middle` lists for the ad,
   each one change, **each with its level** in plain words ("level 0, a pure edit, free"; "level 4,
@@ -175,7 +227,8 @@ it says.
   `03_wip/test_control_v01.json` (record it; source: the ranking file), then `tm r4 --estimate
   --run R --stage <target_stage> --control 03_wip/test_control_v01.json --variants <n> --json`
   (`<n>`: the variants you expect, 1 when unsure; a re-cut adds `--recut-step` or `--shorter` as
-  at E1). Tell the user what it needs. Exit 2: the budget given cannot reach the minimum events,
+  at E1). Tell the user what it needs (after an override, with the line that the run goes against
+  the diagnosis). Exit 2: the budget given cannot reach the minimum events,
   and the run stops here, at the start, not at E1 after the work. Give the calculation and the
   same choices as the R4 stop: a higher daily budget or more days (`tm live-test budget --run R
   --per-day <amount> --days <days>`, in Hands-off with `--note "<their words>"`, then `tm r4
@@ -184,13 +237,16 @@ it says.
 <a id="a2"></a>
 ## A2 Winner source file
 
-- Find the chosen ad's video in the brand assets folder (name, length and look matching the ad's
-  creative from `ads_get_creatives` / `ads_get_ad_videos`). Copy it to
-  `01_base/<ad_id>_original.<ext>` and record it (source: the brand folder path). Ask whether a
-  better source exists: the editing project, clean clips without captions, a higher resolution,
-  language versions, separate voice and music tracks.
-- Not there: the stop in SKILL.md section 7, recorded with `tm stop`, then wait. Once the user
-  has put it there: `tm resume`, `tm next`, copy and record it.
+- Look in the brand assets folder first for the chosen ad's video (name, length and look matching
+  the ad's creative from `ads_get_creatives` / `ads_get_ad_videos`). Copy it in and record it in
+  one step: `tm record --run R --file 01_base/<ad_id>_original.<ext> --stage 01_base --copy-from
+  "<its full path>" --json` (the source recorded is that path). Ask whether a better source
+  exists: the editing project, clean clips without captions, a higher resolution, language
+  versions, separate voice and music tracks.
+- Not there: the stop in SKILL.md section 7, recorded with `tm stop`, then wait. It asks for the
+  file's path, or for the user to drop the file into the chat. Once they have: `tm resume`, `tm
+  next`, then the same `tm record --copy-from` with the path they gave, or the dropped file's
+  path. Check it is the ad's video (length and look) before you go on.
 - Last resort, only when the user cannot get the file: the low-quality preview, recorded with
   "low-quality preview, not the original" in the manifest, and said in every output that uses it.
 
@@ -706,6 +762,14 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - The final: `tm tool ffmpeg` to `04_final/<name>_edited_vNN.mp4` (H.264, CRF 19, at most
   14 Mb/s) and a phone preview under 30 MB; record each with
   `--before-after "before: 01_base/<original>"` (`tm record` for files you name yourself).
+- **4:5 whenever `tm formats` asks for it (R6)**, with or without the live test in the run: the
+  edited video's 4:5 version with `tm tool reframe --run R <the edited final> --teardown <the
+  original's teardown from A3>` (local and free: no check-in of its own), then its QA: its frames
+  against the teardown's frame sheets (no text, face, product or logo cut, the safe zones kept;
+  the result's `method`, crop or pad). Its final goes to `04_final/<name>_4x5_edited_vNN.mp4`
+  (the same encoding), recorded with `--before-after "before: 04_final/<name>_edited_vNN.mp4"`.
+  E1 reuses it. When the QA fails and no free fix helps, say so at G5 and in the final report
+  ("4:5 not made, because …"), and deliver 9:16 only.
 - The run page at G5 (`checkin-cards.md`, "The run page"): before and after side by side and the QA
   strips come from the run by themselves; add other frames as the ask's `media`.
 
@@ -808,13 +872,15 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
   while the stop is open: `tm budget approve --run R test <per day × days>` first, then `tm r4`.
 - **Formats per ad (R6).** The plan names the files and placements per ad: for the control and
   each variant, the file in Reels and Stories (9:16) and the file in feed (4:5), so that the ads
-  differ only in the change under test and feed gets the format R6 asks for. When `tm formats`
+  differ only in the change under test and feed gets the format R6 asks for. The variant's 4:5
+  version is the one made at C3 (`04_final/<name>_4x5_edited_vNN.mp4`): reuse it, never make it
+  again. When `tm formats`
   asks for 4:5 and the original has no 4:5 version (its creative has one video and no placement
-  asset customization: A3's `ads_get_creatives`), make a 4:5 version of the original too, as for
-  the variant: `tm tool reframe --run R <the original's video> --teardown <its teardown from A3>`,
+  asset customization: A3's `ads_get_creatives`), make a 4:5 version of the original here:
+  `tm tool reframe --run R <the original's video> --teardown <its teardown from A3>`,
   then the same QA (its frames against the teardown's frame sheets: no text, face, product or
   logo cut, the safe zones kept; the result's `method`, crop or pad). It is free and local, so
-  it needs no check-in of its own: make it at E1 at the latest. Both ads then carry 9:16 and 4:5
+  it needs no check-in of its own. Both ads then carry 9:16 and 4:5
   on the same placements (placement asset customization). Only when the original's 4:5 version
   fails its QA and no free fix helps, the plan says "test in 9:16 only; 4:5 after the test" and
   why, the card says so, and both ads carry 9:16 only: the control is still a new creative (see
@@ -850,7 +916,8 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - `ads_experiment_check_eligibility`. Write `04_final/live_test_plan_vNN.md`
   (`templates/live_test_plan_template.md`): a Meta A/B test with the original's files as control, the
   numbers from `tm r4`, no decisions before the end of the window (except the cost guardrail), and
-  the objects it creates, all PAUSED.
+  the objects it creates, all PAUSED. After the user's override at G1a, the plan opens with the
+  line that the run goes against the diagnosis (`tm next` gives it), and G10's card says it too.
 - **Both test ads are new** (issues #64 and #73): the control is always a new creative made of the
   original's files (its video, its 4:5 version when there is one, its copy, headline, call to
   action and thumbnail), PAUSED like the rest, with or without a 4:5 version, never the original's

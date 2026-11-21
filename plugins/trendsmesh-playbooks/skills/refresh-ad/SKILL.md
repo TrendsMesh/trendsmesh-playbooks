@@ -172,7 +172,10 @@ After `tm diagnose` and `tm structural` (A1a), and after `tm material`, always r
 it returns the "Accept the diagnosis" check-in with `do_not_refresh` (a landing page, account,
 auction or unclear cause, or a stage that can't be refreshed for this material), relay its
 message plainly and record `do_not_refresh` (by rule in Hands-off). The run ends there, before any
-spend, with the diagnosis report.
+spend, with the diagnosis report the engine writes (`04_final/diagnosis_report_v01.md`). The user
+may overrule the diagnosis instead, at every level and only in their own words: `tm decide G1a
+override --stage <hook|middle|promise_cta|fatigue> --said "<their words>"` (`flow.md#a1a`); every
+later money question then says the run goes against the diagnosis.
 
 Otherwise plan for **`diagnosis.target_stage`** (not `stage`) and only what
 `tm changes --stage <target_stage> --material <material> --json` lists, plus the always-edits it
@@ -243,16 +246,20 @@ Library and page answers too, so you never save one by hand. If the hook says an
 saved, save it with `tm trends ingest` as it says (`references/trend-collection.md`).
 `tm trends collect off --run R` when the run ends.
 
-Weekly totals first, for every ad: `ads_get_ad_entities` at ad level, `time_increment=7`, from
-today−92 to **today−2** (13 weeks that line up with R1's windows), only the fields R1 needs **plus
+First the ads that spent: `ads_get_ad_entities` at ad level from today−92 to **today−2**, no
+`time_increment`, filtered on `amount_spent` greater than 0 and sorted by it, descending (the
+tool's own filter and sort parameters; an unfiltered call can return only the ads that did not
+spend). Then their weekly totals: the same call with those `ad_ids`, `time_increment=7` (13 weeks
+that line up with R1's windows), only the fields R1 needs **plus
 the retention ladder R2 reads**: `video_play_actions`, `video_p50_watched_actions`,
 `video_p75_watched_actions`, `video_p95_watched_actions`, `video_p100_watched_actions` and
 `video_avg_time_watched_actions` (without them the diagnosis can't see which part of the middle
-fades). Then account-level weekly totals the same way. Then daily rows (`time_increment=1`)
+fades). Then account-level weekly totals the same way, and each ad's link (`ads_get_creatives`)
+into `01_base/ad_links_v01.json`, so `tm r1 --links` sets the ads of other products apart. Then daily rows (`time_increment=1`)
 **only for the top 5 ads by spend, and for the chosen ad if it is not among them**, with R1's
 fields only: they are the bulk of the fetch (91 rows per ad against 13), so the six ladder fields
 (about 200 characters a row) go on the weekly rows alone and the fetch stays small. Then
-`tm r1 --run R --json`: it takes the weekly ad and account reads from `01_base/meta/` by the input
+`tm r1 --run R --links 01_base/ad_links_v01.json --json`: it takes the weekly ad and account reads from `01_base/meta/` by the input
 each was fetched with (`level`, `time_increment=7`), never the daily rows, and its `picked` says
 which files it read and which it left out. The average watch time is
 whole seconds per day from Meta: never present it as precise. Details, fields, the structural
@@ -267,7 +274,9 @@ check's fetch (R2b) and the "Pick the ad" card: `references/flow.md#a1` and `#a1
   <ad name> isn't in your brand folder, and Meta doesn't hand it over through this connection.
   Open <https://adsmanager.facebook.com/adsmanager/manage/ads?act=ACCOUNT&selected_ad_ids=AD>,
   open the ad, and download its video from the ad's media (or ask whoever made the ad for the
-  original file). Put it in <brand folder> and tell me: the run continues from the same place."
+  original file), then tell me where it is (its path), or drop it here: the run continues from
+  the same place." The file may be anywhere: `tm record --copy-from "<its path>"` copies it to
+  `01_base/<ad_id>_original.<ext>` and records that path as its source (`flow.md#a2`).
   ACCOUNT is `account.id` in the run's `config.yaml` (without `act_`), AD the ad's id: read them
   there, never leave `act=` out.
   Only if the user can't get it: the low-quality preview, marked as such in the manifest and in
@@ -330,4 +339,5 @@ voice line is regenerated to length first, and checked against the original.
 `references/lessons.md`, `references/variants.md`, `references/recut.md` (the re-cut methods,
 the edit list, music, limits), `references/meta-mcp.md`, `references/trendsmesh-mcp.md`,
 `references/trendsmesh-sign-in.md`; templates in `templates/` (the middle diagnosis:
-`templates/middle_diagnosis_template.md`).
+`templates/middle_diagnosis_template.md`; the report of a run that ends at the diagnosis, filled
+by the engine: `templates/diagnosis_report_template.md`).

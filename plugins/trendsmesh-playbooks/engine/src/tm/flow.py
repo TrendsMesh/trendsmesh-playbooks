@@ -946,19 +946,52 @@ def _skip_notes(run: _Run) -> list[str]:
     return notes
 
 
+OVERRIDE = "override"   # G1a: the user refreshes against the diagnosis (issue #143), with --stage and their words
+TOO_LITTLE = ("This ad has too little data for a diagnosis (fewer than {n} results in a window to compare), so "
+              "the engine can't say which part of it fades.")
+_OVERRIDE_HOW = ("Any other answer is refused while this stands, unless the user decides to refresh anyway: "
+                 "`tm decide G1a override --stage <{stages}> --said \"<their words>\"`.")
+
+
 def _blocking(s: state.RunState) -> changes.Resolution | None:
-    """Why the run cannot go on to research and spend: the diagnosis says not to refresh, or no
-    stage seen (main or also seen) has a supported edit for the material. None when it can."""
+    """Why the run cannot go on to research and spend: the diagnosis says not to refresh (or has too little data),
+    or no stage seen (main or also seen) has a supported edit for the material. None when it can. The user's
+    override at G1a (issue #143) lets it go on, while its stage has a supported change for the material."""
     d = s.diagnosis
     if not _pb01(s) or not d:
         return None
     spent = any(v for v in s.spend.values())
+    over = d.get("override")
+    if isinstance(over, dict):
+        if changes.for_stage(over.get("stage"), s.material):
+            return None
+        return changes.Resolution("unsupported", None, changes.override_unsupported(over.get("stage")))
+    if d.get("too_little_data"):
+        from tm import r1   # a leaf: it imports nothing of the flow
+        return changes.Resolution("too_little_data", None, TOO_LITTLE.format(n=r1.WinnerCfg().min_results))
     res = changes.resolve(d["stage"], d.get("also_seen", []), d.get("refresh", False), s.material, spent)
     return None if res.kind == "ok" else res
 
 
+def against_diagnosis(s: state.RunState) -> str | None:
+    """The line every money ask after the user's G1a override carries (owner decision, #148 line 4): the run goes
+    against the diagnosis, what it said, what the user chose and their words. None without an override."""
+    d = s.diagnosis if _pb01(s) else None
+    over = (d or {}).get("override")
+    if not isinstance(over, dict):
+        return None
+    diagnosed = over.get("diagnosed_stage") or d.get("stage")
+    said = (over.get("said") or "").strip()
+    what = ("too little data to diagnose" if d.get("too_little_data")
+            else f"it points at {changes.STAGES.get(diagnosed, diagnosed)}")
+    return (f"This run goes against the diagnosis ({what}): the user decided to refresh "
+            f"{changes.STAGES.get(over.get('stage'), over.get('stage'))}"
+            + (f", in their words: \"{said}\"." if said else "."))
+
+
 def _blocking_ask(run: RunFolder, s: state.RunState, res: changes.Resolution, today: date | None = None) -> NextStep:
-    """G1a alone, immediately, recommending do_not_refresh; Hands-off decides it by rule."""
+    """G1a alone, immediately, recommending do_not_refresh; Hands-off decides it by rule. The user may overrule it
+    (`override`, issue #143)."""
     pic = _picture(s)
     cat = pic.cat
     c = cat.checkins["G1a"]
@@ -966,7 +999,7 @@ def _blocking_ask(run: RunFolder, s: state.RunState, res: changes.Resolution, to
     again = ""
     if "G1a" in pic.latest and "end" not in c.on_choice.get(pic.latest["G1a"]["choice"], {}):
         again = " G1a was decided before the data changed: record it again with `--change`."
-    view = CheckinView(ids=["G1a"], name=c.name, card=None, rule=c.rule, choices=["do_not_refresh"])
+    view = CheckinView(ids=["G1a"], name=c.name, card=None, rule=c.rule, choices=["do_not_refresh", OVERRIDE])
     if pic.route("G1a") == "rule":
         action: Action = "auto"
         how = (f"Record it with `tm decide G1a do_not_refresh --by rule --note \"{res.message}\"`.")
@@ -974,8 +1007,7 @@ def _blocking_ask(run: RunFolder, s: state.RunState, res: changes.Resolution, to
         action = "ask"
         how = ("Show it to the user, recommend do_not_refresh, and record the answer with "
                "`tm decide G1a do_not_refresh --said \"<their words>\"`.")
-    message = (f"{res.message} {how} Any other answer is refused while this stands: a corrected "
-               "`tm diagnose` or `tm material` is the way out." + again)
+    message = (f"{res.message} {how} {_OVERRIDE_HOW.format(stages='|'.join(changes.REFRESHABLE))}" + again)
     return _step_view(owner, action, message, view)
 
 
@@ -1060,7 +1092,7 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
     def finish(result: NextStep) -> NextStep:
         if asdict(s) != before:
             state.save(run, s)
-        return _with_notice(s, result)
+        return _with_notice(s, _against_line(s, result))
 
     if s.status == "done":
         return _with_notice(s, _offered(run, _winner(run, _done(_picture(s)))))
@@ -1141,6 +1173,22 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
         message += f" After it comes the check-in \"{view.name}\" ({', '.join(view.ids)})."
     message += _ending_hints(pic, pic.p)
     return finish(_step_view(st, "work", message, view))
+
+
+def _against_line(s: state.RunState, result: NextStep) -> NextStep:
+    """After the user's G1a override, every money ask says the run goes against the diagnosis (#148 line 4): a
+    spending check-in or the launch, the live test's estimate on the chosen ad, and a stop about a budget or the
+    test plan."""
+    line = against_diagnosis(s)
+    if not line or not result.message:
+        return result
+    cat = checkins.load(playbook=s.playbook)
+    money = bool(result.checkin) and any(cat.checkins[c].money for c in result.checkin.ids if c in cat.checkins)
+    estimate = _ESTIMATE_FIRST in result.message
+    stop = result.action == "stop" and any(_stop_kind(x) for x in _open_stops(s))
+    if money or estimate or stop:
+        result.message = f"{result.message} Say it with the amount: {line}"
+    return result
 
 
 def _ended_early(s: state.RunState) -> bool:
@@ -1329,7 +1377,7 @@ def recut_refusal(run: RunFolder, s: state.RunState) -> str | None:
 
 def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "rule"],
            note: str | None, *, today: date | None = None, change: bool = False, said: str | None = None,
-           concepts: list[str] | None = None) -> None:
+           concepts: list[str] | None = None, stage: str | None = None) -> dict | None:
     """Record a decision. A card id records one entry per check-in it covers.
 
     A decision by rule needs `note`: the data behind it. Deciding again needs `change`. `said`: the user's own
@@ -1343,7 +1391,10 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
     a choice without that effect takes none) or skip the steps it no longer allows (a reject at a spending
     check-in). A money
     decision is refused (Held) while the run is stopped for something else; G10 approve and G11
-    activate need a feasible R4 plan.
+    activate need a feasible R4 plan. G1a `override` (issue #143) is the user's refresh against the diagnosis: it
+    takes `stage` and their words, from G1a's own step on, and sets the diagnosis' target (`_override`). G1a
+    `do_not_refresh` writes the diagnosis report and builds the run page again (`diagnosis_report.finish`), and
+    returns what it wrote; every other decision returns None.
     """
     if by not in ("user", "rule"):
         raise ValueError(f"--by must be user or rule, not {by!r}.")
@@ -1368,10 +1419,16 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
     pb01 = _pb01(s)
     covered = (["G1a"] if checkin_id == "G1a"
                else pic.card_members(checkin_id) if checkin_id in cat.cards else [])
-    block = _blocking(s) if "G1a" in covered and choice != "do_not_refresh" else None
+    overriding = pb01 and "G1a" in covered and choice == OVERRIDE
+    if overriding:
+        _check_override(s, checkin_id, by, said, stage)
+    elif stage is not None:
+        raise ValueError("--stage is only for the user's refresh against the diagnosis: "
+                         "`tm decide G1a override --stage <stage> --said \"<their words>\"`.")
+    block = _blocking(s) if "G1a" in covered and choice not in ("do_not_refresh", OVERRIDE) else None
     if block:
-        raise ValueError(f"{block.message} G1a accepts only do_not_refresh now; correct the "
-                         "data with `tm diagnose` or `tm material` first.")
+        raise ValueError(f"{block.message} G1a accepts only do_not_refresh now; correct the data with `tm diagnose` "
+                         f"or `tm material` first. {_OVERRIDE_HOW.format(stages='|'.join(changes.REFRESHABLE))}")
     if checkin_id in cat.cards:
         members = pic.card_members(checkin_id)
         if not members:
@@ -1388,7 +1445,8 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
         if checkin_id not in pic.owner:
             raise ValueError(f"{checkin_id} is not part of this run (its step or flow is not in use).")
         ending = "end" in cat.checkins[checkin_id].on_choice.get(choice, {})
-        reached = pic.owner[checkin_id][0] if ending else pic.place(checkin_id)[1]
+        early = ending or overriding        # decided from its own step, even when its card comes later
+        reached = pic.owner[checkin_id][0] if early else pic.place(checkin_id)[1]
         if reached > pic.p:
             raise ValueError(f"{checkin_id} is not reached yet; the run is at {current}.")
         if by == "rule" and pic.route(checkin_id) != "rule" and not ending:
@@ -1441,9 +1499,13 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
             entry["change"] = True
         if named is not None:
             entry["concepts"] = named
+        if overriding and cid == "G1a":
+            entry["stage"] = stage
         entry["at"] = _now()
         entry.update(_covers(run, s, cid, choice))
         s.decisions.append(entry)
+        if pb01 and cid == "G1a":
+            _override(s, stage if overriding else None, said)
         effect = c.on_choice.get(choice, {})
         if "measure_days" in effect:
             start = today or date.today()
@@ -1473,6 +1535,49 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
             if position[effect["back_to"]] < here:
                 s.step = effect["back_to"]
     state.save(run, s)
+    if pb01 and "G1a" in ids and choice == "do_not_refresh":   # issue #143: the run's result is the report
+        from tm import diagnosis_report   # it reads this module's _blocking
+        return diagnosis_report.finish(run)
+    return None
+
+
+def _check_override(s: state.RunState, checkin_id: str, by: str, said: str | None, stage: str | None) -> None:
+    """G1a `override` is the user's own refresh against the diagnosis (issue #143): on G1a itself (never a card's
+    answer), by the user, with their words and a refreshable stage that has a supported change for the material."""
+    stages = "|".join(changes.REFRESHABLE)
+    if checkin_id != "G1a":
+        raise ValueError(f"Record the refresh against the diagnosis on G1a itself: `tm decide G1a override --stage "
+                         f"<{stages}> --said \"<their words>\"`, then the card's other answers one by one.")
+    if by != "user":
+        raise ValueError("Only the user can overrule the diagnosis: ask them, and record their answer with "
+                         f"`tm decide G1a override --stage <{stages}> --said \"<their words>\"`.")
+    if not (said and said.strip()):
+        raise ValueError("Overruling the diagnosis needs the user's own words: --said \"<their words>\".")
+    if stage is None:
+        raise ValueError(f"Say which part of the ad the user wants refreshed: --stage <{stages}>.")
+    if stage not in changes.REFRESHABLE:
+        raise ValueError(f"{stage!r} is not a part of the ad a refresh can change; --stage takes one of: "
+                         f"{', '.join(changes.REFRESHABLE)}.")
+    if not s.diagnosis:
+        raise ValueError("There is no diagnosis to overrule yet: run `tm diagnose` first (flow.md#a1a).")
+    if not changes.for_stage(stage, s.material):
+        raise ValueError(changes.override_unsupported(stage))
+
+
+def _override(s: state.RunState, stage: str | None, said: str | None) -> None:
+    """Store the user's override in the diagnosis and target its stage (`stage`), or drop an earlier one when G1a
+    is answered otherwise (`stage` None)."""
+    from tm import r2   # r2 imports changes and state only, but this module is imported first
+    d = s.diagnosis
+    if not isinstance(d, dict):
+        return
+    if stage is None:
+        if "override" in d:
+            d.pop("override")
+            r2.retarget(s)
+        return
+    d["override"] = {"stage": stage, "said": said, "by": "user", "diagnosed_stage": d.get("stage")}
+    r2.retarget(s)
 
 
 def _named_concepts(run: RunFolder, s: state.RunState, cs: list, choice: str,

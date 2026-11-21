@@ -280,7 +280,11 @@ def _run(args: argparse.Namespace) -> int:
             text = f"Approved {_fmt(args.kind, args.amount)} for {args.kind}."
             if flow.open_stop(run, [f"over_budget_{args.kind}"]):
                 text += " The run is stopped for this budget: once the user agrees, run `tm resume`."
-            cli.emit(args, {"status": "done", "kind": args.kind, "approved": float(args.amount)}, text)
+            against = flow.against_diagnosis(state.load(run))   # issue #143: the user's refresh against R2
+            if against:
+                text += f" {against}"
+            cli.emit(args, {"status": "done", "kind": args.kind, "approved": float(args.amount),
+                            **({"message": text, "against_diagnosis": against} if against else {})}, text)
             return 0
         short = shortfall(run, args.kind, args.amount, args.what)
         if short:

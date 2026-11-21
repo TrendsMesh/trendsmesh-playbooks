@@ -65,6 +65,8 @@ def _setup_decide(p: argparse.ArgumentParser) -> None:
     p.add_argument("--change", action="store_true", help="change a decision already taken")
     p.add_argument("--concepts", nargs="+",
                    help="the concepts a choice is for, e.g. C1,C3 (creative brief: animatics make)")
+    p.add_argument("--stage", help="refresh-ad G1a override: the part of the ad the user wants refreshed against "
+                                   "the diagnosis (hook, middle, promise_cta or fatigue)")
     _with_run(p)
 
 
@@ -98,8 +100,8 @@ def _decide(args: argparse.Namespace) -> int:
     run = _open(args)
     said = _said(args, run)
     before = len(state.load(run).decisions)
-    flow.decide(run, args.checkin, args.choice, by=args.by, note=args.note, change=args.change, said=said,
-                concepts=cli.ids_arg(args.concepts) or None)
+    wrote = flow.decide(run, args.checkin, args.choice, by=args.by, note=args.note, change=args.change, said=said,
+                        concepts=cli.ids_arg(args.concepts) or None, stage=args.stage)
     s = state.load(run)
     payload = {"status": "done", "checkin": args.checkin, "choice": args.choice,
                "run_status": s.status}
@@ -109,6 +111,15 @@ def _decide(args: argparse.Namespace) -> int:
         return STOP
     if s.status == "done":
         message = flow.next(run).message
+        if wrote:   # G1a do_not_refresh (issue #143): the diagnosis report, and the run page built again
+            payload.update(wrote)
+            built = wrote.get("page")
+            if built:
+                message += (f" The run page was built again ({built['folder']}), with the diagnosis settled and "
+                            + ("its \"Done\" stage: give the user the path of its index.html."
+                               if built["local"] else
+                               "its \"Done\" stage: publish it to the same URL with the Artifact tool (its `artifact` "
+                               "arguments)."))
         cli.emit(args, {**payload, "message": message}, message)
         return 0
     cat = checkins.load(playbook=s.playbook)

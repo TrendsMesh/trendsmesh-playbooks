@@ -31,6 +31,8 @@ STAGES = {"hook": "the opening", "middle": "the middle", "promise_cta": "the pro
            "fatigue": "image fatigue", "landing": "the landing page", "account": "the whole account",
            "auction": "the auction"}
 RECUT_STAGE = "middle"  # the re-cuts of path C-R (flow R); their ids are an edit list's change_id
+DIAGNOSIS_REPORT = "04_final/diagnosis_report_v01.md"  # written when G1a ends the run (tm.diagnosis_report)
+REFRESHABLE = ("hook", "middle", "promise_cta", "fatigue")  # the stages a creative refresh can target (G1a override)
 
 
 @dataclass(frozen=True)
@@ -109,11 +111,16 @@ def unsupported_message(stage: str, material: str | None, spent: bool = False) -
     money = ("nothing was spent" if not spent
              else "what was already spent stays counted and nothing more is spent")
     return (f"{what} This run ends here and {money}. The diagnosis report is saved in "
-            "the run folder (04_final) for you to use.")
+            f"the run folder as {DIAGNOSIS_REPORT} for you to use.")
 
 
 def stage_supported(stage: str, material: str | None = None) -> bool:
     return bool(for_stage(stage, material))
+
+
+def override_unsupported(stage: str) -> str:
+    """The refusal of a G1a override whose stage has no supported change for the ad's material."""
+    return f"Refreshing {STAGES.get(stage, stage)} isn't supported yet for this ad; pick another stage."
 
 
 @dataclass(frozen=True)

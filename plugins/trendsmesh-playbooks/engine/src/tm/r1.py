@@ -19,6 +19,16 @@ Method (PLAYBOOK.md R1; a proposal, awaiting the playbook owner's sign-off):
  6. Fading when cpr_L >= (1 + fade_cost_increase) * cpr_P and p < fade_p_value.
  7. value_to_recover = (s_P / weeks_P) * (cpr_L / cpr_P - 1), or s_P / weeks_P for
     rank_by == "peak_spend". Fading ads are ranked by it, descending.
+
+Issue #143 adds, around the method:
+ - the product match (`tm r1 --links`, each ad's link from `ads_get_creatives`): an ad whose link has another host
+   than `product.landing_url` is `other_product`, listed apart and never judged or ranked; one on the same host
+   with another path is a near match (`product` "near"), judged as usual and listed for the user to confirm; the
+   query string (tracking parameters) never counts (`product_match`);
+ - `paused`: no spend in the 14 days up to the last included day;
+ - `too_little_data`: every ad of the product is `not_enough_data`; the line says so with the best ad's results;
+ - when no account row has a readable result, the account trend is built from the ad rows, and every judged ad
+   says so in its note.
 """
 
 from __future__ import annotations
@@ -30,12 +40,15 @@ import statistics
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from tm import cli, manifest
 from tm.meta_rows import Row, answer_rows, normalise, results_readable
 from tm.runfolder import ReadOnlyError, RunFolder
 
-VERDICTS = ("fading", "stable", "not_a_winner", "not_enough_data")
+VERDICTS = ("fading", "stable", "not_a_winner", "not_enough_data", "other_product")
+PAUSED_DAYS = 14   # no spend in this many days up to the last included day: the ad is paused (issue #143)
+FROM_ADS = "The account rows have no results, so the account trend is built from the ad rows."
 
 
 def _div(a: float, b: float, empty: float = 0.0) -> float:
@@ -171,6 +184,10 @@ class Candidate:
     rank: int | None = None
     note: str = ""
     dropped_rows: int = 0
+    product: str | None = None   # own | near | other, from the ad's link (`--links`); None without one
+    link: str | None = None
+    paused: bool = False
+    results_total: float = 0.0   # every result in the history, for the "too little data" line
 
     def to_json(self) -> dict:
         return {"ad_id": self.ad_id, "name": self.name, "rank": self.rank, "verdict": self.verdict,
@@ -178,7 +195,8 @@ class Candidate:
                 "latest": self.latest.to_json() if self.latest else None,
                 "cost_increase": self.cost_increase, "p_value": self.p_value,
                 "account_ratio": self.account_ratio, "value_to_recover": self.value_to_recover,
-                "note": self.note, "dropped_rows": self.dropped_rows}
+                "note": self.note, "dropped_rows": self.dropped_rows, "product": self.product,
+                "link": self.link, "paused": self.paused, "results_total": _round(self.results_total, 2)}
 
 
 @dataclass
@@ -188,6 +206,8 @@ class Ranking:
     target_cpa: float | None
     cfg: WinnerCfg
     candidates: list[Candidate] = field(default_factory=list)
+    product: dict | None = None          # {name, landing_url} the links were matched with
+    too_little_data: dict | None = None  # every ad of the product lacks the data (`little`)
 
     @property
     def ranked(self) -> list[Candidate]:
@@ -198,7 +218,50 @@ class Ranking:
                 "target_cpa": self.target_cpa,
                 "config": {k: getattr(self.cfg, k) for k in self.cfg.__dataclass_fields__},
                 "ranking": [c.ad_id for c in self.ranked],
-                "candidates": [c.to_json() for c in self.candidates]}
+                "candidates": [c.to_json() for c in self.candidates],
+                "product": self.product,
+                "other_products": [c.ad_id for c in self.candidates if c.verdict == "other_product"],
+                "near_matches": [c.ad_id for c in self.candidates if c.product == "near"],
+                "too_little_data": self.too_little_data}
+
+
+def _host_path(url: object) -> tuple[str, str] | None:
+    """A link's host (lower case, without `www.` and the port) and path (without its trailing slash); the query and
+    the fragment (tracking parameters) are left out. None for no link."""
+    if not isinstance(url, str) or not url.strip():
+        return None
+    text = url.strip()
+    parts = urlsplit(text if "://" in text else "//" + text)
+    host = (parts.hostname or "").lower().removeprefix("www.")
+    return (host, parts.path.rstrip("/")) if host else None
+
+
+def product_match(link: object, landing: object) -> str | None:
+    """How an ad's link matches the product's landing page (owner decision, #148 line 24): "own" for the same host
+    and a path at or under the landing page's, "near" for the same host and another path (for the user to
+    confirm), "other" for another host, None when the ad has no link."""
+    ad, page = _host_path(link), _host_path(landing)
+    if ad is None or page is None:
+        return None
+    if ad[0] != page[0]:
+        return "other"
+    return "own" if ad[1] == page[1] or ad[1].startswith(page[1] + "/") else "near"
+
+
+def little(cands: list[Candidate], cfg: WinnerCfg, product: str | None) -> dict | None:
+    """The "too little data" summary (issue #143): when every ad of the product (all but other products) is
+    `not_enough_data`, the best one by results and the line the G1 card says. None otherwise."""
+    own = [c for c in cands if c.verdict != "other_product"]
+    if not own or any(c.verdict != "not_enough_data" for c in own):
+        return None
+    best = max(own, key=lambda c: c.results_total)
+    name, need, got = product or "product", cfg.min_results, best.results_total
+    line = (f"Your {name} ads have too little data to judge: the best has {got:g} of the {need} results needed."
+            if got < need else
+            f"Your {name} ads have too little data to judge: the best has {got:g} results, but not {need} in an "
+            "earlier window to compare with.")
+    return {"ads": len(own), "best_ad": best.ad_id, "best_name": best.name, "best_results": _round(got, 2),
+            "min_results": need, "line": line}
 
 
 def _round(x: float | None, digits: int = 6) -> float | None:
@@ -315,10 +378,20 @@ def _judge(ad_id: str, rows: list[Row], account: list[Row], cfg: WinnerCfg, buck
     return cand
 
 
-def rank(ads: dict[str, list[Row]], account: list[Row], cfg: WinnerCfg, today: date) -> Ranking:
+def _add_note(c: Candidate, text: str) -> None:
+    c.note = (c.note + " " if c.note else "") + text
+
+
+def rank(ads: dict[str, list[Row]], account: list[Row], cfg: WinnerCfg, today: date, *,
+         links: dict[str, object] | None = None, product: dict | None = None,
+         account_from_ads: bool = False) -> Ranking:
+    """`links` (ad id -> its link) are matched with `product["landing_url"]` (`product_match`); `account_from_ads`:
+    the account rows are the ad rows summed, because the account's own rows had no results (each judged ad says
+    so)."""
     last_day = today - timedelta(days=cfg.drop_recent_days)
     buckets = _buckets(cfg, last_day)
     oldest = buckets[-1][0]
+    quiet = last_day - timedelta(days=PAUSED_DAYS - 1)
 
     def kept(rows: list[Row]) -> list[Row]:
         return [r for r in rows if oldest <= r.stop <= last_day]
@@ -329,13 +402,30 @@ def rank(ads: dict[str, list[Row]], account: list[Row], cfg: WinnerCfg, today: d
 
     account = kept(account)
     target = _target_cpa(cfg, account, buckets)
+    landing = (product or {}).get("landing_url")
     cands = []
     for ad_id, rows in ads.items():
-        c = _judge(ad_id, kept(rows), account, cfg, buckets, target)
+        link = (links or {}).get(ad_id) if links is not None else None
+        match = product_match(link, landing) if links is not None else None
+        here = kept(rows)
+        if match == "other":
+            name = next((r.name for r in reversed(rows) if r.name), "")
+            host, path = _host_path(link)
+            c = Candidate(ad_id, name, "other_product", note=(
+                f"Its link goes to {host}{path}, not to the product's landing page, so it is another product's ad "
+                "and is set apart."))
+        else:
+            c = _judge(ad_id, here, account, cfg, buckets, target)
+            if match == "near":
+                _add_note(c, "Its link is on the product's site but another page: confirm it is this product.")
+            if account_from_ads and c.account_ratio is not None:
+                _add_note(c, FROM_ADS)
+        c.product, c.link = match, link if isinstance(link, str) and link.strip() else None
+        c.results_total = sum(r.results for r in here)
+        c.paused = not any(r.spend > 0 for r in here if quiet <= r.stop)
         c.dropped_rows = late(rows)
         if c.dropped_rows:
-            c.note = (c.note + " " if c.note else "") + (
-                f"{c.dropped_rows} period row(s) cross the last included day and are left out.")
+            _add_note(c, f"{c.dropped_rows} period row(s) cross the last included day and are left out.")
         cands.append(c)
     fading = sorted((c for c in cands if c.verdict == "fading"),
                     key=lambda c: -(c.value_to_recover or 0.0))
@@ -343,7 +433,8 @@ def rank(ads: dict[str, list[Row]], account: list[Row], cfg: WinnerCfg, today: d
         c.rank = i
     order = {v: i for i, v in enumerate(VERDICTS)}
     rest = sorted((c for c in cands if c.verdict != "fading"), key=lambda c: order[c.verdict])
-    return Ranking(today, last_day, _round(target, 4), cfg, fading + rest)
+    return Ranking(today, last_day, _round(target, 4), cfg, fading + rest, product=product if links is not None
+                   else None, too_little_data=little(cands, cfg, (product or {}).get("name")))
 
 
 # --- command line ---------------------------------------------------------------------
@@ -468,6 +559,8 @@ def weekly(tool_input: object) -> tuple[str | None, str | None]:
         return level, None
     if step == "1":
         return None, "daily rows (time_increment 1)"
+    if step is None and level == "ad" and given.get("filtering"):
+        return None, "the ids of the ads that spent (flow.md#a1 step 2a), not weekly rows"
     return None, f"not weekly (time_increment {step})" if step else "not weekly (no time_increment)"
 
 
@@ -527,10 +620,29 @@ def read_summary(ads: dict[str, list[Row]], account: list[Row]) -> dict:
             "account_rows": len(account)}
 
 
+def _money(x: float) -> str:
+    return f"{x:.0f}" if abs(x - round(x)) < 0.005 else f"{x:.2f}"
+
+
+def read_links(path: str) -> dict[str, object]:
+    """`01_base/ad_links_vNN.json`: `{"<ad id>": "<link url>"}`, each ad's link from `ads_get_creatives`."""
+    data = cli.read_json(path)
+    if not isinstance(data, dict) or not all(v is None or isinstance(v, str) for v in data.values()):
+        raise ValueError(f"{Path(path).name} must be one JSON object of ad id to its link, "
+                         "{\"<ad id>\": \"<link url>\"}, from ads_get_creatives (flow.md#a1).")
+    return {str(k): v for k, v in data.items()}
+
+
 def _check(ads: dict[str, list[Row]], results_read: bool, account: list[Row]) -> None:
     """Refuse a read that cannot give a true ranking, rather than an empty one that reads as
     "nothing is fading"."""
     if not any(r.spend > 0 for rs in ads.values() for r in rs):
+        weeks = {(r.start, r.stop) for rs in ads.values() for r in rs}
+        spent = sum(r.spend for r in account if (r.start, r.stop) in weeks)
+        if spent > 0:   # issue #143: the fetch gave only the ads that did not spend
+            raise ValueError(f"The ad rows hold no spend, but the account spent {_money(spent)} in the same weeks: "
+                             "the fetch missed the ads that spent. Fetch the ads with amount_spent greater than 0, "
+                             "sorted by amount_spent descending (flow.md#a1). Nothing was ranked.")
         raise ValueError("No spend could be read from the ad rows (amount_spent), so no ad can be ranked. "
                          f"Ask Meta for amount_spent with R1's fields. {_AGAIN}")
     if not results_read:
@@ -551,6 +663,9 @@ def _setup(p: argparse.ArgumentParser) -> None:
     p.add_argument("--account", nargs="+",
                    help="JSON files of account-level rows (or every ad's rows: they are summed), "
                         "in the same shapes. Default: the collector's weekly account reads, else the ad files")
+    p.add_argument("--links", help="01_base/ad_links_vNN.json: {\"<ad id>\": \"<link url>\"} from ads_get_creatives; "
+                                   "an ad linked to another product (another host than product.landing_url) is set "
+                                   "apart, never ranked (issue #143)")
     p.add_argument("--today", help="ISO date, default today")
     p.add_argument("--json", action="store_true")
 
@@ -573,12 +688,26 @@ def _run(args: argparse.Namespace) -> int:
             bad = [p for p in config.validate(run) if p.field.startswith("winner")]
             if bad:
                 return cli.fail(args, " ".join(f"{p.what} {p.todo}" for p in bad))
-        cfg = WinnerCfg.from_config(config.load(run) if config_file.is_file() else None)
+        loaded = config.load(run) if config_file.is_file() else None
+        cfg = WinnerCfg.from_config(loaded)
+        product = {"name": config.value(loaded, "product.name"), "landing_url": config.value(loaded, "product.landing_url")}
+        links = None
+        if args.links:
+            if not product["landing_url"]:
+                raise ValueError("--links compares each ad's link with the product's landing page, and config.yaml "
+                                 "has no product.landing_url: ask the user for it and write it with the intake "
+                                 "(tm config write). Nothing was ranked.")
+            links = read_links(str(run.given(args.links)))
         ads, results_read = _read(args.ads, "ad", once=not own_ads)
-        account = [r for rs in _read(args.account, "account", once=not own_account)[0].values() for r in rs]
+        account_rows, account_results = _read(args.account, "account", once=not own_account)
+        account = [r for rs in account_rows.values() for r in rs]
         _check(ads, results_read, account)
+        from_ads = not account_results   # issue #143: no account row has a readable result
+        if from_ads:
+            account = [r for rs in ads.values() for r in rs]
         read = read_summary(ads, account)
-        ranking = rank(ads, account, cfg, today)
+        account_from = "ads" if from_ads or (picked and picked.account_from == "ads") else "account"
+        ranking = rank(ads, account, cfg, today, links=links, product=product, account_from_ads=from_ads)
         target = run.next_version("01_base", "winner_ranking", "json")
         run.assert_writable(target)
         target.write_text(json.dumps(ranking.to_json(), indent=2, ensure_ascii=False) + "\n",
@@ -593,8 +722,22 @@ def _run(args: argparse.Namespace) -> int:
               f"{read['spend']}, results {read['results']}; {read['account_rows']} account rows."
             + "".join(f"\n{c.rank}. {c.name or c.ad_id}: value to recover {c.value_to_recover}"
                       for c in rows))
+    data = ranking.to_json()
+    little_line = (ranking.too_little_data or {}).get("line")
+    text += "".join(f"\n{label}: {', '.join(data[key])}." for key, label in (
+        ("other_products", "Ads of other products, set aside"), ("near_matches", "Near matches to confirm"))
+        if data[key])
+    paused = [c.ad_id for c in ranking.candidates if c.paused and c.verdict != "other_product"]
+    if paused:
+        text += f"\nPaused (no spend in the last {PAUSED_DAYS} days): {', '.join(paused)}."
+    if little_line:
+        text += f"\n{little_line}"
+    if from_ads:
+        text += f"\n{FROM_ADS}"
     payload = {"status": "done", "file": f"01_base/{target.name}", "fading": [c.ad_id for c in rows],
-               "candidates": len(ranking.candidates), "read": read}
+               "candidates": len(ranking.candidates), "read": read, "account_from": account_from,
+               "other_products": data["other_products"],
+               "near_matches": data["near_matches"], "paused": paused, "too_little_data": little_line}
     if picked is not None:
         payload["picked"] = picked.to_json(run)
         took = payload["picked"]
