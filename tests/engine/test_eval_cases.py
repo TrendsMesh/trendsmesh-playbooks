@@ -58,7 +58,15 @@ def problems(case: Path) -> list[str]:
         out.append(f"{case.name}/prompt.md has no front matter with a description")
     if not body:
         out.append(f"{case.name}/prompt.md has no prompt after its front matter")
+    for key, most in LIMITS.items():
+        value = (meta or {}).get(key) if isinstance(meta, dict) else None
+        if value is not None and not (isinstance(value, int) and 0 < value <= most):
+            out.append(f"{case.name}/prompt.md: {key} is {value!r}, over the eval runner's limit of {most}")
     return out
+
+
+# `claude plugin eval` refuses a case past these ("execution.max_turns: Number must be less than or equal to 200").
+LIMITS = {"max_turns": 200, "timeout_seconds": 3600}
 
 
 INLINE_FLAGS = re.compile(r"\(\?[imsux]+[):]?")   # Python's (?i), (?s): JavaScript's RegExp refuses them
@@ -105,3 +113,13 @@ def test_a_grader_with_a_python_inline_flag_is_named(tmp_path):
                                             "---\n", encoding="utf-8")
     found = grader_problems(case)
     assert len(found) == 1 and "g.md" in found[0] and "inline flag" in found[0]
+
+
+def test_a_case_over_the_runners_turn_or_time_limit_is_named(tmp_path):
+    case = tmp_path / "long"
+    case.mkdir()
+    (case / "case.yaml").write_text('schema_version: "1.1"\nname: long\n', encoding="utf-8")
+    (case / "prompt.md").write_text('---\ndescription: "x"\nmax_turns: 210\ntimeout_seconds: 3600\n---\n\nHi\n',
+                                    encoding="utf-8")
+    found = problems(case)
+    assert len(found) == 1 and "max_turns is 210" in found[0]
