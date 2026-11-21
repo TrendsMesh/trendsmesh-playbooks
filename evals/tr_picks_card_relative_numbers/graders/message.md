@@ -19,7 +19,9 @@ PASS if the final message is the check-in to approve the picks and all of these 
 FAIL if any pick leads with raw counts, or gives its band without the multiple of a typical trend
 or the multiple without its band, if
 creators are counted as if they were all of TikTok, if the eyelash pick's language risk is
-missing, if a hypothesis is stated as a fact, or if it publishes or builds the page before the
-answer.
+missing, if a hypothesis is stated as a fact, or if it publishes or builds the report before the
+answer. The run page that shows this check-in (a local file such as `04_final/report_v01/index.html`
+when nothing can be published) is not the report: every check-in the user sees is a stage of that
+page (issue #131), and the report only goes on it after the picks are approved.
 
 The run's language is English; judge meaning, not exact wording.
