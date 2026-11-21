@@ -87,6 +87,7 @@ from tm import (flow, i18n, kit, manifest, organic_final, organic_pack, organic_
                 render, runfolder, state, stepchecks, trend_spool, trends)
 from tm.organic_pages import gate_words, lang_of
 from tm.organic_pages import gate as gate_page
+from tm.organic_pages.choices import resolve
 from tm.r2 import run_config
 from tm.review import VIDEO_EXT
 from tm.runfolder import RunFolder
@@ -603,7 +604,7 @@ def build(run: RunFolder, page_name: str) -> dict:
         raise page.Deciding(page_name, read=READ_WITH.format(page=page_name))
     data = delivery_json(run) if page_name == DELIVERY else gate_json(run, gate_page.PAGES[page_name])
     got = gate_page.build(run, data, page=page_name)
-    return {**got, "page": page_name, "items": len(data["items"]),
+    return {**got, "page": page_name, "items": len(data["items"]), "chat_answers": chat_answers(data),
             "missing_thumbnails": data["plugin"].get("missing_thumbnails") or []}
 
 
@@ -688,21 +689,73 @@ def frame_notes(docs: list[tuple[str, dict]], data: dict) -> dict[str, dict[str,
     return out
 
 
+def _item_aliases(data: dict) -> dict[str, set[str]]:
+    """Each item's other names in chat (issue #134): its pack name and stem (`still_01` for `images-still-01`)."""
+    entries = (data.get("plugin") or {}).get("items") or {}
+    out: dict[str, set[str]] = {}
+    for it in data["items"]:
+        entry = entries.get(it["id"]) or {}
+        out[it["id"]] = {str(v) for v in (entry.get("name"), entry.get("stem")) if v} - {it["id"]}
+    return out
+
+
+def _option_aliases(data: dict, iid: str) -> dict[str, set[str]]:
+    """Each option's other names in chat (issue #134): the run path of the file it offers, its file name, and its
+    caption (the label the page shows)."""
+    entry = ((data.get("plugin") or {}).get("items") or {}).get(iid) or {}
+    files = entry.get("files") or {}
+    item = next((it for it in data["items"] if it["id"] == iid), {})
+    out: dict[str, set[str]] = {}
+    for o in item.get("options") or []:
+        names = {str(x) for x in (files.get(o["id"]), o.get("src"), o.get("caption")) if x}
+        names |= {Path(x).name for x in list(names) if "/" in x or "\\" in x}
+        out[o["id"]] = names - {o["id"]}
+    return out
+
+
+def chat_answers(data: dict) -> list[str]:
+    """One line per item of the page, the chat answers it takes (issue #134): `<label> = <id>: accept / redo / drop`,
+    then the options to choose from by id (with the caption the page shows)."""
+    lines = []
+    for it in data["items"]:
+        line = f"{it.get('label') or it['id']} = {it['id']}: accept / redo / drop"
+        options = it.get("options") or []
+        if len(options) > 1:
+            line += "; choice: " + " / ".join(
+                f"{o['id']}" + (f" ({o['caption']})" if o.get("caption") and o["caption"] != o["id"] else "")
+                for o in options)
+        if it.get("kit"):
+            line += f"; platforms: {', '.join(kit.PLATFORMS)}; thumbnail: yes|no"
+        lines.append(line)
+    return lines
+
+
 def parse_chat(text: str, data: dict) -> list[tuple[str, dict]]:
     """The user's words in chat as page documents `(item id, document)`: one line per item, the module docstring's
-    shape, in English or Polish. Two lines for one item, a word it cannot read, or a text with no line of this page
-    is a Stop."""
+    shape, in English or Polish. An item is named by its id or its pack name, an option by its id, its file (name or
+    run path) or its caption (issue #134). Two lines for one item, a word it cannot read, a line that names no item
+    (but an empty line or a `#` comment), or a text with no line of this page is a Stop."""
     ids = [it["id"] for it in data["items"]]
+    aliases = _item_aliases(data)
     docs: dict[str, dict] = {}
     for line in text.splitlines():
         line = line.strip()
-        iid = next((i for i in sorted(ids, key=len, reverse=True) if line.startswith(f"{i}: ")), None)
-        if iid is None:
+        if not line or line.startswith("#"):
             continue
+        iid = next((i for i in sorted(ids, key=len, reverse=True) if line.startswith(f"{i}: ")), None)
+        rest = line[len(iid) + 2:] if iid is not None else None
+        if iid is None:
+            head, sep, after = line.partition(": ")
+            iid = resolve(head.strip(), aliases, "item of this page") if sep else None
+            rest = after
+        if iid is None:
+            raise Stop(f"The line {line!r} does not start with an item of this page and ': ' (the ids are "
+                       f"{', '.join(ids)}; an item's name in the pack counts too). Nothing was saved. Write it again, "
+                       f"e.g. `{ids[0] if ids else 'final'}: accept`; {AGAIN}.")
         if iid in docs:
             raise Stop(f"The text has two lines for {iid}, so it is unclear what the user decided. Ask them once and "
                        f"write one line; {AGAIN}.")
-        parts = line[len(iid) + 2:].split("; ")
+        parts = rest.split("; ")
         word = parts[0].strip().lower()
         if word not in _ACTION_WORDS:
             raise Stop(f"The line {line!r} starts with {parts[0]!r}, which is not accept, redo, drop or not decided. "
@@ -728,7 +781,14 @@ def parse_chat(text: str, data: dict) -> list[tuple[str, dict]]:
                     raise Stop(f"The line {line!r} says thumbnail {value!r}: write yes or no; {AGAIN}.")
                 doc["thumbnail"] = _YES[value.strip().lower()]
             else:
-                doc["choice"] = value.strip()
+                found = resolve(value.strip(), _option_aliases(data, iid), f"option of {iid}")
+                if found is None:
+                    offered = ", ".join(o["id"] for o in next(it for it in data["items"] if it["id"] == iid)
+                                        .get("options") or []) or "none"
+                    raise Stop(f"The line {line!r} chooses {value.strip()!r}, which is not an option of {iid} (its "
+                               f"options are {offered}; a file name or path of one counts too). Nothing was saved. "
+                               f"Ask the user and write the line again; {AGAIN}.")
+                doc["choice"] = found
         docs[iid] = doc
     if not docs:
         raise Stop("The text holds no line of this page (each starts with an item's id, e.g. `final: accept; "
@@ -993,6 +1053,8 @@ def act(run: RunFolder, page_name: str, decided: dict, docs: list[tuple[str, dic
     for k in slot_kits:
         _write_kit(k["target"], k["data"], rows[k["item"]], k["out"], k["body"])
     page.clear_await(run, awaited or page_name)
+    after_chat = page.end_wait_for_chat(run, page_name) if text is not None else None
     return {"file": out_rel, "from": rel, "page": page_name, "folder": decided["folder"], "source": body["source"],
+            "after_chat": after_chat,
             "decisions": rows, "carried": carried, "redos": redos, "redo_labels": redo_labels, "kit": new_kit,
             "ticked": ticked, "kits": body["kits"], "docs": len(docs)}

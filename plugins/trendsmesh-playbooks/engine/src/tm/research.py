@@ -423,7 +423,8 @@ def _in_run(run: RunFolder, text: str | None) -> Path | None:
 def _report(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     folder = research_report.build(run, _in_run(run, args.picks), paid=_in_run(run, args.paid),
                                    prev_snapshot=_in_run(run, args.prev_snapshot),
-                                   backtests=[_in_run(run, f) for f in args.backtest], cfg=cfg)
+                                   backtests=[_in_run(run, f) for f in args.backtest], cfg=cfg,
+                                   local=args.local)
     listed = page.files(folder)
     rel = _rel(run, folder)
     report = json.loads((folder / "report.json").read_text(encoding="utf-8-sig"))
@@ -433,9 +434,14 @@ def _report(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
         views += "; no digest yet (first run), so the weekly digest view comes with the next run"
     text = (f"Built {rel}/index.html from {rel}/report.json: views {views}, "
             f"{len(report['act_now'])} act now and {len(report['still_rising'])} still rising picks, {images} evidence "
-            "thumbnails. Publish the folder with the Artifact tool (tm page files --run RUN --page "
-            f"{research_report.PAGE} gives its file_path and files), or give the local index.html.")
+            "thumbnails. It is the run page from now on (issue #131): publish it with the Artifact tool to the run "
+            f"page's link (tm page link --run RUN --page {research_report.PAGE}; tm page files gives its file_path and "
+            "files), with the capabilities, and record it with tm page published"
+            + (". No publishing tool (--local): give the local index.html." if args.local else "."))
     payload = {"status": "done", "folder": rel, "files": listed}
+    if not args.local:
+        from tm import run_page
+        payload["capabilities"] = run_page.CAPABILITIES
     warning = research_report.page_language(run).warning     # issue #3: built in English, not the working language
     if warning:
         text += " " + warning
@@ -565,6 +571,8 @@ def _setup_report(sub) -> None:
     rp.add_argument("--prev-snapshot", help="the previous snapshot, for the digest view; default the digest's own")
     rp.add_argument("--backtest", nargs="+", action="extend", default=[],
                     help="backtests to show under 'How sure are we', 03_wip/backtest_<date>_rule_v3_vNN.json")
+    rp.add_argument("--local", action="store_true",
+                    help="no publishing tool: the page's check-ins say to answer in chat (issue #131)")
     rp.add_argument("--json", action="store_true")
 
 

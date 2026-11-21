@@ -24,6 +24,31 @@ calls"). Redo the work as a new version and show the card again; record only the
 level change is `tm level <every_step|big_calls|hands_off> --run R`; a decision changed later
 needs `tm decide <id> <choice> --said "<their words>" --change --run R`.
 
+## The run page
+
+Every check-in the user sees (G0, G1, G2, G3, GS) is also a stage of the run's one page, the report's
+own link (issue #131): the same link every week. At each `ask` from `tm next`:
+
+1. **The ask:** write `03_wip/ask_<id>.json` with the Write tool, in the working language (the shape is
+   `skills/refresh-ad/references/checkin-cards.md`, "The run page", step 1: `checkin`, `title`, `lede`,
+   `question`, `context`, `options` with your recommendation first). Plain words: no trend ids or file names.
+2. **Build:** `tm page build --run R --ask 03_wip/ask_<id>.json --json` (the page `report`; from E1 on, the
+   report is the page's content and the check-in sits under it). Without a publishing tool: `--local`, and
+   give the `index.html` path.
+3. **Publish** to the link `tm page link --run R --page report --json` gives (a weekly run: last week's), with
+   the build's `artifact` and `capabilities`, the files listed first; record it with `tm page published --run
+   R --page report --url <url> --version <version> --json`. The first publish of the first run is a new
+   private artifact.
+4. **In chat:** one or two lines on what is new, the link, and the question card below.
+5. **The answer:** on the page: one unfiltered `ArtifactData` list (the page's `url`, collection
+   `decisions`, `query.limit` 1000), then `tm page decision --run R <id> --record`. **In chat** it always
+   counts: `tm decide`, as `references/pages.md` "A decision in chat" says (it builds the page again with the
+   check-in settled: publish that build to the same link).
+
+Where: G0 after A1 (the start card's answers), G1 after B4, G2 and G3 after E1 (the report on the page), GS
+before F5. After the last decision the page is built once more with nothing open (`references/pages.md`,
+"After the last decision").
+
 ## The cards
 
 **G0 · Confirm the seed phrases and market** (after A1). The seed phrases, each with its source;
@@ -57,14 +82,14 @@ evidence shows plainly and words the rest as advice or a guess (`flow.md#d3`, R3
 suit …", never "works" or "fits" as a fact. Choice: `accept` (after any change the user asks for,
 as a new picks version, checked again).
 
-**G3 · Approve the page before it is published** (after E1). The local page's path (the
-absolute path of `index.html`, so they can open it), the views it has (category report; the
-weekly digest, or "it comes next week"; paid vs organic), and what publishing does: a first page
-becomes a private link only they see until they share it; a weekly page goes to the same link
-as before, so whoever has it sees this week's. Without a publishing tool in the session (neither
-`Artifact` nor `publish_files`), say the page stays a local file, because this session can't
-publish claude.ai artifacts. Choices:
-`publish`, `keep_local`.
+**G3 · Approve the report on the page** (after E1). The run page's link (the report is on it,
+private until they share it), the views it has (category report; the weekly digest, or "it comes
+next week"; paid vs organic), and what approving does: the report stays on this link as this
+week's; a weekly page goes to the same link as before, so whoever has it sees this week's.
+`publish` approves it. `keep_local` only in a session without a publishing tool (neither
+`Artifact` nor `publish_files`): then say the page stays a local file (the absolute path of its
+`index.html`), because this session can't publish claude.ai artifacts. Choices: `publish`,
+`keep_local`.
 
 **GS · Set up the weekly report** (before F5, weekly digest only; on its own at Check every step
 and at Just the big calls). Weekly on the config's `digest.schedule` day (Monday by default) at

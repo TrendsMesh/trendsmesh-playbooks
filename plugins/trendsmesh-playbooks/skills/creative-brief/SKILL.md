@@ -227,12 +227,17 @@ the category.
 
 ## 5. The page and its decisions
 
+- **One link for the whole run** (issue #131): the start card first, then G0 (A1) and G1 (B1) as
+  run page stages (`tm page build --run R --ask <file>`), then from C1 on the brief's page below, to
+  the same link (`tm page link`); `references/checkin-cards.md`, "The run page". A decision in
+  chat counts and updates the page (the plugin's `references/pages.md`, "A decision in chat").
 - The page is built by `tm brief page` from brief.json (`04_final/brief_pack_vNN.json`) into
   `04_final/brief_pack_vNN/`, after `tm brief evidence` (the clips' thumbnails and as-of dates) at
   C1 and D3. It is in the TrendsMesh look of every playbook page: the brief sits under the check-in
   it is up for, and the check-ins already settled are folded below it, read-only (never in the
   creator's view). Who decides stays the same: the team, each person their own. It is published per the plugin's `references/pages.md`, "Pages that take decisions":
-  the first time an `Artifact` publish with `tm brief capabilities` as its `capabilities` (the
+  to the run's link (`tm page link --run R --page brief_pack`: the start card's and run page's) with
+  `tm brief capabilities` as its `capabilities`, a new artifact only when the run has no link yet (the
   older tools: `publish_files`, then `read_declaration` and `declare_capabilities`), the stored
   declaration checked in its result, then `tm page published` with the version it returns; later
   versions go to the same URL with the same capabilities, the declaration checked again.

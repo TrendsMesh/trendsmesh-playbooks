@@ -109,6 +109,10 @@ def _decide(args: argparse.Namespace) -> int:
     if caused:
         cli.emit(args, {**payload, "status": "stop", "message": caused}, caused)
         return STOP
+    from tm import run_page   # it loads every playbook's page code
+    rebuilt = None if (wrote or {}).get("page") else run_page.after_decision(run, args.checkin, args.by)
+    if rebuilt:
+        payload["run_page"] = rebuilt
     if s.status == "done":
         message = flow.next(run).message
         if wrote:   # G1a do_not_refresh (issue #143): the diagnosis report, and the run page built again
@@ -120,6 +124,7 @@ def _decide(args: argparse.Namespace) -> int:
                                if built["local"] else
                                "its \"Done\" stage: publish it to the same URL with the Artifact tool (its `artifact` "
                                "arguments)."))
+        message += _rebuilt_words(rebuilt)
         cli.emit(args, {**payload, "message": message}, message)
         return 0
     cat = checkins.load(playbook=s.playbook)
@@ -128,8 +133,28 @@ def _decide(args: argparse.Namespace) -> int:
                                if (n := c.on_choice.get(args.choice, {}).get("skips"))))
     text = i18n.offered(" ".join([f"Recorded {args.checkin}: {args.choice}.", *notes]),
                         i18n.run_languages(run).working)    # the weekly phrase in the user's language
-    cli.emit(args, {**payload, **({"message": text} if notes else {})}, text)
+    text += _rebuilt_words(rebuilt)
+    cli.emit(args, {**payload, **({"message": text} if notes or rebuilt else {})}, text)
     return 0
+
+
+def _rebuilt_words(rebuilt: dict | None) -> str:
+    """What `tm decide` says when it built the run page again (issue #131 items 5 and 6, #134)."""
+    if not rebuilt:
+        return ""
+    if rebuilt.get("brief"):
+        return (" Build the brief's page again (tm brief page: it shows this check-in settled) and republish it to "
+                "the same link (tm page link --page brief_pack).")
+    if rebuilt.get("error"):
+        return (f" The run page could not be built again ({rebuilt['error']}); the decision is recorded. Fix that, "
+                "then build it with tm page build and republish it to the same link.")
+    if rebuilt["local"]:
+        return (f" The run page was built again ({rebuilt['folder']}) with this check-in settled: give the user the "
+                f"path of its index.html.")
+    return (f" The run page was built again ({rebuilt['folder']}) with this check-in settled"
+            + (" and nothing open" if not rebuilt["open"] else "")
+            + f": republish it to the same link (tm page link --page {rebuilt['page']}), its files listed first, with "
+              "its capabilities, and record it with tm page published.")
 
 
 def _setup_level(p: argparse.ArgumentParser) -> None:

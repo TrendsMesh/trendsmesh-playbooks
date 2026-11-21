@@ -42,7 +42,9 @@ the run state; never write or patch its HTML.
    shows, and an option's label says what it means, never its choice id; the page lists the files it
    shows under a folded "Technical details" itself.
 2. **Build:** `tm page build --run R --ask <the file> --json`. It refuses an ask it cannot use and
-   says why: fix the file, build again. The page's own words are in the working language once its
+   says why: fix the file, build again. From G5 on, an edited video over 15 MB is shown by its 720p
+   preview (`showcase/<stem>_720p.mp4`, made by the build when missing, free); the full video stays in
+   `04_final/`: give its path when the user wants the file itself. The page's own words are in the working language once its
    table is translated; until then it is built in English and says so (`language_warning`: translate
    the table as `references/languages.md` says, then build again).
 3. **Publish** it with the Artifact tool, once, then to the same URL at every check-in
@@ -53,7 +55,10 @@ the run state; never write or patch its HTML.
    run page", step 3; the collector saves the read), then
    `tm page decision --run R <id> --record`, which records it with the note "(from the page)".
    Quote the user's note back whole, as their words. An answer in chat always counts: `tm decide`
-   as usual, and the next build shows it as settled.
+   as usual; it builds the page again with the check-in settled, to publish to the same link
+   (`references/pages.md`, "A decision in chat"). The start card (`tm page intake`) is the run's
+   first page, and the run page goes to its link. After the last decision the page is built once
+   more with nothing open ("After the last decision").
 
 ## A merged card (Just the big calls)
 

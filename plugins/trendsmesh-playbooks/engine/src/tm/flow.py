@@ -933,7 +933,14 @@ def _done(run: _Run) -> NextStep:
             return _step_view(owner, "done", effect["end"])
     last = run.app[-1] if run.app else every[-1]
     offer = [_LIVE_TEST_OFFER] if _pb01(run.s) and live_test_gap(run.s, run) is None else []
-    return _step_view(last, "done", " ".join(["Every step of this run is done.", *_skip_notes(run), *offer]))
+    return _step_view(last, "done", " ".join(["Every step of this run is done.", *_skip_notes(run), *offer,
+                                              _FINAL_PAGE]))
+
+
+# issue #131 item 5: the last version of the run's page shows every decision settled and nothing open
+_FINAL_PAGE = ("In the final report, the run page once more: tm page build --run <run> (no ask: nothing is open on "
+               "it, every check-in under \"Already settled\"; a creative brief's tm brief page), published to the same "
+               "link (tm page link) unless tm decide already built it.")
 
 
 def _skip_notes(run: _Run) -> list[str]:

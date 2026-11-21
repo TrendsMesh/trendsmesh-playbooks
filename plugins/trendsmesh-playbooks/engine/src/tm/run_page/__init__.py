@@ -43,6 +43,7 @@ from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 
 PAGE = "run_page"
+PAGE_OF = {playbooks.TREND_RESEARCH: "report"}     # tm.research_report.PAGE: the report is the run page from E1 on
 COLLECTION = "decisions"
 ASKS = "03_wip/page"
 SOURCE = "tm page build"
@@ -74,6 +75,24 @@ _OPTION_KEYS = {"choice", "label", "means", "recommended"}
 _CHOICE = re.compile(r"^[A-Za-z0-9_.:@+-]{1,120}$")
 _ASK_FILE = re.compile(r"^ask_(.+)_v(\d+)$")
 MAX_TEXT = 4000
+
+
+START_PAGE = "intake"          # the start card, the first page of a run (tm.start_card, tm.organic_pages.intake)
+# the check-in whose stage shows the start card's answers; any other playbook's run page leads with its own stage
+START_AT = {playbooks.CREATIVE_BRIEF: "G0", playbooks.TREND_RESEARCH: "G0", playbooks.CREATE_AD: "intake"}
+
+
+def linked(playbook: str | None) -> tuple[str, ...]:
+    """The pages of a run in `playbook` that share one link (issue #131): the start card first, then the run page,
+    then (creative brief) the brief's page, which is the run page from C1 on."""
+    own = PAGE_OF.get(playbook, PAGE)
+    return (START_PAGE, own, "brief_pack") if playbook == playbooks.CREATIVE_BRIEF else (START_PAGE, own)
+
+
+def page_name(run: RunFolder) -> str:
+    """The run page's page name in this run's playbook (`tm page link`, `published`, `await`): trend research's check-ins
+    live on its report's link (issue #131, the owner's decision 8), so its run page is the page `report`."""
+    return PAGE_OF.get(state.load(run).playbook, PAGE)
 
 
 def _now() -> str:
@@ -307,8 +326,10 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     decided = _latest_decisions(run)
     component = COMPONENTS.get(s.playbook, lambda c, cid: [])
 
+    start_key = START_AT.get(s.playbook, START_PAGE)
+
     def stage_blocks(key: str, ask: dict | None) -> list[dict]:
-        out = []
+        out = start_blocks(ctx) if key == start_key else []      # the start card's answers (issue #131)
         for cid in _members(run, key) if key in cat.cards else [key]:
             out += component(ctx, cid)
         return out + (_ask_blocks(ctx, ask) if ask else [])
@@ -329,7 +350,7 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
 
     stages = []                      # (when, key, ask or None, record or None)
     asked_members = set()
-    ended = s.status == "done" and s.playbook in FINALS   # a done run asks nothing more (issue #143)
+    ended = s.status == "done"          # a done run asks nothing more (issue #143, #131 item 5)
     for key, ask in found.items():
         members = _members(run, key)
         if is_open(run, ask, decided) and not ended:
@@ -347,15 +368,23 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     for cid, d in decided.items():
         if cid not in asked_members and cid in cat.checkins:
             stages.append((d.get("at") or "", cid, None, record(None, cid, d)))
-    final = FINALS.get(s.playbook, lambda c: None)(ctx) if ended else None
+    started = start_answers(run) if start_key == START_PAGE else None
+    if started and not any(x[1] == START_PAGE for x in stages):     # its own first stage (issue #131)
+        stages.append((started.get("at") or "", START_PAGE, None,
+                       {"choice": None, "label": ctx.t("record.start"), "note": None, "at": started.get("at"),
+                        "by": None, "rule": None}))
+    final = (FINALS.get(s.playbook, lambda c: None)(ctx) or _finished(ctx, decided)) if ended else None
     if final:                           # the run's end, after its last decision
         stages.append((max((x[0] for x in stages), default="") + "~", final["key"], None, final["record"]))
     stages.sort(key=lambda x: (x[3] is None, x[0]))     # settled first by time, then the open ones
     now, settled = [], []
+    chat: list[str] = []
     for n, (_, key, ask, record) in enumerate(stages, 1):
+        before = len(ctx.chat)
         stage = {"key": key, "n": n, "name": name(key), "title": (ask or {}).get("title") or "",
                  "lede": (ask or {}).get("lede") or "", "blocks": stage_blocks(key, ask)}
         if record is None:
+            chat += ctx.chat[before:] or [chat_line(stage["name"], key, ask)]
             stage["decision"] = {"checkin": key, "ask": ask["_id"], "question": ask["question"],
                                  "context": ask.get("context") or "", "options": ask["options"]}
             stage["offer"] = details.merge([b.get("offer") for b in stage["blocks"]])
@@ -371,10 +400,63 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     m = {"lang": i18n.html_lang(lang), "warning": pl.warning, "title": t("top.title", lang, playbook=pb_name, run=run.path.name), "playbook": pb_name,
          "run": run.path.name, "updated": updated, "local": local, "build": folder.name if folder else "",
          "now": now, "settled": settled, "datasets": ctx.ds}
-    built = {"page": PAGE, "local": local, "lang": lang, "built_at": _now(),
-             "open": {st["key"]: st["decision"]["ask"] for st in now},
+    built = {"page": page_name(run), "local": local, "lang": lang, "built_at": _now(),
+             "open": {st["key"]: st["decision"]["ask"] for st in now}, "chat_answers": chat,
              "offer": {st["key"]: st["offer"] for st in now if st["offer"] and not local}}
     return m, built
+
+
+def start_answers(run: RunFolder) -> dict | None:
+    """The start card's answers as read last (`tm page intake --read`, `tm organic decisions --page intake`): the
+    record `choices.record` wrote, with `read` (each question's answer) and `data` (the page's data file), else
+    None (no start card, or one read before issue #131)."""
+    from tm.organic_pages import choices   # the organic pages load the run page's look
+    for row in reversed(manifest.rows(run)):
+        if row["source"] != choices.DECISIONS_SOURCE:
+            continue
+        try:
+            params = json.loads(row["params"]) if row["params"] else {}
+        except ValueError:
+            continue
+        if not (isinstance(params, dict) and params.get("page") == START_PAGE):
+            continue
+        got = _read_json(run.path / row["file"])
+        if got is not None and isinstance(got.get("read"), dict) and isinstance(got.get("data"), str):
+            return got
+    return None
+
+
+def start_blocks(ctx: Context) -> list[dict]:
+    """The start card's answers as facts (issue #131): each question with what was chosen or written."""
+    got = start_answers(ctx.run)
+    data = _read_json(ctx.run.path / got["data"]) if got else None
+    if not data:
+        return []
+    rows = []
+    for sec in data.get("sections") or []:
+        a = got["read"].get(sec.get("id")) or {}
+        labels = {o.get("id"): o.get("label") for o in sec.get("options") or []}
+        chosen = a.get("choice")
+        chosen = chosen if isinstance(chosen, list) else [chosen] if chosen else []
+        value = ", ".join(str(labels.get(c) or c) for c in chosen) or str(a.get("text") or "").strip()
+        if value:
+            rows.append((str(sec.get("title") or sec.get("id")), value))
+    return [{"kind": "facts", "rows": rows, "source": got["data"]}] if rows else []
+
+
+def _finished(ctx: Context, decided: dict[str, dict]) -> dict:
+    """The "Done" stage of a done run in any playbook (issue #131 item 5; Refresh an ad's own at the diagnosis is
+    `FINALS`'): after its last decision, with nothing open above it."""
+    last = max(decided.values(), key=lambda d: d.get("at") or "", default={})
+    return {"key": "done", "record": {"choice": "done", "label": ctx.t("record.finished"), "note": None,
+                                      "at": last.get("at"), "by": None, "rule": None}}
+
+
+def chat_line(name: str, checkin: str, ask: dict) -> str:
+    """The answer an open check-in takes in chat (issue #134): `<its name> = <id>: <choice> (<label>) / …`, recorded
+    with `tm decide <id> <choice> --said "<their words>"`."""
+    options = " / ".join(f"{o['choice']} ({o['label']})" for o in ask.get("options") or [])
+    return f"{name} = {checkin}: {options} (tm decide {checkin} <choice> --said \"<their words>\")"
 
 
 class NoWords(ValueError):
@@ -411,9 +493,14 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
     """Save the ask (when given), then build `04_final/run_page_vNN/` from the run state. A build that would not
     publish (too big for the Artifact tool, or a mangled `/_blob/` reference) is removed and refused."""
     saved = save_ask(run, ask_file) if ask_file is not None else None
-    folder = page.new_folder(run, PAGE)
+    folder = page.new_folder(run, page_name(run))
     try:
         m, built = model(run, folder, local=local)
+        if state.load(run).playbook == playbooks.TREND_RESEARCH:     # the report is the page's content from E1 on
+            from tm import research_report
+            parts = research_report.carry_report(run, folder)
+            if parts is not None:
+                m = research_report.with_report(run, m, parts)
         text = template.render(m)
         bad = page.mangled_blob_refs(text)
         if bad:
@@ -427,11 +514,52 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
     rel = folder.relative_to(run.path).as_posix()
     manifest.record(run, rel, "04_final", SOURCE, params={"open": ",".join(built["open"]) or None,
                                                           "local": local or None})
-    return {"folder": rel, "index": str((folder / "index.html").resolve()), "open": list(built["open"]),
+    return {"folder": rel, "page": built["page"], "index": str((folder / "index.html").resolve()), "open": list(built["open"]),
+            "chat_answers": built["chat_answers"],
             "settled": len(m["settled"]), "ask": saved["_id"] if saved else None, "local": local,
             "lang": m["lang"], "title": m["title"], **({"language_warning": m["warning"]} if m["warning"] else {}), "artifact": page.artifact_args(listed),
             **({} if local else {"capabilities": CAPABILITIES}),
-            "published": page.published(run, PAGE) if not local else None}
+            "published": page.published(run, page_name(run)) if not local else None}
+
+
+# --- after a decision in chat ------------------------------------------------------------------------
+
+def _shown(run: RunFolder) -> tuple[str | None, dict | None]:
+    """The run page build people see (the published folder, else the latest build) and its build record."""
+    name = page_name(run)
+    folder = (state.load(run).pages.get(name) or {}).get("folder")
+    if not folder:
+        latest = page.latest_folder(run, name)
+        folder = latest.relative_to(run.path).as_posix() if latest else None
+    return folder, (_read_json(run.path / folder / BUILD_FILE) if folder else None)
+
+
+def after_decision(run: RunFolder, checkin: str, by: str) -> dict | None:
+    """The run page again after `tm decide` (issue #131 items 5 and 6, #134): a decision the user gave in chat on a
+    check-in the page shows open ends the page's wait and builds it again with that check-in settled; the run's last
+    decision (the run done) builds it with nothing open. `{folder, local, page, ...}` of the new build, `{"brief":
+    True}` when the creative brief's page is the run's page now (`tm brief page` builds it), `{"error": words}` when
+    the build stopped, or None when nothing is to build. The decision is recorded either way."""
+    s = state.load(run)
+    done = s.status == "done"
+    if by != "user" and not done:
+        return None
+    if s.playbook == playbooks.CREATIVE_BRIEF and page.latest_folder(run, "brief_pack") is not None:
+        return {"brief": True}
+    folder, built = _shown(run)
+    if built is None:
+        return None
+    shown = built.get("open") or {}
+    asked = any(key == checkin or checkin in _members(run, key) for key in shown)
+    name = page_name(run)
+    if not (asked or done) or (page.awaiting(run, name) is not None and not asked and not done):
+        return None
+    page.clear_await(run, name)
+    try:
+        got = build(run, local=bool(built.get("local")))
+    except (ValueError, OSError) as exc:
+        return {"error": str(exc)}
+    return {**got, "page": name}
 
 
 # --- the choice saved on the page --------------------------------------------------------------------
@@ -460,19 +588,19 @@ def decision(run: RunFolder, checkin: str) -> dict:
     if not is_open(run, ask):
         raise Stop(f"{checkin} is already recorded, after its question was put on the page. Nothing to read. "
                    f"{_chat(checkin)}")
-    record = (state.load(run).pages.get(PAGE) or {})
+    record = (state.load(run).pages.get(page_name(run)) or {})
     if not record.get("slug"):
         raise Stop(f"The run page's publish is not recorded in this run, so its saved choices cannot be read: publish it "
-                   f"and record it with `tm page published --run <run> --page {PAGE}`. {_chat(checkin)}")
+                   f"and record it with `tm page published --run <run> --page {page_name(run)}`. {_chat(checkin)}")
     built = _read_json(run.path / str(record.get("folder") or "") / BUILD_FILE)
     if (built or {}).get("open", {}).get(checkin) != ask["_id"]:
         raise Stop(f"The published page does not show {checkin}'s latest question ({ask['_id']}): it was published "
-                   f"before it. Publish the latest build (tm page files --page {PAGE}), record it, and let the user "
+                   f"before it. Publish the latest build (tm page files --page {page_name(run)}), record it, and let the user "
                    f"choose there. {_chat(checkin)}")
-    source = page.saved_answer(run, PAGE, COLLECTION)
+    source = page.saved_answer(run, page_name(run), COLLECTION)
     if source is None:
         raise Stop(page.READ_AGAIN.format(collection=COLLECTION))
-    saved = page.whole_answer(run, PAGE, source, COLLECTION)
+    saved = page.whole_answer(run, page_name(run), source, COLLECTION)
     docs = dict(page.db_docs(saved, collection=COLLECTION, chat=_chat(checkin)))
     data = docs.get(checkin)
     if not isinstance(data, dict) or not data.get("choice"):

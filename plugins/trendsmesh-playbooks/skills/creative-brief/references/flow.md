@@ -129,7 +129,12 @@ The user gives one thing: the product. Everything else you derive and show on on
    (`references/brand-and-audience.md`): write `03_wip/brand_v01.json` in the `brand/1` shape, and
    `tm brand check --run R --file 03_wip/brand_v01.json --json` (exit 2 lists what to fix). If the user
    points to a brand guide (a file or a link), read it and use it (`guide`).
-6. **The card**, one message with every field of PLAYBOOK's confirmation card: product, account,
+6. **The card is the start card** (issue #131): `tm page intake --run R --known <file> --json` (the known
+   file: what steps 1 to 5 derived, `{question id: value}`), published as the run's new private artifact with
+   the answer's `capabilities`, `tm page published --page intake`, `tm page await --page intake`, the reply
+   button; then one unfiltered `ArtifactData` list (collection `intake`) and `tm page intake --run R --read
+   --json` (an answer in chat: `--read --text <file>`), which writes `03_wip/start_answers_vNN.json`. Without
+   a publishing tool, the card in chat as below. It holds every field of PLAYBOOK's confirmation card: product, account,
    landing page, market, working language and market language (`languages: {working, market}` in the
    answers, as tags), category phrase, the brand draft (what it stands for, tone in
    three words, claims and their wording, off-limits), the recipients (all five by default: decision
@@ -166,7 +171,8 @@ The user gives one thing: the product. Everything else you derive and show on on
 8. `tm done A1 --run R`: it is refused until the level and the outputs are set (the answers
    carry them), the config passes, the account currency is set, the brand profile is a saved one
    that passes the check, and the landing page is in `00_raw`. G0
-   follows (`checkin-cards.md`).
+   follows, on the run page (`checkin-cards.md`, "The run page": `tm page build --ask`, published to the
+   start card's link).
 
 <a id="b1"></a>
 ## B1 Account context and persona
@@ -200,7 +206,8 @@ first, when the Meta connection has it (HANDOFF §4), and read each tool's own s
    source.
 6. **The results library**, if the workspace has `library/results.jsonl`: read it; trends and
    angles that lost in this category rank lower.
-7. Prepare the G1 card. `tm done B1 --run R`.
+7. Prepare the G1 card: a run page stage (`checkin-cards.md`, "The run page"), the same link. `tm done B1
+   --run R`.
 
 <a id="b2"></a>
 ## B2 Customer voice
@@ -452,7 +459,7 @@ CB10, CB13, R7, CB8. Only with the briefs (the review pack alone skips D1 to E1)
 ## D3 Page with the briefs
 
 - `tm brief evidence --run R --json` (clips added since C1), then `tm brief page --run R --json`
-  from the latest brief, then publish (`references/pages.md`): the first publish of a run with the
+  from the latest brief, then publish (`references/pages.md`): to the run's link (`tm page link --run R --page brief_pack`: the start card's and G0's), with the
   briefs, with the page's capabilities; checking the declaration is there.
 - `tm done D3 --run R`. G3 follows: **each concept is decided on the page**, per concept:
   **Approve**, **Ask for changes** (with a note) or **Drop**. At Check every step it is asked on its

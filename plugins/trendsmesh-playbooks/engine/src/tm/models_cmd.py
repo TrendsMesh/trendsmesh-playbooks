@@ -133,6 +133,9 @@ def _decisions(args: argparse.Namespace) -> int:
     if got["recipes_to_write"]:
         message += (" Write these recipes first, from each model's official prompting guide: "
                     + ", ".join(got["recipes_to_write"]) + ".")
+    if got.get("source") == "chat":
+        from tm import page
+        message += " " + page.AFTER_CHAT
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

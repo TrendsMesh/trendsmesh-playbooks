@@ -650,7 +650,9 @@ def _shell(body: str, frame: dict | None, lang: str) -> str:
             + (f'<span class="soft small"{deciding}>{E(stage["n"])} · {E(stage["name"])}</span>' if stage else "")
             + '</div>')
     sid = f' id="stage-{E(stage["key"])}"' if stage else ""
-    settled = f'<div class="settled-group"{deciding}>{frame["settled"]}</div>' if frame.get("settled") else ""
+    # the settled check-ins hold G1's account figures (issue #131): the decision maker's and strategist's views only
+    settled = (f'<div class="settled-group"{v(*creative_brief.SETTLED_VIEWS)}>{frame["settled"]}</div>'
+               if frame.get("settled") else "")
     built = f'<footer class="built">{E(i18n.t("brief.footer_built", lang, run=frame["run"], when=frame["updated"]))}</footer>'
     return f'<div class="wrap">{top}<section class="panel now brief"{sid}>{head}{body}</section>{settled}{built}</div>'
 
@@ -942,13 +944,26 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     params = {"brief_sha256": stepchecks.sha256(path), "views": views, "single_file": single_file,
               "media_missing": missing}
     manifest.record(run, out_rel, FINAL, SOURCE, parent=rel, params=params | ({} if single_file else {"pdfs": pdfs}))
-    result = {"views": views, "media_copied": len(present), "media_missing": missing, "brief": rel, "lang": pl.lang}
+    result = {"views": views, "media_copied": len(present), "media_missing": missing, "brief": rel, "lang": pl.lang,
+              "chat_answers": chat_answers(brief, frame)}
     if pl.warning:
         result["language_warning"] = pl.warning
     if single_file:
         return {"file": out_rel, **result, "bytes": out.stat().st_size}
     return {"folder": out_rel, **result, "pdfs": [f"{out_rel}/{p}" for p in pdfs.values()], "pdf_note": pdf_note,
             "files": page.files(out)}
+
+
+def chat_answers(brief: dict, frame: dict | None) -> list[str]:
+    """The answers the page's open check-in takes in chat (issue #134): one line per concept, `<title> = <id>: approve
+    / change / drop`, recorded with `tm brief choose --drop <the dropped ids> --source chat`; none when no check-in
+    is open on the page."""
+    if not (frame or {}).get("stage"):
+        return []
+    lines = [f"{c.get('title') or c['id']} = {c['id']}: approve / change / drop"
+             for c in brief.get("concepts") or [] if isinstance(c, dict) and isinstance(c.get("id"), str)]
+    return lines + ["(recorded with tm brief choose --run <run> [--drop <ids>] --source chat, then tm decide "
+                    f"{frame['stage']['key']} accept --said \"<their words>\")"] if lines else []
 
 
 def creator_pdf(run: RunFolder, brief: dict) -> tuple[str, Path] | None:
@@ -1302,7 +1317,8 @@ def choose(run: RunFolder, source: str, *, drop: list[str] | None = None, concep
     s = state.load(run)
     s.brief = {**(s.brief or {}), "chosen": record}
     state.save(run, s)
-    return {**record, "brief": rel, "written": written, "decisions": used}
+    after_chat = page.end_wait_for_chat(run, PAGE) if source == "chat" else None   # issue #134
+    return {**record, "brief": rel, "written": written, "decisions": used, "after_chat": after_chat}
 
 
 def _from_page(run: RunFolder, latest: Path, rel: str, kept: list[str], dropped: list[str],

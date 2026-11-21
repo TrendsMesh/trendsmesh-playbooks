@@ -173,8 +173,9 @@ plainly if they are missing.
     `tm brief page`, publish, the declaration checked, a new wait, and the check-in asked again. A
     concept dropped later is a new choice: `tm brief choose --run R --drop <ids> --source chat`.
 11. **A decision in chat always counts.** When the team decided another way, or a read keeps
-    failing, take the user's answer in chat: `tm brief choose --run R [--drop <ids>] --source chat`,
-    then, at any stage, `tm brief await --run R --clear`, and `tm decide`.
+    failing, take the user's answer in chat: `tm brief choose --run R [--drop <ids>] --source chat`
+    (it ends the page's wait itself: no `--clear`), then `tm decide`, then `tm brief page` and a publish
+    to the same link ("A decision in chat" below).
 12. **Who can save:** a person needs Contributor access to the artifact to save a decision; with
     view access the page shows a message and lets them copy their decisions as text ("Copy my
     decisions"). Pasted to you, save that text to a file in `03_wip/` with the Write tool and read
@@ -186,21 +187,54 @@ plainly if they are missing.
     HTML file with the videos inside). The decisions are taken in chat: the local page says so
     itself, and never that choices are saved on it.
 
-## The run page (PB01, PB03 and PB05; the other playbooks later)
+## The run page (every playbook)
 
-Refresh an ad's and Create an ad's one page per run (`skills/refresh-ad/references/checkin-cards.md`, "The run
-page"; `skills/create-ad/references/pages.md`):
-`tm page build --run R --ask <file> --json` builds `04_final/run_page_vNN/` from the run state, the page
-`run_page`. Organic AI video's proposals, week, images, takes, delivery and taste check-ins are stages of it
-too (`skills/organic-video/references/flow.md#c2`, `#i2`, `#f1`, `#f2`, `#g4`, `#d2`): there `tm page await
---page run_page` holds the publish while the user chooses, and `tm page decision --record` lifts it. Its decisions take the
-rules above, with these calls:
+One page per run, under **one link from the start card to the last check-in** (issue #131). Every playbook
+asks its check-ins on it: `tm page build --run R --ask <file> --json` builds the next version from the run
+state, the earlier check-ins folded under "Already settled", read-only.
+
+- **Refresh an ad** (`skills/refresh-ad/references/checkin-cards.md`, "The run page") and **Create an ad**
+  (`skills/create-ad/references/pages.md`): the page `run_page`, `04_final/run_page_vNN/`.
+- **Organic AI video**: the page `run_page`; its profile, proposals, script draft, taste, pack, week, images,
+  takes and delivery check-ins are stages of it (`skills/organic-video/references/flow.md`). There `tm page
+  await --page run_page` holds the publish while the user chooses, and `tm page decision --record` lifts it.
+- **Trend research**: the page is `report` (`04_final/report_vNN/`), the report's own link, kept across weeks
+  (a weekly run republishes to the link of the run it follows). G0 and G1 are versions of it before the report
+  exists; from E1 on, `tm research report` builds the report as the page's content, and every later `tm page
+  build` (G2, G3, GS) keeps the same report above its check-ins. Publish it with the build's `capabilities`
+  (the report has the decisions db too); `--local` only without a publishing tool.
+- **Creative brief**: G0 (A1) and G1 (B1) are run page stages (`tm page build --ask`); from C1 on the brief's
+  own page (`tm brief page`) is published to the same link, with G0 and G1 under "Already settled" (in the
+  decision maker's and strategist's views only: G1 holds the account's figures). It is built again after each
+  decision, so a page built after `tm decide G4` shows G4 settled.
+
+**The same link.** The start card (`intake`), the run page and the brief's page share one link: `tm page link
+--run R --page <the page>` gives the link the first of them was published to. The first publish of a run (the
+start card, else the first run page) makes the new artifact; every later one goes to that `url`.
+
+**A decision in chat** (the rule for every playbook's `checkin-cards.md`). The page never replaces chat: the
+user can always answer, correct or decide in chat. Record it as a click is recorded: `tm decide <id>
+<choice> --said "<their words>" --run R` (a page's items first, where the check-in has them: `tm organic
+decisions --page <page> --text <file>`, `tm models decisions --text <file>`, `tm brief choose --source
+chat`). That ends the page's wait (`tm page await`) without `--clear`, and `tm decide` builds the run page again
+with the check-in settled: publish that build to the same link (a creative brief from C1 on: `tm brief page`,
+then the publish). Each page build lists the answers it takes in chat (`chat_answers`, one line per item or
+section, `<what the page shows> = <id>: <answers>`): write the user's words in that form; a line the engine
+can't read, or a name that fits two items, stops with what the page offers, and nothing is saved.
+
+**After the last decision** (`tm next` says `done`): build the page once more with no ask (`tm page build --run
+R`; `tm decide` does it when it records the last decision) and publish it to the same link: nothing is open on
+it, every decision is under "Already settled", and its last stage is "Done".
+
+Its decisions take the rules above, with these calls:
 
 1. **Publish** with the Artifact tool as above: `file_path` and `files` = the build's `artifact`, and
    **`capabilities` = the build's `capabilities`, at every publish** (the owner reads and writes the
    collection `decisions`). First publish: the build's `title` (the page's own `<title>`, in its language:
-   the Artifact tool keeps the page's `<title>` over the `title` it is given), the icon `chart`, no `url`; say once that the page is private until the user shares it. Later: the same
-   `url` (`tm page link --run R --page run_page`), its files listed first. Record every publish:
+   the Artifact tool keeps the page's `<title>` over the `title` it is given), the icon `chart`, no `url`, only
+   when `tm page link` finds no link yet (no start card or earlier week published); say once that the page is
+   private until the user shares it. Later: the same
+   `url` (`tm page link --run R --page run_page`; trend research `--page report`), its files listed first. Record every publish:
    `tm page published --run R --page run_page --url <URL> --version <version id> --json`.
 2. **Never republish while the user is choosing** on the page: build and publish at the next check-in,
    after the answer is recorded.

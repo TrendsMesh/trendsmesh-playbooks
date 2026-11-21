@@ -36,7 +36,7 @@ TABLE = {  # id: (title, outputs, before, checkins, skip_when, spends, budget), 
     "I4": ("Week delivery and posting plan", ["weekly_plan"], [], [], {}, False, None),
     "I5": ("Weekly schedule", ["weekly_plan"], ["schedule"], [], {"schedule": "by_hand"}, False, None),
     "D1": ("Recipe: production type and product", PROD, [], [], {}, False, None),
-    "D2": ("Taste picks", ["organic_video"], [], ["taste"], {}, False, None),
+    "D2": ("Taste picks", ["organic_video"], ["script_draft"], ["taste"], {}, False, None),   # #131
     "E1": ("Model and speech route", ["organic_video"], [], [], {}, False, None),
     "E2": ("Generation pack and cost", ["organic_video"], [], ["pack"], {}, False, None),
     "E3": ("Script page", ["script_to_film"], [], ["script"], {}, False, None),
@@ -60,6 +60,7 @@ LEVELS = {  # check-in: (route, card, choices), the plan's "Levels" table
     "week": (OWN, None, ("approve",)),
     "schedule": ({"every_step": "own", "big_calls": "own", "hands_off": "rule"}, None,
                  ("schedule", "by_hand")),
+    "script_draft": ({"every_step": "own", "big_calls": "card", "hands_off": "rule"}, "plan", ("accept",)),
     "taste": ({"every_step": "own", "big_calls": "card", "hands_off": "rule"}, "plan", ("accept",)),
     "pack": ({"every_step": "own", "big_calls": "card", "hands_off": "own"}, "plan",
              ("approve", "reject")),
@@ -239,7 +240,7 @@ def test_organic_catalogue_routes_the_levels_table():
 def test_every_step_asks_each_checkin_in_order(tmp_path):
     run = _organic(tmp_path, "every_step", ["organic_video"])
     seen, timeline, end = _walk(run)
-    assert timeline == ["D1", "D2", "taste", "E1", "E2", "pack", "images", "F1", "video", "F2",
+    assert timeline == ["D1", "script_draft", "D2", "taste", "E1", "E2", "pack", "images", "F1", "video", "F2",
                         "G1", "G2", "G4", "final_edit", "H1"]
     assert all(action == "ask" and card is None for _, action, _, card in seen)
     assert end.action == "done"
@@ -249,12 +250,12 @@ def test_every_step_asks_each_checkin_in_order(tmp_path):
 def test_big_calls_asks_plan_card_after_e2_and_final_edit_only(tmp_path):
     run = _organic(tmp_path, "big_calls", ["organic_video"])
     seen, timeline, end = _walk(run)
-    assert seen == [("E2", "ask", ["taste", "pack"], "plan"), ("F1", "auto", ["images"], None),
+    assert seen == [("E2", "ask", ["script_draft", "taste", "pack"], "plan"), ("F1", "auto", ["images"], None),
                     ("F2", "auto", ["video"], None), ("G4", "ask", ["final_edit"], None)]
     assert _worked(timeline) == ["D1", "D2", "E1", "E2", "F1", "F2", "G1", "G2", "G4", "H1"]
     assert end.action == "done"
     by = {d["checkin"]: d["by"] for d in state.load(run).decisions}
-    assert by == {"taste": "user", "pack": "user", "images": "rule", "video": "rule",
+    assert by == {"script_draft": "user", "taste": "user", "pack": "user", "images": "rule", "video": "rule",
                   "final_edit": "user"}
 
 
@@ -265,7 +266,7 @@ def test_big_calls_plan_card_is_named_and_waits_for_e2(tmp_path):
     complete(run, "E1")
     nxt = flow.next(run)
     assert (nxt.step, nxt.action, nxt.checkin.ids, nxt.checkin.name) == (
-        "E2", "work", ["taste", "pack"], "Approve the plan for this video")
+        "E2", "work", ["script_draft", "taste", "pack"], "Approve the plan for this video")
     complete(run, "E2")
     nxt = flow.next(run)
     assert (nxt.step, nxt.action, nxt.checkin.card) == ("E2", "ask", "plan")
@@ -287,9 +288,9 @@ def test_big_calls_plan_card_is_decided_by_its_own_message(tmp_path, capsys, pac
     assert (nxt.step, nxt.action, nxt.checkin.card) == ("E2", "ask", "plan")
     assert "`tm decide plan" not in nxt.message
     cmds = _commands(nxt.message)
-    assert cmds == [["decide", "taste", "accept"], ["decide", "pack", "approve"],
+    assert cmds == [["decide", "script_draft", "accept"], ["decide", "taste", "accept"], ["decide", "pack", "approve"],
                     ["decide", "pack", "reject"]], nxt.message
-    for cid in ("taste", "pack"):   # one command per member, the one with the user's answer
+    for cid in ("script_draft", "taste", "pack"):   # one command per member, the one with the user's answer
         cmd = next(c for c in cmds if c[1] == cid and (cid != "pack" or c[2] == pack))
         assert main([*cmd, "--said", "yes", "--run", str(run.path)]) == 0
     capsys.readouterr()
@@ -326,7 +327,8 @@ def test_hands_off_asks_only_the_pack(tmp_path):
     seen, timeline, end = _walk(run)
     assert [ids for _, action, ids, _ in seen if action == "ask"] == [["pack"]]
     assert {ids[0]: action for _, action, ids, _ in seen} == {
-        "taste": "auto", "pack": "ask", "images": "auto", "video": "auto", "final_edit": "auto"}
+        "script_draft": "auto", "taste": "auto", "pack": "ask", "images": "auto", "video": "auto",
+        "final_edit": "auto"}
     assert _worked(timeline) == ["D1", "D2", "E1", "E2", "F1", "F2", "G1", "G2", "G4", "H1"]
     assert end.action == "done"
 

@@ -23,6 +23,7 @@ class Context:
         self.run, self.folder, self.lang = run, folder, lang
         self.ds = Datasets()
         self._put: dict[str, str] = {}
+        self.chat: list[str] = []          # the answers an open stage takes in chat (issue #134), by its component
 
     # words
     def t(self, key: str, **values: object) -> str:

@@ -616,6 +616,35 @@ strings:
       total: Razem
       week_cost: "{total} z {budget}"
       rec_total: "Wybory tygodnia kosztują {total} z {budget}"
+      # the profile, the script draft and the pack as stages of the run page (issue #131)
+      profile_channel: Kanał
+      profile_platforms: Platformy
+      profile_account: Rodzaj konta
+      profile_topic: Temat i bańka
+      profile_audience: Widzowie
+      profile_tone: Ton i styl
+      profile_performed: Co się sprawdziło
+      profile_catalogue: Produkty
+      profile_product_role: Rola produktu
+      profile_video_style: Styl filmów kanału
+      profile_rules: Zasady treści
+      script_idea: Wybrany pomysł
+      script_words: Słowa
+      script_seconds: Sekundy
+      script_lines: Scenariusz lektora, linia po linii
+      script_at: Czas
+      script_text: Tekst
+      script_shot: Kadr
+      pack_lines: Co płatne, pozycja po pozycji
+      pack_what: Pozycja
+      pack_model: Model
+      pack_units: Jednostki
+      pack_price: Cena jednostki (USD)
+      pack_cost: Koszt (USD)
+      pack_checked: Cena sprawdzona
+      pack_total: Razem
+      pack_voice: Kredyty ElevenLabs
+      pack_cap: Limit budżetu na run
   # the run page's own words (engine/src/tm/run_page/template.py), which an Organic AI video page needs in Polish
   run_page:
     top:
@@ -634,10 +663,13 @@ strings:
         pack: Pakiet generowania i jego koszt
         plan: Plan tego filmu
         script: Scenariusz do nagrania
+        script_draft: Szkic scenariusza
         images: Obrazy
         video: Ujęcia
         final_edit: Gotowy film i zestaw do publikacji
         refused_reference: Odrzucony obraz referencyjny
+        done: Gotowe
+        intake: Karta startowa
     footer:
       built: Zbudowane z runu {run} {when}. Źródła każdego etapu są w jego Szczegółach technicznych.
       built_from: Zbudowane z runu {run} {when}.
@@ -670,6 +702,8 @@ strings:
       note: Uwaga
       saved: Zapisano
       not_answered: Bez odpowiedzi (przebieg się zakończył)
+      finished: Wszystkie decyzje są podjęte, a przebieg jest zakończony.
+      start: Odpowiedzi z karty startowej
     # Organic AI video's choices in words (issue #132): run_page.choice.<check-in>.<choice>
     choice:
       decided: Zdecydowano
@@ -692,6 +726,8 @@ strings:
         reject: Nie zatwierdzono
       script:
         accept: Dostarczono
+      script_draft:
+        accept: Obejrzany i zaakceptowany
       images:
         accept: Zaakceptowano
         redo: Do ponownego wykonania

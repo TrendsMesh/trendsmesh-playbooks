@@ -71,11 +71,11 @@ def test_settled_check_ins_are_read_only_summaries_under_the_report(tmp_path):
     assert names == ["The picks: Accepted", "The category map: Accepted", "Seed phrases and market: Accepted"]
     assert "Pick the ad" not in html and "Hooks:" not in settled            # Refresh an ad's names stay its own
     assert "Bez diety keto." in settled and "Decided by rule" in settled and "agent review applied" in settled
-    # nothing on the page takes input: the report is read-only, its check-ins answered in chat
+    # nothing open, so nothing takes input; the report is the run page (issue #131): it saves choices, not local
     assert "<input" not in html and "<textarea" not in html and 'data-ask="' not in html
     assert html.index('id="view-report"') < html.index('<section class="settled">')
     assert json.loads(re.search(r'<script type="application/json" id="tm-page">(.*?)</script>', html, re.S)
-                      .group(1))["local"] is True
+                      .group(1))["local"] is False
 
 
 def test_the_settled_stages_say_what_was_decided_from_the_runs_files(tmp_path):

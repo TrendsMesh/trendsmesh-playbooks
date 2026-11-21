@@ -25,11 +25,14 @@ from tm import checkins, state, trends
 from tm.run_page import template, words
 from tm.run_page.context import Context
 
-PAGE_STAGES = ("G3", "G4")                       # check-ins decided on the page (tm.brief_page.STAGES)
+PAGE_STAGES = ("G3", "G4")                       # check-ins decided on the brief's page (tm.brief_page.STAGES)
+RUN_PAGE_STAGES = ("G0", "G1")                   # decided on the run page before the brief's (issue #131): the
+                                                 # same link; `tm page build --ask` at A1 and B1
 CHOSEN_AT = ("G3", "G2")                         # where the choice is shown; G2: a run started before issue #145
 REVIEW_STAGE = "C1"                              # the review pack alone: decided on C1's page, no check-in
 LEGACY = ("G2",)                                 # check-ins before issue #145: still shown settled in an old run
 DECIDING = ("decision", "strategy", "media-buyer")  # the views that decide; the creator's shows no decision
+SETTLED_VIEWS = ("decision", "strategy")         # the views that see the settled check-ins (G1's account data)
 CARDS = {"approve_setup": "brief.card_approve_setup", "approve_briefs": "brief.card_approve_briefs"}
 VERDICTS = {"approved": "brief.verdict_approved", "changes": "brief.verdict_changes",
             "dropped": "brief.verdict_dropped", "split": "brief.verdict_split", "none": "brief.verdict_none"}
@@ -75,7 +78,51 @@ def _read(run, stage: str) -> tuple[str, dict] | None:
     return (files[-1].relative_to(run.path).as_posix(), data) if isinstance(data, dict) else None
 
 
+def _intake(ctx: Context) -> list[dict]:
+    """G0, the intake card (issue #131): what the run was set up with, from its config."""
+    from tm import config
+    try:
+        cfg = config.load(ctx.run)
+    except (OSError, ValueError):
+        return []
+    product = cfg.get("product") if isinstance(cfg.get("product"), dict) else {}
+    langs = cfg.get("languages") if isinstance(cfg.get("languages"), dict) else {}
+    brief = cfg.get("brief") if isinstance(cfg.get("brief"), dict) else {}
+    account = cfg.get("account") if isinstance(cfg.get("account"), dict) else {}
+    s = state.load(ctx.run)
+    rows = [(_w("brief.intake_product", ctx.lang), product.get("name")),
+            (_w("brief.intake_landing", ctx.lang), product.get("landing_url")),
+            (_w("brief.intake_category", ctx.lang), product.get("category_phrase")),
+            (_w("brief.intake_market", ctx.lang), account.get("market") or cfg.get("market")),
+            (_w("brief.intake_languages", ctx.lang), " / ".join(str(x) for x in (langs.get("working"),
+                                                                                  langs.get("market")) if x)),
+            (_w("brief.intake_concepts", ctx.lang), (cfg.get("concepts") or {}).get("count")
+             if isinstance(cfg.get("concepts"), dict) else None),
+            (_w("brief.intake_recipients", ctx.lang), len(brief.get("recipients") or []) or None),
+            (_w("brief.intake_level", ctx.lang), ctx.t_or(f"level.{s.level}", s.level) if s.level else None)]
+    rows = [(k, v) for k, v in rows if v not in (None, "", [])]
+    return [{"kind": "facts", "rows": rows, "source": config.FILE}] if rows else []
+
+
+def _persona(ctx: Context) -> list[dict]:
+    """G1, the persona (issue #131): the hypothesis next to the age × gender results and the placements (as Refresh
+    an ad's audience stage shows them), and the account context with the winners, the losers and the divergence. On
+    the brief's page this is in the deciding views only (the creator's never shows the account's figures)."""
+    from tm.run_page import refresh_ad
+    out = refresh_ad._audience(ctx)
+    path = ctx.inside("01_base/account_context.md")
+    text = ctx.text(path) if path else None
+    if text:
+        out.append({"kind": "text", "title": _w("brief.account_context", ctx.lang), "text": text, "pre": True,
+                    "summary": _w("brief.account_context_open", ctx.lang), "source": "01_base/account_context.md"})
+    return out
+
+
 def materials(ctx: Context, checkin: str) -> list[dict]:
+    if checkin == "G0":
+        return _intake(ctx)
+    if checkin == "G1":
+        return _persona(ctx)
     lang, out = ctx.lang, []
     chosen = _chosen(ctx.run) if checkin in CHOSEN_AT else {}
     if chosen.get("concepts"):

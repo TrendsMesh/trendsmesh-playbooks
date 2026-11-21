@@ -179,6 +179,12 @@ posts.
 <a id="a1"></a>
 ## A1 Channel profile
 
+**On the run page** (issue #131): the profile check-in is a stage of the run page. Write the ask
+(`checkin: profile`, Accept and a note), `tm page build --run R --ask <file> --json`: the stage shows the
+drafted profile's fields (channels, platforms, account type, bubble, what performed, catalogue, product role,
+the channel's own look, content rules) from the saved profile. Publish it to the start card's link (`tm page
+link --run R --page run_page`), `tm page await --page run_page`, and read the answer as at F1 below.
+
 **Before A1: `reuse_profile`** ("Reuse the saved channel profile", `checkin-cards.md`). `tm brand
 show --name <channel> --kind channel --json` for each of the run's channels. A confirmed saved
 profile is shown, the run it was saved from and its date first (`saved_from`, `message`), and reused (`tm decide reuse_profile reuse --said "<their words>" --run R`): A1 is skipped. The engine
@@ -440,7 +446,7 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    the risk level comes from ("Highest risk: several characters, in AI footage (medium)"), and the video,
    the recipe, the risks, the cost and the trends behind it with their evidence videos. The build is C2's
    step check (`proposals_page_built`): it is made from the checked proposals.
-2. **Publish it**: an `Artifact` publish of the build's `artifact` (the first time a new artifact, its
+2. **Publish it**: an `Artifact` publish of the build's `artifact` (a new artifact only when `tm page link` finds none: the start card's link comes first, its
    `title` the build's; later the same `url`, `tm page link --run R --page run_page`) with `capabilities`
    = the build's `capabilities`, the declaration checked in its result (if the rules are refused, say so
    once, "the page can't save choices yet; tell me your picks here", and take the decisions in chat). It
@@ -763,6 +769,13 @@ marker is per run), and again at every resume.
 <a id="d2"></a>
 ## D2 Taste picks
 
+**First, the script draft** (`script_draft`, issue #131: before D2's work, right after the idea is picked):
+at Check every step, an ask with `checkin: script_draft` and `tm page build --run R --ask <file> --json`; the
+stage shows the picked idea and the pack's voiceover script line by line with its times, so the user sees the
+script before the style, voice and music. Publish to the same link, wait, and read the answer (a note on a
+line is quoted whole, as at `taste`). At Just the big calls it is in the plan card after E2; at Hands-off it
+is recorded by rule (`tm decide script_draft accept --by rule --note "<the pack version and its lines>"`).
+
 Asked only where needed (OV7, FLOWS D2): a **voice** when someone speaks, **music** when the edit
 carries a bed. A style is asked for every AI video (issue #138): an animation is drawn in it, and an image or video
 prompt carries its look.
@@ -920,6 +933,11 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
 
 <a id="e2"></a>
 ## E2 Generation pack and cost
+
+**On the run page** (issue #131): the pack check-in's stage shows one row per paid item (its model, units
+and the registry's price, exact to the third decimal), the total and the budget cap, with Approve / Reject:
+an ask with `checkin: pack` (the plan card at Just the big calls), `tm page build --run R --ask <file>
+--json`, published to the same link. The chat card still restates every line.
 
 1. **The pack**: the next `03_wip/pack_vNN.json`, the recipe plus `speech`, `models` (each with
    `why`, its `recipe`, its `ranking`), `stages` (in OV9's order: the images stage, then the video
@@ -1188,7 +1206,7 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      03_wip/ask_images.json --json`: `04_final/run_page_vNN/` with each image item (its options side
      by side, the pick marked, the product and the references beside them), each with Accept / Redo /
      Drop, an option and a note; `tm trends collect on --run R --json` right before its publish;
-     then an `Artifact` publish of the build's `artifact` (the first time a new artifact, its
+     then an `Artifact` publish of the build's `artifact` (a new artifact only when `tm page link` finds none: the start card's link comes first, its
      `title` the build's; later the same `url`, `tm page link --run R --page run_page`) with
      `capabilities` = the build's `capabilities`, the declaration checked in its result, then
      `tm page published --run R --page run_page --url <its URL> --version <the version id> --json`
