@@ -339,7 +339,7 @@ def test_redo_on_page_records_request_with_note(tmp_path, capsys):
     run = _m5(tmp_path, picked=False, final=False)
     spec = run.path / "03_wip" / "host.json"
     spec.write_text(json.dumps(HOST), encoding="utf-8")
-    args = [str(spec), "--name", "host", "--cost", "0.26", "--run", str(run.path)]
+    args = [str(spec), "--name", "host", "--cost", "0.256", "--run", str(run.path)]
     assert "only when they ask" in organic_specs.guard(run, args)          # every step: the user asks for a redo
     _ready(run, capsys, "gate_images", "images")
     _save_db(run, "gate_images", _doc("images-host", action="redo", choice="host_v01_1",

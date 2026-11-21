@@ -129,6 +129,17 @@ checkins:
             Look at the QA findings and choose: keep it as is, speed it up in the edit, redo it
             with a note (its cost is shown), or drop it.
 
+  # #137: asked only when the paid-call guard stops for it (on_demand: never due by itself), at every level.
+  - id: refused_reference
+    name: A reference image was refused twice
+    route: {every_step: own, big_calls: own, hands_off: own}
+    on_demand: true
+    rule: >-
+      — (the owner's decision): the user's, at every level. "Without the reference image, the face in the video
+      will not be the one you approved." Try once more, another model that takes a reference image (priced
+      first), or go without it
+    choices: [retry, other_model, no_reference]
+
   - id: final_edit
     name: Accept the final edit
     route: {every_step: own, big_calls: own, hands_off: rule}

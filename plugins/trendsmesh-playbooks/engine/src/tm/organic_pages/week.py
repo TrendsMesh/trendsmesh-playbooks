@@ -74,6 +74,7 @@ LABELS = {"risk": {"low": _W + "risk_low", "medium": _W + "risk_medium", "high":
           "eyebrow": (_W + "eyebrow", "{} · "), "bar": _W + "bar", "over": _W + "over",
           "help": _W + "help", "cal": _W + "calendar", "res": _W + "reserves", "run": ("organic.run_folder", "{} ")}
 META = _W + "meta"          # "{n} videos this week …": a count of the table, in the form the number takes (issue #3)
+PRICED = _W + "priced"      # where the video costs come from (#137): the model registry and its date
 
 
 def labels(lang) -> dict:
@@ -242,6 +243,8 @@ def render(week: dict, lang: str | None = None) -> str:
     labels_js = _script({k: L[k] for k in L if k != "days"})
     week_js = _script(dict(week=w['week'], budget=w['budget'], slots=[dict(slot=s['slot'], id=s['id'], output=s.get('output', 'video')) for s in w['slots']], reserves=[]))
     ideas_text = _script(ideas_js)
+    dates = sorted({str(i["price_checked"]) for i in ideas if i.get("price_checked")})
+    priced = f'<p class="small">{esc(tr(PRICED, d=", ".join(dates)))}</p>' if dates else ""
     return organic_pages.look(f"""<!DOCTYPE html><html lang="{esc(i18n.html_lang(tr.lang))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(w['title'])}</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
@@ -251,7 +254,7 @@ def render(week: dict, lang: str | None = None) -> str:
 <p class="meta" style="font-size:14px">{esc(w.get('note',''))}</p></header>
 <div class="bar" role="region" aria-label="{esc(L['bar'])}"><div class="brow"><span class="sum" id="sum"></span><span style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn primary" id="approve" type="button">{esc(L['approve'])}</button><span class="status" id="st" aria-live="polite"></span></span></div>
 <div class="meter" id="meter"><i></i></div><p class="small" id="over" hidden>{esc(L['over'])}</p>
-<p class="small">{esc(L['help'])}</p></div>
+<p class="small">{esc(L['help'])}</p>{priced}</div>
 <section style="display:grid;gap:10px"><h2>{esc(L['cal'])}</h2><div class="cal">{''.join(cal)}</div></section>
 <section style="display:grid;gap:10px"><h2>{esc(L['res'])}</h2><div class="res">{res}</div></section>
 <p class="small">{esc(L['run'])}{esc(w['run'])}</p></div>

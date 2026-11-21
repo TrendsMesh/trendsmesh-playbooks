@@ -221,6 +221,18 @@ page and one in chat count the same. Rules: `rules.md`.
 - Each take: `tm tool replicate_run --run R <spec> --name <the storyboard's item> --cost <its line>`; an unfinished
   take is resumed for free (`--resume`), never run again. The engine refuses a video before the storyboard's yes and
   a second take of an item the user did not ask for.
+- **A refused reference image** (#137): a take that sends the approved casting still as a reference
+  (`reference_images`, `reference_image_urls`) may fail with a content refusal (E006, "prohibited content"; nothing
+  is spent, and the record names the refused file as `refused_reference`). Run it **once more exactly as it was**
+  (the same prompt and the same reference): that is the one free retry. **Never drop the reference on your own**:
+  the guard refuses a take that leaves it out. After a second refusal the guard refuses every take of that item
+  until the user picks, at every level (the check-in "A reference image was refused twice"): ask "Without the
+  reference image, the face in the ad will not be the one you approved in casting." and offer: try once more;
+  another model that takes a reference image (from the registry's talking-person route: MiniMax H3 with the casting
+  face, `specific_person`, or Kling Avatar v2, `fallback`), priced first in a new storyboard version and shown with
+  its cost; or go without the reference image. Record the pick with their words: `tm decide refused_reference
+  <retry|other_model|no_reference> --run R --said "<their words>" --note "<the refused record, as the guard names
+  it>"`. Each answer covers one more take; a third refusal asks again.
 - **Every take goes back raw** on the gate with its transcript and QA notes: `tm tool take_qa --run R <take> --lang
   <market language> --script <its lines, one a line> --brackets <the board's cut times>` (cuts, the transcript,
   pace, loudness, contact sheet; leave `--script` out for a take that does not speak) and ElevenLabs Scribe word

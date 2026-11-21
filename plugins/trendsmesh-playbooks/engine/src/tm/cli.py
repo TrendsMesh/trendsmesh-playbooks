@@ -58,15 +58,16 @@ def fail(args: argparse.Namespace, message: str) -> int:
     return 1
 
 
-def refuse_problems(args: argparse.Namespace, rel: str, problems: list) -> int:
+def refuse_problems(args: argparse.Namespace, rel: str, problems: list, extra: dict | None = None) -> int:
     """Exit 2 with the problems (`config.Problem`: field, what, todo) a check found in a file the agent
-    wrote, `rel` run-relative: fix it as a new version and check again."""
+    wrote, `rel` run-relative: fix it as a new version and check again. `extra`: ready numbers the answer carries
+    (the pack check's `voice`)."""
     from tm.stops import AGAIN
 
     lines = [f"- {p.field}: {p.what} {p.todo}" for p in problems]
     message = (f"{rel} needs fixing:\n" + "\n".join(lines) + f"\nFix the file (a new version), then check it "
                f"again; {AGAIN}.")
-    emit(args, {"status": "stop", "file": rel, "message": message,
+    emit(args, {"status": "stop", "file": rel, "message": message, **(extra or {}),
                 "problems": [{"field": p.field, "what": p.what, "todo": p.todo} for p in problems]}, message)
     return 2
 

@@ -316,13 +316,18 @@ def _setup(p: argparse.ArgumentParser) -> None:
     a.add_argument("--panels", help=argparse.SUPPRESS)   # gone: the count is read from the page (PANELS_GONE)
     a.add_argument("--json", action="store_true")
     vs = sub.add_parser("vo-sync", help="the recorded voiceover's line times against the pack's and the take's cuts, "
-                                        "with proposed times and the pace (free, reads only)")
+                                        "with proposed times and the pace, kept in the channel's voice history "
+                                        "(free)")
     vs.add_argument("--run", required=True, help="the run folder")
     vs.add_argument("--words", required=True, help="the voiceover's <stem>.words.json (tts --timestamps)")
     vs.add_argument("--spec",
                     help="the take's spec, whose input.prompt holds the timed shot list, relative to the run folder")
     vs.add_argument("--offset", type=float, default=0.0, help="the take's start in the video, in seconds (default 0)")
     vs.add_argument("--json", action="store_true")
+    vt = sub.add_parser("vo-text", help="the checked pack's voiceover text exactly as ElevenLabs gets it, with its "
+                                        "characters and credits (free, #140)")
+    vt.add_argument("--run", required=True, help="the run folder")
+    vt.add_argument("--json", action="store_true")
     a = sub.add_parser("animate", help="draw the full animation page (once its storyboard is accepted) or a stills "
                                        "item's layout page into 03_wip/<item>/renders/anim_vNN.mp4 (free, local)")
     a.add_argument("--run", required=True, help="the run folder")
@@ -483,14 +488,26 @@ def _week(args: argparse.Namespace) -> int:
     except ValueError as exc:                             # not JSON, or not UTF-8
         raise Stop(f"{rel} is not valid JSON ({exc}). Write it again as one JSON object, then check it again; "
                    f"{AGAIN}.") from None
-    problems = organic_week.check(run, data, config.load(run))
+    cfg = config.load(run)
+    problems = organic_week.check(run, data, cfg)
     if problems:
         return cli.refuse_problems(args, rel, problems)
+    priced, notes = organic_week.price(data, cfg)          # #137: cost_video from the model registry, never typed
+    if priced != data:
+        path.write_text(json.dumps(priced, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        data = priced
     stepchecks.mark(run, organic_week.KEY, path)
+    from tm import model_registry
     message = (f"{rel} holds the week: {len(data['slots'])} slots on their posting days and {len(data['reserves'])} "
                f"reserve{'' if len(data['reserves']) == 1 else 's'}, each idea on saved trend cards, the week's budget "
-               f"${data['budget']:.2f}. Build its page next (tm organic page week --run {args.run}).")
-    cli.emit(args, {"status": "done", "file": rel, "slots": len(data["slots"]), "message": message}, message)
+               f"${data['budget']:.2f}; each video priced from the model registry (prices checked "
+               f"{model_registry.checked().isoformat()}), written into the file.")
+    if notes:
+        message += " Replaced typed costs: " + "; ".join(notes) + "."
+    message += f" Build its page next (tm organic page week --run {args.run})."
+    cli.emit(args, {"status": "done", "file": rel, "slots": len(data["slots"]), "replaced": notes,
+                    "price_source": organic_week.PRICE_SOURCE, "price_checked": model_registry.checked().isoformat(),
+                    "message": message}, message)
     return 0
 
 
@@ -871,10 +888,16 @@ def _pack(args: argparse.Namespace) -> int:
     except ValueError as exc:                             # not JSON, or not UTF-8
         raise Stop(f"{rel} is not valid JSON ({exc}). Write it again as one JSON object, then check it again; "
                    f"{AGAIN}.") from None
-    problems = organic_pack.check(run, data, config.load(run), stage=args.stage, today=today)
+    cfg = config.load(run)
+    problems = organic_pack.check(run, data, cfg, stage=args.stage, today=today)
+    voice = organic_pack.voice_numbers(data) if isinstance(data, dict) else None   # #140: always the ready numbers
     if problems:
-        return cli.refuse_problems(args, rel, problems)
+        return cli.refuse_problems(args, rel, problems, {"voice": voice})
     got = organic_pack.record(run, path, data, stage=args.stage)
+    pace = None
+    if args.stage == "pack":
+        from tm import voice_pace
+        pace = voice_pace.check(run, data, cfg)           # #140: the voice's pace, before the paid recording
     if args.stage == "recipe":
         message = (f"{rel} holds the recipe: {data['production']}, the product {data['product']['level']}, "
                    f"{data['script']['words']} words in {data['script']['seconds']:g} s; its Markdown is {got['md']}. "
@@ -883,8 +906,12 @@ def _pack(args: argparse.Namespace) -> int:
         totals = data["cost"]["totals"]
         credits = f" and {totals['voice_credits']:g} voice credits" if totals.get("voice_credits") else ""
         name = checkins.load(playbook=ORGANIC_VIDEO).checkins["pack"].name
-        message = (f"{rel} holds the pack: ${totals['ai_usd']:.2f} of AI generation{credits}, each item priced from a "
+        message = (f"{rel} holds the pack: {organic_pack._usd(totals['ai_usd'])} of AI generation{credits}, each item priced from a "
                    f"saved price file; its Markdown is {got['md']}. ")
+        if voice and voice["characters"] and data["speech"]["route"] in ELEVENLABS_ROUTES:
+            message += f"The voiceover: {organic_pack.voice_line(voice)}. "
+        if pace and pace.get("message"):
+            message += pace["message"] + " "
         if got["replanned"]:
             message += (f"Show the user the pack and its cost and ask \"{name}\" (after an earlier yes: tm decide pack "
                         "approve --change --said \"<their words>\"): nothing is generated or paid before their yes.")
@@ -892,7 +919,8 @@ def _pack(args: argparse.Namespace) -> int:
             message += "It makes the same items for no more than the plan the user said yes to: that yes still holds."
     message = _built(message, got)                  # the Markdown is in English when the table has no translation
     cli.emit(args, {"status": "done", "file": rel, "stage": args.stage, "md": got["md"], "planned": got["planned"],
-                    "replanned": got["replanned"], "message": message,
+                    "replanned": got["replanned"], "message": message, "voice": voice,
+                    **({"voice_pace": pace} if pace else {}),
                     **({"language_warning": got["language_warning"]} if got["language_warning"] else {})}, message)
     return 0
 
@@ -1453,6 +1481,12 @@ def _vo_sync(args: argparse.Namespace) -> int:
     return organic_vo.run_cli(args)
 
 
+def _vo_text(args: argparse.Namespace) -> int:
+    from tm import organic_vo
+
+    return organic_vo.text_cli(args)
+
+
 def _stack(args: argparse.Namespace) -> int:
     stack = record_stack(RunFolder.open(Path(args.run)), **{k: getattr(args, k) for k in STACK_VALUES})
     hidden = sorted(hidden_types(stack))
@@ -1477,7 +1511,7 @@ _ACTIONS = {"stack": _stack, "videos": _videos, "used": _used, "history": _histo
             "pack": _pack, "redo": _redo, "pick": _pick, "upscale": _upscale,
             "dashboard-checked": _dashboard_checked, "atlas-styles": _atlas_styles, "atlas-prompt": _atlas_prompt,
             "atlas-page": _atlas_page,
-            "storyboard": _storyboard, "animate": _animate, "vo-sync": _vo_sync, "text": _edit, "captions": _edit}
+            "storyboard": _storyboard, "animate": _animate, "vo-sync": _vo_sync, "vo-text": _vo_text, "text": _edit, "captions": _edit}
 
 
 def _run(args: argparse.Namespace) -> int:

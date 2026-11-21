@@ -67,16 +67,16 @@
   "cost": {
     "lines": [
       {"what": "first frame ×2", "item": "first frame", "model": "openai/gpt-image-2", "criteria": "model variant=medium",
-       "unit_price": 0.047, "unit": "output image", "units": 2, "cost": 0.09, "kind": "ai_usd",
+       "unit_price": 0.047, "unit": "output image", "units": 2, "cost": 0.094, "kind": "ai_usd",
        "price_file": "02_research/models/prices_2026-11-04_v01.json", "checked": "2026-11-04"},
       {"what": "footage 13 s (S1 + S3), 768P", "item": "take", "model": "minimax/h3", "criteria": "target resolution=768P",
        "unit_price": 0.08, "unit": "second of output video", "units": 13, "cost": 1.04, "kind": "ai_usd",
        "price_file": "02_research/models/prices_2026-11-06_v01.json", "checked": "2026-11-06"},
-      {"what": "voiceover, 316 characters", "item": null, "model": "eleven_v4", "criteria": null,
-       "unit_price": 0.5, "unit": "character", "units": 316, "cost": 158, "kind": "voice_credits",
+      {"what": "voiceover, 319 characters", "item": null, "model": "eleven_v4", "criteria": null,
+       "unit_price": 0.5, "unit": "character", "units": 319, "cost": 159.5, "kind": "voice_credits",
        "price_file": null, "checked": null}
     ],
-    "totals": {"ai_usd": 1.13, "voice_credits": 158},
+    "totals": {"ai_usd": 1.134, "voice_credits": 159.5},
     "currency_note": null
   },
   "facts": [

@@ -52,6 +52,10 @@ resolution, or a redo line added for it; a re-check that only prices another ite
 output of the item's latest Replicate record that made any (`outputs`): a pick made before a re-plan of its item,
 or of a take made again since, is no pick.
 
+A refused reference image (#137, `tm.refused_refs`): after a content refusal of a call that sent the host or a
+casting still as a reference, one identical retry runs; after a second, nothing of the item runs until the user picks
+(`tm decide refused_reference`), and a call that leaves the reference out needs their `no_reference`.
+
 Then the takes (records of the stem):
 - the latest record holds a prediction that is not done and did not fail (it is paid and still on
   Replicate): finish it for free with `--resume`; it is never run again (Review Focus 1);
@@ -118,6 +122,7 @@ PAID = "ai_usd"                        # the budget kind replicate_run spends (t
 REDO_LINE = organic_pack.REDO_LINE     # a cost line `"redo": true` prices one requested redo of its item
 
 E006 = "H3 refuses a first frame with reference media (E006)"
+REFERENCE_WARNING = ("Without the reference image, the face in the video will not be the one you approved.")
 CLIPS = "organic clips are evidence, never footage"
 NO_PACK = ("No checked pack is the latest in this run, so nothing is generated: run the pack check first "
            "(tm organic pack check --stage pack) and show the user its cost.")
@@ -652,6 +657,10 @@ def guard(run: RunFolder, args: list[str]) -> str | None:
     held = _held(s, stem, records)
     if held:
         return _stop(held)
+    from tm import refused_refs                       # #137: a refused reference image is never dropped unasked
+    refused = refused_refs.gap(records, spec, s.decisions, stem, warning=REFERENCE_WARNING)
+    if refused:
+        return _stop(refused)
     pack = organic_pack.checked_pack(run)
     drift = organic_vo.take_gap(run, pack, spec, stem)   # #88: the take's cuts follow the recorded voice
     if drift:

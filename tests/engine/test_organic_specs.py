@@ -74,7 +74,7 @@ def _with_redo(pack, item, n=1):
     line = next(x for x in pack["cost"]["lines"] if x["item"] == item and not x.get("redo"))
     for _ in range(n):
         pack["cost"]["lines"].append({**line, "what": f"{line['what']} (redo)", "redo": True})
-        pack["cost"]["totals"]["ai_usd"] = round(pack["cost"]["totals"]["ai_usd"] + line["cost"], 2)
+        pack["cost"]["totals"]["ai_usd"] = round(pack["cost"]["totals"]["ai_usd"] + line["cost"], 3)
     return pack
 
 
@@ -504,11 +504,11 @@ def test_a_failed_take_with_nothing_on_replicate_may_run_again(ov, engine, capsy
 def test_hands_off_image_redo_once_then_refused(ov, engine, capsys):
     _record(ov, "host", 1)
     spec = _spec(ov, "host", HOST)
-    code, out = _tool(capsys, ov, spec, "host", cost="0.26")
+    code, out = _tool(capsys, ov, spec, "host", cost="0.256")
     assert code == 0 and len(engine) == 1                       # the images check-in goes by rule: one redo
     (auto,) = state.load(ov).organic["redos"]["host"]
     assert (auto["kind"], auto["after"]) == ("auto_redo", "host_v01.run.json")
-    code, out = _tool(capsys, ov, spec, "host", cost="0.26")
+    code, out = _tool(capsys, ov, spec, "host", cost="0.256")
     assert (code, out["status"]) == (2, "stop") and "tm organic redo" in out["message"]
     assert len(engine) == 1
 
@@ -516,7 +516,7 @@ def test_hands_off_image_redo_once_then_refused(ov, engine, capsys):
 def test_every_step_image_redo_needs_the_user(ov, engine, capsys):
     _level(ov, "every_step")
     _record(ov, "host", 1)
-    code, out = _tool(capsys, ov, _spec(ov, "host", HOST), "host", cost="0.26")
+    code, out = _tool(capsys, ov, _spec(ov, "host", HOST), "host", cost="0.256")
     assert (code, out["status"]) == (2, "stop") and "tm organic redo" in out["message"]
     assert engine == [] and "redos" not in (state.load(ov).organic or {})
 
@@ -651,7 +651,7 @@ def test_a_stopped_run_is_not_changed_by_the_guard(ov, engine, capsys):
     _record(ov, "host", 1)
     flow.stop(ov, "upload_by_hand", "The take could not be saved.", "Save it by hand.")
     before = (ov.path / "run.json").read_text(encoding="utf-8")
-    code, out = _tool(capsys, ov, _spec(ov, "host", HOST), "host", cost="0.26")
+    code, out = _tool(capsys, ov, _spec(ov, "host", HOST), "host", cost="0.256")
     assert (code, out["status"]) == (2, "stop") and "nothing was spent" in out["message"]
     assert engine == [] and (ov.path / "run.json").read_text(encoding="utf-8") == before
 
@@ -663,9 +663,9 @@ def test_a_run_relative_spec_is_read_from_the_workspace(ov, engine, capsys, monk
     reads the run's spec (the working folder first, then the run), and the child is given the same name."""
     _spec(ov, "host_v01", HOST)
     monkeypatch.chdir(organic_specs.trend_spool.workspace_of(ov))
-    code, out = _tool(capsys, ov, "03_wip/host_v01.json", "host", cost="0.26")
+    code, out = _tool(capsys, ov, "03_wip/host_v01.json", "host", cost="0.256")
     assert code == 0, out
-    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.26}
+    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.256}
     assert "03_wip/host_v01.json" in engine[0]
 
 
@@ -711,18 +711,18 @@ def test_a_paid_call_needs_the_current_yes_and_the_approved_amount(ov, engine, c
     _level(ov, level)
     asked = _to_pack(ov, monkeypatch)
     host = _spec(ov, "host_v01", HOST)
-    code, out = _tool(capsys, ov, host, "host", cost="0.26")
+    code, out = _tool(capsys, ov, host, "host", cost="0.256")
     assert (code, out["status"]) == (2, "stop") and "tm decide pack approve" in out["message"], out
     assert engine == [] and state.load(ov).spend == {} and _open_stops(ov) == []
     if "taste" in asked.checkin.ids:                             # the plan card, decided member by member
         assert _cli(capsys, ov, "decide", "taste", "accept", "--note", "tak", "--said", "tak")[0] == 0
     assert _cli(capsys, ov, "decide", "pack", "approve", "--note", "tak, 1,46 USD", "--said", "tak, 1,46 USD")[0] == 0
-    code, out = _tool(capsys, ov, host, "host", cost="0.26")      # the yes, and no amount approved yet
+    code, out = _tool(capsys, ov, host, "host", cost="0.256")      # the yes, and no amount approved yet
     assert (code, out["status"]) == (2, "stop") and "tm budget approve" in out["message"], out
     assert engine == [] and state.load(ov).spend == {}
     assert _cli(capsys, ov, "budget", "approve", "ai_usd", "1.3", "--note", "tak")[0] == 0
-    code, out = _tool(capsys, ov, host, "host", cost="0.26")
-    assert code == 0 and state.load(ov).spend == {"ai_usd": 0.26}
+    code, out = _tool(capsys, ov, host, "host", cost="0.256")
+    assert code == 0 and state.load(ov).spend == {"ai_usd": 0.256}
     _pick(ov, "03_wip/host_v01_0.png")
     take = _spec(ov, "take", TAKE)
     # re-planned at a higher total: host ×3 ($1.42)
@@ -740,14 +740,14 @@ def test_a_paid_call_needs_the_current_yes_and_the_approved_amount(ov, engine, c
     _pick(ov, "03_wip/host_v01_0.png")                           # picked again after the re-plan
     code, out = _tool(capsys, ov, take, "take")
     assert (code, out["status"]) == (2, "stop") and "tm decide pack approve --change" in out["message"], out
-    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.26} and _open_stops(ov) == []
+    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.256} and _open_stops(ov) == []
     assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 1,42 USD", "--said", "tak, 1,42 USD")[0] == 0
     code, out = _tool(capsys, ov, take, "take")                   # the new yes; $1.30 approved of $1.42 planned
     assert (code, out["status"]) == (2, "stop") and "tm budget approve" in out["message"], out
-    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.26}
+    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.256}
     assert _cli(capsys, ov, "budget", "approve", "ai_usd", "1.42", "--note", "tak")[0] == 0
     code, out = _tool(capsys, ov, take, "take")
-    assert code == 0 and len(engine) == 2 and state.load(ov).spend == {"ai_usd": 1.3}
+    assert code == 0 and len(engine) == 2 and state.load(ov).spend == {"ai_usd": 1.296}
 
 
 def test_cost_must_be_the_items_priced_line(ov, engine, capsys):
@@ -757,13 +757,13 @@ def test_cost_must_be_the_items_priced_line(ov, engine, capsys):
     for cost in ("0.01", "1.04", "0.27"):
         code, out = _tool(capsys, ov, host, "host", cost=cost)
         assert (code, out["status"]) == (2, "stop"), out
-        assert "--cost 0.26" in out["message"] and "prices_2026-11-04_v01.json" in out["message"]
+        assert "--cost 0.256" in out["message"] and "prices_2026-11-04_v01.json" in out["message"]
     assert engine == [] and state.load(ov).spend == {}
-    code, out = _tool(capsys, ov, host, "host", cost="0.26")
-    assert code == 0 and state.load(ov).spend == {"ai_usd": 0.26}
+    code, out = _tool(capsys, ov, host, "host", cost="0.256")
+    assert code == 0 and state.load(ov).spend == {"ai_usd": 0.256}
 
 
-def _approved(ov, capsys, monkeypatch, level, amount="1.3"):
+def _approved(ov, capsys, monkeypatch, level, amount="1.296"):
     """The run walked to the pack at `level`, the user's yes (the plan card member by member) and `amount` approved."""
     _level(ov, level)
     asked = _to_pack(ov, monkeypatch)
@@ -821,23 +821,23 @@ def test_a_requested_redo_is_paid_only_once_priced(ov, engine, capsys, monkeypat
     """PR C review I4 and Task 18 I1: the user's redo of the take is never paid from another item's money: it waits
     for a re-planned pack with its redo line, the yes again (--change) and the new total approved; then it runs once."""
     _approved(ov, capsys, monkeypatch, level)
-    assert _tool(capsys, ov, _spec(ov, "host_v01", HOST), "host", cost="0.26")[0] == 0
+    assert _tool(capsys, ov, _spec(ov, "host_v01", HOST), "host", cost="0.256")[0] == 0
     _pick(ov, "03_wip/host_v01_0.png")
     take = _spec(ov, "take", TAKE)
-    assert _tool(capsys, ov, take, "take")[0] == 0 and state.load(ov).spend == {"ai_usd": 1.3}
+    assert _tool(capsys, ov, take, "take")[0] == 0 and state.load(ov).spend == {"ai_usd": 1.296}
     assert _cli(capsys, ov, "organic", "redo", "--name", "take", "--note", "zrób to jeszcze raz, szybciej")[0] == 0
     code, out = _tool(capsys, ov, take, "take")
     assert (code, out["status"]) == (2, "stop") and "The redo of take is not priced yet" in out["message"], out
     assert "tm decide pack approve --change" in out["message"] and _open_stops(ov) == []
-    assert len(engine) == 2 and state.load(ov).spend == {"ai_usd": 1.3}
-    _replan(ov, capsys, _with_redo(_pack(), "take"), 2, 2.34)
+    assert len(engine) == 2 and state.load(ov).spend == {"ai_usd": 1.296}
+    _replan(ov, capsys, _with_redo(_pack(), "take"), 2, 2.336)
     _pick(ov, "03_wip/host_v01_0.png")                           # picked again after the re-plan
     code, out = _tool(capsys, ov, take, "take")
     assert code == 2 and "--change" in out["message"] and len(engine) == 2
     assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 2,66 USD", "--said", "tak, 2,66 USD")[0] == 0
-    assert _cli(capsys, ov, "budget", "approve", "ai_usd", "2.34", "--note", "tak")[0] == 0
+    assert _cli(capsys, ov, "budget", "approve", "ai_usd", "2.336", "--note", "tak")[0] == 0
     code, out = _tool(capsys, ov, take, "take")
-    assert code == 0 and len(engine) == 3 and state.load(ov).spend == {"ai_usd": 2.34}
+    assert code == 0 and len(engine) == 3 and state.load(ov).spend == {"ai_usd": 2.336}
     code, out = _tool(capsys, ov, take, "take")                   # the request is used up
     assert code == 2 and "never regenerated automatically" in out["message"] and len(engine) == 3
 
@@ -850,21 +850,21 @@ def test_the_automatic_image_redo_fits_the_budget_or_becomes_a_priced_request(ov
     the take never runs over budget."""
     _approved(ov, capsys, monkeypatch, level)
     host = _spec(ov, "host_v01", HOST)
-    assert _tool(capsys, ov, host, "host", cost="0.26")[0] == 0
+    assert _tool(capsys, ov, host, "host", cost="0.256")[0] == 0
     for tried in range(2):                                        # recorded once, however often it is tried
-        code, out = _tool(capsys, ov, host, "host", cost="0.26")
+        code, out = _tool(capsys, ov, host, "host", cost="0.256")
         assert (code, out["status"]) == (2, "stop"), out
         assert ("does not fit the approved budget" in out["message"] and "(1.04 USD; 1.04 USD is left)" in
                 out["message"]) is (tried == 0), out
         assert "The redo of host is not priced yet" in out["message"]
     (asked,) = state.load(ov).organic["redos"]["host"]
     assert (asked["kind"], asked["by"], asked["after"]) == ("request", "rule", "host_v01.run.json")
-    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.26} and _open_stops(ov) == []
-    _replan(ov, capsys, _with_redo(_pack(), "host"), 2, 1.56)
+    assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.256} and _open_stops(ov) == []
+    _replan(ov, capsys, _with_redo(_pack(), "host"), 2, 1.552)
     assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 1,56 USD", "--said", "tak, 1,56 USD")[0] == 0
-    assert _cli(capsys, ov, "budget", "approve", "ai_usd", "1.56", "--note", "tak")[0] == 0
-    assert _tool(capsys, ov, host, "host", cost="0.26")[0] == 0 and state.load(ov).spend == {"ai_usd": 0.52}
-    code, out = _tool(capsys, ov, host, "host", cost="0.26")      # the one redo is used
+    assert _cli(capsys, ov, "budget", "approve", "ai_usd", "1.552", "--note", "tak")[0] == 0
+    assert _tool(capsys, ov, host, "host", cost="0.256")[0] == 0 and state.load(ov).spend == {"ai_usd": 0.512}
+    code, out = _tool(capsys, ov, host, "host", cost="0.256")      # the one redo is used
     assert code == 2 and "already made again once automatically" in out["message"] and len(engine) == 2
     record = ov.path / "03_wip" / "host_v02.run.json"             # the redo made host_v02_0.png: it is picked
     record.write_text(json.dumps(json.loads(record.read_text(encoding="utf-8")) | {"outputs": ["host_v02_0.png"]}),
@@ -878,7 +878,7 @@ def test_the_automatic_image_redo_fits_the_budget_or_becomes_a_priced_request(ov
     take["input"]["first_frame_image"] = "host_v02_0.png"
     code, out = _tool(capsys, ov, _spec(ov, "take", take), "take")
     assert code == 0, out
-    assert state.load(ov).spend == {"ai_usd": 1.56} and _open_stops(ov) == []
+    assert state.load(ov).spend == {"ai_usd": 1.552} and _open_stops(ov) == []
 
 
 @pytest.mark.parametrize("level", ["big_calls", "hands_off"])
@@ -887,8 +887,44 @@ def test_the_automatic_image_redo_runs_within_the_approved_budget(ov, engine, ca
     so it runs at once and is recorded as the one automatic redo."""
     _approved(ov, capsys, monkeypatch, level, amount="1.56")
     host = _spec(ov, "host_v01", HOST)
-    assert _tool(capsys, ov, host, "host", cost="0.26")[0] == 0
-    assert _tool(capsys, ov, host, "host", cost="0.26")[0] == 0
+    assert _tool(capsys, ov, host, "host", cost="0.256")[0] == 0
+    assert _tool(capsys, ov, host, "host", cost="0.256")[0] == 0
     (auto,) = state.load(ov).organic["redos"]["host"]
     assert (auto["kind"], auto["after"]) == ("auto_redo", "host_v01.run.json")
-    assert len(engine) == 2 and state.load(ov).spend == {"ai_usd": 0.52}
+    assert len(engine) == 2 and state.load(ov).spend == {"ai_usd": 0.512}
+
+
+# --- #137 item 6: a refused reference image ----------------------------------------------------------------------
+
+def _refused_take(run, n, spec):
+    path = run.path / "03_wip" / f"take_v{n:02d}.run.json"
+    inp = {k: ([f"file:{v[0]}"] if k == "reference_image_urls" else v) for k, v in spec["input"].items()}
+    path.write_text(json.dumps({"model": spec["model"], "status": "failed", "prediction_id": f"p{n}", "outputs": [],
+                                "error": "E006: Request blocked due to prohibited content guidelines", "input": inp,
+                                "refused_reference": "file:host_v01_0.png"}), encoding="utf-8")
+
+
+def test_a_refused_host_reference_runs_once_more_then_waits_for_the_user(ov, engine, capsys, monkeypatch):
+    """The host image sent as H3's reference is refused (a content refusal, nothing spent): one identical take runs
+    again; after a second refusal nothing of the take runs, and a take without the host image is refused, until the
+    user's pick is recorded (`tm decide refused_reference`, at every level)."""
+    _approved(ov, capsys, monkeypatch, "hands_off")
+    assert _tool(capsys, ov, _spec(ov, "host_v01", HOST), "host", cost="0.256")[0] == 0
+    _pick(ov, "03_wip/host_v01_0.png")
+    ref = {"model": "minimax/h3", "input": {"prompt": TAKE["input"]["prompt"], "reference_image_urls": ["host_v01_0.png"],
+                                            "ratio": "9:16", "duration": 13, "resolution": "768P"}}
+    take = _spec(ov, "take", ref)
+    _refused_take(ov, 1, ref)
+    assert organic_specs.guard(ov, [str(take), "--name", "take", "--cost", "1.04", "--run", str(ov.path)]) is None
+    _refused_take(ov, 2, ref)
+    code, out = _tool(capsys, ov, take, "take")
+    assert code == 2 and "refused 2 times" in out["message"] and "tm decide refused_reference" in out["message"]
+    assert "the face in the video will not be the one you approved" in out["message"] and len(engine) == 1
+    first_frame = _spec(ov, "take", TAKE)                         # the host as a first frame instead: no reference
+    code, out = _tool(capsys, ov, first_frame, "take")
+    assert code == 2 and "leaves out the reference image host_v01_0.png" in out["message"] and len(engine) == 1
+    assert _cli(capsys, ov, "decide", "refused_reference", "no_reference", "--note", "take_v02.run.json",
+                "--said", "bez zdjęcia, trudno")[0] == 0
+    code, out = _tool(capsys, ov, first_frame, "take")
+    assert code == 0, out
+    assert len(engine) == 2 and state.load(ov).spend == {"ai_usd": 1.296}   # the refusals cost nothing

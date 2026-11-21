@@ -111,6 +111,37 @@ def _record_of(run):
     return json.loads(next((run.path / "03_wip").glob("*.run.json")).read_text(encoding="utf-8"))
 
 
+@pytest.mark.parametrize("error,refused", [
+    ("E006: Request blocked due to prohibited content guidelines", True),
+    ("The input was flagged by the safety filter: prohibited content", True),
+    ("E006: first frame with references", False),                 # H3's own rule, no content refusal
+    ("CUDA out of memory", False)])
+def test_a_refused_reference_image_is_recorded(run, tmp_path, monkeypatch, replicate_api, error, refused):
+    """#137 item 6: a content refusal of a call that sent a reference image names that image in its record, so the
+    guard allows one identical retry and then asks the user; nothing is spent."""
+    monkeypatch.setenv("REPLICATE_API_TOKEN", TOKEN)
+    monkeypatch.setenv("TM_COST_REPORT", str(tmp_path / "cost.json"))
+    original = httpx.HTTPTransport.handle_request
+
+    def failed(self, request):
+        if request.method == "GET" and str(request.url).endswith("/v1/predictions/p1"):
+            return httpx.Response(200, json={"id": "p1", "status": "failed", "model": "google/gemini-omni-1.2-flash",
+                                             "version": "v", "input": {}, "output": None, "error": error, "urls": {}},
+                                  request=request)
+        return original(self, request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", failed)
+    ref = tmp_path / "casting_v01_0.png"
+    ref.write_bytes(PNG)
+    spec = run.path / "03_wip" / "take.json"
+    spec.write_text(json.dumps({"model": "google/gemini-omni-1.2-flash",
+                                "input": {"prompt": "She says the line", "reference_images": [str(ref)]}}))
+    assert replicate_run.main(["--run", str(run.path), str(spec), "--name", "take", "--cost", "1.05", "--json"]) == 1
+    record = _record_of(run)
+    assert record.get("refused_reference") == ("file:casting_v01_0.png" if refused else None)
+    assert json.loads((tmp_path / "cost.json").read_text()) == {"spent": True, "actual": 0.0}
+
+
 @pytest.mark.parametrize("status", ["failed", "canceled"])
 def test_failed_prediction_reports_zero_cost(run, tmp_path, monkeypatch, capsys, replicate_api, status):
     """Decision 8 (HANDOFF §4, "failed validations cost $0"): no output, $0, and the record says to confirm it."""

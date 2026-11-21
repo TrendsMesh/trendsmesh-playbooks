@@ -116,7 +116,8 @@ def _swap_video_model(pack, model):
 @pytest.mark.private_data
 def test_m5_pack_passes_and_plans_1_30(tmp_path, capsys):
     """ExampleEdu's M5 PL pack, its take sized as D1 says (33 words at about 2.9 words a second, 1.5 s after the last
-    line: 13 s; the walkthrough's 15 s take came out slow, Task 21 fix round 2): $0.26 + $1.04 = $1.30."""
+    line: 13 s; the walkthrough's 15 s take came out slow, Task 21 fix round 2): $0.256 + $1.04 = $1.296, shown as $1.30
+    (#137: the lines and the plan exact, only the shown total rounded)."""
     run = _m5_run(tmp_path)
     pack = _pack("m5_pl_pack.json")
     assert _check(run, pack, stage="recipe") == []
@@ -128,17 +129,17 @@ def test_m5_pack_passes_and_plans_1_30(tmp_path, capsys):
     assert (code, out["status"], out["md"]) == (0, "done", "03_wip/pack_v01.md"), out
     s = state.load(run)
     assert set(s.planned) == {"ai_usd", "voice_credits"}
-    assert abs(s.planned["ai_usd"] - 1.30) < 1e-9 and s.planned["voice_credits"] == 0
+    assert abs(s.planned["ai_usd"] - 1.296) < 1e-9 and s.planned["voice_credits"] == 0
     assert s.planned_at >= before and flow._utc(s.planned_at).tzinfo is not None
     assert "$1.30" in out["message"] and "Approve the generation pack and its cost" in out["message"]
     md = (run.path / "03_wip" / "pack_v01.md").read_text(encoding="utf-8")
     assert md.startswith("# M5, paczka v01: “Mało kto wie, że Fortnite ma PEGI 12”")
-    assert "## Koszt" in md and "**$1.30**" in md
+    assert "## Koszt" in md and "**$1.30**" in md and "$0.256" in md       # the line exact, the total rounded
     assert stepchecks.run("pack_checked", run) is None
 
 
 @pytest.mark.private_data
-@pytest.mark.parametrize("pid,fixture,total", [("p4", "p4_host_pack.json", 1.21), ("p3", "p3_sections_pack.json", 1.13)])
+@pytest.mark.parametrize("pid,fixture,total", [("p4", "p4_host_pack.json", 1.214), ("p3", "p3_sections_pack.json", 1.134)])
 def test_pet_store_packs_pass(tmp_path, animatic_ready, pid, fixture, total):
     run = _pet_run(tmp_path, pid)
     pack = _pack(fixture)
@@ -186,7 +187,10 @@ def test_voice_credits_are_the_said_characters(tmp_path, animatic_ready):
     pack["cost"]["lines"][2].update({"units": 300, "cost": 150})
     pack["cost"]["totals"]["voice_credits"] = 150
     problems = _check(run, pack)
-    assert _fields(problems) == ["cost.lines"] and "price 300 characters, and the lines said hold 316" in problems[0].what
+    assert _fields(problems) == ["cost.lines"] and "price 300 characters, and the text sent to ElevenLabs holds 319" \
+        in problems[0].what
+    assert problems[0].todo == ("Write the voice line as 319 characters × 0.5 = 159.5 credits (kind voice_credits, unit "
+                                "character, model eleven_v4).")      # #140: the exact line, not a guess
     pack = _pack("p3_sections_pack.json")
     pack["speech"]["route"] = "h3_narrator"
     assert _fields(_check(run, pack)) == ["cost.lines[2].kind"]   # no ElevenLabs, no credits
@@ -203,7 +207,7 @@ def test_cost_line_math_checked(tmp_path):
     assert _fields(_check(run, pack)) == ["cost.totals.ai_usd"]
     pack = _pack("m5_pl_pack.json")
     pack["cost"]["lines"][1].update({"unit_price": 0.07, "cost": 0.91})
-    pack["cost"]["totals"]["ai_usd"] = 1.17
+    pack["cost"]["totals"]["ai_usd"] = 1.166
     problems = _check(run, pack)
     assert _fields(problems) == ["cost.lines[1].unit_price", "resolution.options"]
     assert "at 0.08 per second of output video" in problems[0].what
@@ -221,11 +225,11 @@ def test_cost_line_math_checked(tmp_path):
 
 
 def _m5_at_1080p():
-    """M5 at 1080p: its 13 s take priced at H3's 2K tier, $1.69, so $1.95 in all."""
+    """M5 at 1080p: its 13 s take priced at H3's 2K tier, $1.69, so $1.946 in all (shown as $1.95)."""
     pack = _pack("m5_pl_pack.json")
     pack["resolution"]["choice"] = "1080p"
     pack["cost"]["lines"][1].update({"criteria": "target resolution=2K", "unit_price": 0.13, "cost": 1.69})
-    pack["cost"]["totals"]["ai_usd"] = 1.95
+    pack["cost"]["totals"]["ai_usd"] = 1.946
     return pack
 
 
@@ -262,7 +266,7 @@ def test_cost_lines_tied_to_the_generated_items(tmp_path):
     run = _pet_run(tmp_path, "p4")
     pack = _pack("p4_host_pack.json")
     del pack["cost"]["lines"][1]
-    pack["cost"]["totals"]["ai_usd"] = 0.09
+    pack["cost"]["totals"]["ai_usd"] = 0.094
     problems = _check(run, pack)
     assert "take (minimax/h3) is generated and has no cost line." in _what(problems)
     pack = _pack("p4_host_pack.json")
@@ -272,8 +276,8 @@ def test_cost_lines_tied_to_the_generated_items(tmp_path):
     assert "priced at 768P, and take is made at 1080p" in problems[0].what
     pack = _pack("p4_host_pack.json")
     pack["cost"]["lines"][0]["units"] = 1
-    pack["cost"]["lines"][0]["cost"] = 0.05
-    pack["cost"]["totals"]["ai_usd"] = 1.17
+    pack["cost"]["lines"][0]["cost"] = 0.047
+    pack["cost"]["totals"]["ai_usd"] = 1.167
     problems = _check(run, pack)
     assert _fields(problems) == ["cost.lines[0].units"] and "host makes 2 images" in problems[0].what
     pack = _pack("p4_host_pack.json")
@@ -305,7 +309,7 @@ def test_upscale_option_needs_its_upscale_item(tmp_path):
                                   "criteria": "model variant=up_to_30fps, target resolution=1080p", "unit_price": 0.02,
                                   "unit": "second of output video", "units": 13, "cost": 0.26, "kind": "ai_usd",
                                   "price_file": "02_research/models/prices_2026-11-06_v03.json", "checked": "2026-11-06"})
-    pack["cost"]["totals"]["ai_usd"] = 1.56
+    pack["cost"]["totals"]["ai_usd"] = 1.556
     assert _check(run, pack) == []   # the option's $1.30 is the take's $1.04 and the upscale's $0.26
     pack["resolution"]["choice"] = "768p"
     assert "upscale upscales, and the chosen resolution 768p does not" in _what(_check(run, pack))
@@ -517,7 +521,8 @@ def test_speech_route_reference_and_elevenlabs(tmp_path):
     pack["speech"]["alternative_reason"] = "the user asked for an exact brand voice"
     problems = _check(run, pack)
     assert _fields(problems) == ["speech.route", "cost.lines"] and "needs ElevenLabs" in problems[0].what
-    assert "the lines said hold 189" in problems[1].what   # its voice credits are not priced
+    assert "the text sent to ElevenLabs holds 189" in problems[1].what   # its voice credits are not priced (one call
+    # a line on the lip-sync route: no spaces between them)
     pack = _pack("m5_pl_pack.json")
     pack["speech"]["voice_reference"] = {"user_words": "", "sample_s": 15}
     assert _fields(_check(run, pack)) == ["speech.voice_reference", "speech.voice_reference.sample_s"]
@@ -716,8 +721,8 @@ def test_d1_and_e2_wait_for_the_checks_and_a_replanned_pack_needs_a_new_yes(tmp_
     _backdate_yes(run)
     fewer = _m5_at_1080p()   # other items, at a lower total
     fewer["stages"][0]["items"][0]["images"] = 1
-    fewer["cost"]["lines"][0].update({"units": 1, "cost": 0.13})
-    fewer["cost"]["totals"]["ai_usd"] = 1.82
+    fewer["cost"]["lines"][0].update({"units": 1, "cost": 0.128})
+    fewer["cost"]["totals"]["ai_usd"] = 1.818
     assert _pack_cli(capsys, run, _write(run, fewer, 3))["replanned"] is True
     assert "--change" in flow.approval_gap(state.load(run), "ai_usd", None)
 
@@ -775,7 +780,7 @@ def _redo_line(pack, item):
     pack = copy.deepcopy(pack)
     line = next(x for x in pack["cost"]["lines"] if x["item"] == item and not x.get("redo"))
     pack["cost"]["lines"].append({**line, "what": f"{line['what']}, redo", "redo": True})
-    pack["cost"]["totals"]["ai_usd"] = round(pack["cost"]["totals"]["ai_usd"] + line["cost"], 2)
+    pack["cost"]["totals"]["ai_usd"] = round(pack["cost"]["totals"]["ai_usd"] + line["cost"], 3)
     return pack
 
 
@@ -803,7 +808,7 @@ def test_a_requested_redo_is_a_priced_line(tmp_path, capsys):
     assert _check(run, _redo_line(redo, "take")) == []
     cheap = copy.deepcopy(redo)                                   # a redo priced unlike its item
     cheap["cost"]["lines"][-1].update({"units": 5, "cost": 0.4})
-    cheap["cost"]["totals"]["ai_usd"] = 1.70
+    cheap["cost"]["totals"]["ai_usd"] = 1.696
     assert _fields(_check(run, cheap)) == ["cost.lines[2].units"]
     stray = copy.deepcopy(redo)
     stray["cost"]["lines"][-1]["item"] = "broll"
@@ -815,7 +820,7 @@ def test_a_requested_redo_is_a_priced_line(tmp_path, capsys):
     # through the CLI: the re-check at the higher total resets the plan, so the yes is asked again
     _pack_cli(capsys, run, _write(run, _pack("m5_pl_pack.json")))
     out = _pack_cli(capsys, run, _write(run, redo, 2))
-    assert out["replanned"] is True and abs(state.load(run).planned["ai_usd"] - 2.34) < 1e-9
+    assert out["replanned"] is True and abs(state.load(run).planned["ai_usd"] - 2.336) < 1e-9
 
 
 # --- #88: the voiceover's credits at the model's rate, its pace, and numbers in words -------------------
@@ -934,3 +939,40 @@ def test_a_storyboard_checked_before_the_change_keeps_its_accept_on_the_same_lin
     assert organic_pack._since(previous, organic_pack.item_marks(worded), organic_pack._old_marks(worded))[key] is None
     now = {"at": "2026-11-11T10:00:00+00:00", "since": {}, "marks": marks}   # checked by this engine: words alone
     assert organic_pack._since(now, organic_pack.item_marks(worded), organic_pack._old_marks(worded))[key] == now["at"]
+
+
+# --- #137 item 5 and #140: exact lines, the voice's ready numbers and its pace ---------------------------------------
+
+def test_a_line_of_five_images_at_0_047_is_0_235_and_the_totals_are_exact():
+    lines = [{"what": "cards ×5", "kind": "ai_usd", "unit_price": 0.047, "units": 5, "cost": 0.235}]
+    assert organic_pack.exact(0.047 * 5) == 0.235 and organic_pack._line_usd(0.235) == "$0.235"
+    assert organic_pack._line_usd(1.04) == "$1.04" and organic_pack._usd(0.235) == "$0.24"   # only a shown total
+    assert abs(lines[0]["cost"] - organic_pack.exact(lines[0]["unit_price"] * lines[0]["units"])) < organic_pack.TOL
+
+
+@pytest.mark.private_data
+def test_the_pack_check_gives_the_voice_numbers_and_warns_of_a_slow_voice(tmp_path, capsys, animatic_ready):
+    """#140: the answer carries the voice's characters and credits, refused or not; a voice slower than the script
+    (the channel's earlier recordings of it) is said before the voiceover is paid for, inside the pack approval."""
+    from tm import voice_pace
+    run = _pet_run(tmp_path, "p3")
+    pack = _pack("p3_sections_pack.json")
+    bad = copy.deepcopy(pack)
+    bad["cost"]["lines"][2].update({"units": 300, "cost": 150})
+    bad["cost"]["totals"]["voice_credits"] = 150
+    code, out = _cli(capsys, "organic", "pack", "check", "--run", str(run.path), "--file", _write(run, bad),
+                     "--stage", "pack", "--today", "2026-11-07")
+    assert code == 2 and out["voice"] == {"characters": 319, "credits": 159.5, "model": "eleven_v4", "rate": 0.5,
+                                          "rule": organic_pack.VOICE_RULE}
+    assert "Write the voice line as 319 characters × 0.5 = 159.5 credits" in out["message"]
+    history = voice_pace.history_path(run, pack["channel"])
+    history.parent.mkdir(parents=True, exist_ok=True)
+    voice = voice_pace.voice_of(pack)                             # the fixture's picked voice
+    history.write_text("".join(json.dumps({"voice_id": voice, "name": voice, "wps": w, "run": f"r{i}"})
+                               + "\n" for i, w in enumerate((2.40, 2.46, 2.52))), encoding="utf-8")
+    out = _pack_cli(capsys, run, _write(run, pack, 2))
+    assert out["voice"]["characters"] == 319 and "319 characters × 0.5 = 159.5 credits" in out["message"]
+    pace = out["voice_pace"]
+    assert pace["slow"] is True and pace["estimate"]["said"] == "from 3 earlier recordings of this voice on the channel"
+    assert "Before the voiceover is paid for" in out["message"] and "cut about" in out["message"]
+    assert stepchecks.run("pack_checked", run) is None            # a warning, not a stop (#148 line 22)

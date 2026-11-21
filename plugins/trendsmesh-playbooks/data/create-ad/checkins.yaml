@@ -102,6 +102,18 @@ checkins:
             Look at the take and its QA notes and choose: a precise cut of the original take, a voice clone of the
             line, a new take (its cost is shown first), or accept it as is.
 
+  # #137: asked only when the paid-call guard stops for it (on_demand: never due by itself), at every level. The
+  # approved casting is never dropped without the user's answer.
+  - id: refused_reference
+    name: A reference image was refused twice
+    route: {every_step: own, big_calls: own, hands_off: own}
+    on_demand: true
+    rule: >-
+      — (the owner's decision): the user's, at every level. "Without the reference image, the face in the ad will
+      not be the one you approved in casting." Try once more, another model that takes a reference image (priced
+      first), or go without it
+    choices: [retry, other_model, no_reference]
+
   - id: review
     name: Accept the edit
     route: {every_step: own, big_calls: own, hands_off: rule}

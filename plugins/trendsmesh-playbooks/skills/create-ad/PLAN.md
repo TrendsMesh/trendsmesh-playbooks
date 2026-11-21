@@ -65,7 +65,7 @@ The pages have since been built on the shared run page (`engine/src/tm/run_page/
 | S3 sources and claims | S3 | — | `ad_claims_checked` |
 | S4 script-board | S4 | `board` own / card / rule | `ad_board_checked` |
 | S5 production plan | S5 | `plan` 💰 own / card / rule | `ad_plan_checked` (sets `planned`) |
-| G1 first visual output | G1 (spends) | `visual` own / own / rule | — |
+| G1 first visual output | G1 (spends) | `refused_reference` own×3 on demand before G1 (#137: only when the paid-call guard stops for it); `visual` own / own / rule | — |
 | G2 audio | G2 (spends) | `audio` own / rule / rule | — |
 | G3 filled storyboard | G3 | `storyboard` 💰 own / own / rule | `ad_storyboard_checked` (re-plans with the video) |
 | G4 takes | G4 (spends) | `takes` own / rule / rule (`fails_qa` stops) | — |

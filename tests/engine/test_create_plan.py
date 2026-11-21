@@ -395,6 +395,105 @@ def test_the_video_waits_for_the_storyboard_yes_and_is_never_redone_automaticall
     assert "never regenerated automatically" in create_plan.guard(run, _args("presenter_take", 1.5))
 
 
+# --- #137 item 6: a refused reference image --------------------------------------------------------------------
+
+CASTING = "03_wip/casting_v01_0.png"
+REFUSED = "E006: Request blocked due to prohibited content guidelines"
+
+
+def _take_spec(run, *, reference=True, prompt="she says the line"):
+    inp = {"prompt": prompt, **({"reference_images": [CASTING]} if reference else {})}
+    _write(run, "spec.json", {"model": "gemini-omni", "input": inp})
+
+
+def _refused(run, n, prompt="she says the line"):
+    _write(run, f"03_wip/presenter-take_v{n:02d}.run.json", {
+        "model": "gemini-omni", "status": "failed", "error": REFUSED, "prediction_id": f"p{n}",
+        "input": {"prompt": prompt, "reference_images": ["file:casting_v01_0.png"]},
+        "refused_reference": "file:casting_v01_0.png", "cost_note": "failed before any output: $0 expected"})
+
+
+def _picked(run, choice, record):
+    s = state.load(run)
+    s.decisions.append({"checkin": "refused_reference", "choice": choice, "by": "user", "said": f"{choice}, please",
+                        "note": record, "at": flow._now()})
+    state.save(run, s)
+
+
+def test_a_refused_reference_gets_one_identical_retry_then_the_user_picks(run):
+    _ready_for(run, "storyboard")
+    _write(run, "03_wip/frame_1.png", {})
+    assert _check(run, "storyboard", storyboard()) == []
+    s = state.load(run)
+    s.decisions.append({"checkin": "storyboard", "choice": "approve", "by": "user", "at": flow._now()})
+    state.save(run, s)
+    take = _args("presenter_take", 1.5)
+    _take_spec(run)
+    assert create_plan.guard(run, take) is None
+    _refused(run, 1)                                              # refused once, nothing spent
+    assert create_plan.guard(run, take) is None                   # the one free retry, identical
+    _take_spec(run, reference=False)                              # the casting dropped: never without asking
+    said = create_plan.guard(run, take)
+    assert "leaves out the reference image casting_v01_0.png" in said and "Nothing was run or spent" in said
+    assert "the face in the ad will not be the one you approved in casting" in said
+    _take_spec(run, prompt="she says the line, a calmer take")    # a changed call is not the free retry
+    assert "The one free retry sends the same prompt" in create_plan.guard(run, take)
+    _take_spec(run)
+    _refused(run, 2)                                              # refused again: blocked until the user picks
+    said = create_plan.guard(run, take)
+    assert "refused 2 times" in said and "tm decide refused_reference" in said
+    assert '--note "presenter-take_v02.run.json"' in said
+    _picked(run, "retry", "presenter-take_v01.run.json")          # an answer to an older refusal does not count
+    assert "refused 2 times" in create_plan.guard(run, take)
+    _picked(run, "retry", "presenter-take_v02.run.json")
+    assert create_plan.guard(run, take) is None                   # try once more, the same call
+    _take_spec(run, reference=False)
+    assert "leaves out the reference image" in create_plan.guard(run, take)
+    _take_spec(run)
+    _refused(run, 3)
+    assert "refused 3 times" in create_plan.guard(run, take)      # each pick covers one more call
+    _picked(run, "no_reference", "presenter-take_v03.run.json")
+    _take_spec(run, reference=False)
+    assert create_plan.guard(run, take) is None                   # the user's own choice
+    _write(run, "03_wip/presenter-take_v04.run.json", {"status": "done", "model": "gemini-omni", "input": {}})
+    assert "never regenerated automatically" in create_plan.guard(run, take)    # the usual rules after it
+
+
+def test_the_refused_reference_rule_for_another_model():
+    from pathlib import Path
+
+    from tm import refused_refs
+    recs = [(Path(f"take_v0{n}.run.json"), {"model": "google/gemini-omni-1.2-flash", "status": "failed",
+                                             "error": REFUSED, "input": {"prompt": "p", "reference_images": ["file:c.png"]}})
+            for n in (1, 2)]
+    pick = [{"checkin": "refused_reference", "choice": "other_model", "note": "take_v02.run.json", "said": "H3"}]
+    same = {"model": "google/gemini-omni-1.2-flash", "input": {"prompt": "p", "reference_images": ["03_wip/c.png"]}}
+    other = {"model": "minimax/h3", "input": {"prompt": "q", "reference_image_urls": ["03_wip/c.png"]}}
+    assert "runs google/gemini-omni-1.2-flash again" in refused_refs.gap(recs, same, pick, "take")
+    assert refused_refs.gap(recs, other, pick, "take") is None
+    assert "leaves out" in refused_refs.gap(recs, {"model": "minimax/h3", "input": {"prompt": "q"}}, pick, "take")
+    assert refused_refs.gap(recs[:1], same, [], "take") is None            # one refusal: the identical retry
+
+
+def test_the_refused_reference_check_in_is_asked_only_on_demand(tmp_path):
+    from tm import checkins
+    for playbook in (CREATE_AD, "organic-video"):
+        c = checkins.load(playbook=playbook).checkins["refused_reference"]
+        assert c.on_demand and set(c.route.values()) == {"own"} and c.choices == ("retry", "other_model",
+                                                                                   "no_reference")
+    run = _new(tmp_path, level="hands_off")
+    s = state.load(run)
+    s.step = "G4"
+    state.save(run, s)
+    pic = flow._picture(state.load(run))
+    assert "refused_reference" in pic.owner                       # part of the run, from G1 on
+    assert not any("refused_reference" in item.ids for item in pic.items())   # never due by itself
+    for note in ("presenter-take_v02.run.json", "presenter-take_v03.run.json"):   # each answer is a new one
+        decide(run, "refused_reference", "retry", by="user", note=note, said="try it once more")
+    assert [d["note"] for d in state.load(run).decisions if d["checkin"] == "refused_reference"] == [
+        "presenter-take_v02.run.json", "presenter-take_v03.run.json"]
+
+
 def test_the_guard_is_create_ads_precheck(run, monkeypatch):
     from tm import tools
     seen = []

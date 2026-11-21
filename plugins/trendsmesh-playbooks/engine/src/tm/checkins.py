@@ -42,6 +42,9 @@ class Checkin:
     money: bool = False  # lets money be spent or ads go live: refused while the run is stopped
     rule_guess: str | None = None  # the rule in a run without TrendsMesh data
     yes_for: tuple[str, ...] = ()  # the budget kinds a yes here approves (a money check-in only)
+    # Asked only when the engine names it (a paid-call guard's stop, #137's refused reference): never due by itself, so
+    # it never holds its step; each answer is a new decision (no --change), and its route is "own" at every level.
+    on_demand: bool = False
 
     def rule_for(self, evidence: str | None) -> str:
         return self.rule_guess if evidence == "guess" and self.rule_guess else self.rule
@@ -117,6 +120,9 @@ def _parse(path: Path) -> Catalogue:
                 raise _bad(path, f"{cid}: on_choice {choice!r} requires an unknown check: "
                                  f"{', '.join(unknown)}")
         money = bool(raw.get("money", False))
+        on_demand = bool(raw.get("on_demand", False))
+        if on_demand and (set(route.values()) != {"own"} or card is not None or money):
+            raise _bad(path, f"{cid}: an on_demand check-in is the user's own at every level, on no card, with no money")
         yes_for = raw.get("yes_for", [])
         if not (isinstance(yes_for, list) and all(isinstance(k, str) and k for k in yes_for)):
             raise _bad(path, f"{cid}: yes_for must be a list of budget kinds")
@@ -126,7 +132,7 @@ def _parse(path: Path) -> Catalogue:
             id=cid, name=raw["name"], route=route, rule=str(raw["rule"]), card=card,
             choices=choices, on_choice=on_choice, stop=stop, money=money,
             rule_guess=str(raw["rule_guess"]) if raw.get("rule_guess") else None,
-            yes_for=tuple(yes_for))
+            yes_for=tuple(yes_for), on_demand=on_demand)
     for c in checkins.values():
         for choice, effect in c.on_choice.items():
             for other, wanted in (effect.get("needs") or {}).items():

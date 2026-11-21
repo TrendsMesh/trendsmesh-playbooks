@@ -64,13 +64,13 @@
   "cost": {
     "lines": [
       {"what": "obraz prowadzącej ×2", "item": "host", "model": "openai/gpt-image-2", "criteria": "model variant=high",
-       "unit_price": 0.128, "unit": "output image", "units": 2, "cost": 0.26, "kind": "ai_usd",
+       "unit_price": 0.128, "unit": "output image", "units": 2, "cost": 0.256, "kind": "ai_usd",
        "price_file": "02_research/models/prices_2026-11-04_v01.json", "checked": "2026-11-04"},
       {"what": "ujęcie H3 13 s, 768P", "item": "take", "model": "minimax/h3", "criteria": "target resolution=768P",
        "unit_price": 0.08, "unit": "second of output video", "units": 13, "cost": 1.04, "kind": "ai_usd",
        "price_file": "02_research/models/prices_2026-11-06_v01.json", "checked": "2026-11-06"}
     ],
-    "totals": {"ai_usd": 1.3, "voice_credits": 0},
+    "totals": {"ai_usd": 1.296, "voice_credits": 0},
     "currency_note": null
   },
   "facts": [

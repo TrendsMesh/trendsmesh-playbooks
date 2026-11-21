@@ -2,7 +2,8 @@
 the registry's groups, with today's price, before anything is generated. Organic AI video shows it at E1, Create an ad
 at S5 and Refresh an ad at D1 (`tm models page`, the same page for any task of the registry).
 
-    page_json(run, units_file)        organic video's page data: images, video, upscale, voice (tm.organic_pages.choices)
+    page_json(run, units_file)        organic video's page data: the sections its production type uses (#137,
+                                      `sections_for`: images, video, upscale, voice) (tm.organic_pages.choices)
     tasks_page_json(run, tasks, ...)  the page for any registry tasks (Create an ad, Refresh an ad)
     take(run, *, file, text, by_rule) 03_wip/models_vNN.json, which the next step starts from
     chosen(run)                       the latest choice of models in the run, or None
@@ -25,8 +26,15 @@ reads the rankings live too (`plugin.rankings_stale`).
 **Greyed out, with the reason**: a model with no price today; a model whose registry limits hold `photoreal_face`
 (Seedance) when a frame has a photoreal face (Replicate E005); a variant sending its own sound under a voiceover.
 
-Organic video's units come from the checked recipe: its video sections' seconds (or the script's), one first frame and
-one take per 15 s; a units file (`{"images", "video_seconds", "takes", "upscale_seconds"}`, `--file`) overrides them.
+Organic video's sections come from the recipe's production type (#137, `sections_for`): an animation only its voice
+(no Replicate price file is needed), stills with motion graphics their pictures (`illustrations`, or `photos` for a
+photoreal face) and the voice, AI footage and a talking character their first frames, the video, the upscale only
+when `generation.upscale` is not `none`, and the voice only on an ElevenLabs route; a video in sections the union.
+Only those are priced (`tm models ids --run R`) and summed. Its units come from the checked recipe: the pictures it
+plans (its images items' `images`, else one per shot), its video sections' seconds (or the script's) and a take per
+15 s, and the voiceover's characters as sent to ElevenLabs (`organic_pack.voice_numbers`); a units file (`{"images",
+"video_seconds", "takes", "upscale_seconds"}`, `--file`) overrides them. A page of tasks of a run that does not
+upscale ticks "No upscale" in advance (`upscale=False`).
 At Hands-off the ★ models are taken by rule (`take(..., by_rule=True)`), recorded as the rule's.
 """
 
@@ -116,19 +124,81 @@ def _narrated(pack: dict) -> bool:
     return organic_voiced.narrated(pack)
 
 
+def _production_types(pack: dict) -> set[str]:
+    """The production types the video is made of: its sections' for a video in sections, else its own."""
+    if pack.get("production") == "sections":
+        return {str(s.get("type")) for s in pack.get("sections") or []}
+    return {str(pack.get("production"))}
+
+
+def _image_items(pack: dict) -> list[dict] | None:
+    """The images stage's generated items, or None when the recipe has no stages written yet."""
+    if "stages" not in pack:
+        return None
+    return [item for st in pack.get("stages") or [] if st.get("stage") == "images" for item in st.get("items") or []
+            if item.get("model")]
+
+
+def _voiced(pack: dict, kinds: set[str]) -> bool:
+    """Whether ElevenLabs says a line: an animation or stills video with said lines (its voice is ElevenLabs'), or a
+    video whose speech route is an ElevenLabs one (an off-screen narrator before the route is written)."""
+    from tm import organic
+
+    said = any(ln.get("speaker") not in (None, "none") for ln in (pack.get("script") or {}).get("lines") or [])
+    if not said:
+        return False
+    route = (pack.get("speech") or {}).get("route")
+    if route is not None:
+        return route in organic.ELEVENLABS_ROUTES
+    return bool(kinds & {"animation", "stills_motion"}) or (
+        "ai_footage" in kinds and "talking_character" not in kinds)
+
+
+def sections_for(pack: dict, cfg: dict | None) -> dict[str, str]:
+    """The page's sections and the registry task each shows (issue #137), from the recipe's production type:
+    an animation is drawn for free, so only its voice; stills with motion graphics their pictures and voice; AI footage
+    and a talking character their first frames, video, the upscale only when the run upscales
+    (`generation.upscale`), and the voice only when ElevenLabs says a line; a video in sections the union."""
+    from tm import organic_pack
+
+    kinds = _production_types(pack)
+    video = bool(kinds & set(organic_pack.VIDEO_TYPES))
+    items = _image_items(pack)
+    out: dict[str, str] = {}
+    if (video or "stills_motion" in kinds) and (items is None or items):
+        out["images"] = "photos" if (video or _face(pack)) else "illustrations"
+    if video:
+        first_frame = bool(items) or (pack.get("host") or {}).get("kind") == "image" or items is None
+        out["video"] = "image_to_video" if first_frame else "text_to_video"
+        upscale = str(((cfg or {}).get("generation") or {}).get("upscale") or "none")
+        if upscale != "none":
+            out["upscale"] = "upscale"
+    if _voiced(pack, kinds):
+        out["voice"] = "voiceover"
+    return out
+
+
+def _pictures(pack: dict) -> int:
+    """The pictures the recipe plans: its images items' `images`, else one per still or shot of the script."""
+    items = _image_items(pack)
+    if items:
+        return sum(int(item.get("images") or 1) for item in items)
+    lines = (pack.get("script") or {}).get("lines") or []
+    return max(1, sum(1 for ln in lines if str(ln.get("shot") or "").strip()) or len(lines))
+
+
 def _pack_units(pack: dict) -> dict:
-    """This video's units from its recipe: the video sections' seconds (else the script's), a first frame and a take
-    for each 15 s of each section, the upscale over the same seconds, and the voiceover's characters."""
+    """This video's units from its recipe: the pictures it plans (`_pictures`), the video sections' seconds (else the
+    script's) and a take for each 15 s of each section, the upscale over the same seconds, and the voiceover's
+    characters (`organic_pack.voice_numbers`, the count the pack check and ElevenLabs use)."""
     from tm import organic_pack
 
     spans = [max(0.0, float(s.get("to") or 0) - float(s.get("from") or 0)) for s in pack.get("sections") or []
              if s.get("type") in organic_pack.VIDEO_TYPES]
     seconds = sum(spans) or float((pack.get("script") or {}).get("seconds") or TAKE_MAX_S)
     takes = sum(max(1, math.ceil(s / TAKE_MAX_S)) for s in spans if s) or max(1, math.ceil(seconds / TAKE_MAX_S))
-    said = "".join(ln.get("text") or "" for ln in (pack.get("script") or {}).get("lines") or []
-                   if ln.get("speaker") not in (None, "none"))
-    return {"images": takes, "video_seconds": seconds, "takes": takes, "upscale_seconds": seconds,
-            "characters": len(said)}
+    return {"images": _pictures(pack), "video_seconds": seconds, "takes": takes, "upscale_seconds": seconds,
+            "characters": organic_pack.voice_numbers(pack)["characters"]}
 
 
 def _units_file(run: RunFolder, rel: str | None) -> dict:
@@ -175,7 +245,7 @@ def price_ids(tasks) -> list[str]:
 
 
 def _rows(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, narrated: bool, today: date, t,
-          price_path: Path | None) -> tuple[list[dict], dict, list[str]]:
+          price_path: Path | None, upscale: bool = True) -> tuple[list[dict], dict, list[str]]:
     from tm.organic_gates import item_id
 
     try:
@@ -248,27 +318,32 @@ def _rows(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, 
                             "recipe_to_write": None if (row["provider"] != "replicate" or recipe_of(run, recipe))
                             else library_recipe(model), "label": label}
         usable = [o for o in options if not o.get("disabled")]
-        pick = next((o for o in usable if o["recommended"]), None) or next(
+        none = [o for o in usable if task == "upscale" and entries[o["id"]]["model"] is None]
+        pick = (none[0] if none and not upscale else None) or next((o for o in usable if o["recommended"]), None) or next(
             (o for o in usable if o["group"] == t("group_suggested")), None) or (usable[0] if usable else None)
         if pick:
             pick["default"] = True
         for o in options:
             o["recommended"] = o is pick
-        out.append({"id": sid, "kind": "one", "title": t(f"task_{sid}"),
-                    "hint": t(f"hint_{sid}") if sid in ORGANIC else t("hint_task"),
+        title, hint = (t(f"task_{sid}"), t(f"hint_{sid}") if sid in ORGANIC else t("hint_task"))
+        if sid == "images" and task == "illustrations":          # a stills video's cards, not a first frame
+            title, hint = t("task_cards"), t("hint_cards")
+        elif sid == "video" and task == "text_to_video":
+            title = t("task_video_text")
+        out.append({"id": sid, "kind": "one", "title": title, "hint": hint,
                     "options": options, "text": {"label": t("own_model"), "value": ""}})
         plugin[sid] = entries
     return out, plugin, problems
 
 
 def _page(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, narrated: bool, lang: str,
-          title: str, today: date | None, extra: dict) -> dict:
+          title: str, today: date | None, extra: dict, upscale: bool = True) -> dict:
     today = today or date.today()
     tr = organic_pages.translator(lang)
     t = lambda key, **v: tr(_M + key, **v)
     price_path = latest_prices(run)
     out, plugin, problems = _rows(run, sections, units, face=face, narrated=narrated, today=today, t=t,
-                                  price_path=price_path)
+                                  price_path=price_path, upscale=upscale)
     if problems:
         raise Stop(f"The Models page cannot be built: {'; '.join(dict.fromkeys(problems))}. Nothing was written. Read "
                    f"the prices, then build again; {AGAIN}.")
@@ -283,19 +358,35 @@ def _page(run: RunFolder, sections: dict[str, str], units: dict, *, face: bool, 
                        "registry_checked": model_registry.checked().isoformat(), "rankings_stale": stale}}
 
 
+def _cfg(run: RunFolder) -> dict:
+    try:
+        return config.load(run)
+    except ValueError:                                   # a run whose config is not written yet
+        return {}
+
+
+def run_sections(run: RunFolder) -> dict[str, str]:
+    """The sections of this organic run's page (`sections_for` its checked recipe). A Stop without one."""
+    return sections_for(_recipe_pack(run)[1], _cfg(run))
+
+
 def page_json(run: RunFolder, units_file: str | None = None, *, today: date | None = None) -> dict:
     """Organic video's Models page data (the module docstring). A Stop for a stale or missing price file."""
     pack_rel, pack = _recipe_pack(run)
     units = {**_pack_units(pack), **_units_file(run, units_file)}
-    return _page(run, dict(ORGANIC), units, face=_face(pack), narrated=_narrated(pack),
+    sections = sections_for(pack, _cfg(run))
+    if not sections:
+        raise Stop(f"This video ({pack.get('production')}) makes nothing a model is chosen for: nothing is generated "
+                   f"and no voice is recorded, so there is no Models page; go on to the pack; {AGAIN}.")
+    return _page(run, sections, units, face=_face(pack), narrated=_narrated(pack),
                  lang=organic_pages.lang_of(pack), title=pack["title"], today=today,
                  extra={"pack": pack_rel, "candidates": units_file})
 
 
 def tasks_page_json(run: RunFolder, tasks: list[str], units: dict, *, face: bool = False, narrated: bool = False,
-                    title: str | None = None, today: date | None = None) -> dict:
+                    title: str | None = None, today: date | None = None, upscale: bool = True) -> dict:
     """The Models page of any registry `tasks` (Create an ad's S5, Refresh an ad's D1), each a section named as the
-    task, priced for `units`."""
+    task, priced for `units`. `upscale=False` (the run does not upscale) ticks "No upscale" in advance."""
     known = model_registry.tasks()
     wrong = [t for t in tasks if t not in known]
     if wrong or not tasks:
@@ -303,7 +394,7 @@ def tasks_page_json(run: RunFolder, tasks: list[str], units: dict, *, face: bool
     lang = str((config.load(run).get("languages") or {}).get("working") or "en") if (run.path / config.FILE).is_file() \
         else "en"
     return _page(run, {t: t for t in tasks}, units, face=face, narrated=narrated, lang=lang,
-                 title=title or run.path.name, today=today, extra={"candidates": None})
+                 title=title or run.path.name, today=today, extra={"candidates": None}, upscale=upscale)
 
 
 def build(run: RunFolder, units_file: str | None = None) -> dict:

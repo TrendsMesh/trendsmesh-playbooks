@@ -28,7 +28,7 @@ steps:
   - {id: S4, title: Script-board, outputs: [video_ad], checkins: [board], spends: false, requires: [ad_board_checked], ref: "skills/create-ad/references/flow.md#s4"}
   - {id: S5, title: Production plan and its cost, outputs: [video_ad], checkins: [plan], spends: false, requires: [ad_plan_checked], ref: "skills/create-ad/references/flow.md#s5"}
   # G1 to G4: the staged gates (CA8, CA9)
-  - {id: G1, title: First visual output, outputs: [video_ad], checkins: [visual], spends: true, budget: ai_usd, skip_when: {plan: reject}, ref: "skills/create-ad/references/flow.md#g1"}
+  - {id: G1, title: First visual output, outputs: [video_ad], before: [refused_reference], checkins: [visual], spends: true, budget: ai_usd, skip_when: {plan: reject}, ref: "skills/create-ad/references/flow.md#g1"}
   - {id: G2, title: Audio, outputs: [video_ad], checkins: [audio], spends: true, skip_when: {plan: reject}, ref: "skills/create-ad/references/flow.md#g2"}
   - {id: G3, title: Filled storyboard and the paid video, outputs: [video_ad], checkins: [storyboard], spends: false, skip_when: {plan: reject}, requires: [ad_storyboard_checked], ref: "skills/create-ad/references/flow.md#g3"}
   - {id: G4, title: Takes, outputs: [video_ad], checkins: [takes], spends: true, budget: ai_usd, skip_when: {plan: reject, storyboard: reject}, requires: [ad_takes_checked], ref: "skills/create-ad/references/flow.md#g4"}
