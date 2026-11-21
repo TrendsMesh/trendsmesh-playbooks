@@ -47,6 +47,11 @@ page and one in chat count the same. Rules: `rules.md`.
 
 - First `tm evidence trendsmesh --run R --why <reason>` (TrendsMesh answers with data) or `tm evidence guess --run R
   --why "the user chose Free"` (Free, the user's choice at readiness; refused without it).
+- **`tm trends collect on --run R --json` right before the first TrendsMesh or Ad Library call**, and again at every
+  resume, right before the next TrendsMesh, Ad Library or page call (`references/trend-collection.md`); `tm trends
+  collect off --run R` when the run ends. The collector saves every TrendsMesh and Ad Library answer of this session
+  (`02_research/trend_<id>.json`, `02_research/search/`, `02_research/videos/`, `02_research/ad_library/`) and the
+  page's reads (`03_wip/decisions/`), also an answer too large to show.
 - **Model ads (about 5):** ask first whether the user wants suggestions or has one. TrendsMesh paid (`origin=ad`)
   first. When it has no ads in the niche, say so and offer a Meta Ad Library search (`ads_library_search`), filtered
   for relevance; its keyword search is loose and covers commercial ads mainly for EU delivery, so outside the EU it
@@ -54,11 +59,10 @@ page and one in chat count the same. Rules: `rules.md`.
   `"source": "guess"`.
 - **Trends:** any type that fits product, persona and model ad; the default recipe one hook, one format, one topic.
   Sound trends only with a licence for ads (`licence: ads`), otherwise as inspiration. Organic clips are evidence,
-  never footage. Save each MCP answer in `02_research/` and summarise large answers with a script, never read them
-  whole. **Each TrendsMesh trend a concept uses has its card saved before the check**: its `get_trend` answer, with
-  `tm trends ingest --run R --tool get_trend --input '{"trend_id": "<id>"}' --file <the answer>`, which writes
-  `02_research/trend_<id>.json` (this run does not save answers by itself); `tm ad check concepts` names each card
-  that is missing.
+  never footage. Every TrendsMesh and Ad Library answer is saved by the collector; searches, lists and video pages
+  show a short summary (with `saved_to`); use `tm trends ingest` only when the hook says an answer was not saved.
+  **Each TrendsMesh trend a concept uses has its card saved before the check**: call `get_trend` for it, and the
+  collector writes `02_research/trend_<id>.json`; `tm ad check concepts` names each card that is missing.
 - Write `03_wip/concepts_vNN.json`: `{"model_ads": [{"id", "name", "source" (trendsmesh, ad_library, user, guess),
   "why" (what to take from it), "saved" (the saved answer, for trendsmesh and ad_library), "run_days", "clip" (its
   first ~15 s saved in the run, for the page)}], "trends": [{"id", "type" (hook, format, topic, sound, hashtag,

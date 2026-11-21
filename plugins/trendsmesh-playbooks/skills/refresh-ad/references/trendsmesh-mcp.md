@@ -40,8 +40,10 @@ reach, confidence, status, since, active for days, visible until, languages and
 - Topic trends for a topic swap (`variants.md` section 4b, not copied here): confirmed, rising,
   `sensitivity_level` none, outside politics and news, fitting the season, with a one-sentence
   bridge to the product's promise. TrendsMesh gives languages, not demographics.
-- **Save what you use:** every answer a decision rests on goes verbatim into `02_research/`
-  (`trend_<id>.json`, `videos_<id>_pNN.json`, `search_<phrase>_v01.json`) and the manifest.
+- **Every answer is saved by the collector** (on since A1) into `02_research/` (`trend_<id>.json`,
+  `videos/<id>_pNN.json`, `search/`, `lists/`) with a manifest row; searches, lists and video pages
+  come back as a short summary with `saved_to`. Only an answer the hook says was not saved is
+  saved by hand (`tm trends ingest`).
 - Organic clips are evidence and inspiration only, never footage for the ad. Trending sounds are
   usually not licensed for paid ads.
 - The internal "why" route of the old trend API is not used: clients cannot reach it.

@@ -63,6 +63,18 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A model review every two weeks.** A scheduled check compares the public rankings and Replicate's and ElevenLabs'
   pages with the list and opens one issue for the owner with what is new, what changed price and what is gone.
   Nothing in the list changes without the owner's decision.
+- **Large answers are saved by themselves again, on Windows too.** When an answer is too large for Claude Code to
+  show, the collector reads the file Claude Code saved it to in every form Claude Code 2.1.326 writes its notice
+  (a count grouped with a no-break space, a file name with a suffix), and you see the usual short summary: no more
+  `tm trends ingest` by hand for a search, a list or a page of videos. A Meta read or a page answer too large to show
+  is saved from that file too, never as the notice. When the file can't be read, the message says which check it
+  failed instead of "it is not JSON".
+- **Refresh an ad saves its Meta answers by itself.** From A1 on, the collector keeps every Meta read (with
+  `ads_get_ad_videos`), TrendsMesh, Ad Library and page answer of the run, and `tm r1` takes the weekly ad and account
+  reads from `01_base/meta/` by the input each was fetched with, never the daily rows, and says which it took. No
+  more saving each Meta page by hand.
+- **Create an ad saves its trend cards by itself.** From S1 on, every `get_trend`, search, video page and Ad Library
+  answer, and the page's decisions read, is saved to the run: `tm ad check concepts` finds the cards with no ingest.
 
 ## 0.13.1
 

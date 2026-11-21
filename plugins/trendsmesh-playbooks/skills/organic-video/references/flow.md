@@ -274,10 +274,12 @@ at each part and every few calls, which part is running and how many are done ("
    **What TrendsMesh lacks today**, said where it matters and filed with the backend requests:
    there is no sound licence flag, so a sound is "organic only", and a business account gets the
    commercial-library alternative in the kit; `momentum` and `visible_until` are absent.
-   **Large answers:** a search of 15 or a list of 50 is often too large for Claude Code to show. It
-   saves the answer to a file and shows a notice; the collector reads that file and saves the
-   answer itself, so you get the usual summary. Only an answer that says "This answer was not
-   saved…" is ingested by hand.
+   **Large answers:** a search of 15, a list of 50 or a page of videos is often too large for Claude
+   Code to show. It saves the answer to a file and shows a notice (in every form Claude Code writes
+   it, the Windows one too); the collector reads that file and saves the answer itself, so you get
+   the usual short summary in place of the notice: no `tm trends ingest`, and no reading the file.
+   Only an answer that says "This answer was not saved…" is ingested by hand: the hook then names
+   the check the file failed and the command to run.
 5. Before a long pull, `get_usage` (pacing: `trend-collection.md`). A limit hit mid-search is a
    stop you record (`tm stop`), with the reset time.
 6. `tm done B1 --run R`.

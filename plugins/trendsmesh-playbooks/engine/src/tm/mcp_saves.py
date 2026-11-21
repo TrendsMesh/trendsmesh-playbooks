@@ -19,8 +19,8 @@ Each answer is written in PB04's envelope `{"_tool", "_input", "_at", "answer"}`
 by their `_input` (the audience order, the near-duplicate check, the page's decisions).
 
 `tm trends ingest` files a database read (`page_read`) under `DECISIONS` in any run, where `tm page
-decision` looks, also in a run whose session had no collector (a run started before 0.14.0's collector
-for refresh-ad and create-ad, or one whose answer the hook said it did not save).
+decision` looks, also in a run whose session had no collector (a refresh-ad or create-ad run started
+before those playbooks collected, issue #128), or for an answer the hook said it did not save.
 """
 
 from __future__ import annotations
@@ -116,7 +116,7 @@ def kept_by(playbook: str | None, tool: str, tool_input: Any = None) -> bool:
 
 def page_read(tool: str, tool_input: Any = None) -> bool:
     """Whether this is a read of a page's database that is kept (`where`: under `DECISIONS`): `ingest` files it
-    there in any run, also one whose playbook has no collector (Refresh an ad)."""
+    there in any run, also one whose session did not collect."""
     found = where(tool, tool_input)
     return found is not None and found[0] == DECISIONS
 
