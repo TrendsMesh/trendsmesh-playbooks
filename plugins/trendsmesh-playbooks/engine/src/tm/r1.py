@@ -380,18 +380,31 @@ def _answer(path: str) -> object:
     return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
-_AGAIN = ("Save the Meta answer of ads_get_ad_entities as it came (meta-mcp.md) and give that file; "
-          "nothing was ranked.")
+_AGAIN = ("Fetch it again with ads_get_ad_entities (the collector saves the answer in 01_base/meta), or give "
+          "the Meta answer saved as it came (meta-mcp.md); nothing was ranked.")
 
 
-def _read(files: list[str], what: str) -> tuple[dict[str, list[Row]], bool]:
+def _read(files: list[str], what: str, *, once: bool = False) -> tuple[dict[str, list[Row]], bool]:
     """Every file's ads joined, and whether any raw row holds a readable `results`. ValueError naming
-    the file when it gives no rows, or names an ad none of whose rows can be read."""
+    the file when it gives no rows, or names an ad none of whose rows can be read. With `once` (the
+    collector's files, oldest first), a row of the same ad and days as one in a later file is that
+    week fetched again: only the later file's row counts. Rows of one file are never dropped."""
     ads: dict[str, list[Row]] = {}
     readable = False
+    later: set[tuple[str, date, date]] = set()
+    parts = []
     for f in files:
         data = _answer(f)
-        part = load_ads(data)
+        parts.append((f, data, load_ads(data)))
+    if once:
+        for i in range(len(parts) - 1, -1, -1):
+            f, data, part = parts[i]
+            kept = {ad: [r for r in rows if (r.ad_id or ad, r.start, r.stop) not in later]
+                    for ad, rows in part.items()}
+            later |= {(r.ad_id or ad, r.start, r.stop) for ad, rows in part.items() for r in rows}
+            parts[i] = (f, data, part, {ad: rows for ad, rows in kept.items() if rows})
+    for item in parts:
+        f, data, part = item[:3]
         if not any(part.values()):
             raise ValueError(f"{Path(f).name} holds no {what} rows of a Meta read (rows with a date). {_AGAIN}")
         empty = next((ad for ad, rows in part.items() if not rows), None)
@@ -402,9 +415,106 @@ def _read(files: list[str], what: str) -> tuple[dict[str, list[Row]], bool]:
         if raw is None:   # {ad_id: [rows]}
             raw = [r for rs in data.values() for r in rs if isinstance(r, dict)]
         readable = readable or any(results_readable(r.get("results")) for r in raw)
-        for ad_id, rows in part.items():
+        for ad_id, rows in (item[3] if once else part).items():
             ads.setdefault(ad_id, []).extend(rows)
     return ads, readable
+
+
+# --- the collector's files (issue #128) ------------------------------------------------------------
+#
+# A refresh-ad run collects (trend_spool.COLLECTING): every ads_get_ad_entities answer is saved as
+# 01_base/meta/ads_get_ad_entities_vNN.json in the collector's envelope {"_tool", "_input", "_at", "answer"},
+# with the same input in its manifest row. Without --ads (and --account), `pick` chooses R1's files from
+# them by that input: `weekly` says which are weekly ad or account totals and why each other one is not.
+# A later read that extends A1 (issue #143: the spend-filtered id list, the ad links) adds its own rule
+# here, beside `weekly`.
+
+COLLECTED = "01_base/meta"
+ENTITIES = "ads_get_ad_entities"
+WEEKLY = 7
+
+
+@dataclass
+class Picked:
+    """The files `pick` chose: R1's ad and account reads, oldest first, where the account came from
+    (`account`, or `ads` when no account read holds rows: the ad rows are summed), and every other
+    saved read with why it was left out."""
+    ads: list[Path]
+    account: list[Path]
+    account_from: str
+    skipped: list[tuple[Path, str]] = field(default_factory=list)
+
+    def to_json(self, run: RunFolder) -> dict:
+        def rel(p: Path) -> str:
+            try:
+                return p.resolve().relative_to(run.path.resolve()).as_posix()
+            except ValueError:
+                return str(p)
+        return {"ads": [rel(p) for p in self.ads], "account": [rel(p) for p in self.account],
+                "account_from": self.account_from,
+                "skipped": [{"file": rel(p), "why": why} for p, why in self.skipped]}
+
+
+def weekly(tool_input: object) -> tuple[str | None, str | None]:
+    """("ad" or "account", None) for the input of a weekly ads_get_ad_entities read (`level` ad or account,
+    `time_increment` 7, as a number or text); else (None, why it is not one of R1's reads)."""
+    given = tool_input if isinstance(tool_input, dict) else {}
+    level, step = given.get("level"), given.get("time_increment")
+    step = None if step is None else str(step).strip()
+    if level not in ("ad", "account"):
+        return None, f"not an ad or account read (level {level})" if level else "no level"
+    if step == str(WEEKLY):
+        return level, None
+    if step == "1":
+        return None, "daily rows (time_increment 1)"
+    return None, f"not weekly (time_increment {step})" if step else "not weekly (no time_increment)"
+
+
+def _version(path: Path) -> int:
+    stem = path.stem.rsplit("_v", 1)
+    return int(stem[1]) if len(stem) == 2 and stem[1].isdigit() else 0
+
+
+def _has_rows(path: Path) -> bool:
+    try:
+        return any(load_ads(_answer(str(path))).values())
+    except (OSError, ValueError):
+        return False
+
+
+def pick(run: RunFolder, ads: list[Path] | None = None) -> Picked:
+    """R1's reads among the collector's files (`COLLECTED`), by the input each was fetched with (`weekly`):
+    the weekly ad reads, unless `ads` are given, and the weekly account reads; when none of these holds
+    rows, the ad reads stand in for the account (meta-mcp.md). ValueError when no weekly ad read is saved
+    and none is given."""
+    folder = run.path / COLLECTED
+    found = sorted(folder.glob(f"{ENTITIES}_v*.json"), key=_version) if folder.is_dir() else []
+    chosen: dict[str, list[Path]] = {"ad": [], "account": []}
+    skipped: list[tuple[Path, str]] = []
+    for path in found:
+        try:
+            saved = _answer(str(path))
+        except (OSError, ValueError):
+            skipped.append((path, "not readable JSON"))
+            continue
+        if not isinstance(saved, dict) or saved.get("_tool") != ENTITIES or "answer" not in saved:
+            skipped.append((path, "not the collector's envelope"))
+            continue
+        level, why = weekly(saved.get("_input"))
+        if level is None:
+            skipped.append((path, why))
+        else:
+            chosen[level].append(path)
+    ad_files = list(ads) if ads else chosen["ad"]
+    if not ad_files:
+        raise ValueError(f"No weekly ad read is saved in {COLLECTED} ({ENTITIES} at level ad, time_increment "
+                         f"{WEEKLY}): turn collection on (tm trends collect on --run R) and fetch A1's weekly "
+                         "totals (flow.md#a1), or give the files with --ads. Nothing was ranked.")
+    account = [p for p in chosen["account"] if _has_rows(p)]
+    skipped += [(p, "the account read holds no rows") for p in chosen["account"] if p not in account]
+    if account:
+        return Picked(ad_files, account, "account", skipped)
+    return Picked(ad_files, ad_files, "ads", skipped)
 
 
 def read_summary(ads: dict[str, list[Row]], account: list[Row]) -> dict:
@@ -432,13 +542,14 @@ def _check(ads: dict[str, list[Row]], results_read: bool, account: list[Row]) ->
 
 def _setup(p: argparse.ArgumentParser) -> None:
     p.add_argument("--run", required=True, help="the run folder")
-    p.add_argument("--ads", required=True, nargs="+",
+    p.add_argument("--ads", nargs="+",
                    help="JSON files: the Meta answer saved as it came ({\"ad_entities\": \"<rows>\", ...}, "
                         "{\"data\": [rows]} or the collector's envelope), a flat list of rows with id, or "
-                        "{ad_id: [rows]}; several files (pages) are joined")
-    p.add_argument("--account", required=True, nargs="+",
+                        "{ad_id: [rows]}; several files (pages) are joined. Default: the collector's weekly ad "
+                        f"reads in {COLLECTED} (ads_get_ad_entities, level ad, time_increment 7)")
+    p.add_argument("--account", nargs="+",
                    help="JSON files of account-level rows (or every ad's rows: they are summed), "
-                        "in the same shapes")
+                        "in the same shapes. Default: the collector's weekly account reads, else the ad files")
     p.add_argument("--today", help="ISO date, default today")
     p.add_argument("--json", action="store_true")
 
@@ -448,6 +559,12 @@ def _run(args: argparse.Namespace) -> int:
         run = RunFolder.open(Path(args.run))
         args.ads = [str(run.given(f)) for f in args.ads or []]          # a run-relative answer, whatever the cwd
         args.account = [str(run.given(f)) for f in args.account or []]
+        own_ads, own_account = bool(args.ads), bool(args.account)
+        picked = None
+        if not (own_ads and own_account):                               # the collector's files (issue #128)
+            picked = pick(run, [Path(f) for f in args.ads] or None)
+            args.ads = args.ads or [str(p) for p in picked.ads]
+            args.account = args.account or [str(p) for p in picked.account]
         today = date.fromisoformat(args.today) if args.today else date.today()
         from tm import config
         config_file = run.path / config.FILE
@@ -456,8 +573,8 @@ def _run(args: argparse.Namespace) -> int:
             if bad:
                 return cli.fail(args, " ".join(f"{p.what} {p.todo}" for p in bad))
         cfg = WinnerCfg.from_config(config.load(run) if config_file.is_file() else None)
-        ads, results_read = _read(args.ads, "ad")
-        account = [r for rs in _read(args.account, "account")[0].values() for r in rs]
+        ads, results_read = _read(args.ads, "ad", once=not own_ads)
+        account = [r for rs in _read(args.account, "account", once=not own_account)[0].values() for r in rs]
         _check(ads, results_read, account)
         read = read_summary(ads, account)
         ranking = rank(ads, account, cfg, today)
@@ -475,9 +592,15 @@ def _run(args: argparse.Namespace) -> int:
               f"{read['spend']}, results {read['results']}; {read['account_rows']} account rows."
             + "".join(f"\n{c.rank}. {c.name or c.ad_id}: value to recover {c.value_to_recover}"
                       for c in rows))
-    cli.emit(args, {"status": "done", "file": f"01_base/{target.name}",
-                    "fading": [c.ad_id for c in rows], "candidates": len(ranking.candidates),
-                    "read": read}, text)
+    payload = {"status": "done", "file": f"01_base/{target.name}", "fading": [c.ad_id for c in rows],
+               "candidates": len(ranking.candidates), "read": read}
+    if picked is not None:
+        payload["picked"] = picked.to_json(run)
+        took = payload["picked"]
+        text += (f"\nTook the collector's weekly reads: ads {', '.join(took['ads'])}; account "
+                 + (', '.join(took['account']) if took["account_from"] == "account" else "from the ad rows")
+                 + (f"; left out {len(took['skipped'])} other reads" if took["skipped"] else "") + ".")
+    cli.emit(args, payload, text)
     return 0
 
 
