@@ -384,7 +384,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      `product_shape`, `same_character`, `fast_motion`, `physics`, `model_text`, `speech`,
      `long_takes`, `several_characters`; `case` where the risk has one), `transfer`, `weak_link` (an
      Inspire or a transfer names it), `series` (a used trend continues a series), `seed` (the run's
-     seed id, or null), `aesthetic`, and `styles` for an animation. For
+     seed id, or null), `aesthetic`, `styles` (any production type, issue #138), `look` (`channel`: the
+     channel's own style; `other`: another look). For
      example, ExampleEdu's talking-host idea: `{"production": "talking_character", "output": "script",
      "risk_hits": [{"item": "speech", "mitigation": "one 15 s take, the script sized at 2.8 to 3
      words a second"}], "transfer": false, "weak_link": "the evidence is English kids asking a
@@ -395,6 +396,14 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    animation's styles, the production types the stack hides (for an AI video only), the product
    level against the channel's store, used trends without a series, the seed, and that the file
    never says "no trend found". Exit 2 lists the problems: fix them in the next `_vNN`.
+   **Variety** (issue #138): each idea names a format rising now among its trends (a `format_trend`
+   of the shortlist whose momentum is rising), and no two ideas share a format and a production type
+   (unless the shortlist has fewer rising formats than ideas). When the channel has its own style
+   (its `video_style`, or a style it picked 3 times or more), each idea says its `look`, and at
+   least one is `other`, from a format rising now; with no rising format, a production type the
+   channel-style ideas do not use. Only when the user says every idea keeps the channel's style:
+   `tm organic looks --run R --channel-only --said "<their words>" --json` (`--clear` undoes it).
+   The page shows "N ideas in your channel's style, M in other styles" above the ideas.
 4. `tm done C1 --run R`.
 
 <a id="c2"></a>

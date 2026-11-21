@@ -166,6 +166,14 @@ def _setup(p: argparse.ArgumentParser) -> None:
     c.add_argument("--file", required=True,
                    help="the guesses file, 03_wip/guess_trends_vNN.json, relative to the run folder")
     c.add_argument("--json", action="store_true")
+    lk = sub.add_parser("looks", help="record the user's words that every idea keeps the channel's own style (C1, "
+                                      "issue #138), or clear them")
+    lk.add_argument("--run", required=True, help="the run folder")
+    lk_mode = lk.add_mutually_exclusive_group(required=True)
+    lk_mode.add_argument("--channel-only", action="store_true", help="every idea of the batch in the channel's style")
+    lk_mode.add_argument("--clear", action="store_true", help="remove the record: at least one idea in another look")
+    lk.add_argument("--said", default=None, help="the user's own words")
+    lk.add_argument("--json", action="store_true")
     p = sub.add_parser("proposals", help="the proposals of an idea run (C1)")
     ps = p.add_subparsers(dest="proposals_action", required=True)
     c = ps.add_parser("check", help="check a proposals file and mark it checked")
@@ -1465,6 +1473,17 @@ def _stack(args: argparse.Namespace) -> int:
     return 0
 
 
+def _looks(args: argparse.Namespace) -> int:
+    from tm import organic_proposals
+
+    run = RunFolder.open(Path(args.run))
+    got = organic_proposals.record_looks(run, said=args.said, clear=args.clear)
+    message = ("Recorded: every idea of the batch keeps the channel's own style (the user's words)." if got["channel_only"]
+               else "Cleared: at least one idea of the batch is in another look.")
+    cli.emit(args, {"status": "done", **got, "message": message}, message)
+    return 0
+
+
 def _edit(args: argparse.Namespace) -> int:
     from tm import organic_edit
 
@@ -1472,7 +1491,7 @@ def _edit(args: argparse.Namespace) -> int:
 
 
 _ACTIONS = {"stack": _stack, "videos": _videos, "used": _used, "history": _history, "seed-check": _seed_check,
-            "guesses": _guesses, "proposals": _proposals, "page": _page, "script": _script, "decisions": _decisions, "start": _start,
+            "guesses": _guesses, "looks": _looks, "proposals": _proposals, "page": _page, "script": _script, "decisions": _decisions, "start": _start,
             "week": _week, "flexible": _flexible, "deliver-week": _deliver_week, "drop-slot": _drop_slot,
             "pack": _pack, "redo": _redo, "pick": _pick, "upscale": _upscale,
             "dashboard-checked": _dashboard_checked, "atlas-styles": _atlas_styles, "atlas-prompt": _atlas_prompt,

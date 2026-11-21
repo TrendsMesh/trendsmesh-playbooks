@@ -127,8 +127,10 @@ PLUGIN: dict = {
                                                              "why": {"type": "string"}}}},
         "channel_style": {"type": "object", "required": ["style", "why"],
                           "properties": {"style": {"type": ["string", "integer"]}, "why": {"type": "string"}}},
+        "look": {"enum": ["channel", "other"]},
     },
 }
+LOOKS = ("channel", "other")    # plugin.look (issue #138 item 1): the channel's own style, or another look
 _SHAPE_TODO = (f"Write the proposals in the handoff's schema (schemas/{SCHEMA.name}) with the plugin block on each "
                "proposal, as a new version.")
 
@@ -640,6 +642,120 @@ def _leading(run: RunFolder, proposals: list, by_channel: dict[str, str | None],
                                "each with that trend among its trends."))
 
 
+def rising_formats(run: RunFolder) -> dict[str, str]:
+    """The formats rising now (issue #138 item 1): the latest shortlist's format trends whose saved card (else, with no
+    card, the shortlist's row) has momentum `rising`, the growth signal the shortlist ranks on; full id -> name."""
+    data = organic_research._shortlist(run)[1] or {}
+    out: dict[str, str] = {}
+    for row in data.get("formats") or []:
+        if not (isinstance(row, dict) and isinstance(row.get("id"), str) and row["id"]):
+            continue
+        found = organic_research.card(run, row["id"])[0]
+        if found is not None and found.get("kind") not in (None, "format_trend"):
+            continue
+        if (found if found is not None else row).get("momentum") == "rising":
+            out[row["id"]] = str((found or {}).get("name") or row.get("name") or row["id"])
+    return out
+
+
+def channel_only(run: RunFolder) -> bool:
+    """The user said every idea of the batch keeps the channel's own style (`tm organic looks --channel-only --said`,
+    run.json `organic.looks`)."""
+    looks = (state.load(run).organic or {}).get("looks")
+    return isinstance(looks, dict) and looks.get("channel_only") is True
+
+
+def record_looks(run: RunFolder, *, said: str | None, clear: bool = False) -> dict:
+    """Record (or, with `clear`, remove) the user's words that every idea keeps the channel's style. A ValueError
+    without the words: it is the user's decision, quoted."""
+    s = state.load(run)
+    organic = dict(s.organic or {})
+    if clear:
+        organic.pop("looks", None)
+        out = {"channel_only": False}
+    else:
+        if not _text(said):
+            raise ValueError("--said is required: the user's own words that every idea keeps the channel's style.")
+        out = {"channel_only": True, "said": said.strip(),
+               "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        organic["looks"] = out
+    s.organic = organic
+    state.save(run, s)
+    return out
+
+
+def own_style(workspace: Path, slug: str, profile: dict | None) -> bool:
+    """The channel has a style of its own: its profile's `video_style`, or a style it picked 3 times or more."""
+    if _video_style(profile):
+        return True
+    try:
+        history = organic_research.style_history(workspace, slug)
+    except (Stop, ValueError):
+        return False
+    return bool(history) and organic_research.habit_style(history) is not None
+
+
+def variety(proposals: list, found: dict[str, list[str]], rising: dict[str, str], by_channel: dict[str, str | None],
+            styled: dict[str, bool], channel_only_: bool, out: list[Problem]) -> None:
+    """C1's variety rule (issue #138 item 1, #148 line 20): `found` is each proposal's resolved trend ids, `rising`
+    the formats rising now (`rising_formats`), `styled` per channel whether it has its own style (`own_style`).
+
+    - With formats rising, each idea names one among its trends; when there are as many as ideas, no two ideas share
+      a format and a production type.
+    - A channel with its own style: each idea says its look (`plugin.look`), and at least one is `other`, unless
+      the user said every idea keeps the channel's style (`channel_only_`). With no format rising, an idea in another
+      look differs from the channel-style ones by its production type."""
+    fmt: dict[str, str | None] = {}
+    for p in proposals:
+        fmt[p["id"]] = next((tid for tid in found.get(p["id"]) or [] if tid in rising), None)
+        if rising and fmt[p["id"]] is None:
+            names = ", ".join(rising.values())
+            out.append(Problem(f"{p['id']}.trends", f"{_name(p)} names no format rising now among its trends.",
+                               f"Build it on one of the shortlist's formats rising now ({names}), with that trend "
+                               "among its trends."))
+    if rising and len(rising) >= len(proposals):
+        seen: dict[tuple, dict] = {}
+        for p in proposals:
+            key = (fmt[p["id"]], p["plugin"]["production"])
+            if key[0] is None:
+                continue
+            if key in seen:
+                out.append(Problem(f"{p['id']}.plugin.production",
+                                   f"{_name(p)} uses the same format ({rising[key[0]]}) and production type "
+                                   f"({PRODUCTION_WORDS[key[1]]}) as {_name(seen[key])}.",
+                                   "Give it another format rising now, or another production type."))
+            else:
+                seen[key] = p
+    for slug, has_style in styled.items():
+        mine = [p for p in proposals if by_channel.get(p["id"]) == slug]
+        if not (has_style and mine):
+            continue
+        unsaid = [p for p in mine if p["plugin"].get("look") not in LOOKS]
+        for p in unsaid:
+            out.append(Problem(f"{p['id']}.plugin.look", f"{_name(p)} does not say its look, and the channel {slug} "
+                                                         "has a style of its own.",
+                               "Set plugin.look: channel (the channel's own style) or other (another look)."))
+        if unsaid or channel_only_:
+            continue
+        others = [p for p in mine if p["plugin"]["look"] == "other"]
+        if not others:
+            tail = "from a format rising now" if rising else \
+                "in a production type the others do not use (no format is rising now)"
+            out.append(Problem("proposals", f"All {len(mine)} proposals are in the channel's own style: make at least "
+                                            f"one in another look (plugin.look: other), {tail}.",
+                               "Change one idea's look, or ask the user whether every idea keeps the channel's style "
+                               "(on their yes: tm organic looks --run <run> --channel-only --said \"<their words>\")."))
+        elif not rising:
+            used = {p["plugin"]["production"] for p in mine if p["plugin"]["look"] == "channel"}
+            if all(p["plugin"]["production"] in used for p in others):
+                p = others[0]
+                out.append(Problem(f"{p['id']}.plugin.production",
+                                   f"{_name(p)} is in another look, and no format is rising now, so it differs from "
+                                   f"the channel-style ideas only by a production type they do not use; it is "
+                                   f"{PRODUCTION_WORDS[p['plugin']['production']]}, as one of them is.",
+                                   "Give it a production type the channel-style ideas do not use."))
+
+
 def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
     """Everything wrong in a proposals file (the module docstring and the plan's Task 6); empty when it
     holds. Reads only."""
@@ -688,6 +804,7 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
     started = organic_state.get("started") if isinstance(organic_state.get("started"), dict) else {}
     by_channel: dict[str, str | None] = {}
     kinds: dict[str, set] = {}
+    resolved: dict[str, list[str]] = {}
     for p in proposals:
         pid = p["id"]
         slug = run_channel(p["channel"], data, channels)
@@ -705,6 +822,7 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
                 out.append(Problem(f"{pid}.channel", f"The channel {slug}'s library cannot be read: {_plain(exc)}.",
                                    "Fix the file it names, then check again."))
         found = _trends(run, p, pid, out)
+        resolved[pid] = list(found)
         kinds[pid] = {(organic_research.card(run, tid)[0] or {}).get("kind") for tid in found}
         _blank(p, pid, out)
         _approach(p, pid, found, out)
@@ -718,6 +836,8 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
             _used(p, pid, found, used.get(slug) or {}, own, out)
         _seed(p, pid, found, seed, out)
     _leading(run, proposals, by_channel, kinds, profiles, out)
+    variety(proposals, resolved, rising_formats(run), by_channel,
+            {slug: own_style(workspace, slug, profile) for slug, profile in profiles.items()}, channel_only(run), out)
     _not_found(data, "", out)
     return out
 

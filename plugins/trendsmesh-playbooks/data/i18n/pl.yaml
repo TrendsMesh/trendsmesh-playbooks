@@ -168,6 +168,12 @@ strings:
       styles_play: Odtwórz
       risk_from: "Największe ryzyko: {risk}, w {production} ({weight})"
       risk_from_none: Po zabezpieczeniu wymienionych ryzyk nie zostaje żadne
+      looks_channel:
+        one: "{n} pomysł w stylu Twojego kanału"
+        few: "{n} pomysły w stylu Twojego kanału"
+        many: "{n} pomysłów w stylu Twojego kanału"
+      looks_other: "{channel}, {n} w innych stylach"
+      used_before: "Był w filmie z {date} ({production}); teraz {why}"
       weight_low: niskie
       weight_medium: średnie
       weight_high: wysokie

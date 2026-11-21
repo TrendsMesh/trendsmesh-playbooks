@@ -663,6 +663,13 @@ organic:
     styles_play: Play
     risk_from: "Highest risk: {risk}, in {production} ({weight})"
     risk_from_none: No risk is left once the named ones are covered
+    # issue 138 item 1: the looks of the batch, one line above the ideas
+    looks_channel:
+      one: "{n} idea in your channel's style"
+      other: "{n} ideas in your channel's style"
+    looks_other: "{channel}, {n} in other styles"
+    # issue 142: an idea on a trend the channel used before
+    used_before: "Was in the video of {date} ({production}); now {why}"
     weight_low: low
     weight_medium: medium
     weight_high: high

@@ -579,6 +579,16 @@ def channel_leads(run: RunFolder, data: dict, lang: str) -> list[str]:
     return out
 
 
+def looks_line(data: dict, tr) -> str | None:
+    """The line above the ideas (issue #138 item 1): "N ideas in your channel's style, M in other styles", from each
+    proposal's `plugin.look`; None when no proposal names its look."""
+    looks = [(p.get("plugin") or {}).get("look") for p in data.get("proposals") or [] if isinstance(p, dict)]
+    if not any(x in organic_proposals.LOOKS for x in looks):
+        return None
+    own = looks.count("channel")
+    return tr(_P + "looks_other", channel=tr.plural(_P + "looks_channel", own, n=own), n=looks.count("other"))
+
+
 def _needs(data: dict) -> dict[str, list[dict]]:
     """Per proposal, what an AI video of it needs installed and is not (issue #87), each production type read once."""
     by_type: dict[str, list[dict]] = {}
@@ -617,7 +627,9 @@ def build(run: RunFolder, file: Path | None = None) -> dict:
                 missing.append(str(v.get("asset_id") or v.get("url")))
         try:
             text = render(data, lambda tid: found[tid], lambda v: f"assets/{_asset(v)}" if _asset(v) in thumbs else "",
-                          level=level, lang=built.lang, leads=channel_leads(run, data, built.lang),
+                          level=level, lang=built.lang,
+                          leads=channel_leads(run, data, built.lang)
+                          + [x for x in [looks_line(data, i18n.translator(built.lang))] if x],
                           profile=organic_proposals.profile_defaults(run, data), needs=_needs(data))
         except (KeyError, ValueError) as exc:   # the file's shape; anything else is the engine's, not the user's file
             raise Stop(f"{rel} is not in the page's shape ({type(exc).__name__}: {exc}); check it again (tm organic "
@@ -694,7 +706,7 @@ _FIELD_KEYS = {"output": _P + "summary_output", "platforms": _P + "summary_platf
 ADDED = {k: _P + k for k in ("look", "look_label", "style", "channel_style", "risk_from", "risk_from_none",
                              "weight_low", "weight_medium", "weight_high", "needs", "install_sized", "install_and",
                              "install_base", "install_breakdown", "install_video", "install_voice", "install_ai",
-                             "install_animatic", "install_browser")}
+                             "install_animatic", "install_browser", "looks_channel", "looks_other", "used_before")}
 
 
 class _Words(NamedTuple):
