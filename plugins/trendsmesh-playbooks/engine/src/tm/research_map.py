@@ -18,6 +18,14 @@ growth's seasonal guard reads. A review without it (written before) leaves the r
 Added to the original map: `pool_ids` (every trend id the searches returned, for the weekly digest) and
 `weak_match` (V7: when the map stays thin after the last split, the five closest trends below the
 threshold, marked "weak match", so the page never says there are no trends in the category).
+
+The engine sets the obvious cases aside before the agent reads the map (issue #129, the owner's #148 line 7):
+noise and contradicted trends (as before), in a weekly run every trend last week's review dropped (carried over
+from `00_raw/prev_category_map.json`, `carried_over` on the row), then, when more than `review.max_trends` (50)
+remain, every trend below the best 50 by best match (ties: more creators first) goes to `set_aside`, each with
+its reason ("rank 73 by match (41)"). The cut is made before the review's drops, so applying the review never
+moves it. The review's `restore` ({trend name: why}) brings a set-aside, carried-over or noise-dropped trend
+back into `kept` (a contradicted one never comes back), marked `restored`.
 """
 
 from __future__ import annotations
@@ -36,6 +44,9 @@ SOURCES = ("seed", "closest_names", "common_sub_areas", "list_topics")
 WEAK = "weak match"
 WEAK_COUNT = 5
 SOURCE = "tm research map"
+REVIEWED = "agent review: "            # a drop of this run's review, in `dropped_because`
+CARRIED = "last week's review: "       # a drop carried over from the previous run's map (issue #129)
+CONTRADICTED = "status contradicted (TR4)"
 
 
 def settings(cfg: dict) -> dict:
@@ -208,25 +219,32 @@ def _record(tid: str, entry: dict, query: str) -> dict:
 def _reasons(card: dict, exclude: list[str]) -> list[str]:
     reasons = trends.noise_reasons(card, exclude)
     if card.get("status") == "contradicted":
-        reasons.append("status contradicted (TR4)")
+        reasons.append(CONTRADICTED)
     return reasons
 
 
-def _review(review: object) -> tuple[dict, dict, dict | None]:
-    """The review's drops, re-tags and events (None: a review without `events`, written before issue #3)."""
+def _review(review: object) -> tuple[dict, dict, dict | None, dict]:
+    """The review's drops, re-tags, events (None: a review without `events`, written before issue #3) and
+    restores (issue #129: {trend name: why}, the set-aside or carried-over trends to bring back)."""
     if review is None:
-        return {}, {}, None
+        return {}, {}, None, {}
     drops = review.get("drop", {}) if isinstance(review, dict) else None
     retags = review.get("retag", {}) if isinstance(review, dict) else None
-    for part in (drops, retags):
+    restores = review.get("restore", {}) if isinstance(review, dict) else None
+    for part in (drops, retags, restores):
         if not isinstance(part, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in part.items()):
             raise Stop("The review file is {\"drop\": {trend name: reason}, \"retag\": {trend name: "
-                       "sub-category}, \"events\": {trend name: {\"name\": event, \"date\": YYYY-MM-DD}}}; correct "
-                       "it, save it as a new map_review_vNN.json and build the map again. The run continues from the "
-                       "same place.")
+                       "sub-category}, \"events\": {trend name: {\"name\": event, \"date\": YYYY-MM-DD}}, "
+                       "\"restore\": {trend name: why}}; correct it, save it as a new map_review_vNN.json and "
+                       "build the map again. The run continues from the same place.")
+    both = [n for n in restores if n in drops]
+    if both:
+        raise Stop(f"The review both drops and restores {', '.join(map(repr, both))}: keep each in one of the two, "
+                   "save the review as a new map_review_vNN.json and build the map again. The run continues from "
+                   "the same place.")
     events = review.get("events")
     if events is None:
-        return drops, retags, None
+        return drops, retags, None, restores
     from tm import research_growth            # it imports this module
     wrong = ([] if isinstance(events, dict) else ["events is not one table {trend name: event}"]) or [
         f"{name!r}: {'; '.join(p)}" for name, ev in events.items()
@@ -237,7 +255,48 @@ def _review(review: object) -> tuple[dict, dict, dict | None]:
                    "the market language>, \"date\": \"YYYY-MM-DD\", the day of the occurrence the trend is about}. "
                    "Correct it, save it as a new map_review_vNN.json and build the map again. The run continues "
                    "from the same place.")
-    return drops, retags, events
+    return drops, retags, events, restores
+
+
+def carried(run: RunFolder) -> dict[str, str]:
+    """Trend id or name -> why last week's review dropped it (its own drops and the ones it carried over),
+    from the previous run's map in 00_raw (issue #129); empty in a first run."""
+    path = run.path / PREVIOUS
+    if not path.is_file():
+        return {}
+    try:
+        before = trends.read(path)
+    except (OSError, ValueError):
+        return {}
+    out: dict[str, str] = {}
+    for r in (before.get("dropped") or []) if isinstance(before, dict) else []:
+        if not isinstance(r, dict):
+            continue
+        why = next((w[len(p):] for w in r.get("dropped_because") or [] if isinstance(w, str)
+                    for p in (REVIEWED, CARRIED) if w.startswith(p)), None)
+        for k in (r.get("id"), r.get("name")) if why is not None else ():
+            if isinstance(k, str) and k:
+                out[k] = why
+    return out
+
+
+def _best(r: dict) -> float:
+    return max(r["found_by"].values())
+
+
+def _creators(r: dict) -> float:
+    n = (r.get("reach") or {}).get("creators")
+    return n if isinstance(n, (int, float)) and not isinstance(n, bool) else 0
+
+
+def _cut(rows: list[dict], max_trends: int) -> tuple[list[dict], list[dict]]:
+    """The best `max_trends` rows by best match (ties: more creators first, then the map's order), in their
+    order, and the rest, best first, each set aside with its rank."""
+    ranked = sorted(rows, key=lambda r: (-_best(r), -_creators(r)))
+    out = {r["id"] for r in ranked[max_trends:]}
+    rest = [{**r, "set_aside_because": f"rank {i} by match ({_best(r):.0f})"}
+            for i, r in enumerate(ranked[max_trends:], max_trends + 1)]
+    return [r for r in rows if r["id"] not in out], rest
 
 
 def _thin(split: dict, saved: dict[str, dict], cfg: dict) -> bool:
@@ -270,14 +329,15 @@ def build(run: RunFolder, split: dict, review: dict | None, cfg: dict) -> dict:
     problems = _unsearched(split, saved)
     if problems:
         raise Stop(" ".join(problems) + " The run continues from the same place.")
-    drops, retags, events = _review(review)
+    drops, retags, events, restores = _review(review)
     root = split["root"]
     rk = key(root)
     min_match, min_relevant = cfg["trends"]["min_match"], cfg["trends"]["min_relevant"]
     exclude = [w.strip() for w in cfg["trends"]["exclude_terms"] if w.strip()]
     parents = {key(r["query"]): r.get("parent") for r in split["queries"]}
     pool = trends.pool(run)
-    missing = [n for n in [*drops, *retags, *(events or {})] if n not in {e["card"].get("name") for e in pool.values()}]
+    missing = [n for n in [*drops, *retags, *(events or {}), *restores]
+               if n not in {e["card"].get("name") for e in pool.values()}]
     if missing:
         raise Stop(f"The review names {', '.join(map(repr, missing))}, which no saved search returned, so "
                    "the map was not built. Copy the names exactly from the map, write the review again as "
@@ -291,6 +351,7 @@ def build(run: RunFolder, split: dict, review: dict | None, cfg: dict) -> dict:
                         "results": len(entry["scores"]),
                         "relevant": sum(s >= min_match for s in entry["scores"].values()), "file": entry["file"]})
     kept, dropped, below = [], [], []
+    last_week = carried(run)                   # issue #129: last week's review drops, carried over
     for tid, entry in pool.items():
         best_q, _ = max(entry["found_by"].items(),
                         key=lambda kv: (key(kv[0]) != rk, kv[1]) if kv[1] >= min_match else (False, -1))
@@ -299,13 +360,32 @@ def build(run: RunFolder, split: dict, review: dict | None, cfg: dict) -> dict:
             continue
         rec = _record(tid, entry, best_q)
         reasons = _reasons(entry["card"], exclude)
+        name = rec["name"]
+        if name in restores and CONTRADICTED in reasons:
+            raise Stop(f"The review restores {name!r}, which TrendsMesh marks contradicted (TR4): a contradicted "
+                       "trend never comes back. Take it out of restore, save the review as a new "
+                       "map_review_vNN.json and build the map again. The run continues from the same place.")
+        if name in restores:
+            rec["restored"] = restores[name]
+            reasons = []
+        elif not reasons and name not in drops and (tid in last_week or name in last_week):
+            rec["carried_over"] = True
+            reasons = [CARRIED + last_week.get(tid, last_week.get(name, ""))]
         (dropped if reasons else kept).append({**rec, **({"dropped_because": reasons} if reasons else {})})
+    # Issue #129: at most review.max_trends for the agent to read, cut before the review's drops (applying the
+    # review never moves the cut); a restored trend stays above it.
+    restored = [r for r in kept if "restored" in r]
+    kept, set_aside = _cut([r for r in kept if "restored" not in r], cfg["review"]["max_trends"])
+    kept += restored
+    dropped += [{**{k: v for k, v in r.items() if k != "set_aside_because"},
+                 "dropped_because": [REVIEWED + drops[r["name"]]]} for r in set_aside if r["name"] in drops]
+    set_aside = [r for r in set_aside if r["name"] not in drops]
     # Agent relevance review (G1): the match threshold alone lets off-category trends in (dry run
     # 2026-11-04: "Dementia in family life" matched "anti-aging" at 41).
     still = []
     for r in kept:
         if r["name"] in drops:
-            dropped.append({**r, "dropped_because": [f"agent review: {drops[r['name']]}"]})
+            dropped.append({**r, "dropped_because": [REVIEWED + drops[r["name"]]]})
             continue
         if r["name"] in retags:
             r["sub_category_search"] = r["sub_category"]
@@ -335,9 +415,10 @@ def build(run: RunFolder, split: dict, review: dict | None, cfg: dict) -> dict:
 
     out = {"root": root, "min_match": min_match, "min_relevant": min_relevant, "queries": queries,
            "kept": kept, "dropped": dropped, "below_threshold": len(below), "weak_match": weak,
-           "pool_ids": sorted(pool)}
+           "pool_ids": sorted(pool), "max_trends": cfg["review"]["max_trends"], "set_aside": set_aside}
     _write(run, out, {"root": root, "min_match": min_match, "min_relevant": min_relevant,
-                      "exclude_terms": exclude, "reviewed": review is not None})
+                      "exclude_terms": exclude, "reviewed": review is not None,
+                      "max_trends": cfg["review"]["max_trends"]})
     return out
 
 
@@ -348,8 +429,9 @@ def _seasonal(r: dict) -> str:
 
 
 def _markdown(m: dict) -> str:
-    """The original's category_map.md, plus the weak matches of a thin map."""
-    kept, dropped = m["kept"], m["dropped"]
+    """The original's category_map.md, plus the weak matches of a thin map; the kept trends are the ones "To
+    review" (at most `max_trends`, and the restored ones), and the engine's cut is "Set aside" (issue #129)."""
+    kept, dropped, aside = m["kept"], m["dropped"], m.get("set_aside") or []
     lines = [f"# Category map: {m['root']}", "",
              f"Relevant = match score >= {m['min_match']:g}. Split rule: fewer than {m['min_relevant']} relevant "
              "-> split (TR1).", "",
@@ -357,14 +439,23 @@ def _markdown(m: dict) -> str:
     for q in m["queries"]:
         n = sum(1 for r in kept if r["sub_category"] == q["query"])
         lines.append(f"| {q['query']} | {q['parent'] or '—'} | {q['relevant']} / {q['results']} | {n} |")
-    lines += ["", f"**Kept:** {len(kept)} trends. **Dropped (noise, contradicted):** {len(dropped)}. "
-              f"**Below the match threshold everywhere:** {m['below_threshold']}.", "", "## Kept", "",
-              "| Group | Sub-category | Kind | Trend | Match | Creators | Videos | Status | Seasonal |",
-              "|---|---|---|---|---|---|---|---|---|"]
+    lines += ["", f"**To review (kept):** {len(kept)} trends. **Set aside by the engine:** {len(aside)}. "
+              f"**Dropped (noise, contradicted, reviews):** {len(dropped)}. "
+              f"**Below the match threshold everywhere:** {m['below_threshold']}.", "", "## To review", "",
+              f"The best {m.get('max_trends', len(kept))} by match (and any restored): read every one.", "",
+              "| Group | Sub-category | Kind | Trend | What it is | Match | Creators | Videos | Status | Seasonal |",
+              "|---|---|---|---|---|---|---|---|---|---|"]
     for r in kept:
         rc = r.get("reach") or {}
-        lines.append(f"| {r['group']} | {r['sub_category']} | {r['kind']} | {r['name']} | {r['match']:.0f} | "
+        name = r["name"] + (" (restored)" if r.get("restored") else "")
+        what = " ".join(str(r.get("what_it_is") or "").split()).replace("|", "/")
+        lines.append(f"| {r['group']} | {r['sub_category']} | {r['kind']} | {name} | {what} | {r['match']:.0f} | "
                      f"{rc.get('creators', '?')} | {rc.get('videos', '?')} | {r['status']} | {_seasonal(r)} |")
+    if aside:
+        lines += ["", "## Set aside by the engine (restore on request)", "",
+                  "Below the best by match. Restore one with the review's restore: {\"<trend name>\": \"<why>\"}.", "",
+                  "| Trend | Sub-category | Why |", "|---|---|---|"]
+        lines += [f"| {r['name']} | {r['sub_category']} | {r['set_aside_because']} |" for r in aside]
     if m["weak_match"]:
         lines += ["", "## Weak match", "",
                   "The map stayed thin after the last split, so these are the closest trends below the match "

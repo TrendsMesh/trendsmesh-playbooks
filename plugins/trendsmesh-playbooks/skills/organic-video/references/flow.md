@@ -310,7 +310,10 @@ at each part and every few calls, which part is running and how many are done ("
 2. **The fit of each hook, format and topic for the channel** (no word filter for hooks and formats: a
    hook says how a video opens and a format how it is told, so niche words are almost never in them;
    topics passed the anchor filter first, and up to 20 of the best are scored too, issue #142). The
-   JSON's `fit_candidates` lists every hook and format of the pool and those topics. Score each one from its card, as
+   JSON's `fit_candidates` lists the hooks and formats to score, at most 50 of both together (the
+   best by the engine's own score), and those topics; the hooks and formats below that cut are
+   under `fit_set_aside`, not scored, and a row for one in the fit file brings it back (only when
+   the user asks). Score each one of `fit_candidates` from its card, as
    Trend research scores its hooks: Creative brief's seven CB3 criteria, 1 to 5 (`brand_fit`,
    `persona_fit`, `bridge`, `lifecycle`, `transfer`, `sensitivity`, `feasibility`), for this
    channel: can it carry what the channel films, and how it tells it (the profile's `context`),
@@ -318,7 +321,8 @@ at each part and every few calls, which part is running and how many are done ("
    "why": "..."}}`; a trend that fits badly scores low, it is never left out), then run step 1's
    command again with `--fit 03_wip/trend_fit_v01.json`. Hooks and formats are ranked by their fit
    (the mean), each shown with its score and why; a fit under 3 is marked "weak fit for this
-   channel" and comes last. A topic under 3 is marked the same way and never takes a B3 place (for
+   channel" and comes last, and the set-aside ones after it, marked "set aside: below the engine's
+   cut". A topic under 3 is marked the same way and never takes a B3 place (for
    an AI explainer channel, "Temu product hauls" scores low).
 3. Read the `.md`. **The used trends** (B1) stay in the lists, marked `used: {run, date, production_type}`
    in the JSON: at most one idea builds on one, with a new angle, while it still rises (B1), or a series

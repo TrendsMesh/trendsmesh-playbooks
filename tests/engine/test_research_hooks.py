@@ -394,7 +394,7 @@ def test_growth_of_a_hooks_file_from_before_the_judgement(tmp_path):
 
 def test_config_takes_the_shortlist_and_still_reads_old_hook_keys(tmp_path):
     run = _run(tmp_path)
-    assert research_config.defaults()["hooks"] == {"shortlist": 8, "min_fit": 3}
+    assert research_config.defaults()["hooks"] == {"shortlist": 8, "min_fit": 3, "max_candidates": 50}
     cfg = config.load(run)
     cfg["hooks"] = {"min_share": 0.2, "min_hits": 3, "min_share_hits": 2}     # a config written before 0.11
     config.save(run, cfg)

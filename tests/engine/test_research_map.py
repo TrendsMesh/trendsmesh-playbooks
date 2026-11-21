@@ -10,7 +10,7 @@ from datetime import date
 import pytest
 
 import beauty
-from tm import research_config, research_map, trends
+from tm import config, research_config, research_map, trends
 from tm.cli import main
 from tm.playbooks import REFRESH_AD, TREND_RESEARCH
 from tm.runfolder import RunFolder
@@ -20,6 +20,7 @@ from tm.stops import Stop
 def _cfg(**trend_settings) -> dict:
     cfg = research_config.defaults()
     cfg["category"]["phrase"] = beauty.ROOT
+    cfg["review"]["max_trends"] = beauty.NO_CUT          # the reference read every trend (issue #129's cut is lifted)
     cfg["trends"].update(trend_settings)
     return cfg
 
@@ -56,7 +57,10 @@ def test_map_rebuilds_beauty_kept_and_dropped(tmp_path, capsys, handoff_map):
     assert md.startswith("# Category map: beauty\n") and "| makeup tutorial | makeup | 37 / " in md
     assert "Dementia in family life and memory" in md.split("## Dropped")[1]
 
-    # the command: the same map again, as _v02 beside the first
+    # the command: the same map again, as _v02 beside the first (the run's config without the cut, as above)
+    cfg = config.load(run)
+    cfg["review"] = {"max_trends": beauty.NO_CUT}
+    config.save(run, cfg)
     copied = beauty.copy_input(run, "03_wip/map_review_v01.json")
     split = _write_json(run.path / "03_wip" / "split_v01.json", beauty.split_of(handoff_map))
     assert main(["research", "map", "--run", str(run.path), "--split", split, "--review", str(copied),

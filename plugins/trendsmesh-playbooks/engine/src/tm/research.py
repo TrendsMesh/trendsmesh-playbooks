@@ -4,6 +4,7 @@
                                                                       what is still to search
     tm research map --run RUN --split FILE [--review FILE] [--json]   TR1: the category map
     tm research map-change --run RUN [--json]                         V26: how much of the map is new
+    tm research hook-candidates --run RUN [--json]                    TR1: the hooks to score, one compact row each
     tm research hook-fit --run RUN --file F [--json]                  TR1: the hooks ranked by fit, the shortlist
     tm research hook-ads --run RUN --file F [--json]                  TR1: the shortlisted hooks' Ad Library checks
     tm research hook-captions --run RUN [--json]                      TR1: the shortlisted hooks' captions, to judge
@@ -99,9 +100,15 @@ def _map(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     rel = path.relative_to(run.path).as_posix()
     payload = {"status": "done", "json": rel, "md": rel[:-len(".json")] + ".md", "kept": len(m["kept"]),
                "dropped": len(m["dropped"]), "below_threshold": m["below_threshold"],
-               "weak_match": len(m["weak_match"])}
-    text = (f"Wrote {payload['json']} and {payload['md']}: kept {payload['kept']}, dropped {payload['dropped']}, "
-            f"below the match threshold everywhere {payload['below_threshold']}.")
+               "weak_match": len(m["weak_match"]), "set_aside": len(m["set_aside"]),
+               "carried_over": sum(bool(r.get("carried_over")) for r in m["dropped"])}
+    text = (f"Wrote {payload['json']} and {payload['md']}: kept {payload['kept']} (To review), dropped "
+            f"{payload['dropped']}, below the match threshold everywhere {payload['below_threshold']}.")
+    if payload["set_aside"]:
+        text += (f" {payload['set_aside']} more were set aside by the engine (below the best {m['max_trends']} by "
+                 "match); they are listed under Set aside, and the review's restore brings one back.")
+    if payload["carried_over"]:
+        text += f" {payload['carried_over']} were dropped by last week's review and stay dropped (restore brings one back)."
     if m["weak_match"]:
         text += (f" The map stayed thin after the last split, so the {len(m['weak_match'])} closest trends are "
                  f"listed as \"{research_map.WEAK}\".")
@@ -129,7 +136,7 @@ def _rel(run: RunFolder, path: Path) -> str:
 
 def _hook_fit(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     data = _json_file(run, args.file)
-    problems = research_growth.check_hook_fit(run, data)
+    problems = research_growth.check_hook_fit(run, data, cfg)
     if problems:
         return _checked(args, problems, "")
     given = Path(args.file.strip())
@@ -137,12 +144,28 @@ def _hook_fit(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
     path = research_growth.hook_fit(run, data, cfg, fit_file=fit_file)
     out = json.loads(path.read_text(encoding="utf-8-sig"))
     ids = [r["id"] for r in out["shortlist"]]
-    scored = len(out["shortlist"]) + len(out["not_shortlisted"]) + len(out["contradicted"])
+    scored = len(out["shortlist"]) + len(out["not_shortlisted"]) + sum(r["fit"] is not None for r in out["contradicted"])
     lines = [f"Wrote {_rel(run, path)}: the {len(ids)} best-fitting of {scored} hooks (fit 1-5, Creative brief's "
              "criteria). Fetch only these hooks' videos (tm research fetch-plan lists them):"]
     lines += [f"  {r['rank']:>2}. {(r['name'] or '')[:40]:40} {r['fit']}" for r in out["shortlist"]]
+    if out["not_scored"]:
+        lines.append(f"{len(out['not_scored'])} hooks were not scored (below the engine's cut or dropped from the map); "
+                     "they are listed under not_scored, and a row for one in the fit file brings it back.")
     cli.emit(args, {"status": "done", "json": _rel(run, path), "shortlist": ids, "scored": scored,
-                    "message": "\n".join(lines)}, "\n".join(lines))
+                    "not_scored": len(out["not_scored"]), "message": "\n".join(lines)}, "\n".join(lines))
+    return 0
+
+
+def _hook_candidates(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
+    path, to_score, rest = research_growth.write_hook_candidates(run, cfg)
+    cut = sum(r["reason"].startswith(research_growth.CUT) for r in rest)
+    text = (f"Wrote {_rel(run, path)}: {len(to_score)} hooks to score for fit, one compact row each (TrendsMesh's "
+            f"rising order, then the searches' hooks by match). Score every row in 03_wip/hook_fit_vNN.json, then tm "
+            f"research hook-fit. {len(rest)} are not scored ({cut} below the engine's cut of "
+            f"{cfg['hooks']['max_candidates']}, the others contradicted or dropped from the map), listed under "
+            "not_scored with their reason; a row for one of them in the fit file brings it back.")
+    cli.emit(args, {"status": "done", "file": _rel(run, path), "to_score": len(to_score), "not_scored": len(rest),
+                    "message": text}, text)
     return 0
 
 
@@ -468,6 +491,7 @@ def _schedule(args: argparse.Namespace) -> int:
 
 
 ACTIONS = {"search-status": _search_status, "map": _map, "map-change": _map_change, "hook-fit": _hook_fit,
+           "hook-candidates": _hook_candidates,
            "hook-ads": _hook_ads, "hook-captions": _hook_captions, "hooks": _hooks,
            "growth": _growth, "backtest": _backtest, "previous": _previous_run, "rebuild-previous": _rebuild_previous,
            "fetch-plan": _fetch_plan, "reuse": _reuse, "digest": _digest, "evidence": _evidence, "paid": _paid,
@@ -487,6 +511,10 @@ def _setup(p: argparse.ArgumentParser) -> None:
     c = sub.add_parser("map-change", help="how much of the map is new since the previous run (V26)")
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--json", action="store_true")
+    hc = sub.add_parser("hook-candidates", help="the hooks to score for fit, one compact row each, and the ones set "
+                                                "aside (issue #129)")
+    hc.add_argument("--run", required=True, help="the run folder")
+    hc.add_argument("--json", action="store_true")
     f = sub.add_parser("hook-fit", help="rank the hook candidates by the agent's fit scores, keep the shortlist (TR1)")
     f.add_argument("--run", required=True, help="the run folder")
     f.add_argument("--file", required=True,

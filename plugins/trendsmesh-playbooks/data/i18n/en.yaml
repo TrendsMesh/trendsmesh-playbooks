@@ -435,6 +435,7 @@ report:
   col_kept: Trends kept here
   split_further: split further
   left_out: "Left out ({n}) and why"
+  set_aside: "Set aside ({n}): below the best by match, so not reviewed; any of them can be restored on request"
   # the hooks section: the shortlisted hooks in two lists (issue #58)
   hooks_heading: "Hooks for {category}"
   hooks_note: "The rising hooks that fit {category} best, in fit order (1 to 5 on Creative brief's criteria). A hook is an opening structure for any subject, so whether {category} already uses it is shown, never a reason to leave it out."

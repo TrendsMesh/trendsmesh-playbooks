@@ -309,6 +309,25 @@ def test_rebuilt_previous_week_is_said(tmp_path):
     assert "Not checked this week: the previous week is rebuilt from evidence dates, so ended trends are left out." in text
 
 
+def test_the_trends_set_aside_by_the_engine_are_listed_on_the_report(tmp_path):
+    """Issue #129: the map's trends below the engine's cut are on the page, under Set aside, with their reason."""
+    run, _ = _uroda(tmp_path)
+    path = run.path / "02_research" / "category_map_v01.json"
+    cmap = _read(path)
+    _write(run.path / "02_research" / "category_map_v02.json", {**cmap, "set_aside": [
+        {"id": "a7" * 16, "name": "Paznokcie hybrydowe", "set_aside_because": "rank 51 by match (41)"}]})
+    folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    text = (folder / "index.html").read_text(encoding="utf-8")
+    assert "Set aside (1): below the best by match" in text and "<li>Paznokcie hybrydowe: rank 51 by match (41)</li>" in text
+    assert _read(folder / "report.json")["category_map"]["set_aside"][0]["name"] == "Paznokcie hybrydowe"
+    plain = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    assert "Set aside" in (plain / "index.html").read_text(encoding="utf-8")
+    _write(run.path / "02_research" / "category_map_v03.json", cmap)            # a map with nothing set aside
+    plain = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    assert "Set aside" not in (plain / "index.html").read_text(encoding="utf-8")
+    assert "set_aside" not in _read(plain / "report.json")["category_map"]
+
+
 def test_no_act_now_says_so_in_one_line(tmp_path):
     run, picks = _uroda(tmp_path, act_now=False)
     folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))

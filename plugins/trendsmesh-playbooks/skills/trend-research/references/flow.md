@@ -189,6 +189,12 @@ TR1. The engine counts; you choose the phrases.
   searches, tags each trend with its sub-category, drops noise (news, sport, politics, names) and
   contradicted trends, and tags seasonal trends (they stay: TR3's seasonal guard decides). Output:
   `02_research/category_map_vNN.json` and `.md`.
+- The engine sets the obvious cases aside, so you review a short list: in a weekly run, every trend
+  last week's review dropped stays dropped ("last week's review: <its reason>"), and when more than
+  `review.max_trends` (50) trends remain, only the best 50 by match (ties: more creators) are **To
+  review**; the rest are listed under **Set aside by the engine (restore on request)**, each with its
+  reason ("rank 73 by match (41)"). Set-aside trends are not fetched or staged, and the report lists
+  them under "Set aside".
 - When the map stays thin after the last split, its closest trends are listed as **"weak match"**
   (V7). Never say there are no trends in the category.
 - `tm done B2 --run R`.
@@ -196,7 +202,8 @@ TR1. The engine counts; you choose the phrases.
 <a id="b3"></a>
 ## B3 Relevance review
 
-- Read every kept trend in `category_map_vNN.md` (its name and what it is). Drop the
+- Read every trend under **To review** in `category_map_vNN.md` (its name and what it is; at most
+  50). Never read or score the set-aside ones one by one. Drop the
   off-category ones and re-tag wrong sub-categories, each with a reason (lesson 2: dementia via
   "anti-aging", fan edits via "k-beauty"). Seasonal trends inside the category are not noise.
   A seasonal trend whose card shows the category's own craft is inside it, even when it is framed
@@ -213,13 +220,18 @@ TR1. The engine counts; you choose the phrases.
   ```json
   {"drop": {"Dementia in family life and memory": "off-category: matched 'anti-aging' on ageing, not beauty"},
    "retag": {"Glazed donut nails": "nails"},
-   "events": {"Halloween nail art": {"name": "Halloween", "date": "2026-10-31"}}}
+   "events": {"Halloween nail art": {"name": "Halloween", "date": "2026-10-31"}},
+   "restore": {}}
   ```
 
-  Then `tm research map --run R --split 03_wip/split_vNN.json --review 03_wip/map_review_vNN.json
-  --json`.
+  `restore` (`{trend name: why}`) brings back a set-aside, carried-over or noise-dropped trend, only
+  when the user asks for it (a contradicted trend never comes back); it is reviewed like the others
+  and marked "(restored)". Leave it `{}` otherwise. Then `tm research map --run R --split
+  03_wip/split_vNN.json --review 03_wip/map_review_vNN.json --json`. Applying the review never
+  moves the cut: a drop does not bring a set-aside trend in.
 - **A weekly run** starts from last week's review (the previous run's latest
-  `03_wip/map_review_vNN.json`): copy its drops and re-tags into this run's `map_review_v01.json`,
+  `03_wip/map_review_vNN.json`): its drops carry over by themselves (the map reads them from
+  `00_raw/prev_category_map.json`), so copy only its re-tags into this run's `map_review_v01.json`,
   then review the new trends (and name the new ones' events). If the map stops because the review
   names a trend no search returned,
   that name was carried over from last week and its trend has left the searches: remove it from the
@@ -244,9 +256,13 @@ own path (TR1).
    changed>"`. `tm resume` does not clear it: only that decision does. Then `tm next`.
 3. **Rank the hooks by fit, from their cards** (no video is fetched for this). A hook is a structure
    that can carry almost any subject, so the question is which few fit this category best, not
-   whether the category uses them already. Read every hook card of the rising lists and the
-   searches (its name, `what_it_is`, `reach`, `momentum`, `active_for_days`, `status`) and score it
-   1–5 on Creative brief's seven criteria (CB3, `../../creative-brief/references/rules.md`), read for
+   whether the category uses them already. **`tm research hook-candidates --run R --json`** writes
+   `02_research/hooks_to_score_vNN.json`: one compact row per hook to score (`id`, `name`,
+   `what_it_is`, `reach`, `momentum`, `active_for_days`, `status`, `sensitivity_level`), at most
+   `hooks.max_candidates` (50), in TrendsMesh's rising order, then the searches' hooks by match.
+   Contradicted hooks, hooks the map dropped at B3, and those below the cut are listed under
+   `not_scored` with their reason. Read every row (never write your own script for this) and score
+   it 1–5 on Creative brief's seven criteria (CB3, `../../creative-brief/references/rules.md`), read for
    this category, its market and the focus:
    - `brand_fit`: the category's tone (and the focus brand's, if one is given);
    - `persona_fit`: the category's audience, its age and culture;
@@ -259,8 +275,9 @@ own path (TR1).
    - `sensitivity`: `sensitivity_level`, and anything the category should not touch;
    - `feasibility`: it can be made in the category (a face on camera, a setting, a prop).
 
-   Write `03_wip/hook_fit_v01.json`, every hook candidate, a `why` (one sentence) for the ones that
-   score best:
+   Write `03_wip/hook_fit_v01.json`, every row of `hooks_to_score_vNN.json`, a `why` (one sentence)
+   for the ones that score best. A hook under `not_scored` gets a row only when the user asks for it
+   (restore on request); it is then ranked with the others:
 
    ```json
    {"c2173b6a4e7f496093804bb8efb3e785": {"brand_fit": 4, "persona_fit": 5, "bridge": 5,
@@ -271,8 +288,8 @@ own path (TR1).
    Record it, then **`tm research hook-fit --run R --file 03_wip/hook_fit_v01.json --json`**: it ranks
    the hooks by their mean score (ties keep TrendsMesh's rising order) and keeps the best
    `hooks.shortlist` (8) that fit at least `hooks.min_fit` (a mean of 3), never a contradicted one,
-   in `02_research/hooks_shortlist_vNN.json`. Exit 2 lists each problem (a hook not scored, a score
-   outside 1–5): fix it as a new version.
+   in `02_research/hooks_shortlist_vNN.json`, with the unscored hooks under `not_scored`. Exit 2
+   lists each problem (a row not scored, a score outside 1–5): fix it as a new version.
 4. **The fetch plan:** `tm research fetch-plan --run R --json`. `fetch` = this map's trends and the
    shortlisted hooks (in a weekly run minus `reuse`, plus every previous "act now", "still rising"
    and "past its peak" trend); `check` = last week's trends not in this week's map (C1 gets their

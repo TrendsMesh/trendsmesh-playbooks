@@ -4,6 +4,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Trend research: Claude reviews at most 50 trends and 50 hooks.** Before the relevance review the plugin now
+  sets the obvious cases aside: last week's dropped trends stay dropped in a weekly run, and when more than 50 trends
+  are mapped, only the 50 best by match are reviewed. The rest are listed under "Set aside", on the map and on the
+  report, each with its reason, and any of them comes back when you ask. Hooks work the same way: Claude scores at
+  most 50, in TrendsMesh's rising order (new `tm research hook-candidates`), and the others are listed as not scored.
+  A run with 300 mapped trends and 150 hooks no longer has Claude scoring every card by hand.
+- **Organic AI video: at most 50 hooks and formats are scored for your channel.** The best 50 by the plugin's own
+  score are scored (topics keep their own 20); the rest are set aside, listed, and scored when you ask for one.
 - **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file
   names, theme codes such as T02, or a choice's internal name. A brief row's source reads like `TrendsMesh: Rising
   hook "who said _"` or `Meta Ad Library, query "lucid dream", US`; the ids and files behind it sit in a folded
