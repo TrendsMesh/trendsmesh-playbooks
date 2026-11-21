@@ -254,3 +254,66 @@ def test_tm_render_checks_the_brand_font_and_the_logo_are_in_the_run(ad):
         render._check_props(ad, "OrganicCaptions", path)
     (ad.path / "03_wip" / "text_set" / "logo_v01.png").write_bytes(b"\x89PNG")
     assert render._check_props(ad, "OrganicCaptions", path)["brandFont"]["family"] == "Pet"
+
+
+# --- a face collision's fix, taken from the layer check (issue #139) ------------------------------
+
+def _layer_check(run, layers_rel, collisions):
+    """A layer check of the edit drawn from `layers_rel`, as `tm tool layer_check` writes it."""
+    import hashlib
+
+    out = run.next_version("03_wip/qa", "edit_v01_layers", "json")
+    out.parent.mkdir(exist_ok=True)
+    data = {"edit": "03_wip/edit_v01.mp4", "layers": {"file": layers_rel, "sha256": hashlib.sha256(
+        (run.path / layers_rel).read_bytes()).hexdigest()}, "size": [1080, 1920], "faces": [],
+            "collisions": collisions, "message": "x"}
+    out.write_text(json.dumps(data), encoding="utf-8")
+    manifest.record(run, out.relative_to(run.path).as_posix(), "03_wip", "tm tool layer_check",
+                    parent="03_wip/edit_v01.mp4", model="OpenCV Haar faces (tm tool cover_fit's)", cost="0 (local)")
+
+
+def test_the_layer_checks_face_fix_goes_into_the_next_overlays_and_is_said(ad, remotion, capsys):
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    assert code == 0, out
+    first = json.loads((ad.path / out["layers"]).read_text(encoding="utf-8"))["layers"]
+    hook = next(x for x in first if x["id"] == "overlay_1")
+    assert hook["fontSize"] == 62 and hook["text"] == "Your cat drinks too little"
+    _layer_check(ad, out["layers"], [
+        {"kind": "face", "layer": "overlay_1", "with": "take", "at": 0.55, "suggestion": {"offsetY": 184},
+         "message": "..."},
+        {"kind": "face", "layer": "caption_1", "with": "take", "at": 0.3, "suggestion": {"fontSize": 58},
+         "message": "..."},
+        {"kind": "layer", "layer": "overlay_2", "with": "overlay_1", "at": 3.0, "message": "..."}])
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    assert code == 0, out
+    assert out["overlays_file"] == "03_wip/edit_text_v02.json"
+    assert len(out["changes"]) == 2 and "moved down 184 px" in out["message"] and "size 58" in out["message"]
+    kept = json.loads((ad.path / out["overlays_file"]).read_text(encoding="utf-8"))
+    assert kept["overlays"][0]["offsetY"] == 184 and kept["captions"] == {"fontSize": 58}
+    props = json.loads((ad.path / out["props"]).read_text(encoding="utf-8"))
+    tops = [x for x in props["captions"] if x["style"] != "caption"]
+    caps = [x for x in props["captions"] if x["style"] == "caption"]
+    assert tops[0]["offsetY"] == 184 and tops[1]["offsetY"] == 0 and {c["fontSize"] for c in caps} == {58}
+    moved = next(x for x in json.loads((ad.path / out["layers"]).read_text(encoding="utf-8"))["layers"]
+                 if x["id"] == "overlay_1")
+    assert moved["box"][1] == hook["box"][1] + 184
+    # drawn again with the new overlays file: the fix is in it, and no check of this edit is taken twice
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:7], "03_wip/edit_text_v02.json",
+                     *TEXT[8:])
+    assert code == 0 and out["changes"] == [] and out["overlays_file"] == "03_wip/edit_text_v02.json"
+    tops = [x for x in json.loads((ad.path / out["props"]).read_text(encoding="utf-8"))["captions"]
+            if x["style"] != "caption"]
+    assert tops[0]["offsetY"] == 184
+
+
+def test_a_size_fix_of_an_overlay_in_a_set_is_its_overlay_size(ad, remotion, capsys):
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    _layer_check(ad, out["layers"], [{"kind": "face", "layer": "overlay_1", "with": "take", "at": 0.5,
+                                      "suggestion": {"fontSize": 53}, "message": "..."}])
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    tops = [x for x in json.loads((ad.path / out["props"]).read_text(encoding="utf-8"))["captions"]
+            if x["style"] != "caption"]
+    assert tops[0]["overlay"]["size"] == 53
+    hook = next(x for x in json.loads((ad.path / out["layers"]).read_text(encoding="utf-8"))["layers"]
+                if x["id"] == "overlay_1")
+    assert hook["fontSize"] == 53

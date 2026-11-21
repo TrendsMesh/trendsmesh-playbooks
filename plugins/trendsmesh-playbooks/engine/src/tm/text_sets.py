@@ -16,7 +16,8 @@ the site or the user again. The profile schemas (`brand/1`, `channel/1`) are unc
 profile of its own (its brand is config.yaml's `brand.product`), and a set may be kept for a brand that has none yet.
 
 Whose set a run uses (`for_run`): organic video's, its channel's (config.yaml `channels`, the first), else the store
-the channel sells; Create an ad's, the brand config.yaml names (`brand.product`). None until one is saved: the
+the channel sells; Create an ad's, the brand config.yaml names (`brand.product`); refresh-ad's, the product it
+advertises (`product.name`), whose HookSwap cards and WordCaptions words `tm render` draws in it (`fill_props`). None until one is saved: the
 default set is `outline` (`organic_edit.DEFAULT_LOOK`), and the first time three sets that fit are shown
 (`suggest_looks`, `native` first for a UGC channel or content meant to look filmed in the app). A single video can
 use another set for its format (a ranking, a quiz) without changing the saved one.
@@ -36,7 +37,7 @@ from pathlib import Path
 
 from tm import brand, cli, config, manifest, paths, state, trend_spool
 from tm import organic_edit as oe
-from tm.playbooks import CREATE_AD, ORGANIC_VIDEO
+from tm.playbooks import CREATE_AD, ORGANIC_VIDEO, REFRESH_AD
 from tm.runfolder import RunFolder, slug as _slug
 from tm.stops import AGAIN, Stop
 
@@ -60,6 +61,17 @@ FIT = {
     "other": ["outline", "native", "block"],
 }
 
+
+# The set that fits an animation's style family (issue #139): each `category` of data/styles/styles.json. A set that
+# draws over a hand-drawn board in white with a stroke fights the board; `tm organic text look` suggests this one
+# beside the saved set, and the saved set is never changed by it.
+FAMILY_LOOKS = {
+    "Hand-drawn": "marker", "Painterly": "marker", "Paper and craft": "marker", "Illustration": "marker",
+    "Clean explainer": "block", "Data": "block", "Product and UI": "block",
+    "Design movements": "block", "Print": "block", "Type and pattern": "block", "Collage": "block",
+    "Retro digital": "pop", "Retro desktop": "pop",
+    "Dimensional": "outline", "Light and imaging": "outline", "Cosmic": "outline",
+}
 
 accent_ink = oe.accent_ink   # the text drawn on the accent, dark or white by contrast
 
@@ -166,7 +178,25 @@ def owners(run: RunFolder) -> list[tuple[str, str]]:
     if pb == CREATE_AD:
         product = (cfg.get("brand") or {}).get("product")
         return [("brand", str(product))] if isinstance(product, str) and product.strip() else []
+    if pb == REFRESH_AD:     # the product the ad sells (config.yaml `product.name`) is the brand (issue #139)
+        product = (cfg.get("product") or {}).get("name")
+        return [("brand", str(product))] if isinstance(product, str) and product.strip() else []
     return []
+
+
+TEXT_SET_COMPS = ("HookSwap", "WordCaptions")
+
+
+def fill_props(run: RunFolder, comp: str, data: dict) -> tuple[dict, bool]:
+    """(the props, whether anything was filled in): HookSwap's cards and WordCaptions' words are drawn in the run's
+    saved set (refresh-ad, issue #139), as `textSet` {look, accent, ink, font, logo} (`into_run`), when the props
+    name none. `"textSet": null` keeps the original ad's look."""
+    if comp not in TEXT_SET_COMPS or "textSet" in data:
+        return data, False
+    saved = for_run(run)
+    if saved is None:
+        return data, False
+    return {**data, "textSet": into_run(run, saved)}, True
 
 
 def channel_type(run: RunFolder) -> str | None:

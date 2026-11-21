@@ -19,15 +19,19 @@ The text is two layers, as organic video's edit has it: `caption` (under the spe
 - **faces**: for each picture under a layer, at the times both are shown (their first and last moment, the middle and
   every second between, at most 12), the faces in the picture's own frame (`tm tool cover_fit`'s detector, whose head
   runs from above the forehead to the chin), placed in the edit's frame through the picture's crop and box. A layer
-  over a head is a collision (a caption over the mouth, a chip over the chin, a window over a face).
+  over a head is a collision (a caption over the mouth, a chip over the chin, a window over a face). It carries a
+  `suggestion` that clears every head seen then (issue #139): `{"offsetY": px}`, a move inside the safe zone in px
+  at 1080 wide added to the layer's offsetY (`cover_fit.clear_shift`), else `{"fontSize": n}`, the layer's
+  `fontSize` (px at 1080, when the layers file gives it) × 0.85, never under 32, else null; its message names it.
+  A detection whose head covers 70 % or more of the frame is no face: it is listed under `rejected_faces`.
 - **layers**: two layers shown together whose boxes overlap, neither filling the frame, unless one is `on` the other
   (a tag running under the caption band).
 - **sharpness**: a still (png, jpg, webp) drawn larger than its own pixels (more than 5 % up): capture it sharper
   instead (`tm tool site capture` at a device scale of 2 to 3, or of the element itself).
 
 Writes `<edit dir>/qa/<edit stem>_layers_vNN.json` (the next version): {"edit", "layers": {"file", "sha256"}, "size",
-"faces": [{"layer", "at", "head"}], "collisions": [{"kind" (face, layer, scaled_up), "layer", "with", "at", "box",
-"other", "message"}], "message"}. `tm ad check edit` refuses an edit whose latest layer check has a collision: move
+"faces": [{"layer", "at", "head"}], "rejected_faces": [{"layer", "at", "face", "reason"}], "collisions": [{"kind"
+(face, layer, scaled_up), "layer", "with", "at", "box", "other", "suggestion" (a face's), "message"}], "message"}. `tm ad check edit` refuses an edit whose latest layer check has a collision: move
 the layer, render the next version (S6) and check that. Free and local (the breakdown tools).
 """
 
@@ -52,6 +56,7 @@ EDGE = 0.05           # seconds inside the first and the last moment both layers
 TOGETHER = 0.04       # two layers shown together less than this (a frame) are not shown together
 UPSCALE = 1.05        # a still drawn more than 5 % larger than its pixels is scaled up
 FULL = 0.98           # a box covering this much of the frame both ways fills it
+SAFE_TOP, SAFE_BOTTOM = 260, 380   # the safe zone a suggested move stays in, px at 1080 (OrganicCaptions SAFE_1080)
 
 
 def _num(value: object) -> bool:
@@ -91,7 +96,7 @@ def read_layers(run, path: Path, size: tuple[int, int]) -> list[dict]:
         if not (_num(start) and _num(end) and 0 <= start < end):
             raise c.ToolError(f"{where} ({lid}) needs a start and an end in seconds, the end after the start.")
         row = {"id": lid, "kind": kind, "start": float(start), "end": float(end), "on": layer.get("on"),
-               "n": n}
+               "n": n, "fontSize": float(layer["fontSize"]) if _num(layer.get("fontSize")) else None}
         if layer.get("box") is None and kind == "picture":
             row["box"] = (0.0, 0.0, float(width), float(height))
         else:
@@ -180,11 +185,44 @@ def _size(path: Path) -> tuple[int, int]:
     return int(width), int(height)
 
 
-def check(run, layers: list[dict], size: tuple[int, int], scratch: Path) -> tuple[list[dict], list[dict]]:
-    """(the faces found, the collisions), for layers bottom to top."""
+def suggest(box: tuple, heads: list[tuple], size: tuple[int, int], font_size: float | None) -> dict | None:
+    """The placement that clears every head (issue #139): {"offsetY": px} to move the layer by (px at 1080 wide,
+    added to its offsetY; negative is up) when it fits inside the safe zone (`cover_fit.clear_shift`), else
+    {"fontSize": the next smaller size} (× 0.85, never under 32), else None."""
+    k = size[0] / 1080
+    shift = cover_fit.clear_shift(box, heads, top=round(SAFE_TOP * k), bottom=round(size[1] - SAFE_BOTTOM * k),
+                                  margin=round(cover_fit.MARGIN * k))
+    if shift:
+        return {"offsetY": round(shift / k)}
+    smaller = smaller_size(font_size)
+    return {"fontSize": smaller} if smaller is not None else None
+
+
+def smaller_size(font_size: float | None) -> int | None:
+    """The next size a text is tried at (cover_fit's step), or None when it is at the smallest or unknown."""
+    if font_size is None or font_size <= cover_fit.SMALLEST:
+        return None
+    return max(cover_fit.SMALLEST, round(font_size * cover_fit.SHRINK))
+
+
+def _advice(suggestion: dict | None, font_size: float | None) -> str:
+    if suggestion is None:
+        return "move it clear of the face and the chin"
+    if "offsetY" in suggestion:
+        dy = suggestion["offsetY"]
+        smaller = smaller_size(font_size)
+        return (f"move it {'up' if dy < 0 else 'down'} {abs(dy)} px" +
+                (f", or set its size to {smaller}" if smaller is not None else ""))
+    return f"set its size to {suggestion['fontSize']} (no room to move it inside the safe zone)"
+
+
+def check(run, layers: list[dict], size: tuple[int, int], scratch: Path,
+          rejected: list[dict] | None = None) -> tuple[list[dict], list[dict]]:
+    """(the faces found, the collisions), for layers bottom to top; detections that are no face go to `rejected`."""
     faces: list[dict] = []
     collisions: list[dict] = []
     heads: dict[tuple[str, float], list[tuple]] = {}
+    rejected = [] if rejected is None else rejected
     for n, low in enumerate(layers):
         if low["kind"] == "picture":
             src_size = _size(low["path"])
@@ -202,7 +240,7 @@ def check(run, layers: list[dict], size: tuple[int, int], scratch: Path) -> tupl
             if span is None:
                 continue
             if low["kind"] == "picture" and not fills(high["box"], size):
-                hit = _face_hit(low, high, span, scratch, heads, faces)
+                hit = _face_hit(low, high, span, scratch, heads, faces, size, rejected)
                 if hit:
                     collisions.append(hit)
             if (not fills(low["box"], size) and not fills(high["box"], size)
@@ -216,24 +254,34 @@ def check(run, layers: list[dict], size: tuple[int, int], scratch: Path) -> tupl
 
 
 def _face_hit(picture: dict, layer: dict, span: tuple[float, float], scratch: Path,
-              heads: dict, faces: list[dict]) -> dict | None:
+              heads: dict, faces: list[dict], size: tuple[int, int], rejected: list[dict]) -> dict | None:
+    """The first face the layer covers while both are shown, with the placement that clears every head seen then
+    (`suggest`), or None."""
     box = _edges(layer["box"])
     src_size = _size(picture["path"])
+    hit = None
+    seen: list[tuple] = []
     for at in times(*span):
         key = (picture["id"], at if picture["path"].suffix.lower() not in STILLS else 0.0)
         if key not in heads:
             frame = _frame(picture, at, scratch / f"{len(heads):04d}.png")
+            dropped: list[dict] = []
             placed = [place(cover_fit.head(f), src_size, picture["crop"], picture["box"])
-                      for f in cover_fit.faces(frame)]
+                      for f in cover_fit.faces(frame, dropped)]
             heads[key] = [h for h in placed if h is not None]
             faces.extend({"layer": picture["id"], "at": at, "head": list(h)} for h in heads[key])
-        for head in heads[key]:
-            if overlap(box, head):
-                return {"kind": "face", "layer": layer["id"], "with": picture["id"], "at": at,
-                        "box": list(layer["box"]), "other": list(head),
-                        "message": f"{layer['id']} covers a face in {picture['id']} at {at:.2f} s (the head at "
-                                   f"{', '.join(str(v) for v in head)}): move it clear of the face and the chin"}
-    return None
+            rejected.extend({"layer": picture["id"], "at": at, **r} for r in dropped)
+        seen += heads[key]
+        if hit is None:
+            hit = next(((at, h) for h in heads[key] if overlap(box, h)), None)
+    if hit is None:
+        return None
+    at, head = hit
+    suggestion = suggest(box, seen, size, layer.get("fontSize"))
+    return {"kind": "face", "layer": layer["id"], "with": picture["id"], "at": at,
+            "box": list(layer["box"]), "other": list(head), "suggestion": suggestion,
+            "message": f"{layer['id']} covers a face in {picture['id']} at {at:.2f} s (the head at "
+                       f"{', '.join(str(v) for v in head)}): {_advice(suggestion, layer.get('fontSize'))}"}
 
 
 def _sha(path: Path) -> str:
@@ -269,8 +317,9 @@ def main(argv: list[str] | None = None) -> int:
     size = _size(edit)
     layers = read_layers(run, layers_path, size)
     scratch = Path(tempfile.mkdtemp(prefix="tm-layers-"))
+    rejected: list[dict] = []
     try:
-        faces, collisions = check(run, layers, size, scratch)
+        faces, collisions = check(run, layers, size, scratch, rejected)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
     out = run.next_version(organic_qa.qa_stage(run, edit), f"{edit.stem}_layers", "json")
@@ -279,7 +328,8 @@ def main(argv: list[str] | None = None) -> int:
             f"No layer covers a face or another layer, and no still is scaled up ({len(layers)} layers, "
             f"{len(faces)} face sightings).")
     data = {"edit": c.rel(run, edit), "layers": {"file": c.rel(run, layers_path), "sha256": _sha(layers_path)},
-            "size": list(size), "faces": faces, "collisions": collisions, "message": said}
+            "size": list(size), "faces": faces, "rejected_faces": rejected, "collisions": collisions,
+            "message": said}
     out.parent.mkdir(parents=True, exist_ok=True)
     c.write_json(out, data, newline="\n")
     c.record(run, out, "tm tool layer_check", c.rel(run, edit), params={"layers": c.rel(run, layers_path),

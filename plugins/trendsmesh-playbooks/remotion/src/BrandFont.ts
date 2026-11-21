@@ -7,6 +7,10 @@ import { continueRender, delayRender, staticFile } from "remotion";
 // letter the brand's font lacks, or a file the browser cannot read, is drawn by the stack instead.
 export type BrandFont = { family: string; src: string };
 
+// The brand's saved text set as tm render fills it into HookSwap and WordCaptions props for a refresh-ad run (issue
+// #139, text_sets.fill_props): its look (CaptionLooks' ids), accent, the ink drawn on the accent, font and logo.
+export type TextSet = { look: string; accent?: string | null; ink?: string | null; font?: BrandFont | null; logo?: string | null };
+
 const loading = new Map<string, Promise<void>>();
 
 const load = (font: BrandFont): Promise<void> => {

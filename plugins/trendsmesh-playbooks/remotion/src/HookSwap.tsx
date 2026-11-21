@@ -1,5 +1,6 @@
 import React from "react";
-import { AbsoluteFill, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { useBrandFont, type TextSet } from "./BrandFont";
 import { compFont, loadFor } from "./fonts";
 
 // A text card shown from `from` to `to` (seconds). `lines` are typed one after another;
@@ -29,6 +30,8 @@ export type Card = {
   barExt?: number;
   barHeight?: number;
   borderPx?: number;
+  // with the brand's text set: its logo at the card's left (an ending card)
+  logo?: boolean;
   lines: { at: number; text: string }[];
 };
 // A clip laid over the base video (base audio keeps playing underneath).
@@ -44,6 +47,9 @@ export type HookSwapProps = {
   typeCharsPerSec?: number;
   // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
   language?: string;
+  // the brand's text set (refresh-ad, issue #139; tm render fills it in from the saved set, null keeps the original's
+  // look): the cards in its colours and font, its logo on a card with `logo: true`
+  textSet?: TextSet | null;
 };
 
 export const hookSwapDefaults: HookSwapProps = {
@@ -57,7 +63,28 @@ export const hookSwapDefaults: HookSwapProps = {
 
 const ORANGE = "#E8892B";
 
-const TextCard: React.FC<{ card: Card; cps: number; fontFamily: string }> = ({ card, cps, fontFamily }) => {
+// A card's colours: the original's (white, dark text, an orange border), or the text set's. A card covers a burned-in
+// overlay, so its background is always opaque: pill on the accent, block and quiet dark, the others white with the
+// accent as the border.
+const colours = (set?: TextSet | null): { bg: string; fg: string; edge: string | null } => {
+  if (!set) return { bg: "#FFFFFF", fg: "#111", edge: ORANGE };
+  const accent = set.accent ?? ORANGE;
+  switch (set.look) {
+    case "pill":
+      return { bg: accent, fg: set.ink ?? "#111", edge: null };
+    case "block":
+      return { bg: "#111111", fg: "#FFFFFF", edge: accent };
+    case "quiet":
+      return { bg: "#1E1E1E", fg: "#FFFFFF", edge: null };
+    case "native":
+      return { bg: "#FFFFFF", fg: "#111", edge: null };
+    default:
+      return { bg: "#FFFFFF", fg: "#111", edge: accent };
+  }
+};
+
+const TextCard: React.FC<{ card: Card; cps: number; fontFamily: string; set?: TextSet | null }> = ({ card, cps, fontFamily, set }) => {
+  const { bg, fg, edge } = colours(set);
   const frame = useCurrentFrame();
   const { fps, width } = useVideoConfig();
   const t = frame / fps + card.from;
@@ -71,7 +98,8 @@ const TextCard: React.FC<{ card: Card; cps: number; fontFamily: string }> = ({ c
     : 1;
   const height = card.height ?? 80;
   const left = card.fullBleed ? 0 : card.left ?? 24;
-  const border = `${card.borderPx ?? 3}px solid ${ORANGE}`;
+  const border = edge ? `${card.borderPx ?? 3}px solid ${edge}` : "none";
+  const logo = card.logo && set?.logo ? <Img src={staticFile(set.logo)} style={{ height: height * 0.7, maxWidth: height * 2, objectFit: "contain", marginRight: 12 }} /> : null;
   if (card.style === "outlineBar") {
     const w = card.width ?? width - 2 * left;
     const ext = card.barExt ?? 10;
@@ -81,11 +109,12 @@ const TextCard: React.FC<{ card: Card; cps: number; fontFamily: string }> = ({ c
         <div style={{ position: "absolute", inset: 0, border, boxSizing: "border-box" }} />
         <div
           style={{
-            position: "absolute", left: -ext, width: w + 2 * ext, top: (height - bh) / 2, height: bh, background: "#FFFFFF",
+            position: "absolute", left: -ext, width: w + 2 * ext, top: (height - bh) / 2, height: bh, background: bg,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
-          <span style={{ fontFamily, fontSize: card.fontSize ?? 36, color: "#111", letterSpacing: 0.5, lineHeight: 1, whiteSpace: "pre" }}>{visible}</span>
+          {logo}
+          <span style={{ fontFamily, fontSize: card.fontSize ?? 36, color: fg, letterSpacing: 0.5, lineHeight: 1, whiteSpace: "pre" }}>{visible}</span>
         </div>
       </div>
     );
@@ -98,7 +127,7 @@ const TextCard: React.FC<{ card: Card; cps: number; fontFamily: string }> = ({ c
         left,
         width: card.fullBleed ? width : card.width ?? width - 2 * left,
         height,
-        background: "#FFFFFF",
+        background: bg,
         ...(card.fullBleed ? { borderTop: border, borderBottom: border } : { border, borderRadius: 4 }),
         boxSizing: "border-box",
         display: "flex",
@@ -108,7 +137,8 @@ const TextCard: React.FC<{ card: Card; cps: number; fontFamily: string }> = ({ c
         boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
       }}
     >
-      <span style={{ fontFamily, fontSize: card.fontSize ?? 36, color: "#111", letterSpacing: 0.5, lineHeight: 1.05, padding: "0 18px", textAlign: "center", whiteSpace: "pre-line" }}>
+      {logo}
+      <span style={{ fontFamily, fontSize: card.fontSize ?? 36, color: fg, letterSpacing: 0.5, lineHeight: 1.05, padding: "0 18px", textAlign: "center", whiteSpace: "pre-line" }}>
         {visible}
       </span>
     </div>
@@ -133,9 +163,10 @@ const InsertClip: React.FC<{ insert: Insert }> = ({ insert }) => {
   );
 };
 
-export const HookSwap: React.FC<HookSwapProps> = ({ base, cards, inserts, typeCharsPerSec, language }) => {
+export const HookSwap: React.FC<HookSwapProps> = ({ base, cards, inserts, typeCharsPerSec, language, textSet }) => {
   const { fps } = useVideoConfig();
-  const fontFamily = loadFor(compFont("HookSwap"), language, ["400"]);
+  const own = textSet?.font && textSet.look !== "native" ? textSet.font : undefined;
+  const fontFamily = useBrandFont(own, loadFor(compFont("HookSwap"), language, ["400"]));
   const cps = typeCharsPerSec ?? 40;
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
@@ -147,7 +178,7 @@ export const HookSwap: React.FC<HookSwapProps> = ({ base, cards, inserts, typeCh
       ))}
       {cards.map((c, i) => (
         <Sequence key={`c${i}`} from={Math.round(c.from * fps)} durationInFrames={Math.round((c.to - c.from) * fps)} layout="none">
-          <TextCard card={c} cps={cps} fontFamily={fontFamily} />
+          <TextCard card={c} cps={cps} fontFamily={fontFamily} set={textSet} />
         </Sequence>
       ))}
     </AbsoluteFill>

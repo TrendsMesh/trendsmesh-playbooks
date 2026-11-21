@@ -9,7 +9,11 @@ OpenCV's Haar detectors (frontal and profile, both ways; `--face` adds one the d
 detected face is the eyes to the chin, so the head counts (`head`: half its height above it, a sixth of its width on
 each side). The text is drawn and measured (the pixels it changes), and while it covers a head it is moved
 (`offsetY`) to the nearer side where it clears the head and stays inside the 3:4 crop (y 240 to 1680), else made
-smaller (`fontSize` × 0.85, not under 32) and placed again. A fitted cover writes the props' next version
+smaller (`fontSize` × 0.85, not under 32; an overlay drawn in a text set through its `overlay.size`) and placed
+again. Before fitting, the cover takes the run's approved text style (`styled`, issue #139): each caption's family,
+accent and ink and the brand font, where the props name none, so a `*key*` marker is read as the key word and the
+text gets the set's box or stroke. A detection whose head covers 70 % or more of the frame is no face: it is left out
+and listed as `rejected_faces` ("covers almost the whole frame: not a face"). A fitted cover writes the props' next version
 (`03_wip/cover_<id>_vNN.props.json`); then the cover is drawn from them with `tm render still` into
 `04_final/kits/cover_<id>_vNN.png` (the next version), ready for `tm tool deliver cover`. Free and local.
 """
@@ -23,7 +27,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from tm import organic_final, render
+from tm import organic_edit, organic_final, render
 from tm.tools import _common as c
 
 CROP = (240, 1680)      # the 3:4 crop of a 1080×1920 cover, y at 1080 wide
@@ -31,6 +35,8 @@ MARGIN = 24             # px between the text and a head
 SHRINK, SMALLEST = 0.85, 32
 TRIES = 10
 DIFF = 40               # a pixel the text changes by more than this (0-255, any channel) is the text's
+REJECT_SHARE = 0.70     # a head box covering this much of the frame or more is not a face (issue #139)
+NOT_A_FACE = "covers almost the whole frame: not a face"
 
 
 def head(face: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
@@ -59,8 +65,18 @@ def clear_shift(text: tuple, heads: list[tuple], *, top: int, bottom: int, margi
     return min(options, key=abs) if options else None
 
 
-def faces(png: Path) -> list[tuple[int, int, int, int]]:
-    """The faces OpenCV's Haar detectors find in a picture, (x, y, w, h)."""
+def not_a_face(face: tuple[int, int, int, int], size: tuple[int, int]) -> bool:
+    """A detection whose head box (`head`, inside the frame) covers REJECT_SHARE of the frame or more: the detector
+    took the whole picture for a head (issue #139)."""
+    left, top, right, bottom = head(face)
+    width, height = size
+    w, h = max(0, min(right, width) - max(left, 0)), max(0, min(bottom, height) - max(top, 0))
+    return w * h >= REJECT_SHARE * width * height
+
+
+def faces(png: Path, rejected: list | None = None) -> list[tuple[int, int, int, int]]:
+    """The faces OpenCV's Haar detectors find in a picture, (x, y, w, h). A detection that is no face
+    (`not_a_face`) is left out, and added to `rejected` as {face, reason} when a list is given."""
     import cv2
     import numpy as np
 
@@ -76,6 +92,10 @@ def faces(png: Path) -> list[tuple[int, int, int, int]]:
         for x, y, w, h in cascade.detectMultiScale(pic, scaleFactor=1.1, minNeighbors=6, minSize=(side, side)):
             x = img.shape[1] - x - w if flip else x
             box = (int(x), int(y), int(w), int(h))
+            if not_a_face(box, (img.shape[1], img.shape[0])):
+                if rejected is not None and not any(r["face"] == list(box) for r in rejected):
+                    rejected.append({"face": list(box), "reason": NOT_A_FACE})
+                continue
             if not any(_overlaps(head(box), head(f), 0) for f in found):
                 found.append(box)
     return found
@@ -115,12 +135,32 @@ def _box(text: str) -> tuple[int, int, int, int]:
     return x, y, w, h
 
 
-def fit(run, data: dict, frame: int, given: list[tuple], scratch: Path) -> tuple[dict, list[tuple], list[str]]:
-    """(the fitted props, the faces, what was changed, in words)."""
+OVERLAY_SIZES = {"hook": 62, "label": 40, "number": 150, "cta": 54, "end": 96}   # OverlayLooks.tsx SIZES
+
+
+def size_of(cap: dict) -> float:
+    """The size a caption is drawn at, px at 1080: an overlay in a family its `overlay.size`, else its kind's."""
+    ov = cap.get("overlay") if isinstance(cap.get("overlay"), dict) else None
+    if ov is not None:
+        return float(ov.get("size") or OVERLAY_SIZES.get(ov.get("kind", "hook"), 62))
+    return float(cap.get("fontSize") or 58)
+
+
+def set_size(cap: dict, size: float) -> None:
+    """Draw the caption at `size` (px at 1080): an overlay in a family through `overlay.size`."""
+    if isinstance(cap.get("overlay"), dict):
+        cap["overlay"]["size"] = size
+    else:
+        cap["fontSize"] = size
+
+
+def fit(run, data: dict, frame: int, given: list[tuple], scratch: Path,
+        rejected: list | None = None) -> tuple[dict, list[tuple], list[str]]:
+    """(the fitted props, the faces, what was changed, in words); detections that are no face go to `rejected`."""
     width, height = int(data.get("width") or 1080), int(data.get("height") or 1920)
     k = width / 1080
     plain = _draft(run, {**data, "captions": []}, frame, scratch / "plain.png")
-    found = [*faces(plain), *given]
+    found = [*(faces(plain) if rejected is None else faces(plain, rejected)), *given]
     heads = [tuple(round(v * k) for v in head(f)) for f in found]
     bounds = {"top": round(CROP[0] * k), "bottom": round(CROP[1] * k), "margin": round(MARGIN * k)}
     data = json.loads(json.dumps(data))
@@ -140,16 +180,62 @@ def fit(run, data: dict, frame: int, given: list[tuple], scratch: Path) -> tuple
                 cap["offsetY"] = round(float(cap.get("offsetY") or 0) + shift / k)
             changes.append(f"moved {'up' if shift < 0 else 'down'} {abs(round(shift / k))} px")
             continue
-        sizes = [float(cap.get("fontSize") or 58) for cap in caps]
+        sizes = [size_of(cap) for cap in caps]
         if all(s <= SMALLEST for s in sizes):
             break
         for cap, size in zip(caps, sizes):
-            cap["fontSize"] = max(SMALLEST, round(size * SHRINK))
+            set_size(cap, max(SMALLEST, round(size * SHRINK)))
         changes.append(f"made smaller: fontSize {', '.join(f'{s:g}' for s in sizes)} → "
-                       f"{', '.join(str(cap['fontSize']) for cap in caps)}")
+                       f"{', '.join(f'{size_of(cap):g}' for cap in caps)}")
     raise c.ToolStop("The cover's text cannot clear the face inside the 3:4 crop (y 240 to 1680) even at its "
                      f"smallest ({'; '.join(changes) or 'no change helped'}). Nothing was written. Pick another frame "
                      "(the face smaller or to one side), or fewer words, and run it again.")
+
+
+def styled(run, data: dict) -> tuple[dict, str | None]:
+    """(the cover props in the run's approved text style, what was filled in words; None when nothing was): each
+    caption's family (look), accent and ink and the brand font, where the props name none (issue #139). A hook
+    drawn in a family reads `*key*` as the key word; a plain hook box (a style with no look) draws the stars, so
+    they are dropped there."""
+    approved = organic_edit.approved_style(run)
+    if approved is None:
+        return data, None
+    rel, _, style = approved
+    look, accent = style.get("look"), style.get("accent")
+    tint = {"accent": accent, "ink": organic_edit.accent_ink(accent)} if accent else {}
+    out = json.loads(json.dumps(data))
+    for cap in [x for x in out.get("captions") or [] if isinstance(x, dict)]:
+        if cap.get("style") == "caption":
+            if look and not cap.get("look"):
+                cap["look"] = look
+            if accent and not cap.get("ink"):
+                cap["ink"] = tint["ink"]
+            continue
+        given = cap.get("overlay") if isinstance(cap.get("overlay"), dict) else None
+        if given is not None or look:
+            ov = dict(given or {})
+            ov.setdefault("kind", "hook")
+            if look:
+                ov.setdefault("family", look)
+            if accent:
+                ov.setdefault("accent", accent)
+            if ov.get("accent") and organic_edit.COLOUR.fullmatch(str(ov["accent"])):
+                ov.setdefault("ink", organic_edit.accent_ink(ov["accent"]))
+            if ov.get("family"):
+                if given is None and isinstance(cap.get("fontSize"), (int, float)):
+                    ov.setdefault("size", cap["fontSize"])   # a family sizes by kind: keep the cover's own size
+                cap["overlay"] = ov
+                continue
+        group = style.get("overlays") if isinstance(style.get("overlays"), dict) else {}
+        for key in ("color", "background"):
+            if not cap.get(key) and group.get(key):
+                cap[key] = group[key]
+        cap["text"] = str(cap.get("text", "")).replace("*", "")
+    if style.get("font") and not out.get("brandFont"):
+        out["brandFont"] = style["font"]
+    if out == data:
+        return data, None
+    return out, f"drawn in the approved text style ({rel})"
 
 
 def _next_props(run, rel: str) -> Path:
@@ -170,18 +256,21 @@ def main(argv: list[str] | None = None) -> int:
         rel = c.rel(run, path)
     except ValueError:
         raise c.ToolError(f"The cover props {c.name_of(a.props)} must be inside the run folder.") from None
-    data = render._check_props(run, "OrganicCaptions", path)
+    data, filled = styled(run, render._check_props(run, "OrganicCaptions", path))
     given = [_box(f) for f in a.face]
     scratch = Path(tempfile.mkdtemp(prefix="tm-cover-"))
+    rejected: list[dict] = []
     try:
-        fitted, found, changes = fit(run, data, a.frame, given, scratch)
+        fitted, found, changes = fit(run, data, a.frame, given, scratch, rejected)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
+    changes = ([filled] if filled else []) + changes
     props_path = path
     if changes:
         props_path = _next_props(run, rel)
         c.write_json(props_path, fitted, newline="\n")
         c.record(run, props_path, "tm tool cover_fit", rel, params={"faces": [list(f) for f in found],
+                                                                     "rejected_faces": rejected,
                                                                      "changes": changes}, cost="0 (local)")
     pid = organic_final.idea_id(run) or "cover"
     out = c.output(run, a.out, organic_final.KITS, f"cover_{pid}", "png")
@@ -189,8 +278,13 @@ def main(argv: list[str] | None = None) -> int:
     said = ("No face was found in the frame: look at the cover, and give --face X,Y,W,H (px at 1080×1920) for a face "
             "the detector missed." if not found else
             f"The text is clear of {len(found)} face(s)" + (f": {'; '.join(changes)}." if changes else ", as it was."))
+    if not found and filled:
+        said += f" The text is {filled}."
+    if rejected:
+        said += (f" {len(rejected)} detection(s) left out: they cover almost the whole frame, so they are not a "
+                 "face.")
     payload = {"tool": "cover_fit", "outputs": [c.rel(run, done)], "props": c.rel(run, props_path),
-               "faces": [list(f) for f in found], "changes": changes, "message": said}
+               "faces": [list(f) for f in found], "rejected_faces": rejected, "changes": changes, "message": said}
     return c.finish(a, payload, f"Wrote {c.rel(run, done)}. {said} Then: tm tool deliver cover --run <run> "
                                 f"{c.rel(run, done)}.")
 

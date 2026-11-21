@@ -35,6 +35,30 @@ def test_the_head_above_the_detected_face_counts():
     assert cover_fit.head((100, 400, 200, 200)) == (70, 300, 330, 600)
 
 
+def test_a_head_covering_70_percent_of_the_frame_or_more_is_not_a_face():
+    """Issue #139: a detection whose head box (`head`, inside the frame) covers 70 % or more of it is dropped."""
+    assert cover_fit.not_a_face((0, 200, 1000, 1300), (1080, 1920))        # 1080 × 1500 of 1080 × 1920: 78 %
+    assert not cover_fit.not_a_face((300, 400, 480, 560), (1080, 1920))
+    assert cover_fit.NOT_A_FACE == "covers almost the whole frame: not a face"
+
+
+@pytest.mark.tools
+def test_a_cover_in_the_approved_style_is_written_in_its_family_and_says_so(ov, drawn, monkeypatch, capsys):
+    from tm import organic_edit
+
+    style = organic_edit.default_style(caption="", overlay="", look="outline", accent="#FFD84D")
+    monkeypatch.setattr(cover_fit.organic_edit, "approved_style", lambda run: ("03_wip/text_style_v01.json", "x",
+                                                                                style))
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
+    _cover_props(ov, text="One *habit*")
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "6")
+    assert code == 0 and out["props"] == "03_wip/cover_M5_v02.props.json"
+    cap = json.loads((ov.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
+    assert cap["overlay"]["family"] == "outline" and cap["overlay"]["accent"] == "#FFD84D"
+    assert any("approved text style" in ch for ch in out["changes"])
+    assert out["rejected_faces"] == []
+
+
 @pytest.fixture
 def ov(tmp_path):
     run = RunFolder.create(tmp_path / "ws" / "runs" / "03" / "x", "m5", date_(), playbook=ORGANIC_VIDEO)
@@ -97,7 +121,7 @@ def _tool(capsys, *argv):
 
 @pytest.mark.tools
 def test_the_cover_text_is_moved_off_the_face(ov, drawn, monkeypatch, capsys):
-    monkeypatch.setattr(cover_fit, "faces", lambda png: [FACE])
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [FACE])
     _cover_props(ov)
     code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "6")
     assert code == 0, out
@@ -113,7 +137,7 @@ def test_the_cover_text_is_moved_off_the_face(ov, drawn, monkeypatch, capsys):
 
 @pytest.mark.tools
 def test_a_text_that_fits_nowhere_is_shrunk(ov, drawn, monkeypatch, capsys):
-    monkeypatch.setattr(cover_fit, "faces", lambda png: [(300, 520, 480, 900)])   # the head is most of the frame
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [(300, 520, 480, 900)])   # the head is most of the frame
     _cover_props(ov, fontSize=110)
     code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "6")
     assert code == 0, out
@@ -123,7 +147,7 @@ def test_a_text_that_fits_nowhere_is_shrunk(ov, drawn, monkeypatch, capsys):
 
 @pytest.mark.tools
 def test_a_clear_cover_is_drawn_as_it_is(ov, drawn, monkeypatch, capsys):
-    monkeypatch.setattr(cover_fit, "faces", lambda png: [(380, 1100, 320, 300)])
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [(380, 1100, 320, 300)])
     _cover_props(ov)
     code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "6")
     assert code == 0 and out["changes"] == [] and out["props"] == "03_wip/cover_M5_v01.props.json"
@@ -132,7 +156,7 @@ def test_a_clear_cover_is_drawn_as_it_is(ov, drawn, monkeypatch, capsys):
 
 @pytest.mark.tools
 def test_no_face_found_says_so_and_a_face_can_be_given(ov, drawn, monkeypatch, capsys):
-    monkeypatch.setattr(cover_fit, "faces", lambda png: [])
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
     _cover_props(ov)
     code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "6")
     assert code == 0 and out["faces"] == [] and "--face" in out["message"]

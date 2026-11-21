@@ -38,6 +38,10 @@ resolve (OrganicCaptions' segment, music and voice files the same way). Outputs 
 free version in `03_wip` (never overwritten), with a manifest row whose params are the props and
 whose source is the props file. Rendering is free: no budget.
 The ending card is a HookSwap card whose from/to lie in the last seconds; there is no extra composition.
+A refresh-ad run's HookSwap and WordCaptions props are drawn in the brand's saved text set (issue #139): `textSet`
+(`text_sets.fill_props`) is filled into the props Remotion reads and into the record, unless the props name one
+(`null` keeps the original ad's look).
+
 Fonts follow the market language (`video_fonts`, issue 3): every composition takes a `language` prop (BCP 47) and
 loads the Google Fonts subsets its script needs; when its own font lacks some, the font draws the letters it has
 and a Noto Sans fallback the others. When the props give no `language`, the run's market language is filled in, and
@@ -313,6 +317,10 @@ def _check_props(run: RunFolder, comp: str, props: Path) -> dict:
         files += [font.get("src")] if isinstance(font, dict) else []
         files += [cap["overlay"].get("logo") for cap in data.get("captions") or []
                   if isinstance(cap, dict) and isinstance(cap.get("overlay"), dict)]
+    kit = data.get("textSet") if comp in ("HookSwap", "WordCaptions") else None
+    if isinstance(kit, dict):         # refresh-ad's text set (issue #139): its font and logo in the run
+        files += [kit["font"].get("src")] if isinstance(kit.get("font"), dict) else []
+        files += [kit.get("logo")]
     for rel_path in files:
         if isinstance(rel_path, str) and (
                 PurePosixPath(rel_path.replace("\\", "/")).is_absolute() or PureWindowsPath(rel_path).drive
@@ -344,7 +352,10 @@ def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra:
     if out.exists():
         raise c.ToolError(f"{out.name} already exists, and files are never overwritten.")
     _need_setup()
-    data, props_arg = _with_language(run, comp, data, props)
+    from tm import text_sets   # it reads the organic modules, which import this one
+
+    data, set_filled = text_sets.fill_props(run, comp, data)
+    data, props_arg = _with_language(run, comp, data, props, filled=set_filled)
     out.parent.mkdir(parents=True, exist_ok=True)
     _sync_src()
     c.say(f"Rendering {comp} ({kind}) ...")
@@ -372,13 +383,14 @@ def _render(run: RunFolder, kind: str, comp: str, props: Path, out: Path, extra:
     return out
 
 
-def _with_language(run: RunFolder, comp: str, data: dict, props: Path) -> tuple[dict, Path]:
+def _with_language(run: RunFolder, comp: str, data: dict, props: Path, *, filled: bool = False) -> tuple[dict, Path]:
     """(the props with their `language`, the props file Remotion reads). The language is the props' own, else
     the run's market language (`video_fonts.market_language`); the fonts are checked to cover the on-screen text
     for it (a Stop otherwise). A font split in numbered chunks (CJK) gets the chunks the text needs as
-    `fontSubsets` (`video_fonts.font_subsets`), unless the props name them. When anything is filled in, Remotion
-    reads a copy of the props in the data folder, removed after the render; the props file stays as written, and
-    the props recorded carry the language only."""
+    `fontSubsets` (`video_fonts.font_subsets`), unless the props name them. When anything is filled in (`filled`:
+    the caller filled something already, refresh-ad's `textSet`), Remotion reads a copy of the props in the data
+    folder, removed after the render; the props file stays as written, and the props recorded carry the language
+    (and that text set) only."""
     if "language" in data:
         language, source = video_fonts.language_tag(data["language"]), "the props"
     else:
@@ -388,7 +400,7 @@ def _with_language(run: RunFolder, comp: str, data: dict, props: Path) -> tuple[
     if filled_in:
         data = {**data, "language": language}
     chunks = {} if "fontSubsets" in data else video_fonts.font_subsets(comp, data, language, fonts_dir())
-    if filled_in or chunks:
+    if filled_in or chunks or filled:
         filled = work_dir() / f".props-{os.getpid()}-{props.stem}.json"
         filled.write_text(json.dumps({**data, **({"fontSubsets": chunks} if chunks else {})}, ensure_ascii=False),
                           encoding="utf-8")

@@ -1,5 +1,6 @@
 import React from "react";
 import { AbsoluteFill, OffthreadVideo, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { useBrandFont, type TextSet } from "./BrandFont";
 import { compFont, loadFor } from "./fonts";
 
 // Fonts tried when matching a burned-in caption style; `font` in props picks one (its family is in fonts.json),
@@ -14,8 +15,9 @@ const FONTS = {
 };
 const fontOf = (key: keyof typeof FONTS, language?: string) => loadFor(compFont("WordCaptions", key), language, FONTS[key]);
 
-// One word on screen at a time (karaoke-style captions), shown from `from` to `to` seconds.
-export type Word = { text: string; from: number; to: number };
+// One word on screen at a time (karaoke-style captions), shown from `from` to `to` seconds; `key`: a key word, drawn
+// in the text set's accent.
+export type Word = { text: string; from: number; to: number; key?: boolean };
 
 export type CaptionStyle = {
   font: keyof typeof FONTS;
@@ -46,6 +48,9 @@ export type WordCaptionsProps = {
   probe?: { text: string; dy: number; font?: keyof typeof FONTS; fontSize?: number; strokeWidth?: number }[];
   // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render fills it in.
   language?: string;
+  // the brand's text set (refresh-ad, issue #139; tm render fills it in, null keeps the matched style alone): its
+  // font replaces the matched one (size, stroke and place stay the original's), a key word is drawn in its accent
+  textSet?: TextSet | null;
 };
 
 export const wordCaptionsDefaults: WordCaptionsProps = {
@@ -57,8 +62,8 @@ export const wordCaptionsDefaults: WordCaptionsProps = {
   style: { font: "nunito", fontSize: 64, fontWeight: 900, color: "#FFFFFF", stroke: "#15151A", strokeWidth: 7, centerX: 540, baselineY: 1499 },
 };
 
-const CaptionWord: React.FC<{ text: string; style: CaptionStyle; dy?: number; font?: keyof typeof FONTS; language?: string }> = ({ text, style, dy = 0, font, language }) => {
-  const family = fontOf(font ?? style.font, language);
+const CaptionWord: React.FC<{ text: string; style: CaptionStyle; dy?: number; font?: keyof typeof FONTS; language?: string; family?: string }> = ({ text, style, dy = 0, font, language, family: own }) => {
+  const family = own ?? fontOf(font ?? style.font, language);
   // Line box of 1.2 em; cap baseline sits about 0.2 em above the box bottom for these fonts,
   // fine-tuned per font with `baselineY`.
   const box = style.fontSize * 1.2;
@@ -87,15 +92,19 @@ const CaptionWord: React.FC<{ text: string; style: CaptionStyle; dy?: number; fo
   );
 };
 
-export const WordCaptions: React.FC<WordCaptionsProps> = ({ base, baseMuted, words, style, probe, language }) => {
+export const WordCaptions: React.FC<WordCaptionsProps> = ({ base, baseMuted, words, style, probe, language, textSet }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = frame / fps;
   const current = words.find((w) => t >= w.from && t < w.to);
+  const own = textSet?.font && textSet.look !== "native" ? textSet.font : undefined;
+  const branded = useBrandFont(own, fontOf(style.font, language));
+  const family = own ? branded : undefined;
+  const lit = current?.key && textSet?.accent ? { ...style, color: textSet.accent } : style;
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
       <OffthreadVideo src={staticFile(base)} muted={baseMuted ?? true} />
-      {current ? <CaptionWord text={current.text} style={style} language={language} /> : null}
+      {current ? <CaptionWord text={current.text} style={lit} language={language} family={family} /> : null}
       {(probe ?? []).map((p, i) => (
         <CaptionWord key={i} text={p.text} style={{ ...style, fontSize: p.fontSize ?? style.fontSize, strokeWidth: p.strokeWidth ?? style.strokeWidth }} dy={p.dy} font={p.font} language={language} />
       ))}

@@ -1091,6 +1091,15 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
        --style 03_wip/text_style_vNN.json --by rule --note "the channel's saved text set" --json`;
        the card says which set it is and that it can be changed any time. A video whose format
        needs another one (a ranking, a quiz) draws it with `--look <set>` for that video only.
+     - **An animation** (the picture in its `03_wip/<item>/` folder): when the set is not the one
+       its style's family fits (Hand-drawn, Painterly, Paper and craft, Illustration: `marker`;
+       the explainer, data, UI, print and design families: `block`; Retro: `pop`; Dimensional,
+       Light and imaging, Cosmic: `outline`), the answer's `suggestion` is that set, drawn too.
+       Show both and say what the answer says ("The channel's set is outline; for a Hand-drawn
+       style, marker fits better."). The saved set stays; their pick for this video is drawn
+       again with `--look`. When the frames list puts `overlay` text on a panel, the animation
+       draws its own headings: the top overlay is off (`overlays_off`), and the card says so.
+       Draw it with `--overlays on` only when the user wants it.
      - **The first time** (no saved set): pick the 3 sets that fit the channel (its type, tone,
        energy and kind of content; `tm brand text-style show` suggests three; `native` first for a
        UGC channel or content meant to look filmed in the app, else the default `outline` among
