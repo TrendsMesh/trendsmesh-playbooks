@@ -79,8 +79,12 @@ again. Without the page tools, the local page's path instead, and the decision h
 Ask, in the user's language: "Do you want animatics? An animatic is a short moving storyboard of the
 ad: the shots, their timing, the on-screen text, the hook and the call to action, drawn as simple
 sketches. It helps show the idea to your team, or to a creator, before anyone films. It costs
-nothing and takes about a minute per concept and format on this computer. For which concepts: all,
-some (say which) or none?" All or some: `tm decide animatics make --concepts C1,C3 --run R --said "<their words>"` (every
+nothing and takes about a minute per concept and format on this computer. You can also ask for one
+drawn in an animation style matched to the concept: that takes about 3 minutes per concept instead.
+For which concepts: all, some (say which) or none?" (Once this computer has drawn a styled one,
+`tm brief animatic --run R --estimate --json` gives its own `minutes_per_concept`: say that number.)
+A styled animatic is made only when the user asks for one (`references/animatic.md`); the sketch is
+the default. All or some: `tm decide animatics make --concepts C1,C3 --run R --said "<their words>"` (every
 concept id for all); none: `tm decide animatics skip --run R --said "<their words>"`. In Hands-off it is not asked, and no
 animatic is made.
 

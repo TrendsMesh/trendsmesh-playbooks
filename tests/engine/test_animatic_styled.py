@@ -1,0 +1,321 @@
+"""Issue #138 item 4 (owner decision #148 line 2): a creative brief's animatic may be drawn in one of the 49 library
+styles, as an option; the quick sketch (`scenes.js`) stays the default.
+
+`tm brief animatic --style auto` picks each named concept's style with `atlas_prompt.ranked` from the concept's format
+(a talking head, a screen recording and a UGC phone video get different styles; the channel's own style first with
+`--own`), writes it into a new brief version as `animatic.style` with its poster, and writes each concept's build
+prompt. A subagent writes the style module; `tm brief animatic --render` builds its page with `atlas_prompt.module_page`
+and draws it with `atlas.render`, never with `scenes.js`. The brief page shows the style's name and poster. CI has no
+browser: `atlas.need`, `atlas.layout` and `atlas.render` are replaced, as in test_animatic.py.
+"""
+
+from __future__ import annotations
+
+import copy
+from datetime import date
+import json
+from pathlib import Path
+
+import pytest
+
+from tm import animatic, atlas, atlas_prompt, brief_checks, brief_page, manifest, paths
+from tm.cli import main
+from tm.playbooks import CREATIVE_BRIEF
+from tm.runfolder import RunFolder
+
+EXAMPLE = paths.bundled_data().parent / "skills" / "creative-brief" / "templates" / "brief_pack_example.json"
+V01 = "04_final/brief_pack_v01.json"
+WIP = "03_wip/animatic"
+
+
+def _ad() -> dict:
+    data = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    brief = {k: v for k, v in data.items() if not k.startswith("_")}
+    c3 = copy.deepcopy(brief["concepts"][0])
+    c3["id"], c3["title"] = "C3", "Unboxing the plan"
+    c3["plugin"]["axes"]["format"] = "UGC phone video"
+    brief["concepts"].append(c3)
+    return brief
+
+
+@pytest.fixture
+def ws(tmp_path, monkeypatch):
+    folder = tmp_path / "ws"
+    folder.mkdir()
+    monkeypatch.setenv("TM_WORKSPACE", str(folder))
+    monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "data"))
+    return folder
+
+
+@pytest.fixture
+def run(ws) -> RunFolder:
+    run = RunFolder.create(ws, "Example App", date(2026, 1, 1), playbook=CREATIVE_BRIEF)
+    path = run.path / V01
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(_ad(), ensure_ascii=False), encoding="utf-8")
+    return run
+
+
+def _cli(capsys, *argv) -> tuple[int, dict]:
+    code = main([*argv, "--json"])
+    return code, json.loads(capsys.readouterr().out)
+
+
+def _latest(run: RunFolder) -> dict:
+    return json.loads(run.latest("04_final", "brief_pack", "json").read_text(encoding="utf-8"))
+
+
+def _concept(brief: dict, cid: str) -> dict:
+    return next(c for c in brief["concepts"] if c["id"] == cid)
+
+
+def _module(beats) -> str:
+    return ("(function () {\n  \"use strict\";\n  function draw(ctx, W, H, t) { ctx.fillRect(0, 0, W, H); }\n"
+            f"  Player.register({{ id: \"c1\", name: \"C1\", duration: 15, beats: {json.dumps(beats)}, "
+            "beatNames: [], draw, score() {} });\n})();\n")
+
+
+def _fake_render(calls: list, seconds: float = 70):
+    def render(page_, out_mp4, *, fps=atlas.FPS, stills=atlas.STILLS):
+        out_mp4 = Path(out_mp4)
+        assert not out_mp4.exists() and Path(page_).is_file()
+        calls.append((Path(page_), out_mp4, fps))
+        out_mp4.write_bytes(b"mp4")
+        for s in stills:
+            (out_mp4.parent / f"{out_mp4.stem}_still_{round(s * 100):03d}.png").write_bytes(b"png")
+        return {"out": str(out_mp4), "duration": 15, "render_s": seconds, "page_errors": []}
+    return render
+
+
+@pytest.fixture
+def renderer(monkeypatch):
+    calls: list = []
+    monkeypatch.setattr(atlas, "need", lambda: Path("/Applications/Chrome"))
+    monkeypatch.setattr(atlas, "missing", lambda: None)
+    monkeypatch.setattr(atlas, "layout", lambda page_: {"beats": [0, 3, 9]})
+    monkeypatch.setattr(atlas, "layout_problems", lambda summary: [])
+    monkeypatch.setattr(atlas, "render", _fake_render(calls))
+    return calls
+
+
+# --- the choice -----------------------------------------------------------------------------------------------
+
+def test_three_formats_get_three_styles_chosen_by_the_ranking():
+    brief = _ad()
+    picked = animatic.choose_styles(brief, ["C1", "C2", "C3"])
+    ids = [picked[c]["styleId"] for c in ("C1", "C2", "C3")]
+    assert len(set(ids)) == 3                                       # three formats, three looks
+    taken: list[str] = []
+    for cid in ("C1", "C2", "C3"):
+        kind, tone = animatic.rank_args(animatic.concept_format(_concept(brief, cid)))
+        first = next(s for s in atlas_prompt.ranked(channel_type=kind, tone=tone) if s["styleId"] not in taken)
+        assert picked[cid]["styleId"] == first["styleId"], cid       # the ranking's first free style
+        taken.append(first["styleId"])
+    assert animatic.rank_args("talking head")[0] == "lifestyle_vlog"
+    assert animatic.rank_args("screen recording")[0] == "howto_education"
+    assert animatic.rank_args("UGC phone video")[0] == "shop_product"
+    assert animatic.rank_args(None) == (None, ())
+
+
+def test_the_channels_own_style_comes_first_and_a_given_style_is_kept():
+    brief = _ad()
+    own = animatic.choose_styles(brief, ["C1", "C2"], own="12")
+    assert {c["styleId"] for c in own.values()} == {"linocut"} and own["C1"]["reason"] == "channel"
+    given = animatic.choose_styles(brief, ["C2"], given="ink-wash")
+    assert given["C2"]["styleId"] == "ink-wash" and given["C2"]["reason"] == "given"
+    with pytest.raises(ValueError, match="Unknown style"):
+        animatic.choose_styles(brief, ["C2"], given="no-such-style")
+
+
+def test_a_later_concept_keeps_clear_of_the_styles_the_brief_has():
+    brief = _ad()
+    first = animatic.choose_styles(brief, ["C1"])["C1"]["styleId"]
+    _concept(brief, "C3")["animatic"] = {"style": first}
+    brief["concepts"][0]["plugin"]["axes"]["format"] = "UGC phone video"
+    assert animatic.choose_styles(brief, ["C1"])["C1"]["styleId"] != first
+
+
+# --- the default: the sketch ----------------------------------------------------------------------------------
+
+def test_without_style_the_animatic_is_the_sketch(run, capsys, renderer):
+    """No --style: tm brief animatic draws the sketch exactly as on the base (scenes.js, window.ANIM, no style)."""
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code == 0, out
+    version = out["version"]
+    assert (run.path / WIP / "scenes.js").exists() and (run.path / WIP / "engine.js").exists()
+    assert (run.path / WIP / f"C1_anim_{version}.js").read_text(encoding="utf-8").startswith("window.ANIM = ")
+    page = (run.path / WIP / f"C1_9x16_{version}.html").read_text(encoding="utf-8")
+    assert '<script src="scenes.js"></script>' in page and "Player.register" not in page
+    assert all("style" not in i for i in out["items"])
+    a = _concept(_latest(run), "C1")["animatic"]
+    assert set(a) == {"9x16", "4x5", "default"}                     # no style, no poster
+    assert not list((run.path / WIP).glob("*_prompt_v*.txt"))
+    assert not list((run.path / animatic.RENDERS).glob("style_*"))
+    assert animatic.minutes_per_concept()[1] is False               # a sketch's time is not the styled one's
+
+
+# --- the style step: tm brief animatic --style ------------------------------------------------------------------
+
+def test_the_style_step_writes_the_brief_a_poster_and_a_prompt_per_concept(run, capsys):
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1,C2")
+    assert code == 0, out
+    assert out["brief"] == "04_final/brief_pack_v02.json"
+    brief = _latest(run)
+    for row in out["styles"]:
+        cid, style = row["concept"], atlas_prompt.find_style(row["style"])
+        a = _concept(brief, cid)["animatic"]
+        assert a["style"] == style["styleId"]
+        assert a["poster"] == f"animatic/style_{style['order']:02d}_{style['styleId']}.jpg"
+        poster = run.path / animatic.RENDERS / Path(a["poster"]).name
+        assert poster.read_bytes() == atlas_prompt.preview_files(style)[0].read_bytes()
+        assert row["prompt"] == f"{WIP}/{cid}_prompt_v01.txt" and row["module"] == f"{WIP}/{cid}_style_v01.js"
+        prompt = (run.path / row["prompt"]).read_text(encoding="utf-8")
+        assert style["name"] in prompt and "## An animatic of a brief" in prompt
+        for beat in _concept(brief, cid)["beats"]:
+            for text in beat["animatic"]["texts"]:
+                assert text["str"] in prompt
+        assert "1080x1920" in prompt and "1080x1350" in prompt        # both formats drawn from one module
+    assert "animatic" not in _concept(brief, "C3")                   # not named, not styled
+    assert not list((run.path / WIP).glob("*.html"))                 # nothing drawn yet
+    rows = [r for r in manifest.rows(run) if r["file"].endswith("_prompt_v01.txt")]
+    assert len(rows) == 2 and all(json.loads(r["params"])["style"] for r in rows)
+    assert "C1_style_v01.js" in out["message"] and "--render" in out["message"]
+
+
+def test_the_style_step_refuses_render_and_an_unknown_style(run, capsys):
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--render")
+    assert code == 1 and "--style" in out["message"]
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "nope", "--concepts", "C1")
+    assert code == 1 and "Unknown style" in out["message"]
+    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v01.json"
+
+
+# --- the render of a styled concept -----------------------------------------------------------------------------
+
+def _styled(run, capsys, cid="C1", style="ink-wash") -> dict:
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", style, "--concepts", cid)
+    assert code == 0, out
+    return out["styles"][0]
+
+
+def test_a_styled_concept_is_drawn_from_its_style_module_not_from_scenes(run, capsys, renderer):
+    row = _styled(run, capsys)
+    (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code == 0, out
+    assert [i["format"] for i in out["items"]] == ["9x16", "4x5"]
+    assert not (run.path / WIP / "scenes.js").exists() and not (run.path / WIP / "engine.js").exists()
+    version = out["version"]
+    page = (run.path / WIP / f"C1_9x16_{version}.html").read_text(encoding="utf-8")
+    assert "Player.register" in page and "window.Brush" in page and "scenes.js" not in page
+    assert '"width": 1080, "height": 1920' in page
+    assert '"height": 1350' in (run.path / WIP / f"C1_4x5_{version}.html").read_text(encoding="utf-8")
+    assert len(renderer) == 2
+    a = _concept(_latest(run), "C1")["animatic"]
+    assert a == {"9x16": f"animatic/C1_animatic_9x16_{version}.mp4", "4x5": f"animatic/C1_animatic_4x5_{version}.mp4",
+                 "default": "9x16", "style": "ink-wash", "poster": "animatic/style_20_ink-wash.jpg"}
+    assert out["items"][0]["style"] == "ink-wash"
+
+
+def test_the_module_needs_one_beat_per_beat_of_the_brief(run, capsys, renderer):
+    row = _styled(run, capsys)
+    (run.path / row["module"]).write_text(_module([0, 3]), encoding="utf-8")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code == 2 and "2 beats" in out["message"] and "3 beats" in out["message"]
+    assert not list((run.path / WIP).glob("*.html")) and not renderer
+
+
+def test_beats_kept_in_a_constant_are_read_from_the_page(run, capsys, renderer, monkeypatch):
+    """A module shaped like the reference modules (`beats: BEATS`) is counted as its page registers it."""
+    row = _styled(run, capsys)
+    code = (_module([0, 3]).replace("beats: [0, 3]", "beats: BEATS")
+            .replace('"use strict";', '"use strict"; const BEATS = [0, 3];'))
+    (run.path / row["module"]).write_text(code, encoding="utf-8")
+    monkeypatch.setattr(atlas, "layout", lambda page_: {"beats": [0, 3]})
+    code_, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code_ == 2 and "2 beats" in out["message"]
+    monkeypatch.setattr(atlas, "layout", lambda page_: {"beats": [0, 3, 9]})
+    assert _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")[0] == 0
+
+
+def test_a_frames_list_does_not_refuse_a_brief_animatic(run, capsys, renderer):
+    """Issue #141's check compares an organic item's storyboard with its frames list; a brief's beats are its own."""
+    row = _styled(run, capsys)
+    (run.path / WIP / "frames_v01.json").write_text(json.dumps([{"scene": n} for n in range(5)]), encoding="utf-8")
+    (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code == 0, out
+
+
+def test_a_styled_concept_without_its_module_is_a_stop(run, capsys, renderer):
+    row = _styled(run, capsys)
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code == 2 and row["prompt"] in out["message"] and row["module"] in out["message"]
+    assert not renderer
+
+
+def test_a_module_from_before_the_style_changed_is_not_drawn(run, capsys, renderer):
+    row = _styled(run, capsys)
+    (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
+    again = _styled(run, capsys, style="clay")                       # a new style: a new prompt, v02
+    assert again["prompt"].endswith("C1_prompt_v02.txt")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code == 2 and again["module"] in out["message"]
+
+
+def test_a_styled_and_a_sketched_concept_in_one_call(run, capsys, renderer):
+    row = _styled(run, capsys)
+    (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1,C2",
+                     "--formats", "9x16")
+    assert code == 0, out
+    by = {i["concept"]: i for i in out["items"]}
+    assert by["C1"]["style"] == "ink-wash" and "style" not in by["C2"]
+    assert (run.path / WIP / "scenes.js").exists()                   # the sketch, for the concept with no style
+    assert "style" not in _concept(_latest(run), "C2")["animatic"]
+
+
+# --- the time the question says ---------------------------------------------------------------------------------
+
+def test_the_question_says_the_last_render_time_on_this_computer(run, capsys, renderer):
+    assert animatic.minutes_per_concept() == (animatic.DEFAULT_MINUTES, False)
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--estimate")
+    assert code == 0 and out["minutes_per_concept"] == animatic.DEFAULT_MINUTES == 3 and out["measured"] is False
+    row = _styled(run, capsys)
+    (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
+    assert _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")[0] == 0
+    assert animatic.minutes_per_concept() == (3, True)               # 2 formats x 70 s: about 3 minutes
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--estimate")
+    assert out["minutes_per_concept"] == 3 and out["measured"] is True and "3 minutes" in out["message"]
+
+
+# --- the check and the page -------------------------------------------------------------------------------------
+
+def test_brief_check_refuses_a_style_the_library_has_not(run):
+    brief = _ad()
+    brief["concepts"][0]["animatic"] = {"style": "no-such-style"}
+    found = [p for p in brief_checks.check(run, brief, "concepts", {}) if p.field.endswith("animatic.style")]
+    assert found and "no-such-style" in found[0].what
+    brief["concepts"][0]["animatic"] = {"style": "ink-wash", "poster": "animatic/style_20_ink-wash.jpg"}
+    assert not [p for p in brief_checks.check(run, brief, "concepts", {}) if "animatic" in p.field]
+    assert brief_checks.shape(brief, "production") == []
+
+
+def test_the_page_shows_the_styles_name_and_poster():
+    concept = _ad()["concepts"][0]
+    concept["animatic"] = {"9x16": "animatic/C1_animatic_9x16_v02.mp4", "default": "9x16", "style": "ink-wash",
+                           "poster": "animatic/style_20_ink-wash.jpg"}
+    html = brief_page.concept_html(concept, 1, 3)
+    assert "Ink Wash" in html and 'src="animatic/style_20_ink-wash.jpg"' in html
+    assert "ink-wash" not in html.replace("style_20_ink-wash.jpg", "")      # the name, never the id
+    assert ("C1", "poster", "animatic/style_20_ink-wash.jpg") in brief_page._refs({"concepts": [concept]})
+    plain = _ad()["concepts"][1]
+    assert "anim-style" not in brief_page.concept_html(plain, 2, 3)
+
+
+def test_the_build_prompt_has_an_animatic_mode():
+    style = atlas_prompt.find_style("ink-wash")
+    text = atlas_prompt.build(style, content="The beats", aspect="9:16", animatic={"pictures": []}, duration=15)
+    assert "## An animatic of a brief" in text and "The beats" in text and "15 s" in text
+    with pytest.raises(ValueError):
+        atlas_prompt.build(style, storyboard=True, animatic={"pictures": []})

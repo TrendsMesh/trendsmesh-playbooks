@@ -387,6 +387,20 @@ def _placeholder(c: dict, ahead: set[str] | None, tr: i18n.Translator) -> str:
     return f'<div class="on-request">{text}{line}</div>'
 
 
+def _style_line(a, tr: i18n.Translator) -> str:
+    """Issue #138 item 4: the library style a concept's animatic is drawn in, by its name, with its poster (none for a
+    sketch, or a style the library has not)."""
+    from tm import atlas_prompt
+
+    sid = atlas_prompt.style_id(animatic.style_of({"animatic": a}))
+    if sid is None:
+        return ''
+    name = atlas_prompt.find_style(sid)["name"]
+    poster = a.get("poster") if isinstance(a.get("poster"), str) else ''
+    img = f'<img src="{E(poster)}" alt="">' if poster else ''
+    return f'<p class="anim-style">{img}<span>{W(tr, "brief.animatic_style", name=E(name))}</span></p>'
+
+
 def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None, ahead: set[str] | None = None):
     """A concept's section; with `stills` ({animatic path: its stills}) the print mode's, its stills in
     place of the player. A concept without an animatic has its placeholder in both (`_placeholder`, `ahead`)."""
@@ -407,6 +421,7 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None, 
            f'<p{v(*HEADER_FACTS_VIEWS)}>{E(c["one_liner"])}</p>',
            f'<p class="keymsg"{v(*HEADER_FACTS_VIEWS)}><b>{W(tr, "brief.key_message")}</b> {E(c["key_message"])}</p>',
            f'<p class="hyp"{v("decision", "strategy", "media-buyer")}><b>{W(tr, "brief.what_this_tests")}</b> {E(c["hypothesis"])}</p>',
+           *[x for x in (_style_line(a, tr),) if x],
            '</div>',
            player,
            '</header>']
@@ -800,6 +815,8 @@ def _refs(brief: dict) -> list[tuple[str, str, str]]:
         a = c.get("animatic") or {}
         out += [(c["id"], "animatic", a[f]) for f in FORMATS if isinstance(a, dict) and isinstance(a.get(f), str)
                 and a[f]]
+        if isinstance(a, dict) and isinstance(a.get("poster"), str) and a["poster"]:   # its style's (issue #138)
+            out.append((c["id"], "poster", a["poster"]))
         for x in (c.get("copy_from_hook") or {}).get("evidence", []) or []:
             if isinstance(x, dict) and isinstance(x.get("thumb"), str) and x["thumb"]:
                 out.append((c["id"], "thumbnail", x["thumb"]))
@@ -837,7 +854,7 @@ def _swap(brief: dict, new: dict[str, str]) -> dict:
     for c in out["concepts"]:
         a = c.get("animatic")
         if isinstance(a, dict):
-            for f in FORMATS:
+            for f in (*FORMATS, "poster"):
                 if a.get(f) in new:
                     a[f] = new[a[f]]
         for x in (c.get("copy_from_hook") or {}).get("evidence", []) or []:

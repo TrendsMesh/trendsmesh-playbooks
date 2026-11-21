@@ -14,8 +14,9 @@ style: name, family, description, what it suits, its look, palette, fonts, finis
 explains, its sound, what to avoid), `lib/` (brush.js, the shared drawing helpers; sound.js, the synthesized sound
 kit; player.js, the page runtime; page.html, the page template), `styles/NN_<styleId>.js` (each style's reference
 animation), `prompt/` (the prompt's parts: build.md always, voiceover.md by mode, then one of storyboard.md (a
-storyboard first), animation.md (the full animation from the accepted storyboard's module, named and appended) and
-layout.md (a stills video: the trend's format laid out with the run's picked pictures, which `module_page` inlines))
+storyboard first), animation.md (the full animation from the accepted storyboard's module, named and appended),
+layout.md (a stills video: the trend's format laid out with the run's picked pictures, which `module_page` inlines) and
+animatic.md (a creative brief's animatic: the brief's beats, `tm brief animatic --style`, issue #138 item 4))
 and README.md. The build prompt is those parts with the content, the voiceover's word SRT, its length (`{{DURATION}}`:
 the pack's `script.seconds`, else the SRT's last cue) and the frame filled in, then the style's card, then the
 libraries' API (README.md's module, Brush and SOUND sections) and the code of the style's reference animation. Claude writes only a style module; the page is built from it with the libraries inlined, so neither the
@@ -245,7 +246,7 @@ def picture_lines(pictures) -> str:
 
 
 def build(style, voiceover=False, storyboard=False, content=None, srt=None, aspect=None, extra=None, *,
-          animation=None, layout=None, duration=None) -> str:
+          animation=None, layout=None, duration=None, animatic=None) -> str:
     """The build prompt for an animation in `style`: the prompt's parts for the modes asked for, filled in, then the
     style's card, the libraries' API and the style's reference animation. `aspect` re-composes it for that format
     (ASPECTS; 16:9 without one); `extra` adds rules (an insert's caption band). `duration` is the video's length in
@@ -254,12 +255,15 @@ def build(style, voiceover=False, storyboard=False, content=None, srt=None, aspe
     One mode at most: `storyboard` (a storyboard first, then stop); `animation`, {"file", "code", "notes"} (the full
     animation from the accepted storyboard's module, the user's notes applied: the module is named and appended);
     `layout`, {"pictures": [{name, file, width, height, what}], "style_spec": {...} | None} (a stills video's layout,
-    the pictures drawn with Player.picture)."""
-    if sum(bool(m) for m in (storyboard, animation, layout)) > 1:
-        raise ValueError("A build prompt is for a storyboard, the full animation or a stills layout: one of them.")
+    the pictures drawn with Player.picture); `animatic`, {"pictures": [...]} (a creative brief's animatic, issue #138
+    item 4: the brief's beats in `content` are the module's beats)."""
+    if sum(bool(m) for m in (storyboard, animation, layout, animatic)) > 1:
+        raise ValueError("A build prompt is for a storyboard, the full animation, a stills layout or a brief's "
+                         "animatic: one of them.")
     w, h = frame(aspect)
     top, bottom = safe_area(aspect)
-    mode = ["storyboard.md"] if storyboard else ["animation.md"] if animation else ["layout.md"] if layout else []
+    mode = (["storyboard.md"] if storyboard else ["animation.md"] if animation else ["layout.md"] if layout
+            else ["animatic.md"] if animatic else [])
     parts = ["build.md"] + (["voiceover.md"] if voiceover else []) + mode
     end = last_cue(srt)
     length = duration if duration else end
@@ -270,7 +274,7 @@ def build(style, voiceover=False, storyboard=False, content=None, srt=None, aspe
             "{{LAST_CUE}}": _seconds(end) if end is not None else "the SRT's last cue",
             "{{FROM}}": (animation or {}).get("file") or "",
             "{{NOTES}}": ((animation or {}).get("notes") or "").strip() or NO_NOTES,
-            "{{PICTURES}}": picture_lines((layout or {}).get("pictures")),
+            "{{PICTURES}}": picture_lines((layout or animatic or {}).get("pictures")),
             "{{STYLE_SPEC}}": (json.dumps(layout["style_spec"], ensure_ascii=False, indent=2)
                                if (layout or {}).get("style_spec") else NO_SPEC),
             "{{CONTENT}}": (content or "").strip() or CONTENT_PH, "{{SRT}}": (srt or "").strip() or SRT_PH}

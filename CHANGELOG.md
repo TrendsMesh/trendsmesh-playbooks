@@ -19,6 +19,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
   checked against its fingerprint. The first session downloads about 17 MB more, from `api.nuget.org`; the tools'
   packages come from `pypi.org` and `files.pythonhosted.org` (the voice tools also from `download.pytorch.org`).
   macOS and Linux are unchanged.
+- **Creative brief: an animatic in a style matched to the concept, on request.** The quick sketch stays the
+  default. When you ask for it, an animatic is drawn in one of the 49 animation styles instead, picked for the
+  concept's format: a talking head, a screen recording and a UGC phone video each get their own look, and a channel
+  with its own style gets that one first. You can also name a style. The brief's page shows each styled animatic's
+  style by name, with its poster. The animatics question says a styled one takes about 3 minutes per concept,
+  against about a minute for the sketch.
 - **A decision you give in chat is saved exactly, or Claude asks again.** Every page build now lists the answers it
   takes in chat, one line per item or section, with the name the page shows. You may name an image by its name in
   the pack (`still_01`) and a track by its file (`mixkit-cat-walk-371.mp3`). A line Claude can't read, or a name that

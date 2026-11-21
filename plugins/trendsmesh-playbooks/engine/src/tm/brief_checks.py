@@ -1204,6 +1204,23 @@ def _organic_view_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem
     return out + _valid_until(run, brief, cfg) + landing_quotes(run, brief)
 
 
+def animatic_styles(brief: dict) -> list[Problem]:
+    """Issue #138 item 4: a concept's `animatic.style`, when set (`tm brief animatic --style`), is one of the library's
+    styles (`atlas_prompt.style_id`: its number or styleId)."""
+    from tm import atlas_prompt
+
+    out = []
+    for i, c in enumerate(brief.get("concepts") or []):
+        given = animatic.style_of(c)
+        a = c.get("animatic") if isinstance(c, dict) else None
+        if isinstance(a, dict) and "style" in a and (given is None or atlas_prompt.style_id(given) is None):
+            out.append(Problem(f"concepts[{i}].animatic.style", f"{c.get('id', f'Concept {i + 1}')}'s animatic style "
+                                                                f"{a['style']!r} is not one of the library's styles.",
+                               "Choose it with tm brief animatic --style auto (or a style's number or styleId), which "
+                               "writes it with its poster."))
+    return out
+
+
 # --- the check -----------------------------------------------------------------------------------
 
 def check(run: RunFolder, brief: dict, stage: Stage, cfg: dict) -> list[Problem]:
@@ -1215,11 +1232,11 @@ def check(run: RunFolder, brief: dict, stage: Stage, cfg: dict) -> list[Problem]
         return problems
     evidence = state.load(run).evidence
     if stage in ORGANIC_STAGES:
-        out = _organic_concept_checks(run, brief, evidence, cfg or {}) + _visible(run, brief)
+        out = _organic_concept_checks(run, brief, evidence, cfg or {}) + _visible(run, brief) + animatic_styles(brief)
         if stage == "organic_views":
             out += _organic_view_checks(run, brief, cfg or {})
         return out
-    out = _concept_checks(run, brief, evidence, cfg or {}) + _visible(run, brief)
+    out = _concept_checks(run, brief, evidence, cfg or {}) + _visible(run, brief) + animatic_styles(brief)
     if stage in ("brief", "production"):
         out += _brief_checks(run, brief, cfg or {})
     if stage == "production":

@@ -119,6 +119,8 @@ brief:
   animatic_label: "{id} animatic"
   # a concept without an animatic (they are made on request, CB11, issue #145)
   animatic_on_request: Animatic on request
+  # the library style a concept's animatic is drawn in, by its name, beside its poster (issue #138 item 4)
+  animatic_style: "Animatic style: {name}"
   choose_view: Choose your view
   i_am_the: I am the
   # the PDFs (issue #10): the view bar's buttons and hint, the print mode's banners and stills caption

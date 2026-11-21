@@ -12,6 +12,9 @@
     tm brief decisions --run R --stage S [--file F | --text F] [--json]   03_wip/decisions_<stage>_vNN.json
     tm brief choose --run R [--drop C2[,C3]] --source page|chat|rule [--decisions F] [--keep-carried] [--json]
     tm brief animatic --run R [--concepts C1 ...] [--formats 9x16 4x5] [--render] [--json]   CB11
+    tm brief animatic --run R --style auto|<style> [--own <style>] [--concepts ...] [--json]   the library styles
+                                                     and build prompts, before --render (issue #138 item 4)
+    tm brief animatic --run R --estimate [--json]    minutes per styled animatic on this computer (the question's)
     tm brief evidence --run R [--json]               the clips' thumbnails and as-of dates (CB8)
     tm brief handoff --run R [--to-video C2[,C3]] [--json]   05_results/handoff_vNN.json and library/briefs.jsonl (E2,
                                                      O8); --to-video: seed/1 rows, source pb2 (issue #136)
@@ -139,6 +142,13 @@ def _setup_media(sub) -> None:
                    help="the formats (default: animatic.formats, else the audience pick's, else both)")
     c.add_argument("--render", action="store_true",
                    help=f"render the MP4s into {animatic.RENDERS} and write a brief version that names them")
+    c.add_argument("--style", metavar="auto|STYLE",
+                   help="first, before --render: each concept's library style (auto: ranked for its format; or a "
+                        "style's number or styleId) in a new brief version, and its build prompt for the style module")
+    c.add_argument("--own", metavar="STYLE",
+                   help="with --style auto: the library style nearest the channel's own video style, first")
+    c.add_argument("--estimate", action="store_true",
+                   help="about how many minutes a styled animatic takes per concept on this computer (draws nothing)")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("evidence", help=f"keep the evidence clips' thumbnails in {brief_page.EVIDENCE} and their "
                                         "as-of dates (CB8)")
@@ -326,15 +336,49 @@ def _choose(args: argparse.Namespace, run: RunFolder) -> int:
     return 0
 
 
+def _animatic_estimate(args: argparse.Namespace) -> int:
+    minutes, measured = animatic.minutes_per_concept()
+    message = (f"A styled animatic takes about {minutes} minute{'' if minutes == 1 else 's'} per concept on this "
+               "computer" + (" (its last render)." if measured else " (no animatic was rendered here yet)."))
+    cli.emit(args, {"status": "done", "minutes_per_concept": minutes, "measured": measured, "message": message},
+             message)
+    return 0
+
+
+def _animatic_style(args: argparse.Namespace, run: RunFolder, named: list[str] | None) -> int:
+    if args.render:
+        raise ValueError("--style comes before --render: it chooses the styles and writes the build prompts; a "
+                         "subagent then writes each style module, and tm brief animatic --render draws them.")
+    got = animatic.style(run, run.latest(brief_checks.FINAL, brief_checks.STEM, "json"), concepts=named,
+                         given=args.style, own=args.own, formats=args.formats)
+    picks = "; ".join(f"{r['concept']}: {r['name']} ({r['why']})" for r in got["styles"])
+    todo = "; ".join(f"{r['concept']}: {r['prompt']} -> {r['module']}" for r in got["styles"])
+    ids = ",".join(r["concept"] for r in got["styles"])
+    message = (f"The animatics' styles: {picks}. Wrote {got['brief']}, which names them, and a build prompt per "
+               f"concept. Have a subagent write each concept's style module from its prompt ({todo}), then draw them "
+               f"with tm brief animatic --run {args.run} --render --concepts {ids}.")
+    cli.emit(args, {"status": "done", **got, "message": message}, message)
+    return 0
+
+
 def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
     named = cli.ids_arg(args.concepts) or None
+    if args.estimate:
+        return _animatic_estimate(args)
+    if args.own is not None and args.style is None:
+        raise ValueError("--own goes with --style auto: it puts the channel's own style first.")
+    if args.style is not None:
+        return _animatic_style(args, run, named)
     items = animatic.build(run, run.latest(brief_checks.FINAL, brief_checks.STEM, "json"), concepts=named,
                            formats=args.formats, render=args.render, fps=animatic.fps_of(run))
     version = items[0]["version"]
-    scripts = list(dict.fromkeys(f"{i['concept']}_anim_{version}.js" for i in items))
+    scripts = list(dict.fromkeys(f"{i['concept']}_anim_{version}.js" for i in items if not i.get("style")))
     formats = list(dict.fromkeys(i["format"] for i in items))
-    message = (f"Wrote {', '.join(scripts)} and {len(items)} page{'' if len(items) == 1 else 's'} "
-               f"({', '.join(formats)}) in {animatic.WIP}.")
+    styled = list(dict.fromkeys(i["concept"] for i in items if i.get("style")))
+    wrote = ", ".join(scripts) + " and " if scripts else ""
+    message = (f"Wrote {wrote}{len(items)} page{'' if len(items) == 1 else 's'} ({', '.join(formats)}) in {animatic.WIP}"
+               + (f", {', '.join(styled)} from {'its' if len(styled) == 1 else 'their'} style module"
+                  f"{'' if len(styled) == 1 else 's'}" if styled else "") + ".")
     brief = items[0].get("brief")
     hooks = list(dict.fromkeys(x for i in items for x in i.get("hook_changes") or []))
     if brief is None:
@@ -344,6 +388,11 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
                     f"wrote {brief}, which names them.")
         if hooks:
             message += f" Before rendering, the hook was kept clear of what the scenes draw: {'; '.join(hooks)}."
+        layout = list(dict.fromkeys(f"{i['concept']} {i['format']}: {x}" for i in items
+                                    for x in i.get("layout_problems") or []))
+        if layout:
+            message += (" The layout check found what a viewer on a phone would miss: " + "; ".join(layout)
+                        + ". Fix the style module (a new version) and render again.")
         if named:                                      # the others keep the paths of the brief they came from
             concepts = {x["id"]: x for x in json.loads((run.path / brief).read_text(encoding="utf-8-sig"))["concepts"]
                         if isinstance(x, dict)}

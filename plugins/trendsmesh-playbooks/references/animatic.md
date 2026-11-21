@@ -6,6 +6,10 @@ timing, the on-screen text, the hook, the call to action), rendered to MP4 on th
 computer, at no cost. A concept without one shows "Animatic on request" on the page. It shows structure and pacing, never realistic footage: no AI generation at
 the brief stage.
 
+The quick sketch (`scenes.js`, below) is the default: `tm brief animatic --render` with no style draws
+it. An animatic in one of the plugin's 49 animation styles is an option, made only when the user asks
+for one (section "In a library style", at the end).
+
 ## From beats to scenes
 
 Each beat of a concept in brief.json is one scene of the animatic. The beat says what is seen
@@ -99,4 +103,53 @@ continues from the same place once it is there, and nothing else is lost (or the
 animatics). A review pack alone, a skip and Hands-off need no animatic.
 
 After a render, look at the stills: text must not overlap or run off the frame, and each beat must
-read. A fix is a change to the beats in a new brief version, then render again.
+read. A fix to a styled animatic is a new version of its style module (a new brief version when the
+beats themselves change, then `--style` again for a new prompt); a fix to a sketch is a change to
+the beats in a new brief version. Then render again.
+
+## In a library style (issue #138 item 4)
+
+An option, made only when the user asks for it: the animatic drawn in a library style
+(`data/styles/`, the styles organic video animates in) instead of the sketch. Without it nothing
+changes: a concept with no `animatic.style` is drawn as the sketch. Three calls, after `tm decide
+animatics make --concepts C1,C3`, for the concepts the user wants styled:
+
+1. `tm brief animatic --run R --style auto --concepts C1,C3 --json` picks each concept's style with
+   the style ranking (`atlas_prompt.ranked`) for the concept's format (`plugin.axes.format`, an
+   organic brief's `organic.format`): a talking head, a screen recording and a UGC phone video get
+   different looks, and no two concepts of the brief share one. A brief for a channel with its own
+   look puts that first: `--own <number|styleId>`, the library style nearest the channel's
+   `video_style` (`tm organic atlas-styles --channel <name>` lists it first). `--style <number|styleId>`
+   gives every named concept the style the user asked for. It writes a new brief version with each
+   concept's `animatic.style` (the styleId) and `animatic.poster` (the style's poster, copied beside
+   the renders), and a build prompt per concept, `03_wip/animatic/<C>_prompt_vNN.txt`: the
+   concept's beats, word for word, in the style, at the first format's frame (the second format is
+   laid out from the same module). An earlier sketch's MP4s are left out of that version.
+2. A subagent per concept writes the style module from its prompt:
+   `03_wip/animatic/<C>_style_vNN.js`, the same version as the prompt. The module has one beat per
+   beat of the brief, starting at the beats' `t0` (`beats: [...]` as a list), and lasts the concept's
+   `length_s`. The brief's beats are its own: no frames list is read, so organic video's storyboard
+   check (a module's beats against a frames list) never refuses an animatic.
+3. `tm brief animatic --run R --render --concepts C1,C3 --json` builds each format's page from the
+   latest module (`atlas_prompt.module_page`: the libraries and the product pictures inlined) and
+   draws it with `atlas.render` (the call's other concepts stay sketches). It refuses, before
+   anything is written, a concept with no module
+   written from its latest prompt, or a module whose beats do not match the brief's; the layout
+   check's findings (text too small or outside the safe area) are in the answer: fix them in a new
+   module version and render again. The new brief version keeps `style` and `poster` beside the MP4s.
+
+The page shows, under each styled concept's hypothesis, the style's name and poster ("Animatic
+style: Ink Wash"). `tm brief check` refuses an `animatic.style` the library does not have.
+
+**How long:** a styled animatic takes longer than the sketch (about a minute per concept and
+format). Measured on a Mac with Chrome: a 12 s concept in 9:16 and 4:5 took 115 s, a 15 s one 148 s,
+so the animatics question says "about 3 minutes per concept". Each styled render's time is kept on
+this computer (the plugin data folder, `animatic_timing.json`); `tm brief animatic --run R --estimate
+--json` gives `minutes_per_concept`, the last styled render's time per concept (its formats, layout
+checks and renders together) rounded up, or 3 before there is one. The subagent writing the module
+takes longer still, about 10 to 15 minutes, while the concepts' modules are written in parallel.
+
+A beat's `params.image` is one of the pictures the page holds: the prompt names it (`beat2`), and the
+module draws it with `Player.picture`. A PNG, JPEG or WebP only. Each beat's `animatic` block is read
+by the styled prompt too: its `label`, its `texts` (where and when each text shows) and its
+`params.image`; its `scene` is the sketch's alone.

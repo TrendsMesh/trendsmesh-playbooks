@@ -230,7 +230,8 @@ def test_every_command_takes_json():
     assert missing == []
 
 
-NOT_A_PATH = {("organic", "atlas-prompt", "--style")}   # a style's number or styleId
+NOT_A_PATH = {("organic", "atlas-prompt", "--style"),   # a style's number or styleId
+              ("brief", "animatic", "--style")}         # auto, or a style's number or styleId (issue #138 item 4)
 
 
 def test_every_run_file_argument_says_where_it_is_read():
