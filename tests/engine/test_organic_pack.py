@@ -575,10 +575,10 @@ def test_recipe_stage_needs_only_the_recipe(tmp_path):
     problems = _check(run, recipe, stage="recipe")
     assert _fields(problems) == ["style_spec"] and "Recreate" in problems[0].what
     recipe = copy.deepcopy({k: v for k, v in pack.items() if k not in organic_pack.PACK_KEYS})
-    recipe["taste"]["style"] = "02 Watercolour Bloom"
+    recipe["taste"]["style"] = "02 Watercolour Bloom"   # any production type takes a style (issue #138 item 3)
     recipe["production"] = "teleport"
     recipe["id"] = "P5"
-    assert _fields(_check(run, recipe, stage="recipe")) == ["id", "production", "taste.style"]
+    assert _fields(_check(run, recipe, stage="recipe")) == ["id", "production"]
     recipe = copy.deepcopy({k: v for k, v in pack.items() if k not in organic_pack.PACK_KEYS})
     for line in recipe["script"]["lines"]:
         line["speaker"] = "none"   # on-screen text only: no voice to pick

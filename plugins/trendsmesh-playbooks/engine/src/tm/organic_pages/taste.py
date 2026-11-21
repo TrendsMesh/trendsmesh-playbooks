@@ -6,7 +6,9 @@ heard or seen before it is chosen.
     take(run, *, file, text)       03_wip/taste_vNN.json, and the next 03_wip/pack_vNN.json with `taste` filled in
 
 The agent writes what to offer as `03_wip/taste_options_vNN.json` (the next version for every change), from the run's
-own files only:
+own files only (a track of another channel's music says so, "from <channel>'s music", by its index row's `channel`;
+the Mixkit tracks `tm tool music_fetch --offer` copied in carry their licence, and the one picked is filed into the
+library by `take`, issue #142):
 
     {"styles": [{"id", "label", "why", "preview", "recommended"}],    (an id that is one of our styles: see below)
      "voices": [{"voice_id", "name", "why", "preview", "source": "library|mine", "recommended"}],
@@ -18,7 +20,7 @@ library search or from `--mine`, the user's own voices (a row with `category`, w
 `source: "mine"`). A track's `file` may be the name `tm tool music_fetch --copy` copied into `02_research/music/` (a row of the music
 index taken as it is). `preview` and `file` are run files (a voice's preview clip as `tm tool elevenlabs voices` saves it, the user's own
 voices' as `voices --mine` does; a track copied into the run): the page carries them, since it cannot play a sound
-from another site. Styles are offered for an animation only, voices when someone speaks off screen, as D2 says; the
+from another site. Styles are offered for every AI video (issue #138: an image or video prompt carries the card's look), voices when someone speaks off screen, as D2 says; the
 script is the recipe-checked pack's lines. Music: "No track, I'll add a sound in the app" comes first; the default is
 the trending sound when trend research found one that fits (the user adds it in the app at posting), else the
 recommended track, else no track.
@@ -199,9 +201,12 @@ def page_json(run: RunFolder, options_file: str | None = None) -> dict:
                         "means": " ".join(x for x in (trending.get("why") or "", t("trending_means")) if x),
                         "link": trending.get("link"), "default": True, "recommended": True})
     taken = {NO_TRACK, TRENDING}
+    own = _own_channel(run)
     for n, x in enumerate(tracks):
         title = str(x.get("title") or Path(x["file"]).stem)
-        means = " · ".join(v for v in (x.get("why") or "", x.get("author") or "", x.get("licence") or "") if v)
+        other = x.get("channel") if isinstance(x.get("channel"), str) and x["channel"] and x["channel"] != own else None
+        means = " · ".join(v for v in (x.get("why") or "", x.get("author") or "", x.get("licence") or "",
+                                       t("from_channel", channel=other) if other else "") if v)
         options.append({"id": _slug_id(f"track-{Path(x['file']).stem}", taken), "label": title, "means": means,
                         "recommended": n == rec_track and not trending, "default": n == rec_track and not trending,
                         "media": [{"src": x["file"], "caption": title}]})
@@ -215,6 +220,14 @@ def page_json(run: RunFolder, options_file: str | None = None) -> dict:
                        "tracks": {o["id"]: x for o, x in zip(sections_of(sections, "music")[1 + bool(trending):], tracks)},
                        "trending": trending}}
     return data
+
+
+def _own_channel(run: RunFolder) -> str:
+    from tm import brand
+    from tm.tools import music_fetch
+
+    name = music_fetch._channel(run)
+    return brand.channel_key(name) if name else ""
 
 
 def _our_style(s: object) -> object:
@@ -281,8 +294,19 @@ def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None, 
             "pack": plugin["pack"]}
     picks = choices.record(run, PAGE, STEM, body, got)
     pack_rel = _next_pack(run, plugin["pack"], style, voice, music, picks)
+    filed = _file_track(run, music)
     return {"file": picks, "pack": pack_rel, "picks": body, "from": got["from"], "source": got["source"],
-            "done": got["done"], "folder": got["folder"]}
+            "done": got["done"], "folder": got["folder"], **({"filed": filed} if filed else {})}
+
+
+def _file_track(run: RunFolder, music: dict) -> dict | None:
+    """The pick is the user's yes (issue #142): a Mixkit track offered into the run (`tm tool music_fetch --offer`) is
+    filed into the channel's music library and indexed; any other track, or none, files nothing."""
+    if music.get("kind") != "track" or not isinstance(music.get("file"), str):
+        return None
+    from tm.tools import music_fetch
+
+    return music_fetch.file_picked(run, music["file"])
 
 
 def taste_field(style, voice, music) -> dict:

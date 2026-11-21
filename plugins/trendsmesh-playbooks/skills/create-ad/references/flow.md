@@ -28,7 +28,10 @@ page and one in chat count the same. Rules: `rules.md`.
   `names_brand`; another may be a customer's), with a PNG of each. `02_research/brand_vNN.json` lists them. Show the
   font's name and the logo on the card and say where each came from; a font the site serves itself may be licensed
   for the web only, so ask whether the brand's licence covers its ads. What it could not take (`missing`) is asked
-  in question 4: the logo (SVG, or a PNG with transparency) and the font's TTF or OTF.
+  in question 4: the logo (SVG, or a PNG with transparency) and the font's TTF or OTF. It takes each logo image's
+  largest `srcset` file and puts an SVG that names the brand first; when the best logo is a raster under 600 px on
+  its longer side, `missing` says so, and question 4 asks for the logo as an SVG, or a PNG with transparency at
+  least 600 px wide (the end card never scales it up, CA10).
 - **Not live yet** (early access, a waitlist): warn now; `intake.live: false` and `intake.not_live` say what it is.
 - **The two languages** on the same card, filled from the defaults ("Working language: Polish · Market language:
   Polish"): `languages: {working, market}` as tags (`pl`, `pt-BR`). The working language is for the cards and
@@ -72,7 +75,8 @@ page and one in chat count the same. Rules: `rules.md`.
   high]}]}` with 2–3 concepts, your recommendation first (the page selects it). The model ad gives the structure of its first seconds, not its length.
 - `tm ad clips --run R --file <it>` saves each model ad's thumbnail and first ~15 s from its saved Ad Library (or
   TrendsMesh) answer into `02_research/clips/`, so they play on the concepts page by themselves; it says which ad
-  has no video file (an image ad), whose card shows its thumbnail.
+  has no video file (an image ad, or an answer with only the snapshot page), whose card shows its thumbnail. Each
+  Ad Library ad gets its public Ad Library page (`link`), which its card shows as "Open in the Ad Library".
 - `tm ad check concepts --run R --file <it>`, then `tm done S1`. The concept check-in is the concepts page
   (`pages.md`) and its card, with the guess notice `tm next` gives; a concept picked on the page comes back with
   `tm page decision`. **Feedback loop:** notes or results are analysed and the
@@ -185,6 +189,11 @@ page and one in chat count the same. Rules: `rules.md`.
   rate must fit the line, or nothing is sent. A take whose cost ElevenLabs does not report is booked at its length
   at the rate, and a take over the approved amount stops the run for the user. The gate shows each take to listen
   to. `tm done G2`.
+- **Free music**: `tm tool music_fetch --run R --search "<mood, in English>" --json`, then `--mixkit <id> --page <its
+  page> --json` (it stops and says where the track will go; on the user's yes, `--yes`): the track goes into
+  `03_wip/audio/` and the brand's music library (`library/brands/<brand>/music/`, indexed), with the Mixkit Stock
+  Music Free License (free in ads, no credit) in the manifest. The edit's music names that file. A track of the
+  brand's library from an earlier run: `tm tool music_fetch --run R --copy <file> --json`.
 - **Sound effects come from the plugin's small set**, never made up in ffmpeg (no pink-noise whoosh, no sine click):
   `tm tool sfx_fetch --run R --list` shows it (whoosh, sweep, click, pop, notification) with its licence, the Mixkit
   Sound Effects Free License (free in ads, no credit). `--effect <name>` (again for each, or `--all`) says what it
@@ -203,10 +212,13 @@ page and one in chat count the same. Rules: `rules.md`.
 - **A screen of the product's site is the plugin's capture**: `tm tool site capture --run R <page> --name <what it
   shows>`, 1080×1920 at a device scale of 2 by default (`--scale 3` for a small element), or the element itself
   (`--clip X,Y,W,H`, its box in CSS px from the browser: `getBoundingClientRect()` plus the scroll): the next
-  `03_wip/site_<what>_vNN.png`. Draw it at most at its own size, never scaled up.
+  `03_wip/site_<what>_vNN.png`. Draw it at most at its own size, never scaled up. The capture hides the common
+  cookie banners first and lists what it hid (`hidden`); look at the capture for a banner: if one still shows, run it
+  again with `--hide <its CSS selector>` (again for each).
 - `03_wip/storyboard_vNN.json`: `{"frames": [{"scene", "file"}], "placeholder_render", "audio": {...}, "videos":
   [{"item", "model", "prompt" (exact), "params", "prompt_rules" (the guide used), "cost", "budget", "price_file",
-  "checked", "speaks" (optional: true when the take says the lines, false when its voice comes in the edit; left
+  "checked", "cuts" (required: the cuts its prompt asks for, in seconds of the take, `[]` for one continuous shot),
+  "speaks" (optional: true when the take says the lines, false when its voice comes in the edit; left
   out, it follows the voice route: native and clone_take speak)}]}`; an ad without video: `"videos": []` with
   `no_video_reason`. One character = one take: one speaker's lines in one take, the cuts between places written into
   its prompt ("selfie, then a hard cut to a whispered close-up"); lines over the model's length go on in a next take
@@ -222,7 +234,9 @@ page and one in chat count the same. Rules: `rules.md`.
   take is resumed for free (`--resume`), never run again. The engine refuses a video before the storyboard's yes and
   a second take of an item the user did not ask for.
 - **Every take goes back raw** on the gate with its transcript and QA notes: `tm tool take_qa --run R <take> --lang
-  <market language> --script <its lines, one a line> --brackets <the board's cut times>` (cuts, the transcript,
+  <market language> --script <its lines, one a line> --brackets <the cuts the take's prompt asks for>` (none for a
+  continuous shot: the storyboard item's `cuts`, which the tool takes when `--brackets` is left out and refuses
+  any other list for; never the scene times) (cuts, the transcript,
   pace, loudness, contact sheet; leave `--script` out for a take that does not speak) and ElevenLabs Scribe word
   timestamps (verbatim, keeps repeats; Whisper hid a repeat and ran early): `tm tool elevenlabs scribe --run R
   <take> --cost <credits>` (about 330 credits a minute, from the `voice_credits` budget), then the QA again with

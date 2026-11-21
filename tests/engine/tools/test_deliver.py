@@ -208,3 +208,14 @@ def test_finish_needs_the_idea_in_organic_video_and_refuses_it_in_create_ad(ov, 
     _quiet_render(ad.path / "03_wip" / "edit_mix_v01.mp4")
     code, out = _tool(capsys, "finish", "--run", str(ad.path), "03_wip/edit_mix_v01.mp4", "--id", "M5")
     assert code == 1 and "--id" in out["message"] and not (ad.path / "03_wip" / "edit_v01.mp4").exists()
+
+
+@pytest.mark.tools
+def test_the_finished_final_records_the_used_trends(ov, capsys, monkeypatch):
+    """Issue #142: a trend counts as used once the video is delivered, not when its run is started."""
+    from tm import organic_research
+
+    seen = []
+    monkeypatch.setattr(organic_research, "record_delivered", lambda run, final: seen.append(final) or 0)
+    _finish(capsys, ov)
+    assert seen == ["04_final/M5_final_v01.mp4"]

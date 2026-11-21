@@ -304,3 +304,47 @@ def test_an_edit_without_its_layer_check_is_refused(run):
     assert [p.field for p in problems] == ["layers"] and "tm tool layer_check" in problems[0].todo
     _write(run, "03_wip/qa/edit_v01_layers_v01.json", {"edit": "03_wip/edit_v00.mp4", "collisions": []})
     assert "not the layer check" in _edit_qa(run)[0].what
+
+
+# --- issue #144: the cuts a take's prompt asks for, never the scene times ---------------------------
+
+def test_the_storyboard_names_each_takes_cuts(tmp_path):
+    run = _new(tmp_path)
+    _ready_for(run, create_plan.STORYBOARD)
+    videos = storyboard()["videos"]
+    del videos[0]["cuts"]
+    assert [p.field for p in _check(run, create_plan.STORYBOARD, storyboard(videos=videos))] == ["videos[1].cuts"]
+    for bad in ("3,7", [-1], [2, "x"], [True]):
+        videos[0]["cuts"] = bad
+        assert [p.field for p in _check(run, create_plan.STORYBOARD, storyboard(videos=videos))] == ["videos[1].cuts"]
+    videos[0]["cuts"] = [3.5, 7]
+    assert _check(run, create_plan.STORYBOARD, storyboard(videos=videos)) == []
+
+
+def test_a_takes_brackets_are_the_boards_cuts_none_for_a_continuous_shot(run):
+    from tm.tools import _common as c
+    from tm.tools import take_qa
+
+    _take(run)
+    take = run.path / TAKE
+    assert create_qa.board_cuts(run, take) == []                       # storyboard(): one continuous take
+    assert take_qa.wanted_brackets(run, take, None) == []
+    with pytest.raises(c.ToolError, match="continuous shot"):
+        take_qa.wanted_brackets(run, take, "3,7,11")                   # the scene times are never the brackets
+    videos = storyboard()["videos"]
+    videos[0].update(speaks=True, cuts=[3.5])
+    assert _check(run, create_plan.STORYBOARD, storyboard(videos=videos)) == []
+    assert take_qa.wanted_brackets(run, take, None) == [3.5] == take_qa.wanted_brackets(run, take, "3.5")
+    with pytest.raises(c.ToolError, match="3.5"):
+        take_qa.wanted_brackets(run, take, "3,7")
+    assert create_qa.board_cuts(run, run.path / "03_wip" / "other_v01_0.mp4") is None   # not a take of the board
+
+
+def test_a_continuous_take_gets_no_no_cut_finding():
+    from tm import organic_qa
+    from tm.tools import take_qa
+
+    qa = {"cuts": [], "cut_offsets": take_qa.offsets([], []), "lufs": -16.0, "peak": -2.0, "wps": None}
+    assert not [f for f in organic_qa.rubric_takes(qa, None, speech=False)["findings"] if "no cut" in f]
+    qa["cut_offsets"] = take_qa.offsets([], [3.0, 7.0])
+    assert [f for f in organic_qa.rubric_takes(qa, None, speech=False)["findings"] if "no cut" in f]

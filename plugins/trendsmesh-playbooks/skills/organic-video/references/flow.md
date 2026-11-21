@@ -261,8 +261,8 @@ at each part and every few calls, which part is running and how many are done ("
 
 1. **What this channel already used:** `tm organic used --channel <slug> --json` (the trends its
    videos were made from, and its running series) and `tm organic history --channel <slug>
-   --json` (what was produced, put off or skipped, per production type and approach): skip used
-   trends unless a series continues them; picks and skips rank the next ideas.
+   --json` (what was produced, put off or skipped, per production type and approach). Used trends (issue
+   #142): a trend counts as used once a video or a script was delivered from it (a run only started does not count); one idea per batch may build on a used trend, with `plugin.new_angle` (`{"previous": "<the earlier run>", "differs": ["topic" | "hook" | "format"], "why": "<one line>"}`), while it still rises (momentum rising, evidence within `research.recent_days`); a series continues one freely. Picks and skips rank the next ideas.
 2. **The queries**, from the bubble (OV2): the niche's anchor terms (the channel's subject: dog,
    puppy; parents, rodzice), the problems the catalogue solves, the channel's own formats; about 10
    to 17 searches, **in the audience language and in English**; then the rising lists of each
@@ -307,9 +307,10 @@ at each part and every few calls, which part is running and how many are done ("
    for an AI explainer channel not only "AI" but also "tools", "tech", "apps", "news", so news
    about AI tools stays. Sounds are ranked by their niche relevance (lesson 1). A thin niche's
    topics are kept as weak fits: never "no trend found".
-2. **The fit of each hook and format for the channel** (no word filter: a hook says how a video
-   opens and a format how it is told, so niche words are almost never in them). The JSON's
-   `fit_candidates` lists every hook and format of the pool. Score each one from its card, as
+2. **The fit of each hook, format and topic for the channel** (no word filter for hooks and formats: a
+   hook says how a video opens and a format how it is told, so niche words are almost never in them;
+   topics passed the anchor filter first, and up to 20 of the best are scored too, issue #142). The
+   JSON's `fit_candidates` lists every hook and format of the pool and those topics. Score each one from its card, as
    Trend research scores its hooks: Creative brief's seven CB3 criteria, 1 to 5 (`brand_fit`,
    `persona_fit`, `bridge`, `lifecycle`, `transfer`, `sensitivity`, `feasibility`), for this
    channel: can it carry what the channel films, and how it tells it (the profile's `context`),
@@ -317,9 +318,11 @@ at each part and every few calls, which part is running and how many are done ("
    "why": "..."}}`; a trend that fits badly scores low, it is never left out), then run step 1's
    command again with `--fit 03_wip/trend_fit_v01.json`. Hooks and formats are ranked by their fit
    (the mean), each shown with its score and why; a fit under 3 is marked "weak fit for this
-   channel" and comes last.
-3. Read the `.md`. **The used trends** (B1) are left out, unless a series continues them (a
-   proposal then names its series). Mark a transfer (a hook with evidence only in another subject
+   channel" and comes last. A topic under 3 is marked the same way and never takes a B3 place (for
+   an AI explainer channel, "Temu product hauls" scores low).
+3. Read the `.md`. **The used trends** (B1) stay in the lists, marked `used: {run, date, production_type}`
+   in the JSON: at most one idea builds on one, with a new angle, while it still rises (B1), or a series
+   continues it. Mark a transfer (a hook with evidence only in another subject
    or language) as a hypothesis: it lowers the expected reach, not the feasibility (lesson 20).
    News, tragedy and real people in topic trends: leave them out by judgement (the sensitivity
    filter is not built yet). "Evidence videos not pulled yet" means B3 has not pulled that trend's
@@ -334,7 +337,7 @@ at each part and every few calls, which part is running and how many are done ("
 1. **The cards the shortlist names** (its JSON's `pulls`, the "Cards B3 pulls" section): the
    channel type's split of `research.cards` (12), for example a news channel 2 hooks, 6 topics,
    3 formats, 1 sound, a music channel 6 sounds (`brand.CHANNEL_TYPES`). A trend that fits the
-   channel weakly never takes a place: a kind with nothing that fits gives its places to the type's
+   channel weakly (a hook, format or topic whose fit is under 3) never takes a place: a kind with nothing that fits gives its places to the type's
    leading kind (for `other`, the kind that fits best in this search), and places nothing fits stay
    empty. A profile saved before channel types takes 3 of each kind. For each:
    `get_trend` (the card) and `get_trend_videos` (order views, limit 20). The collector
@@ -392,8 +395,10 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      `video`), `risk_hits` (`[{item, mitigation}]`, the items `hands_on_objects`,
      `product_shape`, `same_character`, `fast_motion`, `physics`, `model_text`, `speech`,
      `long_takes`, `several_characters`; `case` where the risk has one), `transfer`, `weak_link` (an
-     Inspire or a transfer names it), `series` (a used trend continues a series), `seed` (the run's
-     seed id, or null), `aesthetic`, and `styles` for an animation. For
+     Inspire or a transfer names it), `series` (a used trend continues a series), `new_angle` (the one idea
+     on a used trend that is not a series: `{previous, differs, why}`, B1), `seed` (the run's
+     seed id, or null), `aesthetic`, `styles` (any production type, issue #138), `look` (`channel`: the
+     channel's own style; `other`: another look). For
      example, ExampleEdu's talking-host idea: `{"production": "talking_character", "output": "script",
      "risk_hits": [{"item": "speech", "mitigation": "one 15 s take, the script sized at 2.8 to 3
      words a second"}], "transfer": false, "weak_link": "the evidence is English kids asking a
@@ -402,8 +407,18 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    schema, the count, the language, every trend resolving to a saved card and every pick to a
    saved video, the approach and its picks, the risk level against the weights, the look and an
    animation's styles, the production types the stack hides (for an AI video only), the product
-   level against the channel's store, used trends without a series, the seed, and that the file
+   level against the channel's store, used trends (one per batch with a new angle, still rising), the seed,
+   and that the file
    never says "no trend found". Exit 2 lists the problems: fix them in the next `_vNN`.
+   **Variety** (issue #138): each idea names a format rising now among its trends (a `format_trend`
+   of the shortlist whose momentum is rising), and no two ideas share a format and a production type
+   (unless the shortlist has fewer rising formats than ideas). When the channel has its own style
+   (its `video_style`, or a style it picked 3 times or more), each idea says its `look`, and at
+   least one is `other`, from a format rising now; with no rising format, a production type the
+   channel-style ideas do not use. Only when the user says every idea keeps the channel's style:
+   `tm organic looks --run R --channel-only --said "<their words>" --json` (`--clear` undoes it).
+   The page shows "N ideas in your channel's style, M in other styles" above the ideas, and under an
+   idea on a used trend "Was in the video of <day> (<production type>); now <the new angle's why>".
 4. `tm done C1 --run R`.
 
 <a id="c2"></a>
@@ -743,7 +758,8 @@ marker is per run), and again at every resume.
 ## D2 Taste picks
 
 Asked only where needed (OV7, FLOWS D2): a **voice** when someone speaks, **music** when the edit
-carries a bed. A style is asked only for an animation.
+carries a bed. A style is asked for every AI video (issue #138): an animation is drawn in it, and an image or video
+prompt carries its look.
 
 1. **What the profile already holds**: the channel profile's `voice` (`narrator_elevenlabs_id`,
    `host_description`, `host_image`) and `music` (`folder`, `index`). A saved pick is offered first.
@@ -754,20 +770,23 @@ carries a bed. A style is asked only for an animation.
    `tm tool elevenlabs voices --run R --mine --json` lists the voices on their account (their clones
    and the voices they saved, with previews; free). Each voice is offered with its preview clip
    saved in the run (each row's `preview_file`), `source: "mine"` for the user's own.
-3. **Music**: from the channel's music folder (the profile's `music.folder`, else
-   `library/channels/<channel>/music/`), indexed with `tm tool music_index --run R <the folder>
-   --json` (length, loudness, tempo, mood, licence, source, author), or a Mixkit track (the Mixkit
-   Stock Music Free License: commercial use, no credit needed), which the plugin fetches, never the
-   user: `tm tool music_fetch --run R --search "<the mood, in English>" --json` lists tracks (id,
-   title, author, length, tags, the preview to send); for the one you suggest, `tm tool music_fetch
-   --run R --mixkit <id> --page <the search page it printed> --json` shows its title, author,
-   length, size and licence and stops. Ask the user; after their yes, the same command with `--yes`
-   downloads it into the channel's music folder and indexes the folder, every field filled. The 2
-   to 3 tracks you offer are copied into the run by the engine, never by hand: `tm tool music_fetch
-   --run R --copy <file> --copy <file> --json` (into `02_research/music/`; a page shows only the
-   run's own files, and it cannot play a sound from another site). A trending sound is added in the
+3. **Music**, from the whole library: `tm tool music_index --run R --json` (no folder) indexes every
+   music folder of the workspace, the channel's own first (the profile's `music.folder`, else
+   `library/channels/<channel>/music/`), then the other channels' free-licence (Mixkit) tracks, each
+   row with its `channel` (length, loudness, tempo, mood, licence, source, author); a channel's own
+   or bought tracks stay with it. Or Mixkit tracks (the Mixkit Stock Music Free License: commercial
+   use in organic videos and ads, no credit needed), which the plugin fetches, never the user: `tm
+   tool music_fetch --run R --search "<the mood, in English>" --offer <id> --offer <id> --json`
+   lists the tracks and copies the 2 to 3 you suggest into `02_research/music/` with their licence
+   (each row's `licence_line` goes on the page with the track). No question first: the page is the
+   question, and the user's pick is the yes (`tm page decision taste --record` files the picked
+   track into the channel's music library and indexes it; the others stay only in the run). Tracks
+   of the library you offer are copied into the run by the engine, never by hand: `tm tool
+   music_fetch --run R --copy <file> --copy <file> --json` (into `02_research/music/`; a page shows
+   only the run's own files, and it cannot play a sound from another site); a track from another
+   channel's music keeps its index row's `channel` on the page. A trending sound is added in the
    app per the kit, never in the edit.
-4. **A style**, for an animation only: the one picked on the proposals page (`00_raw/proposal.json`
+4. **A style**, for every AI video: the one picked on the proposals page (`00_raw/proposal.json`
    `decision.style`) is offered first, selected (on the page: `recommended`); else 2 to 3 of our styles from
    the head of `tm organic atlas-styles --channel <channel> --tone <words> --json`, each with a one-line why,
    your pick first (`../../references/animation-styles.md`, "The pick"). Offer each by its number or styleId as
@@ -780,8 +799,8 @@ carries a bed. A style is asked only for an animation.
 5. **The page** (issue #83): write what you offer as the next `03_wip/taste_options_vNN.json`:
    `{"styles": [{"id": <number or styleId>, "why", "recommended"}], "voices": [{"voice_id", "name",
    "why", "preview", "source": "library|mine", "recommended"}], "music": {"trending": {"name",
-   "link", "why"} | null, "tracks": [{"file", "title", "why", "licence", "recommended"}]}}`, every
-   file a run file (a track's `file` is the path `tm tool music_fetch --copy` printed, or the music index row's name, which the page finds there; styles only for an animation, voices only when someone speaks off screen). A
+   "link", "why"} | null, "tracks": [{"file", "title", "why", "licence", "channel"?, "recommended"}]}}`, every
+   file a run file (a track's `file` is the path `tm tool music_fetch --copy` printed, or the music index row's name, which the page finds there; voices only when someone speaks off screen). A
    voice may be a row of `tm tool elevenlabs voices --json` (the library's, or `--mine`) copied as
    it is, with your `why` and `recommended` added: its `preview_file` is its preview, and a `--mine`
    row is the user's own. `trending` is the trending sound trend research found that fits this video, or null. Then
@@ -804,8 +823,10 @@ carries a bed. A style is asked only for an animation.
    and ask in chat.
 6. **The picks go into the profile**: write a new version of the channel profile with the voice
    and the music, `tm brand check --run R --file 03_wip/channel_<slug>_vNN.json --json`, then `tm brand
-   save --run R --file 03_wip/channel_<slug>_vNN.json --json` (it carries the date the user
-   confirmed the profile). Then the pack's next `_vNN` with `taste` filled in (`by: user`, or
+   save --run R --file 03_wip/channel_<slug>_vNN.json --json`. The draft keeps `confirmed: null`;
+   `tm brand save` carries the earlier confirmation date when only the voice and music changed (any
+   other change saves it unconfirmed, and the answer says so: the next run asks the profile
+   check-in again). Then the pack's next `_vNN` with `taste` filled in (`by: user`, or
    `profile` for a saved pick), checked again with `--stage recipe` (from the page, `tm page
    decision --run R taste --record` has written that version).
 7. `tm done D2 --run R`. **The `taste` check-in** comes next: at Check every step its own card; at
@@ -994,6 +1015,10 @@ Read `rules.md` (OV11, OV14) and `../../references/posting-kit.md` first.
 The cheap stage is the test (OV9): the images show most problems before the takes are paid for.
 Show a task list with the times (two images about 1 minute) and a one-line status per item.
 
+0. **The style's look in every prompt** (issue #138): when the pack's `taste.style` is one of our styles, every
+   image and video prompt carries the style card's look in words, its `look_text` (`tm organic atlas-styles --json`
+   gives it with each style; Looks, Avoid, the palette's hexes and the fonts), copied in as it is. The guard
+   refuses a prompt without it before anything is paid.
 1. **Every paid call goes through the guard**: write the item's spec as a new
    `03_wip/<item>_vNN.json` (`{"model": "<owner/name>", "input": {...}}`, inputs as paths relative to the
    run folder, `03_wip/…`, or full paths: a missing one stops the run before anything is paid), then `tm tool replicate_run --run R 03_wip/<item>_vNN.json --name <item>

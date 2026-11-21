@@ -11,7 +11,9 @@ answer by its id, and the first video file and preview image it names are downlo
 
 The concepts page shows a model ad's `clip` and `thumb` when the concepts file names them, else these files. A file
 already there is kept (no new download). An ad whose answer names no video file (an image ad, or an answer with only
-the Ad Library's snapshot page) gets its thumbnail alone, and says so. Only http(s) URLs of a video (or an image) are
+the Ad Library's snapshot page) gets its thumbnail alone, and says so. A model ad from the Ad Library gets `link`,
+its public Ad Library page (`LIBRARY_PAGE`, issue #144), which the concepts page shows as "Open in the Ad Library"
+beside its thumbnail. Only http(s) URLs of a video (or an image) are
 fetched, never the snapshot page, whose URL carries an access token. Nothing here spends money.
 """
 
@@ -24,7 +26,7 @@ import re
 import subprocess
 import time
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 import requests
 
@@ -46,6 +48,7 @@ VIDEO_KEYS = ("video_hd_url", "video_sd_url", "watermarked_video_hd_url", "water
 IMAGE_KEYS = ("video_preview_image_url", "thumbnail_url", "preview_image_url", "original_image_url",
               "resized_image_url", "image_url")
 ID_KEYS = ("id", "ad_archive_id", "ad_id", "video_id")
+LIBRARY_PAGE = "https://www.facebook.com/ads/library/?id={id}"   # the ad's public page, never its snapshot URL
 _SAFE = re.compile(r"[^A-Za-z0-9_-]+")
 
 
@@ -60,6 +63,15 @@ def clip_path(run: RunFolder, ad_id: object) -> Path:
 
 def thumb_path(run: RunFolder, ad_id: object) -> Path:
     return run.path / FOLDER / f"{stem(ad_id)}_thumb.jpg"
+
+
+def library_link(ad: dict, record: dict | None = None) -> str | None:
+    """A model ad's public Ad Library page (issue #144): by its `ad_archive_id` in the saved answer, else its id; None
+    for an ad from anywhere else. Never the snapshot URL, which carries an access token."""
+    if ad.get("source") != "ad_library":
+        return None
+    found = (record or {}).get("ad_archive_id") or ad.get("id")
+    return LIBRARY_PAGE.format(id=quote(str(found), safe="")) if found not in (None, "") else None
 
 
 def _record_of(answer: object, ad_id: str) -> dict | None:
@@ -164,12 +176,13 @@ def fetch(run: RunFolder, file: str | Path) -> dict:
     out = []
     for ad in ads:
         ad_id = str(ad["id"])
-        row: dict = {"id": ad_id, "clip": None, "thumb": None, "problem": None}
+        row: dict = {"id": ad_id, "clip": None, "thumb": None, "problem": None, "link": None}
         out.append(row)
         clip, thumb = clip_path(run, ad_id), thumb_path(run, ad_id)
         if isinstance(ad.get("clip"), str) and (run.path / ad["clip"]).is_file():
             row["clip"] = ad["clip"]                   # its own clip, saved before
         record = _record_of(_answer(run, ad.get("saved")), ad_id) if ad.get("saved") else None
+        row["link"] = library_link(ad, record)
         if row["clip"] is None and not clip.is_file() and record is None:
             row["problem"] = ("no saved answer names it (saved)" if ad.get("saved") else
                               "it has no saved answer: save its clip (the first ~15 s) in the run and name it in clip")
@@ -207,9 +220,10 @@ def words(result: dict) -> str:
     lines = []
     for r in result["ads"]:
         got = ", ".join(x for x in (r["clip"], r["thumb"]) if x) or "nothing saved"
-        lines.append(f"- {r['id']}: {got}" + (f" ({r['problem']})" if r["problem"] else ""))
+        lines.append(f"- {r['id']}: {got}" + (f" ({r['problem']})" if r["problem"] else "")
+                     + (f"; {r['link']}" if r.get("link") else ""))
     missing = [r["id"] for r in result["ads"] if not r["clip"]]
-    tail = (" A model ad without a clip shows its thumbnail, or its link alone: say so to the user at the check-in."
-            if missing else "")
+    tail = (" A model ad without a clip shows its thumbnail, with \"Open in the Ad Library\" for one from the Ad "
+            "Library: say so to the user at the check-in." if missing else "")
     return "The model ads' clips for the concepts page:\n" + "\n".join(lines) + "\n" + \
         "The page shows them by themselves (no need to name them in the concepts file)." + tail

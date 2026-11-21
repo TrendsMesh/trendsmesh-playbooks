@@ -438,7 +438,28 @@ def check(run: RunFolder, spec: dict, spec_path: Path, *, name: str | None = Non
                            f"(E005). Make a take with the host on {organic_pack.FACE_HOST}.")
     if found:
         _frames(run, pack, found, inputs, out)
+    _style_look(pack, inp, out)
     return out
+
+
+def _plain(text: str) -> str:
+    return " ".join(str(text).split()).casefold()
+
+
+def _style_look(pack: dict, inp: dict, out: list[str]) -> None:
+    """Issue #138 item 3: while `taste.style` names one of our styles, an image or video prompt (a spec whose input has
+    a prompt: an upscale has none) carries the card's look in words, `atlas_prompt.look_text`, case and spacing
+    aside."""
+    from tm import atlas_prompt, organic_proposals
+
+    style = organic_proposals.style_value((pack.get("taste") or {}).get("style"))
+    prompt = inp.get("prompt")
+    if style is None or not isinstance(prompt, str):
+        return
+    card = atlas_prompt.find_style(style.split(" ", 1)[0])
+    if _plain(atlas_prompt.look_text(card)) not in _plain(prompt):
+        out.append(f"This video's style is {card['name']}: put its look (the card's Looks, Avoid, palette and fonts) "
+                   "in the prompt.")
 
 
 def variant_of(run: RunFolder, pack: dict, model: str, item: dict | None) -> str | None:

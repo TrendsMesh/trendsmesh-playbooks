@@ -551,6 +551,13 @@ def check_storyboard(run: RunFolder, data: dict, *, today: date | None = None) -
         if isinstance(v, dict) and not _in_run(run, v.get("prompt_rules")) and not _text(v.get("prompt_rules")):
             out.append(Problem(f"videos[{n}].prompt_rules", f"{v.get('item')} names no prompting guide.",
                                "Read the model's prompting guide and name it (CA5)."))
+        cuts = v.get("cuts") if isinstance(v, dict) else None
+        if isinstance(v, dict) and not (isinstance(cuts, list) and all(
+                isinstance(x, (int, float)) and not isinstance(x, bool) and x >= 0 for x in cuts)):
+            out.append(Problem(f"videos[{n}].cuts", f"{v.get('item')} names no cuts: the cuts its prompt asks for, in "
+                               "seconds of the take (issue #144).", "Write cuts: [3.5, 7] for the cuts the prompt asks "
+                               "for, [] for one continuous shot. The take's QA measures against them, never the scene "
+                               "times."))
         if isinstance(v, dict) and "speaks" in v and not isinstance(v["speaks"], bool):
             out.append(Problem(f"videos[{n}].speaks", f"{v.get('item')}'s speaks must be true (the take says the "
                                "lines) or false (its voice comes in the edit).", "Set it, or leave it out to follow "

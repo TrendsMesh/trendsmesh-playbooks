@@ -1,14 +1,18 @@
 """The product's site for the edit (Create an ad's S0 and G3, issue 96): sharp captures, and its font and logo.
 
     tm tool site capture --run RUN URL [--width 540] [--height 960] [--scale 2] [--clip X,Y,W,H] [--name STEM]
-                         [--wait SEC] [--json]
+                         [--wait SEC] [--hide SELECTOR ...] [--json]
     tm tool site brand   --run RUN URL [--brand NAME] [--json]
 
 - **capture**: the page drawn in the user's own Chrome or Edge (`tm.atlas.find_browser`, headless, a profile of its
   own that is deleted after) at a device scale of 2 or 3 (`--scale`), so a 540×960 view is a 1080×1920 picture and a
   card is never scaled up in the edit. `--clip` takes the element's own box (CSS px of the page, as the browser's
   `getBoundingClientRect()` plus the scroll gives it): the view grows to hold it and the picture is cut to it, at the
-  same scale. Writes the next `03_wip/site_<STEM>_vNN.png`.
+  same scale. Writes the next `03_wip/site_<STEM>_vNN.png`. The cookie banner is hidden first (issue #144): the page
+  is read in the browser (`--dump-dom`), and a local copy of it is drawn instead, with a `<base href>` to the page,
+  its scripts removed (so the banner does not come back), the common consent containers (`CONSENT`, and each
+  `--hide` selector) hidden and the page's scroll lock cleared. The answer lists what it hid (`hidden`). A copy that
+  draws almost empty (a page made by its scripts) falls back to the plain capture, and the answer says so.
 - **brand**: the page (in the browser when there is one, else as the server sends it), its style sheets and the
   Google Fonts it links, read for the font and the logo. **Fonts**: the families the style sheets use most (the
   generic and system ones left out), each weight's file from the site's own `@font-face` (TTF, OTF or WOFF: the
@@ -19,8 +23,10 @@
   into `02_research/brand/`, and `02_research/brand_vNN.json` lists them: {"url", "read_with" (browser, server),
   "fonts": [{"family", "google_family" (its name there), "uses", "source" (site, google_fonts), "licence", "files":
   [{"file", "weight", "style", "url"}]}], "logos": [{"file", "png", "kind" (logo, svg_logo, icon, share_image),
-  "names_brand", "width", "height", "url"}],
-  "missing": [...], "message"}. What is missing goes into the asset list's question (S0): the user's own files.
+  "names_brand", "width", "height", "url"}], "brand" (the name: `--brand`, else the address's),
+  "missing": [...], "message"}. What is missing goes into the asset list's question (S0): the user's own files. A
+  logo image's file is its srcset's largest entry; an SVG that names the brand comes first; when the best logo that
+  names the brand is a raster under MIN_LOGO_PX on its longer side, `missing` asks for a bigger one (issue #144).
 
 Only http and https addresses are read. Free and local (the base tools and the user's browser).
 """
@@ -53,6 +59,7 @@ MAX_VIEW = 8000            # CSS px a view may grow to for a clip
 MAX_SHEETS, MAX_CSS = 40, 2_000_000
 MAX_FONT, MAX_IMAGE = 10_000_000, 5_000_000
 FAMILIES, WEIGHTS, LOGOS = 2, 4, 8
+MIN_LOGO_PX = 600          # a raster logo smaller on its longer side is scaled up on the end card (CA10, issue #144)
 BRAND_DIR = "02_research/brand"
 GOOGLE_CSS = "https://fonts.googleapis.com/css2?family={family}:wght@{weight}"
 DRAWABLE = (".ttf", ".otf", ".woff")
@@ -66,6 +73,12 @@ GENERIC = {"serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui"
 GOOGLE_LICENCE = "Google Fonts: an open licence (SIL Open Font License or Apache 2.0), free in ads"
 NOT_FAMILY = re.compile(r"weight|size|feature|variation|style|stretch|smooth|display|leading|line|letter|tracking|"
                         r"optical|synthesis|kerning|scale", re.I)
+# The common consent banners' containers (issue #144), each hidden in the capture's local copy of the page.
+CONSENT = ("#onetrust-banner-sdk", "#onetrust-consent-sdk", "#CybotCookiebotDialog", "#usercentrics-root", ".cc-window",
+           ".cky-consent-container", "#cookie-law-info-bar", ".fc-consent-root", "#didomi-host", '[id*="cookie" i]',
+           '[class*="cookie-banner" i]', '[class*="consent" i]', '[aria-label*="cookie" i]')
+BLANK_SPREAD = 3.0         # a capture whose grey levels spread less than this (0-255) is almost empty
+LOOK_AGAIN = "Look at the capture: if a banner still shows, run it again with --hide <its selector>."
 SITE_LICENCE = ("the brand's own font, served by its site: a font bought for the web may not cover video, so the "
                 "user confirms the brand's licence covers its ads")
 
@@ -141,6 +154,70 @@ def view_for(width: int, height: int, clip: tuple | None) -> tuple[int, int]:
     return need_w, need_h
 
 
+class _Tags(HTMLParser):
+    """Each start tag's attributes (lower-case names), to tell which consent containers a page holds."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tags: list[dict] = []
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.append({k.lower(): (v or "") for k, v in attrs})
+
+
+def _matches(selector: str, tags: list[dict]) -> bool:
+    """A selector of `CONSENT`'s forms (`#id`, `.class`, `[attr*="text" i]`) matching one of the tags."""
+    m = re.fullmatch(r'\[([\w-]+)\*="([^"]+)"\s*i?\]', selector)
+    if m:
+        return any(m.group(2).lower() in t.get(m.group(1), "").lower() for t in tags)
+    if selector.startswith("#"):
+        return any(t.get("id") == selector[1:] for t in tags)
+    if selector.startswith("."):
+        return any(selector[1:] in t.get("class", "").split() for t in tags)
+    return False
+
+
+def clean_copy(dom: str, url: str, hide: list[str] = ()) -> tuple[str, list[str]]:
+    """The page as a local copy for the capture (issue #144): its scripts removed, a `<base href>` to the page, a style
+    hiding the consent containers (`CONSENT` and `hide`) and clearing the scroll lock. (the copy, what it hid: the
+    containers the page holds, then each `--hide` selector as given)."""
+    text = re.sub(r"<script\b[^>]*>.*?</script\s*>", "", dom, flags=re.S | re.I)
+    text = re.sub(r"<script\b[^>]*/?>", "", text, flags=re.I)
+    text = re.sub(r"<base\b[^>]*>", "", text, flags=re.I)
+    parser = _Tags()
+    parser.feed(text)
+    selectors = list(dict.fromkeys([*CONSENT, *hide]))
+    hidden = [s for s in CONSENT if _matches(s, parser.tags)] + [s for s in dict.fromkeys(hide) if s not in CONSENT]
+    style = (f"<style>{', '.join(selectors)} {{ display: none !important; }} html, body {{ overflow: auto !important; "
+             "}</style>")
+    head = f'<base href="{html.escape(url, quote=True)}">{style}'
+    m = re.search(r"<head\b[^>]*>", text, flags=re.I)
+    if m:
+        text = text[:m.end()] + head + text[m.end():]
+    else:
+        m = re.search(r"<html\b[^>]*>", text, flags=re.I)
+        at = m.end() if m else 0
+        text = text[:at] + f"<head>{head}</head>" + text[at:]
+    return text, hidden
+
+
+def spread(png: Path) -> float:
+    """How far a picture's grey levels spread (their standard deviation, 0 to 255, on a 32×32 copy): a page drawn
+    almost empty is near 0."""
+    raw = subprocess.run([c.ffmpeg_bin(), "-nostdin", "-v", "error", "-i", c.media(png), "-vf",
+                          "scale=32:32,format=gray", "-frames:v", "1", "-f", "rawvideo", "-"],
+                         capture_output=True, check=True).stdout
+    if not raw:
+        return 0.0
+    mean = sum(raw) / len(raw)
+    return (sum((v - mean) ** 2 for v in raw) / len(raw)) ** 0.5
+
+
+def _shoot(target: str, shot: Path, view: tuple[int, int], a) -> subprocess.CompletedProcess:
+    return chrome([f"--force-device-scale-factor={a.scale}", f"--window-size={view[0]},{view[1]}",
+                   f"--virtual-time-budget={int(a.wait * 1000)}", f"--screenshot={shot}"], target)
+
+
 def capture(run, a) -> tuple[dict, str]:
     url = _url(a.url)
     if a.scale not in SCALES:
@@ -152,10 +229,27 @@ def capture(run, a) -> tuple[dict, str]:
     stem = _slug(a.name or "home")
     out = run.next_version("03_wip", f"site_{stem}", "png")
     scratch = Path(tempfile.mkdtemp(prefix="tm-shot-"))
+    hidden: list[str] = []
+    note = ""
     try:
         shot = scratch / "shot.png"
-        proc = chrome([f"--force-device-scale-factor={a.scale}", f"--window-size={view[0]},{view[1]}",
-                       f"--virtual-time-budget={int(a.wait * 1000)}", f"--screenshot={shot}"], url)
+        read = chrome([f"--virtual-time-budget={int(a.wait * 1000)}", f"--window-size={view[0]},{view[1]}",
+                       "--dump-dom"], url)
+        dom = read.stdout if read.returncode == 0 and "<" in (read.stdout or "") else ""
+        if dom:
+            copy, hidden = clean_copy(dom, url, a.hide or [])
+            page = scratch / "page.html"
+            page.write_text(copy, encoding="utf-8")
+            proc = _shoot(page.as_uri(), shot, view, a)
+            if shot.is_file() and spread(shot) < BLANK_SPREAD:
+                shot.unlink()
+                note = (" The copy without the page's scripts drew almost empty (the page is made by its scripts), so "
+                        "this is the plain capture: look for a banner, and crop it out with --clip.")
+                hidden = []
+        else:
+            note = " The page could not be read first, so this is the plain capture: look for a banner."
+        if not shot.is_file():
+            proc = _shoot(url, shot, view, a)
         if not shot.is_file():
             tail = " | ".join((proc.stderr or proc.stdout or "").strip().splitlines()[-3:])
             raise c.ToolError(f"The browser drew no picture of {url}: {tail}")
@@ -172,12 +266,15 @@ def capture(run, a) -> tuple[dict, str]:
         shutil.rmtree(scratch, ignore_errors=True)
     found = c.probe(out)
     size = [found.get("width"), found.get("height")]
-    params = {"url": url, "view": list(view), "scale": a.scale, "clip": list(clip) if clip else None, "size": size}
+    params = {"url": url, "view": list(view), "scale": a.scale, "clip": list(clip) if clip else None, "size": size,
+              "hidden": hidden}
     c.record(run, out, "tm tool site capture", None, params=params, model="the user's browser, headless",
              cost="0 (local)")
     rel = c.rel(run, out)
-    return ({"outputs": [rel], **params},
-            f"Wrote {rel}: {size[0]}×{size[1]} px of {url} at {a.scale}× (draw it at most that size in the edit).")
+    said = f" Hidden: {', '.join(hidden)}." if hidden else ""
+    text = (f"Wrote {rel}: {size[0]}×{size[1]} px of {url} at {a.scale}× (draw it at most that size in the edit).{said}"
+            f"{note} {LOOK_AGAIN}")
+    return {"outputs": [rel], **params, "message": text}, text
 
 
 # --- brand: reading the page --------------------------------------------------------------------
@@ -528,28 +625,45 @@ def brand_name(url: str) -> str:
     return labels[-2] if len(labels) >= 2 else (labels[0] if labels else "")
 
 
+def largest_src(srcset: str) -> str:
+    """The largest entry of an `<img>`'s srcset (issue #144: the first is usually the smallest), by its width
+    (`600w`) or density (`2x`); an entry without one counts as 1x."""
+    best, size = "", -1.0
+    for part in srcset.split(","):
+        bits = part.split()
+        if not bits:
+            continue
+        m = re.fullmatch(r"(\d+(?:\.\d+)?)([wx])", bits[1]) if len(bits) > 1 else None
+        value = float(m.group(1)) * (1 if m and m.group(2) == "w" else 1000) if m else 1000.0
+        if value > size:
+            best, size = bits[0], value
+    return best
+
+
 def logo_candidates(page: _Page, raw: str, url: str, name: str = "") -> list[dict]:
     """[{url | svg, kind, names_brand}], the likeliest first: the images and inline SVGs marked as a logo that name
-    the brand (the site's name, or `name`), then those that do not (a customer's logo may be one), each in page
-    order; then the icons, largest first, and the share image."""
+    the brand (the site's name, or `name`), an SVG (inline, or an image whose file is .svg) before a raster one (issue
+    #144), then those that do not name it (a customer's logo may be one), each in page order; then the icons, largest
+    first, and the share image. An image's file is its srcset's largest entry, else its src."""
     names = {v for n in (name, brand_name(url)) if n and len(n) > 1
              for v in (n.lower(), n.lower().replace("-", " "), n.lower().replace("-", ""))}
-    found: list[tuple[int, int, dict]] = []
+    found: list[tuple[int, int, int, dict]] = []
     for m in re.finditer(r"<img\b[^>]*>", raw, re.I):
         d = _attrs(m.group(0))
-        src = d.get("src") or (d.get("srcset", "").split(",")[0].split() or [""])[0]
-        own = urlsplit(src).path.rsplit("/", 1)[-1]        # the file's own name, not the folders it sits in
+        src = largest_src(d.get("srcset", "")) or d.get("src")
+        own = urlsplit(src or "").path.rsplit("/", 1)[-1]   # the file's own name, not the folders it sits in
         text = " ".join([own, *(d.get(k, "") for k in ("alt", "class", "id", "title", "aria-label"))]).lower()
         if src and "logo" in text:
-            found.append((0 if any(n in text for n in names) else 1, m.start(),
+            vector = 0 if own.lower().endswith(".svg") else 1
+            found.append((0 if any(n in text for n in names) else 1, vector, m.start(),
                           {"url": urljoin(url, src), "kind": "logo"}))
     for m in re.finditer(r"<svg\b[^>]*>.*?</svg>", raw, re.S | re.I):
         # its own attributes or title, or the link or box it sits in (`<a class="logo">`, `aria-label="Linear"`)
         text = (m.group(0)[:400] + raw[max(0, m.start() - 200):m.start()]).lower()
         if "logo" in text or any(f'"{n}' in text for n in names):
-            found.append((0 if any(n in text for n in names) else 1, m.start(),
+            found.append((0 if any(n in text for n in names) else 1, 0, m.start(),
                           {"svg": m.group(0), "kind": "svg_logo"}))
-    out = [dict(cand, names_brand=rank == 0) for rank, _, cand in sorted(found, key=lambda x: x[:2])]
+    out = [dict(cand, names_brand=rank == 0) for rank, _, _, cand in sorted(found, key=lambda x: x[:3])]
     named = [x for x in out if x["names_brand"]]
     out = (named + [x for x in out if not x["names_brand"]][:max(0, 3 - len(named))])[:LOGOS - 3]
     icons = []
@@ -641,7 +755,14 @@ def logos(run, page: _Page, raw: str, url: str, name: str = "") -> tuple[list[di
         out.append({"file": c.rel(run, dest), "png": c.rel(run, png) if png else None, "kind": cand["kind"],
                     "names_brand": cand["names_brand"], "width": size.get("width"), "height": size.get("height"),
                     "url": link})
-    if any(x["names_brand"] and x["png"] for x in out):
+    named = [x for x in out if x["names_brand"] and x["png"]]
+    vector = any(x["file"].endswith(".svg") for x in named)
+    biggest = max(named, key=lambda x: max(x["width"] or 0, x["height"] or 0), default=None)
+    if named and not vector and max(biggest["width"] or 0, biggest["height"] or 0) < MIN_LOGO_PX:
+        missing = [f"the logo: the largest logo found is {biggest['width']}×{biggest['height']} px, too small for the "
+                   "end card without scaling up (CA10): ask the user for the logo as an SVG, or a PNG with "
+                   f"transparency at least {MIN_LOGO_PX} px wide."]
+    elif named:
         missing = []
     elif any(x["kind"] in ("logo", "svg_logo") and x["png"] for x in out):
         missing = ["the logo: the page's logos do not name the brand (they may be its customers'): show them and "
@@ -672,8 +793,8 @@ def brand(run, a) -> tuple[dict, str]:
     said = (f"Fonts: {'; '.join(_said_font(f) for f in found_fonts) or 'none'}. Logos: "
             + ("; ".join(f"{x['png'] or x['file']} ({x['kind']}, {x['width']}×{x['height']})" for x in found_logos)
                or "none") + "." + (" Missing: " + "; ".join(missing) + "." if missing else ""))
-    data = {"url": url, "read_with": how, "fonts": found_fonts, "logos": found_logos, "missing": missing,
-            "message": said}
+    data = {"url": url, "brand": (a.brand or "").strip() or brand_name(url), "read_with": how, "fonts": found_fonts,
+            "logos": found_logos, "missing": missing, "message": said}
     c.write_json(out, data, newline="\n")
     for f in found_fonts:
         for x in f["files"]:
@@ -711,6 +832,8 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--clip", help="X,Y,W,H of the element in CSS px of the page")
             s.add_argument("--name", help="what the capture shows, for its file name (default home)")
             s.add_argument("--wait", type=float, default=5.0, help="seconds the page gets to draw (default 5)")
+            s.add_argument("--hide", action="append", help="a CSS selector of the site's own cookie banner to hide "
+                           "(again for each), beside the common ones")
         else:
             s.add_argument("--brand", help="the brand's name, when the address does not say it (the config's)")
     a = p.parse_args(argv)

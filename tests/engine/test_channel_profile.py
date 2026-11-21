@@ -461,3 +461,39 @@ def test_a_channel_key_with_diacritics_is_confirmed_by_its_note(ws):
     assert json.loads(brand.save(ws, kot, run=run, confirmed=True).read_text(encoding="utf-8"))["confirmed"]
     with pytest.raises(ValueError, match="confirmed by the user"):
         brand.save(ws, _channel(channel="Dog Days"), run=run, confirmed=True)
+
+
+# --- issue #142 item 1: the confirmation kept when only the taste picks change ----------------------------------
+
+def test_a_draft_that_changes_only_voice_and_music_keeps_the_confirmation(ws, today):
+    run = _run(ws)
+    _decide_profile(run)
+    brand.save(ws, EXAMPLEEDU, run=run, confirmed=True)
+    said: list[str] = []
+    picks = _channel(voice={"narrator_elevenlabs_id": "v1"}, music={"folder": "library/channels/exampleedu/music",
+                                                                    "index": None})
+    later = brand.save(ws, picks, run=run, said=said)           # D2 step 6: the draft keeps confirmed: null
+    assert json.loads(later.read_text(encoding="utf-8"))["confirmed"] == today and said == []
+    assert brand.latest(ws, "exampleedu", kind="channel")["confirmed"] == today
+
+
+def test_any_other_change_needs_the_confirmation_again_and_says_so(ws, today, capsys):
+    run = _run(ws)
+    _decide_profile(run)
+    brand.save(ws, EXAMPLEEDU, run=run, confirmed=True)
+    said: list[str] = []
+    changed = _channel(voice={"narrator_elevenlabs_id": "v1"}, context={"films": "longer explainers"})
+    saved = brand.save(ws, changed, run=run, said=said)
+    assert json.loads(saved.read_text(encoding="utf-8"))["confirmed"] is None
+    assert said == ["The profile changed beyond the voice and music, so it needs the user's confirmation again at the "
+                    "profile check-in."]
+    brand.save(ws, EXAMPLEEDU, run=run, confirmed=True)        # confirmed again at the check-in
+    (run.path / "03_wip" / "channel_exampleedu_v02.json").write_text(json.dumps(changed), encoding="utf-8")
+    code, out = _cli(capsys, "brand", "save", "--run", str(run.path), "--file", "03_wip/channel_exampleedu_v02.json")
+    assert code == 0 and "needs the user's confirmation again" in out["message"]
+
+
+def test_an_unconfirmed_profile_stays_unconfirmed(ws):
+    brand.save(ws, EXAMPLEEDU, run=None)
+    saved = brand.save(ws, _channel(voice={"narrator_elevenlabs_id": "v1"}), run=None, said=[])
+    assert json.loads(saved.read_text(encoding="utf-8"))["confirmed"] is None

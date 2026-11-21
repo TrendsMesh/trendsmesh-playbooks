@@ -216,9 +216,9 @@ def test_the_channel_style_is_checked():
     assert look(styles=_styles(7), channel_style={"style": 40, "why": " "}) == ["m1.plugin.channel_style.why"]
     assert look(styles=_styles(40), channel_style={"style": 40, "why": "x"}) == ["m1.plugin.styles[0].style"]
     out = []
-    p = _proposal("ai_footage", channel_style={"style": 40, "why": "x"})
+    p = _proposal("ai_footage", styles=_styles(7), channel_style={"style": 40, "why": "x"})
     organic_proposals._look(p, p["id"], out)
-    assert [x.field for x in out] == ["m1.plugin.channel_style"]
+    assert out == []                         # issue #138 item 3: a style is picked for every production type
 
 
 def test_a_style_picked_from_the_gallery_is_kept():

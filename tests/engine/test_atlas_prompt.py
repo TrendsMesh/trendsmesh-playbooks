@@ -327,7 +327,7 @@ def test_unknown_style_lists_closest(capsys):
     code, out = _cli(capsys, "organic", "atlas-styles")
     assert code == 0 and [s["order"] for s in out["styles"]] == list(range(1, len(atlas_prompt.styles()) + 1))
     assert set(out["styles"][13]) == {"order", "styleId", "name", "category", "description", "suits", "tags", "poster",
-                                      "loop"}
+                                      "loop", "look_text"}
 
 
 def test_every_style_builds_in_every_mode_and_as_a_page():

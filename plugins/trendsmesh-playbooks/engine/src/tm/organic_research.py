@@ -21,11 +21,13 @@
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import date
 from pathlib import Path
 
-from tm import brand, brief_research, config, library, manifest, organic_config, shortlist, state, trend_spool, trends
+from tm import brand, brief_research, config, library, manifest, organic_config, playbooks, shortlist, state, trend_spool, \
+    trends
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
@@ -34,7 +36,8 @@ WIP = "03_wip"
 ORGANIC_DIR = Path("library") / "organic"
 USED = "used_trends.jsonl"
 DECISIONS = "decisions.jsonl"
-USED_FIELDS = ("trend_id", "name", "kind", "run", "video", "used", "series")
+USED_FIELDS = ("trend_id", "name", "kind", "run", "video", "used", "series", "production", "final")
+LATER_FIELDS = ("production", "final")   # issue #142: kept when given (a row written at delivery names its final)
 TREND_KINDS = ("hook_trend", "topic_trend", "format_trend", "sound_trend")
 _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DECISION_KINDS = ("produce", "later", "skip", "redo")
@@ -169,7 +172,7 @@ def shortlist_gap(run: RunFolder) -> str | None:
         return f"the latest shortlist {latest.name} is written by tm trends shortlist in this run (run it again)"
     plugin = (data.get("meta") or {}).get("plugin") or {}
     if data.get("fit_candidates") and not plugin.get("fit_file"):   # a shortlist from before issue #84 has none
-        return (f"the hooks and formats of the latest shortlist {latest.name} are scored for the channel: each of its "
+        return (f"the hooks, formats and topics of the latest shortlist {latest.name} are scored for the channel: each of its "
                 f"fit_candidates in {WIP}/trend_fit_vNN.json, then tm trends shortlist again with --fit")
     return None
 
@@ -320,13 +323,99 @@ def _rows(workspace: Path, path: Path) -> list[dict]:
     return rows
 
 
+PROPOSAL_FILE = "00_raw/proposal.json"   # a production run's proposal, as `tm organic start` writes it
+FINAL = "04_final"
+
+
+def run_folder(workspace: Path, run_id: str) -> Path:
+    """An organic video run's folder in the workspace, by its id (`runs/<playbook>/<run id>`)."""
+    return Path(workspace) / "runs" / playbooks.get(ORGANIC_VIDEO).id / str(run_id)
+
+
+def has_final(folder: Path) -> bool:
+    """The run delivered its video or its script: a `04_final/<id>_final_vNN.mp4`, or a script page
+    `04_final/<id>_script_<lang>_vNN/` (issue #142)."""
+    final = Path(folder) / FINAL
+    if not final.is_dir():
+        return False
+    return any(final.glob("*_final_v*.mp4")) or any(p.is_dir() for p in final.glob("*_script_*_v*"))
+
+
+def _proposal_of(folder: Path) -> dict:
+    try:
+        kept = json.loads((Path(folder) / PROPOSAL_FILE).read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return {}
+    return kept if isinstance(kept, dict) else {}
+
+
+def _counted(workspace: Path, rows: list[dict]) -> list[dict]:
+    """The rows that count (issue #142): a row written at delivery (it names its `final`), or an older one whose run has
+    a final video or script; each with the `production` type of its run when the row lacks it."""
+    out, finals = [], {}
+    for row in rows:
+        if row.get("final"):
+            out.append(row)
+            continue
+        run_id = row.get("run")
+        if not _text(run_id):
+            continue
+        if run_id not in finals:
+            folder = run_folder(workspace, run_id)
+            production = (((_proposal_of(folder).get("proposal") or {}).get("plugin") or {}).get("production")
+                          if has_final(folder) else None)
+            finals[run_id] = (has_final(folder), production)
+        delivered, production = finals[run_id]
+        if delivered:
+            out.append({**row, "production": row.get("production") or production})
+    return out
+
+
 def used(workspace: Path, channel: str) -> dict[str, dict]:
-    """The trends this channel has made videos from: trend id -> its latest row in used_trends.jsonl."""
+    """The trends this channel has made videos from: trend id -> its latest row in used_trends.jsonl that counts (a
+    finished video or script, `_counted`)."""
     out: dict[str, dict] = {}
-    for row in _rows(workspace, _folder(workspace, channel) / USED):
+    for row in _counted(workspace, _rows(workspace, _folder(workspace, channel) / USED)):
         if isinstance(row.get("trend_id"), str) and row["trend_id"]:
             out[row["trend_id"]] = row
     return out
+
+
+def channel_used(run: RunFolder) -> dict[str, dict]:
+    """The used trends of the run's channels (config.yaml `channels`), together; a channel whose log cannot be read
+    gives none here (C1's check names it)."""
+    try:
+        channels = config.load(run).get("channels") or []
+    except ValueError:
+        channels = []
+    workspace = trend_spool.workspace_of(run)
+    out: dict[str, dict] = {}
+    for slug in channels:
+        try:
+            out.update(used(workspace, slug) if isinstance(slug, str) and slug else {})
+        except (Stop, ValueError):
+            continue
+    return out
+
+
+def record_delivered(run: RunFolder, final: str) -> int:
+    """The production run delivered `final` (its video, or its script page): its used trends (00_raw/proposal.json
+    `used`, kept there by `tm organic start`) go into the channel's used_trends.jsonl, each once per run, with the
+    final and today's date (issue #142). The number of rows written; 0 for a run without them (an idea run, or a run
+    started before this, whose rows were written at its start). A damaged log is never a failed delivery: 0."""
+    kept = _proposal_of(run.path)
+    rows, channel = kept.get("used"), kept.get("channel")
+    if not (isinstance(rows, list) and rows and _text(channel)):
+        return 0
+    workspace = trend_spool.workspace_of(run)
+    try:
+        have = {(r.get("trend_id"), r.get("run")) for r in _rows(workspace, _folder(workspace, channel) / USED)
+                if r.get("final")}
+        new = [{**r, "final": final, "used": date.today().isoformat()} for r in rows
+               if isinstance(r, dict) and (r.get("trend_id"), r.get("run")) not in have]
+        return record_used(workspace, channel, new) if new else 0
+    except (Stop, ValueError, OSError):
+        return 0
 
 
 def _text(value: object) -> bool:
@@ -361,7 +450,8 @@ def used_rows(rows: list[dict]) -> list[dict]:
         day = row.get("used") or date.today().isoformat()
         if not _day(day):
             raise ValueError(f"A used trend's used is the day it was used, YYYY-MM-DD: {row!r}.")
-        out.append({**{k: row.get(k) for k in USED_FIELDS}, "used": day})
+        out.append({**{k: row.get(k) for k in USED_FIELDS if k not in LATER_FIELDS}, "used": day,
+                    **{k: row[k] for k in LATER_FIELDS if row.get(k)}})
     return out
 
 
@@ -374,9 +464,9 @@ def record_used(workspace: Path, channel: str, rows: list[dict]) -> int:
 
 def series(workspace: Path, channel: str) -> list[dict]:
     """The channel's series, in the order they began: `{series, episodes, trend_ids, videos, last_used}`,
-    where each video is `<run>/<video>` and the episodes are its videos so far."""
+    where each video is `<run>/<video>` and the episodes are its videos so far (the rows that count, `_counted`)."""
     out: dict[str, dict] = {}
-    for row in _rows(workspace, _folder(workspace, channel) / USED):
+    for row in _counted(workspace, _rows(workspace, _folder(workspace, channel) / USED)):
         name = row.get("series")
         if not _text(name):
             continue

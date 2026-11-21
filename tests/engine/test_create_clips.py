@@ -142,3 +142,20 @@ def test_tm_ad_clips_and_the_concepts_page_plays_them_with_the_thumbnail_as_post
     assert '<img src="assets/media/03_ad_2_thumb.jpg"' in html                        # the image ad: its thumbnail
     assert (run.path / built["folder"] / "assets/media/01_ad_1_15s.mp4").is_file()
     assert "access_token" not in html
+    # issue #144: each Ad Library model ad links to its public Ad Library page
+    for ad in ("ad_1", "ad_2"):
+        assert (f'<a href="https://www.facebook.com/ads/library/?id={ad}" target="_blank" rel="noopener">'
+                f'Open in the Ad Library</a>') in html
+    assert html.count("Open in the Ad Library") == 2                                  # never for a guess
+
+
+def test_an_ad_library_model_ad_gets_its_public_link_never_the_snapshot(tmp_path, web):
+    run = _new(tmp_path)
+    _concepts(run)
+    rows = {r["id"]: r for r in create_clips.fetch(run, run.path / "03_wip/concepts_v01.json")["ads"]}
+    assert rows["ad_1"]["link"] == "https://www.facebook.com/ads/library/?id=ad_1"
+    assert rows["ad_2"]["link"] == create_clips.library_link({"id": "ad_2", "source": "ad_library"})
+    assert rows["m3"]["link"] is None
+    assert create_clips.library_link({"id": "x", "source": "ad_library"}, {"ad_archive_id": "1234"}) == \
+        "https://www.facebook.com/ads/library/?id=1234"
+    assert "Open in the Ad Library" in create_clips.words({"ads": list(rows.values())})

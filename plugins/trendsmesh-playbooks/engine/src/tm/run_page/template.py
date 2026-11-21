@@ -277,7 +277,8 @@ def _note_input(n: dict, live: bool) -> str:
 
 
 def _cards(b: dict, ds: Datasets, lang: str, live: bool) -> str:
-    """Cards side by side: a title, chips, lines, media, a table, and (live) a pick or a choice per card."""
+    """Cards side by side: a title, chips, lines, media, a link (`{href, text}`, https only), a table, and (live) a pick
+    or a choice per card."""
     out = []
     for c in b["items"]:
         parts = [f'<h3>{E(c["title"])}</h3>' if c.get("title") else ""]
@@ -286,6 +287,10 @@ def _cards(b: dict, ds: Datasets, lang: str, live: bool) -> str:
         parts += [f'<p class="small">{bold(line)}</p>' for line in c.get("lines") or []]
         if c.get("media"):
             parts.append(_media({"items": c["media"]}, ds, lang))
+        link = c.get("link") if isinstance(c.get("link"), dict) else {}
+        if str(link.get("href") or "").startswith("https://"):   # a public page, opened in a new tab (issue #144)
+            parts.append(f'<p class="small"><a href="{E(link["href"])}" target="_blank" rel="noopener">'
+                         f'{E(link.get("text") or link["href"])}</a></p>')
         if c.get("pre"):
             parts.append(f'<pre class="text">{E(c["pre"])}</pre>')
         if c.get("table"):

@@ -59,6 +59,44 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Refresh an ad: the new text uses the brand's text set.** When the brand has a saved text set, the refreshed
   ad's new opening and ending cards, and its rebuilt captions, are drawn in it: its colours, its font, its logo on
   the ending card, and the key word in the brand colour.
+- **Create an ad: every model ad from the Ad Library can be opened.** The concepts page shows each Ad Library model
+  ad with its thumbnail and an "Open in the Ad Library" link to its public page, also when the Ad Library gave no
+  video file.
+- **Create an ad: a planned continuous take is not reported as missing cuts.** Each paid take in the storyboard now
+  names the cuts its prompt asks for (none for one continuous shot), and the take's QA measures against those cuts,
+  never the scene times, so a single take no longer gets "no cut near 3 s" notes.
+- **Create an ad: a sharp logo for the end card.** `tm tool site brand` takes the largest version of a logo the site
+  offers and prefers the brand's SVG wordmark. When the best logo is smaller than 600 px, Claude asks you for the logo
+  as an SVG or a larger PNG, instead of scaling it up on the end card.
+- **Create an ad: site captures without the cookie banner.** `tm tool site capture` hides the common cookie and
+  consent banners (OneTrust, Cookiebot, Usercentrics and others) before it takes the picture, and says what it hid.
+  For a site's own banner, add `--hide <its selector>`. When the page can't be drawn that way, it takes the plain
+  capture and says so.
+- **Organic AI video: topics are scored for your channel too.** Claude now scores up to 20 of the shortlist's topics
+  for your channel, as it does hooks and formats. A topic that fits badly (for example "Temu product hauls" for an AI
+  explainer channel) no longer takes a place among the trends whose evidence is pulled.
+- **Music in one step, from your whole library.** At the style, voice and music step, Claude puts 2 to 3 free Mixkit
+  tracks straight on the page, each with its licence line, with no question asked first: the track you pick is your
+  yes, and it goes into the channel's music library. Free-licence tracks fetched for another of your channels are
+  offered too, marked with that channel's name; a channel's own or bought tracks stay with it.
+- **Create an ad: free Mixkit music works without a channel.** A track fetched in an ad run goes into the run's
+  audio folder and the brand's music library, so the brand's next ad finds it, with its licence. Before the
+  download, Claude says where the track will go.
+- **Organic AI video: a trend you used can come back once, with a new angle.** A trend counts as used only once a
+  video or a script was delivered from it; runs that were started and never finished no longer block it. The
+  shortlist keeps used trends, marked. One idea per batch may build on a used trend that is still rising, saying
+  what is new (topic, hook or format), and the proposals page shows which earlier video it was in.
+- **Organic AI video: the channel profile stays confirmed after the voice and music picks.** Saving the picked voice
+  and music into the channel profile keeps the date you confirmed it, so the next run reuses the profile without
+  asking again. Any other change to the profile still asks you to confirm it, and Claude says why.
+- **Organic AI video: the picked style shapes every kind of video.** A style from the library can now be picked for
+  AI footage, a talking character and stills too, not only an animation. Its look (what it looks like, what it
+  avoids, its colours and fonts) goes into every image and video prompt, and the plugin refuses a paid image or
+  video whose prompt leaves it out, before anything is paid.
+- **Organic AI video: every batch of ideas has variety.** Each idea is built on a format rising now, and no two ideas
+  share a format and a production type. When your channel has its own style, at least one idea comes in another
+  look, unless you say you want every idea in your channel's style. The proposals page says how many ideas are in
+  your channel's style and how many in other styles.
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of

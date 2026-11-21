@@ -157,6 +157,24 @@ def _takes_of(run: RunFolder, item: str) -> list[Path]:
     return [run.path / rel for rel in sorted(latest) if Path(rel).suffix.lower() in VIDEO_EXT]
 
 
+def board_video(run: RunFolder, take: Path) -> dict | None:
+    """The checked storyboard's `videos[]` item that `take` is a take of, or None."""
+    board = create_plan.checked(run, create_plan.STORYBOARD)
+    for video in (board or {}).get("videos") or []:
+        if isinstance(video, dict) and isinstance(video.get("item"), str):
+            if any(t.resolve() == Path(take).resolve() for t in _takes_of(run, video["item"])):
+                return video
+    return None
+
+
+def board_cuts(run: RunFolder, take: Path) -> list[float] | None:
+    """The cuts the take's prompt asks for (the storyboard item's `cuts`, issue #144; [] for one continuous shot), or
+    None when the take is not one of the checked storyboard's."""
+    video = board_video(run, take)
+    cuts = (video or {}).get("cuts")
+    return [float(x) for x in cuts] if isinstance(cuts, list) else None
+
+
 def _rows(run: RunFolder, tr: i18n.Translator) -> list[dict] | None:
     """One row per take of the checked storyboard's videos (an item with no take yet has a row with `take` None),
     or None when the storyboard is not checked. A damaged record or QA file is a Stop."""

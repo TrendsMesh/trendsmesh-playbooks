@@ -145,8 +145,12 @@ def _concept(ctx: Context) -> list[dict]:
                       else str(a.get("source")), "style": "warn" if a.get("source") == "guess" else ""}]
             if _num(a.get("run_days")):
                 chips.append({"text": _wn(ctx, "run_days", a["run_days"], n=fmt(a["run_days"]))})
+            link = create_clips.library_link(a, create_clips._record_of(create_clips._answer(ctx.run, a.get("saved")),
+                                                                        str(a.get("id")))
+                                             if a.get("saved") else None)
             cards.append({"title": str(names[a.get("id")]), "chips": chips,
-                          "lines": [_w(ctx, "take_from", why=a.get("why") or "")], "media": _model_ad_media(ctx, a)})
+                          "lines": [_w(ctx, "take_from", why=a.get("why") or "")], "media": _model_ad_media(ctx, a),
+                          **({"link": {"href": link, "text": _w(ctx, "open_ad_library")}} if link else {})})
         blocks.append({"kind": "cards", "title": _w(ctx, "model_ads"), "items": cards})
     trends = [t for t in data.get("trends") or [] if isinstance(t, dict)]
     tnames = {t.get("id"): t.get("name") or t.get("id") for t in trends}

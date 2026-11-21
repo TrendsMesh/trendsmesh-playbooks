@@ -383,13 +383,21 @@ def _user_accepted_profile(run: RunFolder | None, profile: dict) -> bool:
     return bool(decisions) and channels == [key]
 
 
-def save(workspace: Path, profile: dict, *, run: RunFolder | None, confirmed: bool = False) -> Path:
+TASTE_KEYS = ("voice", "music", "confirmed")   # what D2 changes in a channel profile (issue #142)
+RECONFIRM = ("The profile changed beyond the voice and music, so it needs the user's confirmation again at the "
+             "profile check-in.")
+
+
+def save(workspace: Path, profile: dict, *, run: RunFolder | None, confirmed: bool = False,
+         said: list[str] | None = None) -> Path:
     """Write the profile as its kind's next library version and return its path. Refuses (ValueError) a
     profile that breaks the rules. With a run, the run keeps a copy in 04_final and a manifest row.
 
     `confirmed` sets the profile's `confirmed` to today, and needs `run` with the user's decision at
     the `profile` check-in. A channel draft cannot bring a date of its own, except the one its latest
-    saved version already has."""
+    saved version already has. A channel draft with `confirmed: null` keeps the latest version's date when it
+    differs from it only in `voice` and `music` (D2's picks, issue #142); any other change saves it unconfirmed,
+    and `said` gets RECONFIRM."""
     problems = check(profile, workspace=workspace)
     if problems:
         raise ValueError(f"The {_kind(profile)} profile is not ready: "
@@ -406,6 +414,14 @@ def save(workspace: Path, profile: dict, *, run: RunFolder | None, confirmed: bo
         if saved is None or saved.get("confirmed") != profile["confirmed"]:
             raise ValueError(f"{CONFIRMED_BY_USER} Set confirmed to null in the draft; tm brand save --confirmed "
                              "sets the date after the user accepts it at the profile check-in.")
+    elif kind == "channel":
+        saved = latest(workspace, profile[kind], kind=kind)
+        if saved is not None and saved.get("confirmed"):
+            rest = lambda p: {k: v for k, v in p.items() if k not in TASTE_KEYS}   # noqa: E731
+            if rest(saved) == rest(profile):
+                profile = {**profile, "confirmed": saved["confirmed"]}
+            elif said is not None:
+                said.append(RECONFIRM)
     folder = _folder(workspace, profile[kind], kind)
     versions = _versions(folder, kind)
     text = json.dumps(profile, ensure_ascii=False, indent=2) + "\n"
@@ -645,9 +661,10 @@ def _problems(args: argparse.Namespace, profile: object, problems: list[Problem]
     return 2
 
 
-def _done(args: argparse.Namespace, saved: Path, workspace: Path) -> int:
+def _done(args: argparse.Namespace, saved: Path, workspace: Path, said: list[str] = ()) -> int:
     rel = saved.relative_to(workspace).as_posix()
-    cli.emit(args, {"status": "done", "file": rel, "message": f"Saved {rel}."}, f"Saved {rel}.")
+    message = " ".join([f"Saved {rel}.", *said])
+    cli.emit(args, {"status": "done", "file": rel, "message": message}, message)
     return 0
 
 
@@ -684,7 +701,8 @@ def _run(args: argparse.Namespace) -> int:
             message = f"The {_what(profile)} is ready to save."
             cli.emit(args, {"status": "done", "message": message}, message)
             return 0
-        return _done(args, save(workspace, profile, run=run, confirmed=args.confirmed), workspace)
+        said: list[str] = []
+        return _done(args, save(workspace, profile, run=run, confirmed=args.confirmed, said=said), workspace, said)
     except Stop as exc:
         cli.emit(args, {"status": "stop", "message": str(exc)}, str(exc))
         return 2

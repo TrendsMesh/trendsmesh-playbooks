@@ -199,7 +199,7 @@ def _idea_problems(run: RunFolder, week: dict, idea: dict, where: str, used: dic
                                                        "videos repeating right now, which only TrendsMesh gives (OV3, "
                                                        "issue #106).", "Make it an Inspire."))
     key = organic_proposals.idea_key(as_proposal(week, idea, {"output": "video"}))
-    organic_proposals._used(view, where, found, used, own.get(key), out)
+    organic_proposals._used(run, view, where, found, used, own.get(key), out)
 
 
 _ID_TODO = "Name it w1, w2, r1, ... or another id of ASCII letters, digits, '_' and '-'"
