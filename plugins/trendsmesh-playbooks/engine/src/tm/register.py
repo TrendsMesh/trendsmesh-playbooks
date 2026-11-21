@@ -87,7 +87,7 @@ def check(run: RunFolder, data: object) -> dict:
 
 def record(run: RunFolder, file: Path) -> dict:
     file = run.given(file)
-    data = json.loads(file.read_text(encoding="utf-8"))
+    data = json.loads(file.read_text(encoding="utf-8-sig"))
     counts = check(run, data)
     s = state.load(run)
     try:
@@ -103,7 +103,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="register_command", metavar="action")
     c = sub.add_parser("check")
     c.add_argument("--run", required=True)
-    c.add_argument("--file", required=True, help="the register JSON")
+    c.add_argument("--file", required=True, help="the register JSON, relative to the run folder")
     c.add_argument("--json", action="store_true")
 
 

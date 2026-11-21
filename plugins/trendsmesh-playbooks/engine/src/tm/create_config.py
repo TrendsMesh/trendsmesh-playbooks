@@ -234,7 +234,7 @@ def inventory_problems(path: Path) -> list[str]:
     The brand's logo and font are always listed (issue 96): the files `tm tool site brand` took from the product's
     site, or the user's own; `usable: false` when there is none after asking."""
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
         return [f"{path.name} cannot be read as JSON ({exc})"]
     if not isinstance(data, dict):

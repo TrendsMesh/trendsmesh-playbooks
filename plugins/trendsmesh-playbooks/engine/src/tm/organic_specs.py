@@ -208,12 +208,13 @@ def _names(pack: dict) -> str:
     return ", ".join(item["name"] for st in pack["stages"] for item in st["items"])
 
 
-def _inputs(spec: dict, base: Path) -> list[tuple[str, Path]]:
-    """(input key, resolved path) of every local file the spec sends, lists included."""
+def _inputs(spec: dict, base: Path, run: RunFolder | None = None) -> list[tuple[str, Path]]:
+    """(input key, resolved path) of every local file the spec sends, lists included: in the run folder first, else
+    beside the spec, as replicate_run finds them."""
     out = []
     for key, value in (spec.get("input") or {}).items():
         for v in value if isinstance(value, list) else [value]:
-            p = c.local_file(v, base)
+            p = c.local_file(v, base, run)
             if p is not None:
                 out.append((key, p.resolve()))
     return out
@@ -307,7 +308,7 @@ def page_image_rows(run: RunFolder, kind: str = IMAGES, page: str = "gate_images
     for path in _decisions_files(run, f"decisions_{page}"):
         rel = f"{WIP}/{path.name}"
         try:
-            body = json.loads(path.read_text(encoding="utf-8"))
+            body = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             body = exc
         if not isinstance(body, dict) or not isinstance(body.get("decisions"), dict):
@@ -403,7 +404,11 @@ def check(run: RunFolder, spec: dict, spec_path: Path, *, name: str | None = Non
     elif found[1]["model"] != model:
         out.append(f"The pack makes {found[1]['name']} with {found[1]['model']}, and the spec runs {model or 'no model'}.")
     inp = spec.get("input") or {}
-    inputs = _inputs(spec, spec_path.parent)
+    inputs = _inputs(spec, spec_path.parent, run)
+    for key, value in inp.items():
+        for v in c.missing_local(value, spec_path.parent, run):
+            out.append(f"{key} names {v}, which is not a file of the run: give it relative to the run folder, for "
+                       "example 03_wip/<name>, or as an absolute path (it is never sent as text).")
     shots = _packshots(run, pack)
     for key, path in inputs:
         rel = _rel(run, path)
@@ -424,7 +429,7 @@ def check(run: RunFolder, spec: dict, spec_path: Path, *, name: str | None = Non
     if str(model or "").startswith(GPT_IMAGE) and inp.get("output_format") != "png":
         out.append(f'{model} needs output_format: "png" (got {inp.get("output_format")!r}).')   # its recipe's
     if model == H3:
-        _h3(pack, inp, spec_path.parent, out)
+        _h3(pack, inp, spec_path.parent, out, run)
     elif organic_pack.face_blocked(model) and pack["host"].get("image"):
         host = (run.path / pack["host"]["image"]).resolve()
         for key, path in inputs:
@@ -484,13 +489,13 @@ def _registry(run: RunFolder, pack: dict, model: str, found: tuple[str, dict] | 
                        "(the variant the user chose and was priced).")
 
 
-def _h3(pack: dict, inp: dict, base: Path, out: list[str]) -> None:
+def _h3(pack: dict, inp: dict, base: Path, out: list[str], run: RunFolder | None = None) -> None:
     references = [k for k in H3_REFERENCES if inp.get(k)]
     if references and inp.get("ratio") != "9:16":
         out.append(f'H3 in reference mode needs ratio: "9:16" (got {inp.get("ratio")!r}).')
     audio = inp.get("reference_audio_urls") or []
     for value in audio if isinstance(audio, list) else [audio]:
-        path = c.local_file(value, base)
+        path = c.local_file(value, base, run)
         if path is None:
             continue
         try:
@@ -545,7 +550,7 @@ def _records(run: RunFolder, stem: str) -> list[tuple[Path, dict]]:
     out = []
     for _, _, path in found:
         try:
-            record = json.loads(path.read_text(encoding="utf-8"))
+            record = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             record = exc
         if not isinstance(record, dict):
@@ -631,7 +636,7 @@ def guard(run: RunFolder, args: list[str]) -> str | None:
     a = tools._parsed(args)
     if not a.spec:
         return _stop("Give the spec file to run (tm tool replicate_run --run R SPEC --name ITEM --cost USD).")
-    spec_path = run.given(a.spec)   # from the working folder, else run-relative: replicate_run reads the same file
+    spec_path = run.given(a.spec)   # run-relative (the one path rule): replicate_run reads the same file
     try:
         spec = json.loads(spec_path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:

@@ -433,7 +433,7 @@ def decided(run: RunFolder, name: str, folder: str | None = None) -> dict:
         raise Stop(f"The page {row['file']} was built from {row['parent']}, which is gone or changed since, so it is "
                    f"unknown what was asked. Build the page again (tm organic page {name}); {AGAIN}.")
     return {"folder": row["file"], "data_file": row["parent"],
-            "data": json.loads(path.read_text(encoding="utf-8")), "params": params}
+            "data": json.loads(path.read_text(encoding="utf-8-sig")), "params": params}
 
 
 _NOTE = re.compile(r"^note\s*:\s*(.*)$", re.IGNORECASE | re.S)

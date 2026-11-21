@@ -171,7 +171,7 @@ def audience_reads(run: RunFolder) -> list[tuple[str, str | None]]:
     for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
         rel = path.relative_to(run.path).as_posix()
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             raise Stop(f"{rel} cannot be read ({' '.join(str(exc).split())[:100]}), so the order of the audience "
                        "hypothesis and the age × gender read cannot be checked. Fix the file or delete it (the "
@@ -361,7 +361,7 @@ def _require_saved_read(path: Path, rel: str) -> None:
     """Stop unless the file is a saved age × gender read in `01_base/meta/`: the one the order check
     counts, so the pick and the order check read the same thing."""
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         data = None
     if not (rel.startswith(f"{META}/") and isinstance(data, dict) and is_audience_data(data.get("_input"))):
@@ -429,7 +429,7 @@ def picked_gap(run: RunFolder) -> str | None:
     if a.get("file") != rel or a.get("sha256") != _sha256(latest):
         return f"{again}: the latest {rel} is not the file it wrote, so run it again"
     try:
-        hypothesis = json.loads(latest.read_text(encoding="utf-8")).get("hypothesis")
+        hypothesis = json.loads(latest.read_text(encoding="utf-8-sig")).get("hypothesis")
     except (OSError, ValueError, AttributeError):
         return f"{again}: {rel} cannot be read, so run it again"
     if hypothesis != a.get("hypothesis"):
@@ -443,7 +443,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="action", required=True)
     h = sub.add_parser("hypothesis", help="record the audience hypothesis, written before any audience data")
     h.add_argument("--run", required=True, help="the run folder")
-    h.add_argument("--file", required=True, help=f"the hypothesis, {STAGE}/hypothesis_vNN.md")
+    h.add_argument("--file", required=True,
+                   help=f"the hypothesis, {STAGE}/hypothesis_vNN.md, relative to the run folder")
     h.add_argument("--json", action="store_true")
     k = sub.add_parser("pick", help="pick the persona segment and the formats (CB1, R6)")
     k.add_argument("--run", required=True, help="the run folder")

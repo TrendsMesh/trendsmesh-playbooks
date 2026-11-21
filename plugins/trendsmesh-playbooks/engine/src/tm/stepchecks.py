@@ -117,9 +117,9 @@ def mark(run: RunFolder, key: str, path: Path | str, *, extra: dict | None = Non
     """Record that the check `key` passed on this file (inside the run folder): its run-relative
     path, sha256 and the time, in run.json `checked[key]`, plus `extra` (what else the check read,
     e.g. the scores a saturation check was made against)."""
-    target = Path(path) if Path(path).is_absolute() else run.path / path
+    target = run.given(path)          # the one path rule (issue #126): NotInRun, a ValueError, when it is missing
     try:
-        rel = target.resolve().relative_to(run.path.resolve())
+        rel = target.resolve().relative_to(run.path)
     except ValueError:
         raise ValueError(f"{path} is not inside the run folder {run.path}.") from None
     if not target.is_file():

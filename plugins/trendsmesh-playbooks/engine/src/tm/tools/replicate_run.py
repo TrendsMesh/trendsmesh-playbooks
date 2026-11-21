@@ -68,10 +68,10 @@ def _token() -> str:
     return token
 
 
-def _resolve(value, base: Path, opened: list):
+def _resolve(value, base: Path, opened: list, run_folder=None):
     if isinstance(value, list):
-        return [_resolve(v, base, opened) for v in value]
-    p = c.local_file(value, base)
+        return [_resolve(v, base, opened, run_folder) for v in value]
+    p = c.local_file(value, base, run_folder)
     if p is None:
         return value
     fh = p.open("rb")
@@ -79,11 +79,11 @@ def _resolve(value, base: Path, opened: list):
     return fh
 
 
-def _described(value, base: Path):
+def _described(value, base: Path, run_folder=None):
     """The input as recorded: local files by name, never their bytes."""
     if isinstance(value, list):
-        return [_described(v, base) for v in value]
-    p = c.local_file(value, base)
+        return [_described(v, base, run_folder) for v in value]
+    p = c.local_file(value, base, run_folder)
     return f"file:{p.name}" if p else value
 
 
@@ -155,15 +155,21 @@ def _finish(client, pred, record: dict, record_path: Path, out: Path, name: str)
     return record
 
 
-def run(spec_path: Path | str, out_dir: Path | str, name: str) -> dict:
-    """Run the spec (paid); outputs go to out_dir as <name>_<i>.<ext>, the record to <name>.run.json."""
-    import httpx
-    from replicate.exceptions import ReplicateError
-
+def run(spec_path: Path | str, out_dir: Path | str, name: str, run_folder=None) -> dict:
+    """Run the spec (paid); outputs go to out_dir as <name>_<i>.<ext>, the record to <name>.run.json. A local
+    input is found in the run folder first (`run_folder`), else beside the spec; an input that reads as a local file
+    and is not found stops it before anything is sent (issue #126)."""
     _token()
     spec_path, out = Path(spec_path), Path(out_dir)
-    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    spec = json.loads(spec_path.read_text(encoding="utf-8-sig"))
     model, inputs = spec["model"], spec.get("input", {})
+    missing = [f"{k}: {v}" for k, value in inputs.items() for v in c.missing_local(value, spec_path.parent, run_folder)]
+    if missing:
+        raise c.ToolError(f"The spec names local files that are not there ({'; '.join(missing)}). Give each relative "
+                          "to the run folder, for example 03_wip/<name>, or as an absolute path. Nothing was sent "
+                          "and nothing was spent.")
+    import httpx
+    from replicate.exceptions import ReplicateError
     encoding = spec.get("file_encoding", "url")
     if encoding not in ("url", "base64"):
         raise ValueError(f'file_encoding must be "url" or "base64", got {encoding!r}.')
@@ -173,7 +179,7 @@ def run(spec_path: Path | str, out_dir: Path | str, name: str) -> dict:
     if record_path.exists() or taken:
         raise c.ToolError(f"{name} is already used in 03_wip ({', '.join(taken) or record_path.name}), and "
                           "files are never overwritten. Nothing was sent.")
-    record = {"model": model, "input": {k: _described(v, spec_path.parent) for k, v in inputs.items()},
+    record = {"model": model, "input": {k: _described(v, spec_path.parent, run_folder) for k, v in inputs.items()},
               "file_encoding": encoding, "status": "not started", "prediction_id": None, "outputs": [],
               "started": time.strftime("%Y-%m-%dT%H:%M:%S")}
     _save(record_path, record)  # the version is reserved before anything is paid
@@ -181,7 +187,7 @@ def run(spec_path: Path | str, out_dir: Path | str, name: str) -> dict:
     client = _client()
     started = time.time()
     try:
-        inp = {k: _resolve(v, spec_path.parent, opened) for k, v in inputs.items()}
+        inp = {k: _resolve(v, spec_path.parent, opened, run_folder) for k, v in inputs.items()}
         # Official models run by name; community models need a pinned version ("owner/name:version").
         if ":" in model:
             pred = client.predictions.create(version=model.split(":", 1)[1], input=inp,
@@ -219,7 +225,7 @@ def run(spec_path: Path | str, out_dir: Path | str, name: str) -> dict:
 def resume(record_path: Path | str) -> dict:
     """Finish a paid run from its record: fetch the same prediction (free), download what is missing."""
     record_path = Path(record_path)
-    record = json.loads(record_path.read_text(encoding="utf-8"))
+    record = json.loads(record_path.read_text(encoding="utf-8-sig"))
     if not record.get("prediction_id"):
         raise c.ToolError(f"{record_path.name} has no prediction id: that run never started, so there is "
                           "nothing to resume (run the spec again).")
@@ -269,7 +275,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="tm tool replicate_run", description="Run a Replicate model (paid).",
                                 allow_abbrev=False)
     p.add_argument("--run", required=True, help="the run folder")
-    p.add_argument("spec", nargs="?", help='JSON: {"model": "owner/name", "input": {...}}')
+    p.add_argument("spec", nargs="?", help='JSON: {"model": "owner/name", "input": {...}}, relative to the run folder')
     p.add_argument("--name", default=None, help="output name (default: the spec's file name)")
     p.add_argument("--cost", type=float, default=None, help="the approved estimate in USD")
     p.add_argument("--resume", default=None, help="a run record (relative to the run folder) to finish")
@@ -281,24 +287,24 @@ def main(argv: list[str] | None = None) -> int:
     out_dir = run_folder.path / "03_wip"
     if a.resume is not None:
         record_path = _inside_run(run_folder, a.resume)
-        before = list(json.loads(record_path.read_text(encoding="utf-8")).get("outputs", []))
+        before = list(json.loads(record_path.read_text(encoding="utf-8-sig")).get("outputs", []))
         record = resume(record_path)
         cost = "paid before (resumed)"
     else:
         if not a.spec:
             raise c.ToolError("Give the spec file (or --resume <record>).")
-        a.spec = str(run_folder.given(a.spec))   # as given from here, else run-relative (the organic guard reads the same)
+        a.spec = str(run_folder.given(a.spec))   # run-relative (the one path rule; the organic guard reads the same)
         base = c.stem_of(a.name or a.spec)
         stem = run_folder.next_version("wip", base, "run.json").name[: -len(".run.json")]
         record_path = out_dir / f"{stem}.run.json"
         before = []
         cost = f"{a.cost:g} USD (approved estimate)" if a.cost else "not given"
         try:
-            record = run(a.spec, out_dir, stem)
+            record = run(a.spec, out_dir, stem, run_folder)
         finally:
             if record_path.exists():
                 c.record(run_folder, record_path, "Replicate run record", c.parent_ref(run_folder, a.spec),
-                         model=json.loads(record_path.read_text(encoding="utf-8")).get("model"), cost=cost)
+                         model=json.loads(record_path.read_text(encoding="utf-8-sig")).get("model"), cost=cost)
     spec_ref = c.parent_ref(run_folder, a.spec) if a.spec else c.rel(run_folder, record_path)
     outputs = _rows(run_folder, record, record_path, before, spec_ref, cost)
     summary = {k: record.get(k) for k in ("model", "prediction_id", "status", "metrics", "wall_seconds")}

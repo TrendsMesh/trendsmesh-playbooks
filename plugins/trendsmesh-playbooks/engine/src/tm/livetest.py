@@ -123,7 +123,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     d = sub.add_parser("drop", help="skip the live test before its design (E1) is done")
     mv = sub.add_parser("move", help="after G12 scale: the winning ad into the original's campaign, PAUSED")
     mv.add_argument("move_action", choices=["check", "approve", "decline", "record", "report"])
-    mv.add_argument("--file", help="the proposal (check) or the objects read back (record)")
+    mv.add_argument("--file", help="the proposal (check) or the objects read back (record), relative to the run folder")
     mv.add_argument("--run", required=True, help="the run folder")
     mv.add_argument("--note", help="the user's own words (approve, decline)")
     mv.add_argument("--json", action="store_true")

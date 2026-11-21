@@ -67,7 +67,7 @@ _TAG = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$")
 
 @lru_cache(maxsize=1)
 def table() -> dict:
-    return json.loads(TABLE.read_text(encoding="utf-8"))
+    return json.loads(TABLE.read_text(encoding="utf-8-sig"))
 
 
 # --- the choice -----------------------------------------------------------------------------

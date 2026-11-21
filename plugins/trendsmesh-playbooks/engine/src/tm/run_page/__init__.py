@@ -194,7 +194,7 @@ def asks(run: RunFolder) -> dict[str, dict]:
     out = {}
     for cid, (_, f) in found.items():
         try:
-            data = json.loads(f.read_text(encoding="utf-8"))
+            data = json.loads(f.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             raise Stop(f"{ASKS}/{f.name} cannot be read. Restore it or move it out of {ASKS}; {AGAIN}.") from None
         if isinstance(data, dict) and isinstance(data.get("_id"), str):
@@ -253,7 +253,7 @@ def _rows(path: Path) -> list[dict] | None:
             with open(path, encoding="utf-8-sig", newline="") as fh:
                 rows = list(csv.DictReader(fh))
             return [{k: _number(v) for k, v in r.items() if k is not None} for r in rows]
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError, csv.Error):
         return None
     data = data.get("rows") if isinstance(data, dict) else data
@@ -378,7 +378,7 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
 
 def _read_json(path: Path) -> dict | None:
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) else None

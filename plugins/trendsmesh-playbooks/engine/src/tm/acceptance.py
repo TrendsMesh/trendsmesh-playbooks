@@ -68,7 +68,7 @@ def load_suite(name: str) -> dict:
     known = sorted(p.stem for p in _suites().glob("*.yaml"))
     if name not in known:
         raise ValueError(f"There is no acceptance suite {name!r}. Pick one of: {', '.join(known)}.")
-    data = yaml.safe_load((_suites() / f"{name}.yaml").read_text(encoding="utf-8")) or {}
+    data = yaml.safe_load((_suites() / f"{name}.yaml").read_text(encoding="utf-8-sig")) or {}
     try:
         data["playbook"] = playbooks.get(data.get("playbook") or REFRESH_AD).id
     except ValueError as exc:
@@ -107,7 +107,7 @@ def load_suite(name: str) -> dict:
 # --- the acceptance folder ----------------------------------------------------------
 
 def _load(folder: Path) -> dict:
-    return json.loads((folder / FILE).read_text(encoding="utf-8"))
+    return json.loads((folder / FILE).read_text(encoding="utf-8-sig"))
 
 
 def _save(folder: Path, data: dict) -> None:
@@ -209,7 +209,7 @@ def _children(folder: Path, data: dict) -> tuple[dict[str, list[tuple[str, dict]
         if rel in of:
             continue
         try:
-            raw = json.loads(run_json.read_text(encoding="utf-8"))
+            raw = json.loads(run_json.read_text(encoding="utf-8-sig"))
             mine = raw.get("organic") if isinstance(raw.get("organic"), dict) else {}
             spend = {k: float(v) for k, v in (raw.get("spend") or {}).items()}
         except (OSError, ValueError, TypeError, AttributeError):
@@ -220,7 +220,7 @@ def _children(folder: Path, data: dict) -> tuple[dict[str, list[tuple[str, dict]
             found.setdefault(case, []).append((run_json.parent.name, spend))
     for c in data["cases"]:                   # re-review N5: a dropped slot whose folder is gone, as its week recorded it
         try:
-            own = json.loads((folder / c["run"] / "run.json").read_text(encoding="utf-8")).get("organic") or {}
+            own = json.loads((folder / c["run"] / "run.json").read_text(encoding="utf-8-sig")).get("organic") or {}
         except (OSError, ValueError, AttributeError):
             continue                          # the case run itself is listed unreadable by `spent`
         dropped = (own.get("dropped") if isinstance(own, dict) else None) or []

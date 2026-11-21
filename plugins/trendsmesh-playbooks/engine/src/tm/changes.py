@@ -45,7 +45,7 @@ class Change:
 
 @lru_cache(maxsize=None)
 def _load_file(path: Path) -> tuple[tuple[Change, ...], tuple[Change, ...]]:
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data = yaml.safe_load(path.read_text(encoding="utf-8-sig"))
     staged = tuple(Change(c["id"], c["layer"], c["method"], c["summary"], c["stage"], tuple(c["materials"]))
                    for c in data["changes"])
     always = tuple(Change(c["id"], c["layer"], c["method"], c["summary"]) for c in data["always"])
@@ -171,7 +171,7 @@ def _run_material(args: argparse.Namespace) -> int:
         if args.material:
             material = args.material
         elif args.teardown:
-            material = classify_material(json.loads(run.given(args.teardown).read_text(encoding="utf-8")))
+            material = classify_material(json.loads(run.given(args.teardown).read_text(encoding="utf-8-sig")))
         else:
             return cli.fail(args, "Give the material or --teardown <file>.")
         record_material(run, material)

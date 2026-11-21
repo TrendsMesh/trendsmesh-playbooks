@@ -77,7 +77,7 @@ def read(path: Path) -> Any:
     """A saved file's JSON, as it is (envelope and all); ValueError naming the file when it is not JSON."""
     path = Path(path)
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except ValueError as exc:
         raise ValueError(f"{path.name} is not valid JSON ({exc}).") from exc
 

@@ -1,5 +1,5 @@
 """A file the skill names run-relative (`03_wip/brand_v02.json`) is found from the workspace, where
-Claude works (the collector needs it there): the run first, then the cwd (issue #90), for tm brand check and save,
+Claude works (the collector needs it there): in the run folder (issues #90 and #126), for tm brand check and save,
 tm config write, tm voice import and tm trends ingest. The commands are the ones flow.md#a1 and
 references/trend-collection.md write."""
 
@@ -76,8 +76,8 @@ def test_a1_brand_and_config_files_named_run_relative_from_the_workspace(ws, cap
 
 
 def test_the_runs_file_is_taken_first(ws, capsys):
-    """Issue #90: a relative path is the run's whatever the working folder; one only in the working folder is still
-    found there."""
+    """Issue #90: a relative path is the run's whatever the working folder. Issue #126: one only in the working
+    folder is an error that asks for an absolute path."""
     folder, run, r = ws
     (folder / "brand_draft.json").write_text(json.dumps({**PROFILE, "tone": ["one"]}), encoding="utf-8")
     _put(run, "brand_draft.json", PROFILE)
@@ -85,7 +85,9 @@ def test_the_runs_file_is_taken_first(ws, capsys):
     assert code == 0, out                                                # the run's draft, not the workspace's
     (run.path / "brand_draft.json").unlink()
     code, out = _cli(capsys, "brand", "check", "--run", r, "--file", "brand_draft.json")
-    assert code == 2 and "tone" in out["message"]                       # only the workspace has it
+    assert code == 1 and "absolute path" in out["message"]               # only the workspace has it
+    code, out = _cli(capsys, "brand", "check", "--run", r, "--file", str(folder / "brand_draft.json"))
+    assert code == 2 and "tone" in out["message"]                       # given as an absolute path
 
 
 def test_voice_import_and_trends_ingest_from_the_workspace(ws, capsys):

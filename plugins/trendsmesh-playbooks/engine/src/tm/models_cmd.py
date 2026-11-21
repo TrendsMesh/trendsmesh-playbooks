@@ -47,7 +47,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     dc.add_argument("--run", required=True)
     dc.add_argument("--by-rule", action="store_true", help="Hands-off: take the selected (★) models by rule")
     dc.add_argument("--text", help="the user's answer from chat, one line per task: <task>: <option id>")
-    dc.add_argument("--file", help="a saved answer of the page (an ArtifactData list)")
+    dc.add_argument("--file", help="a saved answer of the page (an ArtifactData list), relative to the run folder")
     dc.add_argument("--json", action="store_true")
 
 

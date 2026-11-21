@@ -170,7 +170,7 @@ def _parsed(args: list[str]) -> argparse.Namespace:
     or here); a pre-check reads the same (organic_specs.guard). `spec` is the first argument that is not an
     option's value (an action, for elevenlabs)."""
     p = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-    p.add_argument("spec", nargs="?")
+    p.add_argument("spec", nargs="?", help="relative to the run folder")
     for flag in ("--run", "--cost", "--resume", "--name"):
         p.add_argument(flag)
     try:
@@ -228,7 +228,7 @@ def _variant_sent(run: RunFolder, name: str, args: list[str]) -> str | None:
     if a.resume or not a.spec:
         return None
     try:
-        spec = json.loads(run.given(str(a.spec)).read_text(encoding="utf-8"))
+        spec = json.loads(run.given(str(a.spec)).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     if not isinstance(spec, dict) or not isinstance(spec.get("model"), str):
@@ -244,7 +244,7 @@ def _settle(run, kind: str, estimate: float, report: Path, what: str) -> str | N
     """Replace the recorded estimate by what the child says was spent (see the module docstring).
     Returns the stop message when the actual cost went over the approved budget."""
     try:
-        said = json.loads(report.read_text(encoding="utf-8"))
+        said = json.loads(report.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None  # no word from the tool: the estimate stays spent
     if not isinstance(said, dict):

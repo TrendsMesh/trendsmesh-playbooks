@@ -772,7 +772,7 @@ def _saved_at(path: Path | None) -> str | None:
     if path is None:
         return None
     try:
-        at = json.loads(path.read_text(encoding="utf-8")).get("_at")
+        at = json.loads(path.read_text(encoding="utf-8-sig")).get("_at")
     except (OSError, ValueError, AttributeError):
         return None
     return at if isinstance(at, str) else None
@@ -881,7 +881,7 @@ def _runs(workspace: Path) -> list[tuple[Path, dict]]:
     out = []
     for run_json in sorted(folder.glob("*/run.json")) if folder.is_dir() else ():
         try:
-            data = json.loads(run_json.read_text(encoding="utf-8"))
+            data = json.loads(run_json.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError) as exc:
             data = exc
         if not isinstance(data, dict):

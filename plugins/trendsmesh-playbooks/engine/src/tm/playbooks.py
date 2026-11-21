@@ -41,7 +41,7 @@ def _registry_path() -> Path:
 
 @lru_cache(maxsize=None)
 def _load(path: Path) -> tuple[Playbook, ...]:
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
     rows = data.get("playbooks") if isinstance(data, dict) else None
     if not isinstance(rows, list):
         raise ValueError(f"{path.name}: `playbooks` must be a list of rows")

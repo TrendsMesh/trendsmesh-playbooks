@@ -33,8 +33,15 @@ def json_arg(text: str, run=None):
     text = text.strip()
     if text[:1] in ("{", "["):
         return json.loads(text)
-    path = run.given(text) if run is not None else Path(text)
-    return json.loads(path.read_text(encoding="utf-8-sig"))   # a BOM from PowerShell
+    return read_json(run.given(text) if run is not None else Path(text))
+
+
+def read_json(path) -> object:
+    """A JSON file the agent or the user wrote: Windows PowerShell 5.1 starts it with a BOM (issue #126), so it is
+    read as utf-8-sig. Every JSON (and YAML) file the engine reads is read that way (test_one_path_rule)."""
+    from pathlib import Path
+
+    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
 def fail(args: argparse.Namespace, message: str) -> int:
@@ -117,4 +124,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_usage(sys.stderr)
         return 1
-    return _COMMANDS[args.command][1](args)
+    from tm import paths
+
+    with paths.from_run(getattr(args, "run", None)):   # the run's workspace, whatever the current folder (#126)
+        return _COMMANDS[args.command][1](args)

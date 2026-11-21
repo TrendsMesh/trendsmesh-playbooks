@@ -174,7 +174,7 @@ def _saved(data: Any) -> bool:
 def _read_file(path: Path) -> tuple[str, str, list] | None:
     """(`videos` and the trend id, or `trends` and the query label; the items). None for a saved
     answer that holds no trends (usage, Ad Library, an answer that is not JSON or an error)."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    data = json.loads(Path(path).read_text(encoding="utf-8-sig"))
     if _saved(data):
         tool = data["_tool"]
         given = data.get("_input") if isinstance(data.get("_input"), dict) else {}
@@ -1069,7 +1069,7 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--recent-days", type=int,
                    help="mark rows whose newest saved evidence is older than this many days")
     p.add_argument("--fit", help="organic video: the agent's fit scores of the hooks and formats for the channel, "
-                                 "03_wip/trend_fit_vNN.json (from here first, else in the run)")
+                                 "03_wip/trend_fit_vNN.json (relative to the run folder)")
     p.add_argument("--json", action="store_true")
 
 
@@ -1103,7 +1103,7 @@ def run_shortlist(args: argparse.Namespace) -> int:
                 raise ValueError("--fit is for an organic video run (the hooks and formats ranked by fit for a "
                                  "channel); Trend research ranks its hooks with tm research hook-fit.")
             path = run.given(args.fit)
-            fit, fit_file = json.loads(path.read_text(encoding="utf-8")), _shown(run, path)
+            fit, fit_file = json.loads(path.read_text(encoding="utf-8-sig")), _shown(run, path)
         split = None
         if organic:
             from tm import organic_research        # it imports this module

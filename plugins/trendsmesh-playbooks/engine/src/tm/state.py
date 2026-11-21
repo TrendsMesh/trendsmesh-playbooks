@@ -55,7 +55,7 @@ def load(run: RunFolder) -> RunState:
     """run.json as a RunState: unknown keys are left out, and 0.5.0's wait for decisions on the
     brief page (`brief.awaiting`) is moved to where every page keeps it (`pages["brief_pack"]
     ["awaiting"]`, tm.page)."""
-    data = json.loads((run.path / "run.json").read_text(encoding="utf-8"))
+    data = json.loads((run.path / "run.json").read_text(encoding="utf-8-sig"))
     known = {f.name for f in fields(RunState)}
     s = RunState(**{k: v for k, v in data.items() if k in known})
     if isinstance(s.brief, dict) and "awaiting" in s.brief:

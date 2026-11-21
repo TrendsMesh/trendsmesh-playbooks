@@ -646,7 +646,7 @@ def decided_page(run: RunFolder, page_name: str, folder: str | None = None) -> d
         raise Stop(f"The page {row['file']} was built from {row['parent']}, which is gone or changed since, so it is "
                    f"unknown what people decided on. Build the page again, publish it and let the user decide on it; "
                    f"{AGAIN}.")
-    return {"folder": row["file"], "data_file": row["parent"], "data": json.loads(path.read_text(encoding="utf-8"))}
+    return {"folder": row["file"], "data_file": row["parent"], "data": json.loads(path.read_text(encoding="utf-8-sig"))}
 
 
 _ACTION_WORDS = {"accept": "accept", "redo": "redo", "drop": "drop", "not decided": None,

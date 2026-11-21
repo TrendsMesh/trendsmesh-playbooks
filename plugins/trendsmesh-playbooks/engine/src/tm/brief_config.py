@@ -132,7 +132,7 @@ def seed_row(run: RunFolder) -> dict | None:
     if not ((s.brief or {}).get("seed") or (s.organic or {}).get("seed")):
         return None
     try:
-        row = json.loads((run.path / SEED_FILE).read_text(encoding="utf-8"))
+        row = json.loads((run.path / SEED_FILE).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError) as exc:
         raise ValueError(f"run.json names a seed, but {SEED_FILE} cannot be read ({exc}).") from None
     if not isinstance(row, dict):
@@ -297,7 +297,7 @@ def _brand_gap(run: RunFolder, profile: object) -> str | None:
     except ValueError:
         return f"{want}; {profile} is not in {brand.DIR.as_posix()}/"
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError:
         return f"{want}; {profile} does not exist"
     except OSError as exc:

@@ -114,7 +114,7 @@ def add_to_run(run_path: Path, row: dict) -> Path:
     workspace = run_path.parents[2]
     row = {**row, "run": run_path.name}
     try:
-        run_evidence = json.loads((run_path / "run.json").read_text(encoding="utf-8")).get("evidence")
+        run_evidence = json.loads((run_path / "run.json").read_text(encoding="utf-8-sig")).get("evidence")
     except (OSError, ValueError):
         run_evidence = None
     if run_evidence == "guess":  # the run's changes were guesses: so is every row it adds
@@ -183,7 +183,7 @@ def _run(args: argparse.Namespace) -> int:
             from tm.runfolder import RunFolder
 
             path = RunFolder.open(Path(args.run)).given(source) if args.run else Path(source)   # run-relative
-            row = json.loads(path.read_text(encoding="utf-8"))
+            row = json.loads(path.read_text(encoding="utf-8-sig"))
             if args.run:
                 ws = add_to_run(Path(args.run), row)
             else:

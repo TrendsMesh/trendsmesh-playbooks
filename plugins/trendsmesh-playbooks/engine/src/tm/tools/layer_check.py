@@ -100,7 +100,7 @@ def read_layers(run, path: Path, size: tuple[int, int]) -> list[dict]:
             src = layer.get("src")
             if not isinstance(src, str) or not src.strip():
                 raise c.ToolError(f"{where} ({lid}) is a picture: give src, the video or image in the run it shows.")
-            found = c.resolve(run, src)
+            found = c.resolve(run, src, missing_ok=True)
             if not found.is_file():
                 raise c.ToolError(f"{where} ({lid}): its src {c.name_of(src)} does not exist.")
             row["src"], row["path"] = src, found

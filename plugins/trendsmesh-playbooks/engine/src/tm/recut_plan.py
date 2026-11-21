@@ -770,7 +770,7 @@ def pending_takes(run: RunFolder) -> list[dict]:
     found = []
     for rec_path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
         try:
-            data = json.loads(rec_path.read_text(encoding="utf-8"))
+            data = json.loads(rec_path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         if isinstance(data, dict) and data.get("kind") == "music_pending":
@@ -785,7 +785,7 @@ def takes(run: RunFolder) -> tuple[list[dict], list[str]]:
     found, skipped = [], []
     for rec_path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
         try:
-            data = json.loads(rec_path.read_text(encoding="utf-8"))
+            data = json.loads(rec_path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         if not isinstance(data, dict) or data.get("kind") != "music_take":

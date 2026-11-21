@@ -358,7 +358,7 @@ def chosen(run: RunFolder) -> dict | None:
     if path is None:
         return None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
     return data if isinstance(data, dict) and data.get("page") == PAGE else None

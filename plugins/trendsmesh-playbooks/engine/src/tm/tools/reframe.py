@@ -87,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     run = c.open_run(a.run)
     c.inputs(run, a, "video", "teardown")   # a run-relative input, whatever the working folder
-    td = json.loads(Path(a.teardown).read_text(encoding="utf-8"))
+    td = json.loads(Path(a.teardown).read_text(encoding="utf-8-sig"))
     info = c.probe(a.video)
     if (td.get("width"), td.get("height")) != (info.get("width"), info.get("height")):
         raise c.ToolError(f"The teardown is of a {td.get('width')}x{td.get('height')} video, but "

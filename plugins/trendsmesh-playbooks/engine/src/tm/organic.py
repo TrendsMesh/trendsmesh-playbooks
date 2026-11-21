@@ -154,19 +154,21 @@ def _setup(p: argparse.ArgumentParser) -> None:
     gs = g.add_subparsers(dest="guesses_action", required=True)
     c = gs.add_parser("check", help="check a guess_trends file and mark it checked")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", required=True, help="the guesses file, 03_wip/guess_trends_vNN.json")
+    c.add_argument("--file", required=True,
+                   help="the guesses file, 03_wip/guess_trends_vNN.json, relative to the run folder")
     c.add_argument("--json", action="store_true")
     p = sub.add_parser("proposals", help="the proposals of an idea run (C1)")
     ps = p.add_subparsers(dest="proposals_action", required=True)
     c = ps.add_parser("check", help="check a proposals file and mark it checked")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", required=True, help=f"the proposals file, {organic_proposals.FILE_PATTERN}")
+    c.add_argument("--file", required=True,
+                   help=f"the proposals file, {organic_proposals.FILE_PATTERN}, relative to the run folder")
     c.add_argument("--json", action="store_true")
     wk = sub.add_parser("week", help="the week plan of a week run (I2)")
     ws = wk.add_subparsers(dest="week_action", required=True)
     c = ws.add_parser("check", help="check a week plan file and mark it checked")
     c.add_argument("--run", required=True, help="the week run folder")
-    c.add_argument("--file", required=True, help="the week plan, 03_wip/week_vNN.json")
+    c.add_argument("--file", required=True, help="the week plan, 03_wip/week_vNN.json, relative to the run folder")
     c.add_argument("--json", action="store_true")
     c = ws.add_parser("budget", help="set the week's budget on the user's word; their yes to the week is asked again")
     c.add_argument("--run", required=True, help="the week run folder")
@@ -178,7 +180,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
                                                        "video check-in, F1/F2), delivery (G4), week (the week plan, I2)")
     pg.add_argument("--run", required=True, help="the run folder")
     pg.add_argument("--file", help=f"the checked file (default: the checked {organic_proposals.FILE_PATTERN}, the "
-                                   "checked script, or the checked week plan)")
+                                   "checked script, or the checked week plan), relative to the run folder")
     pg.add_argument("--gate", choices=("images", "video"), help="for the gate page: the images or the takes")
     pg.add_argument("--working", help="the intake page: the working language shown as the default (a tag, e.g. pl)")
     pg.add_argument("--market", help="the intake page: the market language shown as the default (a tag)")
@@ -188,7 +190,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     dc.add_argument("--run", required=True, help="the run folder")
     dc.add_argument("--page", required=True, choices=DECIDED, help="the page decided on")
     src = dc.add_mutually_exclusive_group()
-    src.add_argument("--file", help="a saved ArtifactData list/query answer (default: the newest on this page)")
+    src.add_argument("--file",
+                     help="a saved ArtifactData list/query answer (default: the newest on this page), relative to the run folder")
     src.add_argument("--text", help="a file in the run holding the user's word in chat (the proposals page's Copy "
                                     "summary, or one line per item of a check-in page)")
     dc.add_argument("--by-rule", action="store_true",
@@ -200,13 +203,14 @@ def _setup(p: argparse.ArgumentParser) -> None:
     sa = sc.add_subparsers(dest="script_action", required=True)
     c = sa.add_parser("check", help="check a script file and mark it checked")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", required=True, help="the script file, 03_wip/script_<id>_<lang>_vNN.json")
+    c.add_argument("--file", required=True,
+                   help="the script file, 03_wip/script_<id>_<lang>_vNN.json, relative to the run folder")
     c.add_argument("--json", action="store_true")
     pk = sub.add_parser("pack", help="the recipe (D1) and the generation pack (E2) of an AI video")
     pa = pk.add_subparsers(dest="pack_action", required=True)
     c = pa.add_parser("check", help="check the pack at a stage, mark it, write its .md; at the pack stage, plan its cost")
     c.add_argument("--run", required=True, help="the run folder")
-    c.add_argument("--file", required=True, help="the pack, 03_wip/pack_vNN.json")
+    c.add_argument("--file", required=True, help="the pack, 03_wip/pack_vNN.json, relative to the run folder")
     c.add_argument("--stage", required=True, choices=("recipe", "pack"),
                    help="recipe at D1 (production, product, script, taste); pack at E2 (models, speech, cost ...)")
     c.add_argument("--today", help="the day the prices and rankings are dated against, YYYY-MM-DD (default: today)")
@@ -227,7 +231,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     pi.add_argument("--stage", required=True, choices=("images", "takes", "storyboard"),
                     help="the stage picked at (storyboard: an animation's storyboard, its sheet.png)")
     pi.add_argument("--name", required=True, help="the pack item that made the file, as replicate_run's --name")
-    pi.add_argument("--file", required=True, help="the picked image or take, in the run")
+    pi.add_argument("--file", required=True, help="the picked image or take, relative to the run folder")
     pi.add_argument("--reason", required=True, help="why this one, against the stage's rubric")
     pi.add_argument("--by", choices=("rule", "user"), default="rule",
                     help="rule: the agent picked by the rubric (default); user: the user picked it")
@@ -245,7 +249,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     st.add_argument("--json", action="store_true")
     fx = sub.add_parser("flexible", help="start the week's flexible day from an idea on fresh trends (the day before)")
     fx.add_argument("--run", required=True, help="the week run folder")
-    fx.add_argument("--file", required=True, help="the flexible day's idea, 03_wip/flexible_vNN.json")
+    fx.add_argument("--file", required=True,
+                    help="the flexible day's idea, 03_wip/flexible_vNN.json, relative to the run folder")
     fx.add_argument("--json", action="store_true")
     dr = sub.add_parser("drop-slot", help="drop the run started for one day of the week, on the user's word, so the "
                                           "day can be decided and started again")
@@ -293,7 +298,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
                                         "with proposed times and the pace (free, reads only)")
     vs.add_argument("--run", required=True, help="the run folder")
     vs.add_argument("--words", required=True, help="the voiceover's <stem>.words.json (tts --timestamps)")
-    vs.add_argument("--spec", help="the take's spec, whose input.prompt holds the timed shot list")
+    vs.add_argument("--spec",
+                    help="the take's spec, whose input.prompt holds the timed shot list, relative to the run folder")
     vs.add_argument("--offset", type=float, default=0.0, help="the take's start in the video, in seconds (default 0)")
     vs.add_argument("--json", action="store_true")
     a = sub.add_parser("animate", help="draw the full animation page into 03_wip/<item>/renders/anim_vNN.mp4 "
@@ -819,6 +825,14 @@ def _script(args: argparse.Namespace) -> int:
     return 0
 
 
+def _next_step(run: RunFolder) -> str:
+    """The step the run is really at (`flow.next`), for a check's last sentence (issue #126)."""
+    from tm import flow
+
+    nxt = flow.next(run)
+    return f"The run is now at {nxt.ref} {nxt.title}: tm next --run <run> says what to do."
+
+
 def _pack(args: argparse.Namespace) -> int:
     from tm import organic_pack
 
@@ -843,7 +857,7 @@ def _pack(args: argparse.Namespace) -> int:
     if args.stage == "recipe":
         message = (f"{rel} holds the recipe: {data['production']}, the product {data['product']['level']}, "
                    f"{data['script']['words']} words in {data['script']['seconds']:g} s; its Markdown is {got['md']}. "
-                   "D1 can be done; the taste picks and the whole pack come next.")
+                   + _next_step(run))
     else:
         totals = data["cost"]["totals"]
         credits = f" and {totals['voice_credits']:g} voice credits" if totals.get("voice_credits") else ""

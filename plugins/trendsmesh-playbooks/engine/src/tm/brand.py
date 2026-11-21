@@ -430,7 +430,7 @@ def _newest(workspace: Path, kind: str, folder_name: str, same,
     for _, path in reversed(_versions(_folder(workspace, folder_name, kind), kind)):
         rel = path.relative_to(Path(workspace)).as_posix()
         try:
-            profile = json.loads(path.read_text(encoding="utf-8"))
+            profile = json.loads(path.read_text(encoding="utf-8-sig"))
         except ValueError as exc:
             profile = exc
         if not isinstance(profile, dict):
@@ -597,12 +597,13 @@ def _channels_gap(run: RunFolder, *, confirmed: bool) -> str | None:
 def _setup(p: argparse.ArgumentParser) -> None:
     sub = p.add_subparsers(dest="action", required=True)
     c = sub.add_parser("check", help="check the agent's brand or channel profile draft")
-    c.add_argument("--run", help="the run folder: --file is then found from here first, else in the run")
-    c.add_argument("--file", required=True, help="the draft, 03_wip/brand_vNN.json or 03_wip/channel_<slug>_vNN.json")
+    c.add_argument("--run", help="the run folder: --file is then relative to it")
+    c.add_argument("--file", required=True,
+                   help="the draft, 03_wip/brand_vNN.json or 03_wip/channel_<slug>_vNN.json, relative to the run folder")
     c.add_argument("--json", action="store_true")
     s = sub.add_parser("save", help="save the checked profile as its next library version")
     s.add_argument("--run", required=True, help="the run folder")
-    s.add_argument("--file", required=True, help="the draft (from here first, else in the run)")
+    s.add_argument("--file", required=True, help="the draft (relative to the run folder)")
     s.add_argument("--confirmed", action="store_true",
                    help="the user accepted it at the profile check-in: set confirmed to today")
     s.add_argument("--json", action="store_true")
@@ -614,7 +615,7 @@ def _setup(p: argparse.ArgumentParser) -> None:
     ps = sub.add_parser("packshot", help="keep a product's packshot once for its store, in the store's catalogue")
     ps.add_argument("--name", required=True, help="the store's brand name")
     ps.add_argument("--product", required=True, help="the product's name in the catalogue")
-    ps.add_argument("--file", required=True, help="the image, inside the run (from here first, else in the run)")
+    ps.add_argument("--file", required=True, help="the image, relative to the run folder")
     ps.add_argument("--run", required=True, help="the run folder")
     ps.add_argument("--json", action="store_true")
     from tm import text_sets   # it reads organic_edit, which reads modules that import this one
@@ -662,7 +663,7 @@ def _run(args: argparse.Namespace) -> int:
             if found is None:
                 not_read = f" Not read: {'; '.join(skipped)}." if skipped else ""
                 return cli.fail(args, f"No {args.kind} profile named {args.name!r} in "
-                                      f"{DIRS[args.kind].as_posix()}/.{not_read}")
+                                      f"{Path(workspace).resolve() / DIRS[args.kind]}.{not_read}")   # where it looked
             profile, path = found
             origin = saved_from(workspace, path)
             line = _origin_line(profile, path.relative_to(workspace).as_posix(), origin)

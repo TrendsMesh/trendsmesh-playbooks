@@ -13,6 +13,8 @@ def test_unexpected_exception_is_one_json_error(run, monkeypatch, capsys):
         return 1 / 0
 
     monkeypatch.setattr(vo_qa, "compare", broken)
+    for name in ("a.wav", "b.wav"):          # the inputs are the run's (issue #126: a missing one is an error)
+        (run.path / name).write_bytes(b"")
     assert vo_qa.main(["--run", str(run.path), "a.wav", "b.wav", "--json"]) == 1
     out = json.loads(capsys.readouterr().out)
     assert out == {"status": "error", "message": "Unexpected ZeroDivisionError: division by zero"}
@@ -28,6 +30,8 @@ def test_missing_module_is_a_stop_to_update_the_tier(run, monkeypatch, capsys):
         raise ModuleNotFoundError("No module named 'numpy'", name="numpy")
 
     monkeypatch.setattr(vo_qa, "compare", missing)
+    for name in ("a.wav", "b.wav"):          # the inputs are the run's (issue #126: a missing one is an error)
+        (run.path / name).write_bytes(b"")
     assert vo_qa.main(["--run", str(run.path), "a.wav", "b.wav", "--json"]) == 2
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "stop" and "tm env install voice" in out["message"]

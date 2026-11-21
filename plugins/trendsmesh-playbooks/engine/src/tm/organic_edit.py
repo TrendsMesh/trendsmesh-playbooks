@@ -86,7 +86,7 @@ def ai_takes(run: RunFolder) -> set[str]:
     found: set[str] = set()
     for path in sorted(folder.glob("*.run.json")) if folder.is_dir() else []:
         try:
-            record = json.loads(path.read_text(encoding="utf-8"))
+            record = json.loads(path.read_text(encoding="utf-8-sig"))
         except (OSError, ValueError):
             continue
         outputs = record.get("outputs") if isinstance(record, dict) else None
@@ -611,7 +611,8 @@ def add_parsers(sub) -> None:
     a = ts.add_parser("look", help="draw the text style on a picture: 03_wip/text_look_vNN.png (free)")
     a.add_argument("--run", required=True)
     a.add_argument("--picture", required=True, help="the first frame (or a take) in the run")
-    a.add_argument("--style", help="03_wip/text_style_vNN.json (default: the suggested style, written as the next one)")
+    a.add_argument("--style",
+                   help="03_wip/text_style_vNN.json (default: the suggested style, written as the next one), relative to the run folder")
     a.add_argument("--caption", help="without --style: a line of the voiceover, in the audience language")
     a.add_argument("--overlay", help="without --style: the hook, in the audience language")
     a.add_argument("--at", type=float, default=0.0, help="seconds into a video picture (default 0)")
@@ -621,13 +622,14 @@ def add_parsers(sub) -> None:
     a.add_argument("--json", action="store_true")
     a = ts.add_parser("approve", help="record the user's yes to the latest text style, once its look was shown")
     a.add_argument("--run", required=True)
-    a.add_argument("--style", required=True)
+    a.add_argument("--style", required=True, help="relative to the run folder")
     a.add_argument("--by", choices=("user", "rule"), default="user")
     a.add_argument("--note", required=True, help="the user's words (by rule: the rubric)")
     a.add_argument("--json", action="store_true")
     a = sub.add_parser("captions", help="the edit's next props with both text layers in the approved style")
     a.add_argument("--run", required=True)
-    a.add_argument("--props", required=True, help="the edit's props, 03_wip/edit_vNN.props.json")
+    a.add_argument("--props", required=True,
+                   help="the edit's props, 03_wip/edit_vNN.props.json, relative to the run folder")
     a.add_argument("--words", required=True, help="<stem>.words.json of the voiceover, or a take's transcript")
     a.add_argument("--source", help="the recording the words are of, as the edit names it (default: by the name)")
     a.add_argument("--from", dest="offset", type=float, help="the seconds the voiceover starts at in the edit")

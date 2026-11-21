@@ -84,7 +84,7 @@ def _finish(run: RunFolder, previous: str | None, seed: dict | None) -> None:
 def _channels(path: Path) -> set[str]:
     """The channels a run's config names (organic video's `channels`), as run names spell them; none without."""
     try:
-        cfg = yaml.safe_load((path / "config.yaml").read_text(encoding="utf-8")) or {}
+        cfg = yaml.safe_load((path / "config.yaml").read_text(encoding="utf-8-sig")) or {}
     except (OSError, yaml.YAMLError):
         return set()
     found = cfg.get("channels") if isinstance(cfg, dict) else None
@@ -174,7 +174,7 @@ def _run_run(args: argparse.Namespace) -> int:
 
 def _setup_record(p: argparse.ArgumentParser) -> None:
     p.add_argument("--run", required=True)
-    p.add_argument("--file", required=True)
+    p.add_argument("--file", required=True, help="relative to the run folder")
     p.add_argument("--stage", required=True)
     p.add_argument("--source", required=True)
     p.add_argument("--parent")

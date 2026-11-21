@@ -40,11 +40,13 @@ def test_given_finds_a_relative_path_in_the_run_first(run, tmp_path):
     (tmp_path / "elsewhere" / "03_wip").mkdir()                   # the same name in the working folder too
     (tmp_path / "elsewhere" / "03_wip" / "edit_v01.props.json").write_text("{}", encoding="utf-8")
     assert run.given("03_wip/edit_v01.props.json") == inside
-    only_here = tmp_path / "elsewhere" / "notes.json"            # a path from the working folder: as given
+    only_here = tmp_path / "elsewhere" / "notes.json"            # a relative path outside the run: an error (#126)
     only_here.write_text("{}", encoding="utf-8")
-    assert run.given("notes.json").resolve() == only_here.resolve()
+    with pytest.raises(ValueError, match="absolute path"):
+        run.given("notes.json")
     assert run.given(str(only_here)) == only_here                 # an absolute path as it is
-    assert run.given("03_wip/missing.json") == run.path / "03_wip/missing.json"   # where it was looked for
+    with pytest.raises(FileNotFoundError, match="is not in the run folder"):   # where it was looked for
+        run.given("03_wip/missing.json")
 
 
 def test_the_helpers_go_through_it(run):
