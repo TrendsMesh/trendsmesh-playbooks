@@ -8,10 +8,11 @@ Layout, top to bottom: the top bar (the mark and name, a dark pill with the play
 folded <details> per earlier stage, newest first, its decision a read-only summary with no inputs). Only an open
 stage's decision block has inputs, so a click can never save an earlier decision again (the "lost decisions" of
 issue #19). A local page (`model["local"]`, no publishing tool) has no inputs at all: its decision blocks say to
-answer in chat.
+answer in chat. Its CSV buttons ask for the `downloads` capability when `model["downloads"]` (default: not
+`local`; Trend research's read-only report sets it, issue #133), else they save through a plain link.
 
-The model is plain data: `{lang, title, playbook, run, updated, local, build, now: [stage], settled: [stage],
-datasets}`; a stage is `{key, n, name, title, lede, blocks, decision | record}`. A decision is `{checkin, ask,
+The model is plain data: `{lang, title, playbook, run, updated, local, downloads, build, now: [stage],
+settled: [stage], datasets}`; a stage is `{key, n, name, title, lede, blocks, decision | record}`. A decision is `{checkin, ask,
 question, context, options: [{choice, label, means, recommended}]}`; a record (a settled stage's decision) is
 `{label, choice, note, at, by, rule}`, shown by its label alone (issue #132: never a choice id). A block's `source`,
 its tables' sources and its media's `file`s are run files: each stage lists them in one folded "Technical details"
@@ -546,7 +547,7 @@ def render(model: dict) -> str:
         now = (f'<section class="panel now"><div class="now-head"><span class="pill dark">{E(t("now.label", lang))}</span>'
                f'<span class="soft small">{E(t("now.updated", lang, when=model["updated"]))}</span></div>'
                f'<h1>{E(t("now.nothing_open", lang))}</h1></section>')
-    data = {"lang": lang, "local": local, "build": model["build"],
+    data = {"lang": lang, "local": local, "downloads": bool(model.get("downloads", not local)), "build": model["build"],
             "open": [{"checkin": s["decision"]["checkin"], "ask": s["decision"]["ask"]} for s in model["now"]],
             "datasets": ds.items,
             "words": {k: t("decision." + k, lang) for k in ("saving", "saved_at", "save_error", "cannot_save", "ready")}}
@@ -584,7 +585,7 @@ SCRIPT = r"""
     const d = P.datasets[b.dataset.set]; if (!d) return;
     const name = (d.title || d.id).replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 60) + '.csv';
     const blob = new Blob(['\ufeff' + csv(d)], {type: 'text/csv;charset=utf-8'});
-    const dls = P.local ? null : await use('downloads');
+    const dls = P.downloads && location.protocol !== 'file:' ? await use('downloads') : null;
     if (dls) { try { await dls.save({filename: name, data: blob}); return; } catch (e) { if (e && e.code === 'declined') return; } }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);

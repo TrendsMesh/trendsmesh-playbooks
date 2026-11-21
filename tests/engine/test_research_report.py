@@ -297,6 +297,34 @@ def test_report_is_not_hard_coded_to_beauty(tmp_path):
     assert "kept adding creators (1 unknown)" in text
 
 
+SERUM = "d4" * 16
+
+
+def test_act_now_counts_the_recommended_trends_and_csv_asks_for_downloads(tmp_path, capsys):
+    """Issue #133: the act-now tile and the act-now table count and list the recommended trends (`picks.act_now`),
+    as the heading does; an act-now trend not recommended (`act_now_other`) stays in the "others" list only. The
+    CSV buttons ask for the `downloads` capability, which `tm research report` returns for the publish."""
+    run, picks = _uroda(tmp_path)
+    growth = _read(run.path / "02_research" / "growth_v01.json")
+    growth["trends"].append(_row(SERUM, "Serum z witaminą C", "act_now"))
+    _write(run.path / "02_research" / "growth_v02.json", growth)
+    picks["act_now_other"] = [{"id": SERUM, "note": "Za mało twórców poza jednym."}]
+    path = _picks_file(run, picks)
+    assert main(["research", "report", "--run", str(run.path), "--picks", str(path), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["capabilities"] == {"downloads": {}}
+    text = (run.path / payload["folder"] / "index.html").read_text(encoding="utf-8")
+    assert "One trend to act on now" in text
+    assert "<a class='count b-act_now' href='#act-now'><b>1</b>" in text
+    table = text.split("<section id='act-now'", 1)[1].split("</section>", 1)[0]
+    assert "Act now · 1</h2>" in table and "Krem z filtrem na co dzień" in table and "Serum z witaminą C" not in table
+    others = text.split("<div class='small-print'><b>", 1)[1].split("</div>", 1)[0]
+    assert "Serum z witaminą C" in others
+    data = json.loads(text.split('<script type="application/json" id="tm-page">', 1)[1].split("</script>", 1)[0])
+    assert data["downloads"] is True
+    assert "P.downloads" in text and "P.local ? null : await use('downloads')" not in text
+
+
 def test_rebuilt_previous_week_is_said(tmp_path):
     run, _ = _uroda(tmp_path)
     prev = run.path / "02_research" / "snapshot_growth_2026-10-28_rebuilt_v01.json"

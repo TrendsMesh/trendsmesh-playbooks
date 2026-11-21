@@ -300,6 +300,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Creative brief: no black boxes before the animatics.** A concept without an animatic shows its hook where the
   video will play, in the concept and in the three phones at the top, with "Animatic on request" while one can still
   be made. Once you skip the animatics, or in Hands-off, the hook stands alone. The PDFs show the same.
+- **Trend research: the CSV buttons work on the published report.** The report is published with the `downloads`
+  permission, so a CSV button saves the file instead of doing nothing.
+- **Trend research: one act-now number.** The "Act now" tile and the act-now table count and list only the trends
+  the report recommends, the same number as the heading. The other act-now trends stay in the list under the cards.
 
 ## 0.13.1
 

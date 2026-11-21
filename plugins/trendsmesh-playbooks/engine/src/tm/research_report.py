@@ -60,6 +60,9 @@ PAID_STEM = "ad_library_summary"
 SOURCE = "tm research report"
 AREAS = ("report", "common")         # the page's words (data/i18n/en.yaml): its own and the month names
 RECENT_DAYS = 45                     # the cards' thumbnails: videos of the 45 days before as_of first
+# The report stores nothing and takes no decisions: its publish declares only `downloads`, for its CSV buttons
+# (issue #133; `tm research report --json` returns it).
+CAPABILITIES = {"downloads": {}}
 
 # The page's fixed words are keys of the string table, read in the run's working language (issue #3);
 # report.json keeps the original's English (the constants below are those words, for it and for tests).
@@ -782,6 +785,7 @@ def _on_the_run_page(run: RunFolder, out: Path, title: str, css: str, body: str)
     m, _ = run_page.model(run, out, local=True)
     m.update(title=title, css=css, body=body, fonts=False,
              footer=run_page.words.t("footer.built_from", page_language(run).lang, run=run.path.name, when=m["updated"]))
+    m["downloads"] = True                 # its CSV buttons ask for `downloads` (CAPABILITIES, issue #133)
     return run_page.template.render(m)
 
 
@@ -801,6 +805,9 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
                     for o in picks.get("act_now_other") or [])
     moves = "".join(f"<li><b>{E(trends_[m['id']]['name'])}</b>: {E(_label(m.get('from') or '', tr))} → "
                     f"{E(_label(m.get('to') or '', tr))}. {E(m.get('why') or '')}</li>" for m in picks.get("moves") or [])
+    # issue #133: the act-now tile and table count and list the recommended trends alone, as the heading does; the
+    # bucket's others (`act_now_other`) are in the "others" list under the cards
+    by = {**by, "act_now": [trends_[x["id"]] for x in act]}
     counts = "".join(f"<a class='count b-{b}' href='#{b.replace('_', '-')}'><b>{len(by[b])}</b>"
                      f"<span>{_label(b, tr)}</span></a>" for b in LABEL)
 
