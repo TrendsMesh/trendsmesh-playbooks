@@ -42,7 +42,9 @@ the run state; never write or patch its HTML.
    shows, and an option's label says what it means, never its choice id; the page lists the files it
    shows under a folded "Technical details" itself.
 2. **Build:** `tm page build --run R --ask <the file> --json`. It refuses an ask it cannot use and
-   says why: fix the file, build again. The page's own words are in the working language once its
+   says why: fix the file, build again. From G5 on, an edited video over 15 MB is shown by its 720p
+   preview (`showcase/<stem>_720p.mp4`, made by the build when missing, free); the full video stays in
+   `04_final/`: give its path when the user wants the file itself. The page's own words are in the working language once its
    table is translated; until then it is built in English and says so (`language_warning`: translate
    the table as `references/languages.md` says, then build again).
 3. **Publish** it with the Artifact tool, once, then to the same URL at every check-in

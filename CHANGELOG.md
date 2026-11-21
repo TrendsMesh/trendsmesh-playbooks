@@ -23,6 +23,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
   music), and the generation pack with each paid item's model and price, the total and the budget cap are now
   stages of the run page. The script draft is a new check-in: its own question at "Check every step", part of the
   plan card at "Just the big calls", and decided by rule at "Hands-off".
+- **Refresh an ad: the run page builds again after the edit.** An edited video over 15 MB (a 27 s edit is about
+  24 MB) is shown by its 720p preview, so the page is built and published at the edited video's check-in and every
+  later one. The full video stays in the run.
 - **The last version of every run's page has nothing open.** After the last decision the page is built once more:
   every decision under "Already settled", ending with "Done".
 - **A decision in chat updates the page.** Once Claude records it, the page stops waiting, is built again with that

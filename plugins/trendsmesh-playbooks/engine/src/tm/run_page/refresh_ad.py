@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from tm import review, state, trends
 from tm.run_page.context import Context
+from tm.stops import Stop
 
 RATES = {"hook_rate", "middle_rate", "ctr", "conversion"}
 LADDER = ("p50/p25", "p75/p50", "p95/p75")
@@ -382,10 +383,32 @@ def _voice(ctx: Context) -> list[dict]:
     return [{"kind": "media", "title": ctx.t("voice.title"), "items": items}] if items else []
 
 
+def _small(ctx: Context, rel: str) -> str:
+    """The video `rel` as the page shows it (issue #131 item 4): over the Artifact tool's 15 MB a file
+    (`organic_pages.gate.VIDEO_MAX_BYTES`), its 720p preview (`showcase/<stem>_720p.mp4`, made here when it is
+    missing, free and local, as Organic AI video's pages do), so the run page builds at G5 and every later check-in;
+    the full video stays in the run, listed by its path. A preview still over the limit is a Stop."""
+    from tm.organic_pages.gate import VIDEO, VIDEO_MAX_BYTES
+    path = ctx.inside(rel)
+    if (path is None or not path.is_file() or not rel.lower().endswith(VIDEO)
+            or path.stat().st_size <= VIDEO_MAX_BYTES or path.stem.endswith("_720p")):
+        return rel
+    from tm.tools import deliver   # ffmpeg is reached only for a video over the limit
+    preview = deliver.preview_of(ctx.run, path)
+    if not preview.is_file():
+        deliver.make_preview(ctx.run, path)
+    if preview.stat().st_size > VIDEO_MAX_BYTES:
+        raise Stop(f"{rel} is {path.stat().st_size / 1e6:.1f} MB, and even its 720p preview "
+                   f"({ctx.rel(preview)}, {preview.stat().st_size / 1e6:.1f} MB) is over the page's 15 MB a file, so "
+                   f"the run page cannot show it. Make a shorter or lighter preview (tm tool deliver preview), or give "
+                   f"the user the video's path; the run continues from the same place.")
+    return ctx.rel(preview)
+
+
 def _video(ctx: Context) -> list[dict]:
     out = []
     for before, after in review.pairs(ctx.run)[-4:]:
-        b, a = ctx.put(before), ctx.put(after)
+        b, a = ctx.put(_small(ctx, before)), ctx.put(_small(ctx, after))
         if b and a:
             out.append({"kind": "pair", "title": ctx.t("video.pair"), "before": {"src": b, "caption": f"{ctx.t('video.before')}: {before}"},
                         "after": {"src": a, "caption": f"{ctx.t('video.after')}: {after}"}})
