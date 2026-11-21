@@ -476,7 +476,7 @@ REPORT_NAME = "trendsmesh-support.md"   # one file, overwritten by each report (
 def plugin_version() -> str:
     """The plugin's version from its manifest (`.claude-plugin/plugin.json`), or "(version unknown)"."""
     try:
-        version = json.loads((paths.plugin_root() / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
+        version = json.loads((paths.plugin_root() / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8-sig"))["version"]
     except (OSError, RuntimeError, ValueError, KeyError, TypeError):
         return "(version unknown)"
     return str(version)

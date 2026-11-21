@@ -422,7 +422,7 @@ def test_animatics_make_names_its_concepts(tmp_path, checks_pass):
         decide(run, "animatics", "skip", by="user", note=None, concepts=["C1"])
     with pytest.raises(ValueError, match=r"^C9 is not a concept of the latest brief"):
         decide(run, "animatics", "make", by="user", note=None, concepts=["C1", "C9"])
-    assert main(["decide", "animatics", "make", "--concepts", "C1,", "C3", "--run", str(run.path), "--json"]) == 0
+    assert main(["decide", "animatics", "make", "--concepts", "C1,", "C3", "--said", "Make them for C1 and C3", "--run", str(run.path), "--json"]) == 0
     d = state.load(run).decisions[-1]
     assert (d["checkin"], d["choice"], d["concepts"]) == ("animatics", "make", ["C1", "C3"])
     nxt = flow.next(run)

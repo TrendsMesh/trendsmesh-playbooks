@@ -257,7 +257,9 @@ def test_env_install_json_prints_one_object(monkeypatch, capsys):
         return subprocess.CompletedProcess(cmd, 0)
     monkeypatch.setattr(envtiers.subprocess, "run", pixi)
     from tm import render
-    monkeypatch.setattr(render, "setup", lambda: print("npm talks too"))
+    monkeypatch.setattr(render, "setup", lambda force=False: print("npm talks too"))
+    monkeypatch.setattr(render, "setup_done", lambda: True)
+    monkeypatch.setattr(render, "probe", lambda: print("remotion talks too"))
     assert main(["env", "install", "video", "--yes", "--json"]) == 0
     out = capsys.readouterr()
     got = json.loads(out.out)

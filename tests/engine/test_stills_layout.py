@@ -273,7 +273,7 @@ def test_a_stills_video_is_its_layout_built_drawn_and_taken_at_f2(quiz, capsys, 
 
     code, out = _cli(capsys, "organic", "animate", "--run", str(run.path), "--item", "P6", "--page",
                      "03_wip/P6/explainer_v01.html")
-    assert code == 1 and "is not a file" in out["message"]
+    assert code == 1 and "is not in the run folder" in out["message"]   # the one path rule (issue 126)
     popen.act = _renders(beats=4)
     code, out = _cli(capsys, "organic", "animate", "--run", str(run.path), "--item", "P6", "--page",
                      "03_wip/P6/layout_v01.html")
