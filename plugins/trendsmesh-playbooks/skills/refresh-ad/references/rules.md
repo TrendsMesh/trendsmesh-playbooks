@@ -71,7 +71,7 @@ Example (Ad 3, 2026-11-05): R2 "middle not fading" (steps moved < 1 pp), but 12.
 **Test metric for a re-cut (R4):** a shorter version mechanically raises p100 and ThruPlay (ThruPlay = 15 s or completion), so it is judged by average watch time and cost per result. A same-length variant is judged by the conditional step of the changed window, with cost per result as the guardrail.
 
 ### R3. Every number in the outputs has a source
-- Every number in the strategy brief, creative brief, reports and materials (promo too) has a stated source: an MCP call (tool and parameters) or a file in the run.
+- Every number in the strategy brief, creative brief, reports and materials (promo too) has a stated source: in words on the page (`source`), and the MCP call (tool and parameters) or the file in the run in `source_ref` (the plugin's wording, issue #132: a page for people shows no trend id, run file or theme code; those sit in its folded "Technical details").
 - **A hypothesis is never presented as a conclusion.** A hypothesis from the ad content (e.g. the target audience) is always marked as a hypothesis and set against the data. In outputs for the recipient, what remains is what the data says.
 - Numbers without a source are removed before acceptance.
 

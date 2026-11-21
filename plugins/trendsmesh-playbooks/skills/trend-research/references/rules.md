@@ -78,7 +78,7 @@ every sentence's source (R3).
 - **Asking the user for decisions:** always restate the full content of every point (rule, option) in the same message.
 
 ## Hard rules (TR1–TR10, approved by the user 2026-11-04 with the changes noted in TR1, TR2 and TR10)
-Rules from PB1 and PB2 that apply unchanged: **R3** (every number has a source; a hypothesis is never a conclusion), **CB6 naming** (hook / format / topic), **CB7 trend fidelity** (structure from evidence videos), **CB8** (evidence that lasts), **CB9** (sound trends), persisting every API / MCP response to the run.
+Rules from PB1 and PB2 that apply unchanged: **R3** (every number has a source, in words on the page, with the MCP call or the run file kept in `source_ref`; a hypothesis is never a conclusion), **CB6 naming** (hook / format / topic), **CB7 trend fidelity** (structure from evidence videos), **CB8** (evidence that lasts), **CB9** (sound trends), persisting every API / MCP response to the run.
 
 ### TR1. Category map: any category input, expanded underneath (user decisions, 2026-11-04)
 - **Category input is not only a phrase** (user, 2026-11-04). The user may give one or more of:

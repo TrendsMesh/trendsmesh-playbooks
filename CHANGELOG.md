@@ -4,6 +4,16 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file
+  names, theme codes such as T02, or a choice's internal name. A brief row's source reads like `TrendsMesh: Rising
+  hook "who said _"` or `Meta Ad Library, query "lucid dream", US`; the ids and files behind it sit in a folded
+  "Technical details" under the evidence, the audience and "What the evidence changed", never in the creator view.
+  `tm brief check` refuses a code or a file in anything the page shows, naming the field.
+- **The run page: settled choices in words, files folded away.** "Already settled" now says "A new channel profile"
+  or "Approved" (in Polish too, for Organic AI video), never `new` or `approve`. Each stage's data sources and media
+  files are listed in one folded "Technical details"; a settled image or take is captioned with the item's name,
+  not its file name. Claude's question on the page is refused when it shows a code or a file, or an option labelled
+  with its internal name.
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of

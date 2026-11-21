@@ -199,7 +199,7 @@ The creator view is built from the creator fields only, so it never contains com
 ## Rules from PB1 that apply here (handoff `refresh-ad_v03`, PLAYBOOK.md, verbatim)
 
 ### R3. Every number in the outputs has a source
-- Every number in the strategy brief, creative brief, reports and materials (promo too) has a stated source: an MCP call (tool and parameters) or a file in the run.
+- Every number in the strategy brief, creative brief, reports and materials (promo too) has a stated source: in words on the page (`source`), and the MCP call (tool and parameters) or the file in the run in `source_ref` (the plugin's wording, issue #132: a page for people shows no trend id, run file or theme code; those sit in its folded "Technical details").
 - **A hypothesis is never presented as a conclusion.** A hypothesis from the ad content (e.g. the target audience) is always marked as a hypothesis and set against the data. In outputs for the recipient, what remains is what the data says.
 - Numbers without a source are removed before acceptance.
 

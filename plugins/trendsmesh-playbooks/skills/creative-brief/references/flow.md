@@ -362,10 +362,15 @@ team decides per concept on D3's page.
   clips). Write the review pack's text from `templates/review_pack_template.md`.
 - **Evidence at a glance**, the first rows of each concept: the trend row first, labelled by kind
   ("Rising hook", "Rising topic", "Rising format", "Rising sound"; a guess run: "Hook (agent's
-  guess)", and no "Rising" anywhere), with its source naming the trend id; Customers (the theme,
-  its tier and "x of y items"); Account (the number that makes the concept relevant; "directional"
-  when the persona is); Competition ("competitor found: …" or "none found in Ad Library titles").
-  Every row has its source (R3).
+  guess)", and no "Rising" anywhere), with its source naming the trend (its name), and its
+  `source_ref` the trend id; Customers (the theme by its title, never its id such as T02, its tier
+  and "x of y items"); Account (the number that makes the concept relevant; "directional" when the
+  persona is); Competition ("competitor found: …" or "none found in Ad Library titles").
+  Every row has its source (R3): in words in `source` (`TrendsMesh: Rising hook "who said _"`,
+  `Your Meta account, <product> campaigns, lifetime`, `Meta Ad Library, query "<query>", US`), and
+  the MCP call, the run file or the trend id in `source_ref`, which the page folds into "Technical
+  details" (issue #132). The same pair for `audience` and each `findings.items[]`. `tm brief check`
+  refuses a trend id, a run file or a theme id in any field the page shows.
 - **The plugin blocks** (the page ignores them; `tm brief check` reads them): `meta.plugin =
   {"evidence": "trendsmesh"|"guess", "account_currency": "PLN"}`; per concept `plugin =
   {"candidate", "trend": {"trend_id", "kind", "name"} | null, "axes": {"angle", "hook_type",
