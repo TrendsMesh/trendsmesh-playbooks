@@ -47,7 +47,7 @@ def test_the_report_has_the_trendsmesh_look_and_keeps_its_views(tmp_path):
     for token in ("#fff4e6", "#fffbf6", "#16110d", "#ff4f8b", "#d6246e", "#ffe14a"):     # assets/page/theme.css
         assert token in html
     assert '<header class="top">' in html and "<svg" in html and '<span class="pill dark">Trend research</span>' in html
-    assert "<title>Uroda Trend Report</title>" in html                       # the report's own title
+    assert "<title>Trend report: Uroda (PL)</title>" in html                       # the report's own title
     assert "fonts.googleapis" not in html and "fonts.gstatic" not in html   # a shared report never calls Google
     for view in ("report", "digest", "paid"):
         assert f'id="view-{view}"' in html and f"<a href='#{view}'>" in html

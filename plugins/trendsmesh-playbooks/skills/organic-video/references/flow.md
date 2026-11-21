@@ -68,9 +68,14 @@ posts.
 1. **The run.** `tm run new --playbook organic-video --name <channel or short label> --json` gives
    `runs/03-organic-ai-video/<date>_<name>/` with its seven stages and `manifest.md`.
    **Starting from a trend pick** (the user names a pick of their trend report, or asks to make a
-   video of one): `tm seeds list --source pb4 --json` lists the picks trend research handed on
-   (`{status, seeds, damaged, message}`). Never pass `--valid-on`: an expired pick must still be
-   listed, with its `valid_until`, because B3 re-checks it. Name any `damaged` lines to the user.
+   video of one): `tm seeds list --source pb4 --category <the category the user names> --json` lists
+   the picks trend research handed on (`{status, seeds, other_seeds, damaged, message}`). Offer the
+   `seeds`, that category's picks. A pick the user names from `other_seeds` comes from another
+   research: ask first, "This pick comes from another research (<category>, run <run>): use it?", and
+   use it only after a yes. When the user has named no category yet, list every seed (no
+   `--category`) with its category and run and ask which research to use. Never pass `--valid-on`:
+   an expired pick must still be listed, with its `valid_until`, because B3 re-checks it. Name any
+   `damaged` lines to the user.
    Then `tm run new --playbook organic-video --name <name> --seed <seed_id> --json`: the pick is
    kept as `00_raw/seed.json`, and the search starts from its trend.
    **Starting from an organic video brief's concept** (creative-brief handed one on at its O8, issue

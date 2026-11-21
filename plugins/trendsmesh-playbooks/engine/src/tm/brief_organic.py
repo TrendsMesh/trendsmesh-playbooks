@@ -113,11 +113,12 @@ def seed_rows(run: RunFolder, brief: dict, concept_ids: list[str], cfg: dict, *,
     workspace = trend_spool.workspace_of(run)
     name = run.path.resolve().name
     run_rel = run.path.resolve().relative_to(workspace).as_posix()
-    category = (cfg.get("product") or {}).get("category_phrase")
     market = (cfg.get("account") or {}).get("market") or brief["meta"].get("market")
     started = cfg.get("seed")
     origin = next((r for r in library.read_jsonl(workspace / seeds.FILE)[0]
                    if started and r.get("seed_id") == started), {}) if started else {}
+    # issue #130: every seed names its category (seeds.check refuses one without, before anything is written)
+    category = (cfg.get("product") or {}).get("category_phrase") or origin.get("category") or None
     concepts = {c["id"]: c for c in brief["concepts"]}
     out = []
     for cid in concept_ids:

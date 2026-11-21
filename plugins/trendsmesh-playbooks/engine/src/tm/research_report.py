@@ -388,6 +388,21 @@ class _Page:
                        "report.hooks_transfer_none")
                 + "</section>")
 
+    def card_age(self, t: dict) -> object:
+        """Issue #147: how long TrendsMesh has seen the trend, from its card's `active_for_days`: the saved card
+        (02_research/trend_<id>.json) first, else the card it was found with (the map's or the hooks' row);
+        growth's `age_days` (from the oldest saved video) only when the card has none."""
+        path = self.run.latest(trends.RESEARCH, f"trend_{t['id']}", "json")
+        try:
+            answer = trends.answer_of(path) if path else None
+        except ValueError:                       # a saved card that is not JSON says nothing: the found card's age
+            answer = None
+        card = (answer.get("data") if isinstance(answer.get("data"), dict) else answer) if isinstance(answer, dict) else {}
+        for days in (card.get("active_for_days"), t.get("active_for_days")):
+            if isinstance(days, (int, float)) and not isinstance(days, bool):
+                return days
+        return t["growth"].get("age_days", "—")
+
     def glance(self, t: dict, paid: dict | None) -> str:
         """TR10 (v02): position in the sample first; raw counts behind 'Raw counts'. Each cell's class is
         its English label's first word, in every language."""
@@ -400,7 +415,7 @@ class _Page:
             ("report.glance_reach", tr("report.reach_views", views=fmt(g.get('views_total'))),
              tr.plural("report.reach_videos", count(g.get('videos_known', 0)), videos=g.get('videos_known', 0))),
             ("report.glance_freshness", tr("report.fresh_new_video", days=g.get('last_seen_days', '—')),
-             tr("report.fresh_seen", days=g.get('age_days', '—'))),
+             tr("report.fresh_seen", days=self.card_age(t))),
             ("report.confidence", first_up(shown(t.get("confidence") or "—", CONFIDENCE_KEY, tr)),
              tr("report.confidence_sub", why=why(t.get('confidence_why', ''), tr),
                 status=shown(t.get('status'), STATUS_KEY, tr))),
@@ -922,7 +937,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
     css = CSS_FILE.read_text(encoding="utf-8")
     paid_note = (tr("report.paid_note_checked", market=E(market)) if pg.paid_checked else
                  tr("report.paid_note_unchecked"))
-    title = tr("report.page_title", category=category[:1].upper() + category[1:])     # plain text: escaped once, by the template
+    title = tr("report.page_title", category=category, market=market)     # plain text: escaped once, by the template
     topics, hooks = tr.plural("report.meta_topics", n_topics, n=n_topics), tr.plural("report.meta_hooks", n_hooks, n=n_hooks)
     meta = (f"<span>{tr('report.meta_market', market=E(picks['market']))}</span>"
             f"<span>{tr('report.meta_as_of', date=E(day(picks['as_of'], tr)))}</span>"

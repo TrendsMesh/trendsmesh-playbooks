@@ -313,7 +313,7 @@ report:
   none: none
   moved_by_review: "Moved by review from {stage}: {why}"
   # the page's header
-  page_title: "{category} Trend Report"
+  page_title: "Trend report: {category} ({market})"
   nav_label: Views
   h1: "What is moving in {category}"
   meta_market: "Market: {market}"

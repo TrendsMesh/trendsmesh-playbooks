@@ -64,9 +64,13 @@ account, no customer-voice step, no Ad Library). A0 and D2 (the animatics on req
 - `tm run new --playbook creative-brief --name <product or short label> --json` gives the run
   folder `runs/02-creative-brief/<date>_<name>/` with its seven stages and `manifest.md`.
 - **Starting from a trend pick** (the user names a pick of their trend report, or asks to brief
-  one): `tm seeds list --source pb4 --json` lists the picks trend research handed on (`{status,
-  seeds, damaged, message}`). Never pass `--valid-on`: an expired pick must still be listed, with
-  its `valid_until`, because B3 re-checks it. Name any `damaged` lines to the user (the library
+  one): `tm seeds list --source pb4 --category <the category the user names> --json` lists the
+  picks trend research handed on (`{status, seeds, other_seeds, damaged, message}`). Offer the
+  `seeds`, that category's picks. A pick the user names from `other_seeds` comes from another
+  research: ask first, "This pick comes from another research (<category>, run <run>): use it?",
+  and use it only after a yes. When the user has named no category yet, list every seed (no
+  `--category`) with its category and run and ask which research to use. Never pass `--valid-on`:
+  an expired pick must still be listed, with its `valid_until`, because B3 re-checks it. Name any `damaged` lines to the user (the library
   has lines that are not JSON rows: they are left out). Then `tm run new --playbook
   creative-brief --name <name> --seed <seed_id> --json`: the whole pick is kept as
   `00_raw/seed.json`, and the intake card starts from its category and market.

@@ -116,6 +116,18 @@ def test_every_step_ref_has_its_anchor_in_the_skill():
     anchors = re.findall(r'<a id="([a-z0-9]+)"></a>', flow_md)
     assert anchors == [st.ref.split("#")[1] for st in flow.steps(TREND_RESEARCH)]
 
+
+def test_f5_by_hand_does_not_finish_f5():
+    """Issue #147: on `by_hand` the engine skips F5, so that branch never says `tm done F5`; only the
+    desktop-task branch ends with it."""
+    flow_md = (SKILL / "references" / "flow.md").read_text(encoding="utf-8")
+    f5 = flow_md[flow_md.index('<a id="f5"></a>'):flow_md.index('<a id="e3"></a>')]
+    by_hand = f5[f5.index("**On `by_hand`:**"):f5.index("**On a desktop task:**")]
+    desktop = f5[f5.index("**On a desktop task:**"):]
+    assert "do not run `tm done F5`" in by_hand and "`tm done F5 --run R`" not in by_hand
+    assert desktop.rstrip().endswith("Then `tm done F5 --run R`.")
+    assert f5.count("`tm done F5 --run R`") == 1
+
 def test_levels_are_named_the_same_in_every_playbook():
     known = playbooks.all_playbooks()
     assert {REFRESH_AD, TREND_RESEARCH} <= {p.id for p in known}
