@@ -307,7 +307,7 @@ def animated(tmp_path, monkeypatch):
 
 
 def _styles_html(html):
-    return html.split('id="sty-m1"', 1)[1].split("</details>", 1)[0] if 'id="sty-m1"' in html else ""
+    return html.split('id="sty-m1"', 1)[1].split('<details class="ovp-more"', 1)[0] if 'id="sty-m1"' in html else ""
 
 
 def test_the_proposals_stage_plays_the_suggested_styles_and_shows_every_style(animated):
@@ -320,25 +320,45 @@ def test_the_proposals_stage_plays_the_suggested_styles_and_shows_every_style(an
         assert (folder / "assets" / "media" / "styles" / poster.name).read_bytes() == poster.read_bytes()
         assert (folder / "assets" / "media" / "styles" / loop.name).is_file()
     block = _styles_html(html)
-    suggested = block.split('class="sty-all"', 1)[0]
+    suggested, other = block.split('class="small soft sty-other"', 1)
     assert suggested.count("<video") == 3 and suggested.count(" autoplay") == 3 and " loop" in suggested
     assert "assets/media/styles/40_editorial-collage.mp4" in suggested            # the channel's words, its card's loop
     assert "paper cut-out collage, old engravings" in suggested and "Your channel’s style" in suggested
     assert "assets/media/styles/14_halftone-comic.mp4" in suggested and "fits (14)" in suggested
-    gallery = block.split('class="sty-all"', 1)[1]
+    values = re.findall(r'name="ovp-s-m1" value="([^"]+)"', html)
+    assert values == ["channel", v(14), v(7)]                                     # the suggested ones, as radios
+    listed = re.findall(r'<option value="([^"]+)"', other)                        # every other style, in the list
+    assert len(listed) == len(set(listed)) == len(atlas_prompt.styles()) - 2 and v(33) in listed
+    assert "data-or" in other                                     # saves nothing while nothing is chosen in it
+    assert html.count('class="sty-all') == 1                                      # the gallery, once (issue #129)
+    gallery = html.split('class="sty-all sty-once"', 1)[1].split("</details>", 1)[0]
     families = list(dict.fromkeys(s["category"] for s in atlas_prompt.styles()))
     assert all(f">{f}<" in gallery for f in families)
     assert gallery.count('loading="lazy"') == len(atlas_prompt.styles())          # posters; a loop plays on click
-    assert "<video" not in gallery
-    values = re.findall(r'name="ovp-s-m1" value="([^"]+)"', html)
-    assert len(values) == len(set(values)) == len(atlas_prompt.styles()) - 2 + 3  # no style twice: 49 - 2 + 3
-    assert values[:3] == ["channel", v(14), v(7)]
+    assert "<video" not in gallery and "<input" not in gallery
     offer = _built(animated, built)["offer"]["proposals"]["styles"]
     assert set(offer["values"]) == {"channel"} | {v(s["order"]) for s in atlas_prompt.styles()}
     assert offer["defaults"] == {"m1": "channel"}
     listed = {f["as"] for f in page.files(folder)}                     # what the Artifact tool publishes, in its limits
     assert {f"assets/media/styles/{p.name}" for s in atlas_prompt.styles() for p in atlas_prompt.preview_files(s)} \
         <= listed
+
+
+def test_the_gallery_is_drawn_once_for_every_idea(animated):
+    """Issue #129: the ideas page drew the 49 styles again for each idea (152 KB for three). It draws them once, under
+    the ideas; each idea's list names any other style."""
+    import test_run_page_organic_plan as plan_tests
+    from test_run_page_organic import _ask, _html
+    from tm.organic_pages import proposals as proposals_page
+    _, _, data = proposals_page._checked(animated, None)
+    for p, styles in zip(data["proposals"], ((14, 7), (3, 21))):
+        p["plugin"] = {**(p.get("plugin") or {}), "production": "animation", "output": "video",
+                       "styles": _styles(*styles)}
+    plan_tests._checked(animated, "proposals_v02.json", data)
+    html = _html(animated, run_page.build(animated, _ask(animated, "proposals")))
+    assert html.count('class="sty-all') == 1 and html.count('loading="lazy"') >= len(atlas_prompt.styles())
+    assert html.count("<select data-detail=") == 2 and html.count('sty-picker" id="sty-m') == 2
+    assert html.count('class="sty-tile"') == len(atlas_prompt.styles())
 
 
 def test_a_style_picked_from_the_gallery_is_the_decision(animated, capsys):

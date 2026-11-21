@@ -22,7 +22,7 @@ from tm.run_page.context import Context
 from tm.run_page.template import E
 
 FOLDER = "assets/media/styles"
-KEYS = tuple(f"organic.proposals.styles_{k}" for k in ("all", "hint", "suggested", "play"))
+KEYS = tuple(f"organic.proposals.styles_{k}" for k in ("all", "hint", "suggested", "play", "browse", "other", "choose"))
 
 
 def media(ctx: Context, card: dict) -> dict:
@@ -99,6 +99,35 @@ def gallery_html(name: str, path: str, groups: list[dict], picked: str | None, w
             f'<p class="small soft">{E(words["hint"])}</p>{"".join(parts)}</details>')
 
 
+def _tiles(styles: list[dict], words: dict) -> str:
+    return "".join(f'<div class="sty-tile"><button type="button" class="sty-play" data-loop="{E(s["loop"])}" '
+                   f'aria-label="{E(words["play"])}: {E(s["name"])}"><img src="{E(s["poster"])}" alt="{E(s["name"])}" '
+                   f'loading="lazy"></button><span><b>{E(s["name"])}</b> <span class="small soft sty-desc">'
+                   f'{E(s["description"])}</span></span></div>' for s in styles)
+
+
+def browse_html(groups: list[dict], words: dict) -> str:
+    """The gallery drawn once for a page of several pickers (the proposals, issue #129): every style by family, its
+    poster playing its loop on a click, with no radio; each picker names its style in `other_html`'s list."""
+    parts = "".join(f'<h4>{E(g["family"])}</h4><div class="sty-grid">{_tiles(g["styles"], words)}</div>'
+                    for g in groups)
+    return (f'<details class="sty-all sty-once"><summary>{E(words["all"])}</summary>'
+            f'<p class="small soft">{E(words["browse"])}</p>{parts}</details>')
+
+
+def other_html(path: str, groups: list[dict], picked: str | None, words: dict, *,
+               taken: set[str] = frozenset()) -> str:
+    """A picker's "another style" list, pointing at the gallery drawn once (`browse_html`): every style by family
+    but the suggested ones (`taken`), saved on the same `data-detail` path as the suggested radios. It saves nothing
+    while nothing is chosen in it (`data-or`), so a ticked suggested style stays the pick."""
+    groups_ = "".join(
+        f'<optgroup label="{E(g["family"])}">'
+        + "".join(f'<option value="{E(s["value"])}"{" selected" if s["value"] == picked else ""}>{E(s["name"])}</option>'
+                  for s in g["styles"] if s["value"] not in taken) + "</optgroup>" for g in groups)
+    return (f'<label class="small soft sty-other">{E(words["other"])}<select data-detail="{path}" data-or disabled>'
+            f'<option value="">{E(words["choose"])}</option>{groups_}</select></label>')
+
+
 CSS = """
 .sty-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr));gap:10px}
 .sty-card,.sty-tile{display:grid;gap:6px;align-content:start;border:2px solid var(--line);border-radius:12px;padding:6px;
@@ -109,6 +138,8 @@ background:var(--ink);display:block}.sty-all{margin-top:10px}.sty-all summary{cu
 .sty-play{padding:0;border:0;background:none;cursor:pointer;display:block;width:100%}
 .media video.sty-loop,video.sty-loop{width:min(180px,100%);aspect-ratio:9/16;object-fit:cover;border-radius:8px;background:var(--ink);display:block}
 .sty-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.sty-other{display:grid;gap:4px;margin-top:6px}.sty-other select{width:100%;font:inherit;padding:6px;
+border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}
 """
 
 # A poster in the gallery plays its loop on a click (and stops on the next); the label's radio is not ticked by it.
@@ -126,6 +157,17 @@ SCRIPT = r"""
     if (img) img.replaceWith(v); else b.appendChild(v);
     v.play().catch(() => {});
   });
+  // a picker's suggested radios and its "another style" list (the gallery drawn once): one pick at a time
+  document.addEventListener('change', e => {
+    const el = e.target, box = el.closest ? el.closest('.sty-picker') : null; if (!box) return;
+    const list = box.querySelector('select[data-or]'); if (!list) return;
+    if (el === list) { if (list.value) box.querySelectorAll('input[type=radio]').forEach(r => { r.checked = false; }); }
+    else if (el.type === 'radio' && el.checked) list.value = '';
+  }, true);
+  document.addEventListener('tm-restored', e => {
+    const el = e.target;
+    if (el.matches && el.matches('.sty-picker select[data-or]') && el.selectedIndex < 0) el.selectedIndex = 0;
+  }, true);
 })();
 """
 
@@ -135,5 +177,6 @@ ASSETS = f"<style>{CSS}</style><script>{SCRIPT}</script>"
 def words(lang: str) -> dict:
     """The gallery's words in the run page's language (organic.proposals.styles_*)."""
     from tm.run_page.words import tx
-    out = {k: tx(f"organic.proposals.styles_{k}", lang) for k in ("hint", "suggested", "play")}
+    out = {k: tx(f"organic.proposals.styles_{k}", lang) for k in ("hint", "suggested", "play", "browse", "other",
+                                                                   "choose")}
     return {**out, "all": tx("organic.proposals.styles_all", lang, n=len(atlas_prompt.styles()))}

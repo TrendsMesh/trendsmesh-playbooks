@@ -604,13 +604,13 @@ def _proposal_inputs(it: dict, b: dict) -> str:
     parts.append(_row(w["how"], _radios(f"ovp-l-{pid}", _path("level", pid), list(b["levels"].items()), d["level"],
                                         True, f'{w["how"]} {it["ID"]}')))
     parts.append(f'<p class="small soft ovp-auto" hidden>{E(w["hands_off_hint"])}</p>')
-    if it["styles"]:      # the suggested styles playing, then every style by family (issue #116)
+    if it["styles"]:      # the suggested styles playing (issue #116), then any other from the gallery drawn once (#129)
         name, path = f"ovp-s-{pid}", _path("styles", pid)
         taken = {o["value"] for o in it["styles"]}
-        parts.append(_row(w["style"], f'<div class="ovp-styles" id="sty-{E(pid)}">'
+        parts.append(_row(w["style"], f'<div class="ovp-styles sty-picker" id="sty-{E(pid)}">'
                                       + style_previews.suggested_html(name, path, it["styles"], d["style"])
-                                      + style_previews.gallery_html(name, path, b["gallery"], d["style"],
-                                                                    b["style_words"], taken=taken) + "</div>"))
+                                      + style_previews.other_html(path, b["gallery"], d["style"], b["style_words"],
+                                                                  taken=taken) + "</div>"))
     boxes = "".join(f'<label class="chip-opt"><input type="checkbox" data-detail="{_path("platforms", pid + SEP + k)}" '
                     f'checked disabled><span>{E(n)}</span></label>' for k, n in PLATFORMS)
     parts.append(_row(w["post_to"], f'<div class="choose" role="group" aria-label="{E(w["post_to"])}">{boxes}</div>'
@@ -677,6 +677,8 @@ def _proposals_html(b: dict, ds, lang: str, live: bool) -> str:
                    f'<p class="small soft">{E(it["ID"])} · {E(it["channel"])}{" · " + E(it["niche"]) if it["niche"] else ""}</p>'
                    f'<h3>{E(it["type"])}: “{E(it["title"])}”</h3><div class="chips">{chips}</div>'
                    + (_proposal_inputs(it, b) if live else "") + _proposal_body(it, w) + "</article>")
+    if live and b.get("gallery") and any(it["styles"] for it in b["items"]):   # once, under the ideas (issue #129)
+        out.append(style_previews.browse_html(b["gallery"], b["style_words"]))
     return _assets(b) + f'<div class="ovp-list">{"".join(out)}</div>'
 
 

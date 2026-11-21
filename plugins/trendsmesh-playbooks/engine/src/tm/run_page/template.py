@@ -683,6 +683,7 @@ SCRIPT = r"""
       if (el.type === 'radio') { if (!el.checked) return; v = el.value; }
       else if (el.type === 'checkbox') v = el.checked;
       else if (el.hasAttribute('data-json')) { try { v = JSON.parse(el.value || 'null'); } catch (e) { v = null; } }
+      else if (el.hasAttribute('data-or') && !el.value) return;   // stands in for the radios on its path: empty, saves nothing
       else v = el.value;
       let o = out;
       for (let i = 0; i < path.length - 1; i++) o = (o[path[i]] = (o[path[i]] && typeof o[path[i]] === 'object') ? o[path[i]] : {});

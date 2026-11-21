@@ -701,6 +701,10 @@ organic:
     styles_hint: Click a poster to see it move. Pick one to use it instead of the suggested ones.
     styles_suggested: suggested above
     styles_play: Play
+    # issue 129: on the ideas page the gallery is shown once, under the ideas; each idea names its style in a list
+    styles_browse: Click a poster to see it move. To use a style for an idea, choose it in that idea's list.
+    styles_other: "Or another of our styles (all of them under the ideas):"
+    styles_choose: Choose a style…
     risk_from: "Highest risk: {risk}, in {production} ({weight})"
     risk_from_none: No risk is left once the named ones are covered
     # issue 138 item 1: the looks of the batch, one line above the ideas
