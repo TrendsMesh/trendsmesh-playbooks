@@ -217,7 +217,10 @@ def folders(run) -> list[dict]:
     for root, of in ((workspace / brand.CHANNEL_DIR, lambda d: _channel_music(workspace, d.name)),
                      (workspace / brand.DIR, lambda d: d / "music")):
         for d in sorted(x for x in root.iterdir() if x.is_dir()) if root.is_dir() else ():
-            folder = of(d)
+            try:
+                folder = of(d)
+            except c.ToolError:      # another channel's damaged profile: its default folder
+                folder = d / "music"
             if folder.is_dir() and folder.resolve() not in seen:
                 seen.add(folder.resolve())
                 out.append({"path": folder, "channel": d.name, "own": False})
