@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -192,3 +193,99 @@ def test_without_an_approved_style_the_cover_is_unchanged_and_a_plain_hook_drops
     out, said = cover_fit.styled(run, data)
     assert out["captions"][0]["text"] == "One habit" and out["captions"][0]["background"] == "#FFFFFF"
     assert out["captions"][0]["color"] == "#111111" and said
+
+
+# --- 4. the same collision check in creative-brief animatics ---------------------------------------
+
+needs_node = pytest.mark.skipif(__import__("shutil").which("node") is None, reason="node draws the scenes")
+HOOK = {"str": "Your mornings, fixed in a week", "style": "center", "size": 66}
+
+
+def _concept(*beats):
+    return {"id": "C1", "beats": [{"t0": 2 * i, "t1": 2 * i + 2, "see": "x", "hear": "", "ost": "",
+                                   "animatic": {"scene": scene, "params": params, "texts": texts}}
+                                  for i, (scene, params, texts) in enumerate(beats)]}
+
+
+@needs_node
+def test_the_page_marks_the_phone_screen_and_the_product_name_and_gives_the_hooks_boxes():
+    from tm import animatic
+
+    anim = animatic.build_anim(_concept(("product_phone", {"product": "Lumen lamp"}, [HOOK]),
+                                        ("selfie_talk", {}, [{**HOOK, "style": "top"}])))
+    got = animatic.probe.__wrapped__(anim, "9x16", node=["node"])
+    phone, selfie = got["beats"]
+    assert {m["kind"] for m in phone["marks"]} == {"screen", "brand"}
+    assert {m["kind"] for m in selfie["marks"]} == {"face"}
+    hook = phone["texts"][0]
+    assert hook["index"] == 0 and set(hook["boxes"]) == {"top", "center", "bottom"}
+    assert [s for s, _ in hook["boxes"]["center"]][:3] == [66, 56, 48]     # × 0.85 a step, never under 32
+    assert hook["boxes"]["center"][-1][0] == 32
+    screen = next(m["box"] for m in phone["marks"] if m["kind"] == "screen")
+    assert animatic.covers(hook["boxes"]["center"][0][1], screen)          # the centre covers the phone
+    assert not animatic.covers(hook["boxes"]["top"][0][1], screen)         # the top is clear of it
+
+
+def _probe(texts_boxes, marks):
+    return {"beats": [{"marks": [{"kind": k, "box": b} for k, b in marks],
+                       "texts": [{"index": 0, "boxes": texts_boxes}]}]}
+
+
+def test_a_hook_over_the_screen_moves_to_the_free_place_and_says_so():
+    from tm import animatic
+
+    anim = animatic.build_anim(_concept(("product_phone", {"product": "Lumen"}, [HOOK])))
+    boxes = {"top": [[66, [100, 280, 880, 90]]], "center": [[66, [100, 860, 880, 90]]],
+             "bottom": [[66, [100, 1580, 880, 90]]]}
+    fixed, changes = animatic.fit_hooks(anim, _probe(boxes, [("screen", [330, 580, 420, 820])]))
+    assert fixed["beats"][0]["texts"][0]["style"] == "top" and anim["beats"][0]["texts"][0]["style"] == "center"
+    assert changes == ["C1 beat 1: the hook \"Your mornings, fixed in a week\" moved from center to top (it covered "
+                       "the product screen)"]
+    clear, none = animatic.fit_hooks(anim, _probe(boxes, [("face", [0, 0, 50, 50])]))
+    assert none == [] and clear == anim
+
+
+def test_a_hook_with_no_free_place_is_made_smaller_and_one_that_fits_nowhere_is_named():
+    from tm import animatic
+
+    anim = animatic.build_anim(_concept(("selfie_talk", {}, [HOOK])))
+    boxes = {p: [[66, [100, 200, 880, 1500]], [56, [100, 200, 880, 1500]], [48, [300, 100, 400, 60]]]
+             for p in ("top", "center", "bottom")}
+    fixed, changes = animatic.fit_hooks(anim, _probe(boxes, [("face", [285, 230, 510, 640])]))
+    hook = fixed["beats"][0]["texts"][0]
+    assert (hook["style"], hook["size"]) == ("center", 48)
+    assert "made smaller (66 to 48)" in changes[0] and "the face" in changes[0]
+    boxes = {p: [[66, [100, 200, 880, 1500]], [32, [100, 200, 880, 1500]]] for p in ("top", "center", "bottom")}
+    fixed, changes = animatic.fit_hooks(anim, _probe(boxes, [("face", [285, 230, 510, 640])]))
+    assert fixed == anim and "still covers the face" in changes[0]
+
+
+@needs_node
+def test_tm_brief_animatic_moves_the_hook_before_rendering_and_names_the_change(tmp_path, monkeypatch, capsys):
+    from tm import animatic, atlas
+    from tm.playbooks import CREATIVE_BRIEF
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    monkeypatch.setenv("TM_WORKSPACE", str(ws))
+    monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "data"))
+    run = RunFolder.create(ws, "lumen", date(2026, 11, 1), playbook=CREATIVE_BRIEF)
+    (run.path / "04_final").mkdir(exist_ok=True)
+    (run.path / "04_final" / "brief_pack_v01.json").write_text(json.dumps(
+        {"concepts": [_concept(("product_phone", {"product": "Lumen lamp"}, [HOOK]))]}), encoding="utf-8")
+    real = animatic.probe.__wrapped__
+    monkeypatch.setattr(animatic, "probe", lambda anim, fmt: real(anim, fmt, node=["node"]))
+    monkeypatch.setattr(atlas, "need", lambda: tmp_path / "chrome")
+    drawn = []
+
+    def render(page, out, *, fps=atlas.FPS, stills=atlas.STILLS):
+        drawn.append(Path(page).read_text(encoding="utf-8"))
+        Path(out).write_bytes(b"mp4")
+        return {"render_s": 1, "page_errors": []}
+
+    monkeypatch.setattr(atlas, "render", render)
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--formats", "9x16")
+    assert code == 0, out
+    js = (run.path / animatic.WIP / "C1_anim_v01.js").read_text(encoding="utf-8")
+    assert json.loads(js.removeprefix("window.ANIM = ").rstrip().rstrip(";"))["beats"][0]["texts"][0]["style"] == "top"
+    assert out["hook_changes"] and "moved from center to top" in out["message"]

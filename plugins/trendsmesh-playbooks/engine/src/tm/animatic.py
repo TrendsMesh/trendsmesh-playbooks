@@ -17,7 +17,11 @@ the run, is inlined into the storyboard as a data URI (`with_images`).
 
 `build` writes, per concept, `03_wip/animatic/<C>_anim_<ver>.js` (`window.ANIM`) and a page
 `<C>_<fmt>_<ver>.html` per format, beside copies of `engine.js` and `scenes.js`, so the folder
-draws on its own. A version is never used twice (the next free `vNN` by default). With `render`,
+draws on its own. With `render`, before any file is written, each hook (a text at `top`, `center`
+or `bottom`) is kept clear of what its beat draws (issue #139): `probe` draws every beat with node
+and a measuring canvas (`animatic_js/probe.js`; the scenes `K.mark` faces, screens and the brand's
+name), and `fit_hooks` moves a hook that covers one to the free place, else makes it smaller; the
+items' `hook_changes` say what changed, and a check that cannot run is said, never a stop. A version is never used twice (the next free `vNN` by default). With `render`,
 `atlas.render` draws each page into `03_wip/animatic/renders/<C>_animatic_<fmt>_<ver>.mp4` with
 its stills, and a new `04_final/brief_pack_vNN.json` names them (`animatic/<file>`, the page's
 paths). Nothing is written when a beat has no scene or the renderer is not there (a Stop). The
@@ -33,6 +37,8 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import tempfile
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from tm import atlas, config, manifest, state
@@ -234,6 +240,95 @@ def write_new(path: Path, text: str) -> None:
         fh.write(text)
 
 
+# --- the hook clear of what the scene draws (issue #139) --------------------------------------------
+
+PROBE_JS = JS_DIR / "probe.js"
+PLACES = ("top", "center", "bottom")
+MARGIN = 12                     # px between a hook and what it must not cover
+MARKED = {"face": "the face", "screen": "the product screen", "brand": "the brand's name"}
+
+
+def probe(anim: dict, fmt: str, *, node: list[str] | None = None) -> dict:
+    """What each beat of `anim` draws that a hook must keep clear of, and each hook's box at each place and size, in
+    format `fmt` (probe.js, run by node: the `video` environment's unless `node` names the command). A ToolError
+    when it cannot run."""
+    from tm import render as remotion
+
+    with tempfile.TemporaryDirectory(prefix="tm-hooks-") as tmp:
+        js = Path(tmp) / "anim.js"
+        js.write_text("window.ANIM = " + json.dumps(anim, ensure_ascii=False) + ";\n", encoding="utf-8")
+        argv = [*(node or [*remotion._prefix(), "node"]), str(PROBE_JS), str(SCENES_JS), str(js),
+                str(JS_DIR / "engine.js"), fmt]
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                                  timeout=180, env=None if node else remotion._env())
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise c.ToolError(f"the hook check could not start ({exc})") from None
+    lines = [x for x in (proc.stdout or "").splitlines() if x.strip()]
+    if proc.returncode != 0 or not lines:
+        tail = " | ".join((proc.stderr or proc.stdout or "").strip().splitlines()[-3:])
+        raise c.ToolError(f"the hook check failed: {tail}")
+    return json.loads(lines[-1])
+
+
+def covers(a: list, b: list, margin: int = MARGIN) -> bool:
+    """Two [x, y, w, h] boxes meet, `margin` px around them counted."""
+    return (a[0] < b[0] + b[2] + margin and b[0] < a[0] + a[2] + margin
+            and a[1] < b[1] + b[3] + margin and b[1] < a[1] + a[3] + margin)
+
+
+def fit_hooks(anim: dict, found: dict) -> tuple[dict, list[str]]:
+    """(the animatic with each hook clear of what its beat draws, what was changed in words). A hook that covers a
+    face, the product screen or the brand's name (`probe`) moves to the first free place (its own first, then top,
+    center, bottom), else is made smaller step by step (x 0.85, never under 32) at the first place it clears; one
+    that clears nowhere stays, and is named."""
+    out = copy.deepcopy(anim)
+    changes: list[str] = []
+    for n, (beat, seen) in enumerate(zip(out["beats"], found.get("beats") or []), 1):
+        marks = [m for m in seen.get("marks") or [] if isinstance(m, dict)]
+        for text in seen.get("texts") or []:
+            o = beat["texts"][text["index"]]
+            place, boxes = o.get("style"), text["boxes"]
+
+            def hit(where: str, step: int) -> list[str]:
+                return [m["kind"] for m in marks if covers(boxes[where][step][1], m["box"])]
+
+            now = hit(place, 0)
+            if not now:
+                continue
+            what = MARKED.get(now[0], now[0])
+            said = f"{anim['id']} beat {n}: the hook \"{o.get('str', '')}\""
+            order = [place] + [p for p in PLACES if p != place]
+            fix = next(((p, step) for step in range(len(boxes[place])) for p in order
+                        if (p, step) != (place, 0) and step < len(boxes[p]) and not hit(p, step)), None)
+            if fix is None:
+                changes.append(f"{said} still covers {what}: no place or size clears it, so change the scene or "
+                               "the text")
+                continue
+            where, step = fix
+            size, new = boxes[place][0][0], boxes[where][step][0]
+            o["style"] = where
+            if step:
+                o["size"] = new
+            moved = f"moved from {place} to {where}" if where != place else ""
+            smaller = f"made smaller ({size} to {new})" if step else ""
+            changes.append(f"{said} {' and '.join(x for x in (moved, smaller) if x)} (it covered {what})")
+    return out, changes
+
+
+def _clear_hooks(anim: dict, formats: list[str], said: list[str]) -> dict:
+    """`anim` with its hooks clear in each format drawn (`probe`, `fit_hooks`), in turn; what changed goes to `said`.
+    A check that cannot run is said, and never stops the render."""
+    for fmt in formats:
+        try:
+            anim, changes = fit_hooks(anim, probe(anim, fmt))
+        except (c.ToolError, ValueError, KeyError, TypeError, IndexError) as exc:
+            said.append(f"{anim['id']} {fmt}: {exc}; look at its stills for a hook over the screen or a face")
+            continue
+        said += [x for x in changes if x not in said]
+    return anim
+
+
 def _copy_library(folder: Path) -> None:
     """engine.js and scenes.js beside the pages, so the folder draws on its own (the plugin's copy)."""
     for name in LIBRARY:
@@ -308,11 +403,14 @@ def build(run: RunFolder, brief_path: Path, *, concepts: list[str] | None = None
     anims = [(concept, with_images(run, rel, anim)) for concept, anim in _anims(rel, brief, concepts)]
     folder = run.path / WIP
     version = _version(folder, version)
+    hooks: dict[str, list[str]] = {}
     if render:
         try:
             atlas.need()                          # the tier, its setup and a browser, before any file
         except c.ToolStop as exc:
             raise Stop(str(exc)) from None
+        anims = [(concept, _clear_hooks(anim, drawn, hooks.setdefault(concept["id"], [])))
+                 for concept, anim in anims]
     folder.mkdir(parents=True, exist_ok=True)
     _copy_library(folder)
     items: list[dict] = []
@@ -324,7 +422,8 @@ def build(run: RunFolder, brief_path: Path, *, concepts: list[str] | None = None
             html = folder / f"{concept['id']}_{fmt}_{version}.html"
             write_new(html, _HTML.format(concept['id'], fmt, js.name))
             manifest.record(run, _rel(run, html), "03_wip", SOURCE, parent=_rel(run, js), params={"format": fmt})
-            items.append({"concept": concept["id"], "format": fmt, "version": version, "html": _rel(run, html)})
+            items.append({"concept": concept["id"], "format": fmt, "version": version, "html": _rel(run, html),
+                          **({"hook_changes": hooks[concept["id"]]} if render else {})})
     if render:
         _render(run, items, version, fps)
         new = _brief_with_renders(run, rel, brief, items, drawn, version)

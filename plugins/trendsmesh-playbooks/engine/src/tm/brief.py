@@ -325,11 +325,14 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
     message = (f"Wrote {', '.join(scripts)} and {len(items)} page{'' if len(items) == 1 else 's'} "
                f"({', '.join(formats)}) in {animatic.WIP}.")
     brief = items[0].get("brief")
+    hooks = list(dict.fromkeys(x for i in items for x in i.get("hook_changes") or []))
     if brief is None:
         message += " Render them with --render to make the MP4s the page plays."
     else:
         message += (f" Rendered {len(items)} animatic{'' if len(items) == 1 else 's'} into {animatic.RENDERS} and "
                     f"wrote {brief}, which names them.")
+        if hooks:
+            message += f" Before rendering, the hook was kept clear of what the scenes draw: {'; '.join(hooks)}."
         if named:                                      # the others keep the paths of the brief they came from
             concepts = {x["id"]: x for x in json.loads((run.path / brief).read_text(encoding="utf-8-sig"))["concepts"]
                         if isinstance(x, dict)}
@@ -346,8 +349,8 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
         if over:
             message += (f" These MP4s are too big for one published page ({over}): make the animatic shorter "
                         "before building the page.")
-    cli.emit(args, {"status": "done", "version": version, "items": items, "brief": brief, "message": message},
-             message)
+    cli.emit(args, {"status": "done", "version": version, "items": items, "brief": brief, "hook_changes": hooks,
+                    "message": message}, message)
     return 0
 
 

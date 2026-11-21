@@ -482,7 +482,10 @@ briefs are shown, ask whether to make animatics and for which concepts, in the u
   pick's) and renders the MP4s with the user's own Chrome or Edge, up to 15 minutes each. Run it in
   the background and wait for it, or one concept at a time with the longest timeout. It writes
   `03_wip/animatic/` (the storyboard files and `renders/`) and a new brief version that names the
-  MP4s. Look at the stills: the text must not overlap, and each beat must read; a fix is a change to
+  MP4s. Before rendering it keeps each hook (a text at `top`, `center` or `bottom`) clear of the
+  faces, the product screen and the brand's name its scene draws: it moves the hook to the free
+  place, else makes it smaller, and the answer's `hook_changes` says what changed (tell the user in
+  one line). Look at the stills: the text must not overlap, and each beat must read; a fix is a change to
   the beats in a new brief version, then render again. Then `tm brief page --run R --json` and
   publish to the same URL. `tm done D2 --run R` (`animatics_rendered` checks the named concepts
   only, `page_built` the page).

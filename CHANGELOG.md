@@ -17,6 +17,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Create an ad: text over a face comes with its fix.** The edit's layer check now says how to clear a face ("move
   it down 184 px, or set its size to 53"), and running `tm ad text` again moves or shrinks that text by itself and
   says what it changed. A "face" that covers almost the whole frame is no longer taken for one.
+- **Creative brief: an animatic's hook keeps clear of the phone and the face.** Before an animatic is rendered, a hook
+  that would cover a face, the product screen or the brand's name is moved to the free place (top, centre or
+  bottom), or made smaller, and Claude tells you what it changed.
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of
