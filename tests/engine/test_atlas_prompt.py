@@ -59,7 +59,16 @@ def _text(path: Path) -> str:
 
 
 def _m1_pack() -> dict:
-    return json.loads((FIXTURES / "m1_animation_pack.json").read_text(encoding="utf-8"))
+    """M1's pack, its voice line counted as the text sent to ElevenLabs is (#140: the lines joined by a space; the
+    private fixture predates it and counts them without)."""
+    pack = json.loads((FIXTURES / "m1_animation_pack.json").read_text(encoding="utf-8"))
+    for line in pack["cost"]["lines"]:
+        if line["kind"] == "voice_credits":
+            line["units"] = organic_pack.voice_numbers(pack, line["model"])["characters"]
+            line["cost"] = organic_pack.exact(line["unit_price"] * line["units"])
+    pack["cost"]["totals"]["voice_credits"] = organic_pack.exact(
+        sum(x["cost"] for x in pack["cost"]["lines"] if x["kind"] == "voice_credits"))
+    return pack
 
 
 def _m1_run(tmp_path, capsys, pack=None, n=1):
@@ -640,7 +649,7 @@ def test_animate_refused_before_storyboard_accepted(tmp_path, capsys, ready, pop
     assert code == 0, out
     pack["script"]["lines"][2]["text"] = "Bawi, bo brzmi głupio, a zna go każdy kolega z tej sali."
     pack["script"]["words"] += 2
-    pack["cost"]["lines"][0]["units"] = pack["cost"]["lines"][0]["cost"] = pack["cost"]["totals"]["voice_credits"] = 397
+    pack["cost"]["lines"][0]["units"] = pack["cost"]["lines"][0]["cost"] = pack["cost"]["totals"]["voice_credits"] = 401
     _check(run, capsys, pack, 3)
     code, out = _animate(run, capsys)
     assert code == 0, out

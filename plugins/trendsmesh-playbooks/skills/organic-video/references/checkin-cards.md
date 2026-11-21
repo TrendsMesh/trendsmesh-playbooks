@@ -120,7 +120,17 @@ with Pruna's upscale. Ask: "Shall I make it at this cost?" Choices: `approve` (t
 approve` for each planned amount, `flow.md#e2`) or `reject` (nothing is generated or paid). A
 change the user asks for (a resolution, a model, a line, a redo) is a new pack, checked again; a
 higher total or other items need a new yes (`tm decide pack approve --said "<their words>" --change`). A redo is paid
-for this way (`flow.md#paying-for-a-redo`).
+for this way (`flow.md#paying-for-a-redo`). **The voice's pace** (#140): when the pack check's answer warns that the
+picked voice is too slow for the script, say it in this card, before the voiceover is paid for, with where the
+estimate comes from ("from 3 earlier recordings of this voice", "from its preview clip") and its three options:
+cut about N words to fit the length, a brisker voice by name, or accept a longer video (about X s instead of Y s).
+It is part of this approval, not a card of its own; record the pick with their words.
+
+**A reference image was refused twice** (`refused_reference`, #137): asked only when the paid-call guard stops for it,
+at every level, never by rule. Say: "Without the reference image, the face in the video will not be the one you
+approved." Choices: `retry` (once more, the same reference), `other_model` (another model that takes a reference
+image, priced first in a new pack) or `no_reference`; `tm decide refused_reference <choice> --said "<their words>"
+--note "<the refused record the guard named>"` (`flow.md#f2`).
 
 **Pick the images** (`images`, inside F1, before `tm done F1`; its own card at Check every step). The run page's link (the images stage),
 then in chat each item: what it is for (the host, a first frame, an anchor), the variants and the

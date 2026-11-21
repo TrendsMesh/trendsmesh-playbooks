@@ -3,7 +3,7 @@ and Music for method E (VARIANTS.md section 3c), the continuation of the ad's ow
 
     tm tool elevenlabs isolate --run RUN AUDIO --cost CREDITS [--out PATH] [--json]
     tm tool elevenlabs clone-ivc --run RUN --name NAME FILE [FILE ...] --cost CREDITS [--description TEXT] [--json]
-    tm tool elevenlabs tts --run RUN --voice-id ID --text TEXT --cost CREDITS [--speed 1.0]
+    tm tool elevenlabs tts --run RUN --voice-id ID (--text TEXT | --text-file F) --cost CREDITS [--speed 1.0]
                            [--model eleven_v4] [--language L] [--settings JSON] [--timestamps] [--out PATH] [--json]
     tm tool elevenlabs voices --run RUN --query Q --language L [--gender G] [--age A] [--accent X]
                            [--use-case U] [--limit 10] [--json]     (free)
@@ -755,6 +755,10 @@ def _cmd_clone(a: argparse.Namespace, run) -> int:
 
 
 def _cmd_tts(a: argparse.Namespace, run) -> int:
+    if a.text_file:                       # the engine's exact text: the characters priced are the ones sent (#140)
+        a.text = c.resolve(run, a.text_file).read_text(encoding="utf-8-sig").removesuffix("\n")
+    if not a.text.strip():
+        raise c.ToolError("The text to say is empty. Nothing was sent.")
     settings = cli.json_arg(a.settings) if a.settings else None
     out = c.output(run, a.out, "wip", "vo_take", "wav")
     side = {kind: out.with_name(f"{out.stem}.{kind}") for kind in ("words.json", "words.srt", "phrases.srt")}
@@ -1049,7 +1053,10 @@ def main(argv: list[str] | None = None) -> int:
     c.add_common(s)
     s.add_argument("--cost", type=float, default=None, help="the approved estimate in credits")
     s.add_argument("--voice-id", required=True)
-    s.add_argument("--text", required=True)
+    said = s.add_mutually_exclusive_group(required=True)
+    said.add_argument("--text")
+    said.add_argument("--text-file", help="the text in a UTF-8 file of the run, sent exactly as it is (tm organic "
+                                          "vo-text writes the voiceover's, #140)")
     s.add_argument("--speed", type=float, default=1.0)
     s.add_argument("--model", default=DEFAULT_MODEL,
                    help=f"default {DEFAULT_MODEL}; {tts_models.KEEPS_PACE} keeps an original's pace (Refresh an ad)")

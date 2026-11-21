@@ -414,9 +414,20 @@ def test_animation_insert_is_9_16_and_keeps_the_caption_band(tmp_path, capsys, a
 
 # --- stills with motion graphics ----------------------------------------------------------------------
 
+def _exact(pack: dict) -> dict:
+    """A pack written before #137 with its lines priced as they are: unit price × units to the third decimal, the
+    totals their exact sums (P6's cards were rounded to the cent, $0.05 for $0.047)."""
+    sums: dict[str, float] = {}
+    for line in pack["cost"]["lines"]:
+        line["cost"] = organic_pack.exact(line["unit_price"] * line["units"])
+        sums[line["kind"]] = sums.get(line["kind"], 0.0) + line["cost"]
+    pack["cost"]["totals"] = {k: organic_pack.exact(sums.get(k, 0.0)) for k in pack["cost"]["totals"]}
+    return pack
+
+
 def _quiz(tmp_path, **stack):
     run = _pet(tmp_path, "p6", **stack)
-    return run, _pack("p6_quiz_pack.json")
+    return run, _exact(_pack("p6_quiz_pack.json"))
 
 
 @pytest.mark.private_data

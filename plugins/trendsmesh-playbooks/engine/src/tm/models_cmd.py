@@ -4,6 +4,8 @@
     tm models check [--json]                               the registry and its alias table, checked
     tm models ids --task T [--task T ...] [--json]         the Replicate ids a page of these tasks prices live (give
                                                            them to `tm tool replicate_price --run R ...`)
+    tm models ids --run R [--json]                         the same for an organic run's own page: only the tasks
+                                                           its checked recipe uses (an animation needs none, #137)
     tm models page --run R --task T [...] [--units F] [--face] [--voiceover] [--json]
                                                            the Models page of these tasks (Create an ad S5, Refresh
                                                            an ad D1), in a new 04_final/models_vNN/
@@ -33,7 +35,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     ck = sub.add_parser("check", help="check the registry and its alias table")
     ck.add_argument("--json", action="store_true")
     ids = sub.add_parser("ids", help="the Replicate models a page of these tasks prices live")
-    ids.add_argument("--task", action="append", required=True)
+    ids.add_argument("--task", action="append")
+    ids.add_argument("--run", help="an organic video run: the tasks of its checked recipe (its Models page's)")
     ids.add_argument("--json", action="store_true")
     pg = sub.add_parser("page", help="the Models page of these tasks (Create an ad S5, Refresh an ad D1)")
     pg.add_argument("--run", required=True)
@@ -87,12 +90,16 @@ def _check(args: argparse.Namespace) -> int:
 def _ids(args: argparse.Namespace) -> int:
     from tm.organic_pages import models
 
-    wrong = [t for t in args.task if t not in model_registry.tasks()]
+    if bool(args.task) == bool(args.run):
+        raise ValueError("Give the tasks (--task T ...) or an organic video run (--run R), one of them.")
+    tasks = list(models.run_sections(RunFolder.open(Path(args.run))).values()) if args.run else args.task
+    wrong = [t for t in tasks if t not in model_registry.tasks()]
     if wrong:
         raise ValueError(f"{', '.join(wrong)}: not a task of the model registry ({', '.join(model_registry.tasks())}).")
-    ids = models.price_ids(args.task)
-    text = " ".join(ids)
-    cli.emit(args, {"status": "done", "ids": ids, "message": text}, text)
+    ids = models.price_ids(tasks)
+    text = " ".join(ids) if ids else ("No Replicate model is priced for this video: its page has no Replicate task, "
+                                      "so no price file is needed.")
+    cli.emit(args, {"status": "done", "ids": ids, "tasks": tasks, "message": text}, text)
     return 0
 
 
@@ -103,7 +110,8 @@ def _page(args: argparse.Namespace) -> int:
     units = cli.json_arg(args.units, run) if args.units else {}
     if not isinstance(units, dict):
         raise ValueError("--units must be a JSON object of numbers.")
-    got = models.build_tasks(run, args.task, units, face=args.face, narrated=args.voiceover)
+    upscale = str(((models._cfg(run).get("generation") or {}).get("upscale")) or "") != "none"   # #137: as the run
+    got = models.build_tasks(run, args.task, units, face=args.face, narrated=args.voiceover, upscale=upscale)
     message = (f"Built the models page in {got['folder']} ({got['sections']} sections). Publish it: tm page files "
                f"--run {args.run} --page models gives the Artifact tool's file_path and files, with "
                "organic_pages.CAPABILITIES[\"models\"] as its capabilities (db collection models); record it with tm "

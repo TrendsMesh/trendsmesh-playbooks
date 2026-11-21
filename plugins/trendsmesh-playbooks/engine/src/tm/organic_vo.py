@@ -1,6 +1,13 @@
-"""The recorded voiceover against the plan (#88 point 4): line times, the take's cuts and the pace, free.
+"""The recorded voiceover against the plan (#88 point 4): line times, the take's cuts and the pace, free; and the
+exact text the voiceover is recorded from (#140).
 
     tm organic vo-sync --run R --words 03_wip/<take>.words.json [--spec 03_wip/<item>_vNN.json] [--offset S] [--json]
+    tm organic vo-text --run R [--json]
+
+`vo-text` writes the checked pack's voiceover text exactly as ElevenLabs gets it (`organic_pack.voice_text`: the said
+lines joined by one space, one call a line on the lip-sync route) as `03_wip/vo_text_vNN.txt` (a lip-sync line each
+`03_wip/vo_text_vNN_<n>.txt`), for `tm tool elevenlabs tts --text-file`, with its characters and credits: the count
+the pack check prices and the Models page shows, so the three never drift.
 
 F1 records an ElevenLabs voiceover with its word times (`tm tool elevenlabs tts --timestamps` writes
 `<stem>.words.json`) before any take is paid for. Real voices run 2.5 to 3.8 words a second, so the lines rarely land
@@ -22,7 +29,9 @@ on the pack's `script.lines[].at`: in the owner's run the pack planned 0–3.5 /
   check the take QA holds a video model's speech to, now on the ElevenLabs voice too.
 - A voice whose last word ends after the pack's `script.seconds` is longer than the takes: re-plan the pack (E2).
 
-It reads only, writes nothing and spends nothing. `take_gap` is the same comparison for the paid take's guard
+It spends nothing. Since #140 a matched recording's pace is also appended to the channel's history
+(`library/channels/<slug>/voice_pace.jsonl`, `tm.voice_pace.record`, once per recording), which the next pack check
+estimates the voice's pace from before anything is paid. `take_gap` is the same comparison for the paid take's guard
 (`organic_specs.guard`): a pack read by an ElevenLabs narrator over one take (no sections), whose spec cuts away from
 the latest recorded voiceover, is refused before anything is paid, with the proposed cuts.
 """
@@ -218,5 +227,42 @@ def run_cli(args) -> int:
     except ValueError:
         rel = words_path.name
     text = summary(res, rel)
-    cli.emit(args, {"status": "done", "words": rel, **res, "message": text}, text)
+    paced = None
+    if res["matched"]:                     # #140: the voice's pace, for the next pack's estimate
+        from tm import voice_pace
+        paced = voice_pace.record(run, pack, words, rel)
+    cli.emit(args, {"status": "done", "words": rel, **res, "voice_pace_row": paced, "message": text}, text)
+    return 0
+
+
+def write_text(run: RunFolder) -> dict:
+    """`tm organic vo-text`: the checked pack's voiceover text as ElevenLabs gets it (the module docstring)."""
+    from tm import organic_pack
+
+    pack = organic_pack.checked_pack(run)
+    if pack is None:
+        raise ValueError(i18n.t("vo_sync.no_pack"))
+    texts = organic_pack.voice_text(pack)
+    if not texts:
+        raise ValueError("The checked pack says no line (every line's speaker is none): there is no voiceover text.")
+    first = run.next_version("03_wip", "vo_text", "txt")
+    paths = [first] if len(texts) == 1 else [first.with_name(f"{first.stem}_{n:02d}.txt")
+                                             for n in range(1, len(texts) + 1)]
+    for path, text in zip(paths, texts):
+        path.write_text(text, encoding="utf-8", newline="\n")
+    numbers = organic_pack.voice_numbers(pack)
+    files = [p.relative_to(run.path).as_posix() for p in paths]
+    return {"files": files, "calls": [{"file": f, "characters": len(t)} for f, t in zip(files, texts)], **numbers}
+
+
+def text_cli(args) -> int:
+    """`tm organic vo-text`."""
+    from tm import cli, organic_pack
+
+    got = write_text(RunFolder.open(Path(args.run)))
+    files = ", ".join(got["files"])
+    message = (f"The voiceover text is in {files}: {organic_pack.voice_line(got)}, {got['rule']}. Record it with "
+               f"tm tool elevenlabs tts --text-file <the file> --model {got['model']} --cost {got['credits']:g} (per "
+               "file, its own characters × the rate): the text sent is the text priced.")
+    cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0

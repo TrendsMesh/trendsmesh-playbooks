@@ -375,7 +375,7 @@ class _Run:
         found: list[_Item] = []
         cards: dict[str, _Item] = {}
         for order, cid in enumerate(self.cat.checkins):
-            if cid not in self.owner or cid in self.derived:
+            if cid not in self.owner or cid in self.derived or self.cat.checkins[cid].on_demand:   # on demand: asked only when a guard names it
                 continue
             c = self.cat.checkins[cid]
             last = self.latest.get(cid)
@@ -1452,7 +1452,8 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
         if by == "rule" and pic.route(checkin_id) != "rule" and not ending:
             raise ValueError(f"{checkin_id} ({cat.checkins[checkin_id].name}) is not decided by rule "
                              f"at {level_name}: ask the user.")
-        if checkin_id in pic.latest and not change and not pic.reopened(checkin_id):
+        if checkin_id in pic.latest and not change and not pic.reopened(checkin_id) \
+                and not cat.checkins[checkin_id].on_demand:      # each on-demand answer is a new one
             raise ValueError(f"{checkin_id} is already decided "
                              f"({pic.latest[checkin_id]['choice']}). Use --change to change it.")
         ids = [checkin_id]

@@ -6,6 +6,7 @@ The week is ExampleEdu's dry cycle (`exampleedu.week()`: the handoff's week_v01.
 
 import copy
 import json
+import re
 import shutil
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -140,6 +141,55 @@ def _slot_runs(run):
     return sorted(p for p in run.path.parent.iterdir() if p != run.path and (p / "run.json").is_file())
 
 
+# --- #137: the week's video costs come from the model registry, never typed ----------------------------------------
+
+def _idea(production, **units):
+    return {"id": "x1", "title": "X", "cost_script": 0.0, "plugin": {"production": production}, **units}
+
+
+def test_a_video_is_priced_from_the_registrys_selected_models():
+    cfg = organic_config.defaults()                                  # 768p, no upscale
+    assert organic_week.video_cost(_idea("animation"), cfg)[0] == 0.0     # drawn for free
+    assert organic_week.video_cost(_idea("stills_motion", images=5), cfg)[0] == pytest.approx(5 * 0.047)
+    talking = _idea("talking_character", seconds=17, images=2)
+    assert organic_week.video_cost(talking, cfg)[0] == pytest.approx(17 * 0.08 + 2 * 0.047)
+    assert organic_week.video_cost(_idea("ai_footage", seconds=30), cfg)[0] == pytest.approx(30 * 0.08 + 2 * 0.047)
+    upscaled = {**cfg, "generation": {**cfg["generation"], "upscale": "pruna"}}
+    assert organic_week.video_cost(talking, upscaled)[0] == round(17 * 0.08 + 2 * 0.047 + 17 * 0.0186, 3)
+    hd = {**cfg, "generation": {**cfg["generation"], "resolution": "1080p"}}
+    assert organic_week.video_cost(talking, hd)[0] == round(17 * 0.13 + 2 * 0.047, 3)     # H3's 2K tier
+    priced, note = organic_week.price_idea({**talking, "cost_video": 1.46}, cfg)
+    assert priced["cost_video"] == 1.454 and priced["price_source"] == "model registry"
+    from tm import model_registry
+    assert priced["price_checked"] == model_registry.checked().isoformat()
+    assert "cost_video was 1.46 as written" in note and priced["cost_note"] == note
+    again, note2 = organic_week.price_idea(priced, cfg)                # a re-check keeps the cost, says nothing new
+    assert again == priced and note2 is None
+
+
+@pytest.mark.private_data
+def test_the_week_check_writes_each_videos_cost_and_its_source(tmp_path, capsys):
+    from tm import model_registry
+    run = _week_run(tmp_path)
+    path = _write(run, exampleedu.week())
+    code, out = _cli(capsys, "organic", "week", "check", "--run", str(run.path), "--file", "03_wip/" + path.name)
+    assert code == 0, out
+    written = json.loads(path.read_text(encoding="utf-8"))
+    w2 = next(i for i in written["slots"] if i["id"] == "w2")
+    assert (w2["cost_video"], w2["price_source"], w2["price_checked"]) == (1.454, "model registry",
+                                                                          model_registry.checked().isoformat())
+    assert "cost_video was 1.46 as written" in w2["cost_note"] and any("1.46" in n for n in out["replaced"])
+    assert organic_week.checked_gap(run) is None                     # the priced file is the one marked
+    html = (run.path / _page(run, capsys)["folder"] / "index.html").read_text(encoding="utf-8")
+    assert model_registry.checked().isoformat() in html
+    no_length = exampleedu.week()
+    no_length["slots"][1].pop("seconds")
+    assert "slots[1].seconds" in {p.field for p in _problems(run, no_length)}
+    no_cards = exampleedu.week()
+    no_cards["slots"][3].pop("images")
+    assert "slots[3].images" in {p.field for p in _problems(run, no_cards)}
+
+
 # --- I2: the page and the one approval -----------------------------------------------------------------
 
 @pytest.mark.private_data
@@ -154,7 +204,9 @@ def test_week_page_matches_original_after_wording_table(tmp_path, capsys):
     assert out["folder"] == "04_final/week_v01" and out["lang"] == "pl"
     built = (run.path / "04_final" / "week_v01" / "index.html").read_text(encoding="utf-8")
     golden = (FIXTURES / "week_golden.html").read_text(encoding="utf-8").replace("\r", "")
-    assert built == worded(golden, "pl")
+    priced = re.search(r'<p class="small">Koszty wideo: [^<]*</p>', built)   # #137: where the costs come from
+    assert priced and "2026-" in priced[0]
+    assert built.replace(priced[0], "") == worded(golden, "pl")
     assert week_page.built_gap(run) is None and stepchecks.run("week_page_built", run) is None
     week = exampleedu.week()
     week["note"] = week["note"].replace("Suchy", "Mokry")
@@ -172,7 +224,7 @@ def test_week_page_matches_original_after_wording_table(tmp_path, capsys):
 @pytest.mark.private_data
 def test_over_budget_week_cannot_be_approved(tmp_path, capsys):
     """$5 for the week. The manifest's meter: $2.94 as planned, $1.48 with Wednesday as a script, $2.81 after
-    Monday's swap for r2. With r2 priced at $2.46 (its host video at 1080p) that swap makes $5.40: the decisions are
+    Monday's swap for r2. With r2 a 30 s video priced at $2.494 that swap makes $5.43: the decisions are
     read and say so, and `tm decide week approve` is refused with the page's own words; back within the budget, the
     week is approved."""
     run = _week_run(tmp_path)
@@ -188,12 +240,12 @@ def test_over_budget_week_cannot_be_approved(tmp_path, capsys):
         organic_week.choices(week, [("pon", {"idea": "w2"})])
 
     pricey = exampleedu.week()
-    pricey["reserves"][1]["cost_video"] = 2.46
+    pricey["reserves"][1].update(seconds=30, images=2, cost_video=2.46)    # a typed cost: the check prices it
     _checked(run, capsys, pricey)
     _page(run, capsys)
     out = _read(run, capsys, _doc("pon", idea="r2", decision="ok"), _doc("_week", approved=True, total=5.4))
-    assert out["total"] == 5.40 and out["approved"] is True
-    assert organic_week.OVER_BUDGET in out["message"] and "$5.40 of $5.00" in out["message"]
+    assert out["total"] == 5.43 and out["approved"] is True
+    assert organic_week.OVER_BUDGET in out["message"] and "$5.43 of $5.00" in out["message"]
     _at_i3(run)
     with pytest.raises(ValueError) as exc:
         _approve(run)
@@ -388,7 +440,7 @@ def test_decisions_after_the_yes_need_a_new_yes(tmp_path, capsys):
     run = _week_run(tmp_path)
     _ready(run, capsys, _doc("pt", decision="skip"))
     yes = organic_week.approval(run)
-    assert yes["covers"]["decisions"] == "03_wip/decisions_week_v01.json" and yes["covers"]["total"] == 1.65
+    assert yes["covers"]["decisions"] == "03_wip/decisions_week_v01.json" and yes["covers"]["total"] == 1.64
     _decisions_again(run, capsys, _doc("pt", decision="skip", note="later maybe",
                                        updated_at="2026-11-07T11:00:00.000Z"), minutes=2)
     assert organic_week._approval_gap(run, *organic_week._current(run)[:3]) is None      # only a note changed
@@ -495,7 +547,8 @@ def test_a_dropped_run_spends_nothing_and_its_day_starts_again(tmp_path, capsys,
     assert organic_week.dropped_spend(run) == 0.5 and organic_week.budget_gap(run) is None
 
     pricey = exampleedu.week()
-    pricey["slots"][0]["cost_video"] = 4.60                                  # Monday's video now at $4.60
+    pricey["slots"][0]["plugin"]["production"] = "talking_character"        # Monday's video now at $4.607
+    pricey["slots"][0].update(seconds=57, images=1)
     _checked(run, capsys, pricey)
     s = state.load(run)
     s.pages.pop("week", None)
@@ -504,7 +557,7 @@ def test_a_dropped_run_spends_nothing_and_its_day_starts_again(tmp_path, capsys,
     _read(run, capsys, _doc("pon", decision="ok"), _doc("śr", decision="skip"), _doc("pt", decision="skip"),
           _doc("sob", decision="skip"), _doc("niedz", decision="skip"), minutes=3)
     gap = organic_week.budget_gap(run)
-    assert "$5.10 of $5.00" in gap and "with $0.50 already spent on dropped days" in gap
+    assert "$5.11 of $5.00" in gap and "with $0.50 already spent on dropped days" in gap
     assert organic_week.OVER_BUDGET in gap
 
 

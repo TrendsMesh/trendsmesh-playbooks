@@ -27,9 +27,12 @@ def _cli(capsys, *argv):
     return code, json.loads(capsys.readouterr().out)
 
 
-def _run(tmp_path, *, host="image", route="h3_native") -> tuple[RunFolder, dict]:
+def _run(tmp_path, *, host="image", route="elevenlabs_narrator") -> tuple[RunFolder, dict]:
+    """A run whose page has every section: an upscaling run (generation.upscale pruna) with an ElevenLabs narrator."""
     run = RunFolder.create(tmp_path / "ws", "zorbo", date(2026, 11, 12), playbook=ORGANIC_VIDEO)
-    config.save(run, {**organic_config.defaults(), "languages": {"working": "en", "market": "en"}})
+    cfg = {**organic_config.defaults(), "languages": {"working": "en", "market": "en"}}
+    cfg["generation"] = {**cfg["generation"], "upscale": "pruna"}
+    config.save(run, cfg)
     pack = json.loads((FIXTURES / "m5_pl_pack.json").read_text(encoding="utf-8"))
     pack["lang"] = "en"
     pack["host"] = {"kind": host, "image": "03_wip/host_v01_0.png" if host == "image" else None}
@@ -132,7 +135,8 @@ def test_the_voice_is_priced_in_credits_from_the_registry(tmp_path):
     run, pack = _run(tmp_path, host="none")
     _prices(run)
     voice = _by_label(models.page_json(run), "voice")
-    said = sum(len(ln["text"]) for ln in pack["script"]["lines"] if ln["speaker"] != "none")
+    said = len(" ".join(ln["text"] for ln in pack["script"]["lines"] if ln["speaker"] != "none"))  # as sent (#140)
+    assert said == organic_pack.voice_numbers(pack)["characters"] == models._pack_units(pack)["characters"]
     assert voice["ElevenLabs Eleven v4"]["cost_text"] == f"≈ {said * 0.5:,.0f} credits"
     assert "0.5 credits per character" in voice["ElevenLabs Eleven v4"]["means"]
 
@@ -245,3 +249,100 @@ def test_the_intake_no_longer_asks_the_quality_tier(tmp_path):
 
 def test_the_models_page_has_its_own_collection():
     assert organic_pages.CAPABILITIES["models"]["db"]["rules"][0]["path"] == "models"
+
+
+# --- issue #137: the page prices only what this video makes -------------------------------------------------------
+
+def _recipe_run(tmp_path, fixture: str, *, upscale: str = "none", change=None) -> tuple[RunFolder, dict]:
+    run = RunFolder.create(tmp_path / "ws", "zorbo", date(2026, 11, 12), playbook=ORGANIC_VIDEO)
+    cfg = {**organic_config.defaults(), "languages": {"working": "en", "market": "en"}}
+    cfg["generation"] = {**cfg["generation"], "upscale": upscale}
+    config.save(run, cfg)
+    pack = json.loads((FIXTURES / fixture).read_text(encoding="utf-8"))
+    pack["lang"] = "en"
+    if change:
+        change(pack)
+    path = run.path / "03_wip" / "pack_v01.json"
+    path.write_text(json.dumps(pack, ensure_ascii=False, indent=2), encoding="utf-8")
+    organic_pack.record(run, path, pack, stage="recipe")
+    return run, pack
+
+
+def _price_file(run, ids):
+    rows = [{"model": m, "checked": TODAY, "tiers": [
+        {"criteria": v["live"]["criteria"], "price": f"${v['price']['usd'] / v['live'].get('factor', 1):g}",
+         "unit": "x"} for v in model_registry.variants(m).values() if v.get("live")]} for m in ids]
+    path = run.path / "02_research" / "models" / f"prices_{TODAY}_v01.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(rows), encoding="utf-8")
+
+
+def _narrated_stills(pack):
+    pack["speech"]["route"] = "elevenlabs_narrator"
+    for line in pack["script"]["lines"]:
+        line["speaker"] = "narrator"
+    pack["stages"][0]["items"].append({"name": "extra", "model": "openai/gpt-image-2", "images": 1})
+
+
+def test_an_animation_shows_only_the_voice_and_needs_no_replicate_prices(tmp_path, capsys):
+    run, _ = _recipe_run(tmp_path, "m1_animation_pack.json")
+    data = models.page_json(run)                                        # no price file at all
+    assert [s["id"] for s in data["sections"]] == ["voice", "notes"]
+    assert data["plugin"]["tasks"] == {"voice": "voiceover"}
+    assert not any("cost" in o for o in _options(data, "voice").values())   # credits only, no USD
+    code, out = _cli(capsys, "models", "ids", "--run", str(run.path))
+    assert code == 0 and out["ids"] == []
+
+
+def test_a_stills_video_shows_its_planned_pictures_and_the_voice(tmp_path, capsys):
+    run, pack = _recipe_run(tmp_path, "p6_quiz_pack.json", change=_narrated_stills)
+    code, out = _cli(capsys, "models", "ids", "--run", str(run.path))
+    assert code == 0 and out["ids"] == models.price_ids(["illustrations"])
+    _price_file(run, out["ids"])                                         # only the illustration models are priced
+    data = models.page_json(run)
+    assert [s["id"] for s in data["sections"]] == ["images", "voice", "notes"]
+    assert data["plugin"]["tasks"] == {"images": "illustrations", "voice": "voiceover"}
+    assert data["plugin"]["units"]["images"] == 5                        # the five cards, not one per 15 s
+    star = next(o for o in _options(data, "images").values() if o["default"])
+    assert star["cost"] == pytest.approx(5 * 0.047)
+    assert next(s for s in data["sections"] if s["id"] == "images")["title"] == "Images (the cards and pictures)"
+
+
+def test_without_stages_the_pictures_are_one_per_shot(tmp_path):
+    def shots(pack):
+        _narrated_stills(pack)
+        pack.pop("stages")
+    run, pack = _recipe_run(tmp_path, "p6_quiz_pack.json", change=shots)
+    _price_file(run, models.price_ids(["illustrations"]))
+    assert models.page_json(run)["plugin"]["units"]["images"] == len(pack["script"]["lines"])
+
+
+def test_a_photoreal_face_takes_the_photos_task(tmp_path):
+    def face(pack):
+        _narrated_stills(pack)
+        pack["stages"][0]["items"][0]["face"] = True
+    run, _ = _recipe_run(tmp_path, "p6_quiz_pack.json", change=face)
+    _price_file(run, models.price_ids(["photos"]))
+    assert models.page_json(run)["plugin"]["tasks"]["images"] == "photos"
+
+
+def test_the_upscale_is_shown_only_when_the_run_upscales(tmp_path):
+    run, _ = _recipe_run(tmp_path, "m5_pl_pack.json")                  # 768p, generation.upscale: none
+    _price_file(run, models.price_ids(["photos", "image_to_video"]))
+    data = models.page_json(run)
+    assert [s["id"] for s in data["sections"]] == ["images", "video", "notes"]   # H3 speaks: no ElevenLabs voice
+    assert data["plugin"]["units"]["images"] == 2                       # the host item's two pictures
+    run2, _ = _recipe_run(tmp_path / "b", "m5_pl_pack.json", upscale="pruna")
+    _price_file(run2, models.price_ids(["photos", "image_to_video", "upscale"]))
+    data2 = models.page_json(run2)
+    assert [s["id"] for s in data2["sections"]] == ["images", "video", "upscale", "notes"]
+    ticked = next(o for o in _options(data2, "upscale").values() if o["default"])
+    assert data2["plugin"]["upscale"][ticked["id"]]["model"] == model_registry.star("upscale")["model"]
+
+
+def test_no_upscale_is_ticked_on_a_page_of_tasks_when_the_run_does_not_upscale(tmp_path):
+    run, _ = _recipe_run(tmp_path, "m5_pl_pack.json")
+    _price_file(run, models.price_ids(["upscale"]))
+    data = models.tasks_page_json(run, ["upscale"], {"video_seconds": 13}, upscale=False)
+    ticked = next(o for o in _options(data, "upscale").values() if o["default"])
+    assert data["plugin"]["upscale"][ticked["id"]]["model"] is None and ticked["label"] == "No upscale"

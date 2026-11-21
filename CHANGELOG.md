@@ -97,6 +97,30 @@ What changed in each version of the TrendsMesh playbooks plugin.
   share a format and a production type. When your channel has its own style, at least one idea comes in another
   look, unless you say you want every idea in your channel's style. The proposals page says how many ideas are in
   your channel's style and how many in other styles.
+- **Organic AI video: the Models page shows only what the video uses.** An animation shows only its voice model and
+  needs no Replicate prices; stills with motion graphics show their pictures (illustrations, or photos for a
+  realistic face) and the voice; AI footage shows the first frames and the video, the upscale only when the run
+  upscales, and the voice only when ElevenLabs says a line. The pictures are the ones the recipe plans, not one per
+  15 s, and the total holds only these tasks. `tm models ids --run R` names just the models to price.
+- **Exact costs in the pack.** Each cost line is its unit price × units as it is (0.047 × 5 = 0.235), the totals are
+  their exact sum, and only the total shown to you is rounded.
+- **The week plan prices each video itself.** `tm organic week check` works out each idea's video cost from the
+  model registry's selected models and the idea's planned length and pictures, writes it with its source and date,
+  and replaces a typed cost with a note. The week page says where the costs come from.
+- **A refused reference picture is never dropped without asking.** When a take that sends your approved casting or
+  host picture is refused (nothing is spent), it is tried once more exactly as it was. After a second refusal
+  nothing more is made until you choose: try once more, another model that takes a reference picture (priced
+  first), or go without it, knowing the face will not be the one you approved.
+- **Create an ad: the transcription price is dated.** `tm ad prices` also saves the Scribe transcription rate, dated
+  today, so a transcription line can be priced from it.
+- **Organic AI video: the voice is checked before it is paid for.** The pack check estimates the picked voice's pace
+  for free, from your channel's earlier recordings with it or from its preview clip, and says where the estimate
+  comes from. A voice too slow for the script is a warning inside the pack approval, with three options: cut a few
+  words, a brisker voice by name, or a longer video.
+- **The voiceover's characters and credits are given, not guessed.** The pack check always says the voiceover's
+  characters and credits, a refused voice line names the exact line to write, and `tm organic vo-text` writes the
+  text exactly as ElevenLabs gets it, so the count on the Models page, in the pack and in the recording is the same.
+
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of

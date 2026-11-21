@@ -146,3 +146,103 @@ def test_the_guard_calls_the_check(ov, monkeypatch):
     spec.write_text(json.dumps({"model": "minimax/h3", "input": {"prompt": PROMPT}}), encoding="utf-8")
     said = organic_specs.guard(run, ["--run", str(run.path), str(spec), "--name", "take", "--cost", "1"])
     assert seen == ["take"] and said.startswith("cuts off the voice.") and "Nothing was run or spent" in said
+
+
+# --- #140: the voice's characters and pace, known before the paid recording ---------------------------------------
+
+def test_the_voiceover_text_is_one_count_everywhere(ov, capsys):
+    """The pack check, the Models page and the text sent to ElevenLabs count the same characters: the said lines
+    joined by one space (one call a line on the lip-sync route)."""
+    from tm.organic_pages import models
+    run, pack = ov
+    joined = " ".join(LINES)
+    assert organic_pack.voice_text(pack) == [joined]
+    numbers = organic_pack.voice_numbers(pack)
+    assert numbers == {"characters": len(joined), "credits": len(joined) * 0.5, "model": "eleven_v4", "rate": 0.5,
+                       "rule": organic_pack.VOICE_RULE}
+    assert models._pack_units(pack)["characters"] == len(joined)
+    assert sum(map(len, organic_pack.voice_text({**pack, "speech": {"route": "elevenlabs_lipsync"}}))) == \
+        sum(map(len, LINES))
+    assert main(["organic", "vo-text", "--run", str(run.path), "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["files"] == ["03_wip/vo_text_v01.txt"] and out["characters"] == len(joined)
+    assert (run.path / "03_wip" / "vo_text_v01.txt").read_text(encoding="utf-8") == joined
+    assert f"{len(joined)} characters × 0.5 = {len(joined) * 0.5:g} credits" in out["message"]
+
+
+def test_a_refused_voice_line_says_the_exact_line_to_write(ov):
+    _, pack = ov
+    chars = organic_pack.voice_numbers(pack)["characters"]
+    line = {"what": "voiceover", "item": None, "model": "eleven_v4", "criteria": None, "unit_price": 0.5,
+            "unit": "character", "units": chars - 4, "cost": (chars - 4) * 0.5, "kind": "voice_credits",
+            "price_file": None, "checked": None}
+    out = []
+    organic_pack._voice({**pack, "cost": {"lines": [line]}}, line["units"], [0], out)
+    assert out[0].todo == (f"Write the voice line as {chars} characters × 0.5 = {chars * 0.5:g} credits (kind "
+                           "voice_credits, unit character, model eleven_v4).")
+
+
+VOICE, BRISK = "slowvoice123", "briskvoice99"
+
+
+def _voiced_pack(pack, seconds=9.0):
+    """22 said words in 9 s, 1.5 s after the last line: the script needs 22 / 7.5 = 2.93 words a second."""
+    return {**pack, "channel": "why-dogs-do-that", "taste": {"voice": VOICE},
+            "script": {**pack["script"], "seconds": seconds}}
+
+
+def _history(run, *rows):
+    from tm import voice_pace
+    path = voice_pace.history_path(run, "why-dogs-do-that")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+
+
+def test_a_voice_slower_than_the_script_is_said_before_the_recording(ov):
+    """The owner's run: Eleven v4 read at 2.46 words a second, under qa.wps_min 2.8, found only after it was paid.
+    Now the channel's earlier recordings of the voice give its pace first, with the three options."""
+    from tm import organic_config, voice_pace
+    run, pack = ov
+    pack = _voiced_pack(pack)
+    _history(run, *({"voice_id": VOICE, "name": "Slow voice", "wps": w, "run": f"r{i}"} for i, w in
+                    enumerate((2.40, 2.46, 2.52))), {"voice_id": BRISK, "name": "Brisk voice", "wps": 3.1, "run": "r9"})
+    got = voice_pace.check(run, pack, organic_config.defaults(), transcribe=False)
+    assert got["slow"] is True and got["estimate"]["wps"] == 2.46 and got["needed"] == 2.93
+    assert got["estimate"]["said"] == "from 3 earlier recordings of this voice on the channel"
+    assert got["options"]["cut"]["said"] == "cut about 4 words to fit 9 s"                   # 2.46 × 7.5 = 18 of 22
+    assert got["options"]["longer"]["said"] == "accept a longer video: about 10.4 s instead of 9 s"
+    assert [b["name"] for b in got["options"]["brisker"]] == ["Brisk voice"]
+    assert "inside the pack approval" in got["message"] and "Brisk voice" in got["message"]
+    fine = voice_pace.check(run, {**pack, "taste": {"voice": BRISK}}, organic_config.defaults(), transcribe=False)
+    assert fine["slow"] is False and fine["options"] is None
+
+
+def test_a_new_voice_is_timed_from_its_free_preview_clip(ov):
+    from tm import organic_config, voice_pace
+    run, pack = ov
+    pack = _voiced_pack(pack)
+    folder = run.path / "02_research" / "voices" / "calm"
+    folder.mkdir(parents=True)
+    preview = folder / f"preview_Slow_voice_{VOICE[:8]}.mp3"
+    preview.write_bytes(b"ID3 fake preview")
+    words = [{"start": round(i * 0.4, 2), "end": round(i * 0.4 + 0.35, 2), "word": f" w{i}"} for i in range(10)]
+    got = voice_pace.check(run, pack, organic_config.defaults(), transcribe=False)
+    assert got["estimate"] is None and "tm tool transcribe" in got["message"]          # not timed yet: the free way
+    voice_pace.transcript_of(preview).write_text(json.dumps({"segments": [{"words": words}]}), encoding="utf-8")
+    got = voice_pace.check(run, pack, organic_config.defaults(), transcribe=False)
+    assert got["estimate"]["source"] == "preview" and got["estimate"]["said"].startswith("from its free preview clip")
+    assert got["estimate"]["wps"] == round(10 / 3.95, 2) and got["slow"] is True
+
+
+def test_vo_sync_keeps_the_voices_pace_for_the_channel(ov, capsys, monkeypatch):
+    from tm import voice_pace
+    run, pack = ov
+    voiced = _voiced_pack(pack, seconds=14.0)
+    monkeypatch.setattr(organic_pack, "checked_pack", lambda r: voiced)
+    for _ in range(2):                                    # the same recording counts once
+        assert main(["organic", "vo-sync", "--run", str(run.path), "--words", "03_wip/audio/vo.words.json",
+                     "--json"]) == 0
+        capsys.readouterr()
+    (row,) = voice_pace.rows(run, "why-dogs-do-that")
+    assert (row["voice_id"], row["words"], row["file"]) == (VOICE, 22, "03_wip/audio/vo.words.json")
+    assert row["wps"] == round(22 / 11.84, 3) and row["model"] == "eleven_v4" and row["run"] == run.path.name

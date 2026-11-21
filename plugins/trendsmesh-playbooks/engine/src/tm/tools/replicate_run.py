@@ -29,7 +29,9 @@ else we don't recognise keeps the old words. Replicate has no balance read, so n
 
 A prediction that ends failed or canceled with no output reports $0 spent, and its record gets a
 `cost_note` to confirm that on the Replicate dashboard; so does a run Replicate refuses at creation
-(which already reports nothing spent). A connection failure while starting keeps the estimate spent.
+(which already reports nothing spent). A content refusal (E006, "prohibited content") of a call that sent a
+reference image also records `"refused_reference": "<file>"` (`tm.refused_refs`, #137), which the paid-call guards
+read: one identical retry, then the user picks. A connection failure while starting keeps the estimate spent.
 For organic video, `tm tool` runs `organic_specs.guard` before this (tools.PRECHECK).
 
 Outputs: 03_wip/<NAME>_vNN_<i>.<ext>. Each output and the record get a manifest row (prompt,
@@ -123,6 +125,10 @@ def _finish(client, pred, record: dict, record_path: Path, out: Path, name: str)
     if pred.status in FAILED and not pred.output:
         c.report_cost(True, 0.0)
         record["cost_note"] = COST_NOTE
+    from tm import refused_refs
+    ref = refused_refs.refused(record)          # #137: a content refusal of a call that sent a reference image
+    if ref:
+        record["refused_reference"] = ref
     _save(record_path, record)
     if pred.status != "succeeded":
         note = f" ({COST_NOTE})" if record.get("cost_note") else ""

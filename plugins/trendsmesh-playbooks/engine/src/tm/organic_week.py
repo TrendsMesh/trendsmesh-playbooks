@@ -11,7 +11,10 @@ copied) with the plugin's block on every idea, slot or reserve (a reserve become
               "approach": Recreate|Inspire (Odtworzenie|Inspiracja), "product_level": <OV5's level>,
               "series": str|null, "flexible": bool}
 
-`tm organic week check --run W --file F` runs `check` and marks the file (`stepchecks.mark`, key `week`); the step
+`tm organic week check --run W --file F` runs `check`, prices each idea's video from the model registry (`price`,
+#137: the ★ model of each task its production type uses × its `seconds` and `images`, written as `cost_video` with
+`price_source` and `price_checked`; a typed cost that differs is replaced, with a `cost_note`) and marks the file
+(`stepchecks.mark`, key `week`); the step
 check `week_checked` (`checked_gap`) asks that the latest week file is that one, unchanged. `tm organic page week`
 builds the page (`organic_pages.week`), whose decisions `tm organic decisions --page week` reads into
 `03_wip/decisions_week_vNN.json` (`choices` per slot, `total`). The check-in `week` ("Approve the week") is the one
@@ -178,9 +181,18 @@ def _idea_problems(run: RunFolder, week: dict, idea: dict, where: str, used: dic
         out.append(Problem(f"{where}.id", f"{_name(idea)}: its id {why} (it names the idea's production run and its "
                                           "files).", f"{_ID_TODO}."))
     for key in ("cost_video", "cost_script"):
-        if not (math.isfinite(idea[key]) and idea[key] >= 0):
+        if key in idea and not (math.isfinite(idea[key]) and idea[key] >= 0):
             out.append(Problem(f"{where}.{key}", f"{_name(idea)}: {key} is {idea[key]}.", "Give the cost in USD, 0 or "
                                                                                          "more."))
+    gap = _units_gap(idea)
+    if gap == "seconds":
+        out.append(Problem(f"{where}.seconds", f"{_name(idea)} ({plugin['production']}) gives no planned length, so its "
+                           "video cannot be priced.", "Write seconds, the video's planned length (the check prices "
+                           "cost_video from the model registry; never type it)."))
+    elif gap == "images":
+        out.append(Problem(f"{where}.images", f"{_name(idea)} (stills with motion graphics) gives no number of pictures, "
+                           "so its video cannot be priced.", "Write images, the pictures it plans (the check prices "
+                           "cost_video from the model registry; never type it)."))
     if organic_proposals.APPROACHES.get(str(plugin["approach"]).strip().lower()) is None:
         out.append(Problem(f"{where}.plugin.approach", f"{_name(idea)}: the approach is {plugin['approach']!r}.",
                            "Write Recreate or Inspire (Odtworzenie or Inspiracja on a Polish page)."))
@@ -203,6 +215,101 @@ def _idea_problems(run: RunFolder, week: dict, idea: dict, where: str, used: dic
 
 
 _ID_TODO = "Name it w1, w2, r1, ... or another id of ASCII letters, digits, '_' and '-'"
+
+
+# --- the video's cost, from the model registry (issue #137 item 4) -------------------------------------------------
+
+PRICE_SOURCE = "model registry"
+TAKE_S = 15                          # a first frame per 15 s take, as the Models page counts them
+
+
+def _units_gap(idea: dict) -> str | None:
+    """What the idea must say before its video is priced: `seconds` (its planned length) for a video made by a video
+    model, `images` (the pictures it plans) for stills with motion graphics. An animation is drawn for free."""
+    kind = idea["plugin"]["production"]
+    if kind in ("ai_footage", "talking_character", "sections") and not (_number(idea.get("seconds"))
+                                                                        and idea["seconds"] > 0):
+        return "seconds"
+    if kind == "stills_motion" and not (isinstance(idea.get("images"), int) and not isinstance(idea["images"], bool)
+                                        and idea["images"] > 0):
+        return "images"
+    return None
+
+
+def _number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def video_cost(idea: dict, cfg: dict) -> tuple[float, list[str]]:
+    """(cost_video in USD, how) of an idea with its units (`_units_gap` is None): the registry's ★ model of each task the
+    Models page would show for its production type (`organic_pages.models.sections_for`) × the idea's units: its
+    `images` (else one first frame per 15 s), its `seconds` of video and, when the run upscales, of upscale. A video
+    in sections is priced as AI footage over all its seconds (its split is not planned yet: the dearer reading). The
+    voice is ElevenLabs credits, not USD: not in cost_video."""
+    from tm import model_registry, organic_pack   # organic_pack imports this module
+    from tm.organic_pages import models
+
+    kind = idea["plugin"]["production"]
+    seconds = float(idea.get("seconds") or 0)
+    images = int(idea.get("images") or (math.ceil(seconds / TAKE_S) if seconds else 0))
+    production = "ai_footage" if kind == "sections" else kind
+    stub = {"production": production, "sections": [{"type": production}], "script": {"lines": []}}
+    total, how = 0.0, []
+    hd = str(((cfg or {}).get("generation") or {}).get("resolution") or "") == "1080p"
+    for sid, task in models.sections_for(stub, cfg).items():
+        star = model_registry.star(task)
+        price = star["price"]
+        if hd and task in organic_pack.VIDEO_TASKS:     # the run makes 1080p: the ★ model's 1080p variant
+            for name, var in model_registry.variants(star["model"]).items():
+                sent = {str(v).lower() for v in (var.get("send") or {}).values()}
+                if sent & set(organic_pack.RESOLUTION_WORDS["1080p"]) and "usd" in (var.get("price") or {}):
+                    price = var["price"]
+                    break
+        if "usd" not in price:
+            continue
+        units = images if price.get("per") == "image" else seconds
+        if not units or not price["usd"]:
+            continue
+        total += price["usd"] * units
+        how.append(f"{star['name']} {price['usd']:g} USD per {price['per']} × {units:g}")
+    return organic_pack.exact(total), how
+
+
+def price_idea(idea: dict, cfg: dict) -> tuple[dict, str | None]:
+    """The idea with its cost_video from the registry, `price_source` and `price_checked` (the registry's date), and a
+    `cost_note` when a typed cost_video differed; (idea, the note or None). An idea missing its units is unchanged."""
+    from tm import model_registry
+
+    if _units_gap(idea) is not None:
+        return idea, None
+    cost, how = video_cost(idea, cfg)
+    out = dict(idea)
+    typed = idea.get("cost_video")
+    out.update({"cost_video": cost, "price_source": PRICE_SOURCE,
+                "price_checked": model_registry.checked().isoformat()})
+    out.pop("cost_note", None)
+    note = None
+    if _number(typed) and abs(typed - cost) > TOL and idea.get("price_source") != PRICE_SOURCE:
+        note = (f"cost_video was {typed:g} as written; the model registry prices it at {cost:g} USD "
+                f"({'; '.join(how) or 'nothing paid on Replicate'}), so that is the cost now")
+        out["cost_note"] = note
+    elif idea.get("cost_note") and abs(float(typed or 0) - cost) <= TOL:
+        out["cost_note"] = idea["cost_note"]          # an earlier check's note, kept while the cost is the same
+    return out, note
+
+
+def price(week: dict, cfg: dict) -> tuple[dict, list[str]]:
+    """The week with every idea priced from the registry (`price_idea`), and the notes on typed costs replaced."""
+    out, notes = copy.deepcopy(week), []
+    for kind in ("slots", "reserves"):
+        priced = []
+        for idea in out.get(kind) or []:
+            got, note = price_idea(idea, cfg)
+            priced.append(got)
+            if note:
+                notes.append(f"{_name(idea)}: {note}")
+        out[kind] = priced
+    return out, notes
 
 
 def check(run: RunFolder, week: object, cfg: dict) -> list[Problem]:
@@ -379,7 +486,7 @@ def cost_of(idea: dict, row: dict) -> float:
     """What a slot's choice costs: nothing when skipped, the script's or the video's cost."""
     if row["decision"] == "skip":
         return 0.0
-    return float(idea["cost_script"] if row["output"] == "script" else idea["cost_video"])
+    return float(idea["cost_script"] if row["output"] == "script" else idea.get("cost_video") or 0)
 
 
 def chosen_cost(week: dict, rows: dict, extra: tuple[dict, ...] = ()) -> float:
@@ -835,6 +942,7 @@ def flexible(run: RunFolder, file: Path, *, today: date | None = None) -> dict:
     if out:
         raise Stop(f"{file_rel} needs fixing:\n" + "\n".join(f"- {p.field}: {p.what} {p.todo}" for p in out)
                    + f"\nFix the file (a new version), then start the flexible day again; {AGAIN}.")
+    idea = price_idea(idea, config.load(run))[0]       # #137: its video priced from the registry, as the week's are
     if organic_guesses.is_free(run):   # Free (issue #106): fresh guesses, checked since the week was approved
         checked = _when((state.load(run).checked.get(organic_guesses.KEY) or {}).get("at"))
         if checked is None or checked <= approved:

@@ -52,7 +52,6 @@
      "format",
      "why",
      "trend",
-     "cost_video",
      "cost_script",
      "production",
      "risk"
@@ -96,6 +95,26 @@
      },
      "cost_script": {
       "type": "number"
+     },
+     "seconds": {
+      "description": "the video's planned length; tm organic week check prices cost_video from it (issue #137)",
+      "type": "number"
+     },
+     "images": {
+      "description": "the pictures it plans (stills with motion graphics; else one first frame per 15 s)",
+      "type": "integer"
+     },
+     "price_source": {
+      "description": "written by tm organic week check: model registry",
+      "type": "string"
+     },
+     "price_checked": {
+      "description": "written by tm organic week check: the registry's checked date",
+      "type": "string"
+     },
+     "cost_note": {
+      "description": "written by tm organic week check when a typed cost_video was replaced",
+      "type": "string"
      },
      "production": {
       "type": "string"
@@ -121,7 +140,6 @@
      "format",
      "why",
      "trend",
-     "cost_video",
      "cost_script",
      "production",
      "risk"
@@ -165,6 +183,26 @@
      },
      "cost_script": {
       "type": "number"
+     },
+     "seconds": {
+      "description": "the video's planned length; tm organic week check prices cost_video from it (issue #137)",
+      "type": "number"
+     },
+     "images": {
+      "description": "the pictures it plans (stills with motion graphics; else one first frame per 15 s)",
+      "type": "integer"
+     },
+     "price_source": {
+      "description": "written by tm organic week check: model registry",
+      "type": "string"
+     },
+     "price_checked": {
+      "description": "written by tm organic week check: the registry's checked date",
+      "type": "string"
+     },
+     "cost_note": {
+      "description": "written by tm organic week check when a typed cost_video was replaced",
+      "type": "string"
      },
      "production": {
       "type": "string"

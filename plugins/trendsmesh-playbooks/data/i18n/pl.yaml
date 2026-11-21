@@ -364,10 +364,13 @@ strings:
       title: "{title}: modele"
       lede: Modele do każdego zadania, przetestowane dla tej wtyczki, każdy z dzisiejszą ceną. Wybrane są zaznaczone; jednym kliknięciem wybierzesz inny albo wpiszesz własny model na końcu zadania. Na tej stronie nic nie powstaje i nic nie jest płatne.
       task_images: Obrazy (pierwsza klatka)
+      task_cards: Obrazy (karty i ilustracje)
+      task_video_text: Wideo (z tekstu)
       task_video: Wideo (z obrazu)
       task_upscale: Powiększenie do 1080p
       task_voice: Model głosu
       hint_images: Cena za klatki tego filmu.
+      hint_cards: Cena za obrazy, które planuje przepis tego filmu.
       hint_video: Cena za sekundy tego filmu. Na liście są tylko modele, które zaczynają od zatwierdzonej pierwszej klatki.
       hint_upscale: Cena za sekundy tego filmu.
       hint_voice: ElevenLabs działa na Twoim kluczu i kredytach. Sam głos wybierasz na stronie stylu, głosu i muzyki.
@@ -466,6 +469,7 @@ strings:
       note_label: Uwaga
       empty: bez publikacji
       reserve_cost: "Koszt: wideo ${v} · skrypt ${s}. Wybierz go w „Zamień pomysł” przy dowolnym dniu."
+      priced: "Koszty wideo: wybrane modele z rejestru modeli, ceny sprawdzone {d}."
       meta:
         one: "{n} film w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień."
         few: "{n} filmy w tygodniu · publikacja na: {pf} · produkcja: {rh} · budżet ${b} na cały tydzień."
@@ -633,6 +637,7 @@ strings:
         images: Obrazy
         video: Ujęcia
         final_edit: Gotowy film i zestaw do publikacji
+        refused_reference: Odrzucony obraz referencyjny
     footer:
       built: Zbudowane z runu {run} {when}. Źródła każdego etapu są w jego Szczegółach technicznych.
       built_from: Zbudowane z runu {run} {when}.

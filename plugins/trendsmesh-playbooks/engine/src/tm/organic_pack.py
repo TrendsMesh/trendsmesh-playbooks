@@ -30,9 +30,12 @@ What the pack stage holds the pack to, beyond the recipe:
 - cost: each paid stage item (its `images` or `seconds`) has one `ai_usd` line of its model and units, a take
   or an upscale priced at the chosen resolution, and the chosen option's cost is the takes' lines; each line
   is priced from a saved price file (`price_of`) checked no more than `pricing.max_age_days` ago, with units,
-  price and cost above 0 and the cost unit price × units; voice credits are the said lines' characters, on
-  an ElevenLabs route, at the line's text-to-speech model's credit rate (`tts_models.rate`, #88); the totals are
-  the sums and within `budget.per_run_usd`, and a week slot's `ai_usd`
+  price and cost above 0 and the cost unit price × units to the third decimal (#137: 0.047 × 5 = 0.235, never
+  rounded to the cent; only a shown total is, `_usd`); voice credits are the characters of the text ElevenLabs gets
+  (`voice_text`, `voice_numbers`, #140: the said lines joined by one space, one call a line on the lip-sync route),
+  on an ElevenLabs route, at the line's text-to-speech model's credit rate (`tts_models.rate`, #88), and a refused
+  voice line names the exact line to write; the totals are the exact sums and within `budget.per_run_usd`, and a
+  week slot's `ai_usd`
   within the week's remainder too (`organic_week.week_left`: the week run's `budget.per_week_usd` minus what the week's other
   slot runs planned, approved or spent); money is in USD, with
   `1 USD = <rate> <CODE>` for an account in another currency;
@@ -181,7 +184,23 @@ def _number(value: object) -> bool:
 
 
 def _usd(amount: float) -> str:
-    return f"${amount:.2f}"
+    """A shown total, rounded to the cent, half up ($0.235 shows as $0.24, not the float's $0.23)."""
+    from decimal import ROUND_HALF_UP, Decimal
+    return f"${Decimal(repr(round(amount + 0.0, 6))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)}"
+
+
+EXACT = 3                              # a cost line is unit price × units to the third decimal (issue #137)
+
+
+def exact(amount: float) -> float:
+    """An amount to the third decimal: a line's cost, and the exact sum of lines (only a shown total is rounded)."""
+    return round(amount + 0.0, EXACT)
+
+
+def _line_usd(amount: float) -> str:
+    """A line's amount as it is, to the third decimal when it has one: $0.235, $1.04."""
+    text = f"{exact(amount):.3f}"
+    return "$" + (text[:-1] if text.endswith("0") else text)
 
 
 def _day(text: object) -> date | None:
@@ -637,6 +656,45 @@ def _said(pack: dict) -> list[str]:
     return [line["text"] for line in pack["script"]["lines"] if line["speaker"] != "none"]
 
 
+VOICE_RULE = ("the said lines' text as sent to ElevenLabs (tm organic vo-text): one recording, the lines joined by one "
+              "space; on the lip-sync route one call a line")
+
+
+def voice_text(pack: dict) -> list[str]:
+    """The exact text of each ElevenLabs text-to-speech call of this pack (issue #140): one recording of the said lines
+    (speaker not `none`, in order, each stripped) joined by one space; on `elevenlabs_lipsync`, one call a line. The
+    one source of the voiceover's characters: the pack check, the Models page and `tm organic vo-text` (the file
+    `tm tool elevenlabs tts --text-file` sends) all count it."""
+    lines = [str(ln.get("text") or "").strip() for ln in (pack.get("script") or {}).get("lines") or []
+             if ln.get("speaker") not in (None, "none")]
+    lines = [ln for ln in lines if ln]
+    if (pack.get("speech") or {}).get("route") == "elevenlabs_lipsync":
+        return lines
+    return [" ".join(lines)] if lines else []
+
+
+def voice_model(pack: dict) -> str:
+    """The text-to-speech model the pack prices its voice with: its voice_credits line's, else the plugin's default."""
+    for line in (pack.get("cost") or {}).get("lines") or []:
+        if line.get("kind") == "voice_credits" and str(line.get("model") or "") in tts_models.MODELS:
+            return str(line["model"])
+    return tts_models.DEFAULT
+
+
+def voice_numbers(pack: dict, model: str | None = None) -> dict:
+    """The voiceover's ready numbers: {characters, credits, model, rate, rule}, the line the pack prices it with."""
+    model = model or voice_model(pack)
+    chars = sum(len(text) for text in voice_text(pack))
+    rate = tts_models.rate(model)
+    return {"characters": chars, "credits": round(chars * rate, 3), "model": model, "rate": rate, "rule": VOICE_RULE}
+
+
+def voice_line(numbers: dict) -> str:
+    """The exact cost line to write for the voice, in words."""
+    return (f"{numbers['characters']} characters × {numbers['rate']:g} = {numbers['credits']:g} credits (kind "
+            f"voice_credits, unit character, model {numbers['model']})")
+
+
 def _speech(run: RunFolder, pack: dict, cfg: dict, out: list[Problem]) -> None:
     """OV7."""
     speech, script = pack["speech"], pack["script"]
@@ -804,10 +862,11 @@ def _cost(run: RunFolder, pack: dict, cfg: dict, today: date, video: set[str], o
             _bad(out, f"{field}.{low[0]}", f"{line['what']}: {', '.join(low)} must be above 0.",
                  "A cost line pays for something: give its price, units and cost, or remove the line.")
             continue
-        if abs(line["cost"] - round(line["unit_price"] * line["units"], 2)) > TOL:
-            _bad(out, f"{field}.cost", f"{line['what']}: {line['unit_price']:g} × {line['units']:g} is "
-                 f"{round(line['unit_price'] * line['units'], 2):g}, not {line['cost']:g}.",
-                 "Write the cost as unit price × units, rounded to the cent.")
+        want = exact(line["unit_price"] * line["units"])
+        if abs(line["cost"] - want) > TOL:
+            _bad(out, f"{field}.cost", f"{line['what']}: {line['unit_price']:g} × {line['units']:g} is {want:g}, not "
+                 f"{line['cost']:g}.", f"Write the cost as unit price × units, to the third decimal: {want:g} (only "
+                 "a total shown to the user is rounded).")
         sums[line["kind"]] += line["cost"]
         if line["kind"] == "ai_usd":
             _priced(run, line, field, today, max_age, out)
@@ -829,14 +888,15 @@ def _cost(run: RunFolder, pack: dict, cfg: dict, today: date, video: set[str], o
     _voice(pack, voice_units, voice_lines, out)
     res = pack.get("resolution") or {}
     chosen = next((o["cost"] for o in res.get("options") or [] if o["id"] == choice), None)
-    made = round(sum(cost for name, cost in priced.items() if items[name][0] != IMAGES_STAGE), 2)
+    made = exact(sum(cost for name, cost in priced.items() if items[name][0] != IMAGES_STAGE))
     if video and chosen is not None and priced and abs(chosen - made) > TOL:
         _bad(out, "resolution.options", f"The chosen option {choice} costs {_usd(chosen)}, and the video lines add up to "
              f"{_usd(made)}.", "Price the takes (and the upscale) at the chosen resolution, and give the option that cost.")
     for kind in kinds:
-        if abs(pack["cost"]["totals"][kind] - round(sums[kind], 2)) > TOL:
+        if abs(pack["cost"]["totals"][kind] - exact(sums[kind])) > TOL:
             _bad(out, f"cost.totals.{kind}", f"The {kind} total is {pack['cost']['totals'][kind]:g}, and the lines add "
-                 f"up to {round(sums[kind], 2):g}.", "Write the totals as the sums of the lines.")
+                 f"up to {exact(sums[kind]):g}.", f"Write the total as the exact sum of the lines, {exact(sums[kind]):g} "
+                 "(not rounded: only the total shown to the user is).")
     budget = config.get(cfg, "budget.per_run_usd")
     total = pack["cost"]["totals"]["ai_usd"]
     if budget is not None and total > budget + TOL:
@@ -943,11 +1003,12 @@ def _voice(pack: dict, units: float, lines: list[int], out: list[Problem]) -> No
     """Voice credits are ElevenLabs characters: the lines said, on an ElevenLabs route only, each line priced at its
     text-to-speech model's credit rate (`tts_models`, #88: v4 is half a credit a character, not one)."""
     route = pack["speech"]["route"]
-    chars = sum(len(text) for text in _said(pack))
+    numbers = voice_numbers(pack, str(pack["cost"]["lines"][lines[0]].get("model")) if lines else None)
+    chars = numbers["characters"]
     if route in organic.ELEVENLABS_ROUTES and chars:
         if abs(units - chars) > TOL:
-            _bad(out, "cost.lines", f"The voice credits price {units:g} characters, and the lines said hold {chars}.",
-                 f"Price {chars} characters of ElevenLabs credits (kind voice_credits).")
+            _bad(out, "cost.lines", f"The voice credits price {units:g} characters, and the text sent to ElevenLabs "
+                 f"holds {chars} ({VOICE_RULE}).", f"Write the voice line as {voice_line(numbers)}.")
         for i in lines:
             line, field = pack["cost"]["lines"][i], f"cost.lines[{i}]"
             model = str(line.get("model"))   # a model the table does not list (an older pack's "elevenlabs" too) is
@@ -955,7 +1016,7 @@ def _voice(pack: dict, units: float, lines: list[int], out: list[Problem]) -> No
             if abs(line["unit_price"] - rate) > TOL or line["unit"] != "character":
                 _bad(out, f"{field}.unit_price", f"{line['what']}: {model} costs {rate:g} credits a character, not "
                      f"{line['unit_price']:g} per {line['unit']}.",
-                     f"Set unit_price to {rate:g} and unit to character, and the cost to {rate:g} × the characters.")
+                     f"Write the voice line as {voice_line(voice_numbers(pack, model))}.")
     elif lines:
         _bad(out, f"cost.lines[{lines[0]}].kind", f"Voice credits are priced, and the route is {route}.",
              "Voice credits are for an ElevenLabs route; remove the line.")
@@ -1221,7 +1282,7 @@ def render_md(pack: dict, lang: str, *, version: str | None = None) -> str:
     if cost:
         lines += ["", "## " + t("h_cost"), f"| {t('step')} | {t('tool')} | {t('h_cost')} |", "|---|---|---|"]
         for line in cost["lines"]:
-            amount = (_usd(line["cost"]) if line["kind"] == "ai_usd" else
+            amount = (_line_usd(line["cost"]) if line["kind"] == "ai_usd" else
                       tr.plural(_M + "credits", f"{line['cost']:g}", n=f"{line['cost']:g}"))
             lines.append(f"| {line['what']} | {line['model']} | {amount} |")
         credits = cost["totals"].get("voice_credits") or 0

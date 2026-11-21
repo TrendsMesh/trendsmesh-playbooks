@@ -529,7 +529,9 @@ and a series continues (brainrot part 2).
    with `date`, `time`) and **at least one reserve** (an idea to swap in). Each idea (slot or reserve)
    has `id` (w1, w2 …, r1 …: letters, digits, `_` and `-`; it names its production run), `title`,
    `format`, `why` (with numbers and their source), `trend` (its name, as the page shows it),
-   `evidence` (a video link), `output` (`video` or `script`), `cost_video` and `cost_script` (USD; a
+   `evidence` (a video link), `output` (`video` or `script`), `seconds` (the video's planned length;
+   needed for AI footage, a talking character and a video in sections), `images` (the pictures it
+   plans; needed for stills with motion graphics, else one first frame per 15 s), `cost_script` (USD; a
    script is $0), `production` (in words), `risk` (low, medium, high), and **the plugin block**
    (`plugin`): `trends` (`[{"id": <trend id>, "pick": [...]}]`, each a saved card of this run),
    `production` (`ai_footage`, `talking_character`, `animation`, `stills_motion` or `sections`),
@@ -539,7 +541,11 @@ and a series continues (brainrot part 2).
    language, the week's dates, the channel and platforms, the slot count and days, one idea per slot,
    every trend resolving to a saved card, a used trend only in a series, the week's budget, a reserve,
    the flexible day, and that every id can name a folder. Exit 2 lists the problems: fix them in the
-   next `_vNN`.
+   next `_vNN`. **Never type a video's cost** (#137): the check prices each idea's `cost_video` itself
+   from the model registry (the ★ model of each task its production type uses × its `seconds` and
+   `images`; an animation is $0) and writes it into the file with `price_source: "model registry"` and
+   `price_checked` (the registry's date), which the week page shows. A typed `cost_video` that differs
+   is replaced, with a `cost_note`; the answer lists each one (`replaced`): say so to the user.
 3. **The week check-in is a stage of the run page** (the plugin's `references/pages.md`, "The run page";
    issue #60). Write the ask with the Write tool, `03_wip/ask_week.json`: `{"checkin": "week", "title":
    "<the week, in the chat language>", "question": "<the check-in's question>", "options": [{"choice":
@@ -769,7 +775,10 @@ prompt carries its look.
    --language <audience language> --use-case social_media --json`, plus the user's own voices:
    `tm tool elevenlabs voices --run R --mine --json` lists the voices on their account (their clones
    and the voices they saved, with previews; free). Each voice is offered with its preview clip
-   saved in the run (each row's `preview_file`), `source: "mine"` for the user's own.
+   saved in the run (each row's `preview_file`), `source: "mine"` for the user's own. **Keep the
+   previews in the run**: the pack check (E2) estimates the picked voice's pace from the channel's
+   earlier recordings of it, else from its preview clip timed on this computer, and names the brisker
+   voices among these when the picked one is too slow for the script (#140).
 3. **Music**, from the whole library: `tm tool music_index --run R --json` (no folder) indexes every
    music folder of the workspace, the channel's own first (the profile's `music.folder`, else
    `library/channels/<channel>/music/`), then the other channels' free-licence (Mixkit) tracks, each
@@ -842,15 +851,21 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
    model, at every level. The models, their groups (budget, suggested, best), the ★ model of each
    task and the variant each sends are the registry's (`../../../data/models/registry.yaml`); only
    price and availability are read live, free (never an account or a paid API):
-   - **today's prices**: `tm models ids --task photos --task image_to_video --task upscale` names
-     the models to price; `tm tool replicate_price --run R <those ids> --json` (Replicate's public
-     model pages) writes the price file in `02_research/models/`, with the date it was read;
-   - `tm organic page models --run R --json` builds `04_final/models_vNN/`: images, video, upscale
-     and voice model, each task's groups with the ★ model ticked, each model with its price for
+   - **today's prices**: `tm models ids --run R --json` names the models to price, only those of the
+     tasks this video uses (#137); `tm tool replicate_price --run R <those ids> --json` (Replicate's
+     public model pages) writes the price file in `02_research/models/`, with the date it was read. An
+     animation, drawn for free, has no Replicate task: no price file is needed;
+   - `tm organic page models --run R --json` builds `04_final/models_vNN/` with only the tasks the
+     recipe's production type uses: an animation its voice; stills with motion graphics their
+     pictures (illustrations, or photos for a photoreal face) and the voice; AI footage and a talking
+     character their first frames, the video, the upscale only when the run upscales
+     (`generation.upscale`, else nothing is upscaled) and the voice only on an ElevenLabs route; a video
+     in sections the union. Each task's groups with the ★ model ticked, each model with its price for
      this video (the engine's: the variant's price from the price file × this video's units, from
-     the checked recipe; `--file <units.json>` with `{"images", "video_seconds", "takes",
+     the checked recipe: the pictures it plans, its seconds, its voiceover's characters as sent to
+     ElevenLabs; `--file <units.json>` with `{"images", "video_seconds", "takes",
      "upscale_seconds"}` overrides them) and its one sentence, `good_for`, and a field for the
-     user's own model; the total at the bottom follows every click. The engine greys out, with the
+     user's own model; the total at the bottom follows every click and holds only these tasks. The engine greys out, with the
      reason, a model Replicate shows no price for today, Seedance when the frame has a photoreal
      face (E005) and a variant with its own sound under a voiceover; a price file older than
      `pricing.max_age_days`, or one missing a model, is refused. When the registry is older than 30
@@ -930,19 +945,37 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
    (one take may serve two sections, as P3's 13 s take served S1 and S3); an insert costs only its
    voiceover's share.
 2. `tm organic pack check --run R --file 03_wip/pack_vNN.json --stage pack --json`. It checks the
-   models, the speech, the resolution, every price against its file and date, the totals against
+   models, the speech, the resolution, every price against its file and date (each line exactly unit
+   price × units to the third decimal, 0.047 × 5 = 0.235, and the totals their exact sums: only a total
+   shown to the user is rounded, #137), the totals against
    the budget (`budget.per_run_usd`; a week's day also against what the week has left), the facts and
    the risk; a pass writes `03_wip/pack_vNN.md` and plans the money. Exit 2 lists the problems (an old
    price file, a total over the budget with the cheaper options named, a take that speaks its lines
    (`h3_native`, or one `h3_narrator` take) planned under `qa.wps_min` words a second over its spoken
    seconds, which the take QA would find slow: add words, or shorten the take to a length the problem
    names, where both pace checks pass): fix them in the next `_vNN`.
+   **The voiceover's ready numbers** (#140): the answer always carries `voice` = `{characters,
+   credits, model, rate, rule}`. The characters are the text ElevenLabs gets (`rule`: the said lines
+   joined by one space, one call a line on the lip-sync route), the same count the Models page showed
+   and `tm organic vo-text` writes; write the voice line from them (a refusal quotes the exact line:
+   "<n> characters × <rate> = <credits> credits (kind voice_credits, unit character, model <model>)").
+   **The voice's pace, before it is paid for** (#140): for an ElevenLabs voiceover the answer's
+   `voice_pace` estimates the picked voice's words a second, free, from the channel's earlier
+   recordings of it (their median), else from its preview clip timed on this computer (a missing
+   timing names the free `tm tool transcribe` command for the clip), and says where the estimate comes
+   from. When it is under the pace the script needs (its words over `script.seconds` less
+   `qa.tail_s`) or under `qa.wps_min`, the answer's message is **a warning to put inside the pack
+   approval** (not a new stop): ask it with the pack, with the three options it names: cut about N
+   words to fit the length; a brisker voice, by name (the channel's history and the D2 voices whose
+   estimate passes); or accept a longer video, about X s instead of Y s. A shorter text or another
+   voice is the next pack version, checked again; a longer video is their yes to this pack, recorded
+   with their words (`tm decide pack approve --said "<their words>"`, which then names the pick).
 3. **Show `pack_vNN.md`** with every price and the date it was checked, the totals, the budget
    left, and **the resolution question**: 768P (720p), 1080p, or 768P with the upscale chosen on
    the Models page, each with its cost for this pack (`checkin-cards.md`).
 4. `tm done E2 --run R`. **The `pack` check-in** ("Approve the generation pack and its cost") comes
    next, at every level (at Just the big calls inside the plan card). On the user's yes: `tm
-   decide pack approve --run R --note "<their words>"`, then approve each planned amount: `tm
+   decide pack approve --run R --said "<their words>"`, then approve each planned amount: `tm
    budget approve ai_usd <the pack's ai_usd total> --run R --json` (0 for an animation, which is
    drawn for free) and, when the pack reads ElevenLabs lines, `tm budget approve voice_credits <its
    voice_credits total> --run R --json`. Nothing is generated or paid before both.
@@ -1041,8 +1074,11 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      anchor and the packshot as `input_images`, with the realism checklist;
    - **a talking character**: the host image, two variants (`images: 2`), `face: true`; the
      approved image is the host the take is made from;
-   - **a narrator**: first the ElevenLabs voiceover, timed: `tm tool elevenlabs tts --run R
-     --voice-id <the picked voice> --text "<the lines>" --timestamps --cost <its credits> --json`
+   - **a narrator**: first the ElevenLabs voiceover, timed. The text is the engine's, never typed:
+     `tm organic vo-text --run R --json` writes it as ElevenLabs gets it (`03_wip/vo_text_vNN.txt`: the
+     said lines joined by one space; one file a line on the lip-sync route) with its characters and
+     credits, the count the pack check priced (#140). Then `tm tool elevenlabs tts --run R --voice-id
+     <the picked voice> --text-file 03_wip/vo_text_vNN.txt --timestamps --cost <its credits> --json`
      writes the line with its word times (`<stem>.words.json`, `.words.srt`, `.phrases.srt`). It
      records with Eleven v4 in the run's market language (`language_code`). **In the voiceover
      text, numbers, dates and percentages are written out as words**, in the case the sentence
@@ -1050,9 +1086,11 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      voice reads digits in a form of its own. On screen (captions, cards) they may stay digits; the
      pack check refuses digits in an ElevenLabs line. **The speech is timed before the takes are
      sized** (real voices run 2.5 to 3.8 words a second): `tm organic vo-sync --run R --words
-     <stem>.words.json --json` (free, reads only) compares the recorded lines with the pack's
+     <stem>.words.json --json` (free) compares the recorded lines with the pack's
      `script.lines[].at`, gives each line's pace against `qa.wps_min`, and says when the voice runs
-     longer than the pack's takes. A line more than about 0.3 s from its planned time gets a
+     longer than the pack's takes, and keeps the voice's pace in the channel's history
+     (`library/channels/<slug>/voice_pace.jsonl`), from which the next pack check estimates it
+     before anything is paid. A line more than about 0.3 s from its planned time gets a
      proposed `at` from the word times: write the new times into the next pack and check it again
      (E2), before any take. When the voice runs longer than the takes, re-plan the pack (E2). A slow
      line gets more words, or is recorded again.
@@ -1213,6 +1251,19 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      (`768P`, or `2K` for 1080p);
    - **Seedance 2.0** (`seedance-2.0.md`) for a person from a description: the person in words, the
      product and a pet as `reference_images`, no photo of a person;
+   - **a refused reference image** (#137): a take that sends the host image or a picked still as a
+     reference (`reference_image_urls`, `reference_images`) may fail with a content refusal (E006,
+     "prohibited content"; nothing is spent, and the record names the refused file as
+     `refused_reference`). Run it **once more exactly as it was** (the same prompt and the same
+     reference): the one free retry. **Never drop the reference on your own**: the guard refuses a take
+     that leaves it out. After a second refusal the guard refuses every take of that item until the
+     user picks, at every level (the check-in "A reference image was refused twice"): ask "Without the
+     reference image, the face in the video will not be the one you approved." and offer: try once
+     more; another model that takes a reference image (the registry's, `tm models list --task
+     image_to_video`), priced first in a new pack version and shown with its cost; or go without the
+     reference image (a first frame instead). Record the pick with their words: `tm decide
+     refused_reference <retry|other_model|no_reference> --run R --said "<their words>" --note "<the
+     refused record, as the guard names it>"`. Each answer covers one more take;
    - **a narrator's take** follows the recorded voice: before it, `tm organic vo-sync --run R
      --words <stem>.words.json --spec 03_wip/<item>_vNN.json --json` compares the prompt's bracket
      cuts with the word times and proposes, for each cut more than about 0.3 s from the line it

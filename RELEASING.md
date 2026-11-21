@@ -60,9 +60,23 @@ Run these in the shell you tag from: the tag goes on exactly the commit that was
    release, `## X.Y.Z`). The scan in step 3 has already read the notes, since they are in `CHANGELOG.md`.
 5. Check by hand what the scan prints under "Check by hand".
 
+## The model registry's prices, at every release
+
+Every paid line is priced from a dated price, and a price older than `pricing.max_age_days` is refused (#137). So
+before the version pull request of every release candidate and release, refresh the dates in
+`plugins/trendsmesh-playbooks/data/models/registry.yaml`, in its own pull request into `dev`:
+
+1. Read each active model's price again where its provider shows it (Replicate's model pages, ElevenLabs' pricing
+   page for the voice, music, sound and Scribe transcription rates). Never an account or a paid call.
+2. A price that is the same keeps its value; set the file's `checked:` and each variant's own `checked` (the
+   ElevenLabs rows, Scribe's included) to the day you read it. A price that changed is a registry change: it goes to
+   the owner's two-weekly review, never into this pull request.
+3. `tm models check` must say the registry is in order, and the engine tests must pass.
+
 ## Release candidate X.Y.Z-rc.N
 
-1. **Version pull request.** On a branch from `dev`, set the version to `X.Y.Z-rc.N` in the four places and commit
+1. **Version pull request.** After the registry's prices are refreshed (the section above), on a branch from
+   `dev`, set the version to `X.Y.Z-rc.N` in the four places and commit
    "Release X.Y.Z-rc.N". The changelog stays under `## Unreleased` until the release, so the pull request carries
    `no-changelog`. Only after the owner's yes, push the branch and open it:
    `gh pr create -B dev --title "Release X.Y.Z-rc.N" --label no-changelog`. Merge it after a counted green, only
@@ -116,7 +130,8 @@ A finding goes into an issue and a fix into `dev`; the next candidate is `X.Y.Z-
 
 ## Release X.Y.Z
 
-1. **Version pull request.** On a branch from `dev`, set the version to `X.Y.Z` in the four places and turn
+1. **Version pull request.** After the registry's prices are refreshed ("The model registry's prices, at every
+   release"), on a branch from `dev`, set the version to `X.Y.Z` in the four places and turn
    `## Unreleased` in `CHANGELOG.md` into `## X.Y.Z`. Commit "Release X.Y.Z". Only after the owner's yes, push the
    branch and open it: `gh pr create -B dev --title "Release X.Y.Z"`. Merge it after a counted green, only after
    the owner's yes, by pushing its head to `dev` (`CONTRIBUTING.md`, "Merging").

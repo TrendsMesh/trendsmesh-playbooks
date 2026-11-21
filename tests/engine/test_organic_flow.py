@@ -40,7 +40,7 @@ TABLE = {  # id: (title, outputs, before, checkins, skip_when, spends, budget), 
     "E1": ("Model and speech route", ["organic_video"], [], [], {}, False, None),
     "E2": ("Generation pack and cost", ["organic_video"], [], ["pack"], {}, False, None),
     "E3": ("Script page", ["script_to_film"], [], ["script"], {}, False, None),
-    "F1": ("First stage: images, character or storyboard", ["organic_video"], [], ["images"],
+    "F1": ("First stage: images, character or storyboard", ["organic_video"], ["refused_reference"], ["images"],
            {"pack": "reject"},
            True, "ai_usd"),
     "F2": ("Second stage: takes, animation or render", ["organic_video"], [], ["video"],
@@ -68,6 +68,7 @@ LEVELS = {  # check-in: (route, card, choices), the plan's "Levels" table
                ("accept", "redo", "drop")),
     "video": ({"every_step": "own", "big_calls": "rule", "hands_off": "rule"}, None,
               ("accept", "redo", "drop", "fails_qa")),
+    "refused_reference": (OWN, None, ("retry", "other_model", "no_reference")),   # #137, asked on demand
     "final_edit": ({"every_step": "own", "big_calls": "own", "hands_off": "rule"}, None,
                    ("accept", "redo", "drop")),
 }

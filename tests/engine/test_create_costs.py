@@ -253,3 +253,23 @@ def test_tm_ad_prices_saves_the_dated_price_file(run, capsys):
     assert saved["music"]["checked"] == music_models.CHECKED and "eleven_v4" in saved["tts"]["models"]
     _ready_for(run, create_plan.PLAN)
     assert _check(run, create_plan.PLAN, _plan_with(_music(price_file=out["file"], checked=out["checked"]))) == []
+
+
+def test_tm_ad_prices_saves_the_transcription_rate_dated_today(run, capsys):
+    """#137 item 7: the Scribe rate (the registry's transcription task) is saved beside music and voice, dated today,
+    so a transcription line priced from that file passes the price-age rule the registry's older date failed."""
+    from datetime import date
+
+    from tm import model_registry, tts_models
+    from tm.cli import main
+    assert main(["ad", "prices", "--run", str(run.path), "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    saved = json.loads((run.path / out["file"]).read_text(encoding="utf-8"))
+    scribe = saved["transcription"]
+    assert scribe["checked"] == date.today().isoformat() == out["checked"]
+    assert (scribe["model"], scribe["credits_per_minute"]) == ("scribe_v3", tts_models.SCRIBE_PER_MINUTE)
+    assert scribe["registry_checked"] == str(model_registry.price("scribe_v3", "default")["checked"])
+    _ready_for(run, create_plan.PLAN)
+    line = _line("transcription", type="transcription", model="scribe_v3", alternative="whisper",
+                 budget="voice_credits", cost=330, price_file=out["file"], checked=out["checked"])
+    assert _check(run, create_plan.PLAN, _plan_with(line)) == []

@@ -690,6 +690,9 @@ def guard(run: RunFolder, args: list[str]) -> str | None:
     if held:
         return held
     s = state.load(run)
+    refused = _refused_reference(run, s, stem, a.spec)    # #137: the approved casting is never dropped unasked
+    if refused:
+        return refused
     made = [r for r in _records(run, stem) if r.get("status") not in FAILED]
     if stem not in videos and "calls" in line and len(made) >= line["calls"]:
         return i18n.t("ad.guard.calls_made", item=a.name, calls=line["calls"], made=len(made))
@@ -741,15 +744,28 @@ def model_label(model: str) -> str:
     return " ".join(w[:1].upper() + w[1:] for w in name.split("-") if w)
 
 
-def _spec_model(run: RunFolder, spec: str | None) -> str | None:
-    """The model a Replicate spec runs, or None when it cannot be read (the tool then refuses it, spending nothing)."""
+def _spec_data(run: RunFolder, spec: str | None) -> dict | None:
+    """A Replicate spec as JSON, or None when it cannot be read (the tool then refuses it, spending nothing)."""
     if not _text(spec):
         return None
     try:
         data = json.loads(run.given(str(spec)).read_text(encoding="utf-8-sig"))
     except (OSError, ValueError):
         return None
-    return data.get("model") if isinstance(data, dict) and _text(data.get("model")) else None
+    return data if isinstance(data, dict) else None
+
+
+def _spec_model(run: RunFolder, spec: str | None) -> str | None:
+    """The model a Replicate spec runs, or None when it cannot be read (the tool then refuses it, spending nothing)."""
+    data = _spec_data(run, spec)
+    return data.get("model") if data and _text(data.get("model")) else None
+
+
+def _refused_reference(run: RunFolder, s: state.RunState, stem: str, spec: str | None) -> str | None:
+    """#137 item 6 (`tm.refused_refs`): after a refused reference image, one identical retry, then the user's pick."""
+    from tm import organic_specs, refused_refs
+    why = refused_refs.gap(organic_specs.records(run, stem), _spec_data(run, spec) or {}, s.decisions, stem)
+    return f"{why} Nothing was run or spent." if why else None
 
 
 def _same_model(given: str, line_model: str, owner: bool) -> bool:
@@ -969,16 +985,22 @@ def costs_text(data: dict) -> str:
 
 
 def prices(run: RunFolder, today: date | None = None) -> tuple[str, str]:
-    """`tm ad prices`: save ElevenLabs' dated price table (music by the second, voice by the character) as
-    02_research/elevenlabs_prices_vNN.json, the price file of a plan's ElevenLabs lines. (its path, today)."""
+    """`tm ad prices`: save ElevenLabs' dated price table (music by the second, voice by the character, transcription
+    by the minute: the registry's Scribe, #137) as 02_research/elevenlabs_prices_vNN.json, the price file of a plan's
+    ElevenLabs lines. (its path, today)."""
     from tm import manifest
     when = (today or date.today()).isoformat()
     target = run.next_version(RESEARCH, "elevenlabs_prices", "json")
+    scribe = model_registry.price(tts_models.SCRIBE_MODEL, "default")
     data = {"checked": when, "music": music_models.table(),
             "tts": {"checked": tts_models.CHECKED, "unit": "credits a character", "default": tts_models.DEFAULT,
                     "models": {m: {"credits_per_char": v.credits_per_char, "source": v.source}
                                for m, v in tts_models.MODELS.items()},
-                    "other_models": tts_models.GENERAL_RATE}}
+                    "other_models": tts_models.GENERAL_RATE},
+            "transcription": {"checked": when, "model": tts_models.SCRIBE_MODEL, "unit": "credits a minute",
+                              "credits_per_minute": tts_models.SCRIBE_PER_MINUTE,
+                              "registry_checked": str(scribe.get("checked")),
+                              "source": "the model registry (data/models/registry.yaml, task transcription)"}}
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     rel = target.relative_to(run.path).as_posix()

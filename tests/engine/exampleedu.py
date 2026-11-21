@@ -229,7 +229,15 @@ def week() -> dict:
     blocks = _json(WEEK_BLOCKS)
     for idea in [*data["slots"], *data["reserves"]]:
         idea["plugin"] = copy.deepcopy(blocks[idea["id"]])
+        idea.update(WEEK_UNITS.get(idea["id"], {}))
     return data
+
+
+# Each video's planned length and pictures, which the agent writes at I2 since #137 (the check prices cost_video from
+# the model registry's ★ models: w2 17 s and 2 frames $1.454, w3 $1.294, w4's 4 cards $0.188, r2 $1.327; the totals
+# above still show as $2.94, $1.48 and $2.81).
+WEEK_UNITS = {"w2": {"seconds": 17, "images": 2}, "w3": {"seconds": 15, "images": 2}, "w4": {"images": 4},
+              "r2": {"seconds": 16, "images": 1}}
 
 
 def save_week_cards(run: RunFolder) -> None:
