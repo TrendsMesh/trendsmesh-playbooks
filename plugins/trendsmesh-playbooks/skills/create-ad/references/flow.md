@@ -293,8 +293,11 @@ page and one in chat count the same. Rules: `rules.md`.
 - Measure the latest edit like a take: `tm tool take_qa --run R 03_wip/edit_vNN.mp4 --lang <market language>
   --script <the board's lines>`, and its layers: `tm tool layer_check --run R 03_wip/edit_vNN.mp4 --layers
   03_wip/edit_layers_vNN.json` finds a caption or an overlay over a face (in the take's own frames, through the
-  window's crop and box), two layers over each other, and a still scaled up. A collision is moved in a new version
-  (S6) before anything is shown: the user never sees it, so the message names no path to the failing version and
+  window's crop and box), two layers over each other, and a still scaled up. A text over a face comes with its fix
+  (`suggestion`: a move that clears the head inside the safe zone, else the next smaller size; a detection covering
+  70 % or more of the frame is no face, listed in `rejected_faces`): run `tm ad text` again with the same files and
+  it takes the fix into the next `edit_text_vNN.json` and says what it moved or shrank; give that file from then on.
+  A collision is moved in a new version (S6) before anything is shown: the user never sees it, so the message names no path to the failing version and
   offers no "rough look" at it, even when the new version can't be made in this session (say what stops it and
   that the run continues from there). Write what was checked next to the version,
   `03_wip/edit_qa_vNN.json`: `{"edit"

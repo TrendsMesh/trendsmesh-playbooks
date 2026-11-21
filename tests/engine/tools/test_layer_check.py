@@ -35,7 +35,7 @@ def ad(tmp_path):
 def one_face(monkeypatch):
     seen = []
 
-    def faces(png):
+    def faces(png, rejected=None):
         seen.append(png)
         return [] if "site_" in str(png) else [FACE]
 
@@ -76,6 +76,49 @@ def test_a_caption_over_the_mouth_is_found_and_a_moved_one_passes(ad, one_face, 
 
 
 @pytest.mark.tools
+def test_a_face_collision_suggests_a_move_that_clears_the_head(ad, one_face, capsys):
+    """Issue #139: the caption over the mouth (the head at y 190-520 of 960) can go down 92 px of this 540 wide edit,
+    184 px at 1080, inside the safe zone; moved by it, it is clear."""
+    over = {"id": "hook", "kind": "overlay", "start": 0.5, "end": 2.0, "box": [90, 440, 360, 70], "fontSize": 62}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, over]))
+    hit = out["collisions"][0]
+    assert hit["suggestion"] == {"offsetY": 184}
+    assert hit["message"].startswith("hook covers a face in creator at 0.55 s")
+    assert hit["message"].endswith(": move it down 184 px, or set its size to 53")
+    moved = {**over, "box": [90, 440 + 184 / 2, 360, 70]}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, moved], 2))
+    assert out["collisions"] == []
+
+
+@pytest.mark.tools
+def test_a_face_collision_with_no_room_suggests_a_smaller_size_never_under_32(ad, one_face, capsys):
+    tall = {"id": "hook", "kind": "overlay", "start": 0.5, "end": 2.0, "box": [90, 140, 360, 620], "fontSize": 62}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, tall]))
+    hit = out["collisions"][0]
+    assert hit["suggestion"] == {"fontSize": 53} and "set its size to 53" in hit["message"]
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, {**tall, "fontSize": 34}], 2))
+    assert out["collisions"][0]["suggestion"] == {"fontSize": 32}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, {**tall, "fontSize": 32}], 3))
+    assert out["collisions"][0]["suggestion"] is None and "move it clear" in out["collisions"][0]["message"]
+
+
+@pytest.mark.tools
+def test_a_detection_covering_almost_the_whole_frame_is_listed_as_rejected_not_a_collision(ad, monkeypatch, capsys):
+    def faces(png, rejected=None):
+        if rejected is not None:
+            rejected.append({"face": [0, 0, 540, 900], "reason": layer_check.cover_fit.NOT_A_FACE})
+        return []
+
+    monkeypatch.setattr(layer_check.cover_fit, "faces", faces)
+    over = {"id": "hook", "kind": "overlay", "start": 0.5, "end": 2.0, "box": [90, 440, 360, 70]}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, over]))
+    assert out["collisions"] == []
+    saved = json.loads((ad.path / out["outputs"][0]).read_text(encoding="utf-8"))
+    assert saved["rejected_faces"][0]["reason"] == "covers almost the whole frame: not a face"
+    assert saved["rejected_faces"][0]["layer"] == "creator" and saved["rejected_faces"][0]["face"] == [0, 0, 540, 900]
+
+
+@pytest.mark.tools
 def test_a_tag_under_the_caption_band_is_found_unless_it_is_on_it_on_purpose(ad, one_face, capsys):
     band = {"id": "captions", "kind": "caption", "start": 0, "end": 4, "box": [60, 720, 420, 90]}
     tag = {"id": "early access", "kind": "overlay", "start": 1, "end": 3, "box": [300, 760, 160, 40]}
@@ -111,8 +154,8 @@ def test_a_window_carries_its_face_and_never_meets_the_captions(ad, one_face, ca
 
 @pytest.mark.tools
 def test_a_capture_drawn_larger_than_its_pixels_is_found(ad, monkeypatch, capsys):
-    monkeypatch.setattr(layer_check.cover_fit, "faces", lambda png: [])
-    small = ad.path / "03_wip" / "site_card_v01.png"
+    monkeypatch.setattr(layer_check.cover_fit, "faces", lambda png, rejected=None: [])
+    small =ad.path / "03_wip" / "site_card_v01.png"
     subprocess.run([ffmpeg(), "-nostdin", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=240x240",
                     "-frames:v", "1", str(small)], check=True)
     card = {"id": "rising card", "kind": "picture", "src": "03_wip/site_card_v01.png", "start": 0, "end": 4,

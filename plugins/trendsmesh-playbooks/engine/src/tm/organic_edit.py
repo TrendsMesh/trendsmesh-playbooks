@@ -636,8 +636,16 @@ def overlay_entries(overlays: list[dict], style: dict, *, total: float) -> list[
             group["place"] = "middle"
         if kind == "end" and style.get("logo") and not given.get("logo"):
             given["logo"] = style["logo"]
-        out.append(caption_entry("overlays", group, str(o.get("text", "")), float(o.get("from") or 0), end,
-                                 look=look, accent=accent, overlay=given or None))
+        if _number(o.get("offsetY")):      # its own move (a face's fix, issue #139), on top of the style's
+            group["offsetY"] = group.get("offsetY", 0) + o["offsetY"]
+        entry = caption_entry("overlays", group, str(o.get("text", "")), float(o.get("from") or 0), end,
+                              look=look, accent=accent, overlay=given or None)
+        if _number(o.get("size")) and 32 <= o["size"] <= 200:   # its own size, px at 1080
+            if isinstance(entry.get("overlay"), dict):
+                entry["overlay"]["size"] = o["size"]
+            else:
+                entry["fontSize"] = o["size"]
+        out.append(entry)
     return out
 
 

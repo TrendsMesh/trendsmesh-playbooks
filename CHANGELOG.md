@@ -9,6 +9,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
   retro ones), the text look shows that set beside the channel's: "The channel's set is outline; for a Hand-drawn
   style, marker fits better." The saved set stays as it is. When the animation draws its own headings, the top
   overlay is off, so it no longer covers them or repeats them; you can turn it back on.
+- **The cover keeps the video's text style.** A cover takes the text style you approved for the video: its set, brand
+  colour and font, so the key word shows in the brand colour (no more `*` around it) and the text gets the set's box
+  or outline instead of white on white.
+- **Spaces between words in outlined text.** In the outline, marker, pop and karaoke overlays the outline no longer
+  swallows the space between words, so "Your ad text" no longer reads as one word.
+- **Create an ad: text over a face comes with its fix.** The edit's layer check now says how to clear a face ("move
+  it down 184 px, or set its size to 53"), and running `tm ad text` again moves or shrinks that text by itself and
+  says what it changed. A "face" that covers almost the whole frame is no longer taken for one.
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of

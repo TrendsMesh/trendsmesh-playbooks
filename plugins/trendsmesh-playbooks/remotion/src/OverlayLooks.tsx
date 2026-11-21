@@ -10,7 +10,8 @@ import { loadFor } from "./fonts";
 export type OverlayKind = "hook" | "label" | "number" | "cta" | "end";
 // `ink`: the text on the accent, dark or white by contrast; `logo`: the brand's logo PNG in the run, on the end card
 // (without one the card shows the brand's name only)
-export type Overlay = { kind: OverlayKind; family: Look; sub?: string; brand?: string; accent?: string; ink?: string; logo?: string };
+// `size`: the size it is drawn at, px at 1080, instead of its kind's (a face's fix, issue #139)
+export type Overlay = { kind: OverlayKind; family: Look; sub?: string; brand?: string; accent?: string; ink?: string; logo?: string; size?: number };
 
 const DARK = "#111111";
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -37,13 +38,19 @@ const parse = (text: string) => {
   });
 };
 
+// The width of the stroke a family draws around its words, of the size (0: none). Half of it lies outside each word,
+// so the gap between two words is widened by it: a stroke of 0.15 × size would otherwise swallow the 0.08 × size
+// margins and run the words together (issue #139).
+const STROKE: Partial<Record<Look, number>> = { outline: 0.15, karaoke: 0.14, pop: 0.13, marker: 0.15 };
+
 // One line of overlay text in the family's look; words animate in one after another where the family does that.
 const Words: React.FC<{ text: string; family: Look; size: number; k: number; accent: string; frame: number; fps: number; onBox?: boolean; ink?: string }> = ({ text, family, size, k, accent, frame, fps, onBox, ink = DARK }) => {
   const words = parse(family === "quiet" ? text.toLowerCase() : family === "pop" ? text.toUpperCase() : text);
+  const gap = (0.08 + (onBox && family === "marker" ? 0 : (STROKE[family] ?? 0)) / 2) * size;
   return (
     <>
       {words.map(({ w, key }, i) => {
-        const s: React.CSSProperties = { display: "inline-block", whiteSpace: "pre", margin: `0 ${0.08 * size}px` };
+        const s: React.CSSProperties = { display: "inline-block", whiteSpace: "pre", margin: `0 ${gap}px` };
         const f = frame - i * (family === "karaoke" ? 4 : family === "pop" ? 2 : 1.5);
         switch (family) {
           case "outline": {
@@ -152,7 +159,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
   const accent = o.accent ?? "#FFD84D";
   const ink = o.ink ?? DARK;
   const fam = o.family;
-  const base = SIZES[o.kind] * (fam === "pop" && o.kind !== "number" ? 1.25 : fam === "quiet" ? 0.85 : 1) * k;
+  const base = (o.size ?? SIZES[o.kind] * (fam === "pop" && o.kind !== "number" ? 1.25 : fam === "quiet" ? 0.85 : 1)) * k;
   const m = motion(fam, frame, fps, durFrames, k);
   const box = boxOf(fam, k, accent, o.kind, ink);
   const onBox = Object.keys(box).length > 0 && fam !== "pop";
@@ -182,7 +189,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
 
   if (fam === "native" && o.kind !== "number") {
     // TikTok's "text with background": white boxes hugging each line, black text, no motion
-    const sizeN = (o.kind === "end" ? 64 : o.kind === "label" ? 44 : o.kind === "cta" ? 50 : 58) * k;
+    const sizeN = (o.size ?? (o.kind === "end" ? 64 : o.kind === "label" ? 44 : o.kind === "cta" ? 50 : 58)) * k;
     const lineBox = (t: string, sz: number, weight = 600) => (
       <div style={{ textAlign: "center", lineHeight: 1.5, fontSize: sz, maxWidth: 700 * k, margin: "0 auto", textWrap: "balance" } as React.CSSProperties}>
         <span style={{ background: "#fff", color: DARK, fontWeight: weight, padding: `${0.14 * sz}px ${0.32 * sz}px`, borderRadius: 0.24 * sz, boxDecorationBreak: "clone", WebkitBoxDecorationBreak: "clone" } as React.CSSProperties}>

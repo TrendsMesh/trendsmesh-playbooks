@@ -139,3 +139,56 @@ def test_overlays_off_leave_the_edits_top_overlays_out_but_keep_the_end_card():
     assert [o["overlay"]["kind"] for o in out] == ["end"]
     style["overlays"]["on"] = "no"
     assert any("overlays.on" in p for p in organic_edit.style_problems(style))
+
+
+# --- 2. the cover takes the run's approved text style ------------------------------------------------
+
+def _approved(monkeypatch, style):
+    from tm.tools import cover_fit
+    monkeypatch.setattr(cover_fit.organic_edit, "approved_style",
+                        lambda run: ("03_wip/text_style_v03.json", "abc", style))
+
+
+def test_a_cover_caption_takes_the_approved_sets_family_accent_ink_and_font(ws, monkeypatch):
+    from tm.tools import cover_fit
+
+    run = _animation(ws, saved=None)
+    style = organic_edit.default_style(caption="", overlay="", look="outline", accent="#FFD84D",
+                                       font={"family": "Brand Sans", "src": "03_wip/text_set/brand.ttf"})
+    _approved(monkeypatch, style)
+    data = {"width": 1080, "height": 1920, "captions": [
+        {"from": 0, "to": 2, "text": "One *habit* fixes mornings", "style": "hook", "place": "top", "fontSize": 72},
+        {"from": 0, "to": 2, "text": "and nobody says it", "style": "caption"}]}
+    out, said = cover_fit.styled(run, data)
+    hook, cap = out["captions"]
+    assert hook["overlay"] == {"kind": "hook", "family": "outline", "accent": "#FFD84D", "ink": "#111111"}
+    assert hook["text"] == "One *habit* fixes mornings"      # the marker stays, parsed by the look, never drawn
+    assert cap["look"] == "outline" and cap["ink"] == "#111111"
+    assert out["brandFont"] == {"family": "Brand Sans", "src": "03_wip/text_set/brand.ttf"}
+    assert "03_wip/text_style_v03.json" in said and data["captions"][0].get("overlay") is None   # a copy
+
+
+def test_what_the_cover_names_itself_is_kept(ws, monkeypatch):
+    from tm.tools import cover_fit
+
+    run = _animation(ws, saved=None)
+    _approved(monkeypatch, organic_edit.default_style(caption="", overlay="", look="outline", accent="#FFD84D"))
+    data = {"captions": [{"from": 0, "to": 2, "text": "Hi", "style": "hook",
+                          "overlay": {"kind": "hook", "family": "pill", "accent": "#22AA88"}}],
+            "brandFont": {"family": "Own", "src": "03_wip/own.ttf"}}
+    out, said = cover_fit.styled(run, data)
+    assert out["captions"][0]["overlay"] == {"kind": "hook", "family": "pill", "accent": "#22AA88", "ink": "#111111"}
+    assert out["brandFont"]["family"] == "Own"
+
+
+def test_without_an_approved_style_the_cover_is_unchanged_and_a_plain_hook_drops_its_stars(ws, monkeypatch):
+    from tm.tools import cover_fit
+
+    run = _animation(ws, saved=None)
+    monkeypatch.setattr(cover_fit.organic_edit, "approved_style", lambda run: None)
+    data = {"captions": [{"from": 0, "to": 2, "text": "One *habit*", "style": "hook"}]}
+    assert cover_fit.styled(run, data) == (data, None)
+    _approved(monkeypatch, organic_edit.default_style(caption="", overlay=""))      # a style with no look
+    out, said = cover_fit.styled(run, data)
+    assert out["captions"][0]["text"] == "One habit" and out["captions"][0]["background"] == "#FFFFFF"
+    assert out["captions"][0]["color"] == "#111111" and said
