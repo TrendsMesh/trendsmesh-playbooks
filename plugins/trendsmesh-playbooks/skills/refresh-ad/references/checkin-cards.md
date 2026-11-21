@@ -58,7 +58,9 @@ the run state; never write or patch its HTML.
 all (one question per member is fine inside the same card), then record **each member** with its
 own choice: `tm decide G1 <ad id> --said "<their words>"`, `tm decide G1a refresh --said "<their words>" --note hook`, `tm decide G1b accept --said "<their words>"
 --note "<segment>"`. Use the card id itself (`tm decide pick_the_ad ... --said "<their words>"`) only when one choice
-fits every member (`tm next` lists the card's `choices` when its members share them). In the
+fits every member (`tm next` lists the card's `choices` when its members share them). The user's
+refresh against the diagnosis is G1a's own answer, never the card's: `tm decide G1a override --stage
+<stage> --said "<their words>"` (`flow.md#a1a`). In the
 spending card, a user who approves one budget and not another gets one decision per member:
 `tm decide G10 reject --said "<their words>"`, then `tm decide approve_spending approve --said "<their words>"` for the rest.
 
@@ -66,7 +68,7 @@ spending card, a user who approves one budget and not another gets one decision 
 |---|---|---|
 | Pick the ad | G1, G1a, G1b | the ranking, the diagnosis and the persona, with your recommendation |
 | Approve the changes | G2, G3, G4 | the direction, the hooks with the change register, the brief (in a middle run, the re-cut direction and its register); the re-cut variants (G3r) are asked on their own at CR3 |
-| Approve the spending | VB, RB, G6, G10 | before any paid step: the voice budget, the re-cut budget (ProPainter and Veo in USD, ElevenLabs Music in credits), the AI generation plan and the live test plan, each priced, with R4's minimum events (run `tm r4` before this card: G10 is refused without a feasible plan) |
+| Approve the spending | VB, RB, G6, G10 | before any paid step: the voice budget, the re-cut budget (ProPainter and Veo in USD, ElevenLabs Music in credits), the AI generation plan and the live test plan, each priced, with R4's minimum events (run `tm r4` before this card: G10 is refused without a feasible plan); after the user's G1a override, first the line that the run goes against the diagnosis (`tm next` gives it), as on every later money question |
 | Approve the launch | G11 | the R8 checklist, the final videos, the amount; asked at every level, Hands-off too |
 | Act on the results | G12 | variant against control, the plan's thresholds, your recommendation |
 
@@ -74,8 +76,8 @@ spending card, a user who approves one budget and not another gets one decision 
 
 | Id | Name | Choices to record | Note |
 |---|---|---|---|
-| G1 | Pick the ad to refresh | the ad id (`none` when nothing is fading) | the ranking file |
-| G1a | Accept the diagnosis | `refresh` or `do_not_refresh` | the target stage and its numbers; a structural weakness (R2b) is offered here as an option, and `tm flow R` is run before recording when the user takes it (`flow.md#a1a`); for a re-cut, every kind of variant on the card carries its level ("level 0, a pure edit, free"), none without one |
+| G1 | Pick the ad to refresh | the ad id (`none` when nothing is fading) | the ranking file; paused ads and near matches (same site, another page: "is it <product>?") marked, the ads of other products listed apart, never offered; when the ranking says `too_little_data`, its line and the question whether to refresh one of them anyway (`flow.md#a1`) |
+| G1a | Accept the diagnosis | `refresh`, `do_not_refresh`, or the user's `override` with `--stage <hook\|middle\|promise_cta\|fatigue>` (never by rule: `tm decide G1a override --stage <stage> --said "<their words>"`, the second option on the card, also when `tm next` offers only `do_not_refresh`) | the target stage and its numbers; after an override, the line "Diagnosis: <what R2 said>. The user decided to refresh <the part>, because: <their words>"; a structural weakness (R2b) is offered here as an option, and `tm flow R` is run before recording when the user takes it (`flow.md#a1a`); for a re-cut, every kind of variant on the card carries its level ("level 0, a pure edit, free"), none without one |
 | G1b | Accept the persona | `accept` | the segment |
 | G2 | Choose the direction of changes | `hook`, `ending`, `new_look` (a supported change only); in a middle run `recut` | the trend ids; in a guess run, what each direction rests on (a winner, an Ad Library ad); in a middle run, "re-cut the middle", the weak step and its seconds, the trends read (`flow.md#a5`) |
 | G3 | Approve the hooks and the change register | `approve` | the hooks kept; in a middle run, the register of the diagnosed causes and the re-cut direction (no hooks; the variants come at G3r) |

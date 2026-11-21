@@ -4,6 +4,32 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Refresh an ad: you can refresh against the diagnosis.** When the diagnosis says "the landing page" (or another
+  cause outside the video) and you know better, tell Claude which part of the ad to refresh (the opening, the middle,
+  the promise or call to action, or image fatigue) and why. Claude records it in your words, the run goes on with
+  that part, and the briefs and the run page show the diagnosis next to your decision, with Meta's numbers unchanged.
+  Every cost and test budget asked after that says the run goes against the diagnosis.
+- **Refresh an ad: the ads that spent are fetched first.** Claude first asks Meta for the ads that spent in the 90
+  days, biggest first, then their weekly numbers. A fetch that came back with only the ads that did not spend now
+  stops with that reason, instead of a message about a missing field.
+- **Refresh an ad: only your product's ads are ranked.** Each ad's link is compared with the product's landing page
+  (the site and the page, never the tracking parameters). Ads of another product are listed apart and never picked;
+  an ad on the same site but another page is shown for you to confirm. Ads without spend in the last 14 days are
+  marked "paused".
+- **Refresh an ad: "too little data" said plainly.** When none of your product's ads has the 30 results a judgement
+  needs, the "Pick the ad" card says so with the best ad's numbers and asks whether to refresh one anyway; on a yes,
+  you choose the part to refresh.
+- **Refresh an ad: the account trend when Meta's account rows have no results.** The trend is then built from the ad
+  rows, and each ad's note says so, instead of being left out with a wrong reason.
+- **Refresh an ad: a diagnosis report when the run ends at the diagnosis.** The run now saves
+  `04_final/diagnosis_report_v01.md`: what was checked, what the data shows, what to fix (for a landing page, what to
+  check on it) and what was spent. The run page is built again with the diagnosis settled and a "Done" stage.
+- **Refresh an ad: the 4:5 version whenever your formats need it.** The edited video's 4:5 version is made right after
+  its render, with or without the live test, and the test reuses it.
+- **Refresh an ad: the original video from any folder.** When the video isn't in your brand folder, give its path or
+  drop the file into the chat; Claude copies it into the run and records where it came from (`tm record
+  --copy-from`).
+
 - **Creative brief: every concept is written up at once.** There is no "Choose the concepts" stop after the concepts
   any more: Claude writes every concept as a full brief, and the first page your team sees has them all. On it,
   each person decides per concept: Approve, Ask for changes (with a note) or Drop. A dropped concept is left out of
