@@ -11,7 +11,22 @@ built by the engine into a versioned local folder, `04_final/<page>_vNN/` (`inde
 The playbook's own command builds it (PB04: `tm research report`; PB02: `tm brief page`, the
 page `brief_pack`). A new build is a new folder;
 `tm page files --run R --page <page> --json` lists the latest folder's files, each `{as, path}`
-(`as` is the path inside the page, `index.html` first; `path` the local file).
+(`as` is the path inside the page, `index.html` first; `path` the local file), and its `summary`
+says what each one is.
+
+**Before publishing, read only `index.html`**: it is this run's page, its words and its data. Never
+read the rest of the folder: the `summary` says what is in it.
+
+- `summary.read`: `index.html`, the one file to read, and its size.
+- `summary.media`: how many of the run's pictures, videos and sounds the engine copied in (each one
+  named in `index.html`).
+- `summary.data`: the run's data the engine wrote beside the page (the trend report's `report.json`,
+  the same numbers `index.html` shows).
+- `summary.fixed`: the files under `assets/static/`, each `"fixed": true` with its `sha256`: the
+  plugin's own stylesheets, page scripts and style catalogue, byte for byte the plugin's, with the
+  plugin version in the name, the same in every run. `tm page files` checks each one against the
+  plugin's copy; one that differs is under `summary.not_fixed`, and the page is built again (the
+  command that built it) before it is published.
 
 ## Which tool publishes
 
@@ -33,7 +48,7 @@ in this session was refused by Claude Code's permissions. A refused publish is a
    run and along the runs it follows (`tm run new --after`). `status: "none"` means never.
 2. **The files:** `tm page files --run R --page <page> --json`. Its `artifact` holds the publish's
    `file_path` (the local `index.html`) and `files` (every other path inside the page -> its local
-   file), passed as they are.
+   file), passed as they are. Read its `index.html` and nothing else in the folder (see Build).
 3. **First publish** (`none`): `Artifact` with that `file_path` and `files`, the `icon` `chart`, a
    one-sentence `description`, and no `url`. Give no `title`: the page's own `<title>`, which the
    engine writes ("Trend report: <category> (<market>)" for a trend report), names the artifact. It creates a new artifact, which starts **private**: only the user

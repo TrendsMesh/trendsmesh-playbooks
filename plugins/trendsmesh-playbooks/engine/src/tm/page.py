@@ -1,6 +1,7 @@
 """Pages: built locally in a versioned folder, published as an artifact when the tool is there.
 
-    tm page files --run RUN --page PAGE [--json]          the latest folder's files, for the Artifact tool
+    tm page files --run RUN --page PAGE [--json]          the latest folder's files, for the Artifact tool, and
+                                                          their summary (read index.html alone: `summary`)
     tm page published --run RUN --page PAGE (--url U | --slug S) --version V [--json]
     tm page link --run RUN --page PAGE [--json]           where the page was last published
     tm page await --run RUN --page PAGE --version V [--clear] [--json]   people decide on the page now
@@ -230,6 +231,53 @@ def files(folder: Path) -> list[dict]:
                          "smaller or fewer and build the page again, or give the local index.html. The run "
                          "continues from the same place.")
     return out
+
+
+MEDIA = frozenset((".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif", ".mp4", ".webm", ".mov", ".m4v",
+                   ".mp3", ".m4a", ".wav", ".ogg", ".aac", ".pdf"))
+STATIC = "assets/static/"           # the plugin's fixed page parts (tm.run_page.static)
+
+
+def summary(listed: list[dict]) -> dict:
+    """What `files`' list holds, so the agent reads only index.html before publishing (issue #129): `read` (index.html
+    and its size), `media` (how many of the run's pictures, videos and sounds, and their bytes), `data` (the run's
+    other files beside the page, such as the report's report.json), `fixed` (the plugin's own parts under
+    assets/static/, each checked against the plugin's copy: `{as, bytes, fixed: true, sha256}`) and `not_fixed` (a
+    file there that is not the plugin's copy)."""
+    out = {"read": None, "media": {"files": 0, "bytes": 0}, "data": [], "fixed": [], "not_fixed": []}
+    for f in listed:
+        size = Path(f["path"]).stat().st_size
+        if f["as"] == "index.html":
+            out["read"] = {"as": "index.html", "bytes": size}
+        elif f["as"].startswith(STATIC):
+            from tm.run_page import static      # here, not at the top: tm.run_page imports this module
+            digest = static.check(f["as"], Path(f["path"]))
+            if digest:
+                out["fixed"].append({"as": f["as"], "bytes": size, "fixed": True, "sha256": digest})
+            else:
+                out["not_fixed"].append({"as": f["as"], "bytes": size})
+        elif Path(f["as"]).suffix.lower() in MEDIA:
+            out["media"]["files"] += 1
+            out["media"]["bytes"] += size
+        else:
+            out["data"].append({"as": f["as"], "bytes": size})
+    return out
+
+
+def summary_text(s: dict) -> str:
+    """`summary` in one line for the text output."""
+    kb = lambda n: f"{n / 1000:.0f} KB" if n >= 1000 else f"{n} bytes"    # noqa: E731
+    parts = [f"Read index.html ({kb(s['read']['bytes'])}) before publishing, and no other file of the folder"]
+    if s["media"]["files"]:
+        parts.append(f"{s['media']['files']} media files ({kb(s['media']['bytes'])}) are the run's, named in it")
+    if s["data"]:
+        parts.append("the run's data beside it: " + ", ".join(d["as"] for d in s["data"]))
+    if s["fixed"]:
+        parts.append(f"{len(s['fixed'])} fixed files are the plugin's own, the same in every run")
+    if s["not_fixed"]:
+        parts.append("not the plugin's copy, so build the page again before publishing it: "
+                     + ", ".join(d["as"] for d in s["not_fixed"]))
+    return "; ".join(parts) + "."
 
 
 def artifact_args(listed: list[dict]) -> dict:
@@ -712,8 +760,10 @@ def _files(args: argparse.Namespace, run: RunFolder) -> int:
     folder = _built(run, args.page)
     listed = files(folder)
     rel = folder.relative_to(run.path).as_posix()
-    cli.emit(args, {"status": "done", "folder": rel, "files": listed, "artifact": artifact_args(listed)},
-             "\n".join([f"{rel}:"] + [f"  {f['as']}  {f['path']}" for f in listed]))
+    told = summary(listed)
+    cli.emit(args, {"status": "done", "folder": rel, "files": listed, "artifact": artifact_args(listed),
+                    "summary": told},
+             "\n".join([f"{rel}:"] + [f"  {f['as']}  {f['path']}" for f in listed] + [summary_text(told)]))
     return 0
 
 
