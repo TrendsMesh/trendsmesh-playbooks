@@ -9,7 +9,7 @@ A page's **data** (the page modules make it from the run's files only, `DATA_DIR
 
     {page, lang, title, lede, run, date, sections: [section], total: {label} | null}
     section = {id, title, hint, kind: one|many|text, options: [option], text: {label, value} | null,
-               note: label | null, lines: [{id, at, text}]}
+               note: label | null, lines: [{id, at, text}], from_chat?: true}
     option  = {id, label, means, default, recommended, badge, media: [{src, caption}], link, cost, cost_text, group,
                disabled}
 
@@ -18,7 +18,8 @@ links); a `one` or `many` section may have a text field too (an answer the optio
 reason an option cannot be chosen for this video: it is shown greyed with the reason, and never taken. `lines` are the
 lines a note can be pinned to (the voiceover's lines, with their times). Each option's `default` is ticked when the
 page opens, so a section the user does not touch keeps it. `cost` (USD) is summed over the ticked options into the
-total at the bottom, recalculated on every change.
+total at the bottom, recalculated on every change. `from_chat` marks a section `prefill` filled with what the user
+already said in chat (issue #135): the page labels it "from the chat", and it stays editable.
 
 **What is saved.** One document per section in the page's db collection (`COLLECTIONS`: the page's name):
 `{section, choice (one: an option id or null; many: a list), text, note, notes: {line id: text}, updated_at}`,
@@ -61,6 +62,7 @@ MAX_TEXT = 4000
 _ID = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
 _C = "organic.choices."
 READ_WITH = "tm organic decisions --run <run> --page {page}"
+FROM_CHAT = "organic.intake.from_chat"             # the label of a section filled from the chat (issue #135)
 JS_WORDS = ("not_saved", "saving", "saved", "save_failed", "connecting", "ready", "storage_unreachable", "done")
 
 
@@ -141,6 +143,52 @@ def problems(data: object) -> list[str]:
     return out
 
 
+def prefill(sections: list[dict], known: object) -> list[dict]:
+    """Fill `sections` with what the user already said in chat (issue #135): `known` is `{section id: {choice | text}}`
+    (the agent writes it from the chat). A text field gets the text as its value, a `one` or `many` section the
+    option(s) ticked as the default, and the section `from_chat: true` (the page marks it; every field stays
+    editable). An unknown section or option, or a choice where only text is typed, is a Stop: nothing is built."""
+    if known is None:
+        return sections
+    if not isinstance(known, dict):
+        raise Stop(f"What was said in chat must be an object {{section id: {{choice | text}}}}, not {known!r}. Write it "
+                   f"again; {AGAIN}.")
+    by_id = {s["id"]: s for s in sections}
+    bad = [f"{sid!r} is not a section of this page ({', '.join(by_id)})" for sid in known if sid not in by_id]
+    for sid, said in known.items():
+        sec = by_id.get(sid)
+        if sec is None:
+            continue
+        if not isinstance(said, dict) or not ({"choice", "text"} & set(said)):
+            bad.append(f"{sid}: give {{\"choice\": ...}} or {{\"text\": ...}}, not {said!r}")
+            continue
+        options = {o["id"] for o in sec.get("options") or []}
+        if "choice" in said and said["choice"] is not None:
+            choice = said["choice"]
+            ids = choice if isinstance(choice, list) else [choice]
+            if not options:
+                bad.append(f"{sid}: only text is typed here, so it takes no choice")
+            elif sec["kind"] == "one" and len(ids) != 1:
+                bad.append(f"{sid}: one option is taken here, and {len(ids)} were given")
+            elif any(not isinstance(c, str) or c not in options for c in ids):
+                bad.append(f"{sid}: {', '.join(map(repr, ids))} is not an option the page offers")
+            else:
+                for o in sec["options"]:
+                    o["default"] = o["id"] in ids
+        if "text" in said and said["text"] is not None:
+            if not sec.get("text") or not isinstance(said["text"], str):
+                bad.append(f"{sid}: the page has no text field here for {said['text']!r}")
+            elif len(said["text"]) > MAX_TEXT:
+                bad.append(f"{sid}: a text over {MAX_TEXT} characters")
+            else:
+                sec["text"] = {**sec["text"], "value": said["text"].strip()}
+        sec["from_chat"] = True
+    if bad:
+        raise Stop(f"What was said in chat cannot fill the page: {'; '.join(bad[:5])}. Nothing was built. Write the "
+                   f"file again with the page's sections and options; {AGAIN}.")
+    return sections
+
+
 def _sources(data: dict) -> list[str]:
     return [m["src"] for sec in data["sections"] for o in sec.get("options") or [] for m in o.get("media") or []]
 
@@ -196,6 +244,7 @@ section.q{min-width:0;background:var(--surface);border:1px solid var(--line);bor
 .opt .media{grid-column:2/4;display:flex;flex-wrap:wrap;gap:8px}.opt .media img,.opt .media video{max-width:min(220px,100%);border-radius:6px;background:#000}
 .opt .media audio{width:min(340px,100%)}.opt a{font-size:13px;color:var(--muted)}
 .badge{font:700 11px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-left:6px}
+.from-chat{display:inline-block;vertical-align:middle;font:600 12px/1 var(--body);color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:4px 8px;margin-left:8px}
 .lines{display:grid;gap:8px;margin:0;padding:0;list-style:none}.lines li{display:grid;gap:4px;border-left:3px solid var(--line);padding-left:10px}
 .lines .at{font:600 12px/1 var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
 label.fld{display:grid;gap:4px;font-size:14px}
@@ -301,7 +350,8 @@ def _option(sec: dict, o: dict, put, tr) -> str:
 
 def _section(sec: dict, put, tr) -> str:
     sid = esc(sec["id"])
-    head = (f'<h2>{esc(sec["title"])}</h2>' if sec.get("title") else "") + (
+    chat = f' <span class="from-chat">{esc(tr(FROM_CHAT))}</span>' if sec.get("from_chat") else ""
+    head = (f'<h2>{esc(sec["title"])}{chat}</h2>' if sec.get("title") else chat) + (
         f'<p class="hint">{esc(sec["hint"])}</p>' if sec.get("hint") else "")
     body = []
     if sec.get("lines"):

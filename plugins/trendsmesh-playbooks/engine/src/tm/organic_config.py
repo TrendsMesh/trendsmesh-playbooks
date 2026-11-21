@@ -62,14 +62,17 @@ DEFAULTS: dict = {
            "take_max_s": 15, "lufs_target": -14, "lufs_asmr": -16, "lufs_usable": [-30, -5],
            "cut_flag_s": 1.0, "upload_max_mb": 15, "preview_crf": 27, "upload_crf": [26, 28]},
     "safe_zone": {"x": [90, 880], "y": [260, 1540], "atlas_text_max_y": 1260},
-    "proposals": {"min": 4, "max": 6},
+    "proposals": {"count": 5},  # the idea count: a default the user changes at the intake, 1 to 12 (issue #135)
     "research": {"cards": 12, "recent_days": 7},
     "animation": {"fps": 30},
 }
 
 # What a config written before `languages` (issue #3) holds: accepted; page_lang is read as the working language.
 # A quality tier (before the model registry, #115: the models are chosen on the Models page) is accepted and unread.
-OLD_KEYS = {"page_lang": None, "page_lang_note": None, "generation": {"quality_tier": None}}
+# The range of proposals (before the idea count, #135) is still read when a config has no proposals.count.
+OLD_KEYS = {"page_lang": None, "page_lang_note": None, "generation": {"quality_tier": None},
+            "proposals": {"min": None, "max": None}}
+MAX_IDEAS = 12  # the most ideas one proposals page holds (issue #135, owner decision)
 
 FIXED = {  # rules, not thresholds: path -> (the fixed value, why another value is refused)
     "generation.provider": ("replicate", "{name} is not supported yet: generation uses Replicate (tracked at "
@@ -112,7 +115,8 @@ NUMBERS = {  # path: (integer?, lowest, highest, lowest allowed?, highest allowe
     "qa.upload_max_mb": _ABOVE0,
     "qa.preview_crf": _CRF,
     "safe_zone.atlas_text_max_y": (True, 0, 1920, True, True),
-    "proposals.min": _COUNT,
+    "proposals.count": (True, 1, MAX_IDEAS, True, True),
+    "proposals.min": _COUNT,   # old keys (OLD_KEYS), checked when a config still has them
     "proposals.max": _COUNT,
     "research.cards": _COUNT,
     "research.recent_days": _COUNT,

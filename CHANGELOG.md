@@ -4,6 +4,24 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Start from any input.** Trend research, Organic AI video and the creative brief start from a product or site
+  link, a store, a description, a product photo or a note about the client, not only a category phrase. Claude
+  reads it, proposes 2 to 5 category and search phrases, and you approve or correct them; the original input is
+  kept with the run. A store keeps the brand as the focus, with one phrase per product line. Competitors and an
+  existing ad as the start are still "not supported yet".
+- **Organic AI video: the start page is filled from the chat.** What you already told Claude (the channel, the
+  bubble, the output, the links, anything else) is on the start page, marked "from the chat", and every field stays
+  editable. Leaving it as it is counts as your answer.
+- **Organic AI video: the idea count is a default.** The start page asks "How many ideas": by default 5, or as
+  many as you need, up to 12; the proposals page holds that many. Runs started before keep their 4 to 6.
+- **Organic AI video: the start page asks for your channel's own style** (for example "paper cut-out collage, flat
+  colour"). It is saved in the channel profile and offered first as "Your channel's style".
+- **Organic AI video: the product in any form, and each role says what it needs.** "The product" takes a link, a
+  photo, a description or a few words. "Not shown" needs nothing; "incidental" and "soft mention" the product's
+  name and what it does; "featured" and "hero" also a product image, taken only from your own photo or product
+  page. Claude drafts the store profile with its catalogue (a SaaS product too) and saves the packshot, so picking
+  a role no longer ends in "Nothing is sold (store is null)"; with nothing usable given, Claude asks once.
+
 - **Pages say their sources in plain words.** The brief page and the run page no longer show trend ids, run file
   names, theme codes such as T02, or a choice's internal name. A brief row's source reads like `TrendsMesh: Rising
   hook "who said _"` or `Meta Ad Library, query "lucid dream", US`; the ids and files behind it sit in a folded

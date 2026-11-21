@@ -283,6 +283,7 @@ strings:
     intake:
       title: Nowy plan wideo
       lede: Kilka pytań przed wyszukiwaniem trendów. Wszystko, czego nie zmienisz, zostaje domyślne.
+      from_chat: z rozmowy
       free: bezpłatnie
       paid: płatne
       channel: Kanał
@@ -297,16 +298,25 @@ strings:
       bubble: Bańka kanału
       bubble_hint: Co kanał nagrywa, o czym, dla kogo i w jakim stylu.
       bubble_label: W kilku zdaniach
+      video_style: Własny styl kanału
+      video_style_hint: "Jeśli filmy mają jeden wygląd, opisz go własnymi słowami, na przykład: kolaż z wycinanek, stare ryciny, płaskie kolory."
+      video_style_label: Styl
+      video_style_none: brak
       links: Co się sprawdziło
       links_hint: 2–3 linki do filmów, które dobrze poszły, albo „jeszcze nic”.
       links_label: Linki
       links_none: jeszcze nic
-      catalogue: Firma i oferta
-      catalogue_hint: Produkty i problemy, które rozwiązują, albo „nic nie sprzedajemy”.
-      catalogue_label: Produkty
+      catalogue: Produkt
+      catalogue_hint: Wystarczy link, zdjęcie, opis albo kilka słów o produkcie. Resztę uzupełni Claude. Albo „nic nie sprzedajemy”.
+      catalogue_label: Produkt (link, opis albo dodaj zdjęcie w czacie)
       catalogue_none: nic nie sprzedajemy
       product_role: Produkt w filmach
-      product_role_hint: Od niewidocznego po bohatera filmu.
+      product_role_hint: Od niewidocznego po bohatera filmu. Przy każdej opcji widać, czego potrzebuje.
+      product_means_not_shown: Niczego nie potrzeba.
+      product_means_incidental: Potrzebna nazwa produktu i to, co robi.
+      product_means_soft_mention: Potrzebna nazwa produktu i to, co robi.
+      product_means_featured: Potrzebna nazwa produktu, to, co robi, i zdjęcie produktu (Twoje zdjęcie albo ze strony produktu).
+      product_means_hero: Potrzebna nazwa produktu, to, co robi, i zdjęcie produktu (Twoje zdjęcie albo ze strony produktu).
       languages: Języki
       languages_hint: Język pracy (strony i czat), potem język odbiorców.
       languages_label: Praca, odbiorcy (kody języków, np. pl, pl)
@@ -315,6 +325,9 @@ strings:
       output_script: Scenariusz do nagrania
       output_video: Gotowe wideo AI
       output_video_means: Płatne; każdy koszt widzisz i zatwierdzasz najpierw.
+      count: Ile pomysłów
+      count_hint: "Domyślnie {n} pomysłów, albo napisz, ile potrzebujesz."
+      count_label: "Pomysły (od 1 do {most})"
       contents: Co ma być w tygodniu
       contents_scripts: Scenariusze do nagrania
       contents_videos: Wideo AI

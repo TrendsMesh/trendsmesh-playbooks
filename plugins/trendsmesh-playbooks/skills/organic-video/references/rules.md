@@ -32,7 +32,7 @@ How to read the copy in the plugin:
 What the engine checks, so you never do it by hand: the channel profile and its confirmation
 (`tm brand check`, `tm brand save --confirmed`: OV1); the shortlist with its anchors, the fit
 scores and sound relevance (`tm trends shortlist`: OV2); the used trends and series (`tm organic used`); the
-proposals (`tm organic proposals check`: 4 to 6, every trend a saved card, Recreate's two picks,
+proposals (`tm organic proposals check`: the idea count, every trend a saved card, Recreate's two picks,
 Inspire's weak link, the nine risk items with mitigations and no percentages, the risk level from
 their weights, the look and an animation's styles, the production types the stack hides, the product level, used trends, never "no trend found": OV2 to OV5); one
 production run per idea, for one channel, once (`tm organic start`: OV1); the script (`tm organic
@@ -54,7 +54,9 @@ organic page`, `tm organic decisions`, `tm page await`: OV12).
 
 ## The numbers (copied from PLAYBOOK.md; the config's defaults)
 
-- C1: 4 to 6 proposals per page (`proposals.min`, `proposals.max`).
+- C1: the idea count, `proposals.count`: by default 5 ideas, or as many as the user needs (1 to 12),
+  asked at the intake as "By default 5 ideas, or tell me how many you need". A config from before
+  it keeps its range (`proposals.min` to `proposals.max`).
 - OV2: four lists, hooks, topics, formats, sounds; search in the audience language and English;
   the evidence of `research.cards` (12) trends, split by the channel type; recent within
   `research.recent_days` (7); a hook or format fits the channel at 3 of 5 or more.

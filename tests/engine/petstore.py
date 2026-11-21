@@ -146,7 +146,8 @@ def build(workspace: Path) -> RunFolder:
     proposals_v01.json."""
     workspace = Path(workspace)
     run = RunFolder.create(workspace, NAME, CREATED, playbook=ORGANIC_VIDEO)
-    config.save(run, {**organic_config.defaults(), "channels": list(KEYS.values()), "page_lang": "en"})
+    config.save(run, {**organic_config.defaults(), "channels": list(KEYS.values()), "page_lang": "en",
+                      "proposals": {"count": 6}})   # six ideas on the page (issue #135)
     brand.save(workspace, STORE, run=run)
     for product, name in PACKSHOTS.items():
         source = run.path / "00_raw" / name

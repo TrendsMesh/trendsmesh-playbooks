@@ -237,7 +237,9 @@ def _check_channel(profile: dict, workspace: Path | None, bad, *, type_required:
     if store is None:
         if role in PRODUCT_ROLES and role != "not_shown":
             bad("product_role", f"Nothing is sold (store is null), so the product cannot be {role}.",
-                "Set product_role to not_shown, or name the store whose catalogue the channel shows.")
+                "Draft the product's store profile (brand/1 with catalog.products, from the link, photo or "
+                "description the user gave; a SaaS product too), save it (tm brand save) and name it in store; "
+                "or set product_role to not_shown.")
     elif not _text(store):
         bad("store", "store must be the name of a saved store profile, or null when nothing is sold.",
             "Name the store, or set it to null.")

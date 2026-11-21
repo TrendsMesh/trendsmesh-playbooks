@@ -202,6 +202,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     pg.add_argument("--working", help="the intake page: the working language shown as the default (a tag, e.g. pl)")
     pg.add_argument("--market", help="the intake page: the market language shown as the default (a tag)")
     pg.add_argument("--week", action="store_true", help="the intake page: a week run's questions")
+    pg.add_argument("--known", help="the intake page: what the user already said in chat, a file in the run "
+                                    "(03_wip/intake_known_vNN.json, {section id: {choice | text}})")
     pg.add_argument("--json", action="store_true")
     dc = sub.add_parser("decisions", help="read the decisions taken on a page (its saved db read, or chat text)")
     dc.add_argument("--run", required=True, help="the run folder")
@@ -642,12 +644,14 @@ def _choice_page(args: argparse.Namespace, run: RunFolder) -> int:
 
     if args.gate:
         raise ValueError("--gate is for the gate page only.")
-    if args.page != "intake" and (args.working or args.market or args.week):
-        raise ValueError("--working, --market and --week are the intake page's.")
+    if args.page != "intake" and (args.working or args.market or args.week or args.known):
+        raise ValueError("--working, --market, --week and --known are the intake page's.")
     if args.page == "intake":
         if args.file:
-            raise ValueError("The intake page is made from its questions: it takes no --file.")
-        got = intake.build(run, working=args.working, market=args.market, week=args.week)
+            raise ValueError("The intake page is made from its questions: it takes no --file. Pass what the user "
+                             "already said in chat with --known 03_wip/intake_known_vNN.json.")
+        got = intake.build(run, working=args.working, market=args.market, week=args.week,
+                           known=_in_run(run, args.known))
     else:
         given = _in_run(run, args.file).relative_to(run.path).as_posix() if args.file else None
         got = (taste if args.page == "taste" else models).build(run, given)
@@ -675,8 +679,8 @@ def _page(args: argparse.Namespace) -> int:
     run = RunFolder.open(Path(args.run))
     if args.page in CHOICE_PAGES:
         return _choice_page(args, run)
-    if args.working or args.market or args.week:
-        raise ValueError("--working, --market and --week are the intake page's.")
+    if args.working or args.market or args.week or args.known:
+        raise ValueError("--working, --market, --week and --known are the intake page's.")
     if args.page in ("gate", "delivery"):
         return _gate_page(args, run)
     if args.gate:
@@ -770,6 +774,23 @@ def _gate_decisions(args: argparse.Namespace, run: RunFolder) -> int:
     return 0
 
 
+def _product_next(profile: dict) -> str:
+    """What A1 does with the product role the intake chose (issue #135): the store profile, and a packshot."""
+    needs = profile.get("product_needs") or []
+    if not needs:
+        return ""
+    role = profile["product_role"]
+    text = (f" The product is {role}: at A1 draft its store profile (brand/1 with catalog.products, a SaaS product "
+            "too) from what the user gave, save it with tm brand save and name it in the channel's store")
+    if "image" in needs:
+        text += ("; then save the product image as its packshot (tm brand packshot), from the user's photo or their "
+                 "own product page only")
+    if not profile.get("catalogue"):
+        text += (". The user gave no product: ask once for a link, a photo or a few words" +
+                 (" (a photo or a link for the image)" if "image" in needs else ""))
+    return text + "."
+
+
 def _choice_decisions(args: argparse.Namespace, run: RunFolder) -> int:
     from tm.organic_pages import intake, models, taste
 
@@ -799,6 +820,7 @@ def _choice_decisions(args: argparse.Namespace, run: RunFolder) -> int:
         if a["currency"] != "USD":
             message += (f" The account currency is {a['currency']}: add fx_rate (1 USD in {a['currency']}, with its "
                         "source) in the answers' next version before writing the config.")
+        message += _product_next(got["profile_answers"])
     else:
         got = taste.take(run, file=file, text=text)
         p = got["picks"]

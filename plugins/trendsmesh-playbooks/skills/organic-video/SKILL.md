@@ -7,8 +7,8 @@ description: "Use when the user wants organic short videos for TikTok, Instagram
 
 Posts what is rising, without filming. For one channel (a brand's faceless channel, a creator or
 an operator) it builds the channel profile once, searches TrendsMesh in the channel's bubble,
-proposes 4 to 6 videos built on rising trends, each with its evidence videos and numbers, on one
-**proposals page**, and turns each idea the user picks into **a script to film** ($0: a script
+proposes video ideas built on rising trends (by default 5 ideas, or as many as the user needs, up to 12),
+each with its evidence videos and numbers, on one **proposals page**, and turns each idea the user picks into **a script to film** ($0: a script
 page with a Markdown download and a posting kit for TikTok, Instagram Reels, YouTube Shorts and
 Facebook Reels) or **a ready AI video** (AI footage, a talking character, an animation in one of the
 plugin's own styles, stills with motion graphics (in the format of the trend's videos) or a video in

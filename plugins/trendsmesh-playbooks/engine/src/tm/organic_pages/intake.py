@@ -1,14 +1,17 @@
 """The intake page (organic video A0, issue #83 point 1): every start question on one page, one option set per
 question with its default ticked, a text field only where something has to be typed, and one Done button.
 
-    page_json(run, *, working, market, week)   the page's data (tm.organic_pages.choices)
+    page_json(run, *, working, market, week, known)   the page's data (tm.organic_pages.choices)
     take(run, *, file, text)                   03_wip/intake_answers_vNN.json and 03_wip/intake_profile_vNN.json
 
-The questions are flow.md A0's: the channel and its platforms, the account type, the bubble, what performed, the
-catalogue and the product role, the two languages, the output, the video's resolution, the budget
-and the currency, the level, the content rules for a sensitive niche; a week run asks the week's own questions in
-place of the output. **A paid output is never the default**: the default is the free script to film, and an AI video
-is chosen only by a click (a week's contents default to scripts).
+The questions are flow.md A0's: the channel and its platforms, the account type, the bubble, the channel's own style
+(`video_style`), what performed, the product (a link, a photo, a description or context) and the product role (each
+role says what it needs), the two languages, the output and the idea count, the video's resolution, the budget and
+the currency, the level, the content rules for a sensitive niche; a week run asks the week's own questions in place
+of the output and the count. **A paid output is never the default**: the default is the free script to film, and an
+AI video is chosen only by a click (a week's contents default to scripts). What the user already said in chat
+(`known`, `tm organic page intake --known 03_wip/intake_known_vNN.json`, issue #135) fills its sections, marked
+"from the chat".
 
 `take` reads the answers (`choices.read`: the page, or the user's words in chat) into two files: the answers in the
 config's shape (`templates/intake_answers_example.json`), which `tm config write --answers` takes as it takes the
@@ -22,7 +25,7 @@ import json
 import re
 from pathlib import Path
 
-from tm import brand, i18n, manifest, organic_pages, organic_proposals
+from tm import brand, cli, i18n, manifest, organic_config, organic_pages, organic_proposals
 from tm.organic_config import WEEKDAYS
 from tm.organic_pages import choices
 from tm.runfolder import RunFolder
@@ -32,6 +35,16 @@ PAGE = "intake"
 ANSWERS = "intake_answers"
 PROFILE = "intake_profile"
 _I = "organic.intake."
+IDEAS = organic_config.DEFAULTS["proposals"]["count"]   # the idea count by default (issue #135)
+# What each product role needs before a video can show it (issue #135; OV5): the product's name and what it does
+# (a store profile with catalog.products), and for featured and hero also a product image (a packshot).
+PRODUCT_NEEDS = {"not shown": [], "incidental": ["name"], "soft mention": ["name"], "featured": ["name", "image"],
+                 "hero": ["name", "image"]}
+PRODUCT_MEANS = {"not shown": "organic.intake.product_means_not_shown",      # each role's words on the page
+                 "incidental": "organic.intake.product_means_incidental",
+                 "soft mention": "organic.intake.product_means_soft_mention",
+                 "featured": "organic.intake.product_means_featured",
+                 "hero": "organic.intake.product_means_hero"}
 PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram", "youtube": "YouTube", "facebook": "Facebook"}
 RESOLUTIONS = {"768p": ("768p", "none"), "1080p": ("1080p", "none"), "768p_pruna": ("768p", "pruna")}
 WEEK_DAYS_DEFAULT = ("mon", "wed", "fri", "sat", "sun")
@@ -41,10 +54,13 @@ def _opt(oid: str, label: str, means: str = "", *, default: bool = False, badge:
     return {"id": oid, "label": label, "means": means, "default": default, **({"badge": badge} if badge else {})}
 
 
-def page_json(run: RunFolder, *, working: str | None = None, market: str | None = None, week: bool = False) -> dict:
+def page_json(run: RunFolder, *, working: str | None = None, market: str | None = None, week: bool = False,
+              known: dict | None = None) -> dict:
     """The intake page's data, in the working language (its table, else English). `working` and `market` are the
     defaults shown (the language you are talking in, and the audience's); `week` asks a week run's questions. The
-    video's models are chosen on their own page, after the idea is picked (issue #86), so no quality tier is asked."""
+    video's models are chosen on their own page, after the idea is picked (issue #86), so no quality tier is asked.
+    `known` is what the user already said in chat (`choices.prefill`, issue #135): those sections are filled and
+    marked "from the chat"."""
     working = i18n.tag(working) or i18n.ENGLISH
     market = i18n.tag(market) or working
     tr = organic_pages.translator(organic_pages.page_lang({"lang": working}).lang)
@@ -60,13 +76,16 @@ def page_json(run: RunFolder, *, working: str | None = None, market: str | None 
                      _opt("business", t("account_business"), t("account_business_means"))]},
         {"id": "bubble", "kind": "text", "title": t("bubble"), "hint": t("bubble_hint"),
          "text": {"label": t("bubble_label"), "value": ""}},
+        {"id": "video_style", "kind": "text", "title": t("video_style"), "hint": t("video_style_hint"),
+         "text": {"label": t("video_style_label"), "value": t("video_style_none")}},
         {"id": "links", "kind": "text", "title": t("links"), "hint": t("links_hint"),
          "text": {"label": t("links_label"), "value": t("links_none")}},
         {"id": "catalogue", "kind": "text", "title": t("catalogue"), "hint": t("catalogue_hint"),
          "text": {"label": t("catalogue_label"), "value": t("catalogue_none")}},
         {"id": "product_role", "kind": "one", "title": t("product_role"), "hint": t("product_role_hint"),
          "options": [_opt(level.replace(" ", "_"), str(organic_pages.value(level, "product", tr)),
-                          default=level == "not shown") for level in organic_proposals.PRODUCT_LEVELS]},
+                          tr(PRODUCT_MEANS[level]), default=level == "not shown")
+                     for level in organic_proposals.PRODUCT_LEVELS]},
         {"id": "languages", "kind": "text", "title": t("languages"), "hint": t("languages_hint"),
          "text": {"label": t("languages_label"), "value": f"{working}, {market}"}},
     ]
@@ -89,10 +108,12 @@ def page_json(run: RunFolder, *, working: str | None = None, market: str | None 
              "text": {"label": t("usd_label"), "value": "5"}},
         ]
     else:
-        sections.append(
+        sections += [
             {"id": "output", "kind": "one", "title": t("output"), "hint": t("output_hint"),
              "options": [_opt("script", t("output_script"), t("free"), default=True),
-                         _opt("ai_video", t("output_video"), t("output_video_means"), badge=t("paid"))]})
+                         _opt("ai_video", t("output_video"), t("output_video_means"), badge=t("paid"))]},
+            {"id": "count", "kind": "text", "title": t("count"), "hint": t("count_hint", n=IDEAS),
+             "text": {"label": t("count_label", most=organic_config.MAX_IDEAS), "value": str(IDEAS)}}]
     sections += [
         {"id": "resolution", "kind": "one", "title": t("resolution"), "hint": t("resolution_hint"),
          "options": [_opt(r, t(f"resolution_{r}"), default=r == "768p") for r in RESOLUTIONS]},
@@ -105,13 +126,33 @@ def page_json(run: RunFolder, *, working: str | None = None, market: str | None 
         {"id": "rules", "kind": "one", "title": t("rules"), "hint": t("rules_hint"),
          "options": [_opt("none", t("rules_none"), default=True), _opt("sensitive", t("rules_sensitive"))]},
     ]
+    choices.prefill(sections, known)
     return {"page": PAGE, "lang": working, "title": t("title"), "lede": t("lede"), "run": choices.run_ref(run),
             "date": choices.today(), "sections": sections, "total": None, "week": week}
 
 
-def build(run: RunFolder, **kw) -> dict:
-    data = page_json(run, **kw)
-    return choices.build(run, data, week=data["week"])
+def read_known(path: Path | None) -> dict | None:
+    """What the user already said in chat, `03_wip/intake_known_vNN.json` (`{section id: {choice | text}}`, issue
+    #135), or None without a file."""
+    if path is None:
+        return None
+    try:
+        return cli.read_json(path)
+    except ValueError as exc:
+        raise Stop(f"{Path(path).name} is not JSON ({exc}). Write what was said in chat again as {{section id: "
+                   f"{{choice | text}}}}; {AGAIN}.") from None
+
+
+def build(run: RunFolder, *, known: Path | None = None, **kw) -> dict:
+    data = page_json(run, known=read_known(known), **kw)
+    return choices.build(run, data, week=data["week"], **({"known": _rel(run, known)} if known else {}))
+
+
+def _rel(run: RunFolder, path: Path) -> str:
+    try:
+        return Path(path).resolve().relative_to(run.path.resolve()).as_posix()
+    except ValueError:
+        return str(path)
 
 
 # --- the answers ---------------------------------------------------------------------------------------------
@@ -138,12 +179,31 @@ def _languages(text: str) -> dict:
     return {"working": working, "market": market}
 
 
+def _count(text: str) -> int:
+    m = re.match(r"^\s*(\d+)\b", text or "")
+    if not m:
+        raise Stop(f"The idea count on the intake page is {text!r}, not a number: how many ideas does the user want "
+                   f"(by default {IDEAS}, at most {organic_config.MAX_IDEAS})? Ask, then read their answer from chat "
+                   f"(--text, a line `count: <n>`); {AGAIN}.")
+    return int(m.group(1))
+
+
+def _none(text: str, none_word: str) -> str | None:
+    """A text answer, or None when it is empty or the page's own "none" word (in the page's language or English)."""
+    value = (text or "").strip()
+    nones = {none_word.casefold(), "none", "nothing sold", "none yet", "-"}
+    return None if not value or value.casefold() in nones else value
+
+
 def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None) -> dict:
     """The intake's answers into `03_wip/intake_answers_vNN.json` (the config's shape, for `tm config write
-    --answers`) and `03_wip/intake_profile_vNN.json` (A1's). Returns both paths and the answers."""
+    --answers`) and `03_wip/intake_profile_vNN.json` (A1's). Returns both paths and the answers. A section filled
+    from the chat (`from_chat`) that the user left as it was counts as answered, never as a kept default."""
     got = choices.read(run, PAGE, file=file, text=text)
     a = got["answers"]
     week = bool(got["data"].get("week"))
+    tr = organic_pages.translator(organic_pages.page_lang(got["data"]).lang)
+    from_chat = {s["id"] for s in got["data"]["sections"] if s.get("from_chat")}
     channels = [c.strip() for c in re.split(r"[,\n]", a["channel"]["text"]) if c.strip()]
     if not channels:
         raise Stop(f"The intake page names no channel. Ask the user for the channel's name, then read their answer "
@@ -166,12 +226,18 @@ def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None) 
                              "flexible_day": a["flexible_day"]["choice"] or "sun",
                              "run_day": a["run_day"]["choice"] or "sun"}
         answers["budget"]["per_week_usd"] = _usd(a["week_budget"]["text"], "week's budget")
+    elif "count" in a:   # a build from before the idea count has none: the config's default holds
+        answers["proposals"] = {"count": _count(a["count"]["text"])}
     role = (a["product_role"]["choice"] or "not_shown").replace("_", " ")
+    style = a.get("video_style") or {"text": ""}   # a build from before the style question has none
     profile = {"channels": channels, "platforms": a["platforms"]["choice"], "account": a["account"]["choice"],
-               "bubble": a["bubble"]["text"], "links": a["links"]["text"], "catalogue": a["catalogue"]["text"],
-               "product_role": role, "content_rules": a["rules"]["choice"] == "sensitive",
+               "bubble": a["bubble"]["text"], "video_style": _none(style["text"], tr(_I + "video_style_none")),
+               "links": a["links"]["text"], "catalogue": _none(a["catalogue"]["text"], tr(_I + "catalogue_none")),
+               "product_role": role, "product_needs": PRODUCT_NEEDS.get(role, []),
+               "content_rules": a["rules"]["choice"] == "sensitive",
                "notes": {k: v["note"] for k, v in a.items() if v["note"]},
-               "defaults_kept": sorted(k for k, v in a.items() if v["default"])}
+               "from_chat": sorted(k for k, v in a.items() if v["default"] and k in from_chat),
+               "defaults_kept": sorted(k for k, v in a.items() if v["default"] and k not in from_chat)}
     answers_rel = _write(run, ANSWERS, answers)
     profile_rel = choices.record(run, PAGE, PROFILE, {"answers_file": answers_rel, "profile": profile}, got)
     return {"answers": answers_rel, "profile": profile_rel, "intake": answers, "profile_answers": profile,
