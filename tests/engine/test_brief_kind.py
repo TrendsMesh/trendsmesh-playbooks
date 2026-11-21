@@ -37,7 +37,7 @@ def test_the_kind_is_never_decided_by_rule(tmp_path):
         decide(run, "brief_kind", "video", by="user", note=None, said="video")
 
 
-@pytest.mark.parametrize("kind, intake", [("ad", "A1")])
+@pytest.mark.parametrize("kind, intake", [("ad", "A1"), ("organic", "O1")])
 def test_after_the_kind_a0_then_its_own_intake(tmp_path, kind, intake):
     run = _new(tmp_path)
     decide(run, "brief_kind", kind, by="user", note=None, said=f"an {kind} one")

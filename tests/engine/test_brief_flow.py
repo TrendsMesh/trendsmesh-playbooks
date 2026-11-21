@@ -32,7 +32,7 @@ TABLE = {  # id: (title, outputs, checkins, requires), the plan's Task 1 and iss
     "E1": ("Production views", ["briefs"], ["G4"], ["concepts_chosen", "production_checked", "page_built"]),
     "E2": ("Hand-off", ALL, [], ["concepts_chosen", "page_built", "handed_off"]),
 }
-ORGANIC_TOO = ("A0",)   # the ad brief's steps the organic video brief shares (issue #136)
+ORGANIC_TOO = ("A0", "D2")   # the ad brief's steps the organic video brief shares (issue #136)
 ANSWER = {"animatics": "skip"}   # what _walk answers where the first choice needs more (make names concepts)
 
 
@@ -179,7 +179,7 @@ def test_guess_flag_must_be_boolean(tmp_path, monkeypatch, bad):
 def test_unknown_required_check_refused_at_load(tmp_path):
     folder = paths.bundled_data() / "creative-brief"
     data = yaml.safe_load((folder / "steps.yaml").read_text(encoding="utf-8"))
-    data["steps"][2]["requires"] = ["audience_picked", "persona_guessed"]
+    next(st for st in data["steps"] if st["id"] == "B1")["requires"] = ["audience_picked", "persona_guessed"]
     steps_path = tmp_path / "steps.yaml"
     steps_path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
     with pytest.raises(ValueError, match="B1") as no:
@@ -278,7 +278,11 @@ def test_every_step_ref_has_its_anchor_in_the_skill():
         assert st.ref.startswith("skills/creative-brief/references/flow.md#"), st.ref
     flow_md = (SKILL / "references" / "flow.md").read_text(encoding="utf-8")
     anchors = re.findall(r'<a id="([a-z0-9]+)"></a>', flow_md)
-    assert anchors == [st.ref.split("#")[1] for st in flow.steps(CREATIVE_BRIEF)]
+    refs = [st.ref.split("#")[1] for st in flow.steps(CREATIVE_BRIEF)]
+    assert len(anchors) == len(set(anchors)) and set(refs) <= set(anchors)
+    # the ad brief's in step order, then the organic video brief's O1 to O8 (O6 is D2's own: issue #136)
+    assert [a for a in anchors if not a.startswith("o")] == [r for r in refs if not r.startswith("o")]
+    assert [a for a in anchors if a.startswith("o")] == [f"o{n}" for n in range(1, 9)]
 
 
 def _tm_commands(text: str) -> list[str]:

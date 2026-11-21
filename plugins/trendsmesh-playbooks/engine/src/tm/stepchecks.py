@@ -38,6 +38,10 @@ NAMES: dict[str, str] = {
     "concepts_chosen": "tm.brief_page:chosen_gap",
     "animatics_rendered": "tm.animatic:rendered_gap",
     "handed_off": "tm.brief:handoff_gap",
+    # the organic video brief (playbook 02, issue #136)
+    "channel_context_written": "tm.brief_organic:channel_gap",
+    "organic_concepts_checked": "tm.brief_checks:organic_concepts_gap",
+    "organic_views_checked": "tm.brief_checks:organic_views_gap",
     # organic video (playbook 03)
     "organic_intake_written": "tm.organic_config:intake_gap",
     "profile_written": "tm.brand:channel_gap",

@@ -113,6 +113,7 @@ brief:
   view_creator: Creator
   view_editor: Editor
   view_media_buyer: Media buyer
+  view_publisher: Publisher
   # the page's header and view bar
   meta_line: "Market: {market}, {language}. Prepared {prepared}. Trend data valid until {valid_until}."
   animatic_label: "{id} animatic"
@@ -186,6 +187,31 @@ brief:
   edit_spec: Edit spec
   test_plan: Test plan
   before_live: Before it goes live
+  # an organic video brief (issue #136): the video, the publisher's posting texts and the posting plan
+  the_video: The video
+  video_topic: Topic
+  video_format: Format
+  video_length: Length
+  video_length_s: "{seconds} s"
+  video_sound: Sound
+  sound_licence: "{sound} (licence: {licence})"
+  posting_on: "Post on {platform}"
+  post_title: Title
+  post_description: Description
+  post_hashtags: Hashtags
+  post_time: When
+  post_sound: Sound
+  posting_plan: Posting plan
+  col_concept: Concept
+  col_platform: Platform
+  col_day: Day
+  col_hour: Time
+  measures: What we measure
+  measure_target: Target
+  metric_views: Views
+  metric_completion_rate: "% watched to the end"
+  metric_saves: Saves
+  metric_shares: Shares
   # a concept's decision box
   decision_on: Your decision on {id}
   approve: Approve

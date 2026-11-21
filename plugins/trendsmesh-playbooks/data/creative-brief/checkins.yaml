@@ -81,3 +81,21 @@ checkins:
     route: {every_step: own, big_calls: card, hands_off: rule}
     rule: "published as is"
     choices: [accept]
+
+  # The organic video brief (issue #136). G0o: the start card (O1), as G0 is A1's intake card. G4o: the three
+  # views (O7), routed as G4; it is also where the concepts are decided (no concept check-in at O5), so it closes
+  # on the recorded choice. The animatics question is the shared one above (D2).
+  - id: G0o
+    name: Confirm the start card
+    card: approve_setup
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "logged: the start card as derived"
+    choices: [accept]
+
+  - id: G4o
+    name: Accept the brief views
+    card: approve_briefs
+    route: {every_step: own, big_calls: card, hands_off: rule}
+    rule: "published as is, every concept kept (`tm brief choose --source rule`)"
+    choices: [accept]
+    on_choice: {accept: {requires: [concepts_chosen]}}

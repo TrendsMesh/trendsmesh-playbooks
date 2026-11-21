@@ -32,7 +32,12 @@ from tm.runfolder import RunFolder
 
 ISSUES = "https://github.com/TrendsMesh/trendsmesh-playbooks/issues"
 CRITERIA = ("brand_fit", "persona_fit", "bridge", "lifecycle", "transfer", "sensitivity", "feasibility")  # CB3
-RECIPIENTS = ("decision", "strategy", "creator", "editor", "media-buyer")  # CB13, the schema's spelling
+RECIPIENTS = ("decision", "strategy", "creator", "editor", "media-buyer", "publisher")  # CB13, the schema's spelling
+AD_RECIPIENTS = ("decision", "strategy", "creator", "editor", "media-buyer")   # an ad brief's five (the default)
+# an organic video brief's (issue #136): no media buyer (nothing is spent), a publisher (the posting texts)
+ORGANIC_RECIPIENTS = ("decision", "creator", "editor", "publisher")
+GOALS = ("reach", "followers", "traffic", "sales")     # organic.goal: what the organic videos are for
+FILMS = ("self", "creator", "team")                   # organic.films: who films them
 TREND_KINDS = ("hook", "topic", "format", "sound")  # CB2
 VOICE_TIERS = ["own_customers", "category", "brand"]  # CB5: tier C never counts
 REVIEW_PACK, PAGE, BRIEFS = "review_pack", "page", "briefs"
@@ -59,7 +64,7 @@ DEFAULTS: dict = {
     "trends": {"kinds": list(TREND_KINDS), "min_relevant": 5, "terms": [], "exclude_terms": []},
     "persona": {"min_results_per_segment": 10},
     "formats": {"placement_share_min": 0.25},
-    "brief": {"kind": AD, "valid_days_default": 14, "recipients": list(RECIPIENTS), "currency": "USD",
+    "brief": {"kind": AD, "valid_days_default": 14, "recipients": list(AD_RECIPIENTS), "currency": "USD",
               "fx_rate": None},
     "scoring": {"weights": {c: 1 for c in CRITERIA}},
     "benchmark": {"source": "meta_ad_library"},
@@ -68,6 +73,9 @@ DEFAULTS: dict = {
     "delivery": {"channel": "artifact"},
     "animatic": {"formats": None, "fps": 24},
     "intake": {"budget": None, "deadline": None, "approver": None, "rights": None, "fee": None},
+    # the organic video brief (issue #136): the channel the videos are for, and their goal and who films them
+    "channel": {"name": None, "platforms": [], "url": None, "description": None, "business": None},
+    "organic": {"goal": None, "films": None},
     "seed": None,
 }
 
@@ -105,7 +113,7 @@ def defaults() -> dict:
 # --- writing ----------------------------------------------------------------------
 
 def _intake_open(s: state.RunState) -> None:
-    if s.step not in (None, "A0", "A1"):  # the intake card is A1's
+    if s.step not in (None, "A0", "A1", "O1"):  # the intake card is A1's (an organic brief's start card O1's)
         raise ValueError("The intake is already done, so the config is not rewritten.")
 
 
@@ -167,6 +175,8 @@ def write_from_intake(run: RunFolder, answers: dict) -> Path:
     kind = (answers.get("brief") or {}).get("kind") if isinstance(answers.get("brief"), dict) else None
     if kind == ORGANIC and "outputs" not in answers:
         answers["outputs"] = list(ORGANIC_OUTPUTS)
+    if kind == ORGANIC and "recipients" not in (answers.get("brief") or {}):
+        answers["brief"] = {**answers["brief"], "recipients": list(ORGANIC_RECIPIENTS)}
     cfg = i18n.settle(config._merge(defaults(), answers))
     cfg["outputs"] = _outputs(cfg.get("outputs"))
     if isinstance(cfg.get("brief"), dict):
@@ -271,13 +281,15 @@ def validate(run: RunFolder) -> list[Problem]:
     _outputs_problems(cfg.get("outputs"), out, kind)
     out += i18n.language_problems(cfg)    # unset: an older config's account.language, else English
     recipients = config._get(cfg, "brief.recipients")
+    views = (*ORGANIC_RECIPIENTS, "strategy") if kind == ORGANIC else AD_RECIPIENTS
     if not (isinstance(recipients, list) and recipients):
         out.append(Problem("brief.recipients", "The page needs at least one view (brief.recipients).",
-                           f"Choose one or more of {', '.join(RECIPIENTS)}."))
-    elif not set(recipients) <= set(RECIPIENTS):
-        unknown = ", ".join(str(r) for r in recipients if r not in RECIPIENTS)
-        out.append(Problem("brief.recipients", f"{unknown} is not a view of the page (CB13).",
-                           f"Choose from {', '.join(RECIPIENTS)}."))
+                           f"Choose one or more of {', '.join(views)}."))
+    elif not set(recipients) <= set(views):
+        unknown = ", ".join(str(r) for r in recipients if r not in views)
+        whose = "an organic video" if kind == ORGANIC else "an ad"
+        out.append(Problem("brief.recipients", f"{unknown} is not a view of {whose} brief's page (CB13).",
+                           f"Choose from {', '.join(views)}."))
     kinds = config._get(cfg, "trends.kinds")
     if not (isinstance(kinds, list) and kinds and set(kinds) <= set(TREND_KINDS)):
         out.append(Problem("trends.kinds", f"trends.kinds must be one or more of {', '.join(TREND_KINDS)}, "
@@ -299,9 +311,13 @@ def validate(run: RunFolder) -> list[Problem]:
                            f"Set brief.fx_rate: how many {account_currency} one {brief_currency} buys "
                            "(for example 3.70)."))
 
+    if kind == ORGANIC:
+        out += _organic_problems(cfg)
     url = config._get(cfg, "product.landing_url")
     link = urlparse(url.strip()) if isinstance(url, str) else None
-    if not (link and link.scheme.lower() in ("http", "https") and link.netloc):
+    if kind == ORGANIC and _blank(url):
+        pass                     # a brand without a link, or a channel that sells nothing (issue #136)
+    elif not (link and link.scheme.lower() in ("http", "https") and link.netloc):
         what = "The landing page is missing." if _blank(url) else f"The landing page must be an http(s) link, not {url!r}."
         out.append(Problem("product.landing_url", what, "Tell Claude the product's landing page link."))
     if _blank(config._get(cfg, "product.category_phrase")):
@@ -340,10 +356,37 @@ def _brand_gap(run: RunFolder, profile: object) -> str | None:
     return None
 
 
+def _organic_problems(cfg: dict) -> list[Problem]:
+    """An organic video brief's own facts (issue #136): the channel (its name, platforms and whether it is a
+    business account, which decides the sounds it may use), the goal and who films."""
+    out = []
+    if _blank(config._get(cfg, "channel.name")):
+        out.append(Problem("channel.name", "The channel's name is missing.",
+                           "Ask the user which channel the videos are for."))
+    platforms = config._get(cfg, "channel.platforms")
+    if not (isinstance(platforms, list) and platforms and all(p in brand.PLATFORMS for p in platforms)
+            and len(set(platforms)) == len(platforms)):
+        out.append(Problem("channel.platforms", f"channel.platforms must be one or more of "
+                           f"{', '.join(brand.PLATFORMS)}, each once, not {platforms!r}.",
+                           "Ask the user where the videos are posted."))
+    if not isinstance(config._get(cfg, "channel.business"), bool):
+        out.append(Problem("channel.business", "Whether the channel is a business account is not set: a business "
+                           "account may use only sounds licensed for business use.",
+                           "Ask the user whether the channel is a business (or brand) account; set true or false."))
+    for path, allowed in (("organic.goal", GOALS), ("organic.films", FILMS)):
+        value = config._get(cfg, path)
+        if value not in allowed:
+            out.append(Problem(path, f"{path} must be one of {', '.join(allowed)}, not {value!r}.",
+                               f"Ask the user and pick one of {', '.join(allowed)}."))
+    return out
+
+
 def intake_gap(run: RunFolder) -> str | None:
     """A1 is done once the config validates, it has the ad account's currency (so CB13's rate check
     cannot be skipped), its brand profile is a saved one that passes the brand check, and the
-    landing page is saved in 00_raw. The gaps, or None."""
+    landing page is saved in 00_raw. An organic video brief's start card (O1) needs the config alone, and a
+    brand profile only when it names one: it reads no ad account, and its product may have no page. The gaps,
+    or None."""
     gaps = []
     problems = validate(run)
     if problems:
@@ -353,6 +396,9 @@ def intake_gap(run: RunFolder) -> str | None:
     except ValueError:
         cfg = {}
     profile = config._get(cfg, "brand.profile")
+    if config._get(cfg, "brief.kind") == ORGANIC:
+        gap = _brand_gap(run, profile) if not _blank(profile) else None
+        return ", and ".join(gaps + ([gap] if gap else [])) or None
     if _blank(config._get(cfg, "account.currency")):
         gaps.append("account.currency holds the ad account's currency (from ads_get_ad_accounts)")
     gap = _brand_gap(run, profile)

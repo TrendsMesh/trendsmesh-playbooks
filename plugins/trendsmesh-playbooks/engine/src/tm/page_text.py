@@ -1,6 +1,6 @@
 """A web page's literal text, saved in the run (`tm page fetch`; page.py adds the parser).
 
-    tm page fetch --run R --url URL --name SHORT [--kind landing|voice] [--found-in ad|pixel|library|user] [--json]
+    tm page fetch --run R --url URL --name SHORT [--kind landing|voice|channel] [--found-in ad|pixel|library|user] [--json]
 
 WebFetch does not give a page's text: a smaller model answers a prompt about the page, so what comes
 back is a summary, which may rephrase, merge sentences or add a claim the page does not make. A quote
@@ -15,7 +15,8 @@ the brief takes from the landing page must be the page's own words (R3), so the 
   animatic step drives), and the rendered DOM is read the same way. No browser, or still nearly empty,
   is a Stop.
 * It is written to `00_raw/<kind>_<name>.txt` (never over a saved one: `_v02`, ...; `landing` at A1,
-  `voice` for a review or discussion page at B2), with a first line naming the URL and the day, and
+  `voice` for a review or discussion page at B2, `channel` for an organic video brief's channel at O2), with a
+  first line naming the URL and the day, and
   recorded in the manifest with the URL, the day, how it was read and, for a landing page, where the
   URL was found (`--found-in`: the ad, the Pixel, the Ad Library, the user).
 
@@ -48,7 +49,7 @@ RENDER_TIMEOUT_S = 90
 RENDER_WAIT_MS = 15000           # the page's own scripts run this long (virtual time) before the DOM is read
 MIN_WORDS = 40                   # fewer: the page is built by JavaScript, so it is rendered
 RAW = "00_raw"
-KINDS = ("landing", "voice")
+KINDS = ("landing", "voice", "channel")   # channel: an organic video brief's channel page (O2, issue #136)
 FOUND_IN = ("ad", "pixel", "library", "user")
 SUMMARY_SUFFIX = ".summary.txt"
 TEXT_SUFFIXES = (".txt", ".md")
@@ -298,7 +299,8 @@ def add_parser(sub: argparse._SubParsersAction) -> None:
     f.add_argument("--url", required=True, help="the page's http(s) link")
     f.add_argument("--name", required=True, help="a short name: the file is 00_raw/<kind>_<name>.txt")
     f.add_argument("--kind", default="landing", choices=KINDS,
-                   help="landing (the product's page, A1; default) or voice (a review or discussion page, B2)")
+                   help="landing (the product's page, A1; default), voice (a review or discussion page, B2) or channel "
+                        "(an organic video brief's channel page, O2)")
     f.add_argument("--found-in", choices=FOUND_IN,
                    help="where the landing link was found: the ad, the Pixel, the Ad Library or the user")
     f.add_argument("--json", action="store_true")

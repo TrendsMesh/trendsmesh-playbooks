@@ -20,6 +20,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
   reads your ad account) or for an organic video on a channel (no ad account needed). For an organic video the
   readiness check no longer asks for Meta Ads, and no Meta tool is called in the run. Runs started earlier are ad
   briefs, as before.
+- **Creative brief: an organic video brief.** For a channel's organic videos, filmed by you, a creator or a team:
+  one start card (the product or brand, the channel and its platforms, whether it is a business account, the goal,
+  who films), the channel's context from its page or your description, a directional persona, the rising trends of
+  the channel's bubble, and three concepts, each with its topic, hook, format, length and sound. A business account
+  is offered only sounds licensed for business use; a personal account gets trending sounds with their licence
+  shown. Animatics on request, as in the ad brief. The page has a creator, an editor and a new publisher view (the
+  post description, hashtags, posting time and sound per platform, held to the platforms' limits) and a posting
+  plan measured by views, % watched to the end, saves and shares. There is no customer-voice step and no Ad
+  Library check.
 - **Creative brief: the creator view checks data, not words.** The creator view is built from the creator fields
   only, so hooks and ad copy are shown as written ("DO NOT show this to your competitors" passes) in every language
   alike. Its check now refuses the run's own account figures (spend, cost per result, results) and the advertisers

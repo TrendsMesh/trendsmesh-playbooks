@@ -92,11 +92,11 @@ AWAITING = ("People are deciding on the page now. A new version would change it 
             "record it with `tm brief choose --source chat` and stop waiting with `tm brief await --run <run> "
             "--clear`. The run continues from the same place.")
 
-ALL_VIEWS = ['decision', 'strategy', 'creator', 'editor', 'media-buyer']
+ALL_VIEWS = ['decision', 'strategy', 'creator', 'editor', 'media-buyer', 'publisher']   # publisher: organic (#136)
 # Every fixed word of the page is a key of the string table (data/i18n/en.yaml, area brief), in the language the
 # page is built in (`render(brief, lang)`; `build` takes the run's working language, `i18n.page_lang`).
 VIEW_KEY = {'decision': 'brief.view_decision', 'strategy': 'brief.view_strategy', 'creator': 'brief.view_creator',
-            'editor': 'brief.view_editor', 'media-buyer': 'brief.view_media_buyer'}
+            'editor': 'brief.view_editor', 'media-buyer': 'brief.view_media_buyer', 'publisher': 'brief.view_publisher'}
 VIEW_LABEL = {view: i18n.english()[key] for view, key in VIEW_KEY.items()}   # the English, as before
 # The views whose phone cards show who a concept is for and its trend line (CB13): every view but the
 # creator's, whose cards show the concept's title and phone note alone (issue #15).
@@ -443,6 +443,7 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
         out.append(f'<div class="role"{v("editor")}><h3>{W(tr, "brief.edit_spec")}</h3>{labeled_dl(c["editor"])}</div>')
     if c.get('media'):
         out.append(f'<div class="role"{v("media-buyer")}><h3>{W(tr, "brief.test_plan")}</h3>{labeled_dl(c["media"])}</div>')
+    out += _organic_html(c, tr)
     if c.get('qa'):
         qa = ''.join(f'<li><label><input type="checkbox"> {E(q)}</label></li>' for q in c['qa'])
         out.append(f'<div{v("strategy", "editor")}><h3>{W(tr, "brief.before_live")}</h3><ul class="qa">{qa}</ul></div>')
@@ -455,6 +456,62 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None):
     <div class="others" aria-live="polite"></div></div>''')
     out.append('</section>')
     return '\n'.join(out)
+
+
+PLATFORM_NAMES = {"tiktok": "TikTok", "instagram": "Instagram Reels", "youtube": "YouTube Shorts",
+                  "facebook": "Facebook Reels"}
+METRIC_KEYS = {"views": "brief.metric_views", "completion_rate": "brief.metric_completion_rate",
+               "saves": "brief.metric_saves", "shares": "brief.metric_shares"}
+
+
+def _organic_html(c: dict, tr: i18n.Translator) -> list[str]:
+    """An organic video brief's concept (issue #136): the video (topic, format, length, sound and its licence), for
+    every view but the decision maker's; the posting texts per platform, the publisher's alone."""
+    out = []
+    org = c.get('organic')
+    if isinstance(org, dict):
+        snd = org.get('sound') or {}
+        sound = W(tr, "brief.sound_licence", sound=E(snd.get("name")), licence=E(snd.get("licence")))
+        rows = [("brief.video_topic", E(org.get("topic"))), ("brief.video_format", E(org.get("format"))),
+                ("brief.video_length", W(tr, "brief.video_length_s", seconds=E(org.get("length_s")))),
+                ("brief.video_sound", sound)]
+        dl = ''.join(f'<dt>{W(tr, k)}</dt><dd>{val}</dd>' for k, val in rows)
+        out.append(f'<div{v("strategy", "creator", "editor", "publisher")}><h3>{W(tr, "brief.the_video")}</h3>'
+                   f'<dl class="copy">{dl}</dl></div>')
+    posting = c.get('posting')
+    if isinstance(posting, dict) and posting:
+        parts = []
+        for name, b in posting.items():
+            if not isinstance(b, dict):
+                continue
+            rows = [("brief.post_title", E(b.get("title")))] if b.get("title") else []
+            rows += [("brief.post_description", E(b.get("description"))),
+                     ("brief.post_hashtags", E(" ".join(str(h) for h in b.get("hashtags") or []))),
+                     ("brief.post_time", E(b.get("post_time"))), ("brief.post_sound", E(b.get("sound")))]
+            dl = ''.join(f'<dt>{W(tr, k)}</dt><dd>{val}</dd>' for k, val in rows)
+            parts.append(f'<h3>{W(tr, "brief.posting_on", platform=E(PLATFORM_NAMES.get(name, name)))}</h3>'
+                         f'<dl class="copy">{dl}</dl>')
+        out.append(f'<div class="role"{v("publisher")}>{"".join(parts)}</div>')
+    return out
+
+
+def _plan_html(plan: object, concepts: list, tr: i18n.Translator) -> str:
+    """The posting plan of an organic video brief: the posts, then the measures with their targets and sources."""
+    if not isinstance(plan, dict):
+        return ''
+    titles = {c.get("id"): c.get("title") for c in concepts if isinstance(c, dict)}
+    heads = ''.join(f'<th>{W(tr, k)}</th>' for k in ("brief.col_concept", "brief.col_platform", "brief.col_day",
+                                                     "brief.col_hour"))
+    posts = ''.join(f'<tr><td>{E(x.get("concept"))} {E(titles.get(x.get("concept")))}</td>'
+                    f'<td>{E(PLATFORM_NAMES.get(x.get("platform"), x.get("platform")))}</td><td>{E(x.get("date"))}</td>'
+                    f'<td>{E(x.get("time"))}</td></tr>' for x in plan.get("posts") or [] if isinstance(x, dict))
+    measures = ''.join(f'<tr><td>{W(tr, METRIC_KEYS[m["name"]]) if m.get("name") in METRIC_KEYS else E(m.get("name"))}'
+                       f'</td><td>{todo_or(m.get("target"), tr)}</td><td class="src">{E(m.get("source"))}</td></tr>'
+                       for m in plan.get("metrics") or [] if isinstance(m, dict))
+    return (f'<section id="plan"{v("decision", "strategy", "publisher")}><h2>{W(tr, "brief.posting_plan")}</h2>'
+            f'<div class="table-scroll"><table><tr>{heads}</tr>{posts}</table></div>'
+            f'<h3>{W(tr, "brief.measures")}</h3><table><tr><th></th><th>{W(tr, "brief.measure_target")}</th><th></th>'
+            f'</tr>{measures}</table></section>')
 
 
 def _pdf_buttons(pdfs: dict[str, str], views: list[str], tr: i18n.Translator | None = None) -> str:
@@ -522,6 +579,8 @@ def body_html(p, pdfs=None, stills=None, tr: i18n.Translator | None = None):
     n = len(p['concepts'])
     for i, c in enumerate(p['concepts'], 1):
         out.append(concept_html(c, i, n, stills, tr))
+    if p.get('plan'):                       # an organic video brief's (issue #136)
+        out.append(_plan_html(p['plan'], p['concepts'], tr))
     out.append(f'<footer><p{v("decision", "strategy", "media-buyer")}>{E(m.get("sources_note"))}</p><p>{E(m.get("animatic_note"))}</p></footer></main>')
     nav = ''.join(f'<a href="#{E(c["id"].lower())}" data-jump="{E(c["id"].lower())}">{E(c["id"])} {E(c["title"][:28])}</a>' for c in p['concepts'])
     tally = ''.join(f'<li>{W(tr, "brief.tally_none", id=E(c["id"]))}</li>' for c in p['concepts'])

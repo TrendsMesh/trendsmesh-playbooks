@@ -218,3 +218,26 @@ Every refresh includes a decision on the **primary text, headline and thumbnail 
 B1's placement read, and `tm audience pick` gives the formats; R7 means every brief writes its
 primary text, headline and thumbnail (`ad_copy.primary`, `ad_copy.headline`, `plugin.thumbnail`),
 which `tm brief check --stage brief` requires.
+
+## Organic brief (the organic video brief, `flow.md#o1` to `#o8`; issue #136)
+
+A brief for a channel's organic videos, checked by `tm brief check --stage organic_concepts` (O5) and
+`--stage organic_views` (O7).
+
+- **Apply:** CB2 (the best-fitting rising trends, the trend row first; "Hook (agent's guess)" in a
+  guess run), CB6 (every two concepts differ on at least two axes), CB7 (the hook reproduces its
+  evidence videos), CB8 (clips with their as-of date, a valid-until date), CB9 (a sound's licence;
+  **a business account takes only sounds licensed for business use, a personal account may take a
+  trending sound, its licence shown**), CB10 (one brief.json, a key message and a one-sentence
+  hypothesis per concept), CB12 (one shareable page with the decisions) and R3 (every number has its
+  source; a measure with no channel data is "to set", and says why).
+- **Do not apply:** CB1's account read (the persona is the hypothesis from the channel's
+  description, directional: `tm audience pick --no-data`), CB4 (no Ad Library check), CB5 (no
+  customer-voice step and no customer phrases), and CB13's media-buyer view and money in USD: an
+  organic brief spends nothing, so it has no media buyer and no fx note.
+- **The views:** creator (what to film, the lines, the shots and takes, the props), editor (the rows
+  "Length", "Captions", "Formats", "Versions", "Files"), publisher (per platform: the post description,
+  hashtags, posting time and sound, held to `data/organic-video/platform_rules.yaml` as a posting kit
+  is) and the posting plan (which concept on which platform, the day and time; views, % watched to the
+  end, saves and shares).
+- **R6:** 9:16 for every short-video platform.

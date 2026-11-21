@@ -1,4 +1,4 @@
-# Animatics: an animated storyboard of a brief, on request (shared: PB02; later PB03)
+# Animatics: an animated storyboard of a brief, on request (shared: PB02, the ad and the organic video brief; later PB03)
 
 An animatic is offered after the briefs and made only for the concepts the user names (CB11, the
 `animatics` check-in before D2): a pencil storyboard of the ad's structure (the shots, the
