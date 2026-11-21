@@ -51,20 +51,52 @@ def _next(args: argparse.Namespace) -> int:
     return STOP if nxt.action == "stop" else 0
 
 
+SAID_NEEDED = "A decision by the user needs --said with their own words from the chat."
+
+
 def _setup_decide(p: argparse.ArgumentParser) -> None:
     p.add_argument("checkin", help="a check-in id (G3) or a card id (pick_the_ad)")
     p.add_argument("choice")
-    p.add_argument("--note")
+    p.add_argument("--note", help="context: the data behind a rule's decision, or what the answer rests on")
+    p.add_argument("--said", help="the user's own words from the chat, verbatim (needed with --by user)")
+    p.add_argument("--said-file", metavar="PATH", help="the user's own words in a UTF-8 file (a BOM is fine), when "
+                                                       "quotes or line breaks would not survive the command line")
     p.add_argument("--by", choices=("user", "rule"), default="user")
     p.add_argument("--change", action="store_true", help="change a decision already taken")
     _with_run(p)
 
 
+def _said(args: argparse.Namespace, run: RunFolder) -> str | None:
+    """The user's words for a decision by the user (issue #125): `--said`, or `--said-file` read as UTF-8 (BOM
+    accepted, the file's last line break dropped), kept verbatim. Required with --by user, refused with --by rule.
+    Page decisions (`tm page decision --record`) call `flow.decide` with their own record and need none."""
+    if args.said is not None and args.said_file is not None:
+        raise ValueError("Give the user's words once: --said or --said-file, not both.")
+    if args.by == "rule":
+        if args.said is not None or args.said_file is not None:
+            raise ValueError("--said holds the user's own words; a decision by rule has none: put the data behind "
+                             "it in --note.")
+        return None
+    said = args.said
+    if args.said_file is not None:
+        path = run.given(args.said_file)
+        try:
+            said = path.read_text(encoding="utf-8-sig").removesuffix("\n").removesuffix("\r")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise ValueError(f"Could not read --said-file {path}: {exc}. Give the user's words in a UTF-8 text "
+                             "file, or with --said.") from None
+    if said is None or not said.strip():
+        raise ValueError(f"{SAID_NEEDED} Pass them with --said \"<their words>\", or --said-file <path> for long words "
+                         "(UTF-8). A decision Claude takes by the check-in's rule is --by rule --note <the data>.")
+    return said
+
+
 @_guard
 def _decide(args: argparse.Namespace) -> int:
     run = _open(args)
+    said = _said(args, run)
     before = len(state.load(run).decisions)
-    flow.decide(run, args.checkin, args.choice, by=args.by, note=args.note, change=args.change)
+    flow.decide(run, args.checkin, args.choice, by=args.by, note=args.note, change=args.change, said=said)
     s = state.load(run)
     payload = {"status": "done", "checkin": args.checkin, "choice": args.choice,
                "run_status": s.status}

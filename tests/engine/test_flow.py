@@ -409,7 +409,7 @@ def test_decide_does_not_repeat_an_unrelated_stop(run, capsys):
     _finish(run, "A1")
     flow.stop(run, "sign_in", "Meta needs you to sign in again.", "Sign in, then tell Claude.")
     capsys.readouterr()
-    assert _cli(run, "decide", "G1", "ad_1") == 0
+    assert _cli(run, "decide", "G1", "ad_1", "--said", "the first one") == 0
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "done" and "sign in" not in json.dumps(out).lower()
 
@@ -420,7 +420,7 @@ def test_redeciding_needs_change_and_is_recorded(run):
     decide(run, "G1", "ad_1", by="user", note=None)
     with pytest.raises(ValueError, match="--change"):
         decide(run, "G1", "ad_2", by="user", note=None)
-    assert _cli(run, "decide", "G1", "ad_2", "--change") == 0
+    assert _cli(run, "decide", "G1", "ad_2", "--change", "--said", "no, the second") == 0
     last = state.load(run).decisions[-1]
     assert last["choice"] == "ad_2" and last["change"] is True
 
@@ -447,15 +447,15 @@ def test_card_decision_records_one_entry_per_member(run):
     set_level(run, "big_calls")
     next_at(run, "A3b")
     complete(run, "A3b")
-    assert _cli(run, "decide", "pick_the_ad", "ad_123", "--note", "recommended") == 0
+    assert _cli(run, "decide", "pick_the_ad", "ad_123", "--note", "recommended", "--said", "ok") == 0
     entries = state.load(run).decisions
     assert [d["checkin"] for d in entries] == ["G1", "G1a", "G1b"]
     assert all(d["choice"] == "ad_123" and d["by"] == "user" and d["note"] == "recommended"
                for d in entries)
     assert "rule" not in entries[0]
     assert flow.next(run).step == "A4"
-    assert _cli(run, "decide", "pick_the_ad", "ad_9") == 1
-    assert _cli(run, "decide", "pick_the_ad", "ad_9", "--change") == 0
+    assert _cli(run, "decide", "pick_the_ad", "ad_9", "--said", "ad 9") == 1
+    assert _cli(run, "decide", "pick_the_ad", "ad_9", "--change", "--said", "ad 9") == 0
 
 
 def test_changes_card_at_b2(run):
@@ -1276,7 +1276,7 @@ def test_second_playbook_walks_its_own_steps(tmp_path, playbook_two):
     complete(run, "P1")
     nxt = flow.next(run)
     assert (nxt.step, nxt.action, nxt.checkin.ids) == ("P1", "ask", ["Q1"])
-    assert _cli(run, "decide", "Q1", "yes") == 0
+    assert _cli(run, "decide", "Q1", "yes", "--said", "yes") == 0
     nxt = flow.next(run)
     assert (nxt.step, nxt.action, nxt.checkin) == ("P2", "work", None)
     complete(run, "P2")
@@ -1330,3 +1330,61 @@ def test_budget_approve_is_refused_for_other_playbooks(tmp_path, playbook_two, c
 
 def test_refresh_ad_run_is_pb01():
     assert flow._pb01(state.RunState(run_id="x", playbook="01-refresh-ad", created="2026-11-07"))
+
+
+# --- the user's own words (issue #125) ----------------------------------------
+
+SAID_NEEDED = "A decision by the user needs --said with their own words from the chat."
+
+
+def test_a_users_decision_needs_their_words(run, capsys):
+    """Issue #125: `tm decide --by user` (the default) records the user's own words, verbatim, as `said`."""
+    set_level(run, "every_step")
+    _finish(run, "A1")
+    capsys.readouterr()
+    for extra in ([], ["--by", "user"], ["--said", "  "], ["--said", ""]):
+        assert _cli(run, "decide", "G1", "ad_1", *extra) == 1, extra
+        assert json.loads(capsys.readouterr().out)["message"].startswith(SAID_NEEDED)
+    assert not state.load(run).decisions
+    assert _cli(run, "decide", "G1", "ad_1", "--said", "yes, go with version 2 \"the blue one\"") == 0
+    last = state.load(run).decisions[-1]
+    assert last["said"] == "yes, go with version 2 \"the blue one\"" and last["by"] == "user"
+    assert list(last)[:4] == ["checkin", "choice", "by", "said"]
+
+
+def test_said_file_is_read_as_utf8_with_or_without_a_bom(run, tmp_path, capsys):
+    set_level(run, "every_step")
+    _finish(run, "A1")
+    words = tmp_path / "said.txt"
+    words.write_bytes("﻿tak, wersja druga – „ta niebieska”\n".encode("utf-8"))
+    assert _cli(run, "decide", "G1", "ad_1", "--said-file", str(words)) == 0
+    assert state.load(run).decisions[-1]["said"] == "tak, wersja druga – „ta niebieska”"
+    words.write_text("ok\nsecond line", encoding="utf-8")
+    assert _cli(run, "decide", "G1", "ad_2", "--change", "--said-file", str(words)) == 0
+    assert state.load(run).decisions[-1]["said"] == "ok\nsecond line"
+    capsys.readouterr()
+    assert _cli(run, "decide", "G1", "ad_1", "--change", "--said-file", str(tmp_path / "none.txt")) == 1
+    assert "--said-file" in json.loads(capsys.readouterr().out)["message"]
+    assert _cli(run, "decide", "G1", "ad_1", "--change", "--said", "a", "--said-file", str(words)) == 1
+    empty = tmp_path / "empty.txt"
+    empty.write_bytes(b"\xef\xbb\xbf \n")
+    capsys.readouterr()
+    assert _cli(run, "decide", "G1", "ad_1", "--change", "--said-file", str(empty)) == 1
+    assert json.loads(capsys.readouterr().out)["message"].startswith(SAID_NEEDED)
+
+
+def test_a_rule_decision_takes_no_said(run, capsys):
+    capsys.readouterr()
+    assert _cli(run, "decide", "G1", "ad_1", "--by", "rule", "--note", "#1", "--said", "yes") == 1
+    assert "--said" in json.loads(capsys.readouterr().out)["message"]
+
+
+def test_python_callers_and_page_decisions_need_no_said(run):
+    """The requirement is the command line's (flowcmd): `flow.decide` itself, and the page's decisions
+    (`tm page decision --record`), keep their own record."""
+    set_level(run, "every_step")
+    _finish(run, "A1")
+    decide(run, "G1", "ad_1", by="user", note=None)
+    assert "said" not in state.load(run).decisions[-1]
+    decide(run, "G1", "ad_2", by="user", note=None, change=True, said="the second")
+    assert state.load(run).decisions[-1]["said"] == "the second"

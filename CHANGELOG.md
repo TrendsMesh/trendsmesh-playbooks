@@ -77,6 +77,13 @@ What changed in each version of the TrendsMesh playbooks plugin.
   now names the plugin version next to the engine's.
 - **The doctor says which Meta ad account it checked,** by its currency and the number of accounts ("EUR; 1 of 2
   accounts checked"), on the card and in the report; never an account name or id.
+- **When Claude Code's permissions refuse a step, the playbook stops and tells you.** A decision, a spending approval,
+  a paid call or a page publish that auto mode (or a deny rule) blocks is no longer reworded, retried another way or
+  quietly replaced by a local page: the run stops with what was blocked and why, says nothing was saved, spent or
+  published, and gives the rule to add to your settings (for example `Bash(tm decide *)` or `Artifact`). Say "done"
+  and it goes on from the same step. The readiness check can show shared pages as refused, with the same step.
+- **A decision you make in chat keeps your own words.** `tm decide` records them as you said them (`--said`, or
+  `--said-file` for long ones), next to your choice; decisions made on a page keep their own record.
 
 ## 0.13.1
 

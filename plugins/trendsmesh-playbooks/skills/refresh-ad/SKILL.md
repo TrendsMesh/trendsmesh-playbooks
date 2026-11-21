@@ -70,6 +70,11 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    individuals and companies of up to 3 people; a company of 4 or more needs its own Remotion
    licence to render on its machines.
 
+**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
+later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
+and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
+with `tm`, so an allow rule can match it.
+
 ## 2. Intake (step A0), one batch of questions
 
 `tm run new --name <product or short label> --json` gives the run folder (the ad is not
@@ -121,7 +126,7 @@ new run only. Before you do, plan or describe a step's work, read its section in
 | action | what you do |
 |---|---|
 | `work` | Read the step's section in `references/flow.md` (`ref`). Do the work. Record every file you create yourself with `tm record` (tools record theirs; section 5). Then `tm done <step> --run R`. |
-| `ask` | Put the check-in on the run page and show it as a question card (`references/checkin-cards.md`, "The run page"), wait for the answer, then `tm decide <id> <choice> --run R [--note ...]` (a choice clicked on the page: `tm page decision --run R <id> --record`). |
+| `ask` | Put the check-in on the run page and show it as a question card (`references/checkin-cards.md`, "The run page"), wait for the answer, then `tm decide <id> <choice> --said "<their words>" --run R [--note ...]` (`--said`: the user's own words from the chat, verbatim, or `--said-file <path>` for long ones; `--note` is context) (a choice clicked on the page: `tm page decision --run R <id> --record`). |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do and that the run continues from the same place. **Then wait.** Do nothing else in the run until they say it is done. |
 | `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). When it offers the move of the winning ad, ask that one question; when the ad was moved, end the report with the user's part, step by step (`tm live-test move report`, `flow.md#e4`). |
@@ -155,7 +160,7 @@ new run only. Before you do, plan or describe a step's work, read its section in
   (the steps are linear; except a re-cut's CR5a and CR5b: section 5). Say so plainly and offer
   to set the budget (`tm budget approve`).
 - The user may change the level at any time: `tm level <every_step|big_calls|hands_off> --run R`.
-- To change a decision already taken: `tm decide <id> <choice> --change --run R`.
+- To change a decision already taken: `tm decide <id> <choice> --said "<their words>" --change --run R`.
 - A run spans days and sessions: everything lives in the run folder. On a new session,
   `tm next` picks up exactly where it was. `tm due --json` lists measurements that are due.
 
@@ -293,6 +298,7 @@ voice line is regenerated to length first, and checked against the original.
 
 | Thought | Reality |
 |---|---|
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
 | "The user is in a hurry, skip this step / check" | Steps and check-ins come from `tm`. Make the step quick; never skip it. Saturation is always the Meta Ad Library. |
 | "Any ad will do" | The ad comes from the R1 ranking. |
 | "The user remembers the number" | Use the number from the run's data with its source, or leave it out (R3). |

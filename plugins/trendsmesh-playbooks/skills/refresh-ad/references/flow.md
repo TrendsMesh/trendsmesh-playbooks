@@ -105,8 +105,8 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
    rise, p-value, account trend, value to recover, fatigue signals CTR, ThruPlay, frequency),
    then the stable ones, then "not enough data" (never ranked). Every figure from the ranking
    file. The choice is the ad id. Hands-off: #1 by rule.
-7. No ad is fading: say so plainly with the ranking, record `tm decide G1 none --note "<ranking
-   file>: no fading ad"` (at Just the big calls skip this: G1 belongs to the "Pick the ad" card,
+7. No ad is fading: say so plainly with the ranking, record `tm decide G1 none --said "<the user's words this rests on>" --note "<ranking
+   file>: no fading ad"` (Hands-off: `--by rule` in place of `--said`; at Just the big calls skip this: G1 belongs to the "Pick the ad" card,
    which never comes, and the engine refuses it at A1), `tm done A1`, then at A1a `tm decide G1a
    do_not_refresh --by rule --note "no fading winner"`: the run ends with no spend.
 
@@ -301,8 +301,8 @@ Read `rules.md` first. The fetch must fit your context (`meta-mcp.md` has the to
 - **A middle run** (`diagnosis.target_stage` is `middle`): A5 and A6 still run, as above. The
   trends feed CR2's cause "a faded trend in the middle" and any idea for a new shot or a proof
   insert; A6 checks those candidates the same way. There are no hook candidates. The direction
-  (G2) is the re-cut: record `tm decide G2 recut --run R --note "re-cut the middle: <the weak
-  step and its seconds>; trends read: <ids, or none>"` (Hands-off: the same, `--by rule`). The
+  (G2) is the re-cut: record `tm decide G2 recut --said "<their words>" --run R --note "re-cut the middle: <the weak
+  step and its seconds>; trends read: <ids, or none>"` (Hands-off: the same with `--by rule` in place of `--said`). The
   variants themselves are chosen later, at CR3.
 
 <a id="a6"></a>
@@ -440,7 +440,7 @@ Path C-R (`FLOWS.md`), for a fading middle or a segment weak by design. Read `re
   sources, and check it with `tm register check --run R --file <it>`.
 - "Choose the re-cut variants" (G3r), asked on its own at Check every step and Just the big calls:
   one card per variant with the change, the cause it removes, the level and the cost; the weak
-  segment's frames on the run page. Record `tm decide G3r approve --note "<the variants kept,
+  segment's frames on the run page. Record `tm decide G3r approve --said "<their words>" --note "<the variants kept,
   each with its change id and level>"`. Hands-off: the variants for the causes marked "yes", L0 to
   L2 first (by rule; L3 to L5 only within `recut.max_level`), and never a `recut_new_vo_line`
   variant: flow V's voice match (V1c) needs a person, so that variant waits, flow V stays off, and
@@ -667,7 +667,7 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - "Approve each re-cut variant (listen to it)" (G5r): before and after, timecoded; for each
   variant one question, what to judge and at which second (the joints with their seconds, the
   music at its end). Music is accepted by ear: the measurements don't catch every audible skip.
-  Record `tm decide G5r approve --note "<each variant: kept or dropped, and why>"`. A variant the
+  Record `tm decide G5r approve --said "<their words>" --note "<each variant: kept or dropped, and why>"`. A variant the
   user doesn't accept goes back to CR4 with their words (a new version), or is dropped from the
   test. Just the big calls asks it too; Hands-off decides by rule (QA green), and the final report
   says no one has listened to it yet.
@@ -795,7 +795,7 @@ video (nothing is spent on them). Then, `variants.md` section 4, V1:
 - Exit 2: the plan cannot reach the minimum events, and the engine stops the run. Give the user
   the calculation (events, budget, time) and the choices: a higher daily budget (`--per-day`),
   more days (`--max-days`), fewer variants (then `tm r4` again; a feasible plan clears the stop),
-  or skip the live test (`tm decide G10 reject`). In Hands-off a higher amount is also approved
+  or skip the live test (`tm decide G10 reject --said "<their words>"`). In Hands-off a higher amount is also approved
   while the stop is open: `tm budget approve --run R test <per day × days>` first, then `tm r4`.
 - **Formats per ad (R6).** The plan names the files and placements per ad: for the control and
   each variant, the file in Reels and Stories (9:16) and the file in feed (4:5), so that the ads

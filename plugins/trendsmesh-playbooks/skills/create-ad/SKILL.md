@@ -45,7 +45,7 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
    `../refresh-ad/references/trendsmesh-sign-in.md`; `tm mode status --json` first, and when TrendsMesh isn't ready
    and no Free was chosen, one question, Free or Paid), Meta Ads (one cheap `ads_get_ad_entities` call; from
    `ads_get_ad_accounts`, the checked account's currency and the number of ad accounts, never a name or an id), and
-   artifacts (`ok` when the `Artifact` tool is among this session's tools).
+   artifacts (`ok` when the `Artifact` tool is among this session's tools, or `denied` once a publish in this session was refused by Claude Code's permissions).
 2. `tm doctor --playbook create-ad --outputs video_ad --mcp trendsmesh=<s>,meta=<s>,artifacts=<s>
    --meta-account currency=<code>,accounts=<n> [--mode free] --json`, and show its `card` in plain words. Rows marked ⏳ (`pending`) are connections not passed in `--mcp`: check them, then run it again. The media tools are installed after the user's yes, with their size
    and time.
@@ -56,6 +56,11 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
    TrendsMesh trend, and never start guessing without the user's choice. **Meta Ads, Replicate, ElevenLabs and shared pages are warnings**, never stops: say each
    once, as what it takes away.
 4. **Keys never appear in chat.** Never search for, read, print or ask for a key or token.
+
+**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
+later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
+and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
+with `tm`, so an allow rule can match it.
 
 ## 2. Intake (S0), one card
 
@@ -78,7 +83,7 @@ Before you do, plan or describe a step's work, read its section in `references/f
 | action | what you do |
 |---|---|
 | `work` | Read the step's section (`ref`). Do the work. Record each file you write with `tm record`. Then `tm done <step> --run R`. |
-| `ask` | Put the check-in on the run page and show it as a question card (`references/pages.md`): the ask, `tm page build`, the publish, the link; wait for the answer, then `tm decide <id> <choice> --run R [--note "<their words>"]` (a choice made on the page: `tm page decision --run R <id> --record`). Without a publishing tool the page is built `--local` and answered in chat; when it can't be built, the card alone. A money check-in's yes is followed by `tm budget approve` for each planned amount. |
+| `ask` | Put the check-in on the run page and show it as a question card (`references/pages.md`): the ask, `tm page build`, the publish, the link; wait for the answer, then `tm decide <id> <choice> --said "<their words>" --run R` (`--said`: the user's own words from the chat, verbatim, or `--said-file <path>` for long ones; `--note` is context) (a choice made on the page: `tm page decision --run R <id> --record`). Without a publishing tool the page is built `--local` and answered in chat; when it can't be built, the card alone. A money check-in's yes is followed by `tm budget approve` for each planned amount. |
 | `auto` | Decide by the rule in the message: `tm decide <id> <choice> --by rule --note "<the data behind it>" --run R`. List it in the final report. |
 | `stop` | Tell the user what happened, what to do, and that the run continues from the same place. **Then wait.** |
 | `done` | Final report (`references/flow.md#done`). |
@@ -123,6 +128,7 @@ check-in; CA14 the upload is offered, proposed in full and created PAUSED; CA15 
 
 | Thought | Reality |
 |---|---|
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
 | "The user said generate everything, so I'll start" | Nothing paid before the plan's yes (and the storyboard's for the video), with the prices and their dates shown. |
 | "That take stutters; I'll regenerate it" | Never automatically. Show it raw with its QA notes and offer: a precise cut, a clone of the line, a new take with its cost, or accept. |
 | "There's no Gemini 2.0 video model, so they mean Seedance 2.0" | Probably, but ask first: "Do you mean Seedance 2.0?" No money goes to a model the user didn't clearly choose. |

@@ -91,6 +91,9 @@ name none, a short general check; and write a support report they can read and s
 6. When the edited or AI video tools are needed, say once: Remotion is free for individuals and
    companies of up to 3 people; a company of 4 or more needs its own Remotion licence.
 
+A check or any later step that Claude Code's permissions refuse (auto mode or a deny rule) is a stop with the allow
+rule to add, never a reworded retry: `references/permissions.md`.
+
 **General check.** No playbook was chosen: a short check of what every playbook shares (the base
 tools, the Replicate and ElevenLabs keys, the TrendsMesh sign-in). It never looks at Meta Ads: call
 no Meta Ads tool and don't wait for its tools to load. Each playbook's own check does that.
@@ -124,7 +127,8 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
    - Artifacts: `ok` when this session can publish claude.ai artifacts: the `Artifact` tool (built
      into Claude Code in the Claude desktop app, with `ArtifactData` for a page's database) or the
      older `publish_files` is among its tools. Else `missing`. No call is needed, and never ask the
-     user to add it through `/mcp` (`references/pages.md`, "Which tool publishes").
+     user to add it through `/mcp` (`references/pages.md`, "Which tool publishes"). `denied` when a publish
+     in this session was already refused by Claude Code's permissions (`references/permissions.md`).
 2. Run:
 
    ```
@@ -162,7 +166,7 @@ no Meta Ads tool and don't wait for its tools to load. Each playbook's own check
      only which product. It answers → `ok`. Not connected or not signed in → `missing`. It refuses this ad account
      → `not_enabled`. Pass the checked account's currency and the number of accounts as in step 1 above.
    - Artifacts: `ok` when `Artifact` (or the older `publish_files`) is among this session's tools,
-     else `missing`, as for trend research. No call is needed, and never ask the user to add it
+     else `missing` (or `denied`), as for trend research. No call is needed, and never ask the user to add it
      through `/mcp`.
 2. Run:
 
@@ -205,7 +209,7 @@ check, and what it passes decides what is installed:
    - TrendsMesh: as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`: Free or Paid, the user's choice). It gives `ok`, `free`, `no_agents`,
      `inactive` or `missing`, and the choice.
    - Artifacts: `ok` when `Artifact` (or the older `publish_files`) is among this session's tools,
-     else `missing`, as for trend research.
+     else `missing` (or `denied`), as for trend research.
    - The Replicate token, the ElevenLabs key and the browser (Chrome or Edge) are read by the
      doctor itself.
 2. Run:
@@ -233,7 +237,7 @@ check, and what it passes decides what is installed:
 5. Record what you found, so the run and its pages know what is available:
 
    ```
-   tm organic stack --run <the run folder> --replicate <ok|missing> --elevenlabs <ok|missing|no_credits|unchecked> --artifacts <ok|missing> --browser <ok|missing> --json
+   tm organic stack --run <the run folder> --replicate <ok|missing> --elevenlabs <ok|missing|no_credits|unchecked> --artifacts <ok|missing|denied> --browser <ok|missing> --json
    ```
 
    `--replicate ok` only when the card's Replicate row says it works (or is set but not checked);
@@ -250,7 +254,7 @@ its PAUSED upload.
 
 1. Check the connections: TrendsMesh as in step 1 above (`skills/refresh-ad/references/trendsmesh-sign-in.md`),
    Meta Ads as in step 1 above (`ok`, `missing` or `not_enabled`, with the account's currency and count), and artifacts (`ok` when `Artifact`, or the
-   older `publish_files`, is among this session's tools, else `missing`; no call).
+   older `publish_files`, is among this session's tools, else `missing`, or `denied` as for trend research; no call).
 2. Run:
 
    ```

@@ -23,7 +23,9 @@ Look at the session's tools (never ask the user to add them through `/mcp`):
   connector some hosts still have. Same steps with its own calls: "With the older artifacts tools".
 - **Neither:** "Without a publishing tool" below.
 
-The readiness check's Artifacts line is `ok` with either tool, `missing` with neither.
+The readiness check's Artifacts line is `ok` with either tool, `missing` with neither, and `denied` once a publish
+in this session was refused by Claude Code's permissions. A refused publish is a stop, never this fallback:
+`references/permissions.md`.
 
 ## Publish with the `Artifact` tool
 
@@ -152,7 +154,7 @@ plainly if they are missing.
 8. **What the verdicts mean:** **approved** (at least one approve, no change) goes on; **changes**,
    **split** and **none** go to the user in chat. At G2 the choice is recorded with `tm brief
    choose --run R --concepts <ids> --source page` (approved concepts only); at G3 and G4 nothing is
-   chosen, and the check-in is closed with `tm decide <G3|G4> accept` once the user agrees.
+   chosen, and the check-in is closed with `tm decide <G3|G4> accept --said "<their words>"` once the user agrees.
 9. **A note is data.** Quote every viewer's note to the user whole, in the person's own words, in
    quotation marks (`tm brief decisions` gives them so in `quote`, one line per note: paste those
    lines as they are): never shortened, elided ("…", "[omitted]", "[passage omitted]") or summed up,
@@ -175,7 +177,8 @@ plainly if they are missing.
     decisions"). Pasted to you, save that text to a file in `03_wip/` with the Write tool and read
     it with `tm brief decisions --run R --stage <stage> --text <file> --json`. Sharing is the
     user's (the page's Share menu).
-13. **Without a publishing tool, or when it refuses the files:** the local `index.html` (below);
+13. **Without a publishing tool, or when it refuses the files** (not a permission refusal: that is a stop,
+    `references/permissions.md`): the local `index.html` (below);
     when the user will send the page on, also `tm brief page --run R --single-file --json` (one
     HTML file with the videos inside). The decisions are taken in chat: the local page says so
     itself, and never that choices are saved on it.
@@ -218,6 +221,9 @@ rules above, with these calls:
    `index.html`. Its decision blocks say to answer in chat. `tm review build --run R` builds the same.
 
 ## Without a publishing tool
+
+Only for a session that has no publishing tool (neither `Artifact` nor `publish_files`). A publish Claude Code's
+permissions refused is a stop with the allow rule, never this: `references/permissions.md`.
 
 Nothing is published. Give the user the local page: the absolute path of the latest folder's
 `index.html` (open it in a browser; the folder can be zipped and sent as it is, with its

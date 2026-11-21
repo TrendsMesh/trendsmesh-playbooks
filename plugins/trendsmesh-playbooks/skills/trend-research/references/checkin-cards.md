@@ -22,7 +22,7 @@ its label.
 The user can always answer something else ("drop the fan edits", "from now on, just the big
 calls"). Redo the work as a new version and show the card again; record only the final answer. A
 level change is `tm level <every_step|big_calls|hands_off> --run R`; a decision changed later
-needs `tm decide <id> <choice> --change --run R`.
+needs `tm decide <id> <choice> --said "<their words>" --change --run R`.
 
 ## The cards
 
@@ -44,7 +44,7 @@ Hands-off, when the map changed a lot: the run stops so the user sees the new ma
 
 **Clearing `changed_a_lot`.** The stop is cleared by a new G1 decision, never by `tm resume`. Show
 the new map as the G1 card above. Apply any drops or re-tags the user asks for (a new review
-version, the map rebuilt). On the user's go-ahead, record `tm decide G1 accept --change --run R
+version, the map rebuilt). On the user's go-ahead, record `tm decide G1 accept --said "<their words>" --change --run R
 --note "<their words, and what changed in the map>"`, then `tm next`.
 
 **G2 · Accept the picks** (after D3). Per pick, in order: its stage (act now / still rising); its
@@ -83,8 +83,8 @@ all, then record each member.
 
 | Card | Members | When | How to record |
 |---|---|---|---|
-| Approve the category map | G0, G1 | after B4 (the map and the hooks path) | one choice fits both: `tm decide approve_map accept --run R` |
-| Approve the picks and the page | G2, G3 | after E1 (the page is built) | shown **once**, recorded **one by one**: `tm decide G2 accept --run R`, then `tm decide G3 publish --run R` or `tm decide G3 keep_local --run R` (their choices differ, so the card's id is refused) |
+| Approve the category map | G0, G1 | after B4 (the map and the hooks path) | one choice fits both: `tm decide approve_map accept --said "<their words>" --run R` |
+| Approve the picks and the page | G2, G3 | after E1 (the page is built) | shown **once**, recorded **one by one**: `tm decide G2 accept --said "<their words>" --run R`, then `tm decide G3 publish --said "<their words>" --run R` or `tm decide G3 keep_local --said "<their words>" --run R` (their choices differ, so the card's id is refused) |
 
 GS is never merged: a standing schedule needs its own yes.
 
@@ -96,7 +96,7 @@ names (FLOWS.md section G):
 | Id | Rule | The note says |
 |---|---|---|
 | G0 | logged: the seed phrases and market from the intake; in a weekly run, the previous run's | the phrases, market and language |
-| G1 | the review applied: `accept`; `changed_a_lot` when `tm research map-change` says the map changed a lot (V26); cleared only by `tm decide G1 accept --change` after the user saw the new map | kept, dropped, the share new and the new groups; the review names removed because their trends left the searches |
+| G1 | the review applied: `accept`; `changed_a_lot` when `tm research map-change` says the map changed a lot (V26); cleared only by `tm decide G1 accept --said "<their words>" --change` after the user saw the new map | kept, dropped, the share new and the new groups; the review names removed because their trends left the searches |
 | G2 | the review applied; the top N by score (`picks.act_now`, `picks.still_rising`) | the picks with their weighted totals, the moves |
 | G3 | `keep_local` when neither `Artifact` nor `publish_files` is in the session; otherwise `publish` (a first page private, a weekly page the same link) | whether the session can publish, the slug if any |
 | GS | `by_hand`, unless the previous run's `schedule.how` is `desktop_task` (`tm status --run <previous run> --json` → `schedule`): then `schedule`, keeping its task | the previous schedule, or none |

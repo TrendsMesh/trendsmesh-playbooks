@@ -73,7 +73,7 @@ page and one in chat count the same. Rules: `rules.md`.
   (`pages.md`) and its card, with the guess notice `tm next` gives; a concept picked on the page comes back with
   `tm page decision`. **Feedback loop:** notes or results are analysed and the
   concepts presented again with the changes worked in (a new version, checked again), asking only what is unclear;
-  never jump to production on a note. Record the pick (or the mix note) with `tm decide concept accept --note`.
+  never jump to production on a note. Record the pick (or the mix note) with `tm decide concept accept --said "<their words>" --note`.
 
 <a id="s3"></a>
 ## S3 Sources and claims (CA3)
@@ -146,7 +146,7 @@ page and one in chat count the same. Rules: `rules.md`.
   plan as the next `production_plan_vNN.json` (`files.plan` in its answer): `presenter.situation`, and
   `"user_choice": true` with `model` when the model is not the row's. Rewrite the take lines (and the casting: none
   for Seedance) to the pick in that version, `tm ad check plan` it, and ask the plan's yes again (`tm decide plan
-  approve --change` after the user's yes, on the rebuilt page or in chat). A pick left as the plan has it writes
+  approve --said "<their words>" --change` after the user's yes, on the rebuilt page or in chat). A pick left as the plan has it writes
   nothing. Without a page, the chat card lists the same rows with their prices.
 - `tm ad check plan` re-plans the money: its pre-video lines; it refuses a talking person without its situation, a
   take on another model than the row's (unless the user chose it), the fallback without what the review showed, a
@@ -239,7 +239,7 @@ page and one in chat count the same. Rules: `rules.md`.
   elevenlabs voices> --cost <credits>`, about 1,000 credits a minute: the take's own audio in another voice, timing
   kept, so the lips still match; the edit lays it under the take's picture with the take's sound muted; never a new
   text-to-speech reading under the mouth), a new take (only when the lines are wrong; its cost first; on their yes
-  `tm ad redo --run R --item <item> --note "<their words>"`), or accept it as is (`tm decide takes accept --change`
+  `tm ad redo --run R --item <item> --note "<their words>"`), or accept it as is (`tm decide takes accept --said "<their words>" --change`
   on their word).
 - **Rejected spend is kept apart:** `tm ad redo` books the take it replaces as rejected; a take the user turns down
   that is not made again under its item (a new line replaces it, or it is dropped) is booked with `tm ad reject --run

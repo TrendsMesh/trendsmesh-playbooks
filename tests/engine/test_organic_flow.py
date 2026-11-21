@@ -290,7 +290,7 @@ def test_big_calls_plan_card_is_decided_by_its_own_message(tmp_path, capsys, pac
                     ["decide", "pack", "reject"]], nxt.message
     for cid in ("taste", "pack"):   # one command per member, the one with the user's answer
         cmd = next(c for c in cmds if c[1] == cid and (cid != "pack" or c[2] == pack))
-        assert main([*cmd, "--run", str(run.path)]) == 0
+        assert main([*cmd, "--said", "yes", "--run", str(run.path)]) == 0
     capsys.readouterr()
     nxt = flow.next(run)
     if pack == "approve":
@@ -304,7 +304,7 @@ def test_deciding_the_plan_card_as_one_names_the_member_commands(tmp_path, capsy
     _walk(run, until="E2")
     complete(run, "E2")
     capsys.readouterr()
-    assert main(["decide", "plan", "approve", "--run", str(run.path)]) == 1
+    assert main(["decide", "plan", "approve", "--said", "yes", "--run", str(run.path)]) == 1
     err = capsys.readouterr()
     text = err.out + err.err
     assert "`tm decide taste accept`, then `tm decide pack approve`" in text, text
@@ -316,7 +316,7 @@ def test_a_card_with_a_shared_answer_keeps_its_one_command(tmp_path):
     view = flow.CheckinView(ids=["G6", "G10"], name="Approve the spending", card="approve_spending",
                             rule="", choices=["approve", "reject"])
     message = flow._item_message(view, "ask", None, checkins.load())
-    assert "`tm decide approve_spending <choice> [--note ...]`" in message
+    assert "`tm decide approve_spending <choice> --said \"<their words>\" [--note ...]`" in message
     assert "`tm decide G6" not in message
 
 
@@ -623,7 +623,7 @@ def test_reuse_profile_decided_after_a0_intake(tmp_path, monkeypatch, capsys, bu
     assert ORGANIC_VIDEO not in flow._LATE_INTAKE
     nxt = flow.next(run)
     assert (nxt.step, nxt.action) == ("A0", "work") and "one batch" in nxt.message
-    code, out = _tm(capsys, "decide", "reuse_profile", "reuse", "--run", str(run.path))
+    code, out = _tm(capsys, "decide", "reuse_profile", "reuse", "--said", "yes", "--run", str(run.path))
     assert code == 1 and "level and the outputs are not set" in out["message"]
     (run.path / "answers.json").write_text(json.dumps(
         {"level": "every_step", "outputs": ["proposals"], "channels": ["ExampleEdu"]}), encoding="utf-8")
@@ -632,9 +632,9 @@ def test_reuse_profile_decided_after_a0_intake(tmp_path, monkeypatch, capsys, bu
     assert _tm(capsys, "organic", "stack", "--run", str(run.path), "--replicate", "ok", "--elevenlabs", "missing",
                "--artifacts", "ok", "--browser", "ok")[0] == 0
     assert _tm(capsys, "done", "A0", "--run", str(run.path))[0] == 0
-    code, out = _tm(capsys, "decide", "reuse_profile", "reuse", "--run", str(run.path))
+    code, out = _tm(capsys, "decide", "reuse_profile", "reuse", "--said", "yes", "--run", str(run.path))
     assert code == 1 and "exampleedu is saved" in out["message"]   # no profile to reuse yet
-    code, out = _tm(capsys, "decide", "reuse_profile", "new", "--run", str(run.path))
+    code, out = _tm(capsys, "decide", "reuse_profile", "new", "--said", "yes", "--run", str(run.path))
     assert code == 0, out
     assert [(d["checkin"], d["choice"], d["by"]) for d in state.load(run).decisions] == [
         ("reuse_profile", "new", "user")]

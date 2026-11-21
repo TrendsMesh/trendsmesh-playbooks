@@ -397,7 +397,7 @@ def save(workspace: Path, profile: dict, *, run: RunFolder | None, confirmed: bo
     kind = _kind(profile)
     if confirmed:
         if not _user_accepted_profile(run, profile):
-            raise ValueError(f"{CONFIRMED_BY_USER} Ask the user at the profile check-in (tm decide profile accept; "
+            raise ValueError(f"{CONFIRMED_BY_USER} Ask the user at the profile check-in (tm decide profile accept --said \"<their words>\"; "
                              "in a run of several channels, one decision per channel with --note <channel key>), "
                              "then save it with --confirmed.")
         profile = {**profile, "confirmed": date.today().isoformat()}

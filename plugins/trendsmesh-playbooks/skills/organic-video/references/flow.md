@@ -85,7 +85,7 @@ posts.
    the browser and shared page links are warnings: say each once, as what it takes away (AI
    footage and talking characters; the narrator; animations; the pages as files).
 3. **Record the stack**, so the run and its pages know what is available: `tm organic stack --run R
-   --replicate <ok|missing> --elevenlabs <ok|missing> --artifacts <ok|missing> --browser
+   --replicate <ok|missing> --elevenlabs <ok|missing> --artifacts <ok|missing|denied> --browser
    <ok|missing> --json`, each from the card's row. At A0 the ElevenLabs credits are not read yet
    and the voice tools are not installed: pass `--elevenlabs ok` or `missing` from the key row (a
    production run's D1 records it again with the credits read). Its answer names the production
@@ -171,7 +171,7 @@ posts.
 
 **Before A1: `reuse_profile`** ("Reuse the saved channel profile", `checkin-cards.md`). `tm brand
 show --name <channel> --kind channel --json` for each of the run's channels. A confirmed saved
-profile is shown, the run it was saved from and its date first (`saved_from`, `message`), and reused (`tm decide reuse_profile reuse --run R`): A1 is skipped. The engine
+profile is shown, the run it was saved from and its date first (`saved_from`, `message`), and reused (`tm decide reuse_profile reuse --said "<their words>" --run R`): A1 is skipped. The engine
 refuses a reuse unless **every** channel of the run has a saved profile the user confirmed; a
 channel with none needs a new one (`new`). At Hands-off the rule decides it the same way.
 
@@ -196,8 +196,8 @@ The profile (OV1, `channel/1`, `../../references/brand-and-audience.md`, "Channe
 3. **The `profile` check-in** (at every level: a channel's first profile is always the user's).
    Show the profile in the template's fields (`templates/channel_profile_template.md`), every
    assumption marked, and ask for corrections. A correction is a new `_vNN`, checked and saved
-   again, and the card shown again. On the user's yes: `tm decide profile accept --run R --note
-   "<their words>"`; **in a run of several channels, one decision per channel**, its note naming
+   again, and the card shown again. On the user's yes: `tm decide profile accept --said "<their words>" --run
+   R`; **in a run of several channels, one decision per channel**, its note naming
    the channel's slug (`--note <slug>`, then `--change --note <next slug>` for the next).
 4. `tm brand save --run R --file 03_wip/channel_<slug>_vNN.json --confirmed --json` after that yes:
    the library's version carries the date the user confirmed it. Never `--confirmed` before the
@@ -539,7 +539,7 @@ and a series continues (brainrot part 2).
    instruction. `tm organic page week` still builds the old standalone week page (`CAPABILITIES["week"]`,
    collection `week`, read with `tm organic decisions --run R --page week`) for a run that published it
    before 0.13.1.
-6. From chat, `tm decide week approve --run R --note "<the week as approved>"`: refused over the week's
+6. From chat, `tm decide week approve --said "<their words>" --run R --note "<the week as approved>"`: refused over the week's
    budget ("The week is over its budget: switch a video to a script, swap it for a cheaper idea, or skip
    it."). On the page or in chat, say the overrun (the total against the budget) and **all three ways out**,
    each with the day it would change and the new total: a video made a script, a swap for a cheaper idea, a
@@ -547,7 +547,7 @@ and a series continues (brainrot part 2).
    video's pack and cost are approved in its own run.
 7. **The yes covers the week as it stood.** Decisions read after it that change a day's idea, output
    or OK (a day ticked back on, a swap) stop the start until the user says yes to the new week:
-   restate what changed and its total, then `tm decide week approve --run R --change`. A re-read that
+   restate what changed and its total, then `tm decide week approve --said "<their words>" --run R --change`. A re-read that
    changes only a note keeps the yes.
 
 <a id="i3"></a>
@@ -561,7 +561,7 @@ and a series continues (brainrot part 2).
    changes its output or skips it is refused (the approval and the start) until the user drops that
    run: on their word, `tm organic drop-slot --run R --day <day> --note "<their words>" --json` (the
    run ends; what it spent still counts against the week), then their yes again (`tm decide week
-   approve --run R --change`), then start.
+   approve --said "<their words>" --run R --change`), then start.
 2. **Make them one after another**, each in its own run from D1 (`tm next --run <its folder>`), with
    its own check-ins at the week run's level. A video's pack fits in what the week has left: its
    `ai_usd` is at most `budget.per_week_usd` minus what the week's other videos planned, approved or
@@ -571,7 +571,7 @@ and a series continues (brainrot part 2).
    --note "<their words>" --json` (in the week run; it is refused below what the week's videos
    already planned, approved or spent). It writes the week's config and its week file, and the
    week's yes no longer counts: show them the week at the new budget and record their yes again
-   (`tm decide week approve --run R --change`) before anything more starts; a started video's pack
+   (`tm decide week approve --said "<their words>" --run R --change`) before anything more starts; a started video's pack
    sees a higher budget only after that yes (a lower one at once). Never edit
    `config.yaml` by hand for it. Parallel production and check-in pages combined across the week
    arrive in a later version.
@@ -658,7 +658,7 @@ marker is per run), and again at every resume.
      for this read), read the credits: `tm tool elevenlabs credits --run R --json` (free; the plan, the credits
      used, the limit and `left`). Then **record this run's own stack** (the idea run's is not
      copied): `tm organic stack --run R --replicate <ok|missing> --elevenlabs <ok|no_credits|missing>
-     --artifacts <ok|missing> --browser <ok|missing> --json`. ElevenLabs is `ok` with credits left,
+     --artifacts <ok|missing|denied> --browser <ok|missing> --json`. ElevenLabs is `ok` with credits left,
      `no_credits` when `left` is 0 or the account refuses the key, `missing` with no key (or when the
      user said no to the voice tools). **Never `unchecked` here**: `tm done D1` is refused until this
      run's own stack is recorded with ElevenLabs `ok`, `no_credits` or `missing`. Say in one line what the stack hides (production types,
@@ -916,8 +916,8 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
    - **A re-planned pack** (a new resolution, another model, a redo's cost line): write the next
      `_vNN` and check it again. The same items for no more keep the yes. A higher total or any
      change to the items needs a new yes: show the new cost, then `tm decide pack approve --change
-     --run R --note "<their words>"` and `tm budget approve` with the new total.
-   - On a no: `tm decide pack reject --run R --note "<their words>"`. Nothing is generated or
+     --run R --said "<their words>"` and `tm budget approve` with the new total.
+   - On a no: `tm decide pack reject --run R --said "<their words>"`. Nothing is generated or
      paid; the engine skips the production and the edit, and the idea can still become a script
      to film.
    - <a id="paying-for-a-redo"></a>**Paying for a redo.** A redo the user asks for (`tm organic
@@ -929,7 +929,7 @@ Read `rules.md` (OV6 to OV8) and `../../references/model-prompting/README.md` fi
         unchanged, with `"redo": true` (one such line per request), and raise
         `cost.totals.ai_usd` by its cost.
      3. `tm organic pack check --run R --file 03_wip/pack_vNN.json --stage pack --json`, then
-        `tm decide pack approve --change --run R --note "<their words>"` and
+        `tm decide pack approve --change --run R --said "<their words>"` and
         `tm budget approve ai_usd <the new total> --run R --json`.
      4. Then run the call once, under the guard, with `--cost` the redo's line cost. A re-check
         that only adds redo lines keeps every other item's pick; the redone item is picked again
@@ -1114,7 +1114,7 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      page did not offer, is refused (its message says what to do). An answer in chat is one line
      per item (`<item id>: accept|redo|drop[; choice: <option id>][; note: <their words>]`) in a
      file, read with `tm organic decisions --run R --page gate_images --text <file> --json`, then
-     `tm decide images …`.
+     `tm decide images … --said "<their words>"`.
    - **Just the big calls and Hands-off**: the rubric pick (realism, consistency, the safe zone, no
      text): `tm organic pick --run R --stage images --name <item> --file 03_wip/<the image> --reason
      "<against the rubric>" --json`. One automatic redo per image item is allowed while the
@@ -1134,8 +1134,8 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
      (free): the subagent fixes what the note says, you draw it again and show it again.
    - A redo the user asks for in chat: `tm organic redo --run R --name <item> --note "<their
      words>" --json`, then paid for as in [E2](#paying-for-a-redo).
-4. **The `images` check-in comes before `tm done F1`**: `tm decide images accept --run R --note
-   "<their words>"` (Hands-off and Just the big calls: `--by rule --note "<the picks and the
+4. **The `images` check-in comes before `tm done F1`**: `tm decide images accept --said "<their words>" --run R
+   ` (Hands-off and Just the big calls: `--by rule --note "<the picks and the
    rubric>"`). A `redo` keeps F1 open: make what was asked again, and the check-in is asked again.
    Then `tm done F1 --run R` closes the step (refused until the images check-in is decided, and
    each image item has a pick that counts: made after the pack check that last changed that item,
@@ -1235,7 +1235,7 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      note at its cost line's price (`tm organic redo`, paid for as in [E2](#paying-for-a-redo)), or
      drop it. A
      take they keep: `tm organic pick … --by user`, then `tm decide video accept --change --run R
-     --note "<their words>"`.
+     --said "<their words>"`.
 4. **The `video` check-in comes before `tm done F2`**, as the message says (an animation by
    rule: the stills against the rubric, `tm decide video accept --run R --by rule --note "<what the
    stills show>"`). A `redo` keeps F2 open, as in F1.

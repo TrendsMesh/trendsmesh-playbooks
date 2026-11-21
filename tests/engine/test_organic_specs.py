@@ -715,8 +715,8 @@ def test_a_paid_call_needs_the_current_yes_and_the_approved_amount(ov, engine, c
     assert (code, out["status"]) == (2, "stop") and "tm decide pack approve" in out["message"], out
     assert engine == [] and state.load(ov).spend == {} and _open_stops(ov) == []
     if "taste" in asked.checkin.ids:                             # the plan card, decided member by member
-        assert _cli(capsys, ov, "decide", "taste", "accept", "--note", "tak")[0] == 0
-    assert _cli(capsys, ov, "decide", "pack", "approve", "--note", "tak, 1,46 USD")[0] == 0
+        assert _cli(capsys, ov, "decide", "taste", "accept", "--note", "tak", "--said", "tak")[0] == 0
+    assert _cli(capsys, ov, "decide", "pack", "approve", "--note", "tak, 1,46 USD", "--said", "tak, 1,46 USD")[0] == 0
     code, out = _tool(capsys, ov, host, "host", cost="0.26")      # the yes, and no amount approved yet
     assert (code, out["status"]) == (2, "stop") and "tm budget approve" in out["message"], out
     assert engine == [] and state.load(ov).spend == {}
@@ -741,7 +741,7 @@ def test_a_paid_call_needs_the_current_yes_and_the_approved_amount(ov, engine, c
     code, out = _tool(capsys, ov, take, "take")
     assert (code, out["status"]) == (2, "stop") and "tm decide pack approve --change" in out["message"], out
     assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.26} and _open_stops(ov) == []
-    assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 1,42 USD")[0] == 0
+    assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 1,42 USD", "--said", "tak, 1,42 USD")[0] == 0
     code, out = _tool(capsys, ov, take, "take")                   # the new yes; $1.30 approved of $1.42 planned
     assert (code, out["status"]) == (2, "stop") and "tm budget approve" in out["message"], out
     assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.26}
@@ -768,8 +768,8 @@ def _approved(ov, capsys, monkeypatch, level, amount="1.3"):
     _level(ov, level)
     asked = _to_pack(ov, monkeypatch)
     if "taste" in asked.checkin.ids:
-        assert _cli(capsys, ov, "decide", "taste", "accept", "--note", "tak")[0] == 0
-    assert _cli(capsys, ov, "decide", "pack", "approve", "--note", "tak")[0] == 0
+        assert _cli(capsys, ov, "decide", "taste", "accept", "--note", "tak", "--said", "tak")[0] == 0
+    assert _cli(capsys, ov, "decide", "pack", "approve", "--note", "tak", "--said", "tak")[0] == 0
     assert _cli(capsys, ov, "budget", "approve", "ai_usd", amount, "--note", "tak")[0] == 0
 
 
@@ -834,7 +834,7 @@ def test_a_requested_redo_is_paid_only_once_priced(ov, engine, capsys, monkeypat
     _pick(ov, "03_wip/host_v01_0.png")                           # picked again after the re-plan
     code, out = _tool(capsys, ov, take, "take")
     assert code == 2 and "--change" in out["message"] and len(engine) == 2
-    assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 2,66 USD")[0] == 0
+    assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 2,66 USD", "--said", "tak, 2,66 USD")[0] == 0
     assert _cli(capsys, ov, "budget", "approve", "ai_usd", "2.34", "--note", "tak")[0] == 0
     code, out = _tool(capsys, ov, take, "take")
     assert code == 0 and len(engine) == 3 and state.load(ov).spend == {"ai_usd": 2.34}
@@ -861,7 +861,7 @@ def test_the_automatic_image_redo_fits_the_budget_or_becomes_a_priced_request(ov
     assert (asked["kind"], asked["by"], asked["after"]) == ("request", "rule", "host_v01.run.json")
     assert len(engine) == 1 and state.load(ov).spend == {"ai_usd": 0.26} and _open_stops(ov) == []
     _replan(ov, capsys, _with_redo(_pack(), "host"), 2, 1.56)
-    assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 1,56 USD")[0] == 0
+    assert _cli(capsys, ov, "decide", "pack", "approve", "--change", "--note", "tak, 1,56 USD", "--said", "tak, 1,56 USD")[0] == 0
     assert _cli(capsys, ov, "budget", "approve", "ai_usd", "1.56", "--note", "tak")[0] == 0
     assert _tool(capsys, ov, host, "host", cost="0.26")[0] == 0 and state.load(ov).spend == {"ai_usd": 0.52}
     code, out = _tool(capsys, ov, host, "host", cost="0.26")      # the one redo is used

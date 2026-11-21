@@ -80,7 +80,7 @@ def _before_plan_yes(s: state.RunState, what: str) -> None:
         raise ValueError("The live test is not part of this run.")
     if any(d.get("checkin") == flow.SPENDING_CHECKIN["test"] for d in s.decisions) or s.spend.get("test"):
         raise ValueError(f"The test plan is already decided (G10), so {what} goes through it: change it with "
-                         "`tm decide G10 <choice> --change`, then approve the amount with `tm budget approve`.")
+                         "`tm decide G10 <choice> --change --said \"<their words>\"`, then approve the amount with `tm budget approve`.")
 
 
 def set_budget(run: RunFolder, per_day: float, days: int, note: str | None = None) -> state.RunState:
@@ -101,7 +101,7 @@ def drop(run: RunFolder) -> state.RunState:
     order = [st.id for st in flow.steps()]
     at = len(order) if s.step == flow.END else (order.index(s.step) if s.step in order else 0)
     if at > order.index(flow.DESIGN_STEP):
-        raise ValueError("The test design (E1) is done, so the live test is skipped with `tm decide G10 reject`.")
+        raise ValueError("The test design (E1) is done, so the live test is skipped with `tm decide G10 reject --said \"<their words>\"` once the user says so.")
     if s.outputs == [LIVE_TEST]:
         raise ValueError("The live test is this run's only output, so there is nothing left to make without it. "
                          "Start a new run for the outputs the user wants instead.")

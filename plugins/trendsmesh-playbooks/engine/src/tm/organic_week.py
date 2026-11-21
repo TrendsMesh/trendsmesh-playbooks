@@ -460,18 +460,18 @@ def _approval_gap(run: RunFolder, rel: str, body: dict, week_rel: str, week: dic
     name = checkins.load(playbook=ORGANIC_VIDEO).checkins["week"].name
     yes = approval(run)
     if yes is None:
-        return f"the user approves the week (\"{name}\"): record their yes with tm decide week approve"
+        return f"the user approves the week (\"{name}\"): record their yes with tm decide week approve --said \"<their words>\""
     covers = yes.get("covers") if isinstance(yes.get("covers"), dict) else {}
     budget = (week if week is not None else checked_week(run)[2]).get("budget")
     if covers.get("budget") != budget:
         was = covers.get("budget")
         return (f"the user approves the week at its budget of {_usd(budget)}: the budget was set after their yes"
                 f"{f' (given at {_usd(was)})' if isinstance(was, (int, float)) else ''}. Show them the week again and "
-                "record their yes with tm decide week approve --change")
+                "record their yes with tm decide week approve --change --said \"<their words>\"")
     if covers.get("fingerprint") != fingerprint(week_rel, body["decisions"]):
         return (f"the user approves the week as it stands now: the decisions in {rel} changed a day's idea, output or "
                 f"OK since their yes ({covers.get('decisions') or 'an earlier reading'}). Show them the week again and "
-                f"record their yes with tm decide week approve --change")
+                f"record their yes with tm decide week approve --change --said \"<their words>\"")
     return None
 
 

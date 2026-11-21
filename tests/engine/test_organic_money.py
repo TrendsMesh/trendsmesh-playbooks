@@ -149,7 +149,7 @@ def test_pack_reject_after_approval_withdraws_the_budget(tmp_path, capsys):
     assert _approve(run, "ai_usd", 1.46, capsys)[0] == 0
     assert _approve(run, "voice_credits", 3000, capsys)[0] == 0
     capsys.readouterr()
-    assert main(["decide", "pack", "reject", "--change", "--run", str(run.path)]) == 0
+    assert main(["decide", "pack", "reject", "--change", "--said", "no", "--run", str(run.path)]) == 0
     assert state.load(run).budgets == {}
     assert budget.spend(run, "ai_usd", 1.00, "first stage") == 2
     s = state.load(run)
@@ -204,7 +204,7 @@ def test_refresh_ad_money_unchanged(tmp_path):
     s.level, s.outputs = "every_step", ["creative_brief", "ai_video"]
     gap = flow.approval_gap(s, "ai_usd", None)
     assert gap == ('Ask "Approve the AI video plan and budget" (G6) first and record the user\'s yes with '
-                   '`tm decide G6 approve`; then approve the amount they agreed to.'), gap
+                   '`tm decide G6 approve --said "<their words>"`; then approve the amount they agreed to.'), gap
 
 
 @pytest.mark.parametrize("planned_at,approves", [("2026-01-01T00:00:00", True), ("2999-01-01T00:00:00", False)])

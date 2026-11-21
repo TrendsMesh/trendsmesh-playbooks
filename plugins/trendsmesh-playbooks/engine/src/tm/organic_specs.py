@@ -135,7 +135,7 @@ IMAGE_ASKED = ("At this level the user picks the images, so an image is made aga
 PRICE_REDO = ("The redo of {item} is not priced yet ({asked} asked for, {lines} priced in the checked pack), and money "
               "is never taken from another item's line. Add one cost line for it to a new pack version, priced like "
               "{item}'s own and marked \"redo\": true; check it (tm organic pack check --stage pack), show the user the "
-              "new total and record their yes with `tm decide pack approve --change`, then `tm budget approve ai_usd "
+              "new total and record their yes with `tm decide pack approve --change --said \"<their words>\"`, then `tm budget approve ai_usd "
               "<the new total>`; then run it.")
 AUTO_TOO_DEAR = ("The one automatic redo of {item} ({cost:g} USD) does not fit the approved budget with the other "
                  "items still to make ({owed:g} USD; {left:g} USD is left), so it is recorded as a request.")
