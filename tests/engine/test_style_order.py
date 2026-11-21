@@ -7,10 +7,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from html import unescape
 
 import pytest
 
 from tm import atlas_prompt, brand, organic_proposals, organic_research, page, paths, run_page
+from tm.run_page import static
 
 PREVIEWS = paths.bundled_data() / "styles" / "previews"
 
@@ -327,15 +329,14 @@ def test_the_proposals_stage_plays_the_suggested_styles_and_shows_every_style(an
     assert "assets/media/styles/14_halftone-comic.mp4" in suggested and "fits (14)" in suggested
     values = re.findall(r'name="ovp-s-m1" value="([^"]+)"', html)
     assert values == ["channel", v(14), v(7)]                                     # the suggested ones, as radios
-    listed = re.findall(r'<option value="([^"]+)"', other)                        # every other style, in the list
-    assert len(listed) == len(set(listed)) == len(atlas_prompt.styles()) - 2 and v(33) in listed
-    assert "data-or" in other                                     # saves nothing while nothing is chosen in it
-    assert html.count('class="sty-all') == 1                                      # the gallery, once (issue #129)
-    gallery = html.split('class="sty-all sty-once"', 1)[1].split("</details>", 1)[0]
-    families = list(dict.fromkeys(s["category"] for s in atlas_prompt.styles()))
-    assert all(f">{f}<" in gallery for f in families)
-    assert gallery.count('loading="lazy"') == len(atlas_prompt.styles())          # posters; a loop plays on click
-    assert "<video" not in gallery and "<input" not in gallery
+    # the list: every other style, filled by the style catalogue's script (issue #129), saving nothing while empty
+    assert "data-or" in other and set(json.loads(unescape(re.search(r'data-taken="([^"]*)"', other).group(1)))) \
+        == {"channel", v(14), v(7)}
+    assert re.findall(r'<option value="([^"]*)"', other) == [""]
+    assert html.count('<div class="sty-slot"') == 1                               # the gallery, once
+    slot = re.search(r'<div class="sty-slot"[^>]*>', html).group(0)
+    assert "data-path" not in slot                                                 # no radios in it
+    assert html.index(slot) < html.index(static.served("styles.js"))
     offer = _built(animated, built)["offer"]["proposals"]["styles"]
     assert set(offer["values"]) == {"channel"} | {v(s["order"]) for s in atlas_prompt.styles()}
     assert offer["defaults"] == {"m1": "channel"}
@@ -356,9 +357,8 @@ def test_the_gallery_is_drawn_once_for_every_idea(animated):
                        "styles": _styles(*styles)}
     plan_tests._checked(animated, "proposals_v02.json", data)
     html = _html(animated, run_page.build(animated, _ask(animated, "proposals")))
-    assert html.count('class="sty-all') == 1 and html.count('loading="lazy"') >= len(atlas_prompt.styles())
+    assert html.count('<div class="sty-slot"') == 1 and atlas_prompt.styles()[5]["description"] not in html
     assert html.count("<select data-detail=") == 2 and html.count('sty-picker" id="sty-m') == 2
-    assert html.count('class="sty-tile"') == len(atlas_prompt.styles())
 
 
 def test_a_style_picked_from_the_gallery_is_the_decision(animated, capsys):
@@ -404,13 +404,18 @@ def test_the_taste_stage_plays_our_styles_and_shows_the_gallery(tasting):
     built = _taste_built(tasting)
     html, folder = _html(tasting, built), tasting.path / built["folder"]
     assert (folder / "assets" / "media" / "styles" / "14_halftone-comic.mp4").is_file()
-    suggested = html.split('class="sty-all"', 1)[0]
+    suggested = html.split('class="sty-slot"', 1)[0]
     assert "assets/media/styles/14_halftone-comic.mp4" in suggested and "assets/media/styles/07_paper-layers.mp4" \
         in suggested and "bold dots for the number" in suggested and v(14) in suggested
-    gallery = html.split('class="sty-all"', 1)[1]
-    assert gallery.count('loading="lazy"') == len(atlas_prompt.styles())               # the suggested ones marked
     values = re.findall(r'name="ovs-style" value="([^"]+)"', html)
-    assert len(values) == len(set(values)) == len(atlas_prompt.styles())             # 2 suggested + 47 in the gallery
+    assert len(values) == 2                                                          # the suggested ones
+    # the gallery is drawn by the style catalogue's script (issue #129): a radio for each of the other 47, saved as
+    # the taste page's option id, the suggested ones marked
+    slot = dict(re.findall(r'(data-[a-z]+)="([^"]*)"', re.search(r'<div class="sty-slot"[^>]*>', html).group(0)))
+    assert slot["data-name"] == "ovs-style" and json.loads(unescape(slot["data-path"])) == ["picks", "style"]
+    assert set(json.loads(unescape(slot["data-taken"]))) == {v(14), v(7)}
+    assert json.loads(unescape(slot["data-ids"]))[v(33)] == "g-low-poly"
+    assert html.count(static.served("styles.js")) == 1
     offer = _built(tasting, built)["offer"]["taste"]["picks"]
     assert "g-low-poly" in offer["values"]
 

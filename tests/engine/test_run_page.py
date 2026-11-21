@@ -13,7 +13,7 @@ import yaml
 from tm import config, flow, i18n, manifest, mcp_saves, page, review, run_page, state
 from tm.cli import main
 from tm.flow import set_level
-from tm.run_page import template, words
+from tm.run_page import static, template, words
 from tm.runfolder import RunFolder
 from tm.stops import Stop
 
@@ -191,10 +191,13 @@ def test_page_escapes_everything(run):
 
 
 def test_the_look_is_trendsmesh(run):
-    html = _html(run, run_page.build(run))
+    built = run_page.build(run)
+    html = _html(run, built)
+    theme = (run.path / built["folder"] / static.served("theme.css")).read_text(encoding="utf-8")   # a fixed part (#129)
+    assert f'<link rel="stylesheet" href="{static.served("theme.css")}">' in html
     for token in ("#fff4e6", "#fffbf6", "#16110d", "#5a5049", "#ff4f8b", "#d6246e", "#ffe14a", "#eadfd2", "#c9bcae"):
-        assert token in html
-    assert "Bricolage+Grotesque" in html and "font-stretch: 78%" in html
+        assert token in theme
+    assert "Bricolage+Grotesque" in html and "font-stretch: 78%" in theme
     assert '<span class="pill dark">Refresh an ad</span>' in html and "<svg" in html
 
 

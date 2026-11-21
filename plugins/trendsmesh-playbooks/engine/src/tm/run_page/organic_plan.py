@@ -41,7 +41,7 @@ from pathlib import Path
 
 from tm import atlas_prompt, manifest, organic_guesses, organic_proposals, organic_week, page as pages, state, stepchecks
 from tm.organic_pages import levels as level_names, proposals as prop_page, value as shown, week as week_page
-from tm.run_page import styles as style_previews
+from tm.run_page import static, styles as style_previews
 from tm.run_page.context import Context
 from tm.run_page.template import E, media_tag, register_block
 from tm.run_page.words import plural, tx
@@ -609,8 +609,8 @@ def _proposal_inputs(it: dict, b: dict) -> str:
         taken = {o["value"] for o in it["styles"]}
         parts.append(_row(w["style"], f'<div class="ovp-styles sty-picker" id="sty-{E(pid)}">'
                                       + style_previews.suggested_html(name, path, it["styles"], d["style"])
-                                      + style_previews.other_html(path, b["gallery"], d["style"], b["style_words"],
-                                                                  taken=taken) + "</div>"))
+                                      + style_previews.other_html(path, d["style"], b["style_words"], taken=taken)
+                                      + "</div>"))
     boxes = "".join(f'<label class="chip-opt"><input type="checkbox" data-detail="{_path("platforms", pid + SEP + k)}" '
                     f'checked disabled><span>{E(n)}</span></label>' for k, n in PLATFORMS)
     parts.append(_row(w["post_to"], f'<div class="choose" role="group" aria-label="{E(w["post_to"])}">{boxes}</div>'
@@ -678,8 +678,8 @@ def _proposals_html(b: dict, ds, lang: str, live: bool) -> str:
                    f'<h3>{E(it["type"])}: “{E(it["title"])}”</h3><div class="chips">{chips}</div>'
                    + (_proposal_inputs(it, b) if live else "") + _proposal_body(it, w) + "</article>")
     if live and b.get("gallery") and any(it["styles"] for it in b["items"]):   # once, under the ideas (issue #129)
-        out.append(style_previews.browse_html(b["gallery"], b["style_words"]))
-    return _assets(b) + f'<div class="ovp-list">{"".join(out)}</div>'
+        out.append(style_previews.browse_html(b["style_words"]))
+    return _assets(b) + f'<div class="ovp-list">{"".join(out)}</div>' + _tail(b)
 
 
 def _week_card(day: dict, b: dict, live: bool) -> str:
@@ -743,9 +743,16 @@ def _week_html(b: dict, ds, lang: str, live: bool) -> str:
 
 
 def _assets(b: dict) -> str:
+    """The stylesheets and this page's script (issue #129: the plugin's fixed files, tm.run_page.static)."""
     if not b.get("assets"):
         return ""
-    return f"<style>{CSS}</style><script>{SCRIPT}</script>" + (style_previews.ASSETS if b.get("gallery") else "")
+    return (static.link("organic-plan.css") + (style_previews.HEAD if b.get("gallery") else "")
+            + static.script("organic-plan.js"))
+
+
+def _tail(b: dict) -> str:
+    """The style catalogue's script, after the block it draws."""
+    return style_previews.TAIL if b.get("assets") and b.get("gallery") else ""
 
 
 register_block("ov_proposals", _proposals_html)

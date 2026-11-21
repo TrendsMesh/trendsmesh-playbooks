@@ -30,10 +30,12 @@ from the reference tool, nothing else:
 - the page is the shared run page (tm.run_page, issue #60): its top bar and theme, the report as its content
   (research_report.css styles only `.report`), and the run's settled check-ins read-only under it; it saves
   nothing. No Google Fonts: every view of a shared page would call Google (GDPR), so the theme's system
-  fallbacks are used;
+  fallbacks are used. The theme, the page's script, research_report.css and the views' script are fixed parts,
+  written beside the page in `assets/static/` (issue #129, tm.run_page.static), so index.html holds only this
+  run's report;
 - links to videos are http(s) only (else no link), every text is escaped, and the thumbnails stop
-  at the Artifact tool's file limit (`page.MAX_FILES`, less index.html and report.json): the ones left
-  out count as missing.
+  at the Artifact tool's file limit (`page.MAX_FILES`, less index.html, report.json and the 4 fixed parts): the
+  ones left out count as missing.
 """
 
 from __future__ import annotations
@@ -57,6 +59,7 @@ PAGE = research_digest.PAGE
 SCHEMA = "pb4-report/1"
 SCHEMA_FILE = Path(__file__).with_name("schemas") / "pb4_report.schema.json"
 CSS_FILE = Path(__file__).with_name("research_report.css")
+REPORT_STYLES = ("trend-report.css",)   # the report's stylesheet, a fixed part of the page (tm.run_page.static)
 PAID_STEM = "ad_library_summary"
 SOURCE = "tm research report"
 REPORT_PARTS = ".report_parts.json"   # in the folder: the report's title, CSS and body (hidden, never published)
@@ -112,7 +115,13 @@ def page_language(run: RunFolder) -> i18n.PageLang:
     from tm import run_page   # here, not at the top: see _on_the_run_page
     return i18n.page_lang(i18n.run_languages(run).working, run_page.words.AREA, *AREAS)
 
-SCRIPT = """<script>
+def report_css() -> str:
+    """The report's stylesheet (research_report.css), a fixed part of the page (`assets/static/trend-report-<version>.css`)."""
+    return CSS_FILE.read_text(encoding="utf-8")
+
+
+# The views' switch, a fixed part of the page (`assets/static/trend-report-<version>.js`, issue #129).
+SCRIPT = """
 (function(){
   var views=[].slice.call(document.querySelectorAll('.view')), tabs=[].slice.call(document.querySelectorAll('.views a'));
   if(views.length<2)return;
@@ -132,7 +141,7 @@ SCRIPT = """<script>
   }
   window.addEventListener('hashchange',function(){show();});show();
 })();
-</script>"""
+"""
 
 
 # --- small helpers (the original's, unchanged unless said) ---------------------------------------
@@ -279,7 +288,9 @@ class _Page:
         self.sample, self.trends, self.paid, self.paid_checked = sample, trends_by_id, paid, paid_checked
         self.hooks_not_read = hooks_not_read     # issue #8: only the shortlisted hooks' videos were read
         self.thumbs_missing = 0
-        self.files_left = page.MAX_FILES - 2         # index.html and report.json: never over the Artifact tool's limit
+        # index.html, report.json and the 4 fixed parts (the theme, the page's script, the report's stylesheet and
+        # script): never over the Artifact tool's limit
+        self.files_left = page.MAX_FILES - 2 - 4
 
     # thumbnails ------------------------------------------------------------------------------
 
@@ -777,9 +788,11 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
                hooks_not_read=len((gj.get("plugin") or {}).get("hooks_not_read") or []), tr=tr)
     prev = prev_snapshot if prev_snapshot is not None else _prev_snapshot(run, digest)
     prev_snap = _json(Path(prev), "the previous snapshot") if digest is not None and prev else {}
-    title, css, body = _render(pg, picks, report, cmap, gj, by, moved_page, picked, totals, scale, backtest_data,
-                               digest, prev_snap, valid_until_page)
-    (out / "index.html").write_text(_on_the_run_page(run, out, title, css, body, local=local), encoding="utf-8")
+    title, body = _render(pg, picks, report, cmap, gj, by, moved_page, picked, totals, scale, backtest_data,
+                          digest, prev_snap, valid_until_page)
+    (out / "index.html").write_text(_on_the_run_page(run, out, title, body, local=local), encoding="utf-8")
+    from tm.run_page import static   # here, not at the top: see _on_the_run_page
+    static.put(out)
     (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
     rel = out.relative_to(run.path).as_posix()
     manifest.record(run, rel, page.FINAL, SOURCE,
@@ -788,22 +801,23 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
     return out
 
 
-def _on_the_run_page(run: RunFolder, out: Path, title: str, css: str, body: str, *, local: bool = False) -> str:
+def _on_the_run_page(run: RunFolder, out: Path, title: str, body: str, *, local: bool = False) -> str:
     """The report on the shared run page (issue #60): the TrendsMesh top bar and theme, the report as the page's
     content, and the run's check-ins under it, settled ones as read-only summaries (an open one, put on the page
     with `tm page build --ask`, is the run page's own decision block). Trend research's check-ins live on the report's
     link (issue #131, the owner's decision 8): the report is the run page, `report`, from E1 on, published with the
     run page's capabilities (its `decisions` db), so it is never a local build unless the session cannot publish
-    (`local`). Its title, CSS and body are kept in the folder (`REPORT_PARTS`, hidden, never published), so every
-    later `tm page build` puts the same report under its check-ins (`run_page.build`). No Google Fonts: every view of
-    a shared page would call Google (GDPR), so the theme's system fallbacks are used.
+    (`local`). Its title, body and fixed stylesheets are kept in the folder (`REPORT_PARTS`, hidden, never
+    published), so every later `tm page build` puts the same report under its check-ins (`run_page.build`); a report
+    kept before its stylesheet was a fixed part (issue #129) keeps its CSS inline (`css`). No Google Fonts: every
+    view of a shared page would call Google (GDPR), so the theme's system fallbacks are used.
 
     The run page is imported here, not at the top: it loads every playbook's page code, and this module is loaded
     by the Organic AI video engine (organic -> audience -> ... -> seeds -> research_report), so a top-level import
     made a cycle that broke `tm tool deliver`, `tm kit` and ten other modules loaded first
     (test_imports.py)."""
     from tm import run_page
-    parts = {"title": title, "css": css, "body": body}
+    parts = {"title": title, "css": "", "body": body, "styles": list(REPORT_STYLES)}
     (out / REPORT_PARTS).write_text(json.dumps(parts, ensure_ascii=False) + "\n", encoding="utf-8")
     m, built = run_page.model(run, out, local=local)
     (out / run_page.BUILD_FILE).write_text(json.dumps(built, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -850,8 +864,10 @@ def carry_report(run: RunFolder, out: Path) -> dict | None:
 
 def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict, moved: dict, picked: set,
             totals: dict, scale: tuple[float, float], backtest_data: list[dict], digest: dict | None,
-            prev_snap: dict, valid_until: str) -> tuple[str, str, str]:
-    """The report's title, its CSS and its HTML (the views and their switch): the shared run page's content."""
+            prev_snap: dict, valid_until: str) -> tuple[str, str]:
+    """The report's title and its HTML (the views and their switch, loaded from `assets/static/`): the shared run
+    page's content. Its stylesheet is a fixed part too (`REPORT_STYLES`)."""
+    from tm.run_page import static   # here, not at the top: see _on_the_run_page
     category, market, trends_, tr = pg.category, pg.market, pg.trends, pg.tr
     ctx, p = gj["params"]["category"], gj["params"]
     act, rising = picks.get("act_now") or [], picks.get("still_rising") or []
@@ -939,8 +955,7 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
                  f'<div class="meta"><span>{E(picks["market"])}</span><span>{tr("report.paid_meta")}</span></div>'
                  f'</header><section>{pg.paid_view(picks.get("paid_reading") or [])}</section></div>'
                  if "paid" in outputs else "")
-    css = CSS_FILE.read_text(encoding="utf-8")
-    paid_note = (tr("report.paid_note_checked", market=E(market)) if pg.paid_checked else
+    paid_note =(tr("report.paid_note_checked", market=E(market)) if pg.paid_checked else
                  tr("report.paid_note_unchecked"))
     title = tr("report.page_title", category=category, market=market)     # plain text: escaped once, by the template
     topics, hooks = tr.plural("report.meta_topics", n_topics, n=n_topics), tr.plural("report.meta_hooks", n_hooks, n=n_hooks)
@@ -978,5 +993,5 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
 {paid_view}
 <p class="small-print report-foot">{footer}</p>
 </div>
-{SCRIPT}"""
-    return title, css, body
+{static.script("trend-report.js")}"""
+    return title, body
