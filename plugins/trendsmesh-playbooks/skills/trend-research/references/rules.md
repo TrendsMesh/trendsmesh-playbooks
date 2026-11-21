@@ -20,9 +20,13 @@ How to read the copy in the plugin:
 - **Rule v3 is the only bucket rule.** TR3's rule v2 table is kept for its reasoning; rule v3's
   changes (velocity index, at least 3 new creators, the 60 % concentration condition, bands,
   confidence) win where they differ.
-- Not built in this version, said plainly as "not supported yet": category inputs other than a
-  phrase (TR1's links, stores, competitors, ads: VARIANTS V3–V6), own results (TR5, V18), Foreplay
-  (TR7, V21), an event-ahead valid-until (V10). `tm config check` refuses them with an issue link.
+- The category starts from any input (issue #135): a phrase, a product or site link (V3), a store
+  or brand (V4: one seed phrase per product line, the brand as the focus), a description, a note
+  about the client or a product photo. From anything but a phrase you propose the category phrase
+  and 2 to 5 search phrases, and the user approves or corrects them (`flow.md#a0`).
+- Not built in this version, said plainly as "not supported yet": competitors and an existing ad
+  as the category input (VARIANTS V5, V6), own results (TR5, V18), Foreplay (TR7, V21), an
+  event-ahead valid-until (V10). `tm config check` refuses them with an issue link.
 
 What the engine computes, so you never compute it by hand: relevant counts, the split rule and
 the depth (`tm research search-status`), the map with noise, seasonal tags and the review

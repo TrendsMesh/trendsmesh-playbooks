@@ -1,6 +1,6 @@
 # The trend research acceptance (trend research plan Task 16).
 # A person runs it with the agent as the operator: /trendsmesh-playbooks:acceptance trends.
-# Spec: the playbook handoff trend-research_v01 (VARIANTS V3 and V23, the weekly schedule GS).
+# Spec: the playbook handoff trend-research_v01 (VARIANTS V3 and V23, the weekly schedule GS); V3 as issue #135 changed it.
 #
 # Each case: id, title, proves, needs (file | key | budget | meta | trendsmesh | artifacts |
 # human_verdict, asked one at a time), steps (what the agent does, in this case's run folder),
@@ -116,14 +116,16 @@ cases:
 
   - id: T9
     title: "A product link as the input (V3)"
-    proves: "V3: a product link is not supported yet, said plainly, and the run goes on with a phrase"
+    proves: "V3 (issue #135): a product link is accepted as the start, the agent proposes the category and search phrases from its page, and the run goes on with the approved ones"
     needs: [trendsmesh]
     steps:
-      - "Start a new run in a scratch name, from the suite folder, and give a product page link as the category."
-      - "Expected: the plain \"not supported yet\" message with the issue link, then one question for a phrase; give a short phrase other than T2's category and see the run go on (stop it after its first step)."
+      - "Start a new run in a scratch name, from the suite folder, and give only a product page link as the category (a product other than T2's category)."
+      - "Expected: the page is read (`tm page fetch`, saved in the run's `00_raw/`), and the intake proposes 2 to 5 category and search phrases, each saying where it came from; approve them as they are or correct one."
+      - "Check the run's `config.yaml`: `category.phrase` and `category.seeds` hold the approved phrases, `category.inputs` holds the link as `{kind: product, value: <the link>}`, and `tm config check` passes. Stop the run after its first step."
     pass: >-
-      The plain "not supported yet" message and the issue link are shown, and the run goes on
-      with a phrase.
+      The link is accepted with no "not supported yet" message, 2 to 5 phrases are proposed from
+      the page and approved, the config keeps the link in category.inputs and passes its check, and
+      the run goes on.
     judge: null
 
   - id: T6

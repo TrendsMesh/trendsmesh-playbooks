@@ -7,7 +7,11 @@ and so does a changed fixed value (the benchmark source, the digest channel). `t
 defaults to empty: TR1 ("seasonal is a tag, not noise") wins over the config table's "holidays".
 The noise list (news, sport, politics, possessive names) is built into the map tool, so
 `exclude_terms: []` is safe.
-Inputs other than a phrase (VARIANTS.md V3-V6) are refused as not supported yet.
+The category may start from any input (issue #135): a phrase, a product or site link (V3), a store or brand (V4), a
+note about the client or a product photo. From anything but a phrase the agent proposes the category phrase and the
+search phrases (`category.phrase`, `category.seeds`) for the user to approve; the input itself stays in
+`category.inputs`. A store's focus is the brand (V4). Competitors and an existing ad (V5, V6) are refused as not
+supported yet.
 """
 
 from __future__ import annotations
@@ -107,14 +111,20 @@ NUMBERS = {  # path: (integer?, lowest, highest, lowest allowed?, highest allowe
 }
 TEXT_LISTS = ("category.seeds", "trends.exclude_terms")
 REQUIRED = (("category.phrase", "the category phrase"), ("market", "the market"))   # and the languages
-# category.inputs: a phrase, a link (a product or landing page), or {kind, value}
+# category.inputs: a phrase, a link (a product or landing page), or {kind, value}. `value` is the phrase, the URL, the
+# text, or the photo's run-relative path (issue #135).
+ACCEPTED_INPUTS = {  # kind: what it is
+    "phrase": "a category phrase",
+    "product": "a product or site link (V3)",
+    "store": "a store or brand, its link or name (V4)",
+    "note": "a description or a note about the client",
+    "photo": "a product photo saved in the run",
+}
 UNSUPPORTED_INPUTS = {  # kind: (VARIANTS.md case, what it is)
-    "product": ("V3", "A product or landing-page link"),
-    "store": ("V4", "A store or brand"),
     "competitor": ("V5", "A competitor"),
     "ad": ("V6", "An existing ad or video"),
 }
-INPUT_KINDS = ("phrase", *UNSUPPORTED_INPUTS)
+INPUT_KINDS = (*ACCEPTED_INPUTS, *UNSUPPORTED_INPUTS)
 
 
 def defaults() -> dict:
@@ -200,27 +210,60 @@ def _text(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
 
 
-def _inputs(inputs: object, out: list[Problem]) -> None:
+def _link(value: object) -> bool:
+    return isinstance(value, str) and value.strip().lower().startswith(("http://", "https://"))
+
+
+def _photo_gap(run: RunFolder, value: str) -> Problem | None:
+    """Why a photo input is not a file of the run, or None."""
+    try:
+        path = run.given(value.strip())
+    except (ValueError, OSError):
+        path = None
+    if path is not None and path.is_file() and run.path.resolve() in path.resolve().parents:
+        return None
+    return Problem("category.inputs", f"The photo {value.strip()} is not a file of this run, so nothing can be read "
+                                      "from it.",
+                   "Save the photo in the run (00_raw/) and give its path from the run folder.")
+
+
+def _inputs(run: RunFolder, inputs: object, out: list[Problem]) -> None:
     if not isinstance(inputs, list):
         out.append(Problem("category.inputs", f"category.inputs must be a list, not {inputs!r}.",
                            "Give category.inputs as a list, or leave it empty."))
         return
     for item in inputs:
         kind = _input_kind(item)
-        if kind == "phrase" and (isinstance(item, str) or _text(item.get("value"))):
-            continue
+        value = item if isinstance(item, str) else (item.get("value") if isinstance(item, dict) else None)
         if kind in UNSUPPORTED_INPUTS:
             case, what = UNSUPPORTED_INPUTS[kind]
             out.append(Problem("category.inputs",
                                f"{what} as a category input ({case}) is not supported yet; it is "
                                f"tracked at {ISSUES}.",
-                               "Give Claude a category phrase instead (for example the product "
-                               "type); the run goes on with the phrase."))
-        else:  # an unknown kind, or {kind: phrase} without a value
+                               "Give Claude a category phrase, a product link or a note instead; the run "
+                               "goes on with the phrases proposed from it."))
+        elif kind not in ACCEPTED_INPUTS or not _text(value):  # an unknown kind, or one without a value
             out.append(Problem("category.inputs",
                                f"{item!r} is not a category input. Each is a phrase, a link, or "
-                               f"{{kind, value}} with kind one of {', '.join(INPUT_KINDS)}.",
+                               f"{{kind, value}} with kind one of {', '.join(ACCEPTED_INPUTS)}.",
                                "Correct category.inputs."))
+        elif kind == "product" and not _link(value):
+            out.append(Problem("category.inputs", f"The product input {value!r} is not a link (http:// or https://).",
+                               "Give the product's page as a link, or the description as a note "
+                               "({kind: note, value: ...})."))
+        elif kind == "photo" and (gap := _photo_gap(run, value)):
+            out.append(gap)
+
+
+def _store_focus(cfg: dict, inputs: object, out: list[Problem]) -> None:
+    """V4: a store or brand as the input has the brand as the focus, unless the user named another."""
+    stores = [i["value"].strip() for i in inputs if isinstance(i, dict) and i.get("kind") == "store"
+              and _text(i.get("value"))] if isinstance(inputs, list) else []
+    if stores and config._blank(cfg.get("focus")):
+        out.append(Problem("focus", f"A store or brand is the input ({stores[0]}), so the focus is the brand (V4), "
+                                    "and none is set.",
+                           f"Set focus to {stores[0]} (or the focus the user named), with one seed phrase per "
+                           "product line."))
 
 
 def validate(run: RunFolder) -> list[Problem]:
@@ -266,7 +309,9 @@ def validate(run: RunFolder) -> list[Problem]:
     if not (isinstance(outputs, list) and REPORT in outputs and set(outputs) <= set(known)):
         out.append(Problem("outputs", f"outputs must be {REPORT} and any of the others: "
                            f"{', '.join(known)}.", "Choose which outputs this run produces."))
-    _inputs(config._get(cfg, "category.inputs") or [], out)
+    inputs = config._get(cfg, "category.inputs") or []
+    _inputs(run, inputs, out)
+    _store_focus(cfg, inputs, out)
     for path, label in REQUIRED:
         if config._blank(config._get(cfg, path)):
             out.append(Problem(path, f"{label.capitalize()} is missing.", f"Tell Claude {label}."))
