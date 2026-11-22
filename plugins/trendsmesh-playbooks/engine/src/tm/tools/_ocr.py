@@ -178,7 +178,12 @@ def read_with_tier(video: Path | str, crops: list[dict]) -> dict:
         except (OSError, subprocess.SubprocessError) as exc:
             raise c.ToolError(f"OCR could not run: {exc}") from None
         if proc.returncode != 0 or not result.is_file():
-            tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-3:]
+            from tm import winblock
+
+            said = winblock.text_message(proc.stderr or "")   # a compiled file Smart App Control blocked (#148)
+            if said:
+                raise c.ToolError(said)
+            tail =(proc.stderr or proc.stdout or "").strip().splitlines()[-3:]
             raise c.ToolError(c.scrub("OCR could not run: " + (" ".join(tail) or f"exit {proc.returncode}")))
         return json.loads(result.read_text(encoding="utf-8-sig"))
 

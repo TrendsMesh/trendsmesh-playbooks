@@ -152,6 +152,12 @@ and `conda.anaconda.org`, `pypi.org` and `files.pythonhosted.org` (the tools); o
 (python.org's Python, signed by the Python Software Foundation, which the plugin runs on there). If an install fails, Claude tells you
 the reason and where its log is; running `/trendsmesh-playbooks:doctor` tries it again.
 
+**Windows Smart App Control.** Smart App Control, a Windows 11 security feature, can stop a file it doesn't know
+yet: the plugin's Python, or a compiled file of a tool's packages (numpy, scipy, av, scikit-learn, torch, from
+PyPI). When it does, the plugin says so, names the blocked file (or says the error did not name one) and gives two
+ways out: update the plugin, or turn Smart App Control off in Windows Security > App & browser control > Smart App
+Control settings. Claude never changes Windows security settings for you.
+
 ## Report a problem
 
 Open an issue in this repository. Describe what you asked for and what happened. **Do not paste ad account ids,

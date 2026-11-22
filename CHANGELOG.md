@@ -4,6 +4,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Windows: a tool's file blocked by Smart App Control gets the plugin's Smart App Control message.** With Smart
+  App Control on, a tool that fails to load a compiled file of its packages (numpy, scipy, av, scikit-learn,
+  torch, from PyPI) now shows the same message as a blocked Python: it names the blocked file, or says the error
+  did not name one, and gives the steps. It used to show a raw Python error. This covers `tm tool` runs, the OCR
+  reading in a teardown, and tm itself. With Smart App Control off, and on macOS and Linux, errors show as before.
 - **Organic AI video: a week plan builds on at most one trend the channel already used.** The week counts as one
   batch of ideas, slots and reserves together, so its videos don't repeat used trends. A second idea on a used trend
   is refused, naming each day or reserve that uses one; the flexible day's idea counts with the week's other days. A

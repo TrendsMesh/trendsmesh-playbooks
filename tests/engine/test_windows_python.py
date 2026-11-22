@@ -226,8 +226,8 @@ def test_a_tool_runs_on_its_tiers_venv_inside_its_pixi_environment(windows):
     root, data = windows
     argv = child_argv("teardown", ["--run", "runs/x y", "a b.mp4"])
     assert argv[1:7] == ["run", "--as-is", "--manifest-path", str(root / "env" / "pixi.toml"), "-e", "breakdown"]
-    assert argv[7] == paths.python_bin("breakdown") and argv[8:] == ["-m", "tm.tools.teardown", "--run", "runs/x y",
-                                                                       "a b.mp4"]
+    assert argv[7] == paths.python_bin("breakdown") and argv[8:] == ["-m", "tm.toolrun", "teardown", "--run",
+                                                                       "runs/x y", "a b.mp4"]   # #148 line 154
     assert child_argv("elevenlabs", ["credits"])[7] == paths.python_bin("base")   # a light action: base
 
 
