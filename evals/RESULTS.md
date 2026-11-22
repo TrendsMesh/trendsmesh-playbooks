@@ -79,6 +79,12 @@ Not a release run: issues #123 to #147 in four waves on `wave-9-123-147`. Every 
 | `tr_paid_wording`, `middle_recuts`, `ov_free_ideas`, `cb_concepts_diverse_with_phrases`, `cb_no_trendsmesh_guess` and six more, once each | variance | none: each passed on its own |
 | `ca_presenter_page`: the agent answered in chat instead of building the page; the same on `dev` | already on `dev` | none here |
 
+**Wave 5 (the six reviewed changes, #148 lines 2, 7, 30, 39, 61 and 99, 2026-11-22): 75 of 82** (3449 s).
+- `hook_fade_only_hook` and `skip_sign_in_once` passed on their own.
+- `ra_local_checkin` failed a different grader each time, so this is variance.
+- `ov_kit_rules_polish` read `posting-kit.md` with Bash (`sed`), not the Read tool, which its `rules_doc_read` grader requires. The rule was still read before the kit was written.
+- `ca_presenter_page`, `tr_paid_wording` and `cb_no_trendsmesh_guess` failed as before.
+
 `tr_paid_wording`'s fixed mock gives the same four unrelated ads for every search. So the agent sometimes stops, rightly
 calling the search broken; it scored 0 in 3 of 8 runs. A per-search mock answer is a follow-up.
 
