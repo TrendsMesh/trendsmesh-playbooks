@@ -125,12 +125,12 @@
               "why": {"type": "string"},
               "animatic": {
                 "type": "object",
-                "required": ["scene"],
+                "description": "what the beat's animatic shows (its label, texts and params.image), drawn in the concept's library style",
                 "properties": {
-                  "scene": {"type": "string", "description": "name from tools/pb2/animatic/scenes.js"},
+                  "scene": {"type": "string", "description": "the old sketch's scene (scenes.js), from a brief before 0.14: not read"},
                   "label": {"type": "string"},
                   "params": {"type": "object"},
-                  "zoom": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+                  "zoom": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2, "description": "the old sketch's push-in: not read"},
                   "texts": {"type": "array", "items": {"type": "object", "properties": {"style": {"enum": ["center", "top", "box", "chip", "cta"]}, "str": {"type": "string"}, "size": {"type": "number"}, "y": {"type": "number"}, "at": {"type": "number"}, "color": {"type": "string"}}}}
                 }
               }

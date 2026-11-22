@@ -1,8 +1,8 @@
-"""tm brief animatic (the port of the handoff's build_animatic.py) and tm brief evidence (CB8, CB11).
+"""tm brief animatic and tm brief evidence (CB8, CB11).
 
-The LD dry run's `04_final/brief_pack_v01.json` (with `ld.py`'s plugin blocks) must rebuild the
-reference `03_wip/animatic_gen/` v03 files exactly. The real render is `test_atlas.py`'s (opt-in, `-m video`);
-here `atlas.render` is replaced. No test touches the network: `requests.get` is replaced wherever
+Every animatic is drawn in a library style (#148 line 2): `_styled` gives the LD dry run's concepts theirs (`tm
+brief animatic --style`) and writes each concept's style module, as the subagent does. The real render is
+`test_atlas.py`'s (opt-in, `-m video`); here `atlas.render` is replaced. No test touches the network: `requests.get` is replaced wherever
 a thumbnail would be fetched.
 """
 
@@ -14,7 +14,6 @@ import requests
 import yaml
 
 import ld
-import private
 from tm import animatic, atlas, brief_page, manifest, page, state, trends
 from tm.cli import main
 from tm.playbooks import CREATIVE_BRIEF
@@ -22,11 +21,11 @@ from tm.runfolder import RunFolder
 from tm.stops import Stop
 from tm.tools import _common as c
 
-GEN = ld.LD / "03_wip" / "animatic_gen"
 OUT = "03_wip/animatic"
 V01 = "04_final/brief_pack_v01.json"
 ALL = [(cid, fmt) for cid in ("C1", "C2", "C3") for fmt in ("9x16", "4x5")]
 AGAIN = "The run continues from the same place."
+STYLE = "ink-wash"
 
 
 @pytest.fixture
@@ -77,60 +76,41 @@ def _config(run: RunFolder, data: dict) -> None:
     (run.path / "config.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
 
 
+def _module(concept: dict) -> str:
+    """A style module with one beat per beat of the concept, as the subagent writes it."""
+    starts = [b["t0"] for b in concept["beats"]]
+    return ("(function () {\n  \"use strict\";\n  function draw(ctx, W, H, t) { ctx.fillRect(0, 0, W, H); }\n"
+            f"  Player.register({{ id: \"{concept['id'].lower()}\", name: \"{concept['id']}\", "
+            f"duration: {concept['beats'][-1]['t1']}, beats: {json.dumps(starts)}, beatNames: [], draw, score() {{}} }});"
+            "\n})();\n")
+
+
+def _styled(run: RunFolder, concepts: list[str] | None = None) -> dict:
+    """The concepts (default: all) in the library style STYLE (`tm brief animatic --style`: a new brief version), each
+    with its style module written from its prompt."""
+    got = animatic.style(run, None, concepts=concepts, given=STYLE)
+    brief = json.loads((run.path / got["brief"]).read_text(encoding="utf-8"))
+    for row in got["styles"]:
+        concept = next(x for x in brief["concepts"] if x["id"] == row["concept"])
+        (run.path / row["module"]).write_text(_module(concept), encoding="utf-8")
+    return got
+
+
 # --- the storyboard files ------------------------------------------------------------------------
 
 @pytest.mark.private_data
-def test_animatic_files_rebuild_ld_v03(run):
-    items = animatic.build(run, run.path / V01, version="v03")
-    out = run.path / OUT
-    built = _files(out)
-    expected = {f.name: private.alias(f.read_bytes().replace(b"\r", b"")) for f in GEN.iterdir() if f.is_file()}
-    assert len(expected) == 11                   # the nine v03 files, engine.js and scenes.js
-    # the library is the plugin's: the handoff's, with the generic product screen of issue #12
-    expected |= {name: (animatic.JS_DIR / name).read_bytes() for name in animatic.LIBRARY}
-    assert built == expected
-    assert [(i["concept"], i["format"]) for i in items] == ALL
-    assert items[0]["html"] == f"{OUT}/C1_9x16_v03.html" and "mp4" not in items[0]
-    assert not (out / "renders").exists()
-    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v01.json"   # no render, no new brief
-    rows = [r for r in manifest.rows(run) if r["source"] == animatic.SOURCE]
-    assert sorted(r["file"] for r in rows) == sorted(f"{OUT}/{n}" for n in expected if "_v03." in n)
-    assert {r["parent"] for r in rows if r["file"].endswith(".js")} == {V01}
-    assert {r["file"]: r["parent"] for r in rows}[f"{OUT}/C2_4x5_v03.html"] == f"{OUT}/C2_anim_v03.js"
-
-
-def test_build_anim_is_the_originals():
-    concept = {"id": "C9", "beats": [
-        {"t0": 0, "t1": 2, "hear": ' "I wake up" ', "animatic": {"scene": "selfie_talk", "label": "hook"}},
-        {"t0": 2, "t1": 5, "hear": "music only", "animatic": {"scene": "back_to_sleep", "params": {"a": 1},
-                                                             "zoom": [1, 1.1], "texts": ["Night 1"]}}]}
-    assert animatic.build_anim(concept) == {"id": "C9", "duration": 5, "beats": [
-        {"t0": 0, "t1": 2, "label": "BEAT 1 · HOOK", "scene": "selfie_talk", "params": {}, "zoom": [1, 1.04],
-         "texts": [], "vo": 'VO: "I wake up"'},
-        {"t0": 2, "t1": 5, "label": "BEAT 2", "scene": "back_to_sleep", "params": {"a": 1}, "zoom": [1, 1.1],
-         "texts": ["Night 1"], "vo": "music only"}]}
-    assert animatic.build_anim({**concept, "length_s": 6})["duration"] == 6
-    assert animatic.vo_text(None) == "" and animatic.vo_text('"x"') == 'VO: "x"'
-
-
-@pytest.mark.private_data
-@pytest.mark.parametrize("change", ["no animatic", "no scene", "empty scene"])
-def test_missing_scene_refused(run, capsys, change):
+def test_a_beat_without_a_sketch_scene_is_drawn(run, capsys):
+    """A beat's `animatic.scene` was the sketch's (scenes.js): the styled animatic never reads it."""
     brief = ld.brief()
-    beat = brief["concepts"][1]["beats"][2]
-    if change == "no animatic":
-        del beat["animatic"]
-    elif change == "no scene":
-        del beat["animatic"]["scene"]
-    else:
-        beat["animatic"]["scene"] = ""
-    _write(run, "04_final/brief_pack_v02.json", brief)
-    rows = manifest.rows(run)
+    del brief["concepts"][1]["beats"][2]["animatic"]["scene"]
+    brief["concepts"][0]["beats"][0]["animatic"]["scene"] = "dance_floor"
+    _write(run, V01, brief)
+    _styled(run)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path))
-    assert code == 2 and out["status"] == "stop", out
-    assert "C2 beat 3" in out["message"] and "animatic.scene" in out["message"]
-    assert "brief_pack_v02.json" in out["message"] and out["message"].endswith(AGAIN)
-    assert not (run.path / OUT).exists() and manifest.rows(run) == rows     # nothing written, C1 included
+    assert code == 0, out
+    assert [(i["concept"], i["format"]) for i in out["items"]] == ALL
+    assert all(i["style"] == STYLE for i in out["items"])
+    assert not (run.path / OUT / "scenes.js").exists() and not list((run.path / OUT).glob("*_anim_*.js"))
 
 
 @pytest.mark.private_data
@@ -146,28 +126,30 @@ def test_concept_id_that_cannot_name_a_file_refused(run, capsys, cid):
 
 @pytest.mark.private_data
 def test_existing_version_refused_next_free_by_default(run, capsys):
-    animatic.build(run, run.path / V01, version="v03")
+    brief = run.path / _styled(run)["brief"]
+    animatic.build(run, brief, version="v03")
     before = _files(run.path / OUT)
     for given in ("v03", "v3"):                          # the same number, however it is written
         with pytest.raises(ValueError, match="v03 already exists"):
-            animatic.build(run, run.path / V01, version=given)
+            animatic.build(run, brief, version=given)
     with pytest.raises(ValueError, match="like v01"):
-        animatic.build(run, run.path / V01, version="03")
+        animatic.build(run, brief, version="03")
     with pytest.raises(ValueError, match="C7"):
-        animatic.build(run, run.path / V01, concepts=["C1", "C7"])
+        animatic.build(run, brief, concepts=["C1", "C7"])
     assert _files(run.path / OUT) == before
 
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--concepts", "C2")
     assert code == 0, out
     assert [i["html"] for i in out["items"]] == [f"{OUT}/C2_9x16_v04.html", f"{OUT}/C2_4x5_v04.html"]
-    assert out["version"] == "v04" and "C2_anim_v04.js" in out["message"]
-    assert set(_files(run.path / OUT)) - set(before) == {"C2_anim_v04.js", "C2_9x16_v04.html", "C2_4x5_v04.html"}
+    assert out["version"] == "v04" and "2 pages" in out["message"]
+    assert set(_files(run.path / OUT)) - set(before) == {"C2_9x16_v04.html", "C2_4x5_v04.html"}
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--concepts", "C1")
     assert out["version"] == "v05"                       # a version is never used twice, whatever concept
 
 
 @pytest.mark.private_data
 def test_formats_follow_audience_pick(run, capsys):
+    _styled(run)
     def formats(*extra) -> list[str]:
         code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--concepts", "C1", *extra)
         assert code == 0, out
@@ -209,50 +191,54 @@ def renderer(monkeypatch):
 @pytest.mark.private_data
 def test_render_writes_new_brief_version_with_paths(run, capsys, renderer):
     _write(run, V01, ld.dated(ld.brief()))               # the clips' as-of dates, for the page built below
+    styled = _styled(run)["brief"]                       # v02; the style modules are v01
     _config(run, {"animatic": {"fps": 12}})
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render")
     assert code == 0, out
-    assert out["brief"] == "04_final/brief_pack_v02.json" and out["version"] == "v01"
+    assert out["brief"] == "04_final/brief_pack_v03.json" and out["version"] == "v02"
     renders = run.path / brief_page.RENDERS
-    mp4s = [f"{cid}_animatic_{fmt}_v01.mp4" for cid, fmt in ALL]
+    mp4s = [f"{cid}_animatic_{fmt}_v02.mp4" for cid, fmt in ALL]
     stills = [f"{Path(m).stem}_still_{n}.png" for m in mp4s for n in ("006", "030", "055", "080", "095")]
-    assert sorted(_files(renders)) == sorted(mp4s + stills)
+    poster = f"style_20_{STYLE}.jpg"
+    assert sorted(_files(renders)) == sorted(mp4s + stills + [poster])
     assert [(p.name, o.name, fps) for p, o, fps in renderer] == [
-        (f"{cid}_{fmt}_v01.html", f"{cid}_animatic_{fmt}_v01.mp4", 12) for cid, fmt in ALL]
+        (f"{cid}_{fmt}_v02.html", f"{cid}_animatic_{fmt}_v02.mp4", 12) for cid, fmt in ALL]
     assert {p.parent for p, _, _ in renderer} == {(run.path / OUT).resolve()}
     assert [i["mp4"] for i in out["items"]] == [f"{brief_page.RENDERS}/{m}" for m in mp4s]
 
-    old, new = json.loads((run.path / V01).read_text(encoding="utf-8")), \
+    old, new = json.loads((run.path / styled).read_text(encoding="utf-8")), \
         json.loads((run.path / out["brief"]).read_text(encoding="utf-8"))
     assert [cc["animatic"]["default"] for cc in old["concepts"]] == ["9x16", "4x5", "9x16"]
     for c_old, c_new in zip(old["concepts"], new["concepts"]):
         cid = c_new["id"]
-        assert c_new.pop("animatic") == {"9x16": f"animatic/{cid}_animatic_9x16_v01.mp4",
-                                         "4x5": f"animatic/{cid}_animatic_4x5_v01.mp4",
-                                         "default": c_old.pop("animatic")["default"]}   # C2 keeps its 4x5
+        assert c_new.pop("animatic") == {"9x16": f"animatic/{cid}_animatic_9x16_v02.mp4",
+                                         "4x5": f"animatic/{cid}_animatic_4x5_v02.mp4",
+                                         **c_old.pop("animatic")}   # C2 keeps its 4x5; the style and its poster
+
     assert new == old                                    # nothing else changed
 
     rows = manifest.rows(run)
     made = [r for r in rows if r["model"] == animatic.MODEL]
     assert sorted(r["file"] for r in made) == sorted(f"{brief_page.RENDERS}/{n}" for n in mp4s + stills)
     assert {r["cost"] for r in made} == {"0"}
-    first = next(r for r in made if r["file"].endswith("C1_animatic_9x16_v01.mp4"))
-    assert first["parent"] == f"{OUT}/C1_9x16_v01.html" and json.loads(first["params"])["fps"] == 12
+    first = next(r for r in made if r["file"].endswith("C1_animatic_9x16_v02.mp4"))
+    assert first["parent"] == f"{OUT}/C1_9x16_v02.html" and json.loads(first["params"])["fps"] == 12
     brief_row = next(r for r in rows if r["file"] == out["brief"])
-    assert (brief_row["source"], brief_row["parent"]) == (animatic.SOURCE, V01)
+    assert (brief_row["source"], brief_row["parent"]) == (animatic.SOURCE, styled)
 
     # the page finds them where the brief names them
     got = brief_page.build(run)
-    assert got["brief"] == out["brief"] and got["media_copied"] == 6
+    assert got["brief"] == out["brief"] and got["media_copied"] == 7    # six MP4s and the style's poster
     assert (run.path / got["folder"] / "animatic" / mp4s[0]).read_bytes() == b"mp4 " + mp4s[0].encode()
 
 
 @pytest.mark.private_data
 def test_rendered_gap(run, capsys, renderer):
     assert "tm decide animatics make" in animatic.rendered_gap(run)
+    _styled(run)
     # a run with no animatics decision (started before issue #145) needs its chosen concepts' animatics
     _set(run, brief={"chosen": {"concepts": ["C1", "C3"], "source": "chat"}})
-    assert "C1 9x16" in animatic.rendered_gap(run)       # the v01 brief's v03 paths are not rendered here
+    assert "C1 9x16" in animatic.rendered_gap(run)       # the dry run's v03 paths are not rendered here
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C3")
     assert code == 0, out
     gap = animatic.rendered_gap(run)
@@ -271,9 +257,9 @@ def test_rendered_gap(run, capsys, renderer):
     _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C1", "C3"]}])
 
     _set(run, audience={"formats": ["9x16"]})            # one format chosen: the 4x5 renders are not needed
-    (run.path / brief_page.RENDERS / "C3_animatic_4x5_v01.mp4").unlink()
+    (run.path / brief_page.RENDERS / "C3_animatic_4x5_v02.mp4").unlink()
     assert animatic.rendered_gap(run) is None
-    (run.path / brief_page.RENDERS / "C3_animatic_9x16_v01.mp4").unlink()
+    (run.path / brief_page.RENDERS / "C3_animatic_9x16_v02.mp4").unlink()
     assert "C3 9x16" in animatic.rendered_gap(run)
 
     latest = run.latest("04_final", "brief_pack", "json")
@@ -291,10 +277,11 @@ def test_render_stops_before_writing_without_the_renderer(run, capsys, monkeypat
         raise c.ToolStop("Drawing animatics needs Google Chrome or Microsoft Edge. Nothing was rendered. " + AGAIN)
     monkeypatch.setattr(atlas, "need", no_browser)
     monkeypatch.setattr(atlas, "render", lambda *a, **k: pytest.fail("render ran"))
-    rows = manifest.rows(run)
+    _styled(run)
+    rows, before = manifest.rows(run), _files(run.path / OUT)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render")
     assert code == 2 and out["status"] == "stop" and "Chrome" in out["message"]
-    assert not (run.path / OUT).exists() and manifest.rows(run) == rows
+    assert _files(run.path / OUT) == before and manifest.rows(run) == rows
 
     calls: list = []
     good = _fake_render(calls)
@@ -306,14 +293,14 @@ def test_render_stops_before_writing_without_the_renderer(run, capsys, monkeypat
     monkeypatch.setattr(atlas, "need", lambda: Path("/chrome"))
     monkeypatch.setattr(atlas, "render", fails_on_the_third)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render")
-    assert code == 1 and "boom" in out["message"] and "v01" in out["message"]
-    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v01.json"   # no brief names half a set
+    assert code == 1 and "boom" in out["message"] and "v02" in out["message"]
+    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v02.json"   # no brief names half a set
     _set(run, brief={"chosen": {"concepts": ["C1"], "source": "chat"}})
-    assert "C1 9x16" in animatic.rendered_gap(run)       # the two v01 MP4s left behind do not count
+    assert "C1 9x16" in animatic.rendered_gap(run)       # the two v02 MP4s left behind do not count
 
     monkeypatch.setattr(atlas, "render", good)           # the next try takes the next version, and holds
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render")
-    assert code == 0 and out["version"] == "v02" and out["brief"] == "04_final/brief_pack_v02.json", out
+    assert code == 0 and out["version"] == "v03" and out["brief"] == "04_final/brief_pack_v03.json", out
     assert animatic.rendered_gap(run) is None
 
 
@@ -329,30 +316,33 @@ def test_stop_midway_says_what_was_rendered(run, capsys, monkeypatch):
         return good(page_, out_mp4, **kw)
     monkeypatch.setattr(atlas, "need", lambda: Path("/chrome"))
     monkeypatch.setattr(atlas, "render", sandbox_on_the_third)
+    _styled(run)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render")
     assert code == 2 and out["status"] == "stop", out
     message = out["message"]
     assert "Nothing was rendered" not in message and "2 of 6 animatics were rendered" in message
-    assert "animatic v01 is not complete and no brief names it" in message and "next version" in message
+    assert "animatic v02 is not complete and no brief names it" in message and "next version" in message
     assert "install Google Chrome" in message and message.endswith(AGAIN)
-    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v01.json"
+    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v02.json"
     _set(run, brief={"chosen": {"concepts": ["C1"], "source": "chat"}})
-    assert "C1 4x5" in animatic.rendered_gap(run)        # C1 9x16 v01 was drawn, but no brief names it
+    assert "C1 4x5" in animatic.rendered_gap(run)        # C1 9x16 v02 was drawn, but no brief names it
 
     monkeypatch.setattr(atlas, "render", good)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render")
-    assert code == 0 and out["version"] == "v02", out
+    assert code == 0 and out["version"] == "v03", out
     assert animatic.rendered_gap(run) is None
 
 
 @pytest.mark.private_data
 def test_one_format_render_takes_the_drawn_default_and_the_phone_plays_it(run, capsys, renderer):
     _write(run, V01, ld.dated(ld.brief()))               # the clips' as-of dates, for the page built below
+    _styled(run)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--formats", "9x16")
     assert code == 0, out
     new = json.loads((run.path / out["brief"]).read_text(encoding="utf-8"))
     assert [cc["animatic"] for cc in new["concepts"]] == [
-        {"9x16": f"animatic/{cid}_animatic_9x16_v01.mp4", "default": "9x16"} for cid in ("C1", "C2", "C3")]
+        {"9x16": f"animatic/{cid}_animatic_9x16_v02.mp4", "default": "9x16", "style": STYLE,
+         "poster": f"animatic/style_20_{STYLE}.jpg"} for cid in ("C1", "C2", "C3")]
 
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--formats", "4x5")
     assert code == 0, out
@@ -362,13 +352,14 @@ def test_one_format_render_takes_the_drawn_default_and_the_phone_plays_it(run, c
     html = (run.path / got["folder"] / "index.html").read_text(encoding="utf-8")
     phones = html.split('<div class="phones">', 1)[1].split("</div></div></div>", 1)[0]
     assert phones.count('<video src="animatic/') == 3 and 'src=""' not in phones   # the strip plays the 4x5s
-    assert "C1_animatic_4x5_v02.mp4" in phones
+    assert "C1_animatic_4x5_v03.mp4" in phones
 
 
 @pytest.mark.private_data
 def test_render_of_some_concepts_names_the_others_not_rendered(run, capsys, renderer):
     """The concepts the user asked animatics for (issue #145) and not rendered yet are named; the others need none."""
     _set(run, decisions=[{"checkin": "animatics", "choice": "make", "by": "user", "concepts": ["C1", "C2", "C3"]}])
+    _styled(run)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C2")
     assert code == 0, out
     assert "not rendered yet: C1 9x16, C1 4x5, C3 9x16, C3 4x5" in out["message"]

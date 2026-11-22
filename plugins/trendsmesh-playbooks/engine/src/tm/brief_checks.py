@@ -839,7 +839,6 @@ def landing_quotes(run: RunFolder, brief: dict) -> list[Problem]:
 
 def _brief_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
     out = []
-    scenes = animatic.scene_names()
     for i, c in enumerate(brief["concepts"]):
         cid, field = c["id"], f"concepts[{i}]"
         if not _filled(c["key_message"]):
@@ -860,42 +859,8 @@ def _brief_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
         if not _filled(c["plugin"].get("thumbnail")):
             out.append(Problem(f"{field}.plugin.thumbnail", f"{cid} lacks plugin.thumbnail (R7).",
                                "Describe the thumbnail: the first frame and its text."))
-        for k, beat in enumerate(c["beats"]):
-            scene = (beat.get("animatic") or {}).get("scene")
-            if scene not in scenes:
-                out.append(Problem(f"{field}.beats[{k}].animatic.scene", f"{cid}'s beat {k + 1} has the scene "
-                                                                          f"{scene!r}, which scenes.js does not draw.",
-                                   f"Use one of {', '.join(sorted(scenes))}."))
         out += _intake(i, c, cfg)
     return out + _valid_until(run, brief, cfg) + _currency(brief, cfg) + landing_quotes(run, brief)
-
-
-PRODUCT_SCENES = ("product_phone", "morning_then_product")   # they draw params.product (scenes.js)
-
-
-def warnings(brief: dict) -> list[Problem]:
-    """What `tm brief check` says without failing (follow-up to issue 12): a product scene with no `product`
-    param draws a plain placeholder (with `fixture: "book"`, the dry run's book) instead of the brief's product."""
-    concepts = brief.get("concepts") if isinstance(brief, dict) else None
-    meta = brief.get("meta") if isinstance(brief, dict) else None
-    product = ((meta or {}).get("product") or {}) if isinstance(meta, dict) else {}
-    name = product.get("name") if isinstance(product, dict) and _filled(product.get("name")) else None
-    out = []
-    for i, c in enumerate(concepts if isinstance(concepts, list) else []):
-        for k, beat in enumerate((c.get("beats") if isinstance(c, dict) else None) or []):
-            anim = beat.get("animatic") if isinstance(beat, dict) else None
-            if not isinstance(anim, dict) or anim.get("scene") not in PRODUCT_SCENES:
-                continue
-            params = anim.get("params") if isinstance(anim.get("params"), dict) else {}
-            if _filled(params.get("product")):
-                continue
-            drawn = "the dry run's book" if params.get("fixture") == "book" else "a plain placeholder"
-            out.append(Problem(f"concepts[{i}].beats[{k}].animatic.params.product",
-                               f"{c.get('id', f'Concept {i + 1}')}'s beat {k + 1} ({anim['scene']}) has no product "
-                               f"name, so its animatic shows {drawn} instead of the product.",
-                               "Give it params.product: the product's name" + (f" ({name})" if name else "")
-                               + ", as meta.product.name says it; and params.screen, what is on its screen."))
-    return out
 
 
 # --- stage production ----------------------------------------------------------------------------
@@ -1169,12 +1134,11 @@ def _organic_concept_checks(run: RunFolder, brief: dict, evidence: str | None, c
 
 
 def _organic_view_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem]:
-    """O7: each concept's key message and one-sentence hypothesis (CB10), its beats' scenes, the intake's values
+    """O7: each concept's key message and one-sentence hypothesis (CB10), the intake's values
     never invented, CB8's valid-until, the landing page's quotes (R3); the creator view (what to film and say), the
     editor rows, the publisher view against the platform rules, and the posting plan."""
     from tm import brief_organic             # it reads tm.kit, which a creative brief's other stages never need
     meta, out = brief["meta"], []
-    scenes = animatic.scene_names()
     for i, c in enumerate(brief["concepts"]):
         cid, field = c["id"], f"concepts[{i}]"
         if not _filled(c["key_message"]):
@@ -1182,12 +1146,6 @@ def _organic_view_checks(run: RunFolder, brief: dict, cfg: dict) -> list[Problem
         if not (_filled(c["hypothesis"]) and brand._one_sentence(c["hypothesis"])):
             out.append(Problem(f"{field}.hypothesis", f"{cid}'s hypothesis is to be one sentence (CB10).",
                                "Write what the video tests in one sentence."))
-        for k, beat in enumerate(c["beats"]):
-            scene = (beat.get("animatic") or {}).get("scene")
-            if scene not in scenes:
-                out.append(Problem(f"{field}.beats[{k}].animatic.scene", f"{cid}'s beat {k + 1} has the scene "
-                                                                          f"{scene!r}, which scenes.js does not draw.",
-                                   f"Use one of {', '.join(sorted(scenes))}."))
         if "creator" in meta["recipients"]:
             creator = c.get("creator") or {}
             out += [Problem(f"{field}.creator.{k}", f"{cid}'s creator view has no {what} (the creator view).",

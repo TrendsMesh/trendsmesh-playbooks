@@ -388,8 +388,8 @@ def _placeholder(c: dict, ahead: set[str] | None, tr: i18n.Translator) -> str:
 
 
 def _style_line(a, tr: i18n.Translator) -> str:
-    """Issue #138 item 4: the library style a concept's animatic is drawn in, by its name, with its poster (none for a
-    sketch, or a style the library has not)."""
+    """Issue #138 item 4: the library style a concept's animatic is drawn in, by its name, with its poster (none before
+    its style is chosen, or for a style the library has not)."""
     from tm import atlas_prompt
 
     sid = atlas_prompt.style_id(animatic.style_of({"animatic": a}))
