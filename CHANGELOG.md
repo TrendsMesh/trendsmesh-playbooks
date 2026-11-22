@@ -4,6 +4,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Trend research: the hooks set aside before the fit scores are on the report too.** The hooks past the first 50
+  to score, in TrendsMesh's rising order, are now listed under "Set aside" after the map's trends, each with its
+  rank, and any of them comes back on request. The map's cut (the best 50 trends by match) and the hooks' cut stay
+  separate.
+- **Organic AI video: Claude scores at most 50 trends for the channel, every type together.** Topics, formats,
+  hooks and sounds share one cut of 50, the best by growth and fit, instead of 50 hooks and formats plus 20 topics.
+  Sounds are now scored for fit too: a weak one goes last and never takes a place. The rest are set aside, and any
+  of them comes back on request.
 - **Reading a page built by JavaScript no longer asks for a keychain.** The headless Chrome or Edge that reads it
   now runs with a stand-in keychain, so macOS never shows "keychain cannot be found" for it.
 - **The creative brief's PDFs print in seconds again, and product-site captures never ask for a keychain.** The

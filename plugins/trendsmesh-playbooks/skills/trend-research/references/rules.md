@@ -51,9 +51,10 @@ every sentence's source (R3).
 ## The numbers (copied from PLAYBOOK.md; the config's defaults)
 
 - TR1: `min_match` 40, `min_relevant` 10, split into 5–8 sub-categories, max depth 2.
-- Review cut (issue #129): at most `review.max_trends` 50 mapped trends to review (the best by
-  match) and at most `hooks.max_candidates` 50 hooks to score (TrendsMesh's rising order); the
-  rest are set aside, listed with their reason, and restored on request.
+- Review cut (issue #129, #148 line 7): at most `review.max_trends` 50 mapped trends of every type
+  to review (the best by match) and, separately, at most `hooks.max_candidates` 50 hooks to score
+  (TrendsMesh's rising order, after the hooks the review dropped); the rest of each are set aside,
+  listed on the report under "Set aside" with their reason, and restored on request.
 - Hooks path: every hook to score scored 1–5 on Creative brief's seven CB3 criteria, equal weights; the best
   `hooks.shortlist` 8 with a mean fit of at least `hooks.min_fit` 3 are fetched and kept; whether
   the category uses each is the agent's judgement of up to 40 of its most-viewed captions, any

@@ -222,8 +222,9 @@ TR1. The engine counts; you choose the phrases.
   last week's review dropped stays dropped ("last week's review: <its reason>"), and when more than
   `review.max_trends` (50) trends remain, only the best 50 by match (ties: more creators) are **To
   review**; the rest are listed under **Set aside by the engine (restore on request)**, each with its
-  reason ("rank 73 by match (41)"). Set-aside trends are not fetched or staged, and the report lists
-  them under "Set aside".
+  reason ("rank 73 by match (41)"). This cut is for every trend type the searches return. Set-aside
+  trends are not fetched or staged, and the report lists them under "Set aside". B4 has a cut of its
+  own (up to 50 hooks to score, B4 step 3): the two are separate.
 - When the map stays thin after the last split, its closest trends are listed as **"weak match"**
   (V7). Never say there are no trends in the category.
 - `tm done B2 --run R`.
@@ -288,9 +289,12 @@ own path (TR1).
    whether the category uses them already. **`tm research hook-candidates --run R --json`** writes
    `02_research/hooks_to_score_vNN.json`: one compact row per hook to score (`id`, `name`,
    `what_it_is`, `reach`, `momentum`, `active_for_days`, `status`, `sensitivity_level`), at most
-   `hooks.max_candidates` (50), in TrendsMesh's rising order, then the searches' hooks by match.
-   Contradicted hooks, hooks the map dropped at B3, and those below the cut are listed under
-   `not_scored` with their reason. Read every row (never write your own script for this) and score
+   `hooks.max_candidates` (50), in TrendsMesh's rising order (the order `list_trends` `sort`
+   `rising` returns), then the hooks only a search found, by match. Contradicted hooks and hooks the
+   B3 review dropped are left out first; a hook B2's cut set aside is still a candidate here, since
+   that cut is by topic match, not fit. The hooks left out and those below this cut are listed under
+   `not_scored` with their reason, and the ones below the cut are on the report under "Set aside",
+   after the map's. Read every row (never write your own script for this) and score
    it 1–5 on Creative brief's seven criteria (CB3, `../../creative-brief/references/rules.md`), read for
    this category, its market and the focus:
    - `brand_fit`: the category's tone (and the focus brand's, if one is given);
@@ -306,7 +310,7 @@ own path (TR1).
 
    Write `03_wip/hook_fit_v01.json`, every row of `hooks_to_score_vNN.json`, a `why` (one sentence)
    for the ones that score best. A hook under `not_scored` gets a row only when the user asks for it
-   (restore on request); it is then ranked with the others:
+   (restore on request); it is then ranked with the others and leaves the report's "Set aside" list:
 
    ```json
    {"c2173b6a4e7f496093804bb8efb3e785": {"brand_fit": 4, "persona_fit": 5, "bridge": 5,

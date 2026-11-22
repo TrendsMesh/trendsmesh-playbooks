@@ -59,7 +59,8 @@ organic page`, `tm organic decisions`, `tm page await`: OV12).
   it keeps its range (`proposals.min` to `proposals.max`).
 - OV2: four lists, hooks, topics, formats, sounds; search in the audience language and English;
   the evidence of `research.cards` (12) trends, split by the channel type; recent within
-  `research.recent_days` (7); a hook or format fits the channel at 3 of 5 or more.
+  `research.recent_days` (7); a hook or format fits the channel at 3 of 5 or more; the agent
+  scores at most 50 trends for fit, every type together, the rest set aside (restored on request).
 - OV3: Recreate needs at least 2 evidence videos with the same structure; a style spec is read
   from at least 2 evidence videos.
 - OV4: the nine risk items; no percentages.

@@ -350,7 +350,7 @@ def test_the_trends_set_aside_by_the_engine_are_listed_on_the_report(tmp_path):
         {"id": "a7" * 16, "name": "Paznokcie hybrydowe", "set_aside_because": "rank 51 by match (41)"}]})
     folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
     text = (folder / "index.html").read_text(encoding="utf-8")
-    assert "Set aside (1): below the best by match" in text and "<li>Paznokcie hybrydowe: rank 51 by match (41)</li>" in text
+    assert "Set aside (1): past the engine's cut" in text and "<li>Paznokcie hybrydowe: rank 51 by match (41)</li>" in text
     assert _read(folder / "report.json")["category_map"]["set_aside"][0]["name"] == "Paznokcie hybrydowe"
     plain = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
     assert "Set aside" in (plain / "index.html").read_text(encoding="utf-8")
@@ -358,6 +358,35 @@ def test_the_trends_set_aside_by_the_engine_are_listed_on_the_report(tmp_path):
     plain = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
     assert "Set aside" not in (plain / "index.html").read_text(encoding="utf-8")
     assert "set_aside" not in _read(plain / "report.json")["category_map"]
+
+
+def test_the_hooks_b4_set_aside_are_listed_on_the_report_too(tmp_path):
+    """#148 line 7.3: B4's own cut (the hooks past the first 50 to score) is on the report under Set aside, apart from
+    the map's; a hook the map dropped or a contradicted one is not set aside, and a restored hook leaves the list."""
+    run, _ = _uroda(tmp_path)
+    cmap = _read(run.path / "02_research" / "category_map_v01.json")
+    _write(run.path / "02_research" / "category_map_v02.json", {**cmap, "set_aside": [
+        {"id": "a7" * 16, "name": "Paznokcie hybrydowe", "set_aside_because": "rank 51 by match (41)"}]})
+    _write(run.path / "02_research" / "hooks_shortlist_v01.json", {
+        "max_candidates": 50, "shortlist": [], "not_shortlisted": [], "contradicted": [],
+        "not_scored": [{"id": "b8" * 16, "name": "POV: you finally", "reason": "below the engine's cut (rank 51)"},
+                       {"id": "c9" * 16, "name": "Wait for it", "reason": "dropped from the category map: noise"}]})
+    folder = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    text = (folder / "index.html").read_text(encoding="utf-8")
+    assert "Set aside (2)" in text and "<li>Paznokcie hybrydowe: rank 51 by match (41)</li>" in text
+    assert "<li>POV: you finally (hook): rank 51 of the hooks to score</li>" in text and "Wait for it" not in text
+    report = _read(folder / "report.json")
+    assert report["hooks_set_aside"] == [{"id": "b8" * 16, "name": "POV: you finally",
+                                          "reason": "below the engine's cut (rank 51)"}]
+    _write(run.path / "02_research" / "category_map_v03.json", cmap)            # only the hooks' cut is left
+    text = (research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run)) / "index.html").read_text(
+        encoding="utf-8")
+    assert "Set aside (1)" in text and "POV: you finally (hook)" in text
+    _write(run.path / "02_research" / "hooks_shortlist_v02.json", {
+        "max_candidates": 50, "shortlist": [], "not_shortlisted": [], "contradicted": [], "not_scored": []})
+    plain = research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    assert "Set aside" not in (plain / "index.html").read_text(encoding="utf-8")
+    assert "hooks_set_aside" not in _read(plain / "report.json")
 
 
 def test_no_act_now_says_so_in_one_line(tmp_path):

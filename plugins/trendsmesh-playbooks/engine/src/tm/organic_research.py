@@ -172,7 +172,7 @@ def shortlist_gap(run: RunFolder) -> str | None:
         return f"the latest shortlist {latest.name} is written by tm trends shortlist in this run (run it again)"
     plugin = (data.get("meta") or {}).get("plugin") or {}
     if data.get("fit_candidates") and not plugin.get("fit_file"):   # a shortlist from before issue #84 has none
-        return (f"the hooks, formats and topics of the latest shortlist {latest.name} are scored for the channel: each of its "
+        return (f"the trends to score of the latest shortlist {latest.name} are scored for the channel: each of its "
                 f"fit_candidates in {WIP}/trend_fit_vNN.json, then tm trends shortlist again with --fit")
     return None
 

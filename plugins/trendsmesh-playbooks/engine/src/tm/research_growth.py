@@ -369,6 +369,15 @@ def shortlist(run: RunFolder) -> dict | None:
     return None if path is None else {**trends.read(path), "path": path.relative_to(run.path).as_posix()}
 
 
+def set_aside(run: RunFolder) -> list[dict]:
+    """#148 line 7.3: the hooks B4's own cut set aside (past the first `hooks.max_candidates` to score) and the
+    latest shortlist left unscored, `{id, name, reason}` in their rank order; a hook the map dropped or a
+    contradicted one is not set aside, and a restored (scored) one is not listed. Empty before a shortlist."""
+    short = shortlist(run) or {}
+    return [r for r in short.get("not_scored") or []
+            if isinstance(r, dict) and str(r.get("reason") or "").startswith(CUT)]
+
+
 # The agent's judgement of each shortlisted hook (issue #3, item 5, the owner's option b): no word matching,
 # which misses inflected words ("makijażu") and languages without spaces. `hook_captions` writes a sheet of
 # each shortlisted hook's captions; the agent reads it and records, per hook, whether its videos are about

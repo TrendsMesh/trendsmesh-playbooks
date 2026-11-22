@@ -772,6 +772,9 @@ def build(run: RunFolder, picks_path: Path, *, paid: Path | None = None, prev_sn
               "category_map": {"queries": q, "dropped": cmap["dropped"], "min_match": cmap["min_match"],
                                **({"set_aside": cmap["set_aside"]} if cmap.get("set_aside") else {})},   # #129
               "backtest": [b["summary"] | {"ref": b["ref"]} for b in backtest_data]}
+    hooks_aside = research_growth.set_aside(run)   # #148 line 7.3: B4's own cut, a cap of its own
+    if hooks_aside:
+        report["hooks_set_aside"] = hooks_aside
     hook_use = {u: [t["id"] for t in sorted(rows, key=lambda t: (t.get("plugin") or {}).get("fit_rank") or 99)
                     if t.get("kind") == "hook_trend" and (t.get("plugin") or {}).get("use") == u]
                 for u in ("in_category", "transfer")}
@@ -895,10 +898,15 @@ def _render(pg: _Page, picks: dict, report: dict, cmap: dict, gj: dict, by: dict
                     f"<td>{tr('report.split_further') if x['relevant'] < cmap['min_relevant'] else ''}</td></tr>"
                     for x in sorted(q, key=lambda x: ((x['parent'] or ''), x['query'])))
     dropped = "".join(f"<li>{E(r['name'])}: {E('; '.join(r['dropped_because']))}</li>" for r in cmap["dropped"])
-    aside = cmap.get("set_aside") or []           # issue #129: below the engine's cut, restored on request
+    # issue #129, #148 line 7.3: past the engine's two cuts (B2-B3's trends by match, B4's hooks to score), each
+    # restored on request
+    aside = [f"<li>{E(r['name'])}: {E(r.get('set_aside_because') or '')}</li>" for r in cmap.get("set_aside") or []]
+    for r in report.get("hooks_set_aside") or []:
+        rank = re.search(r"rank (\d+)", str(r.get("reason") or ""))
+        aside.append(f"<li>{tr('report.set_aside_hook', name=E(r.get('name') or ''), rank=rank.group(1))}</li>" if rank
+                     else f"<li>{E(r.get('name') or '')}: {E(r.get('reason') or '')}</li>")
     aside_list = (f"<details><summary>{tr('report.set_aside', n=len(aside))}</summary><ul class=\"small-print\">"
-                  + "".join(f"<li>{E(r['name'])}: {E(r.get('set_aside_because') or '')}</li>" for r in aside)
-                  + "</ul></details>") if aside else ""
+                  + "".join(aside) + "</ul></details>") if aside else ""
     root = cmap.get("root") or category
     root_relevant = next((x["relevant"] for x in q if x["query"] == root), 0)
     split = any(x.get("parent") for x in q)
