@@ -17,7 +17,8 @@ How to read the copy in the plugin:
 - The tools it names are `tm` commands: `trend_shortlist.py` is `tm trends shortlist`;
   `voice_mine.py` is `tm voice reddit-posts` and `tm voice reddit-comments` (the Reddit archive)
   and `tm voice import` (reviews and exports); `build_animatic.py` and `render.mjs` are `tm brief
-  animatic --render`; `build_brief_pack.py` is `tm brief page` (`flow.md`).
+  animatic --style auto` and `--render` (each animatic in a library style; the handoff's sketch scenes are
+  not used); `build_brief_pack.py` is `tm brief page` (`flow.md`).
 - **Not built in this version**, said plainly as "not supported yet": Foreplay (CB4: `tm config
   check` refuses `benchmark.source: foreplay` with the issues link; saturation is always the Meta
   Ad Library), Goodreads reviews (CB5: its terms forbid scrapers; `references/voice.md` says
@@ -36,7 +37,7 @@ weighted totals (`tm brief scores`: CB3), the saturation checks against the save
 answers (`tm brief saturation`: CB4), brief.json against CB1 to CB13 at each stage (`tm brief
 check`), the page (`tm brief page`: CB12, CB13), the decisions read from it (`tm brief decisions`)
 and what was dropped (`tm brief choose --drop`), the animatics the user asked for (`tm decide
-animatics make --concepts <ids> --said "<their words>"`, `tm brief animatic --render`: CB11),
+animatics make --concepts <ids> --said "<their words>"`, `tm brief animatic --style auto`, then `--render`: CB11),
 the clips' thumbnails and as-of dates (`tm brief evidence`: CB8) and the hand-off (`tm brief
 handoff`). Yours to keep: the product pick list and the card, the brand draft, the hypothesis,
 the theme coding and the language bank, the search phrases, the scores, the Ad Library reading,

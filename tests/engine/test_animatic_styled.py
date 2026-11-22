@@ -1,14 +1,13 @@
-"""Issue #138 item 4 (owner decision #148 line 2): a creative brief's animatic may be drawn in one of the 49 library
-styles, as an option; the quick sketch (`scenes.js`) stays the default.
+"""Issue #138 item 4 (owner decision #148 line 2, as changed by @piotr-lezon): a creative brief's animatic is always
+drawn in one of the 49 library styles; the fixed sketch scenes are gone.
 
 `tm brief animatic --style auto` picks each named concept's style with `atlas_prompt.ranked` from the concept's format
 (a talking head, a screen recording and a UGC phone video get different styles; the channel's own style first with
 `--own`), writes it into a new brief version as `animatic.style` with its poster, and writes each concept's build
 prompt. A subagent writes the style module; `tm brief animatic --render` builds its page with `atlas_prompt.module_page`
-and draws it with `atlas.render`, never with `scenes.js`. The brief page shows the style's name and poster. CI has no
-browser: `atlas.need`, `atlas.layout` and `atlas.render` are replaced, as in test_animatic.py.
+and draws it with `atlas.render`. A concept without a style is refused. The brief page shows the style's name and
+poster. CI has no browser: `atlas.need`, `atlas.layout` and `atlas.render` are replaced, as in test_animatic.py.
 """
-
 from __future__ import annotations
 
 import copy
@@ -135,23 +134,24 @@ def test_a_later_concept_keeps_clear_of_the_styles_the_brief_has():
     assert animatic.choose_styles(brief, ["C1"])["C1"]["styleId"] != first
 
 
-# --- the default: the sketch ----------------------------------------------------------------------------------
+# --- no sketch: every animatic is styled -----------------------------------------------------------------------
 
-def test_without_style_the_animatic_is_the_sketch(run, capsys, renderer):
-    """No --style: tm brief animatic draws the sketch exactly as on the base (scenes.js, window.ANIM, no style)."""
+def test_a_concept_without_a_style_is_refused_and_nothing_is_written(run, capsys, renderer):
+    """No sketch to fall back on (#148 line 2): a concept with no `animatic.style` is a stop that names the style step."""
+    rows = manifest.rows(run)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
-    assert code == 0, out
-    version = out["version"]
-    assert (run.path / WIP / "scenes.js").exists() and (run.path / WIP / "engine.js").exists()
-    assert (run.path / WIP / f"C1_anim_{version}.js").read_text(encoding="utf-8").startswith("window.ANIM = ")
-    page = (run.path / WIP / f"C1_9x16_{version}.html").read_text(encoding="utf-8")
-    assert '<script src="scenes.js"></script>' in page and "Player.register" not in page
-    assert all("style" not in i for i in out["items"])
-    a = _concept(_latest(run), "C1")["animatic"]
-    assert set(a) == {"9x16", "4x5", "default"}                     # no style, no poster
-    assert not list((run.path / WIP).glob("*_prompt_v*.txt"))
-    assert not list((run.path / animatic.RENDERS).glob("style_*"))
-    assert animatic.minutes_per_concept()[1] is False               # a sketch's time is not the styled one's
+    assert code == 2 and out["status"] == "stop", out
+    assert "C1" in out["message"] and "--style auto --concepts C1" in out["message"]
+    assert "Nothing was written" in out["message"]
+    assert not (run.path / WIP).exists() and manifest.rows(run) == rows and not renderer
+    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v01.json"
+
+
+def test_the_sketch_library_is_gone():
+    """The fixed sketch scenes (`animatic_js/scenes.js`) no longer draw animatics: the plugin does not ship them."""
+    folder = Path(animatic.__file__).parent / "animatic_js"
+    assert not (folder / "scenes.js").exists() and not (folder / "engine.js").exists()
+    assert not hasattr(animatic, "build_anim") and not hasattr(animatic, "scene_names")
 
 
 # --- the style step: tm brief animatic --style ------------------------------------------------------------------
@@ -263,16 +263,27 @@ def test_a_module_from_before_the_style_changed_is_not_drawn(run, capsys, render
     assert code == 2 and again["module"] in out["message"]
 
 
-def test_a_styled_and_a_sketched_concept_in_one_call(run, capsys, renderer):
+def test_a_styled_concept_and_one_without_a_style_in_one_call_is_refused(run, capsys, renderer):
     row = _styled(run, capsys)
     (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1,C2",
                      "--formats", "9x16")
-    assert code == 0, out
-    by = {i["concept"]: i for i in out["items"]}
-    assert by["C1"]["style"] == "ink-wash" and "style" not in by["C2"]
-    assert (run.path / WIP / "scenes.js").exists()                   # the sketch, for the concept with no style
-    assert "style" not in _concept(_latest(run), "C2")["animatic"]
+    assert code == 2 and "C2" in out["message"] and "--style auto --concepts C2" in out["message"], out
+    assert "C1" not in out["message"]                                       # C1 has its style
+    assert not list((run.path / WIP).glob("*.html")) and not renderer
+
+
+@pytest.mark.parametrize("image", ["../lumen.png", "/tmp/lumen.png", "https://cdn.example.com/lumen.png",
+                                   "01_base/none.png", "04_final/brief_pack_v01.json", 3])
+def test_a_picture_that_is_not_an_image_of_the_run_stops(run, capsys, image):
+    """A beat's `params.image` is a picture of the product in the run (issue #12), or the style step stops."""
+    brief = _ad()
+    brief["concepts"][0]["beats"][1]["animatic"]["params"] = {"image": image}
+    (run.path / V01).write_text(json.dumps(brief, ensure_ascii=False), encoding="utf-8")
+    rows = manifest.rows(run)
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1")
+    assert code == 2 and "names the image" in out["message"] and "Nothing was written" in out["message"], out
+    assert not (run.path / WIP).exists() and manifest.rows(run) == rows
 
 
 # --- the time the question says ---------------------------------------------------------------------------------
@@ -280,7 +291,8 @@ def test_a_styled_and_a_sketched_concept_in_one_call(run, capsys, renderer):
 def test_the_question_says_the_last_render_time_on_this_computer(run, capsys, renderer):
     assert animatic.minutes_per_concept() == (animatic.DEFAULT_MINUTES, False)
     code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--estimate")
-    assert code == 0 and out["minutes_per_concept"] == animatic.DEFAULT_MINUTES == 3 and out["measured"] is False
+    assert code == 0 and out["minutes_per_concept"] == animatic.DEFAULT_MINUTES == 5 and out["measured"] is False
+    assert "5 minutes" in out["message"]
     row = _styled(run, capsys)
     (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
     assert _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")[0] == 0
@@ -299,6 +311,19 @@ def test_brief_check_refuses_a_style_the_library_has_not(run):
     brief["concepts"][0]["animatic"] = {"style": "ink-wash", "poster": "animatic/style_20_ink-wash.jpg"}
     assert not [p for p in brief_checks.check(run, brief, "concepts", {}) if "animatic" in p.field]
     assert brief_checks.shape(brief, "production") == []
+
+
+def test_brief_check_needs_no_sketch_scene_per_beat(run):
+    """The per-beat sketch scene held only while the sketch was the default: a beat may leave it out, or keep an old
+    one, at every stage (an organic brief's O7 check no longer reads it either)."""
+    brief = _ad()
+    beats = [b for c in brief["concepts"] for b in c["beats"]]
+    for beat in beats[:-1]:
+        beat["animatic"].pop("scene", None)
+    beats[-1]["animatic"]["scene"] = "dance_floor"                        # a name no library has: not read
+    for stage in ("concepts", "brief", "production"):
+        assert not [p for p in brief_checks.check(run, brief, stage, {}) if "scene" in p.field + p.what], stage
+        assert brief_checks.shape(brief, stage) == [], stage
 
 
 def test_the_page_shows_the_styles_name_and_poster():

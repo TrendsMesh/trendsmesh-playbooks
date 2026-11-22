@@ -134,24 +134,6 @@ def _no_real_layout_check(request, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def _no_real_hook_probe(request, monkeypatch):
-    """`tm brief animatic --render` draws each beat with node first to keep the hook clear (`animatic.probe`,
-    issue #139): outside the `video` tests it finds nothing, without running node. A test of the check patches it
-    again (it keeps the real one as `animatic.probe.__wrapped__`)."""
-    if request.node.get_closest_marker("video"):
-        return
-    from tm import animatic
-
-    real = animatic.probe
-
-    def nothing(anim, fmt, **kw):
-        return {"beats": []}
-
-    nothing.__wrapped__ = real
-    monkeypatch.setattr(animatic, "probe", nothing)
-
-
-@pytest.fixture(autouse=True)
 def _no_real_key_check(monkeypatch):
     """The doctor checks each key that is set with one call to the provider (`tm.providers`, #66): in the tests that
     call never reaches the network, so a key that is set reads as "set, not checked". A test of the check patches

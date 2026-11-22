@@ -1,58 +1,40 @@
-"""The animatics of a creative brief (CB11), shared by the playbooks: the port of the handoff's
-`build_animatic.py`.
+"""The animatics of a creative brief (CB11), shared by the playbooks: each drawn in a library style (issue #138
+item 4, owner decision #148 line 2 as changed by @piotr-lezon).
 
-    scene_names()                 the scenes `scenes.js` draws (`tm brief check` takes only these)
-    build_anim(concept)           a concept's `window.ANIM` (the handoff's, verbatim)
-    build(run, brief_path, ...)   `tm brief animatic`: the storyboard files, and with `render` the MP4s
+    build(run, brief_path, ...)   `tm brief animatic`: each concept's pages from its style module, with `render` the MP4s
     formats_of(run), fps_of(run)  the formats drawn (`animatic.formats`, the audience pick's, or both), the fps
     not_rendered(run, ...)        the concepts' formats with no MP4 in the renders folder
     rendered_gap(run)             the step check `animatics_rendered`
-    choose_styles(brief, ids)     each concept's library style, ranked for its format (issue #138 item 4)
+    choose_styles(brief, ids)     each concept's library style, ranked for its format
     style(run, brief_path, ...)   `tm brief animatic --style`: the styles in a new brief, a build prompt per concept
-    minutes_per_concept()         about how long a styled animatic takes here
+    minutes_per_concept()         about how long an animatic takes here (the animatics question's <N>)
 
-The sketch (scenes.js) is the default. A styled animatic is an option (owner decision #148 line 2), made only when
-the user asks for one: `style` (`tm brief animatic --style`) writes each named concept's
-`animatic.style` (the styleId, chosen by `atlas_prompt.ranked` from the concept's format, no two concepts alike, the
-channel's own style first with `own`) and `animatic.poster` (the style's poster, copied into renders/), and a build
-prompt `<C>_prompt_vNN.txt` (`atlas_prompt.build`, the animatic mode). A subagent writes the style module
-`<C>_style_vNN.js`; `build` draws a concept with a style from its latest module (written from its latest prompt, one
-beat per beat of the brief: the brief's beats are its own, no frames list is read), a page per format through
-`atlas_prompt.module_page`, rendered by `atlas.render`; the hook probe and scenes.js are the sketch's alone. A concept
-with no style is drawn as the sketch, exactly as described below. Each styled render's time
-per concept is kept in the plugin data folder (`TIMING`).
+Every animatic is drawn in a library style; there is no sketch (the fixed scenes of the handoff's `scenes.js` no
+longer draw animatics, and the plugin no longer ships them). `style` (`tm brief animatic --style auto`, part of D2's
+make) writes each named concept's `animatic.style` (the styleId, chosen by `atlas_prompt.ranked` from the concept's
+format, no two concepts alike, the channel's own style first with `own`) and `animatic.poster` (the style's poster,
+copied into renders/), and a build prompt `<C>_prompt_vNN.txt` (`atlas_prompt.build`, the animatic mode). A subagent
+writes the style module `<C>_style_vNN.js`; `build` draws each concept from its latest module (written from its latest
+prompt, one beat per beat of the brief: the brief's beats are its own, no frames list is read), a page
+`<C>_<fmt>_<ver>.html` per format through `atlas_prompt.module_page`, rendered by `atlas.render`. A concept with no
+style is a Stop that names the style step. A beat's `animatic` block gives the prompt its label, its texts and its
+`params.image` (a picture of the run, inlined into the page); a `scene` from an older brief is not read. Each render's
+time per concept is kept in the plugin data folder (`TIMING`).
 
-The handoff's animatic engine and scene library are copied (LF) into `animatic_js/`; the folder is
-not named `animatic/`, which would sit beside this module. One change to them (issue #12): the
-product scenes draw a generic product screen (`K.productScreen`: the product's name, what is on
-its screen, a picture of it), the dry run's book only as a fixture (`params.fixture: "book"`). A
-brief's beats name their scene (`beats[].animatic.scene`); a beat's `params.image`, a picture in
-the run, is inlined into the storyboard as a data URI (`with_images`).
-
-`build` writes, per concept, `03_wip/animatic/<C>_anim_<ver>.js` (`window.ANIM`) and a page
-`<C>_<fmt>_<ver>.html` per format, beside copies of `engine.js` and `scenes.js`, so the folder
-draws on its own. With `render`, before any file is written, each hook (a text at `top`, `center`
-or `bottom`) is kept clear of what its beat draws (issue #139): `probe` draws every beat with node
-and a measuring canvas (`animatic_js/probe.js`; the scenes `K.mark` faces, screens and the brand's
-name), and `fit_hooks` moves a hook that covers one to the free place, else makes it smaller; the
-items' `hook_changes` say what changed, and a check that cannot run is said, never a stop. A version is never used twice (the next free `vNN` by default). With `render`,
-`atlas.render` draws each page into `03_wip/animatic/renders/<C>_animatic_<fmt>_<ver>.mp4` with
-its stills, and a new `04_final/brief_pack_vNN.json` names them (`animatic/<file>`, the page's
-paths). Nothing is written when a beat has no scene or the renderer is not there (a Stop). The
-port's changes: a Stop or ValueError for the original's `sys.exit`; the version is checked for the
-whole folder, before anything is written; paths in the answer are run-relative.
+A version is never used twice (the next free `vNN` by default). With `render`, `atlas.render` draws each page into
+`03_wip/animatic/renders/<C>_animatic_<fmt>_<ver>.mp4` with its stills, and a new `04_final/brief_pack_vNN.json`
+names them (`animatic/<file>`, the page's paths). Nothing is written when a concept cannot be drawn or the renderer is
+not there (a Stop); paths in the answer are run-relative.
 """
 
 from __future__ import annotations
 
-import base64
 import copy
 import json
 import math
 import os
 import re
 import shutil
-import subprocess
 import tempfile
 import time
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -62,9 +44,6 @@ from tm.runfolder import RunFolder
 from tm.stops import AGAIN_SENTENCE, Stop
 from tm.tools import _common as c
 
-JS_DIR = Path(__file__).parent / "animatic_js"
-SCENES_JS = JS_DIR / "scenes.js"
-LIBRARY = ("engine.js", "scenes.js")
 WIP = "03_wip/animatic"
 RENDERS = f"{WIP}/renders"            # where the renders go, and where the page finds them
 PAGE_DIR = "animatic"                 # the brief's path of a render, as the page serves it
@@ -74,61 +53,13 @@ SOURCE = "tm brief animatic"
 MODEL = "atlas render.mjs"
 AGAIN = AGAIN_SENTENCE
 _NOTHING = "Nothing was rendered."      # atlas's words in each of its stops
-_SCENES_START = "window.SCENES = {"
-# a scene is a top-level member of window.SCENES: `name(K, p, ...) {` or `name: (...) =>`
-_SCENE = re.compile(r"^  ([A-Za-z_$][\w$]*)\s*[(:]", re.MULTILINE)
 _ID = re.compile(r"[A-Za-z0-9_-]+")                       # brief_page's concept ids: they name files here
 _VERSION = re.compile(r"^v(\d+)$")
 _VERSIONED = re.compile(r"_v(\d+)\.(?:js|html|mp4)$")   # a storyboard file or render of a version
-# a product picture a beat draws (`params.image`, issue #12): a file of the run, inlined into the
-# storyboard as a data URI, so the page draws it from anywhere and its canvas can still be read
+# a product picture a beat draws (`params.image`, issue #12): a file of the run, inlined into the page
 IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
                ".gif": "image/gif"}
 IMAGE_MAX = 2 * 1024 * 1024
-_HTML = ('<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>{0} animatic {1}</title></head><body>\n'
-         '<script>window.FMT="{1}";</script>\n<script src="scenes.js"></script>\n'
-         '<script src="{2}"></script>\n<script src="engine.js"></script>\n</body></html>\n')
-
-
-def scene_names(path: Path = SCENES_JS) -> set[str]:
-    """The scenes `scenes.js` draws: the keys of its `window.SCENES` object. ValueError for a file
-    without that object (a broken copy)."""
-    text = Path(path).read_text(encoding="utf-8")
-    start = text.find(_SCENES_START)
-    if start < 0:
-        raise ValueError(f"{Path(path).name} has no {_SCENES_START!r}, so its scenes are unknown.")
-    return set(_SCENE.findall(text[start + len(_SCENES_START):]))
-
-
-# --- the handoff's ------------------------------------------------------------------------------
-
-class MissingScene(ValueError):
-    """A beat without `animatic.scene`."""
-
-
-def vo_text(hear: str) -> str:
-    h = (hear or '').strip()
-    return ('VO: ' + h) if h.startswith('"') else h
-
-
-def build_anim(concept: dict) -> dict:
-    beats = []
-    for i, b in enumerate(concept['beats'], 1):
-        a = b.get('animatic')
-        if not a or not a.get('scene'):
-            raise MissingScene(f"{concept['id']} beat {i}: missing animatic.scene")
-        beats.append({
-            't0': b['t0'], 't1': b['t1'],
-            'label': f"BEAT {i} · {a.get('label', '').upper()}".rstrip(' ·'),
-            'scene': a['scene'], 'params': a.get('params', {}),
-            'zoom': a.get('zoom', [1, 1.04]),
-            'texts': a.get('texts', []),
-            'vo': vo_text(b.get('hear', '')),
-        })
-    dur = concept.get('length_s') or concept['beats'][-1]['t1']
-    return {'id': concept['id'], 'duration': dur, 'beats': beats}
-
-
 # --- in the run ---------------------------------------------------------------------------------
 
 def _rel(run: RunFolder, path: Path) -> str:
@@ -186,11 +117,8 @@ def _version(folder: Path, given: str | None) -> str:
     return version
 
 
-def _anims(rel: str, brief: dict, concepts: list[str] | None,
-           sketch: bool = True) -> list[tuple[dict, dict | None]]:
-    """(concept, its window.ANIM) for the concepts asked for (default: all), before anything is written; None for a
-    concept drawn in a library style (`style_of`), which has no window.ANIM, and for every concept without `sketch`
-    (the style step, which only checks the ids)."""
+def _concepts(rel: str, brief: dict, concepts: list[str] | None) -> list[dict]:
+    """The concepts asked for (default: all), checked before anything is written: each id names the animatic's files."""
     try:
         listed = [x for x in brief["concepts"] if isinstance(x, dict)]
         ids = [x["id"] for x in listed]
@@ -205,16 +133,21 @@ def _anims(rel: str, brief: dict, concepts: list[str] | None,
             raise Stop(f"{rel} names the concept id{'' if len(bad) == 1 else 's'} {', '.join(bad)}: an id is letters, "
                        "digits, _ and - (e.g. C1), as it names the animatic's files. Fix it (a new version), then make "
                        f"the animatics again. Nothing was written. {AGAIN}")
-        return [(x, None if style_of(x) or not sketch else build_anim(x)) for x in listed
-                if not concepts or x["id"] in concepts]
-    except MissingScene as exc:
-        raise Stop(f"{rel}: {exc}. Give every beat its scene (beats[].animatic.scene, one that scenes.js draws), "
-                   f"write the brief again (a new version), then make the animatics again. Nothing was written. "
-                   f"{AGAIN}") from None
+        return [x for x in listed if not concepts or x["id"] in concepts]
     except (KeyError, TypeError, AttributeError, IndexError) as exc:
         raise Stop(f"{rel} is not in its shape ({type(exc).__name__}: {exc}), so no animatic can be drawn from it. "
                    f"Check it with tm brief check, fix it (a new version), then make the animatics again. Nothing "
                    f"was written. {AGAIN}") from None
+
+
+def _no_style(rel: str, ids: list[str]) -> Stop:
+    """The stop for concepts with no library style yet: every animatic is drawn in one (#148 line 2)."""
+    joined = ",".join(ids)
+    named = " and ".join([", ".join(ids[:-1]), ids[-1]] if len(ids) > 1 else ids)
+    return Stop(f"{rel}: {named} {'has' if len(ids) == 1 else 'have'} no animatic style yet, and every animatic is "
+                f"drawn in a library style. Choose {'it' if len(ids) == 1 else 'them'} with tm brief animatic --style "
+                f"auto --concepts {joined} (with --own <style> for a channel with its own look), have a subagent write "
+                f"each style module from its build prompt, then render. Nothing was written. {AGAIN}")
 
 
 def _image(run: RunFolder, ref: object) -> Path | None:
@@ -235,128 +168,9 @@ def _image(run: RunFolder, ref: object) -> Path | None:
     return path
 
 
-def with_images(run: RunFolder, rel: str, anim: dict) -> dict:
-    """`anim` with each beat's `params.image` (a path in the run) as a data URI; Stop for one that
-    is not an image file of the run, before anything is written."""
-    out = copy.deepcopy(anim)
-    for i, beat in enumerate(out["beats"], 1):
-        params = beat.get("params")
-        if not isinstance(params, dict) or "image" not in params:
-            continue
-        path = _image(run, params["image"])
-        if path is None:
-            raise Stop(f"{rel}: {anim['id']} beat {i} names the image {params['image']!r}. A beat's image is a picture "
-                       f"of the product kept in the run ({', '.join(t.lstrip('.') for t in IMAGE_TYPES)}, up to "
-                       f"{IMAGE_MAX // (1024 * 1024)} MiB), named by its path from the run folder, like "
-                       "01_base/product.png; or leave it out. Fix it (a new version), then make the animatics again. "
-                       f"Nothing was written. {AGAIN}")
-        data = base64.b64encode(path.read_bytes()).decode("ascii")
-        params["image"] = f"data:{IMAGE_TYPES[path.suffix.lower()]};base64,{data}"
-    return out
-
-
 def write_new(path: Path, text: str) -> None:
     with open(path, "x", encoding="utf-8", newline="\n") as fh:     # never over an earlier file
         fh.write(text)
-
-
-# --- the hook clear of what the scene draws (issue #139) --------------------------------------------
-
-PROBE_JS = JS_DIR / "probe.js"
-PLACES = ("top", "center", "bottom")
-MARGIN = 12                     # px between a hook and what it must not cover
-MARKED = {"face": "the face", "screen": "the product screen", "brand": "the brand's name"}
-
-
-def probe(anim: dict, fmt: str) -> dict:
-    """What each beat of `anim` draws that a hook must keep clear of, and each hook's box at each place and size, in
-    format `fmt` (probe.js, run by the `video` environment's node, as the renderer is). A ToolError when it cannot
-    run."""
-    from tm import render as remotion
-
-    with tempfile.TemporaryDirectory(prefix="tm-hooks-") as tmp:
-        js = Path(tmp) / "anim.js"
-        js.write_text("window.ANIM = " + json.dumps(anim, ensure_ascii=False) + ";\n", encoding="utf-8")
-        argv = [*remotion._prefix(), "node", str(PROBE_JS), str(SCENES_JS), str(js), str(JS_DIR / "engine.js"), fmt]
-        try:
-            proc = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                  timeout=180, env=remotion._env())
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise c.ToolError(f"the hook check could not start ({exc})") from None
-    lines = [x for x in (proc.stdout or "").splitlines() if x.strip()]
-    if proc.returncode != 0 or not lines:
-        tail = " | ".join((proc.stderr or proc.stdout or "").strip().splitlines()[-3:])
-        raise c.ToolError(f"the hook check failed: {tail}")
-    return json.loads(lines[-1])
-
-
-def covers(a: list, b: list, margin: int = MARGIN) -> bool:
-    """Two [x, y, w, h] boxes meet, `margin` px around them counted."""
-    return (a[0] < b[0] + b[2] + margin and b[0] < a[0] + a[2] + margin
-            and a[1] < b[1] + b[3] + margin and b[1] < a[1] + a[3] + margin)
-
-
-def fit_hooks(anim: dict, found: dict) -> tuple[dict, list[str]]:
-    """(the animatic with each hook clear of what its beat draws, what was changed in words). A hook that covers a
-    face, the product screen or the brand's name (`probe`) moves to the first free place (its own first, then top,
-    center, bottom), else is made smaller step by step (x 0.85, never under 32) at the first place it clears; one
-    that clears nowhere stays, and is named."""
-    out = copy.deepcopy(anim)
-    changes: list[str] = []
-    for n, (beat, seen) in enumerate(zip(out["beats"], found.get("beats") or []), 1):
-        marks = [m for m in seen.get("marks") or [] if isinstance(m, dict)]
-        for text in seen.get("texts") or []:
-            o = beat["texts"][text["index"]]
-            place, boxes = o.get("style"), text["boxes"]
-
-            def hit(where: str, step: int) -> list[str]:
-                return [m["kind"] for m in marks if covers(boxes[where][step][1], m["box"])]
-
-            now = hit(place, 0)
-            if not now:
-                continue
-            what = MARKED.get(now[0], now[0])
-            said = f"{anim['id']} beat {n}: the hook \"{o.get('str', '')}\""
-            order = [place] + [p for p in PLACES if p != place]
-            fix = next(((p, step) for step in range(len(boxes[place])) for p in order
-                        if (p, step) != (place, 0) and step < len(boxes[p]) and not hit(p, step)), None)
-            if fix is None:
-                changes.append(f"{said} still covers {what}: no place or size clears it, so change the scene or "
-                               "the text")
-                continue
-            where, step = fix
-            size, new = boxes[place][0][0], boxes[where][step][0]
-            o["style"] = where
-            if step:
-                o["size"] = new
-            moved = f"moved from {place} to {where}" if where != place else ""
-            smaller = f"made smaller ({size} to {new})" if step else ""
-            changes.append(f"{said} {' and '.join(x for x in (moved, smaller) if x)} (it covered {what})")
-    return out, changes
-
-
-def _clear_hooks(anim: dict, formats: list[str], said: list[str]) -> dict:
-    """`anim` with its hooks clear in each format drawn (`probe`, `fit_hooks`), in turn; what changed goes to `said`.
-    A check that cannot run is said, and never stops the render."""
-    for fmt in formats:
-        try:
-            anim, changes = fit_hooks(anim, probe(anim, fmt))
-        except (c.ToolError, ValueError, KeyError, TypeError, IndexError) as exc:
-            said.append(f"{anim['id']} {fmt}: {exc}; look at its stills for a hook over the screen or a face")
-            continue
-        said += [x for x in changes if x not in said]
-    return anim
-
-
-def _copy_library(folder: Path) -> None:
-    """engine.js and scenes.js beside the pages, so the folder draws on its own (the plugin's copy)."""
-    for name in LIBRARY:
-        src, dest = JS_DIR / name, folder / name
-        if dest.is_file() and dest.read_bytes() == src.read_bytes():
-            continue
-        tmp = dest.with_name(f".{name}.{os.getpid()}.tmp")
-        shutil.copyfile(src, tmp)
-        os.replace(tmp, dest)
 
 
 def _render(run: RunFolder, items: list[dict], version: str, fps: int) -> None:
@@ -409,13 +223,13 @@ def _brief_with_renders(run: RunFolder, rel: str, brief: dict, items: list[dict]
     return out
 
 
-# --- an animatic in a library style (issue #138 item 4, owner decision #148 line 2) ----------------------------------
+# --- the library style (issue #138 item 4, owner decision #148 line 2) -------------------------------------------
 
 STYLE_KEYS = ("style", "poster")        # a styled concept's `animatic` keeps them through a render
 STYLE_SOURCE = "tm brief animatic --style"
 ASPECTS = {"9x16": "9:16", "4x5": "4:5"}
-DEFAULT_MINUTES = 3                     # a styled animatic per concept before this computer drew one (measured)
-TIMING = "animatic_timing.json"         # in the plugin data folder: this computer's last styled render
+DEFAULT_MINUTES = 5                     # an animatic per concept before this computer rendered one (#148 line 2)
+TIMING = "animatic_timing.json"         # in the plugin data folder: this computer's last animatic render
 # A concept's format (an ad's plugin.axes.format, an organic brief's organic.format), as words, to the channel type
 # and tone `atlas_prompt.ranked` takes: the first row with a word in it wins.
 FORMAT_RANKS = (
@@ -436,7 +250,8 @@ REASONS = {"given": "the style asked for", "channel": "the channel's own style",
 
 
 def style_of(concept: object) -> str | None:
-    """The library style a concept's animatic is drawn in (`animatic.style`), or None: drawn as the sketch."""
+    """The library style a concept's animatic is drawn in (`animatic.style`), or None: none chosen yet, so no animatic
+    can be drawn for it."""
     a = concept.get("animatic") if isinstance(concept, dict) else None
     s = a.get("style") if isinstance(a, dict) else None
     return s.strip() if isinstance(s, str) and s.strip() else None
@@ -585,8 +400,8 @@ def _number(path: Path) -> int:
 def style(run: RunFolder, brief_path: Path | None, *, concepts: list[str] | None = None, given: str | None = "auto",
           own: object = None, formats: list[str] | None = None) -> dict:
     """`tm brief animatic --style`: each concept named (default: all) gets its library style (`choose_styles`) in a
-    new brief version, as `animatic.style` with its poster (`animatic.poster`, copied beside the renders; a sketch's
-    earlier MP4s are left out), and a build prompt `03_wip/animatic/<C>_prompt_vNN.txt` (`atlas_prompt.build`, the
+    new brief version, as `animatic.style` with its poster (`animatic.poster`, copied beside the renders; earlier MP4s
+    are left out), and a build prompt `03_wip/animatic/<C>_prompt_vNN.txt` (`atlas_prompt.build`, the
     animatic mode, at the first format's frame) for the subagent that writes the style module `<C>_style_vNN.js`.
     {brief, formats, styles: [{concept, style, name, reason, why, poster, prompt, module}]}. ValueError for an
     unknown style or concept, Stop for a brief or picture that cannot be drawn: nothing is written then."""
@@ -594,7 +409,7 @@ def style(run: RunFolder, brief_path: Path | None, *, concepts: list[str] | None
 
     _, rel, brief = brief_page.load_brief(run, brief_path)
     drawn = formats_of(run) if formats is None else _checked_formats(formats, "--formats")
-    named = [concept["id"] for concept, _ in _anims(rel, brief, concepts, sketch=False)]
+    named = [concept["id"] for concept in _concepts(rel, brief, concepts)]
     picked = choose_styles(brief, named, given, own)
     pictures = {x["id"]: _pictures(run, rel, x) for x in brief["concepts"]
                 if isinstance(x, dict) and x.get("id") in picked}
@@ -727,20 +542,20 @@ def _styled_pages(run: RunFolder, concept: dict, module: dict, drawn: list[str],
                                                                                               "style": sid})
         item = {"concept": cid, "format": fmt, "version": version, "html": _rel(run, html), "style": sid}
         if render:
-            item.update(hook_changes=[], layout_problems=_layout_problems(html))
+            item.update(layout_problems=_layout_problems(html))
         out.append(item)
     return out
 
 
 def _record_time(items: list[dict], elapsed: float) -> None:
-    """This computer's time per concept of a call that drew a styled one (its formats, layout checks and renders
-    together: the call's time over its concepts, at least a concept's own render time), for the question's minutes
-    (`minutes_per_concept`). Not kept when the plugin data folder is not there: never a stop."""
+    """This computer's time per concept of a render call (its formats, layout checks and renders together: the call's
+    time over its concepts, at least a concept's own render time), for the question's minutes (`minutes_per_concept`).
+    Not kept when the plugin data folder is not there: never a stop."""
     per: dict[str, float] = {}
     for item in items:
         if isinstance(item.get("render_s"), (int, float)):
             per[item["concept"]] = per.get(item["concept"], 0.0) + float(item["render_s"])
-    if not per or not any(item.get("style") for item in items):
+    if not per:
         return
     seconds = max(elapsed / len(per), sum(per.values()) / len(per))
     try:
@@ -755,8 +570,8 @@ def _record_time(items: list[dict], elapsed: float) -> None:
 
 
 def minutes_per_concept() -> tuple[int, bool]:
-    """(about how many minutes a styled animatic takes per concept on this computer, measured): the last styled render's
-    time, rounded up; DEFAULT_MINUTES before there is one."""
+    """(about how many minutes an animatic takes per concept on this computer, measured): the last render's time,
+    rounded up; DEFAULT_MINUTES before there is one."""
     try:
         data = json.loads((paths.data_dir() / TIMING).read_text(encoding="utf-8-sig"))
         seconds = float(data["seconds_per_concept"])
@@ -768,46 +583,32 @@ def minutes_per_concept() -> tuple[int, bool]:
 def build(run: RunFolder, brief_path: Path, *, concepts: list[str] | None = None,
           formats: list[str] | None = None, version: str | None = None, render: bool = False,
           fps: int = atlas.FPS) -> list[dict]:
-    """`tm brief animatic`: the storyboard of each concept (default: all) in each format (default:
-    `formats_of`) as version `version` (default: the next free one), and with `render` the MP4s and
-    a new brief that names them. One dict per page: concept, format, html, and with `render` mp4,
-    stills, render_s, page_errors and brief. Stop for a beat without a scene or a renderer that is
+    """`tm brief animatic`: each concept's (default: all) page per format (default: `formats_of`) from its style
+    module, as version `version` (default: the next free one), and with `render` the MP4s and a new brief that names
+    them. One dict per page: concept, format, version, html, style, and with `render` layout_problems, mp4, stills,
+    render_s, page_errors and brief. Stop for a concept with no style or no module that fits, or a renderer that is
     not there, ValueError for a bad argument or a version already used: nothing is written then."""
     from tm import brief_page   # brief_page -> brief_checks -> this module
 
     started = time.monotonic()
     _, rel, brief = brief_page.load_brief(run, brief_path)
     drawn = formats_of(run) if formats is None else _checked_formats(formats, "--formats")
-    anims = [(concept, anim if anim is None else with_images(run, rel, anim))
-             for concept, anim in _anims(rel, brief, concepts)]
-    modules = {concept["id"]: _styled_module(run, rel, concept) for concept, anim in anims if anim is None}
+    listed = _concepts(rel, brief, concepts)
+    unstyled = [concept["id"] for concept in listed if not style_of(concept)]
+    if unstyled:
+        raise _no_style(rel, unstyled)
+    modules = {concept["id"]: _styled_module(run, rel, concept) for concept in listed}
     folder = run.path / WIP
     version = _version(folder, version)
-    hooks: dict[str, list[str]] = {}
     if render:
         try:
             atlas.need()                          # the tier, its setup and a browser, before any file
         except c.ToolStop as exc:
             raise Stop(str(exc)) from None
-        anims = [(concept, anim if anim is None else _clear_hooks(anim, drawn, hooks.setdefault(concept["id"], [])))
-                 for concept, anim in anims]
     folder.mkdir(parents=True, exist_ok=True)
-    if any(anim is not None for _, anim in anims):
-        _copy_library(folder)
     items: list[dict] = []
-    for concept, anim in anims:
-        if anim is None:                           # drawn in a library style, from its module (issue #138 item 4)
-            items += _styled_pages(run, concept, modules[concept["id"]], drawn, version, render)
-            continue
-        js = folder / f"{concept['id']}_anim_{version}.js"
-        write_new(js, 'window.ANIM = ' + json.dumps(anim, ensure_ascii=False, indent=1) + ';\n')
-        manifest.record(run, _rel(run, js), "03_wip", SOURCE, parent=rel, params={"version": version})
-        for fmt in drawn:
-            html = folder / f"{concept['id']}_{fmt}_{version}.html"
-            write_new(html, _HTML.format(concept['id'], fmt, js.name))
-            manifest.record(run, _rel(run, html), "03_wip", SOURCE, parent=_rel(run, js), params={"format": fmt})
-            items.append({"concept": concept["id"], "format": fmt, "version": version, "html": _rel(run, html),
-                          **({"hook_changes": hooks[concept["id"]]} if render else {})})
+    for concept in listed:
+        items += _styled_pages(run, concept, modules[concept["id"]], drawn, version, render)
     if render:
         _render(run, items, version, fps)
         _record_time(items, time.monotonic() - started)
@@ -854,7 +655,8 @@ def rendered_gap(run: RunFolder) -> str | None:
     chosen = wanted(run)
     if not chosen:
         return ("the concepts whose animatics the user asked for are named (tm decide animatics make --concepts "
-                "C1,C3) and rendered (tm brief animatic --render --concepts C1,C3)")
+                "C1,C3) and drawn in their styles (tm brief animatic --style auto --concepts C1,C3, a subagent's style "
+                "module per concept, then tm brief animatic --render --concepts C1,C3)")
     latest = run.latest(FINAL, STEM, "json")
     if latest is None:
         return f"{FINAL}/{STEM}_vNN.json is written and its animatics rendered (tm brief animatic --render)"

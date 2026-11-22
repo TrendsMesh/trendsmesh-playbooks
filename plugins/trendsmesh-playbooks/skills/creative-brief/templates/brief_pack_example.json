@@ -141,7 +141,6 @@
           "ost_strong": true,
           "why": "The trend's opening line, in its own structure.",
           "animatic": {
-            "scene": "selfie_talk",
             "label": "Hook",
             "texts": [
               {
@@ -159,7 +158,6 @@
           "hear": "I just tell it what's in the fridge and it plans the week.",
           "ost": "It plans the week from your fridge",
           "animatic": {
-            "scene": "product_phone",
             "label": "Product",
             "texts": [
               {
@@ -178,7 +176,6 @@
           "ost": "Try it free",
           "ost_strong": true,
           "animatic": {
-            "scene": "proof_card",
             "label": "End card",
             "texts": [
               {
@@ -417,7 +414,6 @@
           "ost": "My fridge before and after this app",
           "ost_strong": true,
           "animatic": {
-            "scene": "finger_tap",
             "label": "Hook",
             "texts": [
               {
@@ -435,7 +431,6 @@
           "hear": "",
           "ost": "A week planned, five things to buy",
           "animatic": {
-            "scene": "product_phone",
             "label": "Product",
             "texts": [
               {
@@ -454,7 +449,6 @@
           "ost": "Try it free",
           "ost_strong": true,
           "animatic": {
-            "scene": "proof_card",
             "label": "End card",
             "texts": [
               {
@@ -719,7 +713,6 @@
             "ost": "Nobody tells you this about your starter",
             "ost_strong": true,
             "animatic": {
-              "scene": "selfie_talk",
               "label": "Hook"
             }
           },
@@ -730,7 +723,6 @@
             "hear": "The three things that matter.",
             "ost": "1. Warm water 2. Same time 3. Mark the jar",
             "animatic": {
-              "scene": "notebook_closeup",
               "label": "Steps"
             }
           },
@@ -742,7 +734,6 @@
             "ost": "Follow for the loaf",
             "ost_strong": true,
             "animatic": {
-              "scene": "proof_card",
               "label": "End"
             }
           }
@@ -916,7 +907,6 @@
             "ost": "One loaf, one normal day",
             "ost_strong": true,
             "animatic": {
-              "scene": "phone_alarm",
               "label": "Hook"
             }
           },
@@ -927,7 +917,6 @@
             "hear": "",
             "ost": "8:00 mix, 12:00 fold, 18:00 bake",
             "animatic": {
-              "scene": "desk_sticky_write",
               "label": "The day"
             }
           },
@@ -939,7 +928,6 @@
             "ost": "Your turn this week",
             "ost_strong": true,
             "animatic": {
-              "scene": "proof_card",
               "label": "End"
             }
           }

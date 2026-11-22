@@ -39,9 +39,9 @@ account, no customer-voice step, no Ad Library). A0 and D2 (the animatics on req
   "<todo>"`, then `tm resume --run R` once it is cleared.
 - **Long commands:** `tm voice reddit-posts` and `tm voice reddit-comments` stop at about 90
   seconds a query, but one slow archive answer can stretch that: give them the Bash tool's longest
-  timeout (10 minutes). `tm brief animatic --render` takes up to 15
-  minutes per animatic, and one call renders every concept named in every format: run it in the
-  background and wait, or one concept at a time (`--concepts`) with the longest timeout.
+  timeout (10 minutes). `tm brief animatic --render` takes several minutes per animatic (`--estimate`
+  says how many on this computer), and one call renders every concept named in every format: run it in
+  the background and wait, or one concept at a time (`--concepts`) with the longest timeout.
 
 ---
 
@@ -385,7 +385,7 @@ team decides per concept on D3's page.
 - **Each concept** joins a trend (or, in a guess run, your hook idea) with a customer angle:
   `id`, `brief_id` (`<pack>-C1`), title, one-liner, key message, the one-sentence hypothesis
   ("this concept tests whether …"), `glance` (Evidence at a glance), hook, beats (each with its
-  `animatic.scene`, `references/animatic.md`), `customer_phrases`, `copy_from_hook.evidence` (the
+  `animatic` label and texts, `references/animatic.md`), `customer_phrases`, `copy_from_hook.evidence` (the
   clips). Write the review pack's text from `templates/review_pack_template.md`.
 - **Evidence at a glance**, the first rows of each concept: the trend row first, labelled by kind
   ("Rising hook", "Rising topic", "Rising format", "Rising sound"; a guess run: "Hook (agent's
@@ -507,27 +507,14 @@ CB10, CB13, R7, CB8. Only with the briefs (the review pack alone skips D1 to E1)
 ## D2 Animatics on request
 
 CB11 (`references/animatic.md`). The check-in `animatics` comes first (`checkin-cards.md`): after the
-briefs are shown, ask whether to make animatics and for which concepts, in the user's language. The
-question also says that a styled animatic can be asked for, and how long it takes. An organic video
-brief comes here after O5's concepts (it is O6, `#o6`), with the same question and calls.
+briefs are shown, ask whether to make animatics and for which concepts, in the user's language, with
+`<N>` minutes per concept from `tm brief animatic --run R --estimate --json`. An organic video brief
+comes here after O5's concepts (it is O6, `#o6`), with the same question and calls. Every animatic is
+drawn in a library style matched to its concept: there is no sketch (owner decision #148 line 2).
 
 - **Make:** `tm decide animatics make --concepts C1,C3 --run R --said "<their words>"` (the concepts the user named; "all"
-  is every concept id). Then `tm brief animatic --run R --render --concepts C1,C3 --json`: it draws
-  those concepts' beats as the quick sketch (the default) in their formats (the config's
-  `animatic.formats`, else the audience pick's) and renders the MP4s with the user's own Chrome or
-  Edge, up to 15 minutes each. Run it in the background and wait for it, or one concept at a time
-  with the longest timeout. It writes `03_wip/animatic/` (the storyboard files and `renders/`) and a
-  new brief version that names the MP4s. Before rendering it keeps each hook (a text at `top`,
-  `center` or `bottom`) clear of the faces, the product screen and the brand's name its scene draws:
-  it moves the hook to the free place, else makes it smaller, and the answer's `hook_changes` says
-  what changed (tell the user in one line). Look at the stills: the text must not overlap, and each
-  beat must read; a fix is a change to the beats in a new brief version, then render again. Then `tm
-  brief page --run R --json` and publish to the same URL. `tm done D2 --run R` (`animatics_rendered`
-  checks the named concepts only, `page_built` the page).
-- **A styled animatic, only when the user asks for one** (issue #138 item 4): an animatic drawn in one
-  of the library's animation styles, matched to the concept, instead of the sketch, for the concepts
-  the user named for it. Before the render above, two steps:
-  1. **The styles:** `tm brief animatic --run R --style auto --concepts C1 --json` picks each
+  is every concept id), then three steps:
+  1. **The styles:** `tm brief animatic --run R --style auto --concepts C1,C3 --json` picks each
      concept's style from its format with the style ranking, no two concepts alike, and writes a new
      brief version with `animatic.style` and its poster, and a build prompt per concept. The user
      named a style: `--style <number|styleId>`. A brief for a channel with its own look: `--own
@@ -536,11 +523,17 @@ brief comes here after O5's concepts (it is O6, `#o6`), with the same question a
   2. **The modules:** one subagent per concept, in parallel, writes the style module from the
      concept's prompt (the answer's `styles[].prompt` to `styles[].module`): give it the prompt file and
      the module path, and nothing else to do.
-  Then the same `--render` draws a concept with `animatic.style` from its module (the others stay
-  sketches). It refuses a concept whose module is missing or has other beats than the brief: write it
-  again (a new version), then render. The layout check's findings are in its answer: fix them in a new
-  module version and render again. The page shows each styled concept's style by name, with its
-  poster.
+  3. **The render:** `tm brief animatic --run R --render --concepts C1,C3 --json` draws each concept from
+     its module in its formats (the config's `animatic.formats`, else the audience pick's) and renders
+     the MP4s with the user's own Chrome or Edge. Run it in the background and wait for it, or one
+     concept at a time with the longest timeout. It writes `03_wip/animatic/` (the pages and `renders/`)
+     and a new brief version that names the MP4s. It refuses, before anything is written, a concept with
+     no style (do step 1 for it), one whose module is missing, or a module with other beats than the
+     brief: write it again (a new version), then render. The layout check's findings are in its answer:
+     fix them in a new module version and render again. Look at the stills: the text must not overlap,
+     and each beat must read. Then `tm brief page --run R --json` and publish to the same URL; the page
+     shows each concept's style by name, with its poster. `tm done D2 --run R` (`animatics_rendered`
+     checks the named concepts only, `page_built` the page).
 - **Skip:** `tm decide animatics skip --run R --said "<their words>"`: D2 is skipped, and the page keeps "Animatic on
   request" in place of a player.
 - Without a browser, or the animatic tools: the stop says what to install; say it, and wait, or
@@ -677,7 +670,7 @@ organic example in it), each built on a shortlisted trend (or, in a guess run, y
   recipients from the config, `meta.product` with its `name` (no `landing_url` needed), `meta.plugin`
   with `evidence` (no account currency: there is no ad account);
 - per concept the ad brief's fields (`id`, `brief_id`, title, one-liner, key message, hypothesis,
-  hook, beats with their `animatic.scene`) and its **`organic`** block: `topic`, `format`,
+  hook, beats with their `animatic` label and texts) and its **`organic`** block: `topic`, `format`,
   `length_s` and `sound: {name, trend_id | null, licence}` (`commercial`, `organic` or `unknown`; a
   business account takes `commercial` only);
 - **glance**: the trend row first, as at C1 (CB2), then **Channel** (key `channel`, from O2) and
@@ -696,14 +689,14 @@ first publish with `tm brief capabilities`). `tm done O5 --run R` (`organic_conc
 ## O6 Animatics on request
 
 D2 (`#d2`), the same check-in and the same calls: ask whether to make animatics and for which
-concepts, explaining in one sentence that an animatic is a drawn storyboard video of the idea, to show
-the team, not the final video. Yes: `tm decide animatics make --concepts <ids> --said "<their words>"`,
-`tm brief animatic --run R --render --concepts <ids> --json` (the sketch), then the page again. A
-styled animatic, only when the user asks for one: first `tm brief animatic --run R --style auto
---concepts <ids> --json` (with `--own <number|styleId>`, the library style nearest the channel's own
-`video_style`, when it has one: `tm organic atlas-styles --channel <name>` lists it first) and a
-subagent per concept writes its style module from its prompt, as D2 says. No: `tm decide animatics
-skip --said "<their words>"`, and the run goes on.
+concepts, explaining in one sentence that an animatic is a short animated storyboard of the idea, drawn
+in a style matched to the concept, to show the team, not the final video. Yes: `tm decide animatics
+make --concepts <ids> --said "<their words>"`, then D2's three steps: `tm brief animatic --run R --style
+auto --concepts <ids> --json` (with `--own <number|styleId>`, the library style nearest the channel's
+own `video_style`, when it has one: `tm organic atlas-styles --channel <name>` lists it first), a
+subagent per concept writes its style module from its prompt, then `tm brief animatic --run R --render
+--concepts <ids> --json`, then the page again. No: `tm decide animatics skip --said "<their words>"`,
+and the run goes on.
 
 <a id="o7"></a>
 ## O7 Brief views

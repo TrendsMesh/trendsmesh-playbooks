@@ -11,10 +11,11 @@
     tm brief await --run R --stage C1|G3|G4 --version V [--clear]   people decide on the page now
     tm brief decisions --run R --stage S [--file F | --text F] [--json]   03_wip/decisions_<stage>_vNN.json
     tm brief choose --run R [--drop C2[,C3]] --source page|chat|rule [--decisions F] [--keep-carried] [--json]
-    tm brief animatic --run R [--concepts C1 ...] [--formats 9x16 4x5] [--render] [--json]   CB11
-    tm brief animatic --run R --style auto|<style> [--own <style>] [--concepts ...] [--json]   the library styles
-                                                     and build prompts, before --render (issue #138 item 4)
-    tm brief animatic --run R --estimate [--json]    minutes per styled animatic on this computer (the question's)
+    tm brief animatic --run R --style auto|<style> [--own <style>] [--concepts ...] [--json]   CB11, first: the
+                                                     library styles and build prompts (issue #138 item 4)
+    tm brief animatic --run R [--concepts C1 ...] [--formats 9x16 4x5] [--render] [--json]   then each concept
+                                                     drawn from its style module (#148 line 2: always styled)
+    tm brief animatic --run R --estimate [--json]    minutes per animatic on this computer (the question's <N>)
     tm brief evidence --run R [--json]               the clips' thumbnails and as-of dates (CB8)
     tm brief handoff --run R [--to-video C2[,C3]] [--json]   05_results/handoff_vNN.json and library/briefs.jsonl (E2,
                                                      O8); --to-video: seed/1 rows, source pb2 (issue #136)
@@ -134,8 +135,8 @@ def _setup_page(sub) -> None:
 
 
 def _setup_media(sub) -> None:
-    c = sub.add_parser("animatic", help=f"draw each concept's animatic from the latest brief into {animatic.WIP} "
-                                        "(CB11)")
+    c = sub.add_parser("animatic", help=f"draw each concept's animatic from the latest brief into {animatic.WIP}, "
+                                        "in its library style (CB11)")
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--concepts", nargs="+", help="the concept ids, e.g. C1,C3 (default: every concept in the brief)")
     c.add_argument("--formats", nargs="+", choices=animatic.FORMATS,
@@ -143,12 +144,13 @@ def _setup_media(sub) -> None:
     c.add_argument("--render", action="store_true",
                    help=f"render the MP4s into {animatic.RENDERS} and write a brief version that names them")
     c.add_argument("--style", metavar="auto|STYLE",
-                   help="first, before --render: each concept's library style (auto: ranked for its format; or a "
-                        "style's number or styleId) in a new brief version, and its build prompt for the style module")
+                   help="first, before --render (every animatic is drawn in one): each concept's library style "
+                        "(auto: ranked for its format; or a style's number or styleId) in a new brief version, and "
+                        "its build prompt for the style module")
     c.add_argument("--own", metavar="STYLE",
                    help="with --style auto: the library style nearest the channel's own video style, first")
     c.add_argument("--estimate", action="store_true",
-                   help="about how many minutes a styled animatic takes per concept on this computer (draws nothing)")
+                   help="about how many minutes an animatic takes per concept on this computer (draws nothing)")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("evidence", help=f"keep the evidence clips' thumbnails in {brief_page.EVIDENCE} and their "
                                         "as-of dates (CB8)")
@@ -199,13 +201,8 @@ def _check_brief(args: argparse.Namespace, run: RunFolder) -> int:
     message = (f"{rel} holds at stage {args.stage}: {n} concept{'' if n == 1 else 's'} pass CB1-CB13"
                f"{'' if args.stage == 'concepts' else ' (the earlier stages included)'}. Near-duplicates checked "
                f"against {len(ads)} running ad texts in {reads} Meta read{'' if reads == 1 else 's'}.")
-    warned = brief_checks.warnings(data)            # it holds all the same: worth a fix, not a stop
-    if warned:
-        message += "\nWarnings (it holds; better fixed in a new version):\n" + "\n".join(
-            f"- {w.field}: {w.what} {w.todo}" for w in warned)
     cli.emit(args, {"status": "done", "file": rel, "stage": args.stage, "concepts": n, "ad_texts": len(ads),
-                    "ad_reads": reads, "message": message,
-                    "warnings": [{"field": w.field, "what": w.what, "todo": w.todo} for w in warned]}, message)
+                    "ad_reads": reads, "message": message}, message)
     return 0
 
 
@@ -338,7 +335,7 @@ def _choose(args: argparse.Namespace, run: RunFolder) -> int:
 
 def _animatic_estimate(args: argparse.Namespace) -> int:
     minutes, measured = animatic.minutes_per_concept()
-    message = (f"A styled animatic takes about {minutes} minute{'' if minutes == 1 else 's'} per concept on this "
+    message = (f"An animatic takes about {minutes} minute{'' if minutes == 1 else 's'} per concept on this "
                "computer" + (" (its last render)." if measured else " (no animatic was rendered here yet)."))
     cli.emit(args, {"status": "done", "minutes_per_concept": minutes, "measured": measured, "message": message},
              message)
@@ -372,22 +369,17 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
     items = animatic.build(run, run.latest(brief_checks.FINAL, brief_checks.STEM, "json"), concepts=named,
                            formats=args.formats, render=args.render, fps=animatic.fps_of(run))
     version = items[0]["version"]
-    scripts = list(dict.fromkeys(f"{i['concept']}_anim_{version}.js" for i in items if not i.get("style")))
     formats = list(dict.fromkeys(i["format"] for i in items))
-    styled = list(dict.fromkeys(i["concept"] for i in items if i.get("style")))
-    wrote = ", ".join(scripts) + " and " if scripts else ""
-    message = (f"Wrote {wrote}{len(items)} page{'' if len(items) == 1 else 's'} ({', '.join(formats)}) in {animatic.WIP}"
-               + (f", {', '.join(styled)} from {'its' if len(styled) == 1 else 'their'} style module"
-                  f"{'' if len(styled) == 1 else 's'}" if styled else "") + ".")
+    styled = list(dict.fromkeys(i["concept"] for i in items))
+    message = (f"Wrote {len(items)} page{'' if len(items) == 1 else 's'} ({', '.join(formats)}) in {animatic.WIP}, "
+               f"{', '.join(styled)} from {'its' if len(styled) == 1 else 'their'} style module"
+               f"{'' if len(styled) == 1 else 's'}.")
     brief = items[0].get("brief")
-    hooks = list(dict.fromkeys(x for i in items for x in i.get("hook_changes") or []))
     if brief is None:
         message += " Render them with --render to make the MP4s the page plays."
     else:
         message += (f" Rendered {len(items)} animatic{'' if len(items) == 1 else 's'} into {animatic.RENDERS} and "
                     f"wrote {brief}, which names them.")
-        if hooks:
-            message += f" Before rendering, the hook was kept clear of what the scenes draw: {'; '.join(hooks)}."
         layout = list(dict.fromkeys(f"{i['concept']} {i['format']}: {x}" for i in items
                                     for x in i.get("layout_problems") or []))
         if layout:
@@ -409,8 +401,8 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
         if over:
             message += (f" These MP4s are too big for one published page ({over}): make the animatic shorter "
                         "before building the page.")
-    cli.emit(args, {"status": "done", "version": version, "items": items, "brief": brief, "hook_changes": hooks,
-                    "message": message}, message)
+    cli.emit(args, {"status": "done", "version": version, "items": items, "brief": brief, "message": message},
+             message)
     return 0
 
 
