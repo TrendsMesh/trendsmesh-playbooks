@@ -16,7 +16,7 @@ page says its sources in words (`source`), and the MCP call, the run file or the
 the page folds into "Technical details".
 
 CB13's check of the creator view (issue #146) reads data, never words: the creator view is built from the creator
-fields only (brief_page), and the check refuses a view, or its PDF, that shows one of the run's own account figures
+fields and each concept's one-liner and key message (brief_page; #148 line 61), and the check refuses a view, or its PDF, that shows one of the run's own account figures
 (spend, cost per result, results, from the saved Meta reads) or an advertiser of the run's Ad Library answers, with
 the field and the value. Hooks and ad copy are shown as written, in every language alike.
 

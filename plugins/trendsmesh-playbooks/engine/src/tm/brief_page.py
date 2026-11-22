@@ -418,8 +418,10 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None, 
            '<header><div>',
            f'<p class="tag">{W(tr, "brief.concept_of", idx=idx, total=total)}</p>',
            f'<h2>{E(c["title"])}</h2>',
-           f'<p{v(*HEADER_FACTS_VIEWS)}>{E(c["one_liner"])}</p>',
-           f'<p class="keymsg"{v(*HEADER_FACTS_VIEWS)}><b>{W(tr, "brief.key_message")}</b> {E(c["key_message"])}</p>',
+           # on every view, the creator's too: what the creator conveys on camera (issue #148 line 61); CB13's data
+           # check reads them there like the rest of the creator view
+           f'<p>{E(c["one_liner"])}</p>',
+           f'<p class="keymsg"><b>{W(tr, "brief.key_message")}</b> {E(c["key_message"])}</p>',
            f'<p class="hyp"{v("decision", "strategy", "media-buyer")}><b>{W(tr, "brief.what_this_tests")}</b> {E(c["hypothesis"])}</p>',
            *[x for x in (_style_line(a, tr),) if x],
            '</div>',

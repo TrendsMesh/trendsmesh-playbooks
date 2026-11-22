@@ -336,6 +336,9 @@ def test_the_page_has_the_publisher_view_and_the_posting_plan():
     assert "#sourdough" in text and "Calm kitchen track" in text
     creator = " ".join(brief_page.view_text(organic_brief(), "creator"))
     assert "#sourdough" not in creator
+    # issue #148 line 61: the creator and the publisher both see what the video conveys
+    for shown in (text, creator):
+        assert "A good loaf takes less than you think." in shown and "Starter care, shown as tutorial." in shown
 
 
 # --- O8: the hand-off to organic video ------------------------------------------------------------------------

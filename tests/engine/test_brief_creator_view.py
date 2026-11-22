@@ -81,8 +81,8 @@ def test_creator_header_shows_no_account_data():
     assert FOR_WHOM not in creator and TREND_LINE not in creator
     assert "day 1 of trying it" in creator and "Day one of better evenings" in creator   # phone note and title
     assert "Your part in three short videos." in creator and "Three concepts to approve." not in creator
-    # issue #146: built from the creator fields only, so the one-liner and the key message are not on it
-    assert "A diary of small wins." not in creator and "Your evenings, a little calmer." not in creator
+    # issue #148 line 61: the one-liner and the key message are what the creator conveys on camera, so they are on it
+    assert "A diary of small wins." in creator and "Your evenings, a little calmer." in creator
     assert "Day 1 of trying this lamp" in creator and "You tell your own diary." in creator and "Warm and plain." in creator
     for view in ("decision", "strategy"):                  # the other views keep the header as it was
         shown = " ".join(brief_page.view_text(brief, view))
@@ -120,7 +120,10 @@ def test_production_check_refuses_the_runs_data_on_the_creator_view(run):
                               (("meta", "lede", "creator"), "Beat Rival Lamps at their own game", RIVAL),
                               (("concepts", 0, "title"), "12.47 a day", CPA),
                               (("concepts", 0, "hook", "text"), "305 people said yes", RESULTS),
-                              (("meta", "title"), "Lumen versus Rival Lamps", RIVAL)):
+                              (("meta", "title"), "Lumen versus Rival Lamps", RIVAL),
+                              # issue #148 line 61: on the creator view, so checked like the rest of it
+                              (("concepts", 0, "one_liner"), "A diary of 1,234.56 small wins.", SPEND),
+                              (("concepts", 0, "key_message"), "Calmer than Rival Lamps.", RIVAL)):
         changed = copy.deepcopy(brief)
         where = changed
         for k in path[:-1]:

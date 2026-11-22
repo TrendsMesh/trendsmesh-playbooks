@@ -61,8 +61,8 @@ list is shown as stored.
 ## What the checks do in other languages
 
 - **CB13** (Creative brief, nothing confidential in the creator view) reads data, not words (issue #146): the
-  creator view is built from the creator fields only, and `tm brief check --stage production` refuses it, or its
-  PDF, when it shows one of the run's own account figures (spend, cost per result, results, from its saved Meta
+  creator view is built from the creator fields and each concept's one-liner and key message, and `tm brief check
+  --stage production` refuses it, or its PDF, when it shows one of the run's own account figures (spend, cost per result, results, from its saved Meta
   reads) or an advertiser of its Ad Library answers. It works the same in every language: there is no word list to
   translate.
 - **Glance rows** (Creative brief): the engine finds the trend, Account and Competition rows by their `key`
