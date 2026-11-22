@@ -252,9 +252,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   the shape the brief check holds it to, with its plugin blocks, an ad brief and an organic video brief. Claude
   writes the run's brief from it, instead of from files that were only in the repository.
 - **Creative brief: the creator view checks data, not words.** The creator view is built from the creator fields
-  only, so hooks and ad copy are shown as written ("DO NOT show this to your competitors" passes) in every language
-  alike. Its check now refuses the run's own account figures (spend, cost per result, results) and the advertisers
-  seen in the Ad Library, naming the field and the value, in the page and in the creator PDF.
+  and each concept's one-liner and key message (what the creator conveys on camera), so hooks and ad copy are shown
+  as written ("DO NOT show this to your competitors" passes) in every language alike. Its check now refuses the
+  run's own account figures (spend, cost per result, results) and the advertisers seen in the Ad Library, naming the
+  field and the value, in the page and in the creator PDF, the one-liner and the key message included.
 - **`tm brief choose` takes a comma list.** `--drop C2,C3`, `C2, C3` and `C2 C3` all work, and so does
   `--concepts`; an error names only the ids that are not in the brief.
 - **Free or Paid: you choose how the playbooks find trends.** When TrendsMesh isn't connected, a playbook asks one

@@ -187,11 +187,11 @@ An animatic is offered after the concepts and briefs are shown. It is made only 
 |---|---|---|---|
 | Decision | growth lead, founder, client | idea in one sentence, key message, Evidence at a glance, what it tests + KPI, production effort, budget / deadline / approver, main risk, animatic, decision buttons | beat sheets, casting, QA |
 | Strategy | creative strategist, copywriter | everything: evidence, quotes, scoring, hooks, copy, tone and mandatories | — |
-| Creator | UGC creator, on-camera talent | the product in plain words, their role, what to say (key points + sample lines), shots, props, look, do / don't, deliverables and deadline, usage rights and fee | **account data, results, competitors, customer research** (confidential) |
+| Creator | UGC creator, on-camera talent | idea in one sentence and key message (what they convey on camera), the product in plain words, their role, what to say (key points + sample lines), shots, props, look, do / don't, deliverables and deadline, usage rights and fee | **account data, results, competitors, customer research** (confidential) |
 | Editor | video editor | animatic, timeline with verbatim on-screen text, timings and text style, captions, music and licence, formats and safe zones, hook versions to cut, file specs, QA | evidence and strategy |
 | Media buyer | the person who runs the ads | hypothesis, decision metric, KPI vs the account baseline, minimum events and estimated test spend, variants (hooks, copy), placements and formats, audience, control ad | production details |
 
-The creator view is built from the creator fields only, so it never contains competition, Ad Library results, spend or the account's results. Hooks and ad copy are shown as written.
+The creator view is built from the creator fields and each concept's one-liner and key message, the two things the creator has to convey on camera. It never contains competition, Ad Library results, spend or the account's results: the data check reads every text on it, the one-liner and the key message included. Hooks and ad copy are shown as written.
 
 - **Standard brief fields** (agency creative brief + UGC creator brief), present in the data source and routed to the views above: single-minded **key message**; **tone of voice and mandatories / don'ts**; **KPI** in business terms (decision metric vs baseline, minimum events, R4); **budget, deadline, approver**; **usage rights and creator fee**.
 - Money shown to recipients is in USD at a stated rate (account data in PLN is converted; project rule for outward communication).

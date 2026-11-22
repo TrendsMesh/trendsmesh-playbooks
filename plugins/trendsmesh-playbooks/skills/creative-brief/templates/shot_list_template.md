@@ -5,7 +5,7 @@
 ---
 
 ## 1. At a glance
-`brief_id`, the idea in one sentence, target length, formats to frame for (9:16 and/or 4:5, R6), shoot time estimate, deadline.
+`brief_id`, the idea in one sentence, the key message, target length, formats to frame for (9:16 and/or 4:5, R6), shoot time estimate, deadline.
 
 ## 2. Casting and look
 Who is on camera (age range, gender, look, energy), wardrobe, hair and make-up notes, what to avoid.

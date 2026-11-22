@@ -107,15 +107,12 @@ def _per_view_header(reference: str) -> str:
     reference = reference.replace("To send one view, open it and use Share, then Copy link.",
                                   brief_page.E(brief_page.PDF_WORDS["hint_no_pdf"]))
     reference = re.sub(r'<div class="(who|trendline)">', lambda m: f'<div class="{m.group(1)}"{facts}>', reference)
-    return _creator_fields_and_drop(reference)
+    return _drop(reference)
 
 
-def _creator_fields_and_drop(reference: str) -> str:
-    """Issue #146: the creator view is built from the creator fields only, so a concept's one-liner and key message
-    are on every view but the creator's; issue #145: Drop, the third choice per concept."""
-    facts = f' data-v="{" ".join(brief_page.HEADER_FACTS_VIEWS)}"'
-    reference = re.sub(r'(<h2>[^<]*</h2>\n)<p>', lambda m: f"{m.group(1)}<p{facts}>", reference)
-    reference = reference.replace('<p class="keymsg">', f'<p class="keymsg"{facts}>')
+def _drop(reference: str) -> str:
+    """Issue #145: Drop, the third choice per concept. A concept's one-liner and key message stay on every view, the
+    creator's too, as in the reference (issue #148 line 61)."""
     change = 'data-d="change" aria-pressed="false">Ask for changes</button>'
     return reference.replace(change, change + '<button type="button" class="choice" data-d="drop" '
                                               'aria-pressed="false">Drop</button>')

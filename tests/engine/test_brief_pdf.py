@@ -462,8 +462,11 @@ def test_chrome_prints_each_view(run, request):
     got = brief_page.build(run)
     assert got["pdf_note"] is None and len(got["pdfs"]) == 4
     texts = {Path(p).stem.split("-", 1)[1]: brief_pdf.text(run.path / p) for p in got["pdfs"]}
-    assert texts["creator"].startswith("View: Creator") and texts["full"].startswith("Full report")
+    bar = "TrendsMesh\nCreative brief\n"                   # the run page's top bar (issue #60), then the banner
+    assert texts["creator"].startswith(bar + "View: Creator") and texts["full"].startswith(bar + "Full report")
     assert "Your part" in texts["creator"] and "Your decision on" not in texts["creator"]
+    for shown in (brief["concepts"][0]["one_liner"], brief["concepts"][0]["key_message"]):   # issue #148 line 61
+        assert " ".join(shown.split()) in " ".join(texts["creator"].split()), shown
     assert "Someone in their thirties" not in texts["creator"] and "Someone in their thirties" in texts["full"]
     assert "Your part" in texts["full"] and "Your part" not in texts["decision"]
     assert brief_page.PDF_WORDS["stills"] in texts["creator"]

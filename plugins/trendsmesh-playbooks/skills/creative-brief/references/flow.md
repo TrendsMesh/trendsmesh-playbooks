@@ -560,7 +560,9 @@ them with `tm brief choose` first):
   sample lines, natural, not read out), shots with framing and takes, hook versions as extra takes,
   look and props, what to send back (raw footage without burned-in captions, a separate voice or
   audio track, both formats), deadline and usage. The creator view is built from the creator
-  fields only, so account data, results, competitors and customer research never reach it.
+  fields and each concept's one-liner and key message (what the creator conveys on camera), so
+  account data, results, competitors and customer research never reach it; the data check reads
+  the one-liner and the key message there too.
 - **The editor part** (rows "Length", "Captions", "Formats", "Versions", "Files" and the rest):
   cut-downs, text styles, labels, captions, music and its licence, the end card, formats and safe
   zones.
