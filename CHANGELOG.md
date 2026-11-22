@@ -4,6 +4,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **The models' prices were read again on 22 November.** The Replicate prices and ElevenLabs rates that match
+  their provider's page carry the new date. Music v2.5 and the v4 voices keep their dates of
+  12 November, and the caption-removal model its date of 5 November, until they are checked by hand.
 - **Windows: a tool's file blocked by Smart App Control gets the plugin's Smart App Control message.** With Smart
   App Control on, a tool that fails to load a compiled file of its packages (numpy, scipy, av, scikit-learn,
   torch, from PyPI) now shows the same message as a blocked Python: it names the blocked file, or says the error
