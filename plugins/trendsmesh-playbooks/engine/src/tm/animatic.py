@@ -7,7 +7,6 @@ item 4, owner decision #148 line 2 as changed by @piotr-lezon).
     rendered_gap(run)             the step check `animatics_rendered`
     choose_styles(brief, ids)     each concept's library style, ranked for its format
     style(run, brief_path, ...)   `tm brief animatic --style`: the styles in a new brief, a build prompt per concept
-    minutes_per_concept()         about how long an animatic takes here (the animatics question's <N>)
 
 Every animatic is drawn in a library style; there is no sketch (the fixed scenes of the handoff's `scenes.js` no
 longer draw animatics, and the plugin no longer ships them). `style` (`tm brief animatic --style auto`, part of D2's
@@ -18,8 +17,8 @@ writes the style module `<C>_style_vNN.js`; `build` draws each concept from its 
 prompt, one beat per beat of the brief: the brief's beats are its own, no frames list is read), a page
 `<C>_<fmt>_<ver>.html` per format through `atlas_prompt.module_page`, rendered by `atlas.render`. A concept with no
 style is a Stop that names the style step. A beat's `animatic` block gives the prompt its label, its texts and its
-`params.image` (a picture of the run, inlined into the page); a `scene` from an older brief is not read. Each render's
-time per concept is kept in the plugin data folder (`TIMING`).
+`params.image` (a picture of the run, inlined into the page); a `scene` from an older brief is not read. No render
+time is kept: the animatics question gives no fixed time (#148 line 157 as changed by @piotr-lezon).
 
 A version is never used twice (the next free `vNN` by default). With `render`, `atlas.render` draws each page into
 `03_wip/animatic/renders/<C>_animatic_<fmt>_<ver>.mp4` with its stills, and a new `04_final/brief_pack_vNN.json`
@@ -31,15 +30,13 @@ from __future__ import annotations
 
 import copy
 import json
-import math
 import os
 import re
 import shutil
 import tempfile
-import time
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
-from tm import atlas, atlas_prompt, config, manifest, paths, state
+from tm import atlas, atlas_prompt, config, manifest, state
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN_SENTENCE, Stop
 from tm.tools import _common as c
@@ -228,8 +225,6 @@ def _brief_with_renders(run: RunFolder, rel: str, brief: dict, items: list[dict]
 STYLE_KEYS = ("style", "poster")        # a styled concept's `animatic` keeps them through a render
 STYLE_SOURCE = "tm brief animatic --style"
 ASPECTS = {"9x16": "9:16", "4x5": "4:5"}
-DEFAULT_MINUTES = 5                     # an animatic per concept before this computer rendered one (#148 line 2)
-TIMING = "animatic_timing.json"         # in the plugin data folder: this computer's last animatic render
 # A concept's format (an ad's plugin.axes.format, an organic brief's organic.format), as words, to the channel type
 # and tone `atlas_prompt.ranked` takes: the first row with a word in it wins.
 FORMAT_RANKS = (
@@ -547,39 +542,6 @@ def _styled_pages(run: RunFolder, concept: dict, module: dict, drawn: list[str],
     return out
 
 
-def _record_time(items: list[dict], elapsed: float) -> None:
-    """This computer's time per concept of a render call (its formats, layout checks and renders together: the call's
-    time over its concepts, at least a concept's own render time), for the question's minutes (`minutes_per_concept`).
-    Not kept when the plugin data folder is not there: never a stop."""
-    per: dict[str, float] = {}
-    for item in items:
-        if isinstance(item.get("render_s"), (int, float)):
-            per[item["concept"]] = per.get(item["concept"], 0.0) + float(item["render_s"])
-    if not per:
-        return
-    seconds = max(elapsed / len(per), sum(per.values()) / len(per))
-    try:
-        path = paths.data_dir() / TIMING
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(f".{TIMING}.{os.getpid()}.tmp")
-        tmp.write_text(json.dumps({"seconds_per_concept": round(seconds, 1), "concepts": len(per)}) + "\n",
-                       encoding="utf-8")
-        os.replace(tmp, path)
-    except (OSError, RuntimeError):
-        return
-
-
-def minutes_per_concept() -> tuple[int, bool]:
-    """(about how many minutes an animatic takes per concept on this computer, measured): the last render's time,
-    rounded up; DEFAULT_MINUTES before there is one."""
-    try:
-        data = json.loads((paths.data_dir() / TIMING).read_text(encoding="utf-8-sig"))
-        seconds = float(data["seconds_per_concept"])
-    except (OSError, RuntimeError, ValueError, KeyError, TypeError):
-        return DEFAULT_MINUTES, False
-    return max(1, math.ceil(seconds / 60)), True
-
-
 def build(run: RunFolder, brief_path: Path, *, concepts: list[str] | None = None,
           formats: list[str] | None = None, version: str | None = None, render: bool = False,
           fps: int = atlas.FPS) -> list[dict]:
@@ -590,7 +552,6 @@ def build(run: RunFolder, brief_path: Path, *, concepts: list[str] | None = None
     not there, ValueError for a bad argument or a version already used: nothing is written then."""
     from tm import brief_page   # brief_page -> brief_checks -> this module
 
-    started = time.monotonic()
     _, rel, brief = brief_page.load_brief(run, brief_path)
     drawn = formats_of(run) if formats is None else _checked_formats(formats, "--formats")
     listed = _concepts(rel, brief, concepts)
@@ -611,7 +572,6 @@ def build(run: RunFolder, brief_path: Path, *, concepts: list[str] | None = None
         items += _styled_pages(run, concept, modules[concept["id"]], drawn, version, render)
     if render:
         _render(run, items, version, fps)
-        _record_time(items, time.monotonic() - started)
         new = _brief_with_renders(run, rel, brief, items, drawn, version)
         for item in items:
             item["brief"] = new

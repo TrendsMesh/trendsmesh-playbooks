@@ -98,10 +98,16 @@ change, then `--style` again for a new prompt). Then render again.
 
 ## How long
 
-The animatics question says about how many minutes an animatic takes per concept on this computer:
-`tm brief animatic --run R --estimate --json` gives `minutes_per_concept`, the last render's time per
-concept here (its formats, layout checks and renders together, kept in the plugin data folder,
-`animatic_timing.json`), rounded up, or 5 before this computer has rendered one. Measured on a Mac with
-Chrome: a 12 s concept in 9:16 and 4:5 took 115 s, a 15 s one 148 s. The subagents writing the modules
-take longer, about 10 to 15 minutes, while the concepts' modules are written in parallel; the number in
-the question counts the render only.
+The animatics question gives no fixed time (owner decision #148 line 157). It says, in the user's
+language: "Animatics take a while: depending on the style and the computer, from a few to over a dozen
+minutes per concept." There are too few reliable measurements for a narrower range, and they differ a
+lot:
+
+- On a Mac with Chrome, the render took about 2 to 3 minutes per concept (a 12 s concept in 9:16 and
+  4:5 took 115 s, a 15 s one 148 s), and writing the modules about 10 to 15 minutes per batch, the
+  concepts' modules written in parallel.
+- On a Windows PC, two styled animatics (30 s, one concept each) took about 15 and about 30 minutes from
+  writing to video: about 9 minutes of writing each time, and a render of 2 minutes once and 13 minutes
+  the other time, on the same computer.
+
+No render time is kept, and no command estimates it.

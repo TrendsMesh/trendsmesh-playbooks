@@ -15,7 +15,6 @@
                                                      library styles and build prompts (issue #138 item 4)
     tm brief animatic --run R [--concepts C1 ...] [--formats 9x16 4x5] [--render] [--json]   then each concept
                                                      drawn from its style module (#148 line 2: always styled)
-    tm brief animatic --run R --estimate [--json]    minutes per animatic on this computer (the question's <N>)
     tm brief evidence --run R [--json]               the clips' thumbnails and as-of dates (CB8)
     tm brief handoff --run R [--to-video C2[,C3]] [--json]   05_results/handoff_vNN.json and library/briefs.jsonl (E2,
                                                      O8); --to-video: seed/1 rows, source pb2 (issue #136)
@@ -149,8 +148,6 @@ def _setup_media(sub) -> None:
                         "its build prompt for the style module")
     c.add_argument("--own", metavar="STYLE",
                    help="with --style auto: the library style nearest the channel's own video style, first")
-    c.add_argument("--estimate", action="store_true",
-                   help="about how many minutes an animatic takes per concept on this computer (draws nothing)")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("evidence", help=f"keep the evidence clips' thumbnails in {brief_page.EVIDENCE} and their "
                                         "as-of dates (CB8)")
@@ -333,15 +330,6 @@ def _choose(args: argparse.Namespace, run: RunFolder) -> int:
     return 0
 
 
-def _animatic_estimate(args: argparse.Namespace) -> int:
-    minutes, measured = animatic.minutes_per_concept()
-    message = (f"An animatic takes about {minutes} minute{'' if minutes == 1 else 's'} per concept on this "
-               "computer" + (" (its last render)." if measured else " (no animatic was rendered here yet)."))
-    cli.emit(args, {"status": "done", "minutes_per_concept": minutes, "measured": measured, "message": message},
-             message)
-    return 0
-
-
 def _animatic_style(args: argparse.Namespace, run: RunFolder, named: list[str] | None) -> int:
     if args.render:
         raise ValueError("--style comes before --render: it chooses the styles and writes the build prompts; a "
@@ -360,8 +348,6 @@ def _animatic_style(args: argparse.Namespace, run: RunFolder, named: list[str] |
 
 def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
     named = cli.ids_arg(args.concepts) or None
-    if args.estimate:
-        return _animatic_estimate(args)
     if args.own is not None and args.style is None:
         raise ValueError("--own goes with --style auto: it puts the channel's own style first.")
     if args.style is not None:

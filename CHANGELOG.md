@@ -57,8 +57,8 @@ What changed in each version of the TrendsMesh playbooks plugin.
   styles, picked for the concept's format: a talking head, a screen recording and a UGC phone video each get their
   own look, and a channel with its own style gets that one first. You can also name a style. The quick pencil
   sketch is gone, and a brief no longer needs a sketch scene for each beat. The brief's page shows each animatic's
-  style by name, with its poster. The animatics question says how many minutes an animatic takes per concept on
-  your computer, from its last render, or about 5 before the first one.
+  style by name, with its poster. The animatics question gives no fixed time: depending on the style and the
+  computer, an animatic takes from a few to over a dozen minutes per concept.
 - **A decision you give in chat is saved exactly, or Claude asks again.** Every page build now lists the answers it
   takes in chat, one line per item or section, with the name the page shows. You may name an image by its name in
   the pack (`still_01`) and a track by its file (`mixkit-cat-walk-371.mp3`). A line Claude can't read, or a name that
