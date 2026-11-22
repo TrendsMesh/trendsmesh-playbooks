@@ -52,6 +52,25 @@ def test_a_trend_counts_only_once_its_run_delivered_a_video_or_a_script(tmp_path
     assert T3 in organic_research.used(ws, "ch")              # a row written at delivery counts as it is
 
 
+def test_the_used_trends_without_some_runs(tmp_path):
+    """#148 line 99: the flexible day asks what the week's other days built on before the week, so the week's own
+    slot runs can be left out; an earlier row of the same trend then shows."""
+    ws = tmp_path / "ws"
+    organic_research.record_used(ws, "ch", [_row(T1, "2026-11-01_ch-m1", final="04_final/m1_final_v01.mp4"),
+                                            _row(T1, "2026-11-09_ch-w1", final="04_final/w1_final_v01.mp4"),
+                                            _row(T2, "2026-11-09_ch-w1", final="04_final/w1_final_v01.mp4")])
+    assert organic_research.used(ws, "ch")[T1]["run"] == "2026-11-09_ch-w1"
+    before = organic_research.used(ws, "ch", {"2026-11-09_ch-w1"})
+    assert sorted(before) == [T1] and before[T1]["run"] == "2026-11-01_ch-m1"
+
+
+def test_used_hits_skip_a_series_and_the_ideas_own_run():
+    hits = organic_proposals.used_hits(_p("m1", [T1, T3]), [T1, T3], USED, None)
+    assert [tid for tid, _ in hits] == [T1]
+    assert organic_proposals.used_hits(_p("m1", [T1], series="Ranks"), [T1], USED, None) == []
+    assert organic_proposals.used_hits(_p("m1", [T1]), [T1], USED, "2026-11-12_ch-m1") == []
+
+
 def test_the_used_rows_are_written_when_the_final_is_delivered_once(tmp_path):
     ws = tmp_path / "ws"
     run = _production(ws, "ch-m1", final="m1_final_v01.mp4")

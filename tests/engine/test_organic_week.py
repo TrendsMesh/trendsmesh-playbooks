@@ -275,9 +275,11 @@ def test_used_trend_slot_refused_unless_series(tmp_path, capsys):
     found = {p.field: p for p in _problems(run, week)}
     # issue #142: a used trend takes a new angle while it still rises; Tung Tung Tung Sahur's card names no momentum
     assert set(found) == {"slots[4].plugin.new_angle", "slots[4].trends", "reserves[0].plugin.new_angle",
-                          "reserves[0].trends"}
+                          "reserves[0].trends", "slots"}
     assert "2026-11-06_walkthrough-exampleedu" in found["slots[4].plugin.new_angle"].what
     assert "no longer rising" in found["slots[4].trends"].what
+    assert "one batch" in found["slots"].what and "the sun slot" in found["slots"].what       # #148 line 99
+    assert "the reserve “" in found["slots"].what
     code, out = _cli(capsys, "organic", "week", "check", "--run", str(run.path), "--file", str(_write(run, week)))
     assert code == 2 and out["status"] == "stop" and out["message"].endswith(AGAIN + ".")
 
@@ -316,6 +318,84 @@ def test_used_trend_slot_refused_unless_series(tmp_path, capsys):
     said = {p.field: p.what for p in problems if p.field.endswith(".id")}
     assert "cannot name a folder" in said["proposals[0].id"] and "used twice" in said["proposals[1].id"]
     assert "Windows keeps" in said["proposals[2].id"]
+
+
+M1_TREND = "Tung Tung Tung Sahur Brainrot Memes"
+NEW_ANGLE = {"previous": "2026-11-06_walkthrough-exampleedu", "differs": ["hook"], "why": "a quiz on the meme"}
+
+
+def _on_used(idea: dict, short: str = "c20bfd65") -> dict:
+    """The idea built on a used trend (M1's, by default), outside a series, with a new angle."""
+    idea["plugin"].update({"trends": [{"id": short}], "series": None, "new_angle": dict(NEW_ANGLE)})
+    return idea
+
+
+@pytest.mark.private_data
+def test_a_week_plan_is_one_batch_of_ideas(tmp_path, monkeypatch):
+    """#148 line 99: a week plan counts as one batch of ideas, so at most one of its ideas (slots and reserves
+    together) builds on a trend the channel already used, with a new angle while it still rises; a series continues
+    one freely. A second is refused in one problem naming every idea on a used trend."""
+    monkeypatch.setattr(organic_proposals, "recent_rising", lambda run: lambda tid: True)
+    run = _week_run(tmp_path)
+    week = exampleedu.week()
+    _on_used(week["slots"][0])
+    assert _problems(run, week) == []               # one used trend in the week; Sunday's brainrot is a series
+    _on_used(week["slots"][1])
+    found = _problems(run, week)
+    assert [p.field for p in found] == ["slots"]
+    what = found[0].what
+    assert what.startswith("A week plan is one batch of ideas: only one of its ideas may build on a trend this channel "
+                           "already used, and 2 do: the mon slot “")
+    assert f"(w1) on {M1_TREND}; the wed slot “" in what and what.endswith(f"(w2) on {M1_TREND}.")
+    assert "plugin.series" in found[0].todo
+    week["slots"][1]["plugin"]["series"] = "brainrot"                                 # the series continues freely
+    assert _problems(run, week) == []
+
+    week = exampleedu.week()
+    _on_used(week["slots"][0])
+    _on_used(week["reserves"][1])                   # a reserve becomes a slot's idea by a swap: it counts too
+    found = _problems(run, week)
+    assert [p.field for p in found] == ["slots"] and "the reserve “" in found[0].what and "(r2)" in found[0].what
+
+
+@pytest.mark.private_data
+def test_the_flexible_days_idea_is_in_the_weeks_batch(tmp_path, capsys, monkeypatch):
+    """#148 line 99: the flexible day's fresh idea counts with the week's other OK days. Monday builds on M1's used
+    trend (delivered since, so the log's newest row for it is Monday's own run, which does not hide the earlier use);
+    a flexible idea on another used trend is refused naming Monday, and passes as a series."""
+    monkeypatch.setattr(organic_proposals, "recent_rising", lambda run: lambda tid: True)
+    run = _week_run(tmp_path)
+    ws = tmp_path / "ws"
+    week = exampleedu.week()
+    _on_used(week["slots"][0])
+    _checked(run, capsys, week)
+    _page(run, capsys)
+    _read(run, capsys, _doc("pon", decision="ok"), _doc("śr", decision="skip"), _doc("pt", decision="skip"),
+          _doc("sob", decision="skip"), _doc("niedz", decision="ok"))
+    _at_i3(run)
+    _approve(run)
+    code, out = _cli(capsys, "organic", "start", "--run", str(run.path))
+    assert code == 0 and [x["proposal"] for x in out["started"]] == ["w1"], out
+    w1 = RunFolder.open(ws / out["started"][0]["path"])
+    assert organic_research.record_delivered(w1, "04_final/w1_final_v01.mp4") >= 1
+    tid = exampleedu.full_ids()["e54e5955"]                                  # Adopt Me: used by another video since
+    organic_research.record_used(ws, exampleedu.CHANNEL, [
+        {"trend_id": tid, "name": "Adopt Me", "kind": "topic_trend", "run": "2026-11-08_exampleedu-other",
+         "video": "m2", "series": None, "used": "2026-11-08", "final": "04_final/m2_final_v01.mp4"}])
+    trends.save_answer(run, "search_trends", {"about": "Roblox"}, [], at=_later(1))
+    card = json.loads((exampleedu.TRENDS / "card_e54e5955.json").read_text(encoding="utf-8"))
+    trends.save_answer(run, "get_trend", {"trend_id": tid}, card, at=_later(2))
+    idea = _on_used(copy.deepcopy(exampleedu.week()["reserves"][0]), "e54e5955")
+    idea.update({"id": "f1"})
+    idea["plugin"]["flexible"] = True
+    code, out = _cli(capsys, "organic", "flexible", "--run", str(run.path), "--file",
+                     str(_write(run, idea, stem="flexible")))
+    assert code == 2 and "one batch of ideas" in out["message"], out
+    assert "the mon slot “" in out["message"] and f"(w1) on {M1_TREND}; the flexible day's idea" in out["message"]
+    idea["plugin"]["series"] = "adopt me"
+    code, out = _cli(capsys, "organic", "flexible", "--run", str(run.path), "--file",
+                     str(_write(run, idea, stem="flexible")))
+    assert code == 0, out
 
 
 # --- I3: the slot runs and the flexible day -------------------------------------------------------------

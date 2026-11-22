@@ -608,20 +608,26 @@ def _used(run: RunFolder, p: dict, where: str, found, used: dict[str, dict], own
               names={where: _name(p)})
 
 
+def used_hits(p: dict, found, used: dict[str, dict], own: str | None) -> list[tuple[str, dict]]:
+    """The used trends (trend id, its used row) idea `p` builds on, its trends resolved to `found`: none for an idea in
+    a series (it continues one freely), and none from `own`, the run this idea itself was started as."""
+    if _text(p["plugin"].get("series")):
+        return []
+    return [(tid, used[tid]) for tid in found or [] if tid in used and used[tid].get("run") != own]
+
+
 def used_rule(proposals: list, found: dict[str, list[str]], used_of: dict[str, dict[str, dict]],
               own: dict[str, str | None], rising, out: list[Problem], names: dict[str, str] | None = None) -> None:
     """A trend the channel already made a video or a script from (issue #142): an idea in a series continues it;
     otherwise one idea per batch may build on a used trend, with `plugin.new_angle` {previous, differs: [topic | hook
     | format, ...], why}, while the trend still rises (`rising(tid)`). `used_of[pid]` is the channel's used trends,
-    `own[pid]` the run this idea itself was started as (not another use)."""
+    `own[pid]` the run this idea itself was started as (not another use). A week plan is one batch too (#148 line 99):
+    `organic_week.one_used` counts its ideas together."""
     first = None
     named = lambda p: (names or {}).get(p["id"]) or _name(p)   # noqa: E731
     for p in proposals:
         pid = p["id"]
-        if _text(p["plugin"].get("series")):
-            continue
-        used = used_of.get(pid) or {}
-        hits = [(tid, used[tid]) for tid in found.get(pid) or [] if tid in used and used[tid].get("run") != own.get(pid)]
+        hits = used_hits(p, found.get(pid), used_of.get(pid) or {}, own.get(pid))
         if not hits:
             continue
         tid, row = hits[0]

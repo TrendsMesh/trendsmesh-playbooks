@@ -371,11 +371,13 @@ def _counted(workspace: Path, rows: list[dict]) -> list[dict]:
     return out
 
 
-def used(workspace: Path, channel: str) -> dict[str, dict]:
+def used(workspace: Path, channel: str, skip_runs: frozenset[str] | set[str] = frozenset()) -> dict[str, dict]:
     """The trends this channel has made videos from: trend id -> its latest row in used_trends.jsonl that counts (a
-    finished video or script, `_counted`)."""
+    finished video or script, `_counted`). Rows of `skip_runs` are left out (a week's own slot runs, when the flexible
+    day asks what the week's other days built on before the week)."""
     out: dict[str, dict] = {}
-    for row in _counted(workspace, _rows(workspace, _folder(workspace, channel) / USED)):
+    rows = [r for r in _rows(workspace, _folder(workspace, channel) / USED) if r.get("run") not in skip_runs]
+    for row in _counted(workspace, rows):
         if isinstance(row.get("trend_id"), str) and row["trend_id"]:
             out[row["trend_id"]] = row
     return out

@@ -35,7 +35,7 @@ in the living spec, `spec/03-organic-ai-video/VARIANTS.md`.
 | Sounds with no niche relevance | score sounds from their description and evidence captions | tested (dry run, by hand) | built: `tm trends shortlist --sound-relevance` |
 | No format trends (`format_trend` empty) | read the format from the hook's or topic's evidence videos | tested | built in the skill: the format read from the evidence videos (`flow.md#b1`); filed with the backend requests |
 | Hook evidence only in another subject or language | transfer flagged as a hypothesis; lowers expected reach, not feasibility | tested ("dad, why is _" from sports) | built: `plugin.transfer`, and the proposals check asks for the weak link |
-| Trend already used on the channel | skipped; series continue (e.g. brainrot part 2) | tested on the weekly page (dry cycle) | built: the channel's used-trends log (`tm organic used`); the proposals check refuses a used trend without a series |
+| Trend already used on the channel | skipped; series continue (e.g. brainrot part 2) | tested on the weekly page (dry cycle) | built: the channel's used-trends log (`tm organic used`); the proposals check and the week check allow one idea per batch on a used trend (a week plan is one batch), with a new angle while it still rises, and a series freely |
 | News, tragedy, real people in topic trends | sensitivity filter **postponed** (round 49); today the agent leaves such topics out by judgement | untested | left out by judgement (B2); the sensitivity filter is not built (issue) |
 
 ## 3. Production types

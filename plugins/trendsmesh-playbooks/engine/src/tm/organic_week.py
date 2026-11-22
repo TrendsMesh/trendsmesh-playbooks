@@ -172,10 +172,11 @@ def channel_of(week: dict, cfg: dict) -> str | None:
 
 
 def _idea_problems(run: RunFolder, week: dict, idea: dict, where: str, used: dict, own: dict,
-                   out: list[Problem]) -> None:
+                   out: list[Problem]) -> list[tuple[str, dict]]:
     """One idea's own problems: its id, costs, approach, product level and series, its trends resolved to saved cards,
-    and a trend the channel already used only in a series (the slot run this idea itself was started as, `own`, is
-    not another use)."""
+    and a trend the channel already used with a new angle while it still rises, or in a series (the slot run this
+    idea itself was started as, `own`, is not another use). The used trends it builds on (`one_used` counts them
+    across the week)."""
     plugin = idea["plugin"]
     if why := organic_proposals._id_gap(idea["id"]):
         out.append(Problem(f"{where}.id", f"{_name(idea)}: its id {why} (it names the idea's production run and its "
@@ -212,6 +213,29 @@ def _idea_problems(run: RunFolder, week: dict, idea: dict, where: str, used: dic
                                                        "issue #106).", "Make it an Inspire."))
     key = organic_proposals.idea_key(as_proposal(week, idea, {"output": "video"}))
     organic_proposals._used(run, view, where, found, used, own.get(key), out)
+    return organic_proposals.used_hits(view, list(found), used, own.get(key))
+
+
+def _called(where: str, idea: dict) -> str:
+    """An idea of the week plan as a problem names it: its day's slot, or a reserve."""
+    if where.startswith("slots"):
+        return f"the {DAY.get(str(idea.get('day')), idea.get('day'))} slot {_name(idea)}"
+    return f"the reserve {_name(idea)}"
+
+
+def one_used(entries: list[tuple[str, list[tuple[str, dict]]]], field: str, out: list[Problem]) -> None:
+    """A week plan is one batch of ideas (#148 line 99): at most one of its ideas, slots and reserves together (a
+    reserve becomes a slot's idea by a swap), builds on a trend the channel already used, so the week's videos do not
+    repeat used trends. `entries` are (how the problem names an idea, the used trends it builds on, as
+    `_idea_problems` gives them); one problem names every idea that does."""
+    using = [(called, hits) for called, hits in entries if hits]
+    if len(using) < 2:
+        return
+    said = "; ".join(f"{called} on {', '.join(row.get('name') or tid for tid, row in hits)}" for called, hits in using)
+    out.append(Problem(field, f"A week plan is one batch of ideas: only one of its ideas may build on a trend this "
+                              f"channel already used, and {len(using)} do: {said}.",
+                       "Keep one of them; build the others on trends the channel has not used, or make them the next "
+                       "video of a series (plugin.series)."))
 
 
 _ID_TODO = "Name it w1, w2, r1, ... or another id of ASCII letters, digits, '_' and '-'"
@@ -390,9 +414,11 @@ def check(run: RunFolder, week: object, cfg: dict) -> list[Problem]:
                                           f"{organic_proposals._plain(exc)}.", "Fix the file it names, then check again."))
     own = (state.load(run).organic or {}).get("started") or {}
     own = {k: v.get("run") for k, v in own.items() if isinstance(v, dict)}
+    entries = []
     for kind in ("slots", "reserves"):
         for i, idea in enumerate(week[kind]):
-            _idea_problems(run, week, idea, f"{kind}[{i}]", used, own, out)
+            entries.append((_called(kind, idea), _idea_problems(run, week, idea, f"{kind}[{i}]", used, own, out)))
+    one_used(entries, "slots", out)
     return out
 
 
@@ -893,6 +919,33 @@ def _when(text: str | None) -> datetime | None:
     return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
 
 
+def _week_used(run: RunFolder, week: dict, rows: dict, flexible_day: str, slug: str,
+               own: dict) -> list[tuple[str, list[tuple[str, dict]]]]:
+    """`one_used`'s entries for the week's other OK days (each day's chosen idea, a swapped-in reserve included): the
+    trends each builds on that the channel used before this week. The week's own slot runs are left out of the used
+    trends, so a day delivered since the approval is not counted as a use of its own trend."""
+    mine = {v["run"] for v in (own.get("started") or {}).values() if isinstance(v, dict) and _text(v.get("run"))}
+    try:
+        before = organic_research.used(trend_spool.workspace_of(run), slug, mine)
+    except ValueError:                        # a damaged library line: the idea's own check names it
+        return []
+    by_id = {str(i["id"]): i for i in ideas(week)}
+    out = []
+    for day in order(week):
+        row = rows.get(day) or {}
+        other = by_id.get(str(row.get("idea")))
+        if day == flexible_day or row.get("decision") != "ok" or other is None:
+            continue
+        found = []
+        for t in other["plugin"]["trends"]:
+            try:
+                found.append(organic_research.resolve(run, t["id"])[0])
+            except ValueError:
+                continue
+        out.append((f"the {day} slot {_name(other)}", organic_proposals.used_hits(other, found, before, None)))
+    return out
+
+
 def flexible(run: RunFolder, file: Path, *, today: date | None = None) -> dict:
     """Start the flexible slot from `file` (03_wip/flexible_vNN.json: one idea in the slot's shape, plugin block and
     all, built on fresh trends): the week's yes covering its latest decisions, its flexible slot OK and not started, a
@@ -938,7 +991,10 @@ def flexible(run: RunFolder, file: Path, *, today: date | None = None) -> dict:
         except ValueError as exc:            # a damaged library line (M4): a problem, as at the week check
             out.append(Problem("channel", f"The channel {slug}'s library cannot be read: "
                                           f"{organic_proposals._plain(exc)}.", "Fix the file it names, then start again."))
-        _idea_problems(run, week, idea, "idea", used, {}, out)
+        hits = _idea_problems(run, week, idea, "idea", used, {}, out)
+        if hits and slug:
+            one_used([*_week_used(run, week, body["decisions"], day, slug, own),
+                      (f"the flexible day's idea {_name(idea)}", hits)], "plugin.trends", out)
     if out:
         raise Stop(f"{file_rel} needs fixing:\n" + "\n".join(f"- {p.field}: {p.what} {p.todo}" for p in out)
                    + f"\nFix the file (a new version), then start the flexible day again; {AGAIN}.")
