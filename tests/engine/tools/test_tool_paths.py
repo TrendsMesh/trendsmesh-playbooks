@@ -10,7 +10,7 @@ from _media import make_clip
 
 
 def test_path_with_spaces(run, tmp_path):
-    """The real chain: pixi run -> python -m tm.tools.reframe, with a run folder, video and
+    """The real chain: pixi run -> python -m tm.toolrun reframe, with a run folder, video and
     teardown under folders like C:\\Users\\Łukasz Nowak\\Desktop\\Moje reklamy\\."""
     pixi, env = os.environ.get("PIXI_EXE"), os.environ.get("PIXI_ENVIRONMENT_NAME")
     manifest = os.environ.get("PIXI_PROJECT_MANIFEST")
@@ -22,7 +22,7 @@ def test_path_with_spaces(run, tmp_path):
     td.write_text(json.dumps({"width": 540, "height": 960, "overlays": []}), encoding="utf-8")
     proc = subprocess.run(
         [pixi, "run", "--as-is", "--manifest-path", manifest, "-e", env,
-         "python", "-m", "tm.tools.reframe", "--run", str(run.path), str(video),
+         "python", "-m", "tm.toolrun", "reframe", "--run", str(run.path), str(video),
          "--teardown", str(td), "--json"],
         capture_output=True, text=True, encoding="utf-8", timeout=300)
     assert proc.returncode == 0, proc.stdout + proc.stderr

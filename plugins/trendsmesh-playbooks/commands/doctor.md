@@ -69,6 +69,10 @@ name none, a short general check; and write a support report they can read and s
    If `tm` says Windows blocked a file of the plugin's Python (Smart App Control, Windows error
    4551), stop the check there too: tell the user tm's steps in plain words. It is no network or
    install failure, so never report it as one, and never change Windows security settings yourself.
+   The same message can come later from a tool (`tm tool ...`, or the OCR reading in a teardown's notes), when Smart
+   App Control blocks a compiled file of a tool's packages (numpy, scipy, av, scikit-learn, torch): it names that
+   file, or says the error did not name one. Treat it the same way: stop, tell the user tm's steps in plain words,
+   and name the file it names. Only the user changes Windows security settings.
 4. Show the `card` from the answer in plain words, in the user's language: what is ready, what
    is missing, why it matters and the exact next step for each. Leave out every command, flag
    and id: the user never needs to see `--mcp` or `--fact`. Things you can install, you offer

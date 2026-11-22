@@ -63,7 +63,7 @@ def test_runs_tool_in_its_tier_env_with_argv_list(engine):
     (argv, kw), = engine["calls"]
     assert argv == [str(engine["root"].parent.parent / "pixi"), "run", "--as-is", "--manifest-path",
                     str(engine["root"] / "env" / "pixi.toml"), "-e", "breakdown",
-                    "python", "-m", "tm.tools.teardown", "--run", "runs/x y", video, "--every-s", "0.5"]
+                    "python", "-m", "tm.toolrun", "teardown", "--run", "runs/x y", video, "--every-s", "0.5"]
     assert not kw.get("shell")
     assert kw["env"]["PIXI_HOME"] == "h"
 
@@ -86,7 +86,7 @@ def test_elevenlabs_gets_only_its_key(engine, monkeypatch, run):
     (argv, kw), = engine["calls"]
     assert kw["env"]["ELEVENLABS_API_KEY"] == XI
     assert "REPLICATE_API_TOKEN" not in kw["env"]
-    assert argv[argv.index("-m") + 1:] == ["tm.tools.elevenlabs", *args]
+    assert argv[argv.index("-m") + 1:] == ["tm.toolrun", "elevenlabs", *args]
 
 
 def test_missing_key_stops_before_running(engine, capsys):

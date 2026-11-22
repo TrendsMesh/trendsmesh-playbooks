@@ -24,7 +24,7 @@ from fractions import Fraction
 from pathlib import Path
 from typing import Callable, Iterator
 
-from tm import manifest, paths
+from tm import manifest, paths, winblock
 from tm.runfolder import ReadOnlyError, RunFolder, slug
 
 KEY_VARS = ("REPLICATE_API_TOKEN", "ELEVENLABS_API_KEY")
@@ -65,7 +65,9 @@ def say(message: str) -> None:
 
 def guarded(main: Callable[[list[str] | None], int]) -> Callable[[list[str] | None], int]:
     """Every failure becomes one message (one JSON object with --json) and exit code 1 (error) or
-    2 (stop). Unexpected exceptions are errors too, never a traceback on stdout."""
+    2 (stop). Unexpected exceptions are errors too, never a traceback on stdout. A compiled file that Windows Smart
+    App Control blocked (its "DLL load failed", an ImportError on a .pyd, error 4551) is tm's Smart App Control
+    message, as a stop, when Smart App Control is on (#148 line 154)."""
 
     @functools.wraps(main)
     def wrapper(argv: list[str] | None = None) -> int:
@@ -82,14 +84,21 @@ def guarded(main: Callable[[list[str] | None], int]) -> Callable[[list[str] | No
             detail = exc.stderr.decode("utf-8", "replace") if isinstance(exc.stderr, bytes) else (exc.stderr or "")
             tail = " ".join(detail.strip().splitlines()[-3:])
             return _fail(as_json, "error", f"{Path(str(exc.cmd[0])).name} failed: {tail}", 1)
-        except ModuleNotFoundError as exc:
+        except (ImportError, OSError) as exc:
+            said = winblock.tool_message(exc)   # a compiled file Smart App Control blocked (#148 line 154)
+            if said:
+                return _fail(as_json, "stop", said, 2)
+            if isinstance(exc, OSError):
+                return _fail(as_json, "error", str(exc), 1)
+            if not isinstance(exc, ModuleNotFoundError):
+                return _fail(as_json, "error", f"Unexpected {type(exc).__name__}: {exc}", 1)
             from tm import tools
 
             tier = getattr(tools.TOOLS.get(main.__module__.rsplit(".", 1)[-1]), "tier", "this tool's")
             return _fail(as_json, "stop", f"The '{tier}' tools are missing a part ({exc.name}): they may be "
                          f"out of date. Nothing was run. Update them with: tm env install {tier} --yes "
                          "(after the user's yes). The run continues from the same place.", 2)
-        except (ToolError, ValueError, OSError, RuntimeError, ReadOnlyError) as exc:
+        except (ToolError, ValueError, RuntimeError, ReadOnlyError) as exc:
             return _fail(as_json, "error", str(exc), 1)
         except Exception as exc:  # noqa: BLE001 - a bug still answers in the contract's shape
             return _fail(as_json, "error", f"Unexpected {type(exc).__name__}: {exc}", 1)

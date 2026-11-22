@@ -1,7 +1,7 @@
 # The plugin's own Polish of the string table (data/i18n/en.yaml), read by tm.i18n: what a Polish page says. It holds
 # the organic video pages' strings (organic.*), the run page's own words that an Organic AI video run page needs
 # (run_page.*: the template's, issue #60), Create an ad's promise phrases (checks.promise_*) and the Smart App
-# Control message (env.smart_app_control, issue #123); every other
+# Control message (env.smart_app_control and env.smart_app_control_unnamed, issue #123); every other
 # string Polish needs is the agent's translation, kept in the plugin data folder (tm i18n export / import), and a kept
 # translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
 
@@ -16,6 +16,8 @@ strings:
   env:
     # Windows Smart App Control blocked the plugin's Python (issue #123): one double-quoted line, as in en.yaml
     smart_app_control: "Windows zablokował plik Pythona wtyczki ({file}). To Inteligentna kontrola aplikacji (Smart App Control), funkcja zabezpieczeń Windows 11, która zatrzymuje programy, których Microsoft jeszcze nie zna. W Twoich projektach nic się nie zmieniło. Co możesz zrobić: 1. Zaktualizuj wtyczkę (/plugin > Installed > trendsmesh-playbooks > Update), a potem zacznij nową sesję. 2. Albo wyłącz Inteligentną kontrolę aplikacji (Zabezpieczenia Windows > Kontrola aplikacji i przeglądarki > Ustawienia inteligentnej kontroli aplikacji > Wyłączone), a potem zacznij nową sesję. Możesz ją później włączyć w tym samym miejscu, bez ponownej instalacji Windows."
+    # what stands for {file} when the error names no file (#148 line 154)
+    smart_app_control_unnamed: "błąd nie podał, który to plik"
   organic:
     # the playbook's name in the pages' top bar, as the run page names it (run_page.playbook.organic_video, issue #60)
     playbook: Organiczne wideo AI
