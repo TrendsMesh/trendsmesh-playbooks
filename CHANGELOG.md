@@ -4,6 +4,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **A check-in with only one possible answer is recorded as forced by the situation, not as your decision.** When
+  no ad is fading (Refresh an ad) or a channel has no saved profile (Organic AI video), Claude no longer asks you or
+  quotes your words: it says so in one line, and the run page and the run log show it as "forced by the situation",
+  with the reason. The plugin allows this only when the run's own data leaves that one answer, so a real choice is
+  always yours.
 - **Reading a page built by JavaScript no longer asks for a keychain.** The headless Chrome or Edge that reads it
   now runs with a stand-in keychain, so macOS never shows "keychain cannot be found" for it.
 - **The creative brief's PDFs print in seconds again, and product-site captures never ask for a keychain.** The

@@ -14,7 +14,8 @@ answer in chat. Its CSV buttons ask for the `downloads` capability when `model["
 The model is plain data: `{lang, title, playbook, run, updated, local, downloads, build, now: [stage],
 settled: [stage], datasets}`; a stage is `{key, n, name, title, lede, blocks, decision | record}`. A decision is `{checkin, ask,
 question, context, options: [{choice, label, means, recommended}]}`; a record (a settled stage's decision) is
-`{label, choice, note, at, by, rule}`, shown by its label alone (issue #132: never a choice id). A block's `source`,
+`{label, choice, note, at, by, rule, forced}`, shown by its label alone (issue #132: never a choice id); one `by`
+"forced" shows "forced by the situation" and its reason in words (issue #148 line 30), never as the user's. A block's `source`,
 its tables' sources and its media's `file`s are run files: each stage lists them in one folded "Technical details"
 (`tech`), never in its visible text. Blocks are listed in `_BLOCKS`. Every text is escaped here: what the agent
 wrote and what the run's files hold is data, never markup (a lede's `**bold**` is the one mark-up kept).
@@ -35,7 +36,15 @@ from pathlib import Path
 
 from tm import paths
 from tm.run_page import static
-from tm.run_page.words import label as _label, t
+from tm.run_page.words import has, label as _label, t
+
+FORCED = "forced"     # tm.forced.FORCED: a decision the situation answered
+
+
+def forced_reason(reason: object, lang: str) -> str:
+    """The reason a forced decision had one answer, in words (`record.forced_reason.<reason>`), else nothing."""
+    key = f"record.forced_reason.{reason}"
+    return t(key, lang) if reason and has(key, lang) else ""
 
 THEME = paths.bundled_data().parent / "assets" / "page"
 FONTS = ("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,"
@@ -438,6 +447,8 @@ def _record(r: dict, lang: str) -> str:
     rows = [(t("record.picked", lang), r.get("label"))]          # words, never the id (#132)
     if r.get("by") == "rule":
         rows.append((t("record.by_rule", lang), r.get("rule") or ""))
+    if r.get("by") == FORCED:        # the situation's one answer (issue #148 line 30), never the user's
+        rows.append((t("record.forced", lang), forced_reason(r.get("forced"), lang)))
     if r.get("note"):
         rows.append((t("record.note", lang), r["note"]))
     if r.get("at"):
@@ -499,7 +510,7 @@ def _settled(stages: list[dict], ds: Datasets, lang: str) -> str:
     for s in stages:
         r = s["record"]
         outcome = t("settled.outcome", lang, stage=s["name"], outcome=r.get("label"))
-        status = t("settled.by_rule", lang) if r.get("by") == "rule" else t("settled.saved", lang)
+        status = t({"rule": "settled.by_rule", FORCED: "settled.forced"}.get(r.get("by"), "settled.saved"), lang)
         lede = f'<p>{bold(s["lede"])}</p>' if s.get("lede") else ""
         title = f'<h3>{E(s["title"])}</h3>' if s.get("title") else ""
         out.append(f'<details class="stage" id="stage-{E(s["key"])}"><summary><span class="n">{E(s["n"])}</span>'

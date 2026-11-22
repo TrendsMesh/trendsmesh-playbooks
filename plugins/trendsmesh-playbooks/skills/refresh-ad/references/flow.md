@@ -146,11 +146,15 @@ it says.
    words>"`); at A1a it is diagnosed as "too little data" and the user picks the part to refresh
    (`#a1a`). Hands-off never takes this on its own: it goes on as below, and the final report
    says it.
-7. No ad is fading: say so plainly with the ranking, record `tm decide G1 none --said "<the user's words this rests on>" --note "<ranking
-   file>: no fading ad"` (Hands-off: `--by rule` in place of `--said`; at Just the big calls skip this: G1 belongs to the "Pick the ad" card,
-   which never comes, and the engine refuses it at A1), `tm done A1`, then at A1a `tm decide G1a
-   do_not_refresh --by rule --note "no fading winner"`: the run ends with no spend, and the
-   engine writes the diagnosis report (`04_final/diagnosis_report_v01.md`).
+7. No ad is fading: G1 has one possible answer, so `tm next` gives `forced` ("no ad is fading"). Say so
+   plainly with the ranking, without asking, and record `tm decide G1 none --by forced --run R --note "<ranking
+   file>: no fading ad"` at every level, with no `--said` (it is the situation's answer, not the user's; at Just the
+   big calls skip this: G1 belongs to the "Pick the ad" card, which never comes, and the engine refuses it at A1),
+   `tm done A1`, then at A1a `tm decide G1a do_not_refresh --by forced --run R`: the run ends with no spend, and the
+   engine writes the diagnosis report (`04_final/diagnosis_report_v01.md`). The run page and the run log show both as
+   "forced by the situation". Too little data (item 6) is not forced, because the user may still pick an ad: the
+   engine refuses `--by forced` there, and Hands-off records G1 `none` and G1a `do_not_refresh` with `--by rule
+   --note "<the ranking's line>"`.
 
 <a id="a1a"></a>
 ## A1a Funnel diagnosis (R2)

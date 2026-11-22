@@ -40,11 +40,13 @@ skipped) or `new` (A1 drafts a new version). **A profile saved before channel ty
 so, propose one from the channel's videos and what performed ("Channel type: none yet; I'd say News
 and explainers"), and ask; a yes is `new` (A1 saves a version with it), and a `reuse` without it
 takes 3 trends of each kind. The engine refuses `reuse` unless every channel of
-the run has a saved profile the user confirmed. **When a channel has no saved profile**, there is
-nothing to reuse: say so in one line ("No saved profile for <channel> yet: I'll draft one from
-your answers") and record `tm decide reuse_profile new --said "<the user's words this rests on>" --run R --note "no saved
-profile for <slug>"` (their words that asked for this channel; Hands-off: `--by rule` in place of `--said`), without
-asking again.
+the run has a saved profile the user confirmed. **When a channel has no saved profile** (or only one the user never
+confirmed), there is nothing to reuse and `new` is the one possible answer: `tm next` gives `forced` with the reason
+("no saved profile", "no confirmed saved profile"). Say so in one line ("No saved profile for <channel> yet: I'll
+draft one from your answers") and record `tm decide reuse_profile new --by forced --run R --note "no saved profile
+for <slug>"` at every level, without asking and with no `--said`: it is the situation's answer, and the run page and
+the run log show it as "forced by the situation", not as the user's. The engine refuses `--by forced` while a reuse
+is possible.
 
 **Confirm the channel profile** (`profile`, after A1; at every level: a channel's first profile is
 always the user's). One card per channel, in the template's fields
@@ -216,7 +218,7 @@ names (FLOWS.md section J; the plugin's words after it):
 
 | Id | Rule | The note says |
 |---|---|---|
-| `reuse_profile` (Hands-off) | reuse when a confirmed profile exists, else new | each channel's saved profile and the date it was confirmed, or "no saved profile" |
+| `reuse_profile` (Hands-off) | reuse when a confirmed profile exists, else new | each channel's saved profile and the date it was confirmed; with none, `new` is forced by the situation (`--by forced`, "The cards" above), not decided by rule |
 | `script` (Hands-off) | delivered | the page version and the script file |
 | `script_draft` (Hands-off) | the pack's script as drafted (logged) | the pack version and its line count |
 | `taste` (Hands-off) | the profile's saved picks, else your pick, logged with the reason | the picks and why (the pack's `taste.why`) |

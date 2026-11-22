@@ -484,7 +484,7 @@ def _record(ask: dict | None, d: dict, worded: str | None = None, *, lang: str =
     labels = {o["choice"]: o["label"] for o in (ask or {}).get("options") or []}
     label = labels.get(d.get("choice")) or worded or choice_words(str(d.get("checkin")), d.get("choice"), lang, fixed)
     return {"choice": d.get("choice"), "label": label, "note": d.get("note"),
-            "at": d.get("at"), "by": d.get("by"), "rule": d.get("rule")}
+            "at": d.get("at"), "by": d.get("by"), "rule": d.get("rule"), "forced": d.get("forced")}
 
 
 # --- build ------------------------------------------------------------------------------------------
