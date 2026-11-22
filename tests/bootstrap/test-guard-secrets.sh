@@ -416,6 +416,69 @@ t deny:key-store "$W" PowerShell '{"command":"Get-Content \"$(Get-Location)\\.e*
 t deny:key-store "$W" PowerShell '{"command":"pwsh -Command \"gc .s*/*\""}'
 t deny:key-store "$W" PowerShell '{"command":"$n = @\"\n$(gc .e*)\n\"@"}'
 says "write that text to a file with the Write tool" "$W" Bash '{"command":"cat .*"}'
+# --- PowerShell: a quoted dot-name glob as a search expression (issue #148, line 39) ----------
+# PowerShell expands wildcards inside quotes, but only where it takes the string as a path. A
+# quoted dot-name glob passes where it is a search expression: the value of -Pattern (or of an
+# abbreviation only -Pattern can mean, from -Patt on), the right side of -match, -replace or
+# -split, or a [regex]. -LiteralPath never expands wildcards, so it passes too. Anywhere else it
+# stays denied: -Path, -Filter, -Include and -Exclude, a positional argument of a cmdlet that reads
+# files (and of its aliases), a string piped into one, a variable or a string a shell runs.
+psj() { printf '{"command":"%s"}' "$1"; }   # a PowerShell tool call; its command has no " or \
+for ws in "$W" "$W2" "$W3"; do
+  t allow "$ws" PowerShell "$(psj "Select-String -Pattern '.*' -Path notes.md")"
+  t allow "$ws" PowerShell "$(psj "Select-String -Path notes.md -Pattern '.*'")"
+  t allow "$ws" PowerShell "$(psj "Select-String -Patt '.*' -Path notes.md")"
+  t allow "$ws" PowerShell "$(psj "Select-String -pattern:'.?' -Path notes.md -CaseSensitive")"
+  t allow "$ws" PowerShell "$(psj "Get-Content notes.md | Select-String -Pattern '.*'")"
+  t allow "$ws" PowerShell "$(psj "Get-Content notes.md | sls -Pattern '.*' | Select-Object -First 3")"
+  t allow "$ws" PowerShell '{"command":"Get-ChildItem runs -Recurse -Filter *.md | Select-String -Pattern \".*\""}'
+  t allow "$ws" PowerShell "$(psj "(Get-Content notes.md) -replace '.*', ''")"
+  t allow "$ws" PowerShell "$(psj "if ((Get-Content notes.md -Raw) -notmatch '.*') { 'empty' }")"
+  t allow "$ws" PowerShell "$(psj "\$parts = (Get-Content notes.md -Raw) -split '.?'")"
+  t allow "$ws" PowerShell "$(psj "[regex]::Matches((Get-Content notes.md -Raw), '.*').Count")"
+  t allow "$ws" PowerShell "$(psj "\$re = [regex]'.*'; \$re.IsMatch('x')")"
+  t allow "$ws" PowerShell "$(psj "Get-Content -LiteralPath '.e*'")"
+  # Only the 300 characters before the string are read, so a long command doesn't slow the guard.
+  t allow "$ws" PowerShell "$(psj "$(printf 'Write-Output x; %.0s' 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25)Select-String -Pattern '.*' -Path notes.md")"
+done
+for ws in "$W" "$W3"; do
+  t deny:key-store "$ws" PowerShell "$(psj "Get-Content '.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Get-Content -Path '.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Get-Content -Path:'.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Get-Content -Path:.e*")"
+  t deny:key-store "$ws" PowerShell "$(psj "[regex]::Match((gc '.e*'), 'x')")"
+  t deny:key-store "$ws" PowerShell "$(psj "gc -Raw '.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "cat '.e*'")"
+  t deny:key-store "$ws" PowerShell '{"command":"type \".e*\""}'
+  t deny:key-store "$ws" PowerShell "$(psj "ls '.s*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "dir '.*' -Force")"
+  t deny:key-store "$ws" PowerShell "$(psj "gci -Force -Filter '.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Get-ChildItem -Force -Include '.e*' -Path *")"
+  t deny:key-store "$ws" PowerShell "$(psj "Copy-Item '.e*' runs/x/")"
+  t deny:key-store "$ws" PowerShell "$(psj "Move-Item -Path '.s*' runs/x/")"
+  # -Path after -Pattern, and a positional argument that PowerShell binds to -Path.
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String -Pattern 'x' -Path '.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String -Pattern '.*' -Path '.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String -Pattern 'x' '.e*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String x '.e*'")"
+  # The first positional argument of Select-String, as the issue lists it (it is the pattern, but
+  # -Pattern says so), also in a pipeline; -Pat and -Pa could be -Path as well.
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String '.*' notes.md")"
+  t deny:key-store "$ws" PowerShell "$(psj "Get-Content notes.md | Select-String '.*'")"
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String -Pat '.*' -Path notes.md")"
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String -Pa '.e*' notes.md")"
+  # A string that reaches a path later, or that a shell runs, is still read as one.
+  t deny:key-store "$ws" PowerShell "$(psj "'.e*' | Get-Content")"
+  t deny:key-store "$ws" PowerShell "$(psj "\$p = '.e*'; Get-Content \$p")"
+  t deny:key-store "$ws" PowerShell "$(psj "Get-Content (Join-Path . '.e*')")"
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String -Pattern ('.e*') notes.md")"
+  t deny:key-store "$ws" PowerShell '{"command":"pwsh -Command \"Select-String -Pattern '"'"'.*'"'"' -Path notes.md\""}'
+  t deny:key-store "$ws" PowerShell "$(psj "Select-String -Pattern '.*' -Path notes.md; gc '.e*'")"
+done
+says "after -Pattern" "$W" PowerShell "$(psj "Get-Content notes.md | Select-String '.*'")"
+# The bash guard is unchanged: there a quoted string is no glob, whatever its option.
+t allow "$W" Bash "$(psj "grep -e '.*' notes.md")"
+t deny:key-store "$W" Bash "$(psj "cat .e*")"
 # The rephrased forms pass.
 t allow "$W" Bash '{"command":"awk -f runs/x/titles.awk runs/x/a.md"}'
 t allow "$W" Bash '{"command":"python3 runs/x/ids.py"}'

@@ -46,7 +46,8 @@
 #   key-store      also a .env file or api_keys* (anywhere in the call, a heredoc note too), or a
 #                  dot-name glob (.s*, .*, dir/.e*) as a whole word the shell expands: not inside a
 #                  quoted string, a heredoc body or a PowerShell here-string, so a regex or a note
-#                  passes (command-words.awk says which strings a shell still runs as code);
+#                  passes (command-words.awk says which strings a shell still runs as code, and
+#                  where a quoted one counts in PowerShell, which expands it as a path);
 #   key-search     a recursive search, for replicate, elevenlabs, token, secret, api, key, r8_,
 #                  sk_ or anything ('' or .*), of a folder that holds .secrets/ or a .env file (the
 #                  Grep path, or the session's folder or its parent for a command that names no
@@ -289,10 +290,15 @@ if [ -z "$rule" ] && [ "$tool" != Glob ]; then
     hit=$(mi "$Q" '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|api_keys')
   # A dot-name glob (.s*, .*, dir/.e*) only as a whole word the shell expands: none in a quoted
   # regex, a heredoc note or a here-string.
-  [ -n "$hit" ] || [ -z "$workspace" ] ||
+  # In PowerShell a quoted one stays a word unless it is a search expression (command-words.awk).
+  psre=
+  if [ -z "$hit" ] && [ -n "$workspace" ]; then
     hit=$(mi "$E" '(^|[ ;|&(<>{])([^ ;|&(<>{]*/)?\.[^/ .;|&()<>]*[*?]')
+    [ -z "$hit" ] || [ "$tool" != PowerShell ] ||
+      psre=" In PowerShell a quoted regex passes only after -Pattern, -match or -replace (Select-String -Pattern '.*' -Path notes.md)."
+  fi
   [ -n "$hit" ] && deny key-store "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" \
-    "Don't open, search or copy it: tm reads the keys itself. When it is only text in a note (a heredoc that names .secrets/ or .env), write that text to a file with the Write tool and use the file (a note appended from it)."
+    "Don't open, search or copy it: tm reads the keys itself. When it is only text in a note (a heredoc that names .secrets/ or .env), write that text to a file with the Write tool and use the file (a note appended from it).$psre"
 fi
 if [ -z "$rule" ] && { [ -n "$workspace" ] || [ "$tool" = Grep ]; }; then
   hit=

@@ -5,7 +5,8 @@
 #              string stays in as words (its quotes dropped) where a shell runs it as code: after
 #              sh -c, bash -c, cmd /c, pwsh -Command, eval, iex, or a double-quoted string with $( or
 #              a backtick. In PowerShell (mode=ps) a quoted string that is all one dot-name glob
-#              ('.e*') stays in too, since PowerShell expands wildcards inside quotes. A heredoc
+#              ('.e*') stays in too, since PowerShell expands wildcards inside quotes, unless it
+#              stands where it is a search expression or a literal path (psnopath). A heredoc
 #              body stays in when a shell reads it (bash <<EOF, cat <<EOF | sh) or when its
 #              delimiter is unquoted and the body holds $( or a backtick.
 #   H<TAB>...  the command as written, without the heredoc bodies and here-strings taken out above.
@@ -25,6 +26,19 @@ function runs_code(c) {  # is the next quoted string, after the command text c, 
 function psglob(t) {  # PowerShell: is the whole quoted text one dot-name glob (.e*, dir\.s*\*)?
   t = tolower(t); gsub(/\\/, "/", t)
   return t ~ /^([^ ]*\/)?\.[a-z0-9_-]*[*?][a-z0-9_.*?\/-]*$/
+}
+# PowerShell: does a quoted string right after the text b stand where PowerShell never expands it
+# as a path? Only the value of -Pattern (or of -Patt and longer: -Pat and -Pa could be -Path), of
+# -LiteralPath (-Lit and longer, -PSPath, -LP), the right side of -match, -replace or -split (and
+# their i, c and not forms), and a [regex] cast or the first two arguments of a [regex]:: method.
+# Anything else (a positional argument, -Path, -Filter, a variable, a string piped on, something
+# in parentheses) stays a path, so what this can't place is still denied. b is the n characters
+# before the quote; only their last 300 are read (a longer [regex]:: call stays denied).
+function psnopath(str, n,   b) {
+  b = tolower(n > 300 ? "x" substr(str, n - 299, 300) : substr(str, 1, n))
+  if (b ~ /(^|[^a-z0-9_-])-(patt(e(rn?)?)?|lit(e(r(a(l(p(a(th?)?)?)?)?)?)?)?|pspath|lp)(:| +)$/) return 1
+  if (b ~ /(^|[^a-z0-9_-])-[ic]?((not)?match|replace|split) *$/) return 1
+  return b ~ /\[ *(system\.)?(text\.regularexpressions\.)?regex *\] *((:: *[a-z]+ *\( *(([^(),;|&{}\004]|\([^();|&{}\004]*\))*, *)?)?)$/
 }
 BEGIN { NL = sprintf("%c", 4) }
 {
@@ -81,12 +95,15 @@ BEGIN { NL = sprintf("%c", 4) }
           if (x == c) break
           t = t x; j++
         }
-        if (runs_code(cur) || psglob(t) || (c == "\"" && t ~ /\$\(/)) e = e bare(t)
+        if (runs_code(cur) || (psglob(t) && !psnopath(s, i - 1)) || (c == "\"" && t ~ /\$\(/)) e = e bare(t)
         else e = e neut(t)
         h = h substr(s, i, j - i + 1); cur = cur substr(s, i, j - i + 1); i = j
         continue
       }
-      e = e c; h = h c; cur = cur c
+      # -Path:.e* gives -Path its value: in E the value is a word of its own.
+      if (c == ":" && cur ~ /(^| )-[A-Za-z][A-Za-z0-9_]*$/) e = e " "
+      else e = e c
+      h = h c; cur = cur c
       if (c ~ /[;|&(]/) cur = ""
       continue
     }
