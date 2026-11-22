@@ -4,6 +4,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Organic AI video: a week plan builds on at most one trend the channel already used.** The week counts as one
+  batch of ideas, slots and reserves together, so its videos don't repeat used trends. A second idea on a used trend
+  is refused, naming each day or reserve that uses one; the flexible day's idea counts with the week's other days. A
+  series still continues freely.
 - **Reading a page built by JavaScript no longer asks for a keychain.** The headless Chrome or Edge that reads it
   now runs with a stand-in keychain, so macOS never shows "keychain cannot be found" for it.
 - **The creative brief's PDFs print in seconds again, and product-site captures never ask for a keychain.** The

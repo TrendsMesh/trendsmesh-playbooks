@@ -307,7 +307,7 @@ at each part and every few calls, which part is running and how many are done ("
 1. **What this channel already used:** `tm organic used --channel <slug> --json` (the trends its
    videos were made from, and its running series) and `tm organic history --channel <slug>
    --json` (what was produced, put off or skipped, per production type and approach). Used trends (issue
-   #142): a trend counts as used once a video or a script was delivered from it (a run only started does not count); one idea per batch may build on a used trend, with `plugin.new_angle` (`{"previous": "<the earlier run>", "differs": ["topic" | "hook" | "format"], "why": "<one line>"}`), while it still rises (momentum rising, evidence within `research.recent_days`); a series continues one freely. Picks and skips rank the next ideas.
+   #142): a trend counts as used once a video or a script was delivered from it (a run only started does not count); one idea per batch may build on a used trend, with `plugin.new_angle` (`{"previous": "<the earlier run>", "differs": ["topic" | "hook" | "format"], "why": "<one line>"}`), while it still rises (momentum rising, evidence within `research.recent_days`); a series continues one freely. A week plan (I2) is one batch: at most one idea of the whole week, slots and reserves together, builds on a used trend. Picks and skips rank the next ideas.
 2. **The queries**, from the bubble (OV2): the niche's anchor terms (the channel's subject: dog,
    puppy; parents, rodzice), the problems the catalogue solves, the channel's own formats; about 10
    to 17 searches, **in the audience language and in English**; then the rising lists of each
@@ -587,12 +587,18 @@ and a series continues (brainrot part 2).
    (`plugin`): `trends` (`[{"id": <trend id>, "pick": [...]}]`, each a saved card of this run),
    `production` (`ai_footage`, `talking_character`, `animation`, `stills_motion` or `sections`),
    `approach` (Recreate or Inspire), `product_level` (OV5's words), `series` (a used trend continues a
-   series) and `flexible` (true only for the flexible day's slot).
+   series), `new_angle` (the one idea of the week on a used trend that is not a series: `{previous,
+   differs, why}`, B1) and `flexible` (true only for the flexible day's slot). **The week is one batch
+   of ideas** (#148 line 99): at most one idea of the whole week, slots and reserves together (a reserve
+   can be swapped in), builds on a trend the channel already used, so the week's videos don't repeat
+   used trends.
 2. `tm organic week check --run R --file 03_wip/week_v01.json --json`. It checks the schema, the
    language, the week's dates, the channel and platforms, the slot count and days, one idea per slot,
-   every trend resolving to a saved card, a used trend only in a series, the week's budget, a reserve,
-   the flexible day, and that every id can name a folder. Exit 2 lists the problems: fix them in the
-   next `_vNN`. **Never type a video's cost** (#137): the check prices each idea's `cost_video` itself
+   every trend resolving to a saved card, the used trends (at most one idea of the week on one, with a
+   new angle while it still rises, or a series; a second is refused naming every slot and reserve on a
+   used trend), the week's budget, a reserve, the flexible day, and that every id can name a folder.
+   Exit 2 lists the problems: fix them in the next `_vNN`. **Never type a video's cost** (#137): the
+   check prices each idea's `cost_video` itself
    from the model registry (the ★ model of each task its production type uses × its `seconds` and
    `images`; an animation is $0) and writes it into the file with `price_source: "model registry"` and
    `price_checked` (the registry's date), which the week page shows. A typed `cost_video` that differs
@@ -664,8 +670,9 @@ and a series continues (brainrot part 2).
    tomorrow", and "due today" on the day itself while it is not started): search again (`tm trends collect on --run R`, `search_trends`), fetch the cards of the
    trends the idea builds on (`get_trend`), write the idea in the slot's shape with `plugin.flexible:
    true` as `03_wip/flexible_v01.json`, and `tm organic flexible --run R --file
-   03_wip/flexible_v01.json --json`. It is refused on cards fetched before the week was approved, and
-   over the week's budget. Then make it in its own run, and deliver the week again (I4).
+   03_wip/flexible_v01.json --json`. It is refused on cards fetched before the week was approved,
+   over the week's budget, and on a used trend when another OK day of the week already builds on one
+   (the week is one batch; a series continues freely). Then make it in its own run, and deliver the week again (I4).
 
 <a id="i4"></a>
 ## I4 Week delivery and posting plan
