@@ -1,5 +1,6 @@
-"""Issue #142 item 4 (#148 line 23): an organic video shortlist scores its topics for the channel like its hooks and
-formats, up to 20 topics of their own; a topic with a mean fit under 3 is a weak fit and never takes a B3 place."""
+"""Issue #142 item 4: an organic video shortlist scores its topics for the channel like its hooks and formats, within
+the one cap of 50 for every kind together (#148 line 7.4, which replaced line 23's 20 topics of their own); a topic
+with a mean fit under 3 is a weak fit and never takes a B3 place."""
 
 from __future__ import annotations
 
@@ -25,21 +26,20 @@ def _topic_rows(n=25):
              "views": 1} for i in range(n)]
 
 
-def test_the_best_20_topics_join_the_fit_candidates():
-    found = shortlist.fit_candidates(_pool(), [r["id"] for r in _topic_rows()])
-    labels = [c["label"] for c in found]
-    assert labels.count("topic") == shortlist.TOPIC_FIT_CAP == 20 and {"hook", "format"} <= set(labels)
-    assert [c["id"] for c in found if c["label"] == "topic"] == [f"t{i:02d}" for i in range(20)]   # the ranked best
-    assert [c["label"] for c in shortlist.fit_candidates(_pool())] == ["hook", "format"]   # without topics: as before
+def test_the_topics_join_the_fit_candidates_in_the_one_ranking():
+    ranked = ["h1"] + [r["id"] for r in _topic_rows()] + ["f1"]          # the engine's score, best first
+    found = shortlist.fit_candidates(_pool(), ranked)
+    assert [c["id"] for c in found] == ranked and [c["label"] for c in found].count("topic") == 25
+    assert [c["label"] for c in shortlist.fit_candidates(_pool(), ["h1", "f1"])] == ["hook", "format"]
 
 
 def test_the_topics_must_be_scored_too():
     pool = _pool(3)
-    topics = ["t00", "t01", "t02"]
+    ranked = ["h1", "f1", "t00", "t01", "t02"]
     data = {"h1": _fit(4), "f1": _fit(4), "t00": _fit(4), "t01": _fit(2)}
-    wrong = shortlist.check_fit(data, pool, topics)
-    assert len(wrong) == 1 and "topic 2" in wrong[0] and "topics" in wrong[0]
-    assert shortlist.check_fit({**data, "t02": _fit(3)}, pool, topics) == []
+    wrong = shortlist.check_fit(data, pool, ranked)
+    assert len(wrong) == 1 and "topic 2" in wrong[0] and "trends to score" in wrong[0]
+    assert shortlist.check_fit({**data, "t02": _fit(3)}, pool, ranked) == []
 
 
 def test_a_weak_topic_never_takes_a_place():

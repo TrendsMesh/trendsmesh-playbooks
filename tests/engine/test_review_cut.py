@@ -192,6 +192,8 @@ def test_hook_fit_needs_only_the_rows_to_score_and_lists_the_rest(tmp_path, caps
     # a hook below the cut may be scored too (restored on request): it is ranked with the others
     out = json.loads(research_growth.hook_fit(run, {**first, "h055": _row(5)}, cfg).read_text(encoding="utf-8"))
     assert out["shortlist"][0]["id"] == "h055" and "h055" not in {r["id"] for r in out["not_scored"]}
+    # #148 line 7.3: B4's set-aside list (the report's) is the latest shortlist's cut, without the restored one
+    assert [r["id"] for r in research_growth.set_aside(run)] == [f"h{i:03d}" for i in range(51, 61) if i != 55]
     # the shortlist's next steps do not ask for the unscored ones
     (run.path / "03_wip" / "hook_fit_v01.json").write_text(json.dumps(first), encoding="utf-8")
     assert main(["research", "hook-fit", "--run", str(run.path), "--file", "03_wip/hook_fit_v01.json", "--json"]) == 0
@@ -200,10 +202,11 @@ def test_hook_fit_needs_only_the_rows_to_score_and_lists_the_rest(tmp_path, caps
 
 # --- organic video: the fit candidates ----------------------------------------------------------
 
-def _ov_pool(hooks: int = 40, formats: int = 30) -> dict:
+def _ov_pool(hooks: int = 40, formats: int = 30, topics: int = 25, sounds: int = 10) -> dict:
     pool = {f"h{i:02d}": {"kind": "hook_trend", "name": f"hook {i}"} for i in range(hooks)}
     pool.update({f"f{i:02d}": {"kind": "format_trend", "name": f"format {i}"} for i in range(formats)})
-    pool.update({f"t{i:02d}": {"kind": "topic_trend", "name": f"topic {i}"} for i in range(25)})
+    pool.update({f"t{i:02d}": {"kind": "topic_trend", "name": f"topic {i}"} for i in range(topics)})
+    pool.update({f"s{i:02d}": {"kind": "sound_trend", "name": f"sound {i}"} for i in range(sounds)})
     pool["hx"] = {"kind": "hook_trend", "name": "contradicted", "status": "contradicted"}
     return pool
 
@@ -212,23 +215,57 @@ def _fit_row(n: int) -> dict:
     return {**_row(n), "why": "a line"}
 
 
-def test_organic_scores_at_most_50_hooks_and_formats_together_and_20_topics():
+def _ranked() -> list[str]:
+    """The engine's score, best first, every kind mixed: a sound, a topic, a format, a hook, round after round."""
+    out = []
+    for i in range(40):
+        out += [f"{k}{i:02d}" for k, n in (("s", 10), ("t", 25), ("f", 30), ("h", 40)) if i < n]
+    return out
+
+
+def test_organic_scores_at_most_50_trends_of_every_kind_together():
+    """#148 line 7.4: at most 50 candidates in all, topics, formats, hooks and sounds together, not 50 per kind (nor
+    20 topics of their own): the best by the engine's score, which weighs growth and the fit to the terms."""
     from tm import shortlist
-    pool = _ov_pool()
-    ranked = [f"f{i:02d}" for i in range(30)] + [f"h{i:02d}" for i in range(40)]     # the engine's score, best first
-    topics = [f"t{i:02d}" for i in range(25)]
-    found = shortlist.fit_candidates(pool, topics, ranked)
-    trend = [c["id"] for c in found if c["label"] != "topic"]
-    assert trend == ranked[:50] and shortlist.FIT_CAP == 50
-    assert sum(c["label"] == "topic" for c in found) == 20                         # the topics' own cap
+    pool, ranked = _ov_pool(), _ranked()
+    found = shortlist.fit_candidates(pool, ranked)
+    assert [c["id"] for c in found] == ranked[:50] and shortlist.FIT_CAP == 50
+    assert {c["label"] for c in found} == {"hook", "format", "topic", "sound"}
+    assert not hasattr(shortlist, "TOPIC_FIT_CAP")
     aside = shortlist.fit_set_aside(pool, ranked)
     assert [r["id"] for r in aside] == ranked[50:] and aside[0]["reason"] == "set aside: below the engine's cut (rank 51)"
+    assert {r["label"] for r in aside} == {"hook", "format", "topic"}               # the 10 sounds all made the cut
     data = {c["id"]: _fit_row(3) for c in found}
-    assert shortlist.check_fit(data, pool, topics, ranked) == []
-    assert "1 hooks, formats and topics are not scored" in shortlist.check_fit(
-        {k: v for k, v in data.items() if k != "f00"}, pool, topics, ranked)[0]
-    assert shortlist.check_fit({**data, "h39": _fit_row(5)}, pool, topics, ranked) == []    # restored on request
-    assert "not a hook, format" in shortlist.check_fit({**data, "hx": _fit_row(5)}, pool, topics, ranked)[0]
+    assert shortlist.check_fit(data, pool, ranked) == []
+    wrong = shortlist.check_fit({k: v for k, v in data.items() if k != "s00"}, pool, ranked)
+    assert len(wrong) == 1 and wrong[0].startswith("1 trends to score are not scored: 'sound 0' (s00)")
+    restored = next(r["id"] for r in aside if r["label"] == "topic")
+    assert shortlist.check_fit({**data, restored: _fit_row(5)}, pool, ranked) == []   # restored on request
+    assert "not a trend to score" in shortlist.check_fit({**data, "hx": _fit_row(5)}, pool, ranked)[0]
+
+
+def test_organic_ranks_the_candidates_of_every_list_by_the_engines_score():
+    from tm import shortlist
+    def row(tid, score, creators=1):
+        return {"id": tid, "score": score, "creators": creators, "views": 1}
+    scored = {"hooks": [row("h1", 60), row("h2", 20)], "topics": [row("t1", 70), row("t2", 20, creators=9)],
+              "formats": [row("f1", 40)], "sounds": [row("s1", 50)]}
+    assert shortlist.fit_ranked(scored) == ["t1", "h1", "s1", "f1", "t2", "h2"]   # ties: more creators first
+
+
+def test_organic_a_sound_is_scored_like_a_topic_and_a_set_aside_one_keeps_its_place():
+    """A sound (ranked by its niche relevance) and a topic keep their order: a weak fit goes last and never takes a
+    place, one with no row (below the cut) is marked set aside where it stands."""
+    from tm import shortlist
+    rows = [{"id": f"s{i}", "name": f"sound {i}", "label": "sound", "flags": [], "score": 50 - i, "creators": 1,
+             "views": 1} for i in range(3)]
+    scored = {"hooks": [], "formats": [], "topics": [], "sounds": rows}
+    shortlist.apply_fit(scored, {"s1": _fit_row(2), "s2": _fit_row(4)})
+    assert [r["id"] for r in scored["sounds"]] == ["s0", "s2", "s1"]
+    s0, s2, s1 = scored["sounds"]
+    assert s0["plugin"]["fit"] is None and s0["flags"] == [shortlist.FIT_SET_ASIDE]
+    assert s2["plugin"]["fit"]["score"] == 4 and shortlist.WEAK_FIT in s1["flags"] and shortlist.weak(s1)
+    assert not shortlist.weak(s0)
 
 
 def test_organic_unscored_hooks_below_the_cut_come_last():

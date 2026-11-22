@@ -679,7 +679,9 @@ def tr_b4(ws: Path, run: Path) -> None:
             {"data": cards, "page": 1, "has_more": False})
     if json.loads((run / "run.json").read_text(encoding="utf-8")).get("previous_run"):
         tm(ws, "research", "map-change", "--run", str(run))
-    # issue #8: the hooks ranked by fit (the dry run's kept hooks first), only the shortlist fetched
+    # issue #8: the hooks ranked by fit (the dry run's kept hooks first), only the shortlist fetched. Every hook card
+    # gets a row, so the hooks past B4's own cut of 50 (#148 line 7.2) are restored too: the dry run scored them all
+
     place(ws, run, "03_wip/hook_fit_v01.json", beauty.fit_scores(hooks),
           "the hooks' fit scores, the dry run's kept hooks first (eval fixture)")
     tm(ws, "research", "hook-fit", "--run", str(run), "--file", "03_wip/hook_fit_v01.json")
@@ -1317,12 +1319,14 @@ def ov_shortlist(ws: Path, run: Path, *extra: str) -> dict:
 
 
 def ov_b2(ws: Path, run: Path) -> None:
-    """The shortlist, its hooks and formats scored for the channel (issue #84), then the shortlist again with the
-    fit: every candidate a neutral 3, so the walkthrough's order stands."""
+    """The shortlist, its trends scored for the channel (issue #84), then the shortlist again with the fit: every
+    candidate a neutral 3, so the walkthrough's order stands. The walkthrough read every trend; the engine now sets
+    aside the ones past the best 50 of every kind together (#148 line 7.4), so the fixture restores every one of them
+    too (a row each), as tr_b3 restores the map's set-aside trends."""
     out = ov_shortlist(ws, run)
     first = json.loads((run / out["json"]).read_text(encoding="utf-8"))
     fit = {c["id"]: {**dict.fromkeys(OV_FIT_CRITERIA, 3), "why": "eval fixture: a neutral fit"}
-           for c in first["fit_candidates"]}
+           for c in first["fit_candidates"] + (first.get("fit_set_aside") or [])}
     f = place(ws, run, "03_wip/trend_fit_v01.json", fit, "the shortlist's fit candidates (eval fixture: a neutral fit)")
     ov_shortlist(ws, run, "--fit", str(f))
 

@@ -261,10 +261,11 @@ def test_hooks_and_formats_are_ranked_by_the_channels_fit(ws, capsys):
     run = _organic_run(ws, "explainer")
     _explainer_pool(run)
     code, out = _ov_shortlist(capsys, run)
-    assert code == 0 and out["fit_scored"] is False and out["fit_candidates"] == 5, out
+    assert code == 0 and out["fit_scored"] is False and out["fit_candidates"] == 6, out
     assert "not scored for the channel yet" in out["todo"] and "--fit" in out["todo"]
     first = json.loads((run.path / out["json"]).read_text(encoding="utf-8"))
-    assert {c["id"] for c in first["fit_candidates"]} == {"f-talk", "f-dance", "h-day", "h-be", "t-ai"}   # #142
+    # #142, #148 line 7.4: every kind is scored, the sound too
+    assert {c["id"] for c in first["fit_candidates"]} == {"f-talk", "f-dance", "h-day", "h-be", "t-ai", "s-1"}
     assert [r["id"] for r in first["formats"]] == ["f-dance", "f-talk"]          # by usability, before the fit
     assert first["formats"][0]["reason"].startswith("fit not scored yet; ")
 
@@ -272,7 +273,8 @@ def test_hooks_and_formats_are_ranked_by_the_channels_fit(ws, capsys):
            "f-dance": _fit(1, "a dance has nothing to explain", feasibility=2),
            "h-day": _fit(4, "a counted series of explainers"),
            "h-be": _fit(2, "a skit opener, not how the channel talks"),
-           "t-ai": _fit(4, "AI tools are what the channel explains")}
+           "t-ai": _fit(4, "AI tools are what the channel explains"),
+           "s-1": _fit(3, "a calm beat under a talking head")}
     (run.path / "03_wip" / "trend_fit_v01.json").write_text(json.dumps(fit), encoding="utf-8")
     code, out = _ov_shortlist(capsys, run, "--fit", "03_wip/trend_fit_v01.json")
     assert code == 0 and out["fit_scored"] is True, out
@@ -311,13 +313,13 @@ def test_fit_scores_that_do_not_hold_are_refused(ws, capsys):
     run = _organic_run(ws, "explainer")
     _explainer_pool(run)
     bad = {"f-talk": _fit(6, "x"), "h-day": {**_fit(4, ""), "why": " "}, "t-ai": _fit(3, "a topic"),
-           "s-1": _fit(3, "a sound")}
+           "s-1": _fit(3, "a sound"), "x-9": _fit(3, "not in the pool")}
     (run.path / "03_wip" / "trend_fit_v01.json").write_text(json.dumps(bad), encoding="utf-8")
     code, out = _ov_shortlist(capsys, run, "--fit", "03_wip/trend_fit_v01.json")
     assert code == 1
     said = out["message"]
     assert "brand_fit 6 is outside 1-5" in said and "why is not one line" in said
-    assert "s-1 is not a hook, format or scored topic" in said and "2 hooks, formats and topics are not scored" in said
+    assert "x-9 is not a trend to score" in said and "s-1" not in said and "2 trends to score are not scored" in said
     assert not list((run.path / "03_wip").glob("trend_shortlist_*"))
 
 
