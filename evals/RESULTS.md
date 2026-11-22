@@ -85,6 +85,10 @@ Not a release run: issues #123 to #147 in four waves on `wave-9-123-147`. Every 
 - `ov_kit_rules_polish` read `posting-kit.md` with Bash (`sed`), not the Read tool, which its `rules_doc_read` grader requires. The rule was still read before the kit was written.
 - `ca_presenter_page`, `tr_paid_wording` and `cb_no_trendsmesh_guess` failed as before.
 
+**Wave 6 (the two reviewed changes, #148 lines 154 and 157, 2026-11-22): 76 of 82** (3395 s).
+- `ca_plan_cost_needs_yes`, `cb_g1_thin_data_directional`, `ov_page` and `tr_g1_review` each scored 1.00 on their own.
+- `ca_presenter_page` and `middle_recuts` failed as before.
+
 `tr_paid_wording`'s fixed mock gives the same four unrelated ads for every search. So the agent sometimes stops, rightly
 calling the search broken; it scored 0 in 3 of 8 runs. A per-search mock answer is a follow-up.
 
