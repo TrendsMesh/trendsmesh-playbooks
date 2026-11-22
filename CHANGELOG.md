@@ -4,6 +4,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **PowerShell: a regex such as `'.*'` after `-Pattern` no longer trips the key guard.** `Select-String -Pattern
+  '.*' -Path notes.md` passes in a TrendsMesh workspace, as do `-match`, `-replace`, `-split` and `[regex]`. A
+  quoted name like `'.e*'` stays blocked wherever PowerShell reads it as a path: after `-Path`, as an argument of
+  `Get-Content`, `Get-ChildItem`, `Select-String`, `Copy-Item`, `Move-Item` and their aliases, or anywhere else
+  the guard can't tell.
 - **Reading a page built by JavaScript no longer asks for a keychain.** The headless Chrome or Edge that reads it
   now runs with a stand-in keychain, so macOS never shows "keychain cannot be found" for it.
 - **The creative brief's PDFs print in seconds again, and product-site captures never ask for a keychain.** The

@@ -57,6 +57,14 @@ function RunsCode($c) {
     ($c -match '(^| )(eval|iex|invoke-expression)( .*)? *$') -or ($c -match '(^| )/[ck] *$')
 }
 function PsGlob($t) { $t.Replace('\', '/') -match '^([^ ]*/)?\.[a-z0-9_-]*[*?][a-z0-9_.*?/-]*$' }
+# Where PowerShell never expands a quoted string as a path (command-words.awk's psnopath says which),
+# from the last 300 characters before it.
+function PsNoPath([string]$str, [int]$n) {
+    $b = if ($n -gt 300) { 'x' + $str.Substring($n - 300, 300) } else { $str.Substring(0, $n) }
+    ($b -match '(^|[^a-z0-9_-])-(patt(e(rn?)?)?|lit(e(r(a(l(p(a(th?)?)?)?)?)?)?)?|pspath|lp)(:| +)$') -or
+    ($b -match '(^|[^a-z0-9_-])-[ic]?((not)?match|replace|split) *$') -or
+    ($b -match '\[ *(system\.)?(text\.regularexpressions\.)?regex *\] *((:: *[a-z]+ *\( *(([^(),;|&{}\n]|\([^();|&{}\n]*\))*, *)?)?)$')
+}
 function CommandWords([string]$s, [string]$mode) {
     $NL = "`n"; $L = $s.Length; $e = New-Object Text.StringBuilder; $h = New-Object Text.StringBuilder
     $cur = ''; $pend = @(); $ls = 0; $ar = 0
@@ -113,11 +121,13 @@ function CommandWords([string]$s, [string]$mode) {
                     [void]$t.Append($x); $j++
                 }
                 $t = $t.ToString()
-                if ((RunsCode $cur) -or (PsGlob $t) -or ($c -eq '"' -and $t -match '\$\(')) { [void]$e.Append((BareText $t)) } else { [void]$e.Append((NeutText $t)) }
+                if ((RunsCode $cur) -or ((PsGlob $t) -and -not (PsNoPath $s $i)) -or ($c -eq '"' -and $t -match '\$\(')) { [void]$e.Append((BareText $t)) } else { [void]$e.Append((NeutText $t)) }
                 $w = $s.Substring($i, [Math]::Min($j, $L - 1) - $i + 1); [void]$h.Append($w); $cur += $w; $i = $j
                 continue
             }
-            [void]$e.Append($c); [void]$h.Append($c); $cur += $c
+            # -Path:.e* gives -Path its value: in E the value is a word of its own.
+            if ($c -eq ':' -and $cur -match '(^| )-[A-Za-z][A-Za-z0-9_]*$') { [void]$e.Append(' ') } else { [void]$e.Append($c) }
+            [void]$h.Append($c); $cur += $c
             if ($c -match '[;|&(]') { $cur = '' }
             continue
         }
@@ -340,8 +350,12 @@ if (-not $rule -and $tool -ne 'Glob') {
         $hit = MatchCi $Q '(^|[/ =(])[^/ =(]*\.env([ ;|&)]|$)|(^|[/ =(])\.env\.[a-z0-9_-]+|api_keys'
     }
     # A dot-name glob only as a whole word the shell expands (guard-secrets.sh says why).
-    if (-not $hit -and $workspace) { $hit = MatchCi $EW '(^|[ ;|&(<>{])([^ ;|&(<>{]*/)?\.[^/ .;|&()<>]*[*?]' }
-    if ($hit) { Deny 'key-store' "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" "Don't open, search or copy it: tm reads the keys itself. When it is only text in a note (a heredoc that names .secrets/ or .env), write that text to a file with the Write tool and use the file (a note appended from it)." }
+    $psre = ''
+    if (-not $hit -and $workspace) {
+        $hit = MatchCi $EW '(^|[ ;|&(<>{])([^ ;|&(<>{]*/)?\.[^/ .;|&()<>]*[*?]'
+        if ($hit -and $tool -eq 'PowerShell') { $psre = " In PowerShell a quoted regex passes only after -Pattern, -match or -replace (Select-String -Pattern '.*' -Path notes.md)." }
+    }
+    if ($hit) { Deny 'key-store' "this call names a key store (.secrets/, api_keys.env or a workspace's .env file)" "Don't open, search or copy it: tm reads the keys itself. When it is only text in a note (a heredoc that names .secrets/ or .env), write that text to a file with the Write tool and use the file (a note appended from it).$psre" }
 }
 if (-not $rule -and ($workspace -or $tool -eq 'Grep')) {
     $hit = ''
