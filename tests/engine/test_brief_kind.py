@@ -2,6 +2,7 @@
 knows whether to check Meta; an organic brief skips every ad step, and an ad brief every organic one."""
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -100,7 +101,9 @@ def test_config_refuses_a_kind_its_outputs_do_not_fit(tmp_path):
     assert config.load(run)["brief"]["kind"] == "ad"          # the user's answer at the check-in wins
 
 
-def test_the_doctor_asks_no_meta_for_an_organic_brief():
+def test_the_doctor_asks_no_meta_for_an_organic_brief(monkeypatch, tmp_path):
+    monkeypatch.setenv("TM_PLUGIN_ROOT", str(Path(__file__).resolve().parents[2] / "plugins" / "trendsmesh-playbooks"))
+    monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "data"))      # CI has no ~/.trendsmesh/paths.json
     r = doctor.check(set(ORGANIC), False, {"trendsmesh": "ok", "artifacts": "ok"}, playbook=CB)
     ids = [i.id for i in r.items]
     assert "mcp_meta" not in ids and "meta_mcp_enabled_for_account" not in ids

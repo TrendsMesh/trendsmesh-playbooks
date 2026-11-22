@@ -232,6 +232,7 @@ def test_tm_tool_starts_the_tool_through_the_runner(monkeypatch, tmp_path):
     from tm import paths
     from tm.tools import child_argv
 
+    monkeypatch.setenv("TM_PLUGIN_ROOT", str(tmp_path))            # CI has no ~/.trendsmesh/paths.json
     monkeypatch.setattr(paths, "pixi_bin", lambda: tmp_path / "pixi")
     argv = child_argv("teardown", ["--run", "r", "a.mp4"])
     assert argv[argv.index("-m"):] == ["-m", "tm.toolrun", "teardown", "--run", "r", "a.mp4"]

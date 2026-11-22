@@ -47,7 +47,8 @@ def _ideas(tmp_path, monkeypatch):
 
 def test_a_part_is_served_under_the_plugin_version_and_written_as_the_plugin_has_it(tmp_path):
     assert static.served("theme.css") == f"assets/static/theme-{__version__}.css"
-    assert static.content("theme.css") == (template.THEME / "theme.css").read_bytes()            # the plugin's file
+    assert static.content("theme.css") == (template.THEME / "theme.css").read_text(encoding="utf-8").encode("utf-8")
+    # the plugin's file, in LF on every system (a Windows checkout has CRLF; the page gets the same bytes everywhere)
     assert static.content("trend-report.css") == research_report.CSS_FILE.read_bytes()
     assert static.content("page.js") == template.SCRIPT.encode("utf-8")
     (tmp_path / "index.html").write_text(static.link("theme.css") + static.script("page.js"), encoding="utf-8")
@@ -143,7 +144,7 @@ def _open(folder) -> dict:
                 "--virtual-time-budget=5000", "--dump-dom", probe.resolve().as_uri()]
         if atlas.needs_no_sandbox(BROWSER):
             args.insert(1, "--no-sandbox")
-        dom = subprocess.run(args, capture_output=True, text=True, timeout=120).stdout
+        dom = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", timeout=120).stdout
     probe.unlink()
     m = re.search(r'data-result="([^"]*)"', dom)
     assert m, "the page did not run its scripts"

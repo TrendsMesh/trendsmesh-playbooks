@@ -211,9 +211,10 @@ def _awk(tmp_path: Path, entries, windows, budgets, now, tool) -> tuple[int | No
                    encoding="utf-8")
     log = tmp_path / "log.jsonl"
     log.write_text("".join(f'{{"t":{t},"tool":"{k}"}}\n' for t, k in entries), encoding="utf-8")
+    lim_p, log_p = lim.as_posix(), log.as_posix()    # forward slashes, as pace-mcp.sh passes them: awk -v reads a backslash as an escape
     out = subprocess.run(["awk", "-v", f"now={now}", "-v", f"tool={tool}", "-v", f"margin={trend_pace.MARGIN_MS}",
-                          "-v", f"maxwait={trend_pace.MAX_WAIT_S * 1000}", "-v", f"lim={lim}", "-v", f"out={log}",
-                          "-f", str(AWK), str(lim), str(log)], capture_output=True, text=True, check=True).stdout
+                          "-v", f"maxwait={trend_pace.MAX_WAIT_S * 1000}", "-v", f"lim={lim_p}", "-v", f"out={log_p}",
+                          "-f", str(AWK), lim_p, log_p], capture_output=True, text=True, check=True).stdout
     if out.startswith("go "):
         last = json.loads(log.read_text(encoding="utf-8").splitlines()[-1])        # the call's booked moment
         assert last["tool"] == tool and abs(now + float(out[3:]) * 1000 - last["t"]) < 1

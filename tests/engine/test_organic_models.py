@@ -284,6 +284,7 @@ def _narrated_stills(pack):
     pack["stages"][0]["items"].append({"name": "extra", "model": "openai/gpt-image-2", "images": 1})
 
 
+@pytest.mark.private_data
 def test_an_animation_shows_only_the_voice_and_needs_no_replicate_prices(tmp_path, capsys):
     run, _ = _recipe_run(tmp_path, "m1_animation_pack.json")
     data = models.page_json(run)                                        # no price file at all
@@ -294,6 +295,7 @@ def test_an_animation_shows_only_the_voice_and_needs_no_replicate_prices(tmp_pat
     assert code == 0 and out["ids"] == []
 
 
+@pytest.mark.private_data
 def test_a_stills_video_shows_its_planned_pictures_and_the_voice(tmp_path, capsys):
     run, pack = _recipe_run(tmp_path, "p6_quiz_pack.json", change=_narrated_stills)
     code, out = _cli(capsys, "models", "ids", "--run", str(run.path))
@@ -308,6 +310,7 @@ def test_a_stills_video_shows_its_planned_pictures_and_the_voice(tmp_path, capsy
     assert next(s for s in data["sections"] if s["id"] == "images")["title"] == "Images (the cards and pictures)"
 
 
+@pytest.mark.private_data
 def test_without_stages_the_pictures_are_one_per_shot(tmp_path):
     def shots(pack):
         _narrated_stills(pack)
@@ -317,6 +320,7 @@ def test_without_stages_the_pictures_are_one_per_shot(tmp_path):
     assert models.page_json(run)["plugin"]["units"]["images"] == len(pack["script"]["lines"])
 
 
+@pytest.mark.private_data
 def test_a_photoreal_face_takes_the_photos_task(tmp_path):
     def face(pack):
         _narrated_stills(pack)
