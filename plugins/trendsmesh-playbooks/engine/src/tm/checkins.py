@@ -13,6 +13,7 @@ from pathlib import Path
 import yaml
 
 from tm import playbooks, stepchecks
+from tm.forced import CONDITIONS as FORCED_CONDITIONS
 from tm.playbooks import REFRESH_AD
 
 LEVEL_IDS = ("every_step", "big_calls", "hands_off")
@@ -45,6 +46,9 @@ class Checkin:
     # Asked only when the engine names it (a paid-call guard's stop, #137's refused reference): never due by itself, so
     # it never holds its step; each answer is a new decision (no --change), and its route is "own" at every level.
     on_demand: bool = False
+    # choice -> a condition of tm.forced (issue #148 line 30): the one answer left while the run's data shows it,
+    # recorded `--by forced` at any level; never on a money check-in or an on-demand one.
+    forced: dict[str, str] = field(default_factory=dict)
 
     def rule_for(self, evidence: str | None) -> str:
         return self.rule_guess if evidence == "guess" and self.rule_guess else self.rule
@@ -128,11 +132,19 @@ def _parse(path: Path) -> Catalogue:
             raise _bad(path, f"{cid}: yes_for must be a list of budget kinds")
         if yes_for and not money:  # its kinds are checked by flow._load_steps (flow imports this module)
             raise _bad(path, f"{cid}: yes_for approves a budget, so it needs money: true")
+        forced = dict(raw.get("forced") or {})
+        for choice, condition in forced.items():
+            if choices is not None and choice not in choices:
+                raise _bad(path, f"{cid}: forced {choice!r} is not one of its choices")
+            if condition not in FORCED_CONDITIONS:
+                raise _bad(path, f"{cid}: forced {choice!r} names an unknown condition {condition!r}")
+        if forced and (money or on_demand):
+            raise _bad(path, f"{cid}: a money or on-demand check-in is never forced: the user answers it")
         checkins[cid] = Checkin(
             id=cid, name=raw["name"], route=route, rule=str(raw["rule"]), card=card,
             choices=choices, on_choice=on_choice, stop=stop, money=money,
             rule_guess=str(raw["rule_guess"]) if raw.get("rule_guess") else None,
-            yes_for=tuple(yes_for), on_demand=on_demand)
+            yes_for=tuple(yes_for), on_demand=on_demand, forced=forced)
     for c in checkins.values():
         for choice, effect in c.on_choice.items():
             for other, wanted in (effect.get("needs") or {}).items():

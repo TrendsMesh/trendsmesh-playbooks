@@ -7,7 +7,7 @@ from dataclasses import asdict
 from datetime import date
 from pathlib import Path
 
-from tm import checkins, cli, flow, i18n, paths, state, stops, trend_age
+from tm import checkins, cli, flow, forced, i18n, paths, state, stops, trend_age
 from tm.runfolder import RunFolder
 
 STOP = 2
@@ -47,6 +47,8 @@ def _next(args: argparse.Namespace) -> int:
         lines.append(f"notice: {nxt.notice}")
     if nxt.free_box:
         lines.append(f"free_box: {nxt.free_box}")
+    if nxt.forced:
+        lines.append(f"forced: {nxt.forced['command']} ({nxt.forced['words']})")
     cli.emit(args, asdict(nxt), "\n".join(lines))
     return STOP if nxt.action == "stop" else 0
 
@@ -61,7 +63,9 @@ def _setup_decide(p: argparse.ArgumentParser) -> None:
     p.add_argument("--said", help="the user's own words from the chat, verbatim (needed with --by user)")
     p.add_argument("--said-file", metavar="PATH", help="the user's own words in a UTF-8 file (a BOM is fine), when "
                                                        "quotes or line breaks would not survive the command line")
-    p.add_argument("--by", choices=("user", "rule"), default="user")
+    p.add_argument("--by", choices=("user", "rule", forced.FORCED), default="user",
+                   help="user (the default: needs --said), rule (needs --note) or forced: the one possible answer "
+                        "the run's data leaves (issue #148 line 30), no --said")
     p.add_argument("--change", action="store_true", help="change a decision already taken")
     p.add_argument("--concepts", nargs="+",
                    help="the concepts a choice is for, e.g. C1,C3 (creative brief: animatics make)")
@@ -72,7 +76,8 @@ def _setup_decide(p: argparse.ArgumentParser) -> None:
 
 def _said(args: argparse.Namespace, run: RunFolder) -> str | None:
     """The user's words for a decision by the user (issue #125): `--said`, or `--said-file` read as UTF-8 (BOM
-    accepted, the file's last line break dropped), kept verbatim. Required with --by user, refused with --by rule.
+    accepted, the file's last line break dropped), kept verbatim. Required with --by user, refused with --by rule
+    and with --by forced (the situation's answer, not the user's: issue #148 line 30).
     Page decisions (`tm page decision --record`) call `flow.decide` with their own record and need none."""
     if args.said is not None and args.said_file is not None:
         raise ValueError("Give the user's words once: --said or --said-file, not both.")
@@ -80,6 +85,10 @@ def _said(args: argparse.Namespace, run: RunFolder) -> str | None:
         if args.said is not None or args.said_file is not None:
             raise ValueError("--said holds the user's own words; a decision by rule has none: put the data behind "
                              "it in --note.")
+        return None
+    if args.by == forced.FORCED:
+        if args.said is not None or args.said_file is not None:
+            raise ValueError(flow.FORCED_NO_SAID)
         return None
     said = args.said
     if args.said_file is not None:
@@ -131,11 +140,31 @@ def _decide(args: argparse.Namespace) -> int:
     recorded = [cat.checkins[d["checkin"]] for d in s.decisions[before:]]  # what this call decided
     notes = list(dict.fromkeys(n for c in recorded
                                if (n := c.on_choice.get(args.choice, {}).get("skips"))))
-    text = i18n.offered(" ".join([f"Recorded {args.checkin}: {args.choice}.", *notes]),
+    by_situation = _forced_words(s.decisions[-1])     # issue #148 line 30: never shown as the user's decision
+    text = i18n.offered(" ".join([f"Recorded {args.checkin}: {args.choice}{by_situation}.", *notes]),
                         i18n.run_languages(run).working)    # the weekly phrase in the user's language
     text += _rebuilt_words(rebuilt)
-    cli.emit(args, {**payload, **({"message": text} if notes or rebuilt else {})}, text)
+    cli.emit(args, {**payload, **({"message": text} if notes or rebuilt or by_situation else {})}, text)
     return 0
+
+
+FORCED_WORDS = "forced by the situation"
+
+
+def _forced_words(d: dict) -> str:
+    """`, forced by the situation (<the reason>)` for a decision the situation answered, else nothing."""
+    if d.get("by") != forced.FORCED or not d.get("forced"):
+        return ""
+    return f", {FORCED_WORDS} ({forced.words(d['forced'])})"
+
+
+def decision_line(d: dict) -> str:
+    """One decision of the run log (`tm status`): `<check-in> <choice>: <who>`, the situation's shown as forced by
+    it, never as the user's."""
+    who = {"user": "the user's", "rule": "by rule"}.get(d.get("by"), d.get("by") or "")
+    if d.get("by") == forced.FORCED:
+        who = _forced_words(d).removeprefix(", ") or FORCED_WORDS
+    return f"{d.get('checkin')} {d.get('choice')}: {who}" + (f" ({d['at']})" if d.get("at") else "")
 
 
 def _rebuilt_words(rebuilt: dict | None) -> str:
@@ -227,7 +256,8 @@ def _resume(args: argparse.Namespace) -> int:
 def _status(args: argparse.Namespace) -> int:
     run = _open(args)
     s = {**asdict(state.load(run)), "trend_data": trend_age.of(run)}   # the resume question says when it expired
-    text = "\n".join(f"{k}: {v}" for k, v in s.items() if k != "trend_data")
+    text = "\n".join(f"{k}: {v}" for k, v in s.items() if k not in ("trend_data", "decisions"))
+    text += "\ndecisions:" + "".join(f"\n  {decision_line(d)}" for d in s["decisions"] if isinstance(d, dict))
     if s["trend_data"]:
         text += f"\ntrend_data: {s['trend_data']['message']}"
     cli.emit(args, {**s, "path": str(run.path)}, text)

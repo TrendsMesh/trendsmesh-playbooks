@@ -182,11 +182,11 @@ ANSWERS = {
 
 def with_said(args: tuple[str, ...]) -> tuple[str, ...]:
     """`tm decide` as the fixtures call it, with the user's words a decision by the user needs (issue #125): the
-    note when there is one, else "(eval fixture)". A decision by rule keeps none (the engine refuses --said there),
-    and a call that already gives the words is left as it is."""
+    note when there is one, else "(eval fixture)". A decision by rule or forced by the situation keeps none (the engine
+    refuses --said there), and a call that already gives the words is left as it is."""
     if not args or args[0] != "decide" or "--said" in args or "--said-file" in args:
         return args
-    if any(a == "--by" and b == "rule" for a, b in zip(args, args[1:])):
+    if any(a == "--by" and b in ("rule", "forced") for a, b in zip(args, args[1:])):
         return args
     note = next((b for a, b in zip(args, args[1:]) if a == "--note"), None)
     return (*args, "--said", note or "(eval fixture)")
@@ -1390,6 +1390,15 @@ def _ov_first(ws: Path, run: Path, n: dict, choices: dict | None = None) -> None
         tm(ws, "decide", cid, (choices or {}).get(cid, "accept"), "--run", str(run), *extra)
 
 
+def _how(n: dict, cid: str, choice: str) -> list[str]:
+    """How a fixture records a check-in `tm next` gave: forced by the situation when it says so (`forced`, issue #148
+    line 30: a channel with no saved profile has only `new`), by rule when it goes by rule, else as the user's."""
+    f = n.get("forced") or {}
+    if f.get("checkin") == cid and f.get("choice") == choice:
+        return ["--by", "forced"]
+    return ["--by", "rule", "--note", "set by the eval fixture"] if n["action"] == "auto" else []
+
+
 def ov_drive(ws: Path, run: Path, stop_at: str, hooks: dict | None = None, choices: dict | None = None,
              stop_checkin: str | None = None) -> dict:
     """Do each step's work (OV_HOOKS, then `hooks`) and answer each check-in (`choices`, else accept), until
@@ -1410,8 +1419,8 @@ def ov_drive(ws: Path, run: Path, stop_at: str, hooks: dict | None = None, choic
             if stop_checkin in ids:
                 return n
             for cid in ids:
-                extra = ["--by", "rule", "--note", "set by the eval fixture"] if n["action"] == "auto" else []
-                tm(ws, "decide", cid, choices.get(cid, "accept"), "--run", str(run), *extra)
+                choice = choices.get(cid, "accept")
+                tm(ws, "decide", cid, choice, "--run", str(run), *_how(n, cid, choice))
                 if cid == "profile":
                     tm(ws, "brand", "save", "--run", str(run), "--file", "03_wip/channel_exampleedu_v01.json",
                        "--confirmed")

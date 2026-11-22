@@ -36,6 +36,10 @@
 #                 when it is recorded and in the final report
 #   requires      step checks (tm.stepchecks) that pass before this choice is recorded
 #
+# forced: {choice: condition} (issue #148 line 30): the one answer left while the condition (tm.forced) holds on
+# the run's data, recorded at any level with `tm decide <id> <choice> --by forced` and no --said. The engine refuses
+# --by forced for any other choice, or while another answer is possible.
+#
 # Which step a check-in comes before or after (and so which outputs and flows it belongs to)
 # is set in steps.yaml. Changing which level shows what is
 # an edit to this file, not to the engine.
@@ -70,6 +74,7 @@ checkins:
     card: pick_the_ad
     route: {every_step: own, big_calls: card, hands_off: rule}
     rule: "#1 from the ranking (R1)"
+    forced: {none: no_fading_ad}   # no ad is fading, and not "too little data" (flow.md#a1, step 7)
 
   - id: G1a
     name: Accept the diagnosis
@@ -85,6 +90,7 @@ checkins:
           The diagnosis says this ad should not be refreshed, so the run ends here.
           The diagnosis report (04_final/diagnosis_report_v01.md) is the result of this run, and nothing was spent.
       override: {}
+    forced: {do_not_refresh: no_ad_to_diagnose}   # no ad fading or picked: nothing to diagnose or refresh
 
   - id: G1b
     name: Accept the persona

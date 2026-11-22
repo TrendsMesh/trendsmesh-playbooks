@@ -1388,3 +1388,119 @@ def test_python_callers_and_page_decisions_need_no_said(run):
     assert "said" not in state.load(run).decisions[-1]
     decide(run, "G1", "ad_2", by="user", note=None, change=True, said="the second")
     assert state.load(run).decisions[-1]["said"] == "the second"
+
+
+# --- forced by the situation (issue #148 line 30) ----------------------------------
+
+def _ranking(run, ranking=(), too_little=None):
+    """R1's ranking file: `ranking` the fading ads' ids; `too_little` the too-little-data summary."""
+    data = {"ranking": list(ranking), "candidates": [{"ad_id": "ad_1", "verdict": "fading" if ranking else "stable"}],
+            "too_little_data": too_little}
+    run.next_version("01_base", "winner_ranking", "json").write_text(json.dumps(data), encoding="utf-8")
+
+
+def _forced(run, checkin, choice, *extra):
+    return _cli(run, "decide", checkin, choice, "--by", "forced", *extra)
+
+
+def test_no_fading_ad_forces_g1_none_without_the_users_words(run, capsys):
+    """G1 with no fading ad has one answer, `none`: `--by forced` records it with the engine's reason and no
+    `--said`, and `tm next` says so."""
+    set_level(run, "every_step")
+    _ranking(run)
+    nxt = _finish(run, "A1")
+    assert nxt.action == "ask" and nxt.checkin.ids == ["G1"]
+    assert nxt.forced == {"checkin": "G1", "choice": "none", "reason": "no_fading_ad", "words": "no ad is fading",
+                          "command": "tm decide G1 none --by forced"}
+    assert "tm decide G1 none --by forced" in nxt.message and "without asking" in nxt.message
+    capsys.readouterr()
+    assert _forced(run, "G1", "none") == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "forced by the situation (no ad is fading)" in out["message"]
+    last = state.load(run).decisions[-1]
+    assert {k: last[k] for k in ("checkin", "choice", "by", "forced")} == {
+        "checkin": "G1", "choice": "none", "by": "forced", "forced": "no_fading_ad"}
+    assert "said" not in last and "rule" not in last
+
+
+def test_forced_is_refused_when_another_answer_is_possible(run, capsys):
+    set_level(run, "every_step")
+    _finish(run, "A1")
+    for setup, why in ((lambda: None, "no ranking"), (lambda: _ranking(run, ["ad_1"]), "a fading ad"),
+                       (lambda: _ranking(run, too_little={"line": "too little"}), "too little data")):
+        setup()
+        assert flow.next(run).forced is None, why
+        capsys.readouterr()
+        assert _forced(run, "G1", "none") == 1, why
+        message = json.loads(capsys.readouterr().out)["message"]
+        assert "more than one answer" in message and "--said" in message, why
+    assert not state.load(run).decisions
+
+
+def test_forced_takes_only_the_one_answer_and_only_where_declared(run, capsys):
+    set_level(run, "every_step")
+    _ranking(run)
+    _finish(run, "A1")
+    capsys.readouterr()
+    assert _forced(run, "G1", "ad_1") == 1                      # not the one answer
+    assert "only none" in json.loads(capsys.readouterr().out)["message"]
+    assert _forced(run, "G1", "none", "--said", "ok") == 1      # no user's words: it is not their decision
+    assert "--said" in json.loads(capsys.readouterr().out)["message"]
+    with pytest.raises(ValueError, match="never forced"):     # a check-in the catalogue names no condition for
+        flow._forced_reason(run, checkins.load().checkins["G1b"], "x")
+    assert not state.load(run).decisions
+    assert _forced(run, "G1", "none", "--note", "01_base/winner_ranking_v01.json: no fading ad") == 0
+    assert state.load(run).decisions[-1]["note"] == "01_base/winner_ranking_v01.json: no fading ad"
+
+
+def test_forced_is_refused_on_a_card(run):
+    set_level(run, "big_calls")
+    _ranking(run)
+    next_at(run, "A1")
+    with pytest.raises(ValueError, match="card"):
+        decide(run, "pick_the_ad", "none", by="forced", note=None)
+
+
+@pytest.mark.parametrize("level", LEVELS)
+def test_no_fading_ad_forces_the_end_at_a1a(run, level, capsys):
+    """G1a after no fading ad has one answer, `do_not_refresh`, at every level: forced, and the run ends. At Just the
+    big calls G1 sits on the "Pick the ad" card, which never comes (flow.md#a1, step 7)."""
+    _reset(run, level)
+    _ranking(run)
+    next_at(run, "A1")
+    complete(run, "A1")
+    if level != "big_calls":
+        assert flow.next(run).forced["command"] == "tm decide G1 none --by forced", level
+        decide(run, "G1", "none", by="forced", note=None)
+    nxt = flow.next(run)
+    assert (nxt.step, nxt.action) == ("A1a", "work"), level
+    assert nxt.forced and nxt.forced["command"] == "tm decide G1a do_not_refresh --by forced", level
+    assert "--by rule" not in nxt.message, level
+    capsys.readouterr()
+    assert _forced(run, "G1a", "do_not_refresh") == 0
+    s = state.load(run)
+    assert s.status == "done" and s.decisions[-1]["by"] == "forced" and s.decisions[-1]["forced"] == "no_fading_ad"
+
+
+def test_g1a_is_not_forced_once_the_user_picked_an_ad(run, capsys):
+    """An ad the user picked at G1 is diagnosed: G1a then has more than one answer, even with no fading ad."""
+    set_level(run, "every_step")
+    _ranking(run)
+    next_at(run, "A1")
+    complete(run, "A1")
+    decide(run, "G1", "ad_1", by="user", note=None, said="refresh this one anyway")
+    nxt = flow.next(run)
+    assert nxt.step == "A1a" and nxt.forced is None
+    capsys.readouterr()
+    assert _forced(run, "G1a", "do_not_refresh") == 1
+    assert "more than one answer" in json.loads(capsys.readouterr().out)["message"]
+
+
+def test_status_lists_a_forced_decision_as_forced_by_the_situation(run, capsys):
+    set_level(run, "every_step")
+    _ranking(run)
+    _finish(run, "A1")
+    assert _forced(run, "G1", "none") == 0
+    capsys.readouterr()
+    assert main(["status", "--run", str(run.path)]) == 0
+    assert "G1 none: forced by the situation (no ad is fading)" in capsys.readouterr().out

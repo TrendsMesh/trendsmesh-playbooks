@@ -656,3 +656,38 @@ def test_state_holds_organic_planned_and_planned_at(tmp_path):
     again = state.load(run)
     assert (again.organic["proposal"], again.planned, again.planned_at) == (
         "p1", {"ai_usd": 2.4, "voice_credits": 900.0}, "2026-11-07T10:00:00+00:00")
+
+
+# --- forced by the situation (issue #148 line 30) ----------------------------------
+
+@pytest.mark.parametrize("level", ["every_step", "big_calls", "hands_off"])
+def test_no_saved_profile_forces_new(tmp_path, level, capsys):
+    """With no saved profile, `reuse_profile` has one answer, `new`: forced at every level, with no --said."""
+    run = _organic(tmp_path, level, ["proposals"])
+    import shutil
+    shutil.rmtree(tmp_path / "ws" / brand.CHANNEL_DIR / "exampleedu")
+    complete(run, "A0")
+    nxt = flow.next(run)
+    assert nxt.checkin.ids == ["reuse_profile"]
+    assert nxt.forced == {"checkin": "reuse_profile", "choice": "new", "reason": "no_saved_profile",
+                          "words": "no saved profile", "command": "tm decide reuse_profile new --by forced"}
+    assert "tm decide reuse_profile new --by forced" in nxt.message
+    code, out = _tm(capsys, "decide", "reuse_profile", "new", "--by", "forced", "--run", str(run.path))
+    assert code == 0, out
+    assert "forced by the situation (no saved profile)" in out["message"]
+    last = state.load(run).decisions[-1]
+    assert (last["by"], last["forced"], "said" in last) == ("forced", "no_saved_profile", False)
+    assert (flow.next(run).step, flow.next(run).action) == ("A1", "work")
+
+
+def test_an_unconfirmed_profile_forces_new_and_a_confirmed_one_is_a_choice(tmp_path, capsys):
+    run = _organic(tmp_path, "every_step", ["proposals"], confirmed=False)
+    complete(run, "A0")
+    assert flow.next(run).forced["reason"] == "no_confirmed_profile"
+    (tmp_path / "ws2").mkdir()
+    other = _organic(tmp_path / "ws2", "every_step", ["proposals"])
+    complete(other, "A0")
+    assert flow.next(other).forced is None
+    code, out = _tm(capsys, "decide", "reuse_profile", "new", "--by", "forced", "--run", str(other.path))
+    assert code == 1 and "more than one answer" in out["message"]
+    assert not [d for d in state.load(other).decisions if d["checkin"] == "reuse_profile"]

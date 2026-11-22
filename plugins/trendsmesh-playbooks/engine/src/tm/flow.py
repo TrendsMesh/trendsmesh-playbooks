@@ -15,7 +15,9 @@ same answer. The life of a step:
 3. Claude does the work and calls `complete` (`tm done <step>`), which moves the run on once
    the checks the step `requires` (tm.stepchecks) pass; a gap is a `stops.Stop` (exit 2);
 4. `next` then returns the check-ins `after` the finished step, one at a time, as `ask` (show
-   it), `auto` (decide by rule, record it with `decide --by rule --note`) or `stop`;
+   it), `auto` (decide by rule, record it with `decide --by rule --note`) or `stop`; one the situation
+   answers (tm.forced: a single possible answer, issue #148 line 30) comes with `forced`, recorded
+   `decide --by forced` without asking;
 5. once nothing is pending, `next` returns `work` for the following step, or `done`.
 
 A step marked `checkin_first` (organic video's F1 and F2) turns 3 and 4 round: its check-ins are
@@ -49,6 +51,7 @@ from typing import Literal
 import yaml
 
 from tm import changes, checkins, evidence, i18n, library, playbooks, state, stepchecks, stops
+from tm import forced as situation
 from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD
 from tm.runfolder import RunFolder
 
@@ -208,6 +211,8 @@ class NextStep:
     message: str | None
     notice: str | None = None  # show it to the user, in their words: a run without TrendsMesh data
     free_box: str | None = None  # a Free run's final report: how to end it (evidence.FREE_BOX), issue #106
+    # the one possible answer (issue #148 line 30): {checkin, choice, reason, words, command}, recorded without asking
+    forced: dict | None = None
 
 
 # --- data ---------------------------------------------------------------------
@@ -1046,10 +1051,46 @@ def _current_step(s: state.RunState) -> Step:
     return pic.app[pic.p] if pic.p < len(pic.app) else (pic.app[-1] if pic.app else every[-1])
 
 
-def _ending_hints(run: _Run, st_index: int) -> str:
-    hints = []
+def _forced_view(folder: RunFolder, cat: checkins.Catalogue, cid: str) -> dict | None:
+    """The check-in's one possible answer while the run's data shows it (tm.forced), else None."""
+    c = cat.checkins[cid]
+    got = situation.answer(folder, c.forced) if c.forced else None
+    if got is None:
+        return None
+    choice, why = got
+    return {"checkin": cid, "choice": choice, "reason": why, "words": situation.words(why),
+            "command": f"tm decide {cid} {choice} --by forced"}
+
+
+def _forced_message(cat: checkins.Catalogue, f: dict) -> str:
+    c = cat.checkins[f["checkin"]]
+    ends = " The run then ends here, before anything is spent." if "end" in c.on_choice.get(f["choice"], {}) else ""
+    return (f"Only one answer is possible for \"{c.name}\" ({c.id}): {f['words']}. Record it without asking, and "
+            f"tell the user in one line: `{f['command']} --run R` (no --said and no question: the run page and the "
+            f"run log show it as forced by the situation, not as the user's decision).{ends}")
+
+
+def _step_forced(run: _Run, st_index: int, folder: RunFolder | None) -> dict | None:
+    """The first check-in of the step, not decided yet, that the situation answers and that can be recorded from the
+    step (not a card's, unless its one answer ends the run)."""
+    if folder is None:
+        return None
     for cid, (i, _before) in run.owner.items():
-        if i != st_index or cid in run.latest:
+        if i != st_index or cid in run.latest or cid in run.derived:
+            continue
+        f = _forced_view(folder, run.cat, cid)
+        if f and (run.route(cid) != "card" or "end" in run.cat.checkins[cid].on_choice.get(f["choice"], {})):
+            return f
+    return None
+
+
+def _ending_hints(run: _Run, st_index: int, folder: RunFolder | None = None) -> str:
+    hints = []
+    f = _step_forced(run, st_index, folder)
+    if f:
+        hints.append(" " + _forced_message(run.cat, f))
+    for cid, (i, _before) in run.owner.items():
+        if i != st_index or cid in run.latest or (f and cid == f["checkin"]):
             continue
         for choice, effect in run.cat.checkins[cid].on_choice.items():
             if "end" in effect:
@@ -1133,8 +1174,13 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
             _hold(s, item.ids[0], item.stop["what"], item.stop["todo"])
         else:
             _release(s)
-        return finish(_step_view(pic.app[item.step], item.kind,
-                                 _item_message(view, item.kind, item.stop, pic.cat), view))
+        one = (_forced_view(run, pic.cat, item.ids[0])
+               if item.kind != "stop" and not item.card and len(item.ids) == 1 else None)
+        result = _step_view(pic.app[item.step], item.kind,
+                            _forced_message(pic.cat, one) if one else
+                            _item_message(view, item.kind, item.stop, pic.cat), view)
+        result.forced = one
+        return finish(result)
     if pic.p >= len(pic.app):
         gap = _library_gap(run, s, pic)
         if gap:
@@ -1161,7 +1207,9 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
     first = pic.open_first(pic.p)
     if first:
         view = _one_view(pic, first[0])
-        return finish(_step_view(st, "work", _first_message(pic, st, view) + _ending_hints(pic, pic.p), view))
+        result = _step_view(st, "work", _first_message(pic, st, view) + _ending_hints(pic, pic.p, run), view)
+        result.forced = _step_forced(pic, pic.p, run)
+        return finish(result)
     coming = pic.coming()
     view = _view(pic, coming) if coming else None
     if pending:
@@ -1178,8 +1226,10 @@ def next(run: RunFolder, *, today: date | None = None) -> NextStep:  # noqa: A00
         message = _ESTIMATE_FIRST + " " + message
     if view:
         message += f" After it comes the check-in \"{view.name}\" ({', '.join(view.ids)})."
-    message += _ending_hints(pic, pic.p)
-    return finish(_step_view(st, "work", message, view))
+    message += _ending_hints(pic, pic.p, run)
+    result = _step_view(st, "work", message, view)
+    result.forced = _step_forced(pic, pic.p, run)
+    return finish(result)
 
 
 def _against_line(s: state.RunState, result: NextStep) -> NextStep:
@@ -1382,14 +1432,16 @@ def recut_refusal(run: RunFolder, s: state.RunState) -> str | None:
     return None
 
 
-def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "rule"],
+def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "rule", "forced"],
            note: str | None, *, today: date | None = None, change: bool = False, said: str | None = None,
            concepts: list[str] | None = None, stage: str | None = None) -> dict | None:
     """Record a decision. A card id records one entry per check-in it covers.
 
     A decision by rule needs `note`: the data behind it. Deciding again needs `change`. `said`: the user's own
     words, stored verbatim (`tm decide --said`, which the command line requires for a decision by the user, issue
-    #125; `note` is context).
+    #125; `note` is context). A decision `forced` (issue #148 line 30) is the situation's: allowed only for the
+    check-in's `forced` choice while the run's data leaves that one answer (`_forced_reason`), at any level, with no
+    `said`; it keeps the reason as `forced`.
     A choice may end the run (G1a do_not_refresh, accepted from G1a's own step even when its
     card comes later), stop it (E2b red), set the measurement dates (G11 activate, from
     `today`; keep_paused clears them), need another decision first (activate needs a green
@@ -1403,10 +1455,12 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
     `do_not_refresh` writes the diagnosis report and builds the run page again (`diagnosis_report.finish`), and
     returns what it wrote; every other decision returns None.
     """
-    if by not in ("user", "rule"):
-        raise ValueError(f"--by must be user or rule, not {by!r}.")
+    if by not in ("user", "rule", situation.FORCED):
+        raise ValueError(f"--by must be user, rule or forced, not {by!r}.")
     if by == "rule" and not (note and note.strip()):
         raise ValueError("A decision by rule needs --note with the data behind it.")
+    if by == situation.FORCED and said is not None:
+        raise ValueError(FORCED_NO_SAID)
     s = state.load(run)
     if s.status == "done":
         raise ValueError("This run is done; nothing more can be decided in it.")
@@ -1436,12 +1490,16 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
     if block:
         raise ValueError(f"{block.message} G1a accepts only do_not_refresh now; correct the data with `tm diagnose` "
                          f"or `tm material` first. {_OVERRIDE_HOW.format(stages='|'.join(changes.REFRESHABLE))}")
+    why: str | None = None          # the situation's reason, for a decision forced by it
     if checkin_id in cat.cards:
         members = pic.card_members(checkin_id)
         if not members:
             raise ValueError(f"Nothing in this run goes to the card {checkin_id} at {level_name}.")
         if by == "rule":
             raise ValueError(f"{checkin_id} is a card for the user; it is not decided by rule.")
+        if by == situation.FORCED:
+            raise ValueError(f"{checkin_id} is a card for the user; it is never forced. A check-in with one possible "
+                             "answer is recorded on its own id: `tm decide <check-in> <choice> --by forced`.")
         if pic.card_place(checkin_id)[1] > pic.p:
             raise ValueError(f"The card {checkin_id} is not reached yet; the run is at {current}.")
         open_ids = [m for m in members if m not in pic.latest]
@@ -1459,6 +1517,7 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
         if by == "rule" and pic.route(checkin_id) != "rule" and not ending:
             raise ValueError(f"{checkin_id} ({cat.checkins[checkin_id].name}) is not decided by rule "
                              f"at {level_name}: ask the user.")
+        why = _forced_reason(run, cat.checkins[checkin_id], choice) if by == situation.FORCED else None
         if checkin_id in pic.latest and not change and not pic.reopened(checkin_id) \
                 and not cat.checkins[checkin_id].on_demand:      # each on-demand answer is a new one
             raise ValueError(f"{checkin_id} is already decided "
@@ -1501,6 +1560,8 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
             entry["said"] = said
         if by == "rule":
             entry["rule"] = c.rule_for(s.evidence)
+        if by == situation.FORCED:
+            entry["forced"] = why
         if note:
             entry["note"] = note
         if cid in pic.latest:
@@ -1547,6 +1608,27 @@ def decide(run: RunFolder, checkin_id: str, choice: str, by: Literal["user", "ru
         from tm import diagnosis_report   # it reads this module's _blocking
         return diagnosis_report.finish(run)
     return None
+
+
+FORCED_NO_SAID = ("--said holds the user's own words; a decision forced by the situation has none (it is not "
+                  "theirs): leave --said out, and put any data behind it in --note.")
+
+
+def _forced_reason(run: RunFolder, c: checkins.Checkin, choice: str) -> str:
+    """Why `choice` is the check-in's one possible answer now (tm.forced), or ValueError: the check-in is never
+    forced, more than one answer is possible, or the one answer is another choice."""
+    if not c.forced:
+        raise ValueError(f"{c.id} ({c.name}) is never forced: record the user's answer with --said \"<their words>\", "
+                         "or the check-in's rule with --by rule --note <the data> where it goes by rule.")
+    got = situation.answer(run, c.forced)
+    if got is None:
+        raise ValueError(f"{c.id} ({c.name}) has more than one answer possible in this run, so it is not forced: ask "
+                         f"the user and record their answer with --said \"<their words>\" (or by rule where it goes "
+                         "by rule). Nothing was decided.")
+    if choice != got[0]:
+        raise ValueError(f"{c.id} ({c.name}) is forced to only {got[0]} here ({situation.words(got[1])}): "
+                         f"`tm decide {c.id} {got[0]} --by forced`. Nothing was decided.")
+    return got[1]
 
 
 def _check_override(s: state.RunState, checkin_id: str, by: str, said: str | None, stage: str | None) -> None:
@@ -1763,6 +1845,7 @@ def _decide_before_intake(run: RunFolder, s: state.RunState, st: Step, cid: str,
     c = checkins.load(playbook=s.playbook).checkins[cid]
     if by == "rule" and "rule" not in c.route.values():
         raise ValueError(f"{cid} ({c.name}) is not decided by rule: ask the user.")
+    why = _forced_reason(run, c, choice) if by == situation.FORCED else None
     if c.choices and choice not in c.choices:
         raise ValueError(f"{cid} takes one of: {', '.join(c.choices)}.")
     earlier = [d for d in s.decisions if d.get("checkin") == cid]
@@ -1773,6 +1856,8 @@ def _decide_before_intake(run: RunFolder, s: state.RunState, st: Step, cid: str,
         entry["said"] = said
     if by == "rule":
         entry["rule"] = c.rule_for(s.evidence)
+    if why is not None:
+        entry["forced"] = why
     if note:
         entry["note"] = note
     if earlier:

@@ -133,6 +133,11 @@ new run only. Before you do, plan or describe a step's work, read its section in
 | `stop` | Tell the user what happened, what to do and that the run continues from the same place. **Then wait.** Do nothing else in the run until they say it is done. |
 | `done` | Final report: outputs, every decision taken by rule with its data, spend against budgets. When the message offers the live test, end the report with that one question (`flow.md#e1`). When it offers the move of the winning ad, ask that one question; when the ad was moved, end the report with the user's part, step by step (`tm live-test move report`, `flow.md#e4`). |
 
+- **`forced`:** when `tm next` gives `forced` (an `ask`, `auto` or `work` whose check-in has one possible
+  answer: G1 and then G1a when no ad is fading, `flow.md#a1`), tell the user in one line, in plain words, and
+  record its `command` without asking: `tm decide <id> <choice> --by forced --run R` (no `--said`: it is the
+  situation's answer, shown on the page and in the run log as "forced by the situation", never as the user's). The
+  engine refuses `--by forced` whenever another answer is possible; then the check-in is asked, or goes by rule.
 - **`notice`:** whenever `tm next` gives a `notice` (a Free run: the direction of changes and the
   launch when they are shown to the user, and the final report; Hands-off hears it at the launch,
   which is always asked, and in the final report), tell the user in plain words, in their

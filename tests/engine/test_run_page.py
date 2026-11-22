@@ -111,6 +111,25 @@ def test_settled_stages_are_newest_first_and_rule_decisions_are_shown(run):
     assert "by rule" in settled and "the R2 table" in settled and "hook rate fell" in settled
 
 
+def test_a_forced_decision_is_shown_as_forced_by_the_situation(run):
+    """Issue #148 line 30: G1 `none` with no fading ad is the situation's answer, never the user's ("saved")."""
+    s = state.load(run)
+    s.decisions.append({"checkin": "G1", "choice": "none", "by": "forced", "forced": "no_fading_ad",
+                        "at": "2026-11-05T10:00:00+00:00"})
+    state.save(run, s)
+    settled = _section(_html(run, run_page.build(run)), "settled")
+    assert '<span class="pill ok">forced by the situation</span>' in settled
+    assert "<dt>Forced by the situation</dt><dd>no ad is fading</dd>" in settled
+    assert '<span class="pill ok">saved</span>' not in settled and "no_fading_ad" not in settled
+
+
+def test_every_forced_reason_has_words_in_both_tables():
+    from tm import forced, i18n
+    for reason in forced.REASONS:
+        for lang in ("en", "pl"):
+            assert i18n.t(forced.WORDS + reason, lang), (reason, lang)
+
+
 def test_an_ad_picked_in_chat_is_named_by_the_ranking(run):
     (run.path / "01_base" / "winner_ranking_v01.json").write_text(json.dumps({"ranking": ["a1"], "candidates": [
         {"ad_id": "a1", "name": "Spring video", "verdict": "fading", "peak": {"cpr": 4.1}, "latest": {"cpr": 6.2},

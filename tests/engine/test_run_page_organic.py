@@ -295,6 +295,26 @@ def test_settled_choices_are_said_in_words_never_as_their_ids(tmp_path, lang, pr
     assert ": new</span>" not in settled and ": approve</span>" not in settled and ": accept</span>" not in settled
 
 
+@pytest.mark.parametrize("lang, pill, row, reason", [
+    ("en", "forced by the situation", "Forced by the situation", "no saved profile"),
+    ("pl", "wymuszone przez sytuację", "Wymuszone przez sytuację", "brak zapisanego profilu")])
+def test_a_forced_decision_shows_as_forced_by_the_situation_never_as_the_users(tmp_path, lang, pill, row, reason):
+    """Issue #148 line 30: `reuse_profile new --by forced` is the situation's answer, in the run's language, with its
+    reason, never "saved" as the user's."""
+    run = _new(tmp_path, lang=lang)
+    _pack(run)
+    _to(run, "images")
+    s = state.load(run)
+    s.decisions.append({"checkin": "reuse_profile", "choice": "new", "by": "forced", "forced": "no_saved_profile",
+                        "at": "2026-11-07T10:00:00+00:00"})
+    state.save(run, s)
+    settled = _html(run, run_page.build(run)).split('<section class="settled">')[1]
+    stage = re.search(r'<details class="stage" id="stage-reuse_profile">.*?</div></details>', settled, re.S).group(0)
+    assert f'<span class="pill ok">{pill}</span>' in stage
+    assert f"<dt>{row}</dt><dd>{reason}</dd>" in stage
+    assert "no_saved_profile" not in stage
+
+
 def test_the_publish_guard_holds_while_people_decide_and_the_record_lifts_it(images):
     run_page.build(images, _ask(images, "images"))
     _publish(images)

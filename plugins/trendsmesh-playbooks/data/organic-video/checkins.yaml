@@ -46,6 +46,7 @@ checkins:
     choices: [reuse, new]
     on_choice:
       reuse: {requires: [profile_confirmed]}   # the engine checks that profile (review M3)
+    forced: {new: no_reusable_profile}   # no saved, confirmed profile: nothing to reuse (issue #148 line 30)
 
   - id: profile
     name: Confirm the channel profile

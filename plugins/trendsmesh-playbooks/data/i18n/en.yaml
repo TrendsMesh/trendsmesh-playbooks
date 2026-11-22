@@ -1255,6 +1255,8 @@ run_page:
     outcome: '{stage}: {outcome}'
     saved: saved
     by_rule: by rule
+    # a decision with one possible answer (issue #148 line 30): the situation's, never the user's
+    forced: forced by the situation
   decision:
     now: Now
     recommended: recommended
@@ -1277,6 +1279,12 @@ run_page:
     finished: Every check-in is settled and the run is done.
     # the start card's answers, the run page's first stage (issue #131)
     start: Answered on the start card
+    # `tm decide --by forced` (issue #148 line 30): the reason the run's data left one answer (tm.forced.REASONS)
+    forced: Forced by the situation
+    forced_reason:
+      no_fading_ad: no ad is fading
+      no_saved_profile: no saved profile
+      no_confirmed_profile: no confirmed saved profile
   # A decided choice in words, when the check-in's ask has no label for it (issue #132: the page never shows a choice
   # id): choice.<check-in>.<choice>, one for every choice of every catalogue (data/**/checkins.yaml; a test checks
   # it). A check-in with no fixed choices (an ad, a direction) shows the playbook's own words, else `decided`.

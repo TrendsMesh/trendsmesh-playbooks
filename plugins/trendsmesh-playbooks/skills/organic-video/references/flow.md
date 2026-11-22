@@ -215,7 +215,9 @@ link --run R --page run_page`), `tm page await --page run_page`, and read the an
 show --name <channel> --kind channel --json` for each of the run's channels. A confirmed saved
 profile is shown, the run it was saved from and its date first (`saved_from`, `message`), and reused (`tm decide reuse_profile reuse --said "<their words>" --run R`): A1 is skipped. The engine
 refuses a reuse unless **every** channel of the run has a saved profile the user confirmed; a
-channel with none needs a new one (`new`). At Hands-off the rule decides it the same way.
+channel with none needs a new one (`new`). Then `new` is the one possible answer: `tm next` gives `forced` ("no
+saved profile"), and it is recorded without asking, at every level, with `tm decide reuse_profile new --by forced
+--run R` (no `--said`; `checkin-cards.md`). With a confirmed profile at Hands-off, the rule decides it.
 
 The profile (OV1, `channel/1`, `../../references/brand-and-audience.md`, "Channel profile"):
 

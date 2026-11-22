@@ -146,6 +146,11 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
 | `stop` | Tell the user what happened, what to do, and that the run continues from the same place. **Then wait.** |
 | `done` | Final report (section 4). |
 
+- **`forced`:** when `tm next` gives `forced` (a check-in with one possible answer: `reuse_profile` when a channel
+  has no saved, confirmed profile, `checkin-cards.md`), tell the user in one line and record its `command` without
+  asking: `tm decide reuse_profile new --by forced --run R` (no `--said`: it is the situation's answer, shown on the
+  page and in the run log as "forced by the situation", never as the user's). The engine refuses `--by forced`
+  whenever another answer is possible.
 - **`notice` and `free_box` (a Free run):** `tm next` gives a `notice` with the ideas page and the week
   (the ideas are guesses, and what TrendsMesh would show): say it in plain words with the card. The
   final report ends with the short box `free_box` describes, "What TrendsMesh would have changed".

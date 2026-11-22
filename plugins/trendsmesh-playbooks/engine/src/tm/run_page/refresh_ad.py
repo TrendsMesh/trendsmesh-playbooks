@@ -205,7 +205,8 @@ def final(ctx: Context) -> dict | None:
     d = state.load(ctx.run).diagnosis
     verdict = _stage(ctx, d.get("stage")) if isinstance(d, dict) else ctx.t_or("stage_name.unclear", "unclear")
     return {"key": "done", "record": {"choice": "done", "label": ctx.t("done.verdict", verdict=verdict),
-                                      "note": None, "at": g1a.get("at"), "by": g1a.get("by"), "rule": g1a.get("rule")}}
+                                      "note": None, "at": g1a.get("at"), "by": g1a.get("by"), "rule": g1a.get("rule"),
+                                      "forced": g1a.get("forced")}}
 
 
 # --- G1b: the audience ----------------------------------------------------------------------------

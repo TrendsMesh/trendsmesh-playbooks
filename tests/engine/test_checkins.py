@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tm import checkins, flow
+from tm import checkins, flow, playbooks
 
 REPO = Path(__file__).resolve().parents[2]
 FLOWS = REPO / "handoff" / "refresh-ad_v02" / "playbook-01-refresh-ad" / "FLOWS.md"
@@ -235,3 +235,30 @@ def test_bad_catalogue_is_refused(tmp_path):
         encoding="utf-8")
     with pytest.raises(ValueError, match="ask"):
         checkins.load(bad)
+
+
+@pytest.mark.parametrize("forced, why", [("{new: no_such_condition}", "unknown condition"),
+                                         ("{other: no_reusable_profile}", "not one of its choices"),
+                                         ("{new: no_reusable_profile}, money: true", "never forced")])
+def test_a_bad_forced_entry_is_refused(tmp_path, forced, why):
+    """Issue #148 line 30: `forced` names a choice of the check-in and a condition of tm.forced, never on money."""
+    bad = tmp_path / "checkins.yaml"
+    bad.write_text(
+        "levels: {every_step: a, big_calls: b, hands_off: c}\n"
+        "cards: {}\n"
+        "checkins:\n"
+        "  - {id: X, name: x, rule: r, route: {every_step: own, big_calls: own, hands_off: rule},"
+        f" choices: [new, reuse], forced: {forced}}}\n",
+        encoding="utf-8")
+    with pytest.raises(ValueError, match=why):
+        checkins.load(bad)
+
+
+def test_the_forced_check_ins_are_the_flows_single_answer_ones():
+    """The check-ins of the flows with one possible answer in a situation the run's data shows (#148 line 30)."""
+    found = {(pb, cid): c.forced for pb in (playbooks.REFRESH_AD, playbooks.ORGANIC_VIDEO, playbooks.CREATE_AD,
+                                            playbooks.CREATIVE_BRIEF, playbooks.TREND_RESEARCH)
+             for cid, c in checkins.load(playbook=pb).checkins.items() if c.forced}
+    assert found == {(playbooks.REFRESH_AD, "G1"): {"none": "no_fading_ad"},
+                     (playbooks.REFRESH_AD, "G1a"): {"do_not_refresh": "no_ad_to_diagnose"},
+                     (playbooks.ORGANIC_VIDEO, "reuse_profile"): {"new": "no_reusable_profile"}}

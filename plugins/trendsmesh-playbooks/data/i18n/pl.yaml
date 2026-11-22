@@ -701,6 +701,7 @@ strings:
       outcome: '{stage}: {outcome}'
       saved: zapisane
       by_rule: według reguły
+      forced: wymuszone przez sytuację
     decision:
       now: Teraz
       recommended: polecane
@@ -721,6 +722,11 @@ strings:
       not_answered: Bez odpowiedzi (przebieg się zakończył)
       finished: Wszystkie decyzje są podjęte, a przebieg jest zakończony.
       start: Odpowiedzi z karty startowej
+      forced: Wymuszone przez sytuację
+      forced_reason:
+        no_fading_ad: żadna reklama nie słabnie
+        no_saved_profile: brak zapisanego profilu
+        no_confirmed_profile: brak potwierdzonego zapisanego profilu
     # Organic AI video's choices in words (issue #132): run_page.choice.<check-in>.<choice>
     choice:
       decided: Zdecydowano
