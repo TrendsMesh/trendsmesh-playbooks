@@ -288,17 +288,24 @@ def test_a_picture_that_is_not_an_image_of_the_run_stops(run, capsys, image):
 
 # --- the time the question says ---------------------------------------------------------------------------------
 
-def test_the_question_says_the_last_render_time_on_this_computer(run, capsys, renderer):
-    assert animatic.minutes_per_concept() == (animatic.DEFAULT_MINUTES, False)
-    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--estimate")
-    assert code == 0 and out["minutes_per_concept"] == animatic.DEFAULT_MINUTES == 5 and out["measured"] is False
-    assert "5 minutes" in out["message"]
+CARDS = paths.bundled_data().parent / "skills" / "creative-brief" / "references" / "checkin-cards.md"
+NO_FIXED_TIME = ("Animatics take a while: depending on the style and the computer, from a few to over a dozen "
+                 "minutes per concept.")
+
+
+def test_the_question_gives_no_fixed_time(run, capsys, renderer, tmp_path):
+    """#148 line 157 as changed by @piotr-lezon: no measured or default minutes, the one sentence instead."""
+    cards = " ".join(CARDS.read_text(encoding="utf-8").split())
+    assert NO_FIXED_TIME in cards and "<N>" not in cards and "--estimate" not in cards
+    for gone in ("minutes_per_concept", "DEFAULT_MINUTES", "TIMING", "_record_time"):
+        assert not hasattr(animatic, gone), gone
+    assert main(["brief", "animatic", "--run", str(run.path), "--estimate", "--json"]) != 0   # gone with it
+    capsys.readouterr()
     row = _styled(run, capsys)
     (run.path / row["module"]).write_text(_module([0, 3, 9]), encoding="utf-8")
-    assert _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")[0] == 0
-    assert animatic.minutes_per_concept() == (3, True)               # 2 formats x 70 s: about 3 minutes
-    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--estimate")
-    assert out["minutes_per_concept"] == 3 and out["measured"] is True and "3 minutes" in out["message"]
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--render", "--concepts", "C1")
+    assert code == 0 and all(isinstance(i["render_s"], (int, float)) for i in out["items"]), out
+    assert not (tmp_path / "data" / "animatic_timing.json").exists()   # no render time is kept
 
 
 # --- the check and the page -------------------------------------------------------------------------------------

@@ -39,9 +39,10 @@ account, no customer-voice step, no Ad Library). A0 and D2 (the animatics on req
   "<todo>"`, then `tm resume --run R` once it is cleared.
 - **Long commands:** `tm voice reddit-posts` and `tm voice reddit-comments` stop at about 90
   seconds a query, but one slow archive answer can stretch that: give them the Bash tool's longest
-  timeout (10 minutes). `tm brief animatic --render` takes several minutes per animatic (`--estimate`
-  says how many on this computer), and one call renders every concept named in every format: run it in
-  the background and wait, or one concept at a time (`--concepts`) with the longest timeout.
+  timeout (10 minutes). `tm brief animatic --render` can take from a few to over a dozen minutes per
+  animatic, depending on the style and the computer, and one call renders every concept named in every
+  format: run it in the background and wait, or one concept at a time (`--concepts`) with the longest
+  timeout.
 
 ---
 
@@ -508,7 +509,8 @@ CB10, CB13, R7, CB8. Only with the briefs (the review pack alone skips D1 to E1)
 
 CB11 (`references/animatic.md`). The check-in `animatics` comes first (`checkin-cards.md`): after the
 briefs are shown, ask whether to make animatics and for which concepts, in the user's language, with
-`<N>` minutes per concept from `tm brief animatic --run R --estimate --json`. An organic video brief
+no fixed time: from a few to over a dozen minutes per concept, depending on the style and the computer
+(owner decision #148 line 157). An organic video brief
 comes here after O5's concepts (it is O6, `#o6`), with the same question and calls. Every animatic is
 drawn in a library style matched to its concept: there is no sketch (owner decision #148 line 2).
 
