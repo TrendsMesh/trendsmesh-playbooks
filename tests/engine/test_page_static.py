@@ -49,7 +49,7 @@ def test_a_part_is_served_under_the_plugin_version_and_written_as_the_plugin_has
     assert static.served("theme.css") == f"assets/static/theme-{__version__}.css"
     assert static.content("theme.css") == (template.THEME / "theme.css").read_text(encoding="utf-8").encode("utf-8")
     # the plugin's file, in LF on every system (a Windows checkout has CRLF; the page gets the same bytes everywhere)
-    assert static.content("trend-report.css") == research_report.CSS_FILE.read_bytes()
+    assert static.content("trend-report.css") == research_report.CSS_FILE.read_text(encoding="utf-8").encode("utf-8")
     assert static.content("page.js") == template.SCRIPT.encode("utf-8")
     (tmp_path / "index.html").write_text(static.link("theme.css") + static.script("page.js"), encoding="utf-8")
     (tmp_path / "assets" / "static").mkdir(parents=True)
