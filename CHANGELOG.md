@@ -20,6 +20,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   still fetched every trend again. Now a card's date is its update date, else the day it was last seen, and the
   list stops as soon as it reaches last week's run. When the cards carry no date at all, the run reads 5 pages at
   most, fetches every trend again, and says so in one plain line.
+- **Trend research: the shared link shows last week's report while this week's is made.** A weekly run's first
+  check-ins replaced last week's whole report at the shared link, so whoever had it saw only a question for
+  several minutes. Now they are built over last week's report, under a "Last week's report" line, until this
+  week's report is ready and replaces it.
 
 ## 0.14.0
 

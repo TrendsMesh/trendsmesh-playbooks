@@ -856,13 +856,38 @@ def latest_parts(run: RunFolder, before: Path) -> tuple[Path, dict] | None:
     return None
 
 
+def _last_week(run: RunFolder) -> tuple[Path, dict] | None:
+    """The previous run's latest report build and its parts (issue #168: a weekly run before its own E1), else None."""
+    try:
+        _, prev = research_digest._previous(run)
+    except Stop:
+        return None                    # the previous run's folder is gone: nothing to show (A2 says so)
+    return latest_parts(prev, run.path) if prev is not None else None
+
+
+def _labelled(run: RunFolder, parts: dict) -> dict:
+    """Last week's report parts with a "Last week's report" line on top, in this run's page language."""
+    label = f'<p class="callout">{E(i18n.translator(page_language(run).lang)("report.last_weeks_report"))}</p>'
+    body = parts["body"]
+    top = '<div class="report">'
+    body = body.replace(top, top + label, 1) if top in body else label + body
+    return {**parts, "body": body}
+
+
 def carry_report(run: RunFolder, out: Path) -> dict | None:
     """Put the latest report into the new run page folder `out` (issue #131): its assets, report.json and parts, so
-    the page shows the report above its check-ins. The parts, or None before the first report."""
+    the page shows the report above its check-ins. The parts, or None before the first report. A weekly run before
+    its own report (E1) carries the previous run's latest report instead, under a "Last week's report" line (issue
+    #168), so the shared link always shows a report; it is never mixed with this week's files."""
     found = latest_parts(run, out)
+    last_week = found is None
+    if last_week:
+        found = _last_week(run)
     if found is None:
         return None
     folder, parts = found
+    if last_week:
+        parts = _labelled(run, parts)
     if (folder / "assets").is_dir():
         shutil.copytree(folder / "assets", out / "assets", dirs_exist_ok=True)
     for name in ("report.json", REPORT_PARTS):

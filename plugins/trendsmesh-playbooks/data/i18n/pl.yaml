@@ -666,6 +666,8 @@ strings:
       pack_cap: Limit budżetu na run
   # the run page's own words (engine/src/tm/run_page/template.py), which an Organic AI video page needs in Polish
   report:
+    # issue #168: above last week's report on a weekly run's page, until this week's report is built (E1)
+    last_weeks_report: "Raport z zeszłego tygodnia. Trwa przygotowanie aktualizacji na ten tydzień; gdy będzie gotowa, zastąpi tutaj ten raport."
     # issue #169: last week's calls are younger than digest.min_call_age_days, so none is judged
     stat_calls_too_early: "zeszłotygodniowe typy „działaj teraz”: za wcześnie na ocenę"
     call_too_early: Za wcześnie na ocenę

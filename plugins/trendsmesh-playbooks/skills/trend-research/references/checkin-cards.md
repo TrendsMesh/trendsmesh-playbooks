@@ -33,8 +33,10 @@ own link (issue #131): the same link every week. At each `ask` from `tm next`:
    `skills/refresh-ad/references/checkin-cards.md`, "The run page", step 1: `checkin`, `title`, `lede`,
    `question`, `context`, `options` with your recommendation first). Plain words: no trend ids or file names.
 2. **Build:** `tm page build --run R --ask 03_wip/ask_<id>.json --json` (the page `report`; from E1 on, the
-   report is the page's content and the check-in sits under it). Without a publishing tool: `--local`, and
-   give the `index.html` path.
+   report is the page's content and the check-in sits under it). **A weekly run before E1** (G0, G1) is built
+   over **last week's report**, under a "Last week's report" line, so whoever has the link always sees a
+   report; this week's E1 report replaces it. A first run has no report before E1: the check-in alone.
+   Without a publishing tool: `--local`, and give the `index.html` path.
 3. **Publish** to the link `tm page link --run R --page report --json` gives (a weekly run: last week's), with
    the build's `artifact` and `capabilities`, the files listed first; record it with `tm page published --run
    R --page report --url <url> --version <version> --json`. The first publish of the first run is a new
