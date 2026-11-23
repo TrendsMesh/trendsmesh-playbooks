@@ -37,10 +37,14 @@ case $tool in ''|*[!A-Za-z0-9_-]*) tool=other ;; esac
 [ -n "$cwd" ] && [ "$cwd" != "$fields" ] || exit 0
 clock=date
 case ${OSTYPE:-} in darwin*) clock=perl ;; esac            # macOS's date has no milliseconds
-stamp() {  # now = epoch ms, from GNU date (Linux, Git Bash) or perl (macOS)
+stamp() {  # now = epoch ms, from date's nanoseconds (Linux, Git Bash) or perl (macOS)
   if [ "$clock" = date ]; then
-    now=$(date +%s%3N 2>/dev/null)
-    case $now in ''|*[!0-9]*) clock=perl ;; *) return 0 ;; esac
+    # %s%N, never %3N: Ubuntu 26.04's date (uutils coreutils) drops %3N's leading zeros (.025 s gives 253)
+    now=$(date +%s%N 2>/dev/null)
+    case $now in ''|*[!0-9]*) clock=perl ;; *)
+      if [ ${#now} -ge 16 ]; then now=${now%??????}; return 0; fi
+      clock=perl ;;
+    esac
   fi
   now=$(perl -MTime::HiRes=time -e 'printf "%d", time() * 1000' 2>/dev/null)
   case $now in ''|*[!0-9]*) return 1 ;; esac

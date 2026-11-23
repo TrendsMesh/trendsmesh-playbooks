@@ -520,6 +520,19 @@ took=$(( $(now_ms) - start ))
 [ "$took" -ge 1700 ] && [ "$took" -lt 5000 ] || fail "three searches at 2 per 1.5 s took $took ms"
 spread=$(sed 's/.*"t":\([0-9]*\).*/\1/' "$PL" | sort -n | awk 'NR == 1 { f = $1 } END { print $1 - f }')
 [ "$spread" -ge 1800 ] || fail "the third search was booked $spread ms after the first (at least 1.5 s + 300 ms)"
+# Its clock is date's %s%N, never %3N, which Ubuntu 26.04's date (uutils coreutils) prints without its leading
+# zeros: a date whose %3N is wrong and whose %N is right still books each call at its real moment.
+if [ -z "$WIN" ] && date +%s%N 2>/dev/null | grep -Eq '^[0-9]{19}$'; then
+  mkdir -p "$TMP/date3n"
+  printf '#!/bin/sh\ncase "$1" in +%%s%%3N) echo "$("%s" +%%s)999" ;; *) exec "%s" "$@" ;; esac\n' "$(command -v date)" "$(command -v date)" > "$TMP/date3n/date"
+  chmod +x "$TMP/date3n/date"
+  rm -f "$PL"
+  s=$(now_ms)
+  pevent search_trends | PATH="$TMP/date3n:$PATH" sh -c "$cmd" >/dev/null 2>&1
+  e=$(now_ms)
+  t=$(sed 's/.*"t":\([0-9]*\).*/\1/' "$PL")
+  [ "$t" -ge $((s - 5)) ] && [ "$t" -le $((e + 5)) ] || fail "the pacer booked $t, outside its call ($s to $e ms): a wrong %3N clock"
+fi
 # The same with a mkdir that exits 0 when the folder is there already (Ubuntu 26.04's, uutils coreutils): the lock
 # is the shell's own exclusive create, never mkdir's exit status, so the three are still counted one at a time.
 mkdir -p "$TMP/mkdir0"
@@ -568,7 +581,7 @@ out=$(pevent get_trend | EVAL_TM_PACE=off sh -c "$cmd" 2>&1)
 # Without a clock in milliseconds (no GNU date, no perl) the call goes to tm trends pace, with its cwd and tool.
 if [ -z "$WIN" ]; then
   mkdir -p "$TMP/noclock"
-  printf '#!/bin/sh\necho 1795000000%%3N\n' > "$TMP/noclock/date"
+  printf '#!/bin/sh\necho 1795000000N\n' > "$TMP/noclock/date"   # macOS's date: no %%N
   printf '#!/bin/sh\nexit 1\n' > "$TMP/noclock/perl"
   chmod +x "$TMP/noclock/date" "$TMP/noclock/perl"
   cat > "$CLAUDE_PLUGIN_DATA/pixi/bin/pixi" <<'STUB'
