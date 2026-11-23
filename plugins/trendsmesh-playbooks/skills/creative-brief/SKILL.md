@@ -104,10 +104,14 @@ no `meta=` and no `--meta-account`, and use `--outputs organic_brief,page`.
 4. **Keys never appear in chat.** A brief needs none: TrendsMesh and Meta are signed in through
    `/mcp`. Never search for, read, print or ask for a key or token.
 
-**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
-later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
-and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
-with `tm`, so an allow rule can match it.
+**Allow once, before the run:** at readiness, `tm permissions allow --json`. When its `ask` is true (Claude Code's
+auto mode, and the plugin's rules not yet in this folder), ask its `question` once, with readiness's other questions:
+"So the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm
+permissions allow --yes --json` (the plugin's `references/permissions.md`, section 1). **A step Claude Code's
+permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or later in the run) is a
+stop, never a fallback and never a reworded retry: record it, give the user the whole set of allow rules at once
+(the same question), and resume on their "done" (section 2). Run each `tm` step as one line that starts with `tm`,
+one command per call (never `cd … && tm …`), so an allow rule can match it.
 
 ## 2. Intake (A0, A1): one product, one card
 
@@ -307,7 +311,7 @@ finding. R6: formats follow placements. R7: primary text, headline and thumbnail
 
 | Thought | Reality |
 |---|---|
-| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the whole set of allow rules at once, resume on their "done" (`references/permissions.md`). |
 | "No trend fits this category" | Never "no category trend". Show the shortlist's best fits (a thin category's topics marked "weak fit"). |
 | "This hook is unused" | Say **"none found in Ad Library titles"**: the Ad Library shows titles only, never which hook a video uses. |
 | "I'll write a customer quote that sounds right" | Quotes and phrases come from the language bank only, verbatim, with their source. `tm voice check` proves them. |

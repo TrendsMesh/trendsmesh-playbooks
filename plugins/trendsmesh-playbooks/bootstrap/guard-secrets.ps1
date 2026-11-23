@@ -40,6 +40,17 @@ switch -Regex ($tool) {
 if ($null -eq $gp) { $gp = $targets }
 $targets = Lines $targets
 $gp = Lines $gp
+# Not a rule, as in guard-secrets.sh: before a `tm permissions` command (issue #163), the session's permission mode
+# and Claude Code's project folder go to the data folder for that command to read. Nothing is printed.
+if ($tool -match '^(Bash|PowerShell)$' -and $env:CLAUDE_PLUGIN_DATA -and $targets -match '^\s*tm\s+permissions(\s|$)') {
+    try {
+        if (Test-Path -LiteralPath $env:CLAUDE_PLUGIN_DATA -PathType Container) {
+            $proj = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { [string]$call.cwd }
+            $line = "{0}`t{1}`t{2}`n" -f [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(), ([string]$call.permission_mode -replace '\s', ''), $proj
+            [IO.File]::WriteAllText((Join-Path $env:CLAUDE_PLUGIN_DATA 'permission-mode'), $line, (New-Object System.Text.UTF8Encoding $false))
+        }
+    } catch { }
+}
 $all = ($in | ConvertTo-Json -Compress -Depth 10)
 # The three readings guard-secrets.sh names P, Q and N, for the paths and for the whole call.
 $P = $gp.Replace('\', '/')

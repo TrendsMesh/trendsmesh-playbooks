@@ -33,6 +33,7 @@ cat > "$WS/tm.sh" <<SH
 # The engine of the trendsmesh-playbooks plugin, for the eval sandbox. Same code as bin/tm runs.
 export PYTHONPATH="$ROOT/engine/src" PYTHONDONTWRITEBYTECODE=1
 export TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$WS/.tmdata" TM_WORKSPACE="$WS"
+export TM_PERMISSION_MODE=default  # no hook records the mode here: no allow question at readiness (issue #163)
 [ -f "$WS/.plans.json" ] && export TM_PLANS_FILE="$WS/.plans.json"  # a case's public plans answer
 [ -f "$WS/.tm-env" ] && . "$WS/.tm-env"  # a case's own environment (the report-issue fakes: report_fakes.sh)
 exec "$PY" -m tm "\$@"

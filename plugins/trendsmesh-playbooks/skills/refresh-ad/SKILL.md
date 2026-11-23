@@ -72,10 +72,14 @@ calls** and **Hands-off**. The user never sees `tm` or any command, flag, check-
    individuals and companies of up to 3 people; a company of 4 or more needs its own Remotion
    licence to render on its machines.
 
-**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
-later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
-and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
-with `tm`, so an allow rule can match it.
+**Allow once, before the run:** at readiness, `tm permissions allow --json`. When its `ask` is true (Claude Code's
+auto mode, and the plugin's rules not yet in this folder), ask its `question` once, with readiness's other questions:
+"So the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm
+permissions allow --yes --json` (the plugin's `references/permissions.md`, section 1). **A step Claude Code's
+permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or later in the run) is a
+stop, never a fallback and never a reworded retry: record it, give the user the whole set of allow rules at once
+(the same question), and resume on their "done" (section 2). Run each `tm` step as one line that starts with `tm`,
+one command per call (never `cd … && tm …`), so an allow rule can match it.
 
 ## 2. Intake (step A0), one batch of questions
 
@@ -324,7 +328,7 @@ voice line is regenerated to length first, and checked against the original.
 
 | Thought | Reality |
 |---|---|
-| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the whole set of allow rules at once, resume on their "done" (`references/permissions.md`). |
 | "The user is in a hurry, skip this step / check" | Steps and check-ins come from `tm`. Make the step quick; never skip it. Saturation is always the Meta Ad Library. |
 | "Any ad will do" | The ad comes from the R1 ranking. |
 | "The user remembers the number" | Use the number from the run's data with its source, or leave it out (R3). |

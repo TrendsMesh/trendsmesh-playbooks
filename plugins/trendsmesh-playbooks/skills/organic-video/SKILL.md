@@ -98,10 +98,14 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
    part, not masked, not their length. The user sets them in `/plugin` → **Installed** →
    trendsmesh-playbooks → **Configure options**; the doctor says whether each is set.
 
-**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
-later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
-and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
-with `tm`, so an allow rule can match it.
+**Allow once, before the run:** at readiness, `tm permissions allow --json`. When its `ask` is true (Claude Code's
+auto mode, and the plugin's rules not yet in this folder), ask its `question` once, with readiness's other questions:
+"So the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm
+permissions allow --yes --json` (the plugin's `references/permissions.md`, section 1). **A step Claude Code's
+permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or later in the run) is a
+stop, never a fallback and never a reworded retry: record it, give the user the whole set of allow rules at once
+(the same question), and resume on their "done" (section 2). Run each `tm` step as one line that starts with `tm`,
+one command per call (never `cd … && tm …`), so an allow rule can match it.
 
 ## 2. Intake (A0), one batch of questions
 
@@ -295,7 +299,7 @@ R3: every number has a source, and a hypothesis is never a finding.
 
 | Thought | Reality |
 |---|---|
-| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the whole set of allow rules at once, resume on their "done" (`references/permissions.md`). |
 | "No trend fits" | Never "no trend found". Show the best fit there is, with its numbers, marked weak (an Inspire with its weak link, or a transfer as a hypothesis). |
 | "M5 is ready" | Never a bare code. Name the video by what it is: "the ChatGPT age-limit host video is ready". |
 | "I'll put the sources in the caption" | Sources go in the pack and the script's fact check only, never in any post text (OV11, OV14). `tm kit check` refuses them. |

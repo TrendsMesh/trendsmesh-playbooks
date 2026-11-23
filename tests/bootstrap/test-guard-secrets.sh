@@ -486,6 +486,29 @@ t allow "$C" Grep '{"pattern":"width / 2","path":"/Users/x/.claude/plugins/cache
 # Leaving the data folder is allowed.
 t allow "$D/envs" Bash '{"command":"cd ~/project"}'
 
+# Before a `tm permissions` command the session's permission mode and project folder are recorded in the data
+# folder (issue #163), silently; any other command records nothing.
+raw_sh() { sh -c "$cmd"; }
+raw_ps() { CLAUDE_PLUGIN_ROOT=$ROOTW $PWSH -NoProfile -Command "& ([scriptblock]::Create([IO.File]::ReadAllText('$HEREW/guard-secrets.ps1')))"; }
+mode_call() {  # tool, command, mode
+  printf '{"session_id":"s","cwd":"%s","permission_mode":"%s","hook_event_name":"PreToolUse","tool_name":"%s","tool_input":{"command":"%s"}}' "$C" "$3" "$1" "$2"
+}
+for runner in $RUNNERS; do
+  r=raw_${runner#run_}
+  rm -f "$D/permission-mode"
+  out=$(mode_call Bash "tm permissions allow --json" auto | (unset CLAUDE_PROJECT_DIR; $r))
+  [ -z "$out" ] || miss "$runner: the mode record printed: $out"
+  got=$(cut -f 2- "$D/permission-mode" 2>/dev/null | tr -d '\r')
+  [ "$got" = "auto	$C" ] || miss "$runner: the mode record is '$got', not 'auto<TAB>$C'"
+  out=$(mode_call PowerShell "tm permissions allow --yes --json" default | CLAUDE_PROJECT_DIR="$W" $r)
+  got=$(cut -f 2- "$D/permission-mode" 2>/dev/null | tr -d '\r')
+  [ -z "$out" ] && [ "$got" = "default	$W" ] || miss "$runner: with CLAUDE_PROJECT_DIR the record is '$got' ($out)"
+  rm -f "$D/permission-mode"
+  mode_call Bash "tm doctor --json" auto | $r >/dev/null
+  mode_call Bash "echo tm permissions" auto | $r >/dev/null
+  [ ! -e "$D/permission-mode" ] || miss "$runner: a command other than tm permissions recorded the mode"
+done
+
 # Other tools and broken input pass (fail open).
 t allow "$C" WebFetch '{"url":"https://example.com/secrets.env"}'
 out=$(printf 'not json' | sh -c "$cmd") || fail "broken input: non-zero exit"

@@ -116,6 +116,17 @@ doctor:
   report:
     send: "This report holds no keys, but it can hold details of your runs: read it, then send it privately to contact@trendsmesh.com, not to a public issue."
 
+# --- Allow the plugin's commands and pages once, at readiness (issue #163): engine/src/tm/permissions.py. {rules}: the
+# rules as they go in the file, {file}: the project's .claude/settings.local.json
+permissions:
+  # the one question at readiness, in Claude Code's auto mode, before the run
+  question: "So the run doesn't stop on the way, allow the plugin's commands and its pages?"
+  would_add: "On a yes, these rules go into permissions.allow in {file}: {rules}."
+  added: "Added to permissions.allow in {file}: {rules}. Claude Code reads the change without a restart."
+  all_there: "The plugin's commands and pages are already allowed in this folder."
+  invalid: "{file} is not valid JSON ({error}), so nothing was changed. Fix it, or add these rules to permissions.allow in it by hand: {rules}."
+  shape: "{file} is not shaped like Claude Code's settings (an object whose permissions.allow is a list), so nothing was changed. Fix it, or add these rules to permissions.allow in it by hand: {rules}."
+
 # --- Creative brief page: engine/src/tm/brief_page.py and brief_pack/template.html ---
 brief:
   view_decision: Decision maker

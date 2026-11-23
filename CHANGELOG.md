@@ -4,6 +4,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **In auto mode a run asks once, before it starts, instead of stopping on the way.** Claude Code's auto mode
+  refused the plugin's steps one at a time, so a run could stop six times for a missing permission. Now, at
+  readiness, the playbook asks once: "So the run doesn't stop on the way, allow the plugin's commands and its
+  pages?" On yes it adds `Bash(tm *)`, `PowerShell(tm *)` and `Artifact` to `.claude/settings.local.json` in your
+  folder, next to your own rules (`tm permissions allow`). A step still refused gives the whole set at once, and
+  the permissions list names every command a run uses.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

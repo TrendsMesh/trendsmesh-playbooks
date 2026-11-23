@@ -71,10 +71,14 @@ Follow the doctor's "Trend research" section (`commands/doctor.md` in the plugin
 4. **Keys never appear in chat.** Trend research needs none: TrendsMesh and Meta are signed in
    through `/mcp`. Never search for, read, print or ask for a key or token.
 
-**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
-later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
-and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
-with `tm`, so an allow rule can match it.
+**Allow once, before the run:** at readiness, `tm permissions allow --json`. When its `ask` is true (Claude Code's
+auto mode, and the plugin's rules not yet in this folder), ask its `question` once, with readiness's other questions:
+"So the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm
+permissions allow --yes --json` (the plugin's `references/permissions.md`, section 1). **A step Claude Code's
+permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or later in the run) is a
+stop, never a fallback and never a reworded retry: record it, give the user the whole set of allow rules at once
+(the same question), and resume on their "done" (section 2). Run each `tm` step as one line that starts with `tm`,
+one command per call (never `cd … && tm …`), so an allow rule can match it.
 
 ## 2. Intake (A0), one batch of questions
 
@@ -162,7 +166,7 @@ hypothesis is never a finding.
 
 | Thought | Reality |
 |---|---|
-| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the whole set of allow rules at once, resume on their "done" (`references/permissions.md`). |
 | "There are no trends in this category" | Never. A thin map shows its closest trends as a **"weak match"** (V7). |
 | "Not in ads" | Say **"none found in Ad Library titles"**: the Ad Library returns titles only. A shortlisted hook checked in the category's words says "competitor found" or "none found in Ad Library titles", never "unused"; an unchecked hook is "Not checkable without Foreplay". |
 | "I'll count creators myself" | `tm research growth` counts them, every time. Never a number by hand. |
