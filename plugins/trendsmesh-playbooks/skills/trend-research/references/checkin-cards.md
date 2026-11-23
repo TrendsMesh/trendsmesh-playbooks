@@ -75,7 +75,7 @@ the new map as the G1 card above. Apply any drops or re-tags the user asks for (
 version, the map rebuilt). On the user's go-ahead, record `tm decide G1 accept --said "<their words>" --change --run R
 --note "<their words, and what changed in the map>"`, then `tm next`.
 
-**G2 · Accept the picks** (after D3). Per pick, in order: its stage (act now / still rising); its
+**G2 · Accept the picks** (after E1, with the report on the page; issue #168). Per pick, in order: its stage (act now / still rising); its
 band and the velocity index ("top 10% of <category> topics", "2.3× the new creators of a typical
 <category> trend") first, then the raw counts ("7 new creators in TrendsMesh evidence in 14
 days"); why now; the risk; the paid verdict ("none found in Ad Library titles", "a few advertisers:
@@ -83,7 +83,8 @@ days"); why now; the risk; the paid verdict ("none found in Ad Library titles", 
 its reason ("Moved by review"), and the lens lines when there is a focus. The card says what the
 evidence shows plainly and words the rest as advice or a guess (`flow.md#d3`, R3): "try …", "may
 suit …", never "works" or "fits" as a fact. Choice: `accept` (after any change the user asks for,
-as a new picks version, checked again).
+as a new picks version, checked again, and the report built again so the page shows the new picks:
+`flow.md#e1`).
 
 **G3 · Approve the report on the page** (after E1). The run page's link (the report is on it,
 private until they share it), the views it has (category report; the weekly digest, or "it comes

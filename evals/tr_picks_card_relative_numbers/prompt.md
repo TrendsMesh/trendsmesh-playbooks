@@ -1,7 +1,7 @@
 ---
-description: "Check-every-step trend research run (beauty, US, with the paid view) at the review of the picks (D3): growth and the evidence dumps are in; Meta was not connected at the Ad Library step, so the summary says not checked (only the hooks' not_checkable rows). The agent writes and checks the picks and shows the picks check-in (G2): each pick's position in the sample first (band, x typical), raw counts second, 'creators in TrendsMesh evidence', the eyelash pick's risk naming the evidence's language (mostly Russian), no hypothesis said as a finding."
+description: "Check-every-step trend research run (beauty, US, with the paid view) at the review of the picks (D3): growth and the evidence dumps are in; Meta was not connected at the Ad Library step, so the summary says not checked (only the hooks' not_checkable rows). The agent writes and checks the picks, builds the report (E1) and shows the picks check-in (G2, after the report since issue #168): each pick's position in the sample first (band, x typical), raw counts second, 'creators in TrendsMesh evidence', the eyelash pick's risk naming the evidence's language (mostly Russian), no hypothesis said as a finding."
 tags: [trend-research, tr10, r3, tr4]
-max_turns: 60
+max_turns: 75
 timeout_seconds: 1800
 allowed_tools: [Read, Glob, Grep, Skill]
 env:

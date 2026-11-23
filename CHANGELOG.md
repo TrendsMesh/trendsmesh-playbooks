@@ -24,6 +24,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   check-ins replaced last week's whole report at the shared link, so whoever had it saw only a question for
   several minutes. Now they are built over last week's report, under a "Last week's report" line, until this
   week's report is ready and replaces it.
+- **Trend research: you accept the picks with the report in front of you.** At "Check every step" the picks
+  check-in came before the report was built. Now it comes right after the report, then the page check-in. If you
+  change the picks, the report is built again before your answer is recorded. "Just the big calls" still shows
+  the picks and the page on one card.
 
 ## 0.14.0
 

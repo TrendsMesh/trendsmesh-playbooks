@@ -565,8 +565,8 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
 - **`tm research picks check --run R --file 03_wip/picks_vNN.json --json`**. Exit 2 lists each
   problem: fix it as a new version and check again. Exit 0 gives the weighted totals: order the
   picks by them. Record the file.
-- `tm done D3 --run R`. G2 follows (`checkin-cards.md`): on its own at Check every step, in the
-  report card at Just the big calls, by rule in Hands-off.
+- `tm done D3 --run R`. The picks check-in (G2) comes **after the report** (E1), so the user
+  accepts the picks with the report in front of them: go on to E1.
 
 <a id="e1"></a>
 ## E1 Build the page
@@ -589,12 +589,18 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   sample first, raw counts under "Raw counts in the sample". The hooks' two lists ("Hooks for
   <category>") follow your B4 judgement, and a seasonal trend's note names its event as you did at
   B3 or B4; a run made before those judgements keeps its word-matched lists and English event names.
-- `tm done E1 --run R`. G3 follows: on its own at Check every step (the page's link and the views);
-  at Just the big calls the card **"Approve the picks and the page"** is shown once, here, for G2
-  and G3 together, and each is recorded on its own: `tm decide G2 accept --said "<their words>" --run R`, then `tm
+- `tm done E1 --run R`. G2 and then G3 follow, with the report on the page (issue #168). At Check
+  every step each on its own: **G2** (the picks, `checkin-cards.md`), then **G3** (the page's link
+  and the views). At Just the big calls the card **"Approve the picks and the page"** is shown once,
+  here, for G2 and G3 together, and each is recorded on its own: `tm decide G2 accept --said "<their words>" --run R`, then `tm
   decide G3 publish --run R` or `tm decide G3 keep_local --said "<their words>" --run R` (their choices differ, so the
-  card's own id is not used). Hands-off: G3 by rule, `keep_local` when neither `Artifact` nor
-  `publish_files` is in the session, otherwise `publish`.
+  card's own id is not used). Hands-off: G2 by rule, then G3 by rule, `keep_local` when neither
+  `Artifact` nor `publish_files` is in the session, otherwise `publish`.
+- **When G2 changes the picks** (the user drops, adds or reorders one): write the change as a new
+  picks version, `tm research picks check` it, then build the report again (`tm research report`
+  with the new picks: a new `04_final/report_vNN/`), build and publish the page with the G2 card
+  again (`tm page build --run R --ask 03_wip/ask_G2.json`), and record G2 only after the user sees
+  the rebuilt report. G3 then approves the rebuilt page.
 
 <a id="e2"></a>
 ## E2 Publish

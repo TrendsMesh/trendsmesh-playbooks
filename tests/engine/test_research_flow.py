@@ -77,8 +77,9 @@ def test_trend_research_steps_match_the_plan():
         assert list(st.outputs) == (["weekly_digest"] if st.id in WEEKLY_ONLY else ALL), st.id
     placed = {st.id: (st.before, st.checkins, dict(st.skip_when)) for st in every
               if st.before or st.checkins or st.skip_when}
-    assert placed == {"A1": ((), ("G0",), {}), "B4": ((), ("G1",), {}), "D3": ((), ("G2",), {}),
-                      "E1": ((), ("G3",), {}), "E2": ((), (), {"G3": "keep_local"}),
+    # issue #168: G2 follows the report (E1), so the user accepts the picks with the report in front of them
+    assert placed == {"A1": ((), ("G0",), {}), "B4": ((), ("G1",), {}),
+                      "E1": ((), ("G2", "G3"), {}), "E2": ((), (), {"G3": "keep_local"}),
                       "F5": (("GS",), (), {"GS": "by_hand"})}
     titles = {st.id: st.title for st in every}
     assert titles["B4"] == "Hooks path" and titles["F2"] == "Digest and call check"
@@ -161,7 +162,7 @@ def test_every_step_asks_g0_g1_g2_g3_one_by_one(tmp_path):
     run = _research(tmp_path, "every_step", ALL)
     seen, worked, end = _walk(run)
     assert seen == [("A1", "ask", ["G0"], None), ("B4", "ask", ["G1"], None),
-                    ("D3", "ask", ["G2"], None), ("E1", "ask", ["G3"], None),
+                    ("E1", "ask", ["G2"], None), ("E1", "ask", ["G3"], None),     # G2 after the report (#168)
                     ("F5", "ask", ["GS"], None)]
     assert worked == STEP_IDS
     assert end.action == "done"
@@ -203,7 +204,7 @@ def test_hands_off_decides_all_by_rule_and_g1_changed_a_lot_stops(tmp_path):
         complete(run, "C1")
     decide(run, "G1", "accept", by="user", note="the new map is fine", change=True)
     seen, worked, end = _walk(run, {"GS": "by_hand"})  # a first run has no schedule to keep
-    assert seen == [("D3", "auto", ["G2"], None), ("E1", "auto", ["G3"], None),
+    assert seen == [("E1", "auto", ["G2"], None), ("E1", "auto", ["G3"], None),
                     ("F5", "auto", ["GS"], None)]
     assert worked == [s for s in STEP_IDS[STEP_IDS.index("C1"):] if s != "F5"]
     assert end.action == "done"

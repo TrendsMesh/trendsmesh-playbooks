@@ -31,9 +31,10 @@ steps:
   # D. Picks (TR5, TR6, TR7)
   - {id: D1, title: Read the evidence, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#d1"}
   - {id: D2, title: Paid vs organic (Ad Library), outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#d2"}
-  - {id: D3, title: Review of the picks, outputs: [category_report, weekly_digest, paid_view], checkins: [G2], spends: false, ref: "skills/trend-research/references/flow.md#d3"}
-  # E. Page (TR10)
-  - {id: E1, title: Build the page, outputs: [category_report, weekly_digest, paid_view], checkins: [G3], spends: false, ref: "skills/trend-research/references/flow.md#e1"}
+  - {id: D3, title: Review of the picks, outputs: [category_report, weekly_digest, paid_view], spends: false, ref: "skills/trend-research/references/flow.md#d3"}
+  # E. Page (TR10). G2 (the picks) follows the report, so the user decides with it in front of them (issue #168);
+  # a change to the picks at G2 builds the report again before G2 is recorded.
+  - {id: E1, title: Build the page, outputs: [category_report, weekly_digest, paid_view], checkins: [G2, G3], spends: false, ref: "skills/trend-research/references/flow.md#e1"}
   - {id: E2, title: Publish, outputs: [category_report, weekly_digest, paid_view], skip_when: {G3: keep_local}, spends: false, ref: "skills/trend-research/references/flow.md#e2"}
   # F. Weekly digest: the schedule, once the page is published or kept local
   - {id: F5, title: Weekly schedule, outputs: [weekly_digest], before: [GS], skip_when: {GS: by_hand}, spends: false, ref: "skills/trend-research/references/flow.md#f5"}
