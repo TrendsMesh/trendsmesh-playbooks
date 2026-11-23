@@ -126,7 +126,7 @@ def images(tmp_path):
 def test_the_images_check_in_is_a_stage_of_the_run_page_in_its_look(images):
     built = run_page.build(images, _ask(images, "images"))
     html = _html(images, built)
-    assert built["open"] == ["images"] and built["capabilities"] == run_page.CAPABILITIES
+    assert built["open"] == ["images"] and built["capabilities"] == page.run_capabilities(images)
     assert "theme" not in built and 'class="top"' in html and "Organic AI video" in html     # the top bar and its pill
     assert "--accent:#B7791F" not in html and "Source+Sans" not in html                     # never the old look
     now = html.split('<section class="decision"')[0]
@@ -326,6 +326,21 @@ def test_the_publish_guard_holds_while_people_decide_and_the_record_lifts_it(ima
     run_page.record(images, "images")
     assert page.awaiting(images, run_page.PAGE) is None
     run_page.build(images)
+
+
+def test_a_decision_recorded_from_the_page_ends_the_wait_on_a_stage_with_no_reader_of_its_own(tmp_path):
+    """Issue #164: the pack (and the profile, the script draft) has no writer of their own; recording their choice
+    from the page still ends the wait, so the next build is not refused as "people are deciding"."""
+    run = _new(tmp_path)
+    _pack(run)
+    _to(run, "pack")
+    run_page.build(run, _ask(run, "pack"))
+    _publish(run)
+    page.await_(run, run_page.PAGE, "1700000001-abcd")
+    _read(run, _doc("pack", "pack_v01", "approve"))
+    run_page.record(run, "pack")
+    assert page.awaiting(run, run_page.PAGE) is None
+    run_page.build(run)
 
 
 def test_a_video_over_15mb_is_shown_as_its_720p_preview(tmp_path, monkeypatch):

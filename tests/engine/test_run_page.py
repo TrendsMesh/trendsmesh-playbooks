@@ -77,7 +77,7 @@ def test_a_run_without_asks_builds_a_page_with_nothing_open(run):
     assert built["folder"] == "04_final/run_page_v01" and built["open"] == [] and built["settled"] == 0
     html = _html(run, built)
     assert "Nothing to decide right now." in html and "<input" not in html
-    assert built["capabilities"] == run_page.CAPABILITIES
+    assert built["capabilities"] == page.run_capabilities(run)          # the run's one set (#153)
     assert built["artifact"]["file_path"].endswith("index.html")
     assert ".build.json" not in json.dumps(built["artifact"])            # the build record is never published
     assert (run.path / built["folder"] / run_page.BUILD_FILE).is_file()

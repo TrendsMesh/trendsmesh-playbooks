@@ -4,6 +4,25 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
+  draft or the pack on the page, the next page build still said people were deciding on it, and only
+  `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.
+- **Every page of a run asks for the same permissions, so a republish to the run's link is no longer refused.**
+  The start card asked for the viewer's name and its own answers' store, and the run page and the report asked
+  for less, so their publish to the same link was refused until Claude added the missing part by hand. Every
+  command that builds a page now gives one set for the whole run (and `tm page files` gives it too).
+- **Waiting for decisions on a page needs no version number.** `tm page await` and `tm brief await` take the
+  version recorded when the page was published, and say so plainly when the latest build is not published yet.
+- **Each start card and Models page shows its own playbook's name.** The start cards of Trend research, Creative
+  brief, Refresh an ad and Create an ad, and the Models page of Create an ad and Refresh an ad, said "Organic AI
+  video" in their top bar and heading.
+- **An organic video brief gets its own start card.** It asks about the channel, its platforms and bubble, whether
+  it is a business account, what the videos are for, who films, the recipients and the level, with no ad account,
+  landing page, media buyer, customer voice or review pack. Claude asks what the brief is for before building it.
+- **The start card is in the language you are talking in.** Claude passes the conversation's language to the card
+  (`tm page intake --lang`), and its languages question starts from that language, not "en, en". Polish start
+  cards ship with the plugin.
+
 ## 0.14.0
 
 - **Linux: TrendsMesh calls are paced right on Ubuntu 26.04 too.** Its `mkdir` and `date` (uutils coreutils)

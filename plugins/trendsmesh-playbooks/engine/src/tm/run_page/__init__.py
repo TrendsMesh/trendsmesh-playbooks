@@ -17,7 +17,8 @@ with the only active decision blocks on the page. Every decided check-in (asked 
 rule) is a folded stage in "Already settled", its decision a read-only summary from run.json. So the page never
 holds two versions of one question, and an earlier decision cannot be saved again by a click.
 
-The page saves a choice in the artifact's db (`CAPABILITIES`: the owner reads and writes `decisions`) as the
+The page saves a choice in the artifact's db (`CAPABILITIES`: the owner reads and writes `decisions`; the publish
+declares the run's one set, `page.run_capabilities`, issue #153) as the
 document `decisions/<checkin>`, with the ask id it was made on and, for a stage that takes more than a choice (a
 pick, a choice per item, notes per scene or pinned at a time, edited copy: tm.run_page.detail), its `detail`, taken
 back only as far as the build offered it (`.build.json` `offer`). `decision` reads it only through tm.page's reader
@@ -80,6 +81,7 @@ MAX_TEXT = 4000
 START_PAGE = "intake"          # the start card, the first page of a run (tm.start_card, tm.organic_pages.intake)
 # the check-in whose stage shows the start card's answers; any other playbook's run page leads with its own stage
 START_AT = {playbooks.CREATIVE_BRIEF: "G0", playbooks.TREND_RESEARCH: "G0", playbooks.CREATE_AD: "intake"}
+START_AT_ORGANIC_BRIEF = "G0o"
 
 
 def linked(playbook: str | None) -> tuple[str, ...]:
@@ -327,6 +329,8 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     component = COMPONENTS.get(s.playbook, lambda c, cid: [])
 
     start_key = START_AT.get(s.playbook, START_PAGE)
+    if s.playbook == playbooks.CREATIVE_BRIEF and flow.kind_of(s) == "organic":
+        start_key = START_AT_ORGANIC_BRIEF       # the organic brief's start card is confirmed at G0o (issue #156)
 
     def stage_blocks(key: str, ask: dict | None) -> list[dict]:
         out = start_blocks(ctx) if key == start_key else []      # the start card's answers (issue #131)
@@ -519,7 +523,7 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
             "chat_answers": built["chat_answers"],
             "settled": len(m["settled"]), "ask": saved["_id"] if saved else None, "local": local,
             "lang": m["lang"], "title": m["title"], **({"language_warning": m["warning"]} if m["warning"] else {}), "artifact": page.artifact_args(listed),
-            **({} if local else {"capabilities": CAPABILITIES}),
+            **({} if local else {"capabilities": page.run_capabilities(run)}),
             "published": page.published(run, page_name(run)) if not local else None}
 
 
@@ -635,7 +639,8 @@ def from_page_note(note: str, lang: str = "en") -> str:
 
 def record(run: RunFolder, checkin: str) -> dict:
     """Record the choice saved on the page with `flow.decide`, as an answer from chat, the note marked "(from the
-    page)". A check-in decided before this question was put on the page is changed (`--change`)."""
+    page)". A check-in decided before this question was put on the page is changed (`--change`). The wait for
+    decisions on the run page ends, whatever the stage (issue #164)."""
     got = decision(run, checkin)
     words.reset()
     lang = words.page_lang(run).lang
@@ -647,7 +652,8 @@ def record(run: RunFolder, checkin: str) -> dict:
     prepare = PREPARED.get(state.load(run).playbook)
     prepared = prepare(run, checkin, got) if prepare else {}
     flow.decide(run, checkin, got["choice"], by="user", note=note, change=change)
-    files = {"answer": _save_answer(run, checkin, got)} if got["detail"] else {}
+    page.clear_await(run, page_name(run))      # the choice people made on the page is read: nobody waits (#164)
+    files ={"answer": _save_answer(run, checkin, got)} if got["detail"] else {}
     files.update(prepared)
     if files_of:
         files.update(files_of(run, checkin, got))

@@ -149,10 +149,12 @@ For a channel's organic videos, filmed by the user, a creator or a team: `refere
 `#o8`, and `references/rules.md`, "Organic brief". **No Meta tool is called in the run**, and there
 is no customer-voice step and no Ad Library check.
 
-- **O1, the start card:** one message, in the form of organic-video's start page: the product or
-  brand (a link, a description, a photo, or none), the channel and its platforms, **whether it is a
+- **O1, the start card:** the organic brief's own start card (`tm page intake --lang <the
+  conversation's language>`, the run's first page, once `brief_kind` is `organic`; or one message in chat): the
+  product or brand (a link, a description, a photo, or none), the channel and its platforms, **whether it is a
   business account** (a business account is offered only sounds licensed for business use; a
-  personal account gets the trending sounds, each with its licence shown), the goal, who films, the
+  personal account gets the trending sounds, each with its licence shown), the channel's bubble, the goal
+  (the product's role), who films, the
   languages, the recipients (decision maker, creator, editor, publisher), the number of concepts (3)
   and the level. Optional values nobody gave are "to set". Then the answers file, `tm config write`,
   `tm config check`, `tm done O1`; G0o follows.
@@ -233,7 +235,8 @@ the category.
 
 ## 5. The page and its decisions
 
-- **One link for the whole run** (issue #131): the start card first, then G0 (A1) and G1 (B1) as
+- **One link for the whole run** (issue #131): the start card first (its kind's: an organic brief's at O1,
+  confirmed at G0o), then G0 (A1) and G1 (B1) as
   run page stages (`tm page build --run R --ask <file>`), then from C1 on the brief's page below, to
   the same link (`tm page link`); `references/checkin-cards.md`, "The run page". A decision in
   chat counts and updates the page (the plugin's `references/pages.md`, "A decision in chat").
@@ -243,7 +246,7 @@ the category.
   it is up for, and the check-ins already settled are folded below it, read-only (never in the
   creator's view). Who decides stays the same: the team, each person their own. It is published per the plugin's `references/pages.md`, "Pages that take decisions":
   to the run's link (`tm page link --run R --page brief_pack`: the start card's and run page's) with
-  `tm brief capabilities` as its `capabilities`, a new artifact only when the run has no link yet (the
+  `tm brief capabilities` as its `capabilities` (the run's one set, the start card's too), a new artifact only when the run has no link yet (the
   older tools: `publish_files`, then `read_declaration` and `declare_capabilities`), the stored
   declaration checked in its result, then `tm page published` with the version it returns; later
   versions go to the same URL with the same capabilities, the declaration checked again.

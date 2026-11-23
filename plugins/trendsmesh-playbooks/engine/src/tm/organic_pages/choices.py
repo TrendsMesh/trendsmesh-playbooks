@@ -379,8 +379,9 @@ def _section(sec: dict, put, tr) -> str:
     return f'<section class="q" id="q-{sid}">{head}{"".join(body)}</section>'
 
 
-def render(data: dict, put, lang: str) -> str:
-    """The page's HTML in `lang`, with `put(src) -> "media/<name>"`."""
+def render(data: dict, put, lang: str, playbook: str | None = None) -> str:
+    """The page's HTML in `lang`, with `put(src) -> "media/<name>"`, its top bar naming `playbook` (the run's: a page
+    of choices is any playbook's, issue #156)."""
     tr = organic_pages.translator(lang)
     words = {k: tr(_C + k) for k in JS_WORDS}
     meta = {"run": Path(data["run"]).name, "collection": COLLECTIONS[data["page"]], "done": DONE, "words": words,
@@ -406,7 +407,7 @@ def render(data: dict, put, lang: str) -> str:
             f'<span class="status" id="save-status" aria-live="polite"></span></span></div>'
             f'<footer>{esc(tr("organic.run_folder"))} {esc(data["run"])}</footer></div>'
             f'<script type="application/json" id="tm-choices">{_script(meta)}</script><script>{JS}</script>'
-            "</body></html>"), lang)
+            "</body></html>"), lang, playbook)
 
 
 # --- building it in the run --------------------------------------------------------------------------------
@@ -436,7 +437,8 @@ def build(run: RunFolder, data: dict, **params) -> dict:
                    f"is made from, then build again; {AGAIN}.")
     built = organic_pages.page_lang(data)
     names = _names(run, data)
-    text = render(data, lambda src: f"media/{names[src][0]}", built.lang)
+    playbook = params.get("playbook") or state.load(run).playbook    # the top bar names the run's playbook (#156)
+    text = render(data, lambda src: f"media/{names[src][0]}", built.lang, playbook)
     planned = {"index.html": len(text.encode("utf-8"))} | {f"media/{n}": p.stat().st_size for n, p in names.values()}
     over = pages.over_limits(planned)
     if over:

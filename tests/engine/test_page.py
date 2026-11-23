@@ -138,7 +138,8 @@ def test_files_lists_index_and_assets_for_publish(tmp_path, capsys):
     out = json.loads(capsys.readouterr().out)
     assert out == {"status": "done", "folder": "04_final/report_v02", "files": page.files(empty),
                    "artifact": {"file_path": str((empty / "index.html").resolve()), "files": {}},
-                   "summary": page.summary(page.files(empty))}
+                   "summary": page.summary(page.files(empty)),
+                   "capabilities": page.run_capabilities(run)}       # the run's one set (issue #153)
     assert main(["page", "files", "--run", str(run.path), "--page", "brief", "--json"]) == 1
     message = json.loads(capsys.readouterr().out)["message"]
     assert "04_final/brief_vNN" in message and "continues from the same place" in message

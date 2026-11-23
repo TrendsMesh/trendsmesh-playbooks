@@ -62,8 +62,8 @@ what each does in a weekly run is under the step. In order:
 - Readiness first (SKILL.md section 1). Then `tm run new --playbook trend-research --name
   <category, short> --json`: it gives the run folder `runs/04-trend-research/<date>_<name>/`.
 - **The start card** (issue #131): the batch below is one page, the run's first, under the link every
-  later check-in uses. `tm page intake --run R --json` (with `--known <file>`: what you already know, as
-  `{question id: value}`), publish it as a new private artifact (or to `tm page link --run R --page report`'s
+  later check-in uses. `tm page intake --run R --lang <the conversation's language> --json` (the card in the language you are talking in;
+  with `--known <file>`: what you already know, as `{question id: value}`), publish it as a new private artifact (or to `tm page link --run R --page report`'s
   link in a weekly run) with the answer's `capabilities`, `tm page published --page intake`, `tm page await
   --page intake`, and the reply button. When the user is done: one unfiltered `ArtifactData` list
   (collection `intake`), then `tm page intake --run R --read --json` (an answer in chat: one line per
@@ -585,7 +585,8 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   every later version and a weekly page go to the same `url` from `tm page link` (its files listed
   first, the ones this week's
   page lacks removed with `null`), each time with `capabilities` = the `capabilities` object
-  `tm research report --json` returned (the decisions, and `downloads` for the CSV buttons); then `tm page published --run R --page report --url <url>
+  `tm research report --json` returned (the run's one set: the decisions, the start card's, and `downloads` for
+  the CSV buttons); then `tm page published --run R --page report --url <url>
   --version <the version id> --json`. With the older `publish_files`: the same slug and
   `base_version`, `--slug` in the record. Never republish while the user is still deciding on the
   page.

@@ -477,11 +477,14 @@ def test_capabilities_are_handoff_verbatim(capsys):
     as_json = lambda s: json.loads(re.sub(r"([{,])(\w+):", r'\1"\2":', s))   # noqa: E731 (keys unquoted)
     # the handoff's db and user, verbatim, and the downloads of the PDFs' buttons (issue #10)
     assert brief_page.CAPABILITIES == {"db": {"rules": as_json(rules)}, "user": {"scopes": json.loads(scopes)},
-                                       "downloads": True}
+                                       "downloads": {}}
+    # the command prints the run's one set (#153): the handoff's rules and scope, with the start card's rule
+    caps = page.run_capabilities(CREATIVE_BRIEF)
+    assert all(rule in caps["db"]["rules"] for rule in as_json(rules)) and caps["user"] == {"scopes": ["profile"]}
     assert main(["brief", "capabilities", "--json"]) == 0
-    assert json.loads(capsys.readouterr().out)["capabilities"] == brief_page.CAPABILITIES
+    assert json.loads(capsys.readouterr().out)["capabilities"] == caps
     assert main(["brief", "capabilities"]) == 0
-    assert json.loads(capsys.readouterr().out) == brief_page.CAPABILITIES
+    assert json.loads(capsys.readouterr().out) == caps
 
 
 # --- decisions ---------------------------------------------------------------------------------------
@@ -772,7 +775,8 @@ def test_page_refused_while_awaiting_decisions(run, capsys):
     assert _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "G3", "--version", "v3")[0] == 0
     assert _cli(capsys, "brief", "await", "--run", str(run.path), "--clear")[0] == 0
     assert page.awaiting(run, brief_page.PAGE) is None
-    assert _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "G3")[0] == 1   # no --version
+    code, out = _cli(capsys, "brief", "await", "--run", str(run.path), "--stage", "G3")   # no --version (#153)
+    assert code == 2 and "brief_pack_v02" in out["message"]          # v02 is built, not published: said plainly
 
 
 @pytest.mark.private_data

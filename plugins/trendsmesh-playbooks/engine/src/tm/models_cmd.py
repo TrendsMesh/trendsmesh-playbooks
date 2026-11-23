@@ -114,10 +114,12 @@ def _page(args: argparse.Namespace) -> int:
     got = models.build_tasks(run, args.task, units, face=args.face, narrated=args.voiceover, upscale=upscale)
     message = (f"Built the models page in {got['folder']} ({got['sections']} sections). Publish it: tm page files "
                f"--run {args.run} --page models gives the Artifact tool's file_path and files, with "
-               "organic_pages.CAPABILITIES[\"models\"] as its capabilities (db collection models); record it with tm "
+               "the capabilities this returns (the run's one set: every page of the run declares the same; db "
+               "collection models); record it with tm "
                "page published --page models, and wait with tm page await --page models. Read the choice with tm "
                "models decisions --run R (an answer in chat with --text <file>; Hands-off: --by-rule).")
-    cli.emit(args, {"status": "done", **got, "message": message}, message)
+    from tm import page
+    cli.emit(args, {"status": "done", **got, "capabilities": page.run_capabilities(run), "message": message}, message)
     return 0
 
 

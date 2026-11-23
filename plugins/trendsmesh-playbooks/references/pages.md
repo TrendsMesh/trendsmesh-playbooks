@@ -48,7 +48,8 @@ in this session was refused by Claude Code's permissions. A refused publish is a
    run and along the runs it follows (`tm run new --after`). `status: "none"` means never.
 2. **The files:** `tm page files --run R --page <page> --json`. Its `artifact` holds the publish's
    `file_path` (the local `index.html`) and `files` (every other path inside the page -> its local
-   file), passed as they are. Read its `index.html` and nothing else in the folder (see Build).
+   file), passed as they are. Read its `index.html` and nothing else in the folder (see Build). Its
+   `capabilities` is the run's one set (below, "One set of capabilities per run").
 3. **First publish** (`none`): `Artifact` with that `file_path` and `files`, the `icon` `chart`, a
    one-sentence `description`, and no `url`. Give no `title`: the page's own `<title>`, which the
    engine writes ("Trend report: <category> (<market>)" for a trend report), names the artifact. It creates a new artifact, which starts **private**: only the user
@@ -67,8 +68,17 @@ in this session was refused by Claude Code's permissions. A refused publish is a
    version id the publish returned> --json`. Next week's run finds it there.
 6. Give the user the link (and, the first time, that it is private until they share it).
 
-PB04's report stores nothing and takes no decisions; it declares only `downloads`, for its CSV
-buttons (the `capabilities` `tm research report --json` returns, at every publish to the same URL).
+**One set of capabilities per run.** Every page of a run declares the same `capabilities` at every
+publish: the union of what the run's pages need (the `profile` scope of the people who open it, every
+database rule its pages save under, the start card's `intake` included, and `downloads`). Every command
+that builds a page returns it as `capabilities` (`tm page intake`, `tm page build`, `tm research report`,
+`tm brief page`, `tm organic page …`, `tm models page`), and so does `tm page files`; pass it as it is.
+A publish replaces the stored declaration whole, so a page that declared less would take away what
+another page on the same link needs (the start card's `profile` scope, its `intake` rule). Never edit it
+by hand.
+
+PB04's report stores nothing and takes no decisions of its own; its CSV buttons need the `downloads` in
+the run's set (the `capabilities` `tm research report --json` returns, at every publish to the same URL).
 PB04's report is built on the shared run page (below) with nothing to save: its
 settled check-ins are read-only summaries under the report, and every check-in is answered in chat. A page that takes decisions declares them in its publish: "Pages that take
 decisions" below.
@@ -125,7 +135,7 @@ come on top of the ones above.
 **Organic video (PB03)** asks what to make and the week on the run page (below; its skill's
 `skills/organic-video/references/flow.md#c2`, `#i2`). A run that published its own proposals or week
 page before 0.13.1 follows these rules with its own commands: the page is built by `tm organic page
-proposals|week`, the wait is `tm page await --run R --page proposals|week --version <V>`, the read is
+proposals|week`, the wait is `tm page await --run R --page proposals|week`, the read is
 `tm organic decisions --run R --page proposals|week` (`--text <file>` for a decision in chat), and
 carried-over picks are kept with `tm organic start --keep-carried` after the user's yes. Its database
 rules are not proven live yet: check the rules the publish result says are stored (step 2), and say
@@ -133,20 +143,23 @@ plainly if they are missing.
 
 1. **Build and publish** as above (`tm page files --run R --page brief_pack --json` for the
    files; a title in the user's language, the icon `document`), with **the database declared in
-   the same publish**: `capabilities` = the object `tm brief capabilities --json` prints (HANDOFF
-   §4's rules verbatim: everyone with the link reads the decisions, each person writes only their
-   own, and their profile names them; and `downloads`, for the buttons that save the page's PDFs).
+   the same publish**: `capabilities` = the `capabilities` `tm brief page --json` returns, the run's
+   one set (the same object `tm brief capabilities --json` prints: HANDOFF §4's rules verbatim,
+   everyone with the link reads the decisions, each person writes only their own, and their profile
+   names them; the start card's `intake` rule; and `downloads`, for the buttons that save the page's
+   PDFs).
 2. **Check the declaration:** the publish result says what is stored for the page (its
    capabilities and access rules: `decisions` read view, write owner; `decisions/{self}` read view,
-   write interact). When they are missing or differ, say so plainly, and the decisions are taken in
-   chat.
+   write interact; `intake` read owner, write owner). When they are missing or differ, say so
+   plainly, and the decisions are taken in chat.
 3. **Record the version people will see:** `tm page published --run R --page brief_pack --url <its
    claude.ai URL> --version <the version id the publish returned> --json`.
 4. **A later version** goes to the same URL (`tm page link`, the files listed first, as above),
    with the same `capabilities` again, so the rules stay the engine's. Check the declaration again
    (step 2). Record the version of that publish.
 5. **Never republish while deciding.** Before people decide: `tm brief await --run R --stage
-   <C1|G3|G4> --version <the recorded version> --json` (C1: the review pack alone's page). From then on `tm brief page` refuses a new
+   <C1|G3|G4> --json` (C1: the review pack alone's page; it waits on the version `tm page published`
+   recorded, and says so when the latest build is not published yet). From then on `tm brief page` refuses a new
    version, until the decisions are read, and so do `tm page published` and `tm page await` for any
    other version of the page, in every playbook. When nobody has decided yet, one unfiltered read of
    the page's store (step 6) that shows it empty lets the new version through: the answer says so.
@@ -218,7 +231,7 @@ state, the earlier check-ins folded under "Already settled", read-only.
   (a weekly run republishes to the link of the run it follows). G0 and G1 are versions of it before the report
   exists; from E1 on, `tm research report` builds the report as the page's content, and every later `tm page
   build` (G2, G3, GS) keeps the same report above its check-ins. Publish it with the build's `capabilities`
-  (the report has the decisions db too); `--local` only without a publishing tool.
+  (the run's one set: the decisions db, the start card's, the CSV downloads); `--local` only without a publishing tool.
 - **Creative brief**: G0 (A1) and G1 (B1) are run page stages (`tm page build --ask`); from C1 on the brief's
   own page (`tm brief page`) is published to the same link, with G0 and G1 under "Already settled" (in the
   decision maker's and strategist's views only: G1 holds the account's figures). It is built again after each
@@ -245,8 +258,9 @@ it, every decision is under "Already settled", and its last stage is "Done".
 Its decisions take the rules above, with these calls:
 
 1. **Publish** with the Artifact tool as above: `file_path` and `files` = the build's `artifact`, and
-   **`capabilities` = the build's `capabilities`, at every publish** (the owner reads and writes the
-   collection `decisions`). First publish: the build's `title` (the page's own `<title>`, in its language:
+   **`capabilities` = the build's `capabilities`, at every publish** (the run's one set: the owner reads
+   and writes the collection `decisions` and the start card's `intake`, with the `profile` scope and the
+   downloads; a creative brief's `decisions` take its brief page's rules). First publish: the build's `title` (the page's own `<title>`, in its language:
    the Artifact tool keeps the page's `<title>` over the `title` it is given), the icon `chart`, no `url`, only
    when `tm page link` finds no link yet (no start card or earlier week published); say once that the page is
    private until the user shares it. Later: the same
