@@ -559,3 +559,19 @@ def test_the_pages_own_title_is_the_runs_language_and_the_build_gives_it(polish_
     built = run_page.build(polish_run)
     assert built["lang"] == "pl" and built["title"] == f"PL·{_pseudo('Refresh an ad')}: {polish_run.path.name}"
     assert f"<title>{built['title']}</title>" in _html(polish_run, built)
+
+
+def test_the_diagnosis_tiles_find_the_diagnosed_ad_when_g1_named_it(run):
+    """Issue #171: G1 answered with the ad's name (not its id) still gives the diagnosis its cost tiles, through
+    the ad the diagnosis keeps (`ad.id`)."""
+    (run.path / "01_base" / "winner_ranking_v01.json").write_text(json.dumps({"ranking": ["a1"], "candidates": [
+        {"ad_id": "a1", "name": "Spring video", "verdict": "fading", "peak": {"cpr": 4.1}, "latest": {"cpr": 6.2},
+         "cost_increase": 0.51, "value_to_recover": 820}]}), encoding="utf-8")
+    _decide(run, "G1", "Spring video")
+    (run.path / "04_final" / "diagnosis_v01.json").write_text(json.dumps({
+        "stage": "hook", "refresh": True, "evidence": {"hook_rate": [0.31, 0.22]}, "target_stage": "hook",
+        "ad": {"id": "a1", "name": "Spring video"}}), encoding="utf-8")
+    html = _html(run, run_page.build(run, _ask(run, "G1a", options=[{"choice": "refresh", "label": "Refresh"}])))
+    data = json.loads(re.search(r'<script type="application/json" id="tm-page">(.*?)</script>', html, re.S).group(1))
+    tiles = [r for d in data["datasets"].values() for r in d["rows"] if r.get("label") == "Cost per result, best window"]
+    assert tiles and tiles[0]["value"] == 4.1

@@ -79,16 +79,22 @@ def _ranking(ctx: Context) -> list[dict]:
 
 # --- G1a: the diagnosis ---------------------------------------------------------------------------
 
-def _chosen_ad(ctx: Context) -> dict | None:
-    """The ranking's candidate the run picked at G1, with the ranking file."""
+def _chosen_ad(ctx: Context, diagnosis: dict | None = None) -> dict | None:
+    """The ranking's candidate the run diagnosed, with the ranking file: the ad the diagnosis keeps (`ad.id`, issue
+    #171), else the G1 choice, matched by the ad's id, then by its name."""
     picked = [d for d in state.load(ctx.run).decisions if d.get("checkin") == "G1"]
+    kept = (diagnosis or {}).get("ad") if isinstance((diagnosis or {}).get("ad"), dict) else {}
+    wanted = [str(w) for w in (kept.get("id"), picked[-1].get("choice") if picked else None) if w]
     path = ctx.latest("01_base", "winner_ranking", "json")
     data = ctx.json(path)
-    if not picked or not isinstance(data, dict):
+    if not wanted or not isinstance(data, dict):
         return None
-    for c in data.get("candidates") or []:
-        if isinstance(c, dict) and c.get("ad_id") == picked[-1].get("choice"):
-            return {**c, "_source": ctx.rel(path)}
+    cands = [c for c in data.get("candidates") or [] if isinstance(c, dict)]
+    for w in wanted:
+        found = (next((c for c in cands if str(c.get("ad_id")) == w), None)
+                 or next((c for c in cands if str(c.get("name") or "").strip().lower() == w.strip().lower()), None))
+        if found:
+            return {**found, "_source": ctx.rel(path)}
     return None
 
 
@@ -101,8 +107,8 @@ def _diagnosis(ctx: Context) -> list[dict]:
     if not isinstance(d, dict):
         return []
     blocks = []
-    ad = _chosen_ad(ctx)
-    tiles = [{"label": ctx.t("g1a.stage"), "value": ctx.t_or("stage_name." + str(d.get("stage")), d.get("stage")),
+    ad = _chosen_ad(ctx, d)
+    tiles =[{"label": ctx.t("g1a.stage"), "value": ctx.t_or("stage_name." + str(d.get("stage")), d.get("stage")),
               "sticker": True}]
     if d.get("target_stage"):
         tiles.append({"label": ctx.t("g1a.target"), "value": ctx.t_or("stage_name." + str(d["target_stage"]),
