@@ -30,7 +30,7 @@ from urllib.parse import quote, urlsplit
 
 import requests
 
-from tm import create_plan, manifest, page
+from tm import create_plan, manifest, meta_rows, page
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 from tm.tools import _common as tools_common
@@ -74,11 +74,31 @@ def library_link(ad: dict, record: dict | None = None) -> str | None:
     return LIBRARY_PAGE.format(id=quote(str(found), safe="")) if found not in (None, "") else None
 
 
+def _decoded(node: object) -> object:
+    """A JSON text inside an answer (the collector's envelope keeps the MCP's answer as text, and an MCP result is
+    text content blocks, `[{"type": "text", "text": ...}]`, as `meta_rows.answer_rows` reads them), decoded; any
+    other node as it is (issue #172)."""
+    if meta_rows._text_blocks(node):
+        node = "".join(b["text"] for b in node)
+    if isinstance(node, str) and node.lstrip("﻿ \n\r\t")[:1] in ("{", "["):
+        try:
+            return json.loads(node.lstrip("﻿"))
+        except ValueError:
+            return node
+    return node
+
+
 def _record_of(answer: object, ad_id: str) -> dict | None:
-    """The object in the answer whose id is the model ad's id (anywhere in it)."""
-    stack = [answer]
+    """The object in the answer whose id is the model ad's id (anywhere in it, a JSON text in it decoded)."""
+    stack, depth = [answer], 0
     while stack:
         node = stack.pop()
+        if isinstance(node, (str, list)) and depth < 50:
+            opened = _decoded(node)
+            if opened is not node:
+                depth += 1
+                stack.append(opened)
+                continue
         if isinstance(node, dict):
             if any(str(node.get(k)) == ad_id for k in ID_KEYS if node.get(k) is not None):
                 return node
@@ -181,11 +201,18 @@ def fetch(run: RunFolder, file: str | Path) -> dict:
         clip, thumb = clip_path(run, ad_id), thumb_path(run, ad_id)
         if isinstance(ad.get("clip"), str) and (run.path / ad["clip"]).is_file():
             row["clip"] = ad["clip"]                   # its own clip, saved before
-        record = _record_of(_answer(run, ad.get("saved")), ad_id) if ad.get("saved") else None
+        answer = _answer(run, ad.get("saved")) if ad.get("saved") else None
+        record = _record_of(answer, ad_id) if answer is not None else None
         row["link"] = library_link(ad, record)
         if row["clip"] is None and not clip.is_file() and record is None:
-            row["problem"] = ("no saved answer names it (saved)" if ad.get("saved") else
-                              "it has no saved answer: save its clip (the first ~15 s) in the run and name it in clip")
+            if not ad.get("saved"):
+                row["problem"] = "it has no saved answer: save its clip (the first ~15 s) in the run and name it in clip"
+            elif answer is None:   # issue #172: told apart from an answer that does not hold the ad
+                row["problem"] = (f"its saved answer {ad['saved']} can't be read (missing from the run, or not JSON): "
+                                  "save the Ad Library answer in the run as it came, and name that file in saved")
+            else:
+                row["problem"] = (f"its saved answer {ad['saved']} does not hold the ad {ad_id} (no object with that "
+                                  "id): name the file whose answer lists this ad in saved")
             continue
         clip.parent.mkdir(parents=True, exist_ok=True)
         if row["clip"] is None and clip.is_file():

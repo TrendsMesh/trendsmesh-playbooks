@@ -16,6 +16,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Refresh an ad: a video file of another length than the ad is refused.** `tm record --copy-from` took a 26.9 s
   file for a 52.9 s ad. With the ad's length (`--length-s`, from Meta's answer), an original more than 1 s or 5 %
   off it is refused, naming both lengths, and nothing is copied.
+- **Create an ad: model ads get their thumbnail and clip from an answer saved as JSON text.** `tm ad clips` now reads
+  a Meta answer kept as text (the collector's envelope, or the connector's text blocks). When it still finds nothing,
+  it says whether the saved answer can't be read or doesn't hold the ad, instead of "no saved answer names it".
 
 ## 0.14.0
 

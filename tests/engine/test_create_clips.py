@@ -159,3 +159,32 @@ def test_an_ad_library_model_ad_gets_its_public_link_never_the_snapshot(tmp_path
     assert create_clips.library_link({"id": "x", "source": "ad_library"}, {"ad_archive_id": "1234"}) == \
         "https://www.facebook.com/ads/library/?id=1234"
     assert "Open in the Ad Library" in create_clips.words({"ads": list(rows.values())})
+
+
+# --- issue #172 item 1: an answer saved as JSON text, and what is wrong said plainly ------------------------------
+
+@pytest.mark.parametrize("saved", [
+    {"_tool": "search_ads_archive", "_input": {"q": "planner"}, "_at": "2026-11-20T10:00:00Z",
+     "answer": json.dumps(ANSWER)},                                        # the collector's envelope, a JSON text
+    [{"type": "text", "text": json.dumps(ANSWER)}],                       # MCP text content blocks
+    {"content": [{"type": "text", "text": json.dumps(ANSWER)}]},          # the blocks inside a tool result
+    json.dumps(ANSWER),                                                   # the answer saved as one JSON string
+], ids=["envelope", "blocks", "result", "string"])
+def test_an_answer_saved_as_json_text_gives_the_clip_and_thumbnail(tmp_path, web, saved):
+    run = _new(tmp_path)
+    _concepts(run)
+    _write(run, "02_research/ad_library/ads_planner.json", saved)
+    rows = {r["id"]: r for r in create_clips.fetch(run, run.path / "03_wip/concepts_v01.json")["ads"]}
+    assert rows["ad_1"]["clip"] == "02_research/clips/ad_1_15s.mp4" and rows["ad_1"]["problem"] is None
+    assert rows["ad_2"]["thumb"] == "02_research/clips/ad_2_thumb.jpg"
+
+
+def test_an_unreadable_answer_and_an_answer_without_the_ad_are_told_apart(tmp_path, web):
+    run = _new(tmp_path)
+    _concepts(run)
+    (run.path / "02_research/ad_library/ads_planner.json").write_text("not json {", encoding="utf-8")
+    rows = {r["id"]: r for r in create_clips.fetch(run, run.path / "03_wip/concepts_v01.json")["ads"]}
+    assert "can't be read" in rows["ad_1"]["problem"] and "ads_planner.json" in rows["ad_1"]["problem"]
+    _write(run, "02_research/ad_library/ads_planner.json", {"data": [{"id": "ad_9"}]})
+    rows = {r["id"]: r for r in create_clips.fetch(run, run.path / "03_wip/concepts_v01.json")["ads"]}
+    assert "does not hold the ad ad_1" in rows["ad_1"]["problem"] and "can't be read" not in rows["ad_1"]["problem"]
