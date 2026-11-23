@@ -19,14 +19,19 @@
   plugin's ffmpeg cannot draw WOFF2) or from Google Fonts by its name; each file is drawn once with ffmpeg and kept
   only when it draws. **Logos**: the images and inline SVGs the page marks as a logo, those that name the brand (its
   address's name, or `--brand`) first (`names_brand`: another may be a customer's), its icons
-  (`apple-touch-icon`, `icon`) and its share image, each with a PNG for the edit (an SVG drawn 1024 px wide). Files go
-  into `02_research/brand/`, and `02_research/brand_vNN.json` lists them: {"url", "read_with" (browser, server),
-  "fonts": [{"family", "google_family" (its name there), "uses", "source" (site, google_fonts), "licence", "files":
-  [{"file", "weight", "style", "url"}]}], "logos": [{"file", "png", "kind" (logo, svg_logo, icon, share_image),
-  "names_brand", "width", "height", "url"}], "brand" (the name: `--brand`, else the address's),
-  "missing": [...], "message"}. What is missing goes into the asset list's question (S0): the user's own files. A
-  logo image's file is its srcset's largest entry; an SVG that names the brand comes first; when the best logo that
-  names the brand is a raster under MIN_LOGO_PX on its longer side, `missing` asks for a bigger one (issue #144).
+  (`apple-touch-icon`, `icon`) and its share image, each with a PNG for the edit cropped to what it draws (issue
+  #166, `logo_png`: by its transparency, or in an opaque picture by what differs from its corners' colour; an SVG
+  drawn 1024 px wide, and again wider, up to 4096, when what it draws is small; a PNG that needs a crop keeps its file
+  and gets `<name>_trimmed.png`). Files go into `02_research/brand/`, and `02_research/brand_vNN.json` lists them:
+  {"url", "read_with" (browser, server), "fonts": [{"family", "google_family" (its name there), "uses", "source"
+  (site, google_fonts), "licence", "files": [{"file", "weight", "style", "url"}]}], "logos": [{"file", "png", "kind"
+  (logo, svg_logo, icon, share_image), "names_brand", "width", "height" (the PNG's, cropped), "canvas" (the picture
+  drawn), "content_share" (of its area), "trimmed", "small", "url"}], "brand" (the name: `--brand`, else the
+  address's), "missing": [...], "message"}. What is missing goes into the asset list's question (S0): the user's own
+  files. A logo image's file is its srcset's largest entry; an SVG that names the brand comes first. A logo is
+  `small` when, cropped, it is under MIN_LOGO_PX on its longer side or draws under 30 % of its picture's area (a strip
+  around a small icon), an SVG too; when every logo that names the brand is small, `missing` says the logo is too
+  small and asks the user for a better file (issues #144, #166).
 
 Only http and https addresses are read. Free and local (the base tools and the user's browser).
 """
@@ -37,6 +42,7 @@ import base64
 import binascii
 import hashlib
 import html
+import math
 import os
 import re
 import shutil
@@ -59,7 +65,12 @@ MAX_VIEW = 8000            # CSS px a view may grow to for a clip
 MAX_SHEETS, MAX_CSS = 40, 2_000_000
 MAX_FONT, MAX_IMAGE = 10_000_000, 5_000_000
 FAMILIES, WEIGHTS, LOGOS = 2, 4, 8
-MIN_LOGO_PX = 600          # a raster logo smaller on its longer side is scaled up on the end card (CA10, issue #144)
+MIN_LOGO_PX = 600          # a logo smaller on its longer side (once cropped) is scaled up on the end card (CA10, #144)
+MIN_CONTENT_SHARE = 0.30   # a logo drawing less of its picture's area is a strip around an icon (issue #166)
+SVG_WIDTH, SVG_MAX = 1024, 4096   # an SVG is drawn this wide, and again wider up to SVG_MAX for a small content
+LOGO_CONTENT = 1200        # the content's longer side an SVG is drawn again for
+ALPHA_SEEN = 16            # a pixel more opaque than this (0-255) is the logo's
+BACKGROUND_SIMILARITY = 0.1   # ffmpeg colorkey's similarity to an opaque logo's background colour
 BRAND_DIR = "02_research/brand"
 GOOGLE_CSS = "https://fonts.googleapis.com/css2?family={family}:wght@{weight}"
 DRAWABLE = (".ttf", ".otf", ".woff")
@@ -716,12 +727,121 @@ def _fetch_image(link: str) -> tuple[bytes, str] | None:
         return None
 
 
-def _png(src: Path, dest: Path) -> bool:
-    """A PNG of the logo for the edit (an SVG drawn 1024 px wide), with its transparency."""
-    first = ["-width", "1024", "-keep_ar", "1"] if src.suffix == ".svg" else []
+def _png(src: Path, dest: Path, width: int = SVG_WIDTH) -> bool:
+    """A PNG of the logo for the edit (an SVG drawn `width` px wide), with its transparency."""
+    first = ["-width", str(width), "-keep_ar", "1"] if src.suffix == ".svg" else []
     proc = subprocess.run([c.ffmpeg_bin(), "-nostdin", "-v", "error", "-y", *first, "-i", c.media(src),
                            "-frames:v", "1", "-update", "1", "-pix_fmt", "rgba", c.media(dest)], capture_output=True)
     return proc.returncode == 0 and dest.is_file()
+
+
+_SEEN = bytes(1 if v > ALPHA_SEEN else 0 for v in range(256))    # an alpha byte -> the content's mask
+_SEE_THROUGH = bytes(1 if v < 250 else 0 for v in range(256))     # an alpha byte that lets the background through
+
+
+def _alpha(png: Path, width: int, height: int, key: str | None = None) -> bytes | None:
+    """The picture's alpha plane, one byte a pixel; with `key` (RRGGBB) that colour made transparent first."""
+    vf = (f"colorkey=0x{key}:{BACKGROUND_SIMILARITY}:0," if key else "") + "format=rgba"
+    proc = subprocess.run([c.ffmpeg_bin(), "-nostdin", "-v", "error", "-i", c.media(png), "-frames:v", "1", "-vf", vf,
+                           "-f", "rawvideo", "-pix_fmt", "rgba", "-"], capture_output=True)
+    raw = proc.stdout
+    return raw[3::4] if proc.returncode == 0 and len(raw) == width * height * 4 else None
+
+
+def _background(png: Path, width: int, height: int) -> str | None:
+    """The colour of an opaque picture's background, RRGGBB: its four corners alike, else None."""
+    proc = subprocess.run([c.ffmpeg_bin(), "-nostdin", "-v", "error", "-i", c.media(png), "-frames:v", "1",
+                           "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True)
+    raw = proc.stdout
+    if proc.returncode != 0 or len(raw) != width * height * 3:
+        return None
+    corners = [raw[i * 3:i * 3 + 3] for i in (0, width - 1, (height - 1) * width, height * width - 1)]
+    if any(max(abs(a - b) for a, b in zip(px, corners[0])) > 24 for px in corners[1:]):
+        return None
+    return corners[0].hex().upper()
+
+
+def content_box(png: Path) -> tuple[int, int, int, int, int, int] | None:
+    """(x, y, w, h, the picture's width, its height): the box of what a logo picture draws, by its alpha (pixels
+    more than ALPHA_SEEN opaque), or, in an opaque picture, by what differs from its background (the corners'
+    colour); the whole picture when neither tells (issue #166). None when it can't be read."""
+    size = c.probe(png)
+    width, height = int(size.get("width") or 0), int(size.get("height") or 0)
+    if not width or not height:
+        return None
+    alpha = _alpha(png, width, height)
+    if alpha is None:
+        return None
+    if b"\x01" not in alpha.translate(_SEE_THROUGH):          # opaque: trim its background, when it has one
+        key = _background(png, width, height)
+        alpha = _alpha(png, width, height, key) if key else None
+        if alpha is None:
+            return 0, 0, width, height, width, height
+    mask = alpha.translate(_SEEN)
+    top = left = None
+    bottom = right = -1
+    for row in range(height):
+        line = mask[row * width:(row + 1) * width]
+        first = line.find(b"\x01")
+        if first < 0:
+            continue
+        top = row if top is None else top
+        bottom = row
+        left = first if left is None else min(left, first)
+        right = max(right, line.rfind(b"\x01"))
+    if top is None:                                             # nothing seen (one colour): all of it
+        return 0, 0, width, height, width, height
+    return left, top, right - left + 1, bottom - top + 1, width, height
+
+
+def _crop(src: Path, dest: Path, box: tuple[int, int, int, int]) -> bool:
+    x, y, w, h = box
+    proc = subprocess.run([c.ffmpeg_bin(), "-nostdin", "-v", "error", "-y", "-i", c.media(src), "-frames:v", "1",
+                           "-vf", f"crop={w}:{h}:{x}:{y}", "-update", "1", "-pix_fmt", "rgba", c.media(dest)],
+                          capture_output=True)
+    return proc.returncode == 0 and dest.is_file()
+
+
+def logo_png(src: Path, dest: Path) -> dict | None:
+    """The edit's PNG of a logo file, cropped to what it draws (issue #166): an SVG drawn SVG_WIDTH px wide, and
+    again wider (up to SVG_MAX) when what it draws is under LOGO_CONTENT px on its longer side. `dest` is written
+    unless the source is a PNG that needs no crop (then it is the PNG). {"png", "width", "height" (of the PNG),
+    "canvas": [w, h] (the drawn picture), "content_share" (of its area), "trimmed", "small" (under MIN_LOGO_PX on
+    the longer side, or under MIN_CONTENT_SHARE of its picture)}; None when it can't be drawn or read."""
+    own = src.suffix.lower() == ".png"           # a PNG is drawn as it is; any other file into `dest`
+    drawn = src if own else dest
+    if not own and not _png(src, dest):
+        return None
+    box = content_box(drawn)
+    if box is None:
+        return None
+    if src.suffix.lower() == ".svg" and 0 < max(box[2], box[3]) < LOGO_CONTENT:
+        wider = min(SVG_MAX, math.ceil(SVG_WIDTH * LOGO_CONTENT / max(box[2], box[3])))
+        if wider > box[4] and _png(src, dest, wider):
+            box = content_box(dest) or box
+    x, y, w, h, width, height = box
+    share = (w * h) / (width * height)
+    png = drawn
+    trimmed = (w, h) != (width, height)
+    if trimmed:
+        png = dest.with_name(dest.stem + "_trimmed.png") if own else dest
+        cut = png.with_name(png.stem + ".crop.png")       # ffmpeg never writes the file it reads
+        if not _crop(drawn, cut, (x, y, w, h)):
+            cut.unlink(missing_ok=True)
+            return None
+        os.replace(cut, png)
+    return {"png": png, "width": w, "height": h, "canvas": [width, height], "content_share": round(share, 3),
+            "trimmed": trimmed, "small": max(w, h) < MIN_LOGO_PX or share < MIN_CONTENT_SHARE}
+
+
+def _too_small(logo: dict) -> str:
+    """Why a logo is too small, in words: what it draws, and of how much of its picture."""
+    w, h = logo["width"], logo["height"]
+    canvas = logo.get("canvas") or [w, h]
+    if (logo.get("content_share") or 1) < MIN_CONTENT_SHARE:
+        return (f"{logo['png']} draws only {w}×{h} px, {round(logo['content_share'] * 100)} % of its "
+                f"{canvas[0]}×{canvas[1]} picture")
+    return f"{logo['png']} is only {w}×{h} px" + (" once cropped to what it draws" if logo.get("trimmed") else "")
 
 
 def logos(run, page: _Page, raw: str, url: str, name: str = "") -> tuple[list[dict], list[str]]:
@@ -748,19 +868,17 @@ def logos(run, page: _Page, raw: str, url: str, name: str = "") -> tuple[list[di
         dest = run.unique_path(f"{BRAND_DIR}/{cand['kind']}_{n:02d}{ext}")   # run-relative (#126)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
-        png = dest if ext == ".png" else dest.with_suffix(".png")
-        if png is not dest and not _png(dest, png):
-            png = None
-        size = c.probe(png) if png else {}
-        out.append({"file": c.rel(run, dest), "png": c.rel(run, png) if png else None, "kind": cand["kind"],
-                    "names_brand": cand["names_brand"], "width": size.get("width"), "height": size.get("height"),
-                    "url": link})
+        made = logo_png(dest, dest.with_suffix(".png") if ext != ".png" else dest)
+        out.append({"file": c.rel(run, dest), "png": c.rel(run, made["png"]) if made else None, "kind": cand["kind"],
+                    "names_brand": cand["names_brand"], "width": made["width"] if made else None,
+                    "height": made["height"] if made else None, "url": link,
+                    **({k: made[k] for k in ("canvas", "content_share", "trimmed", "small")} if made else {})})
     named = [x for x in out if x["names_brand"] and x["png"]]
-    vector = any(x["file"].endswith(".svg") for x in named)
+    fine = [x for x in named if not x.get("small")]
     biggest = max(named, key=lambda x: max(x["width"] or 0, x["height"] or 0), default=None)
-    if named and not vector and max(biggest["width"] or 0, biggest["height"] or 0) < MIN_LOGO_PX:
-        missing = [f"the logo: the largest logo found is {biggest['width']}×{biggest['height']} px, too small for the "
-                   "end card without scaling up (CA10): ask the user for the logo as an SVG, or a PNG with "
+    if named and not fine:
+        missing = [f"the logo: the logo found is too small: {_too_small(biggest)}. On the end card it would be "
+                   "scaled up and blurred (CA10): ask the user for a better logo file, an SVG or a PNG with "
                    f"transparency at least {MIN_LOGO_PX} px wide."]
     elif named:
         missing = []

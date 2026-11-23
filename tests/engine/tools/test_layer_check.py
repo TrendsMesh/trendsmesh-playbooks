@@ -68,7 +68,10 @@ def test_a_caption_over_the_mouth_is_found_and_a_moved_one_passes(ad, one_face, 
     saved = json.loads((ad.path / out["outputs"][0]).read_text(encoding="utf-8"))
     assert out["outputs"] == ["03_wip/qa/edit_v01_layers_v01.json"] and saved["edit"] == "03_wip/edit_v01.mp4"
     assert saved["layers"]["file"] == "03_wip/edit_layers_v01.json" and saved["collisions"] == out["collisions"]
-    assert [r for r in manifest.rows(ad) if r["file"] == out["outputs"][0]][0]["source"] == "tm tool layer_check"
+    row = [r for r in manifest.rows(ad) if r["file"] == out["outputs"][0]][0]
+    assert row["source"] == "tm tool layer_check"
+    assert out["detector"] == saved["detector"] in ("yunet", "haar")             # which detector ran (issue #167)
+    assert row["model"].startswith(layer_check.cover_fit.DETECTORS[saved["detector"]])
     moved = {**over, "box": [90, 700, 360, 70]}
     code, out = _check(capsys, ad, _layers(ad, [TAKE, moved], 2))
     assert code == 0 and out["collisions"] == [] and out["outputs"] == ["03_wip/qa/edit_v01_layers_v02.json"]
@@ -76,30 +79,79 @@ def test_a_caption_over_the_mouth_is_found_and_a_moved_one_passes(ad, one_face, 
 
 
 @pytest.mark.tools
-def test_a_face_collision_suggests_a_move_that_clears_the_head(ad, one_face, capsys):
-    """Issue #139: the caption over the mouth (the head at y 190-520 of 960) can go down 92 px of this 540 wide edit,
-    184 px at 1080, inside the safe zone; moved by it, it is clear."""
+def test_a_face_collision_suggests_a_place_that_clears_the_head(ad, one_face, capsys):
+    """Issue #167: the text over the mouth (the head at y 190-520 of 960) has no room in the middle third of the
+    safe zone (y 130-770 of this 540 wide edit), where it is; the bottom, the nearer place, is clear at the place
+    itself. Placed there, it is clear."""
     over = {"id": "hook", "kind": "overlay", "start": 0.5, "end": 2.0, "box": [90, 440, 360, 70], "fontSize": 62}
     code, out = _check(capsys, ad, _layers(ad, [TAKE, over]))
     hit = out["collisions"][0]
-    assert hit["suggestion"] == {"offsetY": 184}
+    assert hit["suggestion"] == {"place": "bottom", "offsetY": 0}
     assert hit["message"].startswith("hook covers a face in creator at 0.55 s")
-    assert hit["message"].endswith(": move it down 184 px, or set its size to 53")
-    moved = {**over, "box": [90, 440 + 184 / 2, 360, 70]}
+    assert hit["message"].endswith(": place it at the bottom")
+    moved = {**over, "box": [90, 770 - 70, 360, 70]}
     code, out = _check(capsys, ad, _layers(ad, [TAKE, moved], 2))
     assert out["collisions"] == []
 
 
 @pytest.mark.tools
-def test_a_face_collision_with_no_room_suggests_a_smaller_size_never_under_32(ad, one_face, capsys):
+def test_a_face_collision_with_no_room_suggests_no_smaller_size(ad, one_face, capsys):
     tall = {"id": "hook", "kind": "overlay", "start": 0.5, "end": 2.0, "box": [90, 140, 360, 620], "fontSize": 62}
     code, out = _check(capsys, ad, _layers(ad, [TAKE, tall]))
     hit = out["collisions"][0]
-    assert hit["suggestion"] == {"fontSize": 53} and "set its size to 53" in hit["message"]
-    code, out = _check(capsys, ad, _layers(ad, [TAKE, {**tall, "fontSize": 34}], 2))
-    assert out["collisions"][0]["suggestion"] == {"fontSize": 32}
-    code, out = _check(capsys, ad, _layers(ad, [TAKE, {**tall, "fontSize": 32}], 3))
-    assert out["collisions"][0]["suggestion"] is None and "move it clear" in out["collisions"][0]["message"]
+    assert hit["suggestion"] is None and "move it by hand" in hit["message"] and "size" not in hit["message"]
+
+
+SELFIE = (130, 193, 280, 186)    # a face filling the top: its head is y 100-379 of 960, over the top third
+
+
+@pytest.fixture
+def selfie(monkeypatch):
+    monkeypatch.setattr(layer_check.cover_fit, "faces", lambda png, rejected=None: [SELFIE])
+
+
+@pytest.mark.tools
+def test_a_hook_over_a_selfie_goes_to_the_middle_clear_of_the_other_text_shown_with_it(ad, selfie, capsys):
+    hook = {"id": "overlay_1", "kind": "overlay", "role": "hook", "place": "top", "start": 0.5, "end": 3.0,
+            "box": [90, 130, 360, 60]}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, hook]))
+    assert out["collisions"][0]["suggestion"] == {"place": "middle", "offsetY": 0}   # top is the face's: the middle
+    label = {"id": "overlay_2", "kind": "overlay", "role": "label", "place": "middle", "start": 2.0, "end": 4.0,
+             "box": [90, 410, 360, 60]}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, hook, label], 2))
+    faces = [x for x in out["collisions"] if x["kind"] == "face"]
+    assert [x["layer"] for x in faces] == ["overlay_1"]
+    assert faces[0]["suggestion"] == {"place": "middle", "offsetY": 120}    # under the label (y 410-470), not on it
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, hook, {**label, "start": 3.5}], 3))
+    assert out["collisions"][0]["suggestion"] == {"place": "middle", "offsetY": 0}   # never shown together
+
+
+@pytest.mark.tools
+def test_two_texts_over_the_face_are_placed_clear_of_each_other(ad, selfie, capsys):
+    hook = {"id": "overlay_1", "kind": "overlay", "role": "hook", "place": "top", "start": 0, "end": 4,
+            "box": [90, 130, 360, 60]}
+    tag = {"id": "overlay_2", "kind": "overlay", "role": "hook", "place": "top", "start": 1, "end": 3,
+           "box": [90, 200, 360, 60]}
+    code, out = _check(capsys, ad, _layers(ad, [TAKE, hook, tag]))
+    found = {x["layer"]: x["suggestion"] for x in out["collisions"] if x["kind"] == "face"}
+    assert found["overlay_1"] == {"place": "middle", "offsetY": 0}       # y 420-480
+    assert found["overlay_2"] == {"place": "middle", "offsetY": 140}     # y 490-550: under the first, 12 px at 1080 off
+
+
+def test_a_suggested_place_is_where_tm_ad_text_draws_it():
+    """The places and offsets layer_check suggests are OrganicCaptions' (create_text.text_boxes) at any width."""
+    from tm import create_text
+
+    for width, height in ((1080, 1920), (540, 960), (1080, 1350)):
+        hook = {"from": 0, "to": 4, "text": "Your cat drinks too little", "style": "hook", "offsetY": 0,
+                "overlay": {"kind": "hook", "family": "pill"}}
+        k = width / 1080
+        for place in ("top", "middle", "bottom"):
+            for dy in (0, -60, 120):
+                props = {"width": width, "height": height, "captions": [{**hook, "place": place, "offsetY": dy}]}
+                box = create_text.text_boxes(props)[0]["box"]
+                anchors = layer_check._zones((width, height), box[3])[2]
+                assert box[1] == pytest.approx(anchors[place] + dy * k, abs=0.2), (width, place, dy)
 
 
 @pytest.mark.tools

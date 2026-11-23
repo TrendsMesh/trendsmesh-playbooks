@@ -382,8 +382,74 @@ def test_a_small_raster_logo_asks_for_a_bigger_one(ad, tmp_path, monkeypatch, ca
     assert out["brand"] == "acme-notes"
     assert site.MIN_LOGO_PX == 600
     small = [m for m in out["missing"] if m.startswith("the logo")]
-    assert small == ["the logo: the largest logo found is 300×100 px, too small for the end card without scaling up "
-                     "(CA10): ask the user for the logo as an SVG, or a PNG with transparency at least 600 px wide."]
+    assert small == ["the logo: the logo found is too small: 02_research/brand/logo_01.png is only 300×100 px. On the "
+                     "end card it would be scaled up and blurred (CA10): ask the user for a better logo file, an SVG "
+                     "or a PNG with transparency at least 600 px wide."]
+    assert out["logos"][0]["small"] is True and out["logos"][0]["trimmed"] is False
     pages["https://acme-notes.test/logo.png"] = _png(tmp_path / "big.png", "1200x400")
     code, out = _run(capsys, "brand", "--run", str(ad.path), SITE)
     assert not [m for m in out["missing"] if m.startswith("the logo")]
+
+
+STRIP = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 100" width="1024" height="100">'
+         '<rect x="462" y="0" width="100" height="100" fill="#2a6"/></svg>')
+
+
+def _strip_png(tmp_path, name="strip.png") -> bytes:
+    """A 1024×100 PNG with a 100 px icon in its middle and nothing around it (transparent): the issue's logo."""
+    svg = tmp_path / "strip.svg"
+    svg.write_text(STRIP, encoding="utf-8")
+    subprocess.run([ffmpeg(), "-nostdin", "-v", "error", "-y", "-width", "1024", "-keep_ar", "1", "-i", str(svg),
+                    "-frames:v", "1", "-update", "1", "-pix_fmt", "rgba", str(tmp_path / name)], check=True)
+    return (tmp_path / name).read_bytes()
+
+
+def _brand_with_logo(ad, monkeypatch, capsys, src: str, data: bytes):
+    raw = f'<html><body><img class="logo" alt="Acme Notes" src="{src}"></body></html>'
+    pages = {SITE: raw.encode(), f"https://acme-notes.test{src}": data}
+    monkeypatch.setattr(site, "_get", lambda url, *, limit, binary=False: (
+        (pages[url], "") if binary else (pages[url].decode(), "")) if url in pages else
+        (_ for _ in ()).throw(c.ToolError("404")))
+    monkeypatch.setattr(site.atlas, "find_browser", lambda: None)
+    code, out = _run(capsys, "brand", "--run", str(ad.path), SITE)
+    assert code == 0, out
+    return out
+
+
+@pytest.mark.tools
+def test_a_strip_with_a_small_icon_is_cropped_to_it_and_said_to_be_too_small(ad, tmp_path, monkeypatch, capsys):
+    """Issue #166: the logo saved as a 1024×100 PNG with a 100 px icon in the middle."""
+    out = _brand_with_logo(ad, monkeypatch, capsys, "/logo.png", _strip_png(tmp_path))
+    logo = out["logos"][0]
+    assert logo["png"] == "02_research/brand/logo_01_trimmed.png" and logo["file"] == "02_research/brand/logo_01.png"
+    assert (logo["width"], logo["height"], logo["canvas"]) == (100, 100, [1024, 100])
+    assert logo["trimmed"] is True and logo["small"] is True and logo["content_share"] < 0.3
+    assert c.probe(ad.path / logo["png"])["width"] == 100
+    small = [m for m in out["missing"] if m.startswith("the logo")]
+    assert small and "too small" in small[0] and "draws only 100×100 px, 10 % of its 1024×100 picture" in small[0]
+    assert "ask the user for a better logo file" in small[0]
+
+
+@pytest.mark.tools
+def test_an_svg_strip_is_drawn_larger_then_cropped_and_still_said_to_be_too_small(ad, tmp_path, monkeypatch, capsys):
+    out = _brand_with_logo(ad, monkeypatch, capsys, "/logo.svg", STRIP.encode())
+    logo = out["logos"][0]
+    assert logo["file"].endswith(".svg") and logo["png"] == "02_research/brand/logo_01.png"
+    assert (logo["width"], logo["height"], logo["canvas"]) == (400, 400, [4096, 400])   # drawn at SVG_MAX
+    assert logo["small"] is True and any("too small" in m for m in out["missing"])      # an SVG is checked too
+    wide = STRIP.replace('x="462" y="0" width="100"', 'x="12" y="0" width="1000"')
+    out = _brand_with_logo(ad, monkeypatch, capsys, "/logo.svg", wide.encode())
+    logo = out["logos"][0]
+    assert logo["small"] is False and logo["width"] >= 1000 and not any("logo" in m for m in out["missing"])
+
+
+@pytest.mark.tools
+def test_an_opaque_logo_is_cropped_to_what_differs_from_its_background(ad, tmp_path, monkeypatch, capsys):
+    jpg = tmp_path / "logo.jpg"
+    subprocess.run([ffmpeg(), "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "color=white:s=1600x400", "-vf",
+                    "drawbox=x=100:y=50:w=1400:h=300:color=blue:t=fill", "-frames:v", "1", "-update", "1",
+                    str(jpg)], check=True)
+    out = _brand_with_logo(ad, monkeypatch, capsys, "/logo.jpg", jpg.read_bytes())
+    logo = out["logos"][0]
+    assert logo["trimmed"] is True and abs(logo["width"] - 1400) <= 4 and abs(logo["height"] - 300) <= 4
+    assert logo["small"] is False and not [m for m in out["missing"] if m.startswith("the logo")]

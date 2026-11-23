@@ -494,6 +494,9 @@ def _install(tier: str, yes: bool) -> tuple[int, str]:
                 render.probe()
         except (_common.ToolError, OSError, RuntimeError, ValueError) as exc:
             return 1, f"The video tools are installed, but a test render failed: {exc}"
+        from tm import face_model
+
+        face_model.fetch_for_install()   # YuNet's face model, once, pinned by its SHA-256 (issue #167); never fails
     if tier == "animatic":  # puppeteer-core only: the browser is the user's own
         from tm import atlas
         from tm.tools import _common

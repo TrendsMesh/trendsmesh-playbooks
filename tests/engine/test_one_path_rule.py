@@ -262,6 +262,7 @@ def test_env_install_json_prints_one_object(monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(render, "setup", lambda force=False: print("npm talks too"))
     monkeypatch.setattr(render, "setup_done", lambda: True)
     monkeypatch.setattr(render, "probe", lambda: print("remotion talks too"))
+    monkeypatch.setattr("tm.face_model.fetch", lambda timeout=60: None)   # no network (test_face_model.py)
     assert main(["env", "install", "video", "--yes", "--json"]) == 0
     out = capsys.readouterr()
     got = json.loads(out.out)

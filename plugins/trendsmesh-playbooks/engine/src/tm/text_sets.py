@@ -23,7 +23,12 @@ default set is `outline` (`organic_edit.DEFAULT_LOOK`), and the first time three
 use another set for its format (a ranking, a quiz) without changing the saved one.
 
 `into_run` copies the set's font and logo into the run (`03_wip/text_set/`), where Remotion reads them (the run is
-its public folder), with a manifest row naming the library file. The text on the accent is dark or white, whichever
+its public folder), with a manifest row naming the library file.
+
+Create an ad's first ad of a brand (issue #166): with no saved set, `tm ad text` draws a run-only set
+(`from_inventory`), the default look with the brand's font and logo from `tm tool site brand`'s inventory
+(`02_research/brand_vNN.json`); the user approves it with the edit at the review, and `tm brand text-style save`
+keeps it then. refresh-ad's `fill_props` and organic video read only a saved set. The text on the accent is dark or white, whichever
 has the higher contrast (`accent_ink`, WCAG's relative luminance).
 """
 
@@ -218,6 +223,44 @@ def for_run(run: RunFolder) -> dict | None:
     return None
 
 
+INVENTORY = ("02_research", "brand", "json")   # `tm tool site brand`'s inventory of the brand's font and logo
+
+
+def from_inventory(run: RunFolder) -> dict | None:
+    """A run-only set for Create an ad's first ad of a brand (issue #166), when no set is saved: the default look
+    with the first font file and the first logo PNG that names the brand (not one flagged too small) of the latest
+    `02_research/brand_vNN.json`, as {"look", "accent": None, "ink", "font": {"family", "file"} | None,
+    "logo": file | None, "file": the inventory, "run_only": True}, the files relative to the run (already in it).
+    None when the run is not an ad's, or the inventory has neither a font nor a logo. Never saved: the user approves
+    it with the edit, and `tm brand text-style save` keeps it then."""
+    if state.load(run).playbook != CREATE_AD:
+        return None
+    path = run.latest(*INVENTORY)
+    if path is None:
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    font = None
+    for fam in data.get("fonts") or []:
+        files = fam.get("files") if isinstance(fam, dict) else None
+        first = next((x["file"] for x in files or [] if isinstance(x, dict) and isinstance(x.get("file"), str)
+                      and Path(x["file"]).suffix.lower() in FONT_TYPES and (run.path / x["file"]).is_file()), None)
+        if first:
+            font = {"family": str(fam.get("family") or Path(first).stem), "file": first}
+            break
+    logo = next((x["png"] for x in data.get("logos") or [] if isinstance(x, dict) and x.get("names_brand")
+                 and not x.get("small") and isinstance(x.get("png"), str) and (run.path / x["png"]).is_file()),
+                None)
+    if font is None and logo is None:
+        return None
+    return {"look": oe.DEFAULT_LOOK, "accent": None, "ink": DARK, "font": font, "logo": logo,
+            "file": path.relative_to(run.path).as_posix(), "run_only": True}
+
+
 def _copy(run: RunFolder, ws: Path, library: str, what: str) -> str:
     source = ws / library
     if not source.is_file():
@@ -239,9 +282,14 @@ def _copy(run: RunFolder, ws: Path, library: str, what: str) -> str:
 
 
 def into_run(run: RunFolder, saved: dict) -> dict:
-    """{look, accent, ink, font: {family, src} | None, logo: src | None} with the files copied into the run."""
-    ws = trend_spool.workspace_of(run)
+    """{look, accent, ink, font: {family, src} | None, logo: src | None} with the files copied into the run; a
+    run-only set (`from_inventory`) names the run's own files, nothing is copied."""
     font = saved.get("font") if isinstance(saved.get("font"), dict) else None
+    if saved.get("run_only"):
+        return {"look": saved["look"], "accent": saved.get("accent"), "ink": saved.get("ink") or DARK,
+                "font": {"family": font["family"], "src": font["file"]} if font else None,
+                "logo": saved.get("logo")}
+    ws = trend_spool.workspace_of(run)
     return {"look": saved["look"], "accent": saved.get("accent"),
             "ink": saved.get("ink") or (accent_ink(saved["accent"]) if saved.get("accent") else DARK),
             "font": {"family": font["family"], "src": _copy(run, ws, font["file"], "font")} if font else None,

@@ -112,6 +112,22 @@ def test_a_channel_without_a_set_uses_its_stores_and_a_run_without_either_has_no
     assert text_sets.for_run(_ad(ws, "Other")) is None
 
 
+def test_a_run_only_set_comes_from_an_ads_inventory_only(ws):
+    """Issue #166: Create an ad's first ad takes the site's font and logo; another playbook's run never does."""
+    inventory = {"fonts": [{"family": "Brand Sans", "files": [{"file": "02_research/brand/Brand-Bold.ttf"}]}],
+                 "logos": [{"png": "02_research/brand/logo.png", "names_brand": True}]}
+    ad, organic = _ad(ws, "Inventory"), _organic(ws)
+    for run in (ad, organic):
+        _files(run)
+        (run.path / "02_research" / "brand_v01.json").write_text(json.dumps(inventory), encoding="utf-8")
+    found = text_sets.from_inventory(ad)
+    assert found == {"look": "outline", "accent": None, "ink": "#111111",
+                     "font": {"family": "Brand Sans", "file": "02_research/brand/Brand-Bold.ttf"},
+                     "logo": "02_research/brand/logo.png", "file": "02_research/brand_v01.json", "run_only": True}
+    assert text_sets.into_run(ad, found)["font"] == {"family": "Brand Sans", "src": "02_research/brand/Brand-Bold.ttf"}
+    assert text_sets.from_inventory(organic) is None and text_sets.from_inventory(_ad(ws, "Empty")) is None
+
+
 def test_a_bad_look_accent_or_file_is_refused(ws):
     run = _organic(ws)
     with pytest.raises(Stop, match="look must be one of"):

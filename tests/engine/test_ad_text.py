@@ -317,3 +317,120 @@ def test_a_size_fix_of_an_overlay_in_a_set_is_its_overlay_size(ad, remotion, cap
     hook = next(x for x in json.loads((ad.path / out["layers"]).read_text(encoding="utf-8"))["layers"]
                 if x["id"] == "overlay_1")
     assert hook["fontSize"] == 53
+
+
+# --- the first ad of a brand: a set made for the run from the site's inventory (issue #166) ----------
+
+def _inventory(run, *, logos=None):
+    brand_dir = run.path / "02_research" / "brand"
+    brand_dir.mkdir(parents=True, exist_ok=True)
+    (brand_dir / "pet-sans-700.ttf").write_bytes(b"\x00\x01\x00\x00 a font")
+    for name in ("svg_logo_01.png", "logo_02.png", "logo_03.png"):
+        (brand_dir / name).write_bytes(b"\x89PNG logo")
+    data = {"url": "https://pet.test/", "brand": "pet", "fonts": [
+        {"family": "Pet Sans", "files": [{"file": "02_research/brand/pet-sans-700.woff2", "weight": "700"},
+                                         {"file": "02_research/brand/pet-sans-700.ttf", "weight": "700"}]}],
+        "logos": logos if logos is not None else [
+            {"file": "02_research/brand/logo_02.png", "png": "02_research/brand/logo_02.png", "kind": "logo",
+             "names_brand": False},
+            {"file": "02_research/brand/svg_logo_01.svg", "png": "02_research/brand/svg_logo_01.png",
+             "kind": "svg_logo", "names_brand": True, "small": True},
+            {"file": "02_research/brand/logo_03.png", "png": "02_research/brand/logo_03.png", "kind": "logo",
+             "names_brand": True}],
+        "missing": []}
+    (run.path / "02_research" / "brand_v01.json").write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_the_first_ad_is_drawn_in_the_brands_font_and_logo_from_the_inventory(ad, remotion, capsys):
+    _inventory(ad)
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:], "--accent", "#2e7d32")
+    assert code == 0, out
+    assert out["look"] == "outline" and out["text_set"] == "02_research/brand_v01.json"
+    assert out["text_set_saved"] is False
+    props = json.loads((ad.path / out["props"]).read_text(encoding="utf-8"))
+    assert props["brandFont"] == {"family": "Pet Sans", "src": "02_research/brand/pet-sans-700.ttf"}  # a file it has
+    end = next(x for x in props["captions"] if x.get("overlay", {}).get("kind") == "end")
+    assert end["overlay"]["logo"] == "02_research/brand/logo_03.png"   # names the brand and is not too small
+    assert not (ad.path / "03_wip" / "text_set").exists()               # the run's own files, nothing copied
+    assert not list((ad.path.parents[2] / "library").rglob("text_style_v*.json"))   # nothing saved before a yes
+    save = out["save_text_set"]
+    assert save.startswith('tm brand text-style save --run R --kind brand --name "Pet Store" --look outline')
+    assert "--accent #2E7D32" in save and "--font 02_research/brand/pet-sans-700.ttf" in save
+    assert "--logo 02_research/brand/logo_03.png" in save and "approves the edit" in out["message"]
+    row = [r for r in manifest.rows(ad) if r["file"] == out["props"]][0]
+    assert json.loads(row["params"])["text_set_run_only"] is True
+
+
+def test_a_saved_set_wins_over_the_inventory_and_an_inventory_without_a_usable_logo_shows_the_name(ad, remotion,
+                                                                                                   capsys):
+    _inventory(ad, logos=[{"file": "02_research/brand/logo_02.png", "png": "02_research/brand/logo_02.png",
+                           "kind": "logo", "names_brand": False}])
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    end = next(x for x in json.loads((ad.path / out["props"]).read_text(encoding="utf-8"))["captions"]
+               if x.get("overlay", {}).get("kind") == "end")
+    assert code == 0 and "logo" not in end["overlay"] and "--logo" not in out["save_text_set"]
+    font = ad.path / "02_research" / "brand" / "pet-sans-700.ttf"
+    text_sets.save(ad.path.parents[2], "brand", "Pet Store", look="pill", font=font, run=ad, note="ok")
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    assert code == 0 and out["look"] == "pill" and out["text_set_saved"] is True and out["save_text_set"] is None
+
+
+# --- a placement, a change by hand, a pinned overlay (issue #167) ----------------------------------
+
+def test_a_placement_fix_sets_the_overlays_place_and_its_own_offset(ad, remotion, capsys):
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    first = json.loads((ad.path / out["layers"]).read_text(encoding="utf-8"))["layers"]
+    hook = next(x for x in first if x["id"] == "overlay_1")
+    assert (hook["place"], hook["offsetY"], hook["role"]) == ("top", 0, "hook")
+    _layer_check(ad, out["layers"], [
+        {"kind": "face", "layer": "overlay_1", "with": "take", "at": 0.5,
+         "suggestion": {"place": "middle", "offsetY": -40}, "message": "..."},
+        {"kind": "face", "layer": "caption_1", "with": "take", "at": 0.3,
+         "suggestion": {"place": "bottom", "offsetY": 60}, "message": "..."}])
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    assert code == 0, out
+    assert "placed at the middle, up 40 px" in out["message"]
+    assert "the captions placed at the bottom, down 60 px" in out["message"]
+    kept = json.loads((ad.path / out["overlays_file"]).read_text(encoding="utf-8"))
+    assert (kept["overlays"][0]["place"], kept["overlays"][0]["offsetY"]) == ("middle", -40)
+    assert kept["captions"] == {"place": "bottom", "offsetY": 60}
+    props = json.loads((ad.path / out["props"]).read_text(encoding="utf-8"))
+    tops = [x for x in props["captions"] if x["style"] != "caption"]
+    caps = [x for x in props["captions"] if x["style"] == "caption"]
+    assert (tops[0]["place"], tops[0]["offsetY"]) == ("middle", -40)
+    assert {(x["place"], x["offsetY"]) for x in caps} == {("bottom", 60)}
+
+
+def test_another_overlays_file_than_the_last_renders_takes_no_fix(ad, remotion, capsys):
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    _layer_check(ad, out["layers"], [{"kind": "face", "layer": "overlay_1", "with": "take", "at": 0.5,
+                                      "suggestion": {"place": "middle", "offsetY": 0}, "message": "..."}])
+    by_hand = json.loads((ad.path / "03_wip" / "edit_text_v01.json").read_text(encoding="utf-8"))
+    by_hand["overlays"][0]["offsetY"] = 300
+    (ad.path / "03_wip" / "edit_text_v02.json").write_text(json.dumps(by_hand), encoding="utf-8")
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:7], "03_wip/edit_text_v02.json", *TEXT[8:])
+    assert code == 0, out
+    assert out["changes"] == [] and out["overlays_file"] == "03_wip/edit_text_v02.json"
+    assert "not the overlays file the last render drew (03_wip/edit_text_v01.json)" in out["fixes_skipped"]
+    tops = [x for x in json.loads((ad.path / out["props"]).read_text(encoding="utf-8"))["captions"]
+            if x["style"] != "caption"]
+    assert (tops[0]["place"], tops[0]["offsetY"]) == ("top", 300)
+
+
+def test_a_pinned_overlay_is_never_moved_or_resized(ad, remotion, capsys):
+    data = json.loads((ad.path / "03_wip" / "edit_text_v01.json").read_text(encoding="utf-8"))
+    data["overlays"][0]["pinned"] = True
+    data["captions"] = {"pinned": True}
+    (ad.path / "03_wip" / "edit_text_v01.json").write_text(json.dumps(data), encoding="utf-8")
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    _layer_check(ad, out["layers"], [
+        {"kind": "face", "layer": "overlay_1", "with": "take", "at": 0.5, "suggestion": {"fontSize": 53},
+         "message": "..."},
+        {"kind": "face", "layer": "caption_1", "with": "take", "at": 0.3,
+         "suggestion": {"place": "top", "offsetY": 0}, "message": "..."},
+        {"kind": "face", "layer": "overlay_2", "with": "take", "at": 3.2,
+         "suggestion": {"place": "bottom", "offsetY": 0}, "message": "..."}])
+    code, out = _cli(capsys, *TEXT[:2], "--run", str(ad.path), *TEXT[2:])
+    assert code == 0 and len(out["changes"]) == 1 and '"+40%" placed at the bottom' in out["changes"][0]
+    kept = json.loads((ad.path / out["overlays_file"]).read_text(encoding="utf-8"))
+    assert "size" not in kept["overlays"][0] and kept["captions"] == {"pinned": True}
