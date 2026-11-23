@@ -19,6 +19,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Create an ad: model ads get their thumbnail and clip from an answer saved as JSON text.** `tm ad clips` now reads
   a Meta answer kept as text (the collector's envelope, or the connector's text blocks). When it still finds nothing,
   it says whether the saved answer can't be read or doesn't hold the ad, instead of "no saved answer names it".
+- **A Mixkit music search with several words finds tracks.** Mixkit searches the words as one phrase, so "upbeat
+  tech" listed nothing, with no word why. When the phrase lists nothing, each word is now searched and the tracks
+  merged, and the answer says so; when nothing matches at all, it says that too.
 
 ## 0.14.0
 

@@ -122,6 +122,34 @@ def test_a_search_lists_the_tracks(ws, mixkit, capsys):
     assert [t["id"] for t in out["tracks"]] == ["580", "127"] and out["tracks"][0]["licence"].startswith("Mixkit")
 
 
+def test_several_words_with_no_track_are_searched_one_by_one(ws, mixkit, capsys):
+    """Issue #172 item 2: Mixkit lists nothing for "upbeat tech" as a whole; each word is searched, and the tracks
+    merged once each (by id), the words' pages named."""
+    _, run = ws
+    pages, _ = mixkit
+    pages["https://mixkit.co/free-stock-music/discover/upbeat-tech/"] = _page()
+    pages["https://mixkit.co/free-stock-music/discover/upbeat/"] = _page(SUN, CALM)
+    pages["https://mixkit.co/free-stock-music/discover/tech/"] = _page(CALM)
+    code, out = _tool(capsys, "--run", str(run.path), "--search", "upbeat tech")
+    assert code == 0, out
+    assert [t["id"] for t in out["tracks"]] == ["580", "127"]
+    assert out["pages"] == ["https://mixkit.co/free-stock-music/discover/upbeat/",
+                            "https://mixkit.co/free-stock-music/discover/tech/"]
+    assert "upbeat tech" in out["message"] and "each word" in out["message"]
+
+
+def test_a_search_with_nothing_found_says_so_in_the_json(ws, mixkit, capsys):
+    _, run = ws
+    pages, _ = mixkit
+    pages["https://mixkit.co/free-stock-music/discover/zzq-qqz/"] = _page()
+    pages["https://mixkit.co/free-stock-music/discover/zzq/"] = _page()          # qqz: no page at all
+    code, out = _tool(capsys, "--run", str(run.path), "--search", "zzq qqz")
+    assert code == 0 and out["tracks"] == [] and "no track" in out["message"], out
+    pages["https://mixkit.co/free-stock-music/discover/hum/"] = _page()
+    code, out = _tool(capsys, "--run", str(run.path), "--search", "hum")
+    assert code == 0 and out["tracks"] == [] and "no track" in out["message"], out
+
+
 def test_a_track_is_shown_and_fetched_only_after_the_users_yes(ws, mixkit, capsys):
     pytest.importorskip("numpy")   # the folder's index measures the tempo (the breakdown tier)
     workspace, run = ws
