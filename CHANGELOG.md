@@ -2,6 +2,8 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## Unreleased
+
 ## 0.14.0
 
 - **Linux: TrendsMesh calls are paced right on Ubuntu 26.04 too.** Its `mkdir` and `date` (uutils coreutils)
