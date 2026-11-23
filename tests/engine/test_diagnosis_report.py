@@ -135,3 +135,67 @@ def test_the_g1_stage_sets_other_products_apart_and_says_too_little_data(run):
     assert "Your Serum ads have too little data to judge: the best, Serum spring, has 18 of the 30 results needed." \
         in page
     assert re.search(r"not_enough_data · paused", page)
+
+
+# --- issue #171 item 2: the report in the working language, naming the ad, with the numbers it was judged on ------
+
+def _languages(run, lang):
+    (run.path / "config.yaml").write_text(f"languages:\n  working: {lang}\n  market: {lang}\n", encoding="utf-8")
+
+
+def _ranked(run):
+    data = json.loads((run.path / "01_base" / "winner_ranking_v01.json").read_text(encoding="utf-8"))
+    data["candidates"][0].update(rank=1, value_to_recover=240.0)
+    (run.path / "01_base" / "winner_ranking_v01.json").write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_the_diagnosis_keeps_the_ad_and_the_windows_it_judged(run, capsys):
+    _ranked(run)
+    w = run.path / "03_wip" / "diagnosis_windows"
+    assert main(["diagnose", "--run", str(run.path), "--peak", str(w / "peak_v01.json"), "--latest",
+                 str(w / "latest_v01.json"), "--account-ratio", "0.98", "--ad", "a1", "--json"]) == 0
+    d = json.loads((run.path / "04_final" / "diagnosis_v01.json").read_text(encoding="utf-8"))
+    assert d["ad"] == {"id": "a1", "name": "Serum spring", "ranking": "01_base/winner_ranking_v01.json", "rank": 1,
+                       "verdict": "fading", "value_to_recover": 240.0}
+    assert d["windows"]["peak"]["start"] == "2026-08-05" and d["windows"]["latest"]["results"] == 30
+
+
+def test_the_ad_is_found_by_its_name_and_defaults_to_the_g1_answer(run):
+    assert r2.ad_of(run, "serum SPRING")["id"] == "a1"
+    assert r2.ad_of(run, "zz9") == {"id": "zz9", "name": None} and r2.ad_of(run, "none") is None
+    _landing(run)                                         # no --ad: the ad picked at G1
+    assert state.load(run).diagnosis["ad"]["name"] == "Serum spring"
+
+
+def test_a_polish_run_gets_a_polish_report_that_names_the_ad_whatever_the_ranking_says_later(run, capsys):
+    _ranked(run)
+    _languages(run, "pl")
+    w = run.path / "03_wip" / "diagnosis_windows"
+    assert main(["diagnose", "--run", str(run.path), "--peak", str(w / "peak_v01.json"), "--latest",
+                 str(w / "latest_v01.json"), "--account-ratio", "0.98", "--json"]) == 0
+    for f in w.iterdir():                                 # the agent's window files are gone,
+        f.unlink()
+    later = {"ranking": [], "candidates": [{"ad_id": "o1", "name": "Cream", "verdict": "other_product"}]}
+    (run.path / "01_base" / "winner_ranking_v02.json").write_text(json.dumps(later), encoding="utf-8")   # a new ranking
+    wrote = decide(run, "G1a", "do_not_refresh", by="user", note=None, said="dobrze")
+    assert "warning" not in wrote
+    text = (run.path / wrote["report"]).read_text(encoding="utf-8")
+    assert text.startswith("# Raport z diagnozy: Serum spring")
+    for heading in ("## Co sprawdzono", "## Co pokazują dane", "## Co poprawić", "## Co wydano"):
+        assert heading in text
+    assert "- Reklama: Serum spring (id a1)." in text
+    assert "W rankingu (01_base/winner_ranking_v01.json): słabnie, miejsce 1, wartość do odzyskania 240.00." in text
+    assert "- Najlepszy okres: 2026-08-05 – 2026-08-11, wydatki 600.00, wyniki 50, koszt wyniku 12.00" in text
+    assert "- Ostatni okres: 2026-10-28 – 2026-11-03, wydatki 600.00, wyniki 30, koszt wyniku 20.00" in text
+    assert "| Wyniki na kliknięcie (konwersja) | 6.25% | 3.80% |" in text
+    assert "Werdykt: strona docelowa." in text and "Nic: w tym runie nie wydano pieniędzy." in text
+    assert "What to fix" not in text and "the ad chosen for the diagnosis" not in text
+
+
+def test_a_language_without_a_table_gets_the_english_report_and_a_warning(run):
+    _languages(run, "de")
+    _landing(run)
+    wrote = decide(run, "G1a", "do_not_refresh", by="rule", note="landing")
+    text = (run.path / wrote["report"]).read_text(encoding="utf-8")
+    assert text.startswith("# Diagnosis report: Serum spring") and "## What to fix" in text
+    assert "German" in wrote["warning"] and "tm i18n export --lang de" in wrote["warning"]

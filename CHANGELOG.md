@@ -7,6 +7,12 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Refresh an ad: an account read the Meta connector names `ad_account` is used.** It used to be left out as
   "not an ad or account read", and the account trend was built from the ad rows without a word. Every saved read
   the ranking leaves out is now named with its reason.
+- **Refresh an ad: the diagnosis report is in your language, names the ad and shows its numbers.** When a run ends
+  at the diagnosis, `04_final/diagnosis_report_v01.md` used to be in English, and could call the ad only "the ad
+  chosen for the diagnosis", without the ranking's numbers. The diagnosis now keeps the ad's id, name and ranking
+  numbers and the two windows it was judged on, and the report is written in the run's working language (Polish
+  ships with the plugin). A language not translated yet gets the English report and a line saying how to translate
+  it.
 
 ## 0.14.0
 

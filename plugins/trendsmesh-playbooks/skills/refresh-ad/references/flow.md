@@ -162,7 +162,8 @@ it says.
 - From the ranking, take the chosen ad's `peak` and `latest` windows into
   `03_wip/diagnosis_windows/peak_v01.json` and `latest_v01.json` (record them; source: the ranking
   file), and its `account_ratio`, then run `tm diagnose --run R --peak <peak file> --latest
-  <latest file> --account-ratio <x> --json` (writes `04_final/diagnosis_vNN.json`). When both
+  <latest file> --account-ratio <x> --ad <the ad's id> --json` (writes `04_final/diagnosis_vNN.json`,
+  which keeps the ad's id, name and ranking numbers and the two windows, for the report). When both
   windows carry the retention ladder (plays and p50 to p100, from A1's weekly fields), R2 reads the
   middle from its conditional steps (p50/p25, p75/p50, p95/p75: a drop of 3 points or more with
   p < 0.1); the diagnosis' `ladder` holds the peak, the latest and the steps that dropped.
@@ -191,7 +192,9 @@ it says.
   account, the auction, an unclear cause, too little data, or a stage the plugin cannot refresh for
   this ad) and recommend it. Recorded, the run ends with no spend: the engine writes
   `04_final/diagnosis_report_v01.md` (`templates/diagnosis_report_template.md`: what was checked,
-  what the data shows, what to fix, what was spent) and, when the run has a page, builds it again
+  what the data shows, what to fix, what was spent; in the run's working language, or in English with
+  a `warning` when that language's table lacks its words: then tell the user what it says in their
+  language) and, when the run has a page, builds it again
   with G1a settled and a "Done" stage; publish it to the same URL and give the user the report. An
   `unclear` stage is shown to the user as it is. A structural weakness found in such a run is
   reported as an opportunity in the same report.

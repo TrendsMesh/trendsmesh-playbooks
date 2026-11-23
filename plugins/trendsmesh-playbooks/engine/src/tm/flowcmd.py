@@ -133,6 +133,8 @@ def _decide(args: argparse.Namespace) -> int:
                                if built["local"] else
                                "its \"Done\" stage: publish it to the same URL with the Artifact tool (its `artifact` "
                                "arguments)."))
+            if wrote.get("warning"):   # the report is in English: the working language's table lacks its words
+                message += " " + wrote["warning"]
         message += _rebuilt_words(rebuilt)
         cli.emit(args, {**payload, "message": message}, message)
         return 0

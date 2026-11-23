@@ -2056,6 +2056,79 @@ ad:
       presenter: "Talking person: {situation}, with {model}"
       presenter_choice: "Talking person: {situation}, with {model} (your choice, not the row's model)"
 
+# --- Refresh an ad: the diagnosis report when the run ends at "Accept the diagnosis" (G1a, issue #143), written in
+# the run's working language (issue #171; engine/src/tm/diagnosis_report.py,
+# skills/refresh-ad/templates/diagnosis_report_template.md). Markdown: keep the table pipes. ---
+diagnosis:
+  title: "Diagnosis report: {ad}"
+  written: "Written {when}. The run ended at the diagnosis, so no change was made to the ad."
+  heading_checked: What was checked
+  heading_shows: What the data shows
+  heading_fix: What to fix
+  heading_spent: What was spent
+  unnamed_ad: the ad chosen for the diagnosis
+  ad: "The ad: {name}."
+  ad_id: "The ad: {name} (id {id})."
+  ranked: "In the ranking ({ranking}): fading, rank {rank}, value to recover {value}."
+  in_ranking: "In the ranking ({ranking}): value to recover {value}."
+  every_ad: "Every ad of the account over the ranking's history ({ranking})."
+  the_ranking: the ranking
+  peak: The best window
+  latest: The latest window
+  window: "{label}: {start} to {stop}, spend {spend}, {results} results, cost per result {cpr} (source: {source})."
+  account_ratio: "The rest of the account: its results per spend in the latest window are {ratio} times those of the best window (1 means flat)."
+  col_funnel: Funnel
+  col_best: Best window
+  col_latest: Latest window
+  col_ladder: Who keeps watching (of those at the step before)
+  dropped: "{step} (dropped)"
+  metric:
+    hook_rate: Share who watch the first quarter (hook rate)
+    middle_rate: Of those, share who watch to ThruPlay (middle)
+    ctr: Clicks per impression (CTR)
+    conversion: Results per click (conversion)
+    frequency: Frequency
+    cpm: Cost per 1,000 impressions
+  structural_weak: "The structural check (every upload of this video): the file is weakest at {step}{at} in each one. That is an improvement for a later video, not why this ad fades."
+  structural_at: " at {start} to {stop} s"
+  structural_none: "The structural check (every upload of this video): no step is weak by design."
+  structural_not_run: The structural check was not run.
+  verdict: "The verdict: {stage}. {why}"
+  also_seen: "Also seen in the data: {stages}."
+  why:
+    no_refresh: It is not fixed by refreshing the creative (R2).
+    unsupported: Refreshing it isn't supported yet for this ad.
+    too_little_data: "This ad has too little data for a diagnosis (fewer than {n} results in a window to compare), so the engine can't say which part of it fades."
+    declined: The user decided not to refresh it.
+  stage:
+    hook: the opening
+    middle: the middle
+    promise_cta: the promise or call to action
+    fatigue: image fatigue
+    landing: the landing page
+    account: the whole account
+    auction: the auction
+    unclear: no clear stage
+  material:
+    text_cards: text cards
+    vo_captions: voiceover with captions
+    talking_head: talking head
+    static: static graphic
+    unknown: this kind of ad
+  fix:
+    landing: "People still click the ad as often as before, and fewer of those who click buy, sign up or install: the drop is after the click. Check the landing page in the latest window: how fast it opens on a phone, the price and the offer against what the ad promises, stock and delivery times, the checkout or form and its payment step, and any change made to the page since the best window. The shop's own analytics show at which step the visitors drop."
+    account: "The whole account fell by about as much as this ad, so the cause is outside the video. Look at the account: budget or bid changes, the pixel and conversion tracking (are the events still counted), the season and the market, the offer and the prices, and new competitors in the Ad Library."
+    auction: "Only the cost of reach rose (CPM): the ad still works on the people who see it, and reaching them costs more. Look at the account: the season and the competition, the audience size and overlap between ad sets, and the bid strategy."
+    unclear: "No step of the funnel changed enough to name a cause, so a new creative would be a guess. Check that the conversion tracking is counting, then look again in a few weeks with more data."
+    nothing: "Nothing: no ad needs a refresh now."
+    declined: "The diagnosis points at {stage}, which a refresh can change; the user decided not to refresh it now. A new run can make it."
+    too_little_data: "Wait until the ad has more results, or refresh it against the diagnosis in a new run, choosing the part of the ad yourself."
+    unsupported: "The diagnosis points at {stage}, a part of the video, and refreshing it isn't supported yet for {material}. Give the numbers above to whoever edits the ad (an editor or the creator) as the brief for a new version."
+  no_winner: "No ad of the account is a fading winner: none spent its way to a better cost per result before and lost it since. Nothing needs a refresh now; check again when an ad's cost per result rises."
+  spent_nothing: "Nothing: no money was spent in this run."
+  spent: "This run spent {amounts} before the diagnosis ended it, and nothing more."
+  spent_item: "{amount} ({kind})"
+
 # --- Refresh an ad: the winning ad moved into the original's campaign, PAUSED, at G12 (issue #64;
 # engine/src/tm/livetest_move.py, skills/refresh-ad/references/flow.md#e4) ---
 refresh:

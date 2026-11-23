@@ -2,11 +2,17 @@
 
     write(run) -> Path      04_final/diagnosis_report_vNN.md from templates/diagnosis_report_template.md
     finish(run) -> dict     the report, and the run page built again when the run has one
+    language(run)           the language it is written in (i18n.PageLang)
 
 Everything in it is read from the run's own files: run.json (the diagnosis, the decisions, the spend), the ranking
 (01_base/winner_ranking_vNN.json), the diagnosis windows the agent took from it (03_wip/diagnosis_windows/) and the
 structural check stored with the diagnosis. Nothing is retyped, so every figure is Meta's as the run read it. The
-report is in English (like every engine report); the agent tells the user what it says in their language.
+diagnosis keeps the ad it judged (its id, name and ranking numbers) and the two windows it was judged on (issue
+#171), so the report names the ad and shows its numbers even when the G1 answer or a later ranking does not match.
+
+The report is in the run's working language (issue #171): its words are the string table's `diagnosis.*` area
+(data/i18n/en.yaml), and a language whose table lacks one of them gets the English report with a warning saying what
+to translate (`i18n.page_lang`), never a silent English.
 """
 
 from __future__ import annotations
@@ -16,38 +22,25 @@ from datetime import datetime
 from pathlib import Path
 from string import Template
 
-from tm import changes, manifest, playbooks, state
+from tm import i18n, manifest, playbooks, state
 from tm.runfolder import RunFolder
 
 SOURCE = "tm decide G1a do_not_refresh"
+AREA = "diagnosis"
 _RATES = {"hook_rate", "middle_rate", "ctr", "conversion"}
-_METRICS = {"hook_rate": "Share who watch the first quarter (hook rate)",
-            "middle_rate": "Of those, share who watch to ThruPlay (middle)", "ctr": "Clicks per impression (CTR)",
-            "conversion": "Results per click (conversion)", "frequency": "Frequency", "cpm": "Cost per 1,000 impressions"}
-# What to look at for each verdict that is not a creative problem (or a creative problem the plugin can't refresh).
-_FIX = {
-    "landing": ("People still click the ad as often as before, and fewer of those who click buy, sign up or "
-                "install: the drop is after the click. Check the landing page in the latest window: how fast it opens "
-                "on a phone, the price and the offer against what the ad promises, stock and delivery times, the "
-                "checkout or form and its payment step, and any change made to the page since the best window. The "
-                "shop's own analytics show at which step the visitors drop."),
-    "account": ("The whole account fell by about as much as this ad, so the cause is outside the video. Look at the "
-                "account: budget or bid changes, the pixel and conversion tracking (are the events still counted), "
-                "the season and the market, the offer and the prices, and new competitors in the Ad Library."),
-    "auction": ("Only the cost of reach rose (CPM): the ad still works on the people who see it, and reaching them "
-                "costs more. Look at the account: the season and the competition, the audience size and overlap "
-                "between ad sets, and the bid strategy."),
-    "unclear": ("No step of the funnel changed enough to name a cause, so a new creative would be a guess. Check that "
-                "the conversion tracking is counting, then look again in a few weeks with more data."),
-}
-_NO_WINNER = ("No ad of the account is a fading winner: none spent its way to a better cost per result before and "
-              "lost it since. Nothing needs a refresh now; check again when an ad's cost per result rises.")
+_FIX = ("landing", "account", "auction", "unclear")   # a verdict that is not a creative problem: what to look at
+_WHY = ("no_refresh", "unsupported", "too_little_data")   # why the run cannot refresh (flow._blocking's kinds)
 
 
 def _template() -> Template:
     path = playbooks.skills_root() / playbooks.get(playbooks.REFRESH_AD).skill / "templates" / \
         "diagnosis_report_template.md"
     return Template(path.read_text(encoding="utf-8-sig").split("\n---\n", 1)[1].lstrip("\n"))
+
+
+def language(run: RunFolder) -> i18n.PageLang:
+    """The run's working language when its table has every `diagnosis.*` string, else English with a warning."""
+    return i18n.page_lang(i18n.run_languages(run).working, AREA)
 
 
 def _latest(run: RunFolder, folder: str, stem: str) -> Path | None:
@@ -83,21 +76,47 @@ def _value(metric: str, v: object) -> str:
     return f"{v * 100:.2f}%" if metric in _RATES else f"{v:,.2f}"
 
 
-def _chosen(run: RunFolder, s: state.RunState) -> tuple[str, dict | None, str]:
-    """The ad's name, its ranking candidate and the ranking file: the ad picked at G1, else the one ranked first."""
+def _or(tr: i18n.Translator, key: str, default: object) -> str:
+    return tr(key) if key in tr.en else str(default)
+
+
+def _stage(tr: i18n.Translator, stage: object) -> str:
+    return _or(tr, f"{AREA}.stage.{stage}", stage)
+
+
+def _kept(d: dict | None) -> dict | None:
+    """The ad as the diagnosis keeps it (r2.ad_of), when it does."""
+    ad = (d or {}).get("ad")
+    return ad if isinstance(ad, dict) and ad.get("id") else None
+
+
+def _chosen(run: RunFolder, s: state.RunState, d: dict | None) -> tuple[str | None, dict | None, str]:
+    """The ad's name (None when nothing names it), its ranking candidate and the ranking file: the ad the diagnosis
+    keeps, else the one picked at G1, else the one ranked first. The ad is matched by its id, else by its name."""
     path = _latest(run, "01_base", "winner_ranking")
     data = _json(path)
     cands = [c for c in (data.get("candidates") or []) if isinstance(c, dict)] if isinstance(data, dict) else []
-    picked = [d.get("choice") for d in s.decisions if d.get("checkin") == "G1"]
-    ad = picked[-1] if picked else None
-    found = next((c for c in cands if c.get("ad_id") == ad), None) if ad else None
-    if found is None and not picked and isinstance(data, dict) and data.get("ranking"):
+    kept = _kept(d) or {}
+    picked = [x.get("choice") for x in s.decisions if x.get("checkin") == "G1"]
+    ad = kept.get("id") or (picked[-1] if picked else None)
+    found = None
+    if ad and ad != "none":
+        found = (next((c for c in cands if str(c.get("ad_id")) == str(ad)), None)
+                 or next((c for c in cands if str(c.get("name") or "").strip().casefold()
+                          == str(ad).strip().casefold()), None))
+    if found is None and not picked and not kept and isinstance(data, dict) and data.get("ranking"):
         found = next((c for c in cands if c.get("ad_id") == data["ranking"][0]), None)
-    name = (found or {}).get("name") or (found or {}).get("ad_id") or (ad if ad and ad != "none" else None)
-    return name or "the ad chosen for the diagnosis", found, _rel(run, path)
+    name = (kept.get("name") or (found or {}).get("name") or kept.get("id") or (found or {}).get("ad_id")
+            or (ad if ad and ad != "none" else None))
+    return name, found, _rel(run, path)
 
 
-def _window(run: RunFolder, which: str, cand: dict | None, ranking: str) -> tuple[dict | None, str]:
+def _window(run: RunFolder, which: str, d: dict | None, cand: dict | None, ranking: str) -> tuple[dict | None, str]:
+    """The window the diagnosis was judged on (kept with it), else the file the agent took from the ranking, else the
+    ranking candidate's own; with where it was read."""
+    kept = ((d or {}).get("windows") or {}).get(which) if isinstance((d or {}).get("windows"), dict) else None
+    if isinstance(kept, dict) and "start" in kept:
+        return kept, _rel(run, _latest(run, "04_final", "diagnosis")) or "run.json"
     path = _latest(run, "03_wip/diagnosis_windows", which)
     data = _json(path)
     if isinstance(data, dict) and "start" in data:
@@ -113,88 +132,106 @@ def _cpr(w: dict) -> object:
     return spend / results if _num(spend) and _num(results) and results else None
 
 
-def _window_line(label: str, w: dict) -> str:
-    return (f"- {label}: {w.get('start')} to {w.get('stop')}, spend {_money(w.get('spend'))}, "
-            f"{w.get('results')} results, cost per result {_money(_cpr(w))}")
+def _results(v: object) -> str:
+    return f"{v:g}" if _num(v) else "?"
 
 
-def _checked(run: RunFolder, s: state.RunState, d: dict | None) -> str:
-    name, cand, ranking = _chosen(run, s)
-    lines = [f"- The ad: {name}" + (f" (id {cand['ad_id']})" if cand and cand.get("ad_id") else "") + "."]
+def _checked(tr: i18n.Translator, run: RunFolder, s: state.RunState, d: dict | None) -> str:
+    name, cand, ranking = _chosen(run, s, d)
+    kept = _kept(d) or {}
+    ad_id = kept.get("id") or (cand or {}).get("ad_id")
+    name = name or tr(f"{AREA}.unnamed_ad")
+    lines = ["- " + (tr(f"{AREA}.ad_id", name=name, id=ad_id) if ad_id and str(ad_id) != name
+                     else tr(f"{AREA}.ad", name=name))]
     if d is None:
-        lines.append(f"- Every ad of the account over the ranking's history ({ranking or 'the ranking'}).")
+        lines.append("- " + tr(f"{AREA}.every_ad", ranking=ranking or tr(f"{AREA}.the_ranking")))
         return "\n".join(lines)
-    for which, label in (("peak", "The best window"), ("latest", "The latest window")):
-        w, src = _window(run, which, cand, ranking)
+    ranked = kept if kept.get("ranking") else ({**cand, "ranking": ranking} if cand else {})
+    value = ranked.get("value_to_recover")
+    if ranked.get("rank") is not None:
+        lines.append("- " + tr(f"{AREA}.ranked", ranking=ranked["ranking"], rank=ranked["rank"], value=_money(value)))
+    elif _num(value):
+        lines.append("- " + tr(f"{AREA}.in_ranking", ranking=ranked["ranking"], value=_money(value)))
+    for which in ("peak", "latest"):
+        w, src = _window(run, which, d, cand, ranking)
         if w:
-            lines.append(_window_line(label, w) + f" (source: {src}).")
+            lines.append("- " + tr(f"{AREA}.window", label=tr(f"{AREA}.{which}"), start=w.get("start"),
+                                   stop=w.get("stop"), spend=_money(w.get("spend")), results=_results(w.get("results")),
+                                   cpr=_money(_cpr(w)), source=src))
     ratio = (d.get("account_check") or {}).get("account_ratio")
     if _num(ratio):
-        lines.append(f"- The rest of the account: its results per spend in the latest window are {ratio:.2f} times "
-                     "those of the best window (1 means flat).")
+        lines.append("- " + tr(f"{AREA}.account_ratio", ratio=f"{ratio:.2f}"))
     return "\n".join(lines)
 
 
-def _shows(d: dict | None, why: str) -> str:
+def _row(*cells: str) -> str:
+    return "| " + " | ".join(cells) + " |"
+
+
+def _shows(tr: i18n.Translator, d: dict | None, why: str) -> str:
     if d is None:
-        return _NO_WINNER
+        return tr(f"{AREA}.no_winner")
+    best, latest = tr(f"{AREA}.col_best"), tr(f"{AREA}.col_latest")
     parts = []
     rows = [(k, v) for k, v in (d.get("evidence") or {}).items() if isinstance(v, (list, tuple)) and len(v) == 2]
     if rows:
-        parts += ["| Funnel | Best window | Latest window |", "|---|---|---|"]
-        parts += [f"| {_METRICS.get(k, k)} | {_value(k, v[0])} | {_value(k, v[1])} |" for k, v in rows]
+        parts += [_row(tr(f"{AREA}.col_funnel"), best, latest), "|---|---|---|"]
+        parts += [_row(_or(tr, f"{AREA}.metric.{k}", k), _value(k, v[0]), _value(k, v[1])) for k, v in rows]
         parts.append("")
     lad = d.get("ladder") or {}
     if isinstance(lad.get("peak"), dict) and isinstance(lad.get("latest"), dict):
         dropped = set(lad.get("dropped") or [])
-        parts += ["| Who keeps watching (of those at the step before) | Best window | Latest window |", "|---|---|---|"]
-        parts += [f"| {k}{' (dropped)' if k in dropped else ''} | {_value('ctr', lad['peak'].get(k))} | "
-                  f"{_value('ctr', lad['latest'].get(k))} |" for k in lad["peak"]]
+        parts += [_row(tr(f"{AREA}.col_ladder"), best, latest), "|---|---|---|"]
+        parts += [_row(tr(f"{AREA}.dropped", step=k) if k in dropped else str(k), _value("ctr", lad["peak"].get(k)),
+                       _value("ctr", lad["latest"].get(k))) for k in lad["peak"]]
         parts.append("")
     found = d.get("structural")
     if isinstance(found, dict):
         if found.get("structural"):
             seg = found.get("segment_s") or []
-            at = f" at {seg[0]:g} to {seg[1]:g} s" if len(seg) == 2 else ""
-            parts.append(f"- The structural check (every upload of this video): the file is weakest at "
-                         f"{found.get('step')}{at} in each one. That is an improvement for a later video, not why "
-                         "this ad fades.")
+            at = tr(f"{AREA}.structural_at", start=f"{seg[0]:g}", stop=f"{seg[1]:g}") if len(seg) == 2 else ""
+            parts.append("- " + tr(f"{AREA}.structural_weak", step=found.get("step"), at=at))
         else:
-            parts.append("- The structural check (every upload of this video): no step is weak by design.")
+            parts.append("- " + tr(f"{AREA}.structural_none"))
     else:
-        parts.append("- The structural check was not run.")
-    stage = d.get("stage")
-    parts.append(f"- The verdict: {changes.STAGES.get(stage, stage)}. {why}")
-    seen = [changes.STAGES.get(x, x) for x in d.get("also_seen") or []]
+        parts.append("- " + tr(f"{AREA}.structural_not_run"))
+    parts.append("- " + tr(f"{AREA}.verdict", stage=_stage(tr, d.get("stage")), why=why))
+    seen = [_stage(tr, x) for x in d.get("also_seen") or []]
     if seen:
-        parts.append(f"- Also seen in the data: {', '.join(seen)}.")
+        parts.append("- " + tr(f"{AREA}.also_seen", stages=", ".join(seen)))
     return "\n".join(parts)
 
 
-def _fix(d: dict | None, s: state.RunState, blocked: bool) -> str:
+def _why(tr: i18n.Translator, block) -> str:
+    """Why the run did not refresh, in the report's language (the kind of `flow._blocking`'s answer)."""
+    kind = getattr(block, "kind", None)
+    if kind == "too_little_data":
+        from tm import r1   # a leaf: it imports nothing of the flow
+        return tr(f"{AREA}.why.too_little_data", n=r1.WinnerCfg().min_results)
+    return tr(f"{AREA}.why.{kind}") if kind in _WHY else tr(f"{AREA}.why.declined")
+
+
+def _fix(tr: i18n.Translator, d: dict | None, s: state.RunState, blocked: bool) -> str:
     if d is None:
-        return "Nothing: no ad needs a refresh now."
+        return tr(f"{AREA}.fix.nothing")
     stage = d.get("stage")
     if not blocked:   # a refresh the plugin could make, declined by the user
-        return (f"The diagnosis points at {changes.STAGES.get(d.get('target_stage') or stage, stage)}, which a "
-                "refresh can change; the user decided not to refresh it now. A new run can make it.")
+        return tr(f"{AREA}.fix.declined", stage=_stage(tr, d.get("target_stage") or stage))
     if d.get("too_little_data"):
-        return ("Wait until the ad has more results, or refresh it against the diagnosis in a new run, choosing "
-                "the part of the ad yourself.")
+        return tr(f"{AREA}.fix.too_little_data")
     if stage in _FIX:
-        return _FIX[stage]
-    material = changes.MATERIAL_NAMES.get(s.material or "", "this kind of ad")
-    return (f"The diagnosis points at {changes.STAGES.get(stage, stage)}, a part of the video, and refreshing it "
-            f"isn't supported yet for {material}. Give the numbers above to whoever edits the ad (an editor or the "
-            "creator) as the brief for a new version.")
+        return tr(f"{AREA}.fix.{stage}")
+    material = _or(tr, f"{AREA}.material.{s.material}", tr(f"{AREA}.material.unknown")) if s.material \
+        else tr(f"{AREA}.material.unknown")
+    return tr(f"{AREA}.fix.unsupported", stage=_stage(tr, stage), material=material)
 
 
-def _spent(s: state.RunState) -> str:
+def _spent(tr: i18n.Translator, s: state.RunState) -> str:
     spent = {k: v for k, v in s.spend.items() if v}
     if not spent:
-        return "Nothing: no money was spent in this run."
-    return ("This run spent " + ", ".join(f"{v:g} ({k})" for k, v in spent.items())
-            + " before the diagnosis ended it, and nothing more.")
+        return tr(f"{AREA}.spent_nothing")
+    return tr(f"{AREA}.spent", amounts=", ".join(tr(f"{AREA}.spent_item", amount=f"{v:g}", kind=k)
+                                                 for k, v in spent.items()))
 
 
 def write(run: RunFolder) -> Path:
@@ -202,12 +239,16 @@ def write(run: RunFolder) -> Path:
     from tm import flow   # flow calls this module when G1a ends the run
     s = state.load(run)
     d = s.diagnosis if isinstance(s.diagnosis, dict) else None
+    tr = i18n.translator(language(run).lang)
     block = flow._blocking(s)
-    why = block.message if block else "The user decided not to refresh it."
-    name, _, _ = _chosen(run, s)
-    text = _template().substitute(ad=name, written=datetime.now().astimezone().strftime("%Y-%m-%d %H:%M"),
-                                  checked=_checked(run, s, d), shows=_shows(d, why), fix=_fix(d, s, block is not None),
-                                  spent=_spent(s))
+    name, _, _ = _chosen(run, s, d)
+    h = lambda key: tr(f"{AREA}.heading_{key}")   # noqa: E731
+    text = _template().substitute(
+        title=tr(f"{AREA}.title", ad=name or tr(f"{AREA}.unnamed_ad")),
+        written=tr(f"{AREA}.written", when=datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")),
+        heading_checked=h("checked"), heading_shows=h("shows"), heading_fix=h("fix"), heading_spent=h("spent"),
+        checked=_checked(tr, run, s, d), shows=_shows(tr, d, _why(tr, block)), fix=_fix(tr, d, s, block is not None),
+        spent=_spent(tr, s))
     target = run.next_version("04_final", "diagnosis_report", "md")
     run.assert_writable(target)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -218,10 +259,18 @@ def write(run: RunFolder) -> Path:
 
 def finish(run: RunFolder) -> dict:
     """The report, then the run page built once more (when the run has one), with G1a settled and its "Done" stage.
-    The page is built as its last build was (local or to publish); the agent publishes it to the same URL."""
+    The page is built as its last build was (local or to publish); the agent publishes it to the same URL. `warning`
+    when the report is in English because the working language's table lacks some of its strings."""
     from tm import page, run_page   # the run page imports the flow, which calls this
     report = write(run)
     out: dict = {"report": f"04_final/{report.name}", "page": None}
+    lang = language(run)
+    if lang.warning:
+        out["warning"] = (f"The diagnosis report is written in English: {len(lang.missing)} of its texts have no "
+                          f"{i18n.name(lang.wanted)} translation yet. Tell the user what it says in their language. "
+                          f"Translate them once for the next runs: tm i18n export --lang {lang.wanted} --out "
+                          f"i18n_{lang.wanted}.yaml, translate each string in that file, then tm i18n import --lang "
+                          f"{lang.wanted} i18n_{lang.wanted}.yaml.")
     last = page.latest_folder(run, run_page.PAGE)
     if last is not None:
         built = _json(last / run_page.BUILD_FILE)
