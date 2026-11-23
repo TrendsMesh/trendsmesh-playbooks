@@ -13,6 +13,7 @@ export type Look = "outline" | "pill" | "block" | "karaoke" | "pop" | "quiet" | 
 
 const SIZE: Record<Look, number> = { outline: 68, pill: 64, block: 54, karaoke: 60, pop: 108, quiet: 50, marker: 66, native: 52 };
 const DARK = "#111111";
+const SETTLED = 1000; // a still is drawn at this frame of every animation (OverlayLooks.tsx's)
 
 type State = "past" | "active" | "future";
 
@@ -36,9 +37,11 @@ const outlined = (k: number, px: number, color = "#000"): React.CSSProperties =>
 const shown = (look: Look, text: string) =>
   look === "quiet" ? text.toLowerCase().replace(/[.,!?;:]+$/, "") : look === "pop" ? text.replace(/[.,;:]+$/, "").toUpperCase() : text;
 
-export const CaptionLook: React.FC<{ c: Caption & { look: Look }; k: number; fontFamily: string; language?: string }> = ({ c, k, fontFamily: brandFont, language }) => {
+// `still`: a still (the cover, issue #165): the chunk in its final state (its entrance ended, every word spoken)
+export const CaptionLook: React.FC<{ c: Caption & { look: Look }; k: number; fontFamily: string; language?: string; still?: boolean }> = ({ c, k, fontFamily: brandFont, language, still = false }) => {
   const fontFamily = c.look === "native" ? loadFor("TikTokSans", language, ["500", "600", "700"]) : brandFont;
-  const frame = useCurrentFrame(); // frames since this chunk appeared
+  const live = useCurrentFrame(); // frames since this chunk appeared
+  const frame = still ? SETTLED : live;
   const { fps } = useVideoConfig();
   const t = c.from + frame / fps;
   const look = c.look;
@@ -58,7 +61,7 @@ export const CaptionLook: React.FC<{ c: Caption & { look: Look }; k: number; fon
   } else if (look === "block" || look === "quiet") {
     entrance = `translateY(${(1 - enter) * 10 * k}px)`;
   }
-  if (look === "block") {
+  if (look === "block" || c.backing) { // a backing behind a look without a box: block's (tm tool cover_fit, issue #165)
     box = { background: "rgba(10,10,10,0.66)", borderRadius: 18 * k, padding: `${12 * k}px ${26 * k}px`, boxDecorationBreak: "clone" } as React.CSSProperties;
   }
 

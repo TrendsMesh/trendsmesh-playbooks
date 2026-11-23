@@ -807,6 +807,9 @@ organic:
     q_animation: Watch the animation with the voiceover in mind. On Redo, say which moment to change and how.
     label_motion: "Motion graphics: {name}"
     q_motion: "Watch the render: the pictures, the text and the timing. Accept the one the video is made from; on Redo, say what to change."
+    # issue #165: the channel's first video, its text set picked on the images page
+    label_text_set: Text set
+    q_text_set: "Which text set do this channel's videos use? Each is drawn on your own words. Pick one: it is saved for the channel and every next video uses it (you can change it any time)."
     cap_final: Final video {version}
     cap_cover: Cover
     cap_packshot: Product packshot

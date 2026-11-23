@@ -150,6 +150,47 @@ def save(workspace: Path, kind: str, name: str, *, look: str, accent: str | None
     return brand._write_new(folder, STEM, text, (versions[-1][0] if versions else 0) + 1)
 
 
+def check_pick(run: RunFolder, style: str, sha256: str | None) -> dict:
+    """The style of the set the user picked (issue #165), checked before anything is written: it is a usable style,
+    unchanged since its look was drawn (`sha256`, the still's stamp). The style's data; a Stop otherwise."""
+    path, rel = oe._inside(run, style, "text style")
+    if sha256 is not None and oe._sha(path) != sha256:
+        raise Stop(f"The picked text set's style {rel} changed since its look was drawn, so it is not the one the user "
+                   f"saw. Draw the set again (tm organic text look --style {rel}), build the page and ask again; "
+                   f"nothing was written; {AGAIN}.")
+    return oe._style_at(run, style)[2]
+
+
+def take_pick(run: RunFolder, style: str, *, note: str, sha256: str | None = None, by: str = "user") -> dict:
+    """The user's pick of the sets drawn the first time (issue #165): the picked style made the latest (its bytes as
+    the next `03_wip/text_style_vNN.json` when it is not, so the still drawn from it is still its look), approved
+    (`organic_edit.approve`) and saved for the run's first owner, the channel (`save`). {style, picked_from, look,
+    approved, saved: the library file | None, owner: [kind, name] | None}; a run that names no owner is approved
+    only."""
+    data = check_pick(run, style, sha256)
+    path, rel, _ = oe._style_at(run, style)
+    latest_style = run.latest(oe.WIP, oe.STYLE_STEM, "json")
+    target_rel = rel
+    if latest_style is None or latest_style.resolve() != path.resolve():
+        target = run.next_version("wip", oe.STYLE_STEM, "json")
+        with open(target, "xb") as fh:
+            fh.write(path.read_bytes())
+        target_rel = target.relative_to(run.path).as_posix()
+        manifest.record(run, target_rel, oe.WIP, SOURCE, parent=rel,
+                        params={"look": data.get("look"), "picked_from": rel})
+    approved = oe.approve(run, target_rel, by=by, note=note)
+    whose = owners(run)
+    saved = None
+    if whose:
+        kind, name = whose[0]
+        given = _from_style(run, target_rel)
+        file = save(trend_spool.workspace_of(run), kind, name, look=given["look"], accent=given["accent"],
+                    font=given["font"], font_family=given["font_family"], logo=given["logo"], run=run, note=note)
+        saved = file.relative_to(trend_spool.workspace_of(run)).as_posix()
+    return {"style": target_rel, "picked_from": rel, "look": data.get("look"), "approved": approved,
+            "saved": saved, "owner": list(whose[0]) if whose else None}
+
+
 def latest(workspace: Path, kind: str, name: str) -> dict | None:
     """The latest saved set of a brand or channel, with its library `file`, else None."""
     versions = brand._versions(_folder(workspace, kind, name), STEM)

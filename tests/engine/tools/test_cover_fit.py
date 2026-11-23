@@ -75,21 +75,32 @@ def date_():
     return date(2026, 11, 12)
 
 
+PICTURE = {"vf": None}     # the picture under the text in `_draw`: None is plain grey (0x606060)
+
+
 def _draw(run, data, frame, dest):
-    """A stand-in for the Remotion still: grey, and each caption a white block at the top of the safe zone moved by
-    its offsetY, three lines of its fontSize tall."""
+    """A stand-in for the Remotion still: grey (or PICTURE's), and each caption a block at the top of the safe zone
+    moved by its offsetY, three lines of its fontSize (or its overlay's size) tall: white with a black outline, in its
+    overlay's `fill` or its `color` (the outline the opposite), on a dark box with `backing`."""
     boxes = []
     for cap in data.get("captions") or []:
+        ov = cap.get("overlay") or {}
         y = 260 + int(cap.get("offsetY", 0))
-        boxes.append(f"drawbox=x=200:y={y}:w=680:h={int(cap.get('fontSize', 58)) * 3}:color=white:t=fill")
-    vf = ",".join(boxes) or "null"
+        h = int(ov.get("size") or cap.get("fontSize", 58)) * 3
+        ink = (ov.get("fill") or cap.get("color") or "#FFFFFF").replace("#", "0x")
+        edge = "white" if ink.upper() == "0X111111" else "black"
+        if ov.get("backing") or cap.get("backing"):
+            boxes.append(f"drawbox=x=180:y={y - 20}:w=720:h={h + 40}:color=0x1a1a1a:t=fill")
+        boxes.append(f"drawbox=x=200:y={y}:w=680:h={h}:color={edge}:t=fill")
+        boxes.append(f"drawbox=x=206:y={y + 6}:w=668:h={h - 12}:color={ink}:t=fill")
+    vf = ",".join(([PICTURE["vf"]] if PICTURE["vf"] else []) + boxes) or "null"
     subprocess.run([ffmpeg(), "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=0x606060:s=1080x1920",
                     "-vf", vf, "-frames:v", "1", str(dest)], check=True)
     return dest
 
 
-def _cover_props(run, **caption):
-    props = {"width": 1080, "height": 1920, "fps": 24,
+def _cover_props(run, *, top: dict | None = None, **caption):
+    props = {"width": 1080, "height": 1920, "fps": 24, **(top or {}),
              "segments": [{"src": "03_wip/frame.png", "start": 0, "end": 2}],
              "captions": [{"from": 0, "to": 2, "text": "Jeden nawyk", "style": "hook", "place": "top",
                            "fontSize": 72, **caption}]}
@@ -126,7 +137,7 @@ def test_the_cover_text_is_moved_off_the_face(ov, drawn, monkeypatch, capsys):
     code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "6")
     assert code == 0, out
     assert out["outputs"] == ["04_final/kits/cover_M5_v01.png"] and out["props"] == "03_wip/cover_M5_v02.props.json"
-    assert out["changes"] and "moved" in out["changes"][0]
+    assert out["changes"][0] == cover_fit.STATIC_SAID and "moved" in out["changes"][1]
     fitted = json.loads((ov.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
     x0, y0, x1, y1 = cover_fit.head(FACE)
     top = 260 + fitted["offsetY"]
@@ -148,10 +159,125 @@ def test_a_text_that_fits_nowhere_is_shrunk(ov, drawn, monkeypatch, capsys):
 @pytest.mark.tools
 def test_a_clear_cover_is_drawn_as_it_is(ov, drawn, monkeypatch, capsys):
     monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [(380, 1100, 320, 300)])
-    _cover_props(ov)
+    _cover_props(ov, top={"static": True})
     code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "6")
     assert code == 0 and out["changes"] == [] and out["props"] == "03_wip/cover_M5_v01.props.json"
     assert not (ov.path / "03_wip" / "cover_M5_v02.props.json").exists()
+
+
+# --- issue #165: the cover in its final state, and readable -------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def grey_picture():
+    PICTURE["vf"] = None
+    yield
+    PICTURE["vf"] = None
+
+
+WHITE = "drawbox=x=0:y=0:w=1080:h=1920:color=white:t=fill"
+STRIPES = "geq=r='if(lt(mod(X\\,40)\\,20)\\,255\\,0)':g='if(lt(mod(X\\,40)\\,20)\\,255\\,0)':b='if(lt(mod(X\\,40)\\,20)\\,255\\,0)'"
+
+
+def test_the_contrast_ratio_is_wcags():
+    assert cover_fit.contrast_ratio("#FFFFFF", "#000000") == pytest.approx(21)
+    assert cover_fit.contrast_ratio("#FFFFFF", "#FFFFFF") == pytest.approx(1)
+    assert cover_fit.contrast_ratio("#FFFFFF", "#767676") == pytest.approx(4.54, abs=0.01)
+
+
+def test_only_text_without_a_box_of_its_own_is_checked():
+    assert cover_fit.ink_of({"style": "hook", "overlay": {"kind": "hook", "family": "outline"}}) == "#FFFFFF"
+    assert cover_fit.ink_of({"style": "hook", "overlay": {"kind": "hook", "family": "outline", "fill": "#111111"}}) \
+        == "#111111"
+    for boxed in ({"style": "hook", "overlay": {"kind": "hook", "family": "pill"}},
+                  {"style": "hook", "overlay": {"kind": "hook", "family": "outline", "backing": True}},
+                  {"style": "hook", "overlay": {"kind": "label", "family": "marker"}},
+                  {"style": "hook", "overlay": {"kind": "number", "family": "outline"}},
+                  {"style": "hook", "text": "a plain hook in its box"},
+                  {"style": "caption", "look": "block"}):
+        assert cover_fit.ink_of(boxed) is None, boxed
+    assert cover_fit.ink_of({"style": "caption", "look": "outline", "color": "#000000"}) == "#FFFFFF"
+    assert cover_fit.ink_of({"style": "note", "color": "#222222"}) == "#222222"
+
+
+@pytest.mark.tools
+def test_a_cover_is_drawn_static_and_measured_without_a_face(ov, drawn, monkeypatch, capsys):
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
+    _cover_props(ov, overlay={"kind": "hook", "family": "outline"})
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "0")
+    assert code == 0, out
+    props = json.loads((ov.path / out["props"]).read_text(encoding="utf-8"))
+    assert props["static"] is True and drawn[-1]["static"] is True                 # the final still too
+    assert out["changes"] == [cover_fit.STATIC_SAID] and "final state" in out["message"]
+    assert out["contrast"]["fix"] is None and out["contrast"]["ratio"] > 4.5     # white on grey 0x606060
+    assert "reads on the picture" in out["message"]
+
+
+@pytest.mark.tools
+def test_white_text_on_a_light_picture_turns_dark(ov, drawn, monkeypatch, capsys):
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
+    PICTURE["vf"] = WHITE
+    _cover_props(ov, top={"static": True}, overlay={"kind": "hook", "family": "outline"})
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "0")
+    assert code == 0, out
+    assert out["contrast"]["fix"] == "dark ink" and out["contrast"]["ratio"] == 1
+    cap = json.loads((ov.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
+    assert cap["overlay"]["fill"] == "#111111" and "backing" not in cap["overlay"]
+    assert "its words are dark now" in out["message"]
+
+
+@pytest.mark.tools
+def test_a_plain_caption_turns_dark_with_a_white_outline(ov, drawn, monkeypatch, capsys):
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
+    PICTURE["vf"] = WHITE
+    _cover_props(ov, top={"static": True}, style="note")
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "0")
+    assert code == 0, out
+    cap = json.loads((ov.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
+    assert (cap["color"], cap["stroke"]) == ("#111111", "#FFFFFF")
+
+
+@pytest.mark.tools
+def test_a_picture_neither_ink_reads_on_gets_a_backing(ov, drawn, monkeypatch, capsys):
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
+    PICTURE["vf"] = STRIPES                                   # black and white stripes: neither ink passes
+    _cover_props(ov, top={"static": True}, overlay={"kind": "hook", "family": "outline"})
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "0")
+    assert code == 0, out
+    assert out["contrast"]["fix"] == "backing"
+    cap = json.loads((ov.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
+    assert cap["overlay"]["backing"] is True and "fill" not in cap["overlay"]
+    assert "a dark box is behind it now" in out["message"]
+
+
+@pytest.mark.tools
+def test_a_caption_drawn_in_a_set_gets_a_backing_never_another_ink(ov, drawn, monkeypatch, capsys):
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
+    PICTURE["vf"] = WHITE
+    _cover_props(ov, top={"static": True}, style="caption", look="outline")
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "0")
+    assert code == 0, out
+    cap = json.loads((ov.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
+    assert cap["backing"] is True and "color" not in cap
+
+
+@pytest.mark.tools
+def test_a_boxed_set_on_a_light_picture_is_left_as_it_is(ov, drawn, monkeypatch, capsys):
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [])
+    PICTURE["vf"] = WHITE
+    _cover_props(ov, top={"static": True}, overlay={"kind": "hook", "family": "pill"})
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "0")
+    assert code == 0 and out["changes"] == [] and out["contrast"]["ink"] is None
+    assert "its own box" in out["message"]
+
+
+@pytest.mark.tools
+def test_the_contrast_is_checked_where_the_text_lands_after_it_clears_the_face(ov, drawn, monkeypatch, capsys):
+    monkeypatch.setattr(cover_fit, "faces", lambda png, rejected=None: [FACE])
+    PICTURE["vf"] = "drawbox=x=0:y=680:w=1080:h=1240:color=white:t=fill"   # light only below the face
+    _cover_props(ov, top={"static": True}, overlay={"kind": "hook", "family": "outline", "size": 72})
+    code, out = _tool(capsys, "--run", str(ov.path), "--props", "03_wip/cover_M5_v01.props.json", "--frame", "0")
+    assert code == 0, out
+    assert any("moved" in ch for ch in out["changes"]) and out["contrast"]["fix"] == "dark ink"
 
 
 @pytest.mark.tools

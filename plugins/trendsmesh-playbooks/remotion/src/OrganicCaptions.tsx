@@ -44,6 +44,8 @@ export type Caption = {
   look?: Look;
   // an overlay drawn in a look's family (OverlayLooks.tsx): its kind (hook, label, number, cta, end) and family
   overlay?: Overlay;
+  // a dark box behind a caption or a note that has none: the picture under it is too light (tm tool cover_fit, #165)
+  backing?: boolean;
 };
 export type Music = { src: string; volume: number; fadeInSec?: number; fadeOutSec?: number };
 export type OrganicCaptionsProps = {
@@ -63,6 +65,9 @@ export type OrganicCaptionsProps = {
   language?: string;
   // the brand's font, a file in the run: replaces Montserrat in every text set but native (BrandFont.ts)
   brandFont?: BrandFont;
+  // a still (the cover, tm tool cover_fit): every text drawn in its final state, with no entrance or exit, whatever
+  // the frame (issue #165)
+  static?: boolean;
 };
 
 export const organicCaptionsDefaults: OrganicCaptionsProps = {
@@ -99,10 +104,11 @@ const Words: React.FC<{ c: Caption; t: number }> = ({ c, t }) => (
   </>
 );
 
-const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; language?: string }> = ({ c, k, fontFamily, language }) => {
-  const frame = useCurrentFrame();
+const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; language?: string; still?: boolean }> = ({ c, k, fontFamily, language, still = false }) => {
+  const live = useCurrentFrame();
   const { width, height, fps } = useVideoConfig();
-  const pop = interpolate(frame, [0, 5], [0.9, 1], { extrapolateRight: "clamp", easing: Easing.out(Easing.back(2)) });
+  const frame = still ? Math.max(0, Math.round((c.to - c.from) * fps) - 1) : live; // a still: the chunk's last frame
+  const pop = still ? 1 : interpolate(frame, [0, 5], [0.9, 1], { extrapolateRight: "clamp", easing: Easing.out(Easing.back(2)) });
   const shift = (c.offsetY ?? 0) * k;
   const top = SAFE_1080.top * k + shift;
   const bottom = SAFE_1080.bottom * k - shift;
@@ -118,7 +124,7 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; languag
   const lit = caption && c.highlight && (c.words ?? []).length > 0;
   if (c.overlay) {
     const dur = Math.max(1, Math.round(c.to * fps) - Math.round(c.from * fps)); // as its <Sequence>
-    const el = <OverlayLook text={c.text} o={c.overlay} k={k} fontFamily={fontFamily} durFrames={dur} language={language} />;
+    const el = <OverlayLook text={c.text} o={c.overlay} k={k} fontFamily={fontFamily} durFrames={dur} language={language} still={still} />;
     if (c.overlay.kind === "end") return el;
     return (
       <div style={{ position: "absolute", top, left: SAFE_1080.left * k, width: width - (SAFE_1080.left + SAFE_1080.right) * k, height: height - top - bottom, display: "flex", flexDirection: "column", justifyContent: justify, alignItems: "center" }}>
@@ -129,7 +135,7 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; languag
   if (caption && c.look) {
     return (
       <div style={{ position: "absolute", top, left, width: boxW, height: height - top - bottom, display: "flex", flexDirection: "column", justifyContent: justify, alignItems: "center" }}>
-        <CaptionLook c={c as Caption & { look: Look }} k={k} fontFamily={fontFamily} language={language} />
+        <CaptionLook c={c as Caption & { look: Look }} k={k} fontFamily={fontFamily} language={language} still={still} />
       </div>
     );
   }
@@ -144,9 +150,9 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; languag
           lineHeight: 1.18,
           textAlign: "center",
           color: c.color ?? (hook ? "#111" : "#fff"),
-          background: hook ? c.background ?? "#fff" : "transparent",
+          background: hook ? c.background ?? "#fff" : c.backing ? "rgba(10,10,10,0.66)" : "transparent",
           borderRadius: 14 * k,
-          padding: hook ? `${10 * k}px ${22 * k}px` : 0,
+          padding: hook || c.backing ? `${10 * k}px ${22 * k}px` : 0,
           WebkitTextStroke: hook ? undefined : `${outline * k}px ${c.stroke ?? (caption ? "#000" : "#111")}`,
           paintOrder: "stroke fill",
           textShadow: hook ? undefined : `0 ${3 * k}px ${8 * k}px rgba(0,0,0,${caption ? 0.6 : 0.45})`,
@@ -162,7 +168,7 @@ const CaptionView: React.FC<{ c: Caption; k: number; fontFamily: string; languag
   );
 };
 
-export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, captions, showSafeZone, keepAudio, music, audioTracks, language, brandFont }) => {
+export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, captions, showSafeZone, keepAudio, music, audioTracks, language, brandFont, static: still }) => {
   const { fps, width, height, durationInFrames } = useVideoConfig();
   const fontFamily = useBrandFont(brandFont, loadFor(compFont("OrganicCaptions"), language, ["600", "700", "800", "900"]));
   const k = width / 1080;
@@ -200,7 +206,7 @@ export const OrganicCaptions: React.FC<OrganicCaptionsProps> = ({ segments, capt
       ) : null}
       {captions.map((c, i) => (
         <Sequence key={`c${i}`} from={Math.round(c.from * fps)} durationInFrames={Math.max(1, Math.round(c.to * fps) - Math.round(c.from * fps))} layout="none">
-          <CaptionView c={c} k={k} fontFamily={fontFamily} language={language} />
+          <CaptionView c={c} k={k} fontFamily={fontFamily} language={language} still={still === true} />
         </Sequence>
       ))}
       {showSafeZone ? (

@@ -15,7 +15,13 @@ smaller (`fontSize` × 0.85, not under 32; an overlay drawn in a text set throug
 again. Before fitting, the cover takes the run's approved text style (`styled`, issue #139): each caption's family,
 accent and ink and the brand font, where the props name none, so a `*key*` marker is read as the key word and the
 text gets the set's box or stroke. A detection whose head covers 70 % or more of the frame is no face: it is left out
-and listed as `rejected_faces` ("covers almost the whole frame: not a face"). A fitted cover writes the props' next version
+and listed as `rejected_faces` ("covers almost the whole frame: not a face"). The cover is a still, so its props are
+`"static": true` (issue #165): OrganicCaptions draws every text in its final state, the whole hook whatever the frame,
+never its entrance. The text is measured whether or not a face is found; once it is clear of the heads, the picture
+behind it (each block of text, from its first to its last column) is checked against its ink with WCAG's contrast
+ratio: when more than a fifth of it is under 4.5:1, the words take the other ink (dark or light: an overlay's `fill`,
+a plain caption's `color` with the opposite `stroke`) where that passes, else a dark `backing` box; a set with a box of
+its own is not checked. The answer's `contrast` says {ink, ratio, below, fix}. A fitted cover writes the props' next version
 (`03_wip/cover_<id>_vNN.props.json`); then the cover is drawn from them with `tm render still` into
 `04_final/kits/cover_<id>_vNN.png` (the next version), ready for `tm tool deliver cover`. Free and local.
 """
@@ -38,6 +44,7 @@ SHRINK, SMALLEST = 0.85, 32
 TRIES = 10
 DIFF = 40               # a pixel the text changes by more than this (0-255, any channel) is the text's
 REJECT_SHARE = 0.70     # a head box covering this much of the frame or more is not a face (issue #139)
+STATIC_SAID = "drawn in its final state (static: every word on, no entrance animation)"
 NOT_A_FACE = "covers almost the whole frame: not a face"
 
 
@@ -166,15 +173,155 @@ def _pixels(png: Path, width: int, height: int):
     return np.frombuffer(raw, np.uint8).reshape((height, width, 3)).astype(np.int16)
 
 
-def text_box(plain: Path, texted: Path, width: int, height: int) -> tuple[int, int, int, int] | None:
-    """(left, top, right, bottom) of what the text changes in the frame, or None when it changes nothing."""
+def _changed(plain_px, texted_px):
+    """The pixels the text changes (a bool mask)."""
+    return abs(texted_px - plain_px).max(axis=2) > DIFF
+
+
+def _bounds(changed) -> tuple[int, int, int, int] | None:
     import numpy as np
 
-    changed = np.abs(_pixels(texted, width, height) - _pixels(plain, width, height)).max(axis=2) > DIFF
     rows, cols = np.flatnonzero(changed.any(axis=1)), np.flatnonzero(changed.any(axis=0))
     if rows.size == 0:
         return None
     return int(cols[0]), int(rows[0]), int(cols[-1]) + 1, int(rows[-1]) + 1
+
+
+def text_box(plain: Path, texted: Path, width: int, height: int) -> tuple[int, int, int, int] | None:
+    """(left, top, right, bottom) of what the text changes in the frame, or None when it changes nothing."""
+    return _bounds(_changed(_pixels(plain, width, height), _pixels(texted, width, height)))
+
+
+# --- the contrast behind the text (issue #165) ---------------------------------------------------------------
+
+CONTRAST = 4.5          # WCAG's ratio for text (AA)
+BELOW_SHARE = 0.2       # the text fails when more of its pixels than this sit on a picture it contrasts less with
+DARK_INK, LIGHT_INK = "#111111", "#FFFFFF"
+BOXED = ("pill", "native", "block", "quiet")   # the sets whose overlays sit in a box of their own (OverlayLooks.tsx)
+INK_FIX = {DARK_INK: "dark ink", LIGHT_INK: "light ink"}
+BACKING = "backing"
+
+
+def _lum(rgb):
+    """WCAG's relative luminance of rgb values (0-255, last axis the channels)."""
+    import numpy as np
+
+    s = np.asarray(rgb, dtype=float) / 255
+    lin = np.where(s <= 0.04045, s / 12.92, ((s + 0.055) / 1.055) ** 2.4)
+    return lin @ np.array([0.2126, 0.7152, 0.0722])
+
+
+
+def contrast_ratio(a: str, b: str) -> float:
+    """WCAG's contrast ratio of two colours #RRGGBB, 1 to 21."""
+    la, lb = organic_edit._luminance(a), organic_edit._luminance(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+def ink_of(cap: dict) -> str | None:
+    """The colour of a caption's words where nothing of its own is behind them, else None (a box, a backing, the
+    key number or the end card's dimmed picture: they carry their own contrast)."""
+    ov = cap.get("overlay") if isinstance(cap.get("overlay"), dict) else None
+    colour = None
+    if ov is not None:
+        family, kind = ov.get("family"), ov.get("kind", "hook")
+        if (ov.get("backing") or family in BOXED or kind in ("number", "end")
+                or (kind == "label" and family in ("marker", "pop"))):
+            return None
+        colour = ov.get("fill")
+    elif cap.get("style") in ("caption", "note"):
+        if cap.get("backing") or cap.get("look") in BOXED:
+            return None
+        colour = None if cap.get("look") else cap.get("color")
+    else:
+        return None                  # the plain hook: its own box
+    return colour.upper() if isinstance(colour, str) and organic_edit.COLOUR.fullmatch(colour) else LIGHT_INK
+
+
+def _inkable(cap: dict) -> bool:
+    """The ink of the caption can be switched: an overlay (its `fill`) or a plain caption or note (`color`); a caption
+    drawn in a set takes a backing instead."""
+    return isinstance(cap.get("overlay"), dict) or not cap.get("look")
+
+
+BLOCK_GAP = 48          # px: rows of text closer than this are one block of text
+
+
+def _blocks(changed):
+    """The area behind the text: each block of text (rows of changed pixels, gaps under BLOCK_GAP closed) from its
+    first changed column to its last. Not only the changed pixels: where the text's colour is the picture's, the text
+    changes nothing, and that is the place it cannot be read."""
+    import numpy as np
+
+    region = np.zeros_like(changed)
+    rows = np.flatnonzero(changed.any(axis=1))
+    if rows.size == 0:
+        return region
+    starts = [rows[0], *rows[1:][np.diff(rows) > BLOCK_GAP]]
+    ends = [*rows[:-1][np.diff(rows) > BLOCK_GAP], rows[-1]]
+    for a, b in zip(starts, ends):
+        cols = np.flatnonzero(changed[a:b + 1].any(axis=0))
+        region[a:b + 1, cols[0]:cols[-1] + 1] = True
+    return region
+
+
+def contrast(plain_px, changed, caps: list[dict]) -> dict | None:
+    """The text's contrast on the picture under it (`plain_px` behind each block of `changed`, `_blocks`): {ink,
+    ratio (the median, WCAG's),
+    below (the share of the text's pixels under CONTRAST), fix: None | "dark ink" | "light ink" | "backing"}. None
+    when every caption carries its own box, or the text changes nothing. A failing text takes the other ink when it
+    passes there and every caption can switch it, else a backing."""
+    import numpy as np
+
+    open_caps = [cap for cap in caps if ink_of(cap) is not None]
+    if not open_caps or not changed.any():
+        return None
+    behind = _lum(plain_px[_blocks(changed)])
+
+    def check(ink: str) -> tuple[float, float]:
+        li = organic_edit._luminance(ink)
+        ratios = (np.maximum(behind, li) + 0.05) / (np.minimum(behind, li) + 0.05)
+        return float(np.median(ratios)), float((ratios < CONTRAST).mean())
+
+    worst = None
+    for ink in dict.fromkeys(ink_of(cap) for cap in open_caps):
+        ratio, below = check(ink)
+        if worst is None or below > worst[2]:
+            worst = (ink, ratio, below)
+    ink, ratio, below = worst
+    fix = None
+    if below > BELOW_SHARE:
+        other = DARK_INK if organic_edit._luminance(ink) >= 0.18 else LIGHT_INK
+        fix = INK_FIX[other] if all(_inkable(cap) for cap in open_caps) and check(other)[1] <= BELOW_SHARE \
+            else BACKING
+    return {"ink": ink, "ratio": round(ratio, 1), "below": round(below, 2), "fix": fix}
+
+
+def apply_fix(caps: list[dict], fix: str) -> None:
+    """The contrast's fix on every caption without a box of its own: the other ink (an overlay's `fill`, a caption's
+    `color` with the opposite `stroke`), or a backing box."""
+    for cap in [cap for cap in caps if ink_of(cap) is not None]:
+        ov = cap.get("overlay") if isinstance(cap.get("overlay"), dict) else None
+        if fix == BACKING:
+            (ov if ov is not None else cap)["backing"] = True
+            continue
+        ink = next(k for k, v in INK_FIX.items() if v == fix)
+        if ov is not None:
+            ov["fill"] = ink
+        else:
+            cap["color"], cap["stroke"] = ink, LIGHT_INK if ink == DARK_INK else "#000000"
+
+
+def contrast_said(found: dict | None) -> str:
+    """The contrast in words, for the answer."""
+    if found is None or found.get("ink") is None:
+        return "The text carries its own box, so its contrast on the picture is its set's."
+    if found["fix"] is None:
+        return f"The text reads on the picture: contrast {found['ratio']:g}:1 (WCAG asks {CONTRAST:g}:1)."
+    done = ("a dark box is behind it now" if found["fix"] == BACKING
+            else f"its words are {'dark' if found['fix'] == 'dark ink' else 'light'} now")
+    return (f"The picture under the text is too close to its ink: contrast {found['ratio']:g}:1, "
+            f"{round(found['below'] * 100)} % of it under {CONTRAST:g}:1, so {done}.")
 
 
 def _draft(run, data: dict, frame: int, dest: Path) -> Path:
@@ -211,8 +358,11 @@ def set_size(cap: dict, size: float) -> None:
 
 
 def fit(run, data: dict, frame: int, given: list[tuple], scratch: Path,
-        rejected: list | None = None) -> tuple[dict, list[tuple], list[str]]:
-    """(the fitted props, the faces, what was changed, in words); detections that are no face go to `rejected`."""
+        rejected: list | None = None) -> tuple[dict, list[tuple], list[str], dict | None]:
+    """(the fitted props, the faces, what was changed, in words, the text's contrast on the picture, `contrast`);
+    detections that are no face go to `rejected`. The text is measured whether or not a face is found: once it is
+    clear of every head, its contrast is checked, and a failing one fixed (the other ink, or a backing) and the text
+    measured again."""
     width, height = int(data.get("width") or 1080), int(data.get("height") or 1920)
     k = width / 1080
     plain = _draft(run, {**data, "captions": []}, frame, scratch / "plain.png")
@@ -222,15 +372,25 @@ def fit(run, data: dict, frame: int, given: list[tuple], scratch: Path,
     data = json.loads(json.dumps(data))
     caps = [x for x in data.get("captions") or [] if isinstance(x, dict)]
     changes: list[str] = []
+    checked: dict | None = None
+    plain_px = _pixels(plain, width, height) if caps else None
     for n in range(TRIES):
-        if not heads or not caps:
-            return data, found, changes
-        box = text_box(plain, _draft(run, data, frame, scratch / f"text_{n}.png"), width, height)
+        if not caps:
+            return data, found, changes, checked
+        changed = _changed(plain_px, _pixels(_draft(run, data, frame, scratch / f"text_{n}.png"), width, height))
+        box = _bounds(changed)
         if box is None:
-            return data, found, changes
-        shift = clear_shift(box, heads, **bounds)
+            return data, found, changes, checked
+        shift = clear_shift(box, heads, **bounds) if heads else 0
         if shift == 0:
-            return data, found, changes
+            if checked is None:
+                checked = contrast(plain_px, changed, caps) or {"ink": None, "fix": None}
+                if checked["fix"]:
+                    apply_fix(caps, checked["fix"])
+                    changes.append(f"contrast {checked['ratio']:g}:1 behind the text: "
+                                   + ("a backing box" if checked["fix"] == BACKING else checked["fix"]))
+                    continue          # measured again: a backing makes the text's box larger
+            return data, found, changes, checked
         if shift is not None:
             for cap in caps:
                 cap["offsetY"] = round(float(cap.get("offsetY") or 0) + shift / k)
@@ -313,15 +473,18 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         raise c.ToolError(f"The cover props {c.name_of(a.props)} must be inside the run folder.") from None
     data, filled = styled(run, render._check_props(run, "OrganicCaptions", path))
+    settled = None
+    if data.get("static") is not True:     # a cover is a still: the whole hook, never its entrance (issue #165)
+        data, settled = {**data, "static": True}, STATIC_SAID
     given = [_box(f) for f in a.face]
     scratch = Path(tempfile.mkdtemp(prefix="tm-cover-"))
     rejected: list[dict] = []
     _last.clear()
     try:
-        fitted, found, changes = fit(run, data, a.frame, given, scratch, rejected)
+        fitted, found, changes, checked = fit(run, data, a.frame, given, scratch, rejected)
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
-    changes = ([filled] if filled else []) + changes
+    changes = [x for x in (filled, settled) if x] + changes
     props_path = path
     if changes:
         props_path = _next_props(run, rel)
@@ -329,21 +492,27 @@ def main(argv: list[str] | None = None) -> int:
         c.record(run, props_path, "tm tool cover_fit", rel, params={"faces": [list(f) for f in found],
                                                                      "rejected_faces": rejected,
                                                                      "detector": detector_used(),
+                                                                     "contrast": checked,
                                                                      "changes": changes}, cost="0 (local)")
     pid = organic_final.idea_id(run) or "cover"
     out = c.output(run, a.out, organic_final.KITS, f"cover_{pid}", "png")
     done = render.still(run, "OrganicCaptions", props_path, a.frame, out)
+    moves = [x for x in changes if x not in (filled, settled) and not x.startswith("contrast ")]
     said = ("No face was found in the frame: look at the cover, and give --face X,Y,W,H (px at 1080×1920) for a face "
             "the detector missed." if not found else
-            f"The text is clear of {len(found)} face(s)" + (f": {'; '.join(changes)}." if changes else ", as it was."))
-    if not found and filled:
+            f"The text is clear of {len(found)} face(s)" + (f": {'; '.join(moves)}." if moves else ", as it was."))
+    if filled:
         said += f" The text is {filled}."
+    if settled:
+        said += f" It is {settled}."
+    if checked is not None:
+        said += " " + contrast_said(checked)
     if rejected:
         said += (f" {len(rejected)} detection(s) left out: they cover almost the whole frame, so they are not a "
                  "face.")
     payload = {"tool": "cover_fit", "outputs": [c.rel(run, done)], "props": c.rel(run, props_path),
                "faces": [list(f) for f in found], "detector": detector_used(), "rejected_faces": rejected,
-               "changes": changes, "message": said}
+               "contrast": checked, "changes": changes, "message": said}
     return c.finish(a, payload, f"Wrote {c.rel(run, done)}. {said} Then: tm tool deliver cover --run <run> "
                                 f"{c.rel(run, done)}.")
 

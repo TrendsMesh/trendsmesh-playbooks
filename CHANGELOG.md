@@ -4,6 +4,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **You pick your channel's text set on the images page of its first video.** The three text sets were only shown
+  as pictures beside the images, and the pick had to go through a note. The images stage now has its own "Text
+  set" item with the three sets drawn on your words: one click picks one, and recording the stage saves it for the
+  channel, so the next videos use it without asking.
+- **The cover always shows the whole hook, readable.** A cover drawn from the first frame showed only the hook's
+  first word in a set whose words animate in, and its white words could land on a white shape. The cover is now
+  drawn with every word in place, and when the picture behind the text is too close to its colour, the words turn
+  dark (or light) or get a dark box behind them; Claude says which.
 - **An organic video's animation keeps its storyboard's frame.** Building the full animation without `--aspect`
   made a 16:9 prompt and page although the accepted storyboard was 9:16. The animation now takes its frame,
   voiceover, content and word SRT from the storyboard's prompt, and a setting that differs from it is refused.

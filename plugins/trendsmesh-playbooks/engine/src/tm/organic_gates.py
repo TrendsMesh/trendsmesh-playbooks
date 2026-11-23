@@ -279,9 +279,9 @@ def _set_of(params: dict) -> str | None:
     return None
 
 
-def _text_looks(run: RunFolder, t: dict, most: int = TEXT_SETS_SHOWN) -> list[dict]:
+def _drawn_sets(run: RunFolder, most: int = TEXT_SETS_SHOWN) -> list[dict]:
     """The latest still of each text set drawn (`tm organic text look`, one call per set, issue #117), latest first,
-    at most `most`, as refs: the images check-in shows the three sets the first time, or the one style otherwise."""
+    at most `most`: {look, still, style, sha256}, the style the still was drawn from and its stamp."""
     out: list[dict] = []
     seen: set[str | None] = set()
     for row in reversed(manifest.rows(run)):
@@ -298,11 +298,42 @@ def _text_looks(run: RunFolder, t: dict, most: int = TEXT_SETS_SHOWN) -> list[di
         if look in seen:
             continue
         seen.add(look)
-        out.append({"src": row["file"],
-                    "caption": t["cap_text_set"].format(look=look) if look else t["cap_text_style"]})
+        stamp = params["props"]["textStyle"]
+        out.append({"look": look, "still": row["file"], "style": stamp.get("file"), "sha256": stamp.get("sha256")})
         if len(out) >= most:
             break
     return out
+
+
+def _text_looks(run: RunFolder, t: dict, most: int = TEXT_SETS_SHOWN) -> list[dict]:
+    """The latest still of each text set drawn, latest first, at most `most`, as refs: the images check-in shows the
+    sets drawn beside every item (the one style, or a suggestion beside the saved set; the three sets drawn the first
+    time are their own item, `_text_set_item`)."""
+    return [{"src": d["still"], "caption": t["cap_text_set"].format(look=d["look"]) if d["look"] else
+             t["cap_text_style"]} for d in _drawn_sets(run, most)]
+
+
+TEXT_SET = "text_set"     # the kind of the images check-in's text-set item (issue #165)
+TEXT_SET_ID = "text-set"
+
+
+def _text_set_item(run: RunFolder, pack: dict, t: dict) -> tuple[list, dict]:
+    """The channel's first video (no saved set, `text_sets.for_run`) with the three sets drawn: one item, its options
+    the three stills (id: the set) in the order drawn, the first (the suggested one) marked. Its plugin entry names
+    each set's style and stamp (`styles`), which recording the pick approves and saves (`text_sets.take_pick`)."""
+    from tm import text_sets   # it reads organic modules: imported where it is used
+
+    drawn = [d for d in _drawn_sets(run) if d["look"] and isinstance(d["style"], str)]
+    if len(drawn) < TEXT_SETS_SHOWN or text_sets.for_run(run) is not None:
+        return [], {}
+    drawn.reverse()
+    options = [{"id": d["look"], "src": d["still"], "caption": d["look"], **({"pick": True} if i == 0 else {})}
+               for i, d in enumerate(drawn)]
+    item = {"id": TEXT_SET_ID, "proposal": t["proposal"].format(id=pack["id"], channel=pack["channel"]),
+            "label": t["label_text_set"], "question": t["q_text_set"], "options": options}
+    entry = {"kind": TEXT_SET, "name": TEXT_SET, "stem": TEXT_SET, "files": {d["look"]: d["still"] for d in drawn},
+             "styles": {d["look"]: {"file": d["style"], "sha256": d["sha256"]} for d in drawn}}
+    return [item], {TEXT_SET_ID: entry}
 
 
 def _stage_items(run: RunFolder, pack: dict, t: dict, *, video: bool, refs: list[dict],
@@ -434,7 +465,8 @@ def gate_json(run: RunFolder, gate: str) -> dict:
     t = _ui(lang_of(pack))
     refs, missing = _refs(run, pack, t)
     still = _still(run, pack, t) if gate == "images" and pack.get("style_spec") else None
-    looks = _text_looks(run, t) if gate == "images" else []
+    sets = _text_set_item(run, pack, t) if gate == "images" else ([], {})
+    looks = _text_looks(run, t) if gate == "images" and not sets[0] else []   # the three sets: their own item
     voiced = organic_voiced.voiceover(run) if organic_voiced.narrated(pack) else None   # issue #83 point 4
     items, plugin = _stage_items(run, pack, t, video=gate == "video", refs=refs + [r for r in (still,) if r] + looks,
                                  voiced=voiced if gate == "video" else None)
@@ -448,6 +480,7 @@ def gate_json(run: RunFolder, gate: str) -> dict:
         more.append(_animations(run, pack, t, voiced) if gate == "video" else _storyboards(run, pack, t, only=animated))
     if gate == "images" and voiced:   # the voice is heard and accepted before anything paid is made (issue #83)
         more.append(_voiceover(run, pack, t, question=t["q_voiceover_images"]))
+    more.append(sets)                 # the channel's first video: its text set (issue #165)
     for extra, entries in more:
         items += extra
         plugin.update(entries)
@@ -833,6 +866,8 @@ def _rows(data: dict, docs: dict[str, dict]) -> dict[str, dict]:
         doc = docs.get(iid) or {}
         entry = entries.get(iid) or {}
         action = doc.get("action")
+        if action is None and entry.get("kind") == TEXT_SET and doc.get("choice"):
+            action = "accept"          # one click picks the channel's text set (issue #165)
         if action not in (*ACTIONS, None):
             raise Stop(f"The decision on {iid} is {action!r}, which is not accept, redo or drop: ask the user what "
                        f"they meant, write it in chat form and read it with --text; {AGAIN}.")
@@ -1026,6 +1061,7 @@ def act(run: RunFolder, page_name: str, decided: dict, docs: list[tuple[str, dic
     if page_name == DELIVERY and "final" in acted and "final" in read:   # the ticks the user saved, or said
         kit_out, kit_body, ticked = _kit_plan(run, data, rows["final"])
     new_kit = _rel(run, kit_out) if kit_out is not None else None
+    picked = _text_set_plan(run, data, rows, acted)
     slot_kits = []      # the week's delivery: each slot video's ticks, as a new kit version in its own run
     for iid in acted if page_name != DELIVERY else ():
         entry = ((data.get("plugin") or {}).get("items") or {}).get(iid) or {}
@@ -1052,9 +1088,47 @@ def act(run: RunFolder, page_name: str, decided: dict, docs: list[tuple[str, dic
         _write_kit(run, data, rows["final"], kit_out, kit_body)
     for k in slot_kits:
         _write_kit(k["target"], k["data"], rows[k["item"]], k["out"], k["body"])
+    text_set = None
+    if picked is not None:
+        from tm import text_sets   # it reads organic modules: imported where it is used
+        style, row = picked
+        text_set = text_sets.take_pick(run, style["file"], sha256=style.get("sha256"),
+                                       note=row["note"] or f"the user picked the {row['choice']} set on the page")
     page.clear_await(run, awaited or page_name)
     after_chat = page.end_wait_for_chat(run, page_name) if text is not None else None
     return {"file": out_rel, "from": rel, "page": page_name, "folder": decided["folder"], "source": body["source"],
             "after_chat": after_chat,
             "decisions": rows, "carried": carried, "redos": redos, "redo_labels": redo_labels, "kit": new_kit,
-            "ticked": ticked, "kits": body["kits"], "docs": len(docs)}
+            "ticked": ticked, "kits": body["kits"], "docs": len(docs), "text_set": text_set}
+
+
+def _text_set_plan(run: RunFolder, data: dict, rows: dict[str, dict], acted: list[str]) -> tuple[dict, dict] | None:
+    """The text set the user accepted on the images page (issue #165): (its style {file, sha256}, its row), checked
+    (`text_sets.check_pick`) before anything is written; None when no text-set item is accepted. Reads only."""
+    from tm import text_sets   # it reads organic modules: imported where it is used
+
+    entries = (data.get("plugin") or {}).get("items") or {}
+    for iid in acted:
+        row = rows[iid]
+        if row["kind"] != TEXT_SET or row["action"] != "accept" or not row["choice"]:
+            continue
+        style = ((entries.get(iid) or {}).get("styles") or {}).get(row["choice"])
+        if not isinstance(style, dict) or not isinstance(style.get("file"), str):
+            raise Stop(f"The page names no style for the {row['choice']} text set, so the pick cannot be approved. "
+                       f"Build the page again and ask again; nothing was written; {AGAIN}.")
+        text_sets.check_pick(run, style["file"], style.get("sha256"))
+        return style, row
+    return None
+
+
+def text_set_said(got: dict) -> str:
+    """What recording the text-set pick did, in words for the agent ("" when nothing was picked)."""
+    ts = got.get("text_set")
+    if not ts:
+        return ""
+    if ts["saved"]:
+        return (f" The channel's text set is now {ts['look']}: approved ({ts['style']}) and saved for "
+                f"{ts['owner'][0]} {ts['owner'][1]} ({ts['saved']}), so every next video uses it without asking; tell "
+                "the user it can be changed any time.")
+    return (f" The {ts['look']} text set is approved for this video ({ts['style']}); the run names no channel, so it "
+            "is not saved for one (tm brand text-style save).")

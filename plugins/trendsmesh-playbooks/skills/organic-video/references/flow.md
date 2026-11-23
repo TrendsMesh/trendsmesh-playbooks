@@ -1247,14 +1247,20 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
        energy and kind of content; `tm brand text-style show` suggests three; `native` first for a
        UGC channel or content meant to look filmed in the app, else the default `outline` among
        them) and draw each, `--look <set>` (with `--accent <the brand colour>` when the brand has
-       one), so the page shows the three side by side. Ask which one the channel's videos use; the
-       pick is drawn again as the latest (`--look <the pick>`), approved with their words (`tm
-       organic text approve ... --note "<their words>"`) and saved for the channel: `tm brand
-       text-style save --run R --kind channel --name <channel> --style 03_wip/text_style_vNN.json
-       --note "<their words>" --json`, with `--font` and `--logo` when the brand has its own files
-       (its font replaces Montserrat in every set but `native`, always TikTok Sans; the end card
-       shows the logo, or the brand's name without one). By rule (Just the big calls, Hands-off):
-       the first of the three, approved `--by rule --note "the suggested text set"`, and saved.
+       one), the suggested one first. The images stage then has its own **Text set** item (issue
+       #165): the three stills side by side, the first drawn marked as the suggestion, one click to
+       pick (never add the stills as media to the question, and draw nothing again). Recording the
+       stage's answer (below) makes the picked style the latest, approves it with their note and
+       saves it for the channel; its `then` says which set and where. In chat the same pick is the
+       line `text-set: accept; choice: <set>`, read as the stage's other chat answers are. When the
+       item stays undecided, ask in chat which
+       set the channel's videos use. When the brand has its own font or logo files, save the set
+       again with them: `tm brand text-style save --run R --kind channel --name <channel> --style
+       <the approved 03_wip/text_style_vNN.json> --font <file> --logo <file> --note "<their words>"
+       --json` (its font replaces Montserrat in every set but `native`, always TikTok Sans; the end
+       card shows the logo, or the brand's name without one). By rule (Just the big calls,
+       Hands-off): the first of the three, drawn last again as the latest (`--look <it>`), approved
+       `--by rule --note "the suggested text set"`, and saved with `tm brand text-style save`.
      - **A change** (another set, a size, a place) is a new version of the style (sizes in px at
        1080×1920, `offsetY` negative moves the text up, `width` up to 790, the safe zone's,
        `highlight` a colour that lights the spoken word, `words` [min, max] per caption), drawn
@@ -1515,7 +1521,12 @@ A Remotion render takes about 1 minute.
      and inside the 3:4 crop: `tm tool cover_fit --run R --props 03_wip/cover_<id>_vNN.props.json
      --frame <n> --json` finds the faces in the frame, moves or shrinks the text until every face is
      clear (writing a new version of the props when it changed them) and draws
-     `04_final/kits/cover_<id>_vNN.png`. When it finds no face, look at the cover: a face it missed
+     `04_final/kits/cover_<id>_vNN.png`. The cover is drawn with every word in its final state
+     (`"static": true` in the props, which it adds: the whole hook, never its entrance), so any
+     frame works, frame 0 too. Then it checks the picture behind the text against its ink (WCAG's
+     contrast, 4.5:1): where it fails, the words take the other ink (dark or light) or a dark box
+     behind them, and the answer's `contrast` and message say which; tell the user in one line when
+     it changed. Look at the cover anyway. When it finds no face, look at the cover: a face it missed
      is given with `--face X,Y,W,H` (px at 1080×1920). Then `tm tool deliver cover --run R
      04_final/kits/cover_<id>_vNN.png --json` (the JPG). A cover is made for the latest final: after
      a new final, make its cover again.

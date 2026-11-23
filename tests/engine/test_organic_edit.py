@@ -451,10 +451,41 @@ def test_a_real_cover_is_measured_and_moved(drawn, monkeypatch, capsys):
                            "--face", "380,300,320,360", "--json"])
     out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert code == 0, out
-    assert out["changes"] and out["changes"][0].startswith("moved down")
+    assert out["changes"][0] == cover_fit.STATIC_SAID and out["changes"][1].startswith("moved down")
     assert out["outputs"] == ["04_final/kits/cover_M5_v01.png"]
     fitted = json.loads((drawn.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
     assert 260 + fitted["offsetY"] >= 660                     # below the head (y 120 to 660)
+
+
+@pytest.mark.video
+def test_a_static_still_draws_the_whole_outline_hook_at_frame_0(drawn):
+    """Issue #165: the outline set's hook animates in word by word, so frame 0 drew only its first word; with
+    `static: true` every word is there at frame 0, and a dark `fill` draws the words dark."""
+    import subprocess
+
+    from _media import ffmpeg
+
+    segments = _picture(drawn, "grey.png", "0x606060")
+    hook = {"from": 0, "to": 2, "text": "Jeden dobry nawyk dziennie", "style": "hook", "place": "top",
+            "overlay": {"kind": "hook", "family": "outline"}}
+
+    def drawn_at_0(name, static, **overlay):
+        props = drawn.path / "03_wip" / f"{name}.props.json"
+        cap = {**hook, "overlay": {**hook["overlay"], **overlay}}
+        props.write_text(json.dumps({"width": 1080, "height": 1920, "fps": 24, "segments": segments, "language": "pl",
+                                     "static": static, "captions": [cap]}), encoding="utf-8")
+        png = render.still(drawn, "OrganicCaptions", props, 0, drawn.path / "03_wip" / f"{name}.png")
+        return subprocess.run([ffmpeg(), "-nostdin", "-v", "error", "-i", str(png), "-f", "rawvideo", "-pix_fmt",
+                               "rgb24", "-"], capture_output=True, check=True).stdout
+
+    def width(px, test):
+        x0, _, x1, _ = _box(px, test)
+        return x1 - x0
+
+    whole = width(drawn_at_0("still", True), _white)
+    assert whole > 400                                                           # every word, at frame 0
+    assert width(drawn_at_0("live", False), _white) < whole / 2                  # without it: the first word only
+    assert width(drawn_at_0("dark", True, fill="#111111"), lambda r, g, b: max(r, g, b) < 30) > 400
 
 
 def test_the_images_page_shows_the_latest_text_look(ov, remotion, capsys):
