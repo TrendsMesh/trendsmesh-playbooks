@@ -51,6 +51,29 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Faces are found with OpenCV's YuNet detector, so a hoodie, a hand or a site capture is no longer a face.** Its
   small model (about 230 KB, MIT licence) is downloaded once with the video tools and checked against a pinned
   checksum. Until it is there, the older detector is used, and the edit check and the cover fit say which one ran.
+- **Refresh an ad: an account read the Meta connector names `ad_account` is used.** It used to be left out as
+  "not an ad or account read", and the account trend was built from the ad rows without a word. Every saved read
+  the ranking leaves out is now named with its reason.
+- **Refresh an ad: the diagnosis report is in your language, names the ad and shows its numbers.** When a run ends
+  at the diagnosis, `04_final/diagnosis_report_v01.md` used to be in English, and could call the ad only "the ad
+  chosen for the diagnosis", without the ranking's numbers. The diagnosis now keeps the ad's id, name and ranking
+  numbers and the two windows it was judged on, and the report is written in the run's working language (Polish
+  ships with the plugin). A language not translated yet gets the English report and a line saying how to translate
+  it.
+- **Refresh an ad: a video file of another length than the ad is refused.** `tm record --copy-from` took a 26.9 s
+  file for a 52.9 s ad. With the ad's length (`--length-s`, from Meta's answer), an original more than 1 s or 5 %
+  off it is refused, naming both lengths, and nothing is copied.
+- **Create an ad: model ads get their thumbnail and clip from an answer saved as JSON text.** `tm ad clips` now reads
+  a Meta answer kept as text (the collector's envelope, or the connector's text blocks). When it still finds nothing,
+  it says whether the saved answer can't be read or doesn't hold the ad, instead of "no saved answer names it".
+- **A Mixkit music search with several words finds tracks.** Mixkit searches the words as one phrase, so "upbeat
+  tech" listed nothing, with no word why. When the phrase lists nothing, each word is now searched and the tracks
+  merged, and the answer says so; when nothing matches at all, it says that too.
+- **A brand name heard as two words no longer reads as a missing line.** The take's check (Create an ad and Organic
+  AI video) said "the rest is missing" when the voice said the brand as two words where the script has one. Two or
+  three words side by side now match one word of the other side, either way.
+- **Create an ad: the last pages show what the run spent.** The plan showed the cost before the run; the upload
+  pages now show each budget as planned, approved and spent, as Refresh an ad's pages do.
 
 ## 0.14.0
 

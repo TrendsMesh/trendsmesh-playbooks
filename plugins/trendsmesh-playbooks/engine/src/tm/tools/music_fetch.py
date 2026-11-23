@@ -7,6 +7,8 @@ offered copied into the run.
 
 - `--search`: the tracks Mixkit's search lists for the words (`https://mixkit.co/free-stock-music/discover/<words>/`):
   id, title, author, length, tags (its moods among them) and the preview, which is the track's own file. Free.
+  Several words that list nothing as a whole are searched one by one (`pages`), the tracks merged once each; the
+  JSON says so in `message`, as it does when nothing matched (issue #172).
   With `--offer ID` (again for each, issue #142): the tracks D2 offers, each preview (the track's own file) copied
   into the run, `02_research/music/mixkit-<title>-<id>.mp3`, tagged, with its licence and source in the manifest,
   so the style, voice and music page plays them with their licence line and no question is asked first. Picking one
@@ -310,14 +312,37 @@ def offer(run, found: list[dict], ids: list[str]) -> list[dict]:
     return out
 
 
+def _listed(page: str, *, quiet: bool) -> list[dict]:
+    """The tracks a search page lists; a page Mixkit does not answer counts as none when `quiet` (a word's own page)."""
+    try:
+        return [_track(card, None) for card in cards(_get(page))]
+    except c.ToolError:
+        if quiet:
+            return []
+        raise
+
+
 def search(run, words: str, offers: list[str] | None = None) -> tuple[dict, str]:
-    page = SEARCH.format(words=_words_slug(words))
-    found = [_track(card, None) for card in cards(_get(page))]
+    """The tracks Mixkit lists for `words`. Several words with no track as a whole (Mixkit's search page is one
+    phrase) are searched one by one, and the tracks merged once each by id, in the words' order (issue #172)."""
+    slug = _words_slug(words)
+    page = SEARCH.format(words=slug)
+    each = list(dict.fromkeys(slug.split("-")))
+    found = _listed(page, quiet=len(each) > 1)
+    pages: list[str] = []
+    if not found and len(each) > 1:
+        pages = [SEARCH.format(words=w) for w in each]
+        for listed in (_listed(p, quiet=True) for p in pages):
+            found += [t for t in listed if t["id"] not in {f["id"] for f in found}]
     lines = [f"{t['id']}: {t['title']} by {t['author']}, {t['length']} ({', '.join(t['tags'])}) {t['source']}"
              for t in found]
-    text = (f"{len(found)} Mixkit track(s) for {words!r} on {page}:\n" + "\n".join(lines) if found
-            else f"Mixkit lists no track for {words!r} ({page}): try other words in English.")
+    where = ", ".join(pages) if pages else page
+    by_word = (f"Mixkit lists no track for {words!r} as a whole ({page}), so each word was searched: " if pages else "")
+    text = (by_word + f"{len(found)} Mixkit track(s) for {words!r} on {where}:\n" + "\n".join(lines) if found
+            else by_word + f"Mixkit lists no track for {words!r} ({where}): try other words in English.")
     payload: dict = {"page": page, "tracks": found}
+    if pages:
+        payload["pages"] = pages
     if offers:
         payload["offered"] = offer(run, found, offers)
         payload["outputs"] = [t["file"] for t in payload["offered"]]
@@ -325,6 +350,8 @@ def search(run, words: str, offers: list[str] | None = None) -> tuple[dict, str]
                  + ", ".join(t["file"] for t in payload["offered"])
                  + ". Put them on the style, voice and music page; the user's pick is filed into the library when "
                    "the page's decision is recorded.")
+    if pages or not found:   # what the JSON alone would not say: nothing found, or each word searched (issue #172)
+        payload["message"] = text
     return payload, text
 
 

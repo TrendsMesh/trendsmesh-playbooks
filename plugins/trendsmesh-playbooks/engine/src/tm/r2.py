@@ -64,6 +64,8 @@ class Diagnosis:
     structural: dict | None = None  # R2b's answer across uploads of the same video (tm structural)
     too_little_data: bool = False   # the ad lacks R1's results for a diagnosis (issue #143): the user picks the stage
     override: dict | None = None    # the user's G1a override: {stage, said, by, diagnosed_stage} (issue #143)
+    ad: dict | None = None          # the diagnosed ad (issue #171): {id, name, ranking, rank, verdict, value_to_recover}
+    windows: dict | None = None     # the windows it was judged on: {"peak": window, "latest": window} (window_to_json)
 
     def to_json(self) -> dict:
         out = {"stage": self.stage, "refresh": self.refresh,
@@ -75,6 +77,10 @@ class Diagnosis:
             out["too_little_data"] = True
         if self.override:
             out["override"] = dict(self.override)
+        if self.ad:
+            out["ad"] = dict(self.ad)
+        if self.windows:
+            out["windows"] = dict(self.windows)
         return out
 
     @classmethod
@@ -87,7 +93,9 @@ class Diagnosis:
                    ladder=dict(data.get("ladder", {})),
                    structural=data.get("structural"),
                    too_little_data=bool(data.get("too_little_data", False)),
-                   override=dict(data["override"]) if isinstance(data.get("override"), dict) else None)
+                   override=dict(data["override"]) if isinstance(data.get("override"), dict) else None,
+                   ad=dict(data["ad"]) if isinstance(data.get("ad"), dict) else None,
+                   windows=dict(data["windows"]) if isinstance(data.get("windows"), dict) else None)
 
 
 _FIELDS = ("start", "stop", "spend", "results", "impressions", "p25", "thruplay", "clicks_est",
@@ -227,6 +235,34 @@ def retarget(s: state.RunState) -> None:
     d["target_stage"], d["note"] = res.target, res.note
 
 
+def ad_of(run: RunFolder, chosen: object) -> dict | None:
+    """The diagnosed ad as the diagnosis keeps it (issue #171), so the report names it whatever the ranking holds
+    later: `chosen` (the ad's id, or its name) matched in the latest ranking (`01_base/winner_ranking_vNN.json`),
+    `{id, name, ranking, rank, verdict, value_to_recover}`; `{id, name: None}` for an ad the ranking does not hold;
+    None without a chosen ad (G1 `none`)."""
+    chosen = str(chosen).strip() if chosen is not None else ""
+    if not chosen or chosen == "none":
+        return None
+    path = run.latest("01_base", "winner_ranking", "json")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig")) if path else None
+    except (OSError, ValueError):
+        data = None
+    cands = [c for c in (data.get("candidates") or []) if isinstance(c, dict)] if isinstance(data, dict) else []
+    found = (next((c for c in cands if str(c.get("ad_id")) == chosen), None)
+             or next((c for c in cands if str(c.get("name") or "").strip().casefold() == chosen.casefold()), None))
+    if found is None:
+        return {"id": chosen, "name": None}
+    return {"id": str(found.get("ad_id")), "name": found.get("name"), "ranking": path.relative_to(run.path).as_posix(),
+            "rank": found.get("rank"), "verdict": found.get("verdict"),
+            "value_to_recover": found.get("value_to_recover")}
+
+
+def _g1_choice(s: state.RunState) -> str | None:
+    picked = [d.get("choice") for d in s.decisions if d.get("checkin") == "G1"]
+    return picked[-1] if picked else None
+
+
 def record(run: RunFolder, d: Diagnosis) -> Path:
     """Save the diagnosis in run state and as 04_final/diagnosis_vNN.json (R2's evidence).
 
@@ -237,6 +273,8 @@ def record(run: RunFolder, d: Diagnosis) -> Path:
     before = state.load(run)
     if before.status == "done":
         raise ValueError("This run is done; the diagnosis can no longer be changed.")
+    if d.ad is None:
+        d.ad = ad_of(run, _g1_choice(before))
     kept = (before.diagnosis or {}).get("override")
     if isinstance(kept, dict) and not d.override:
         d.override = {**kept, "diagnosed_stage": d.stage}
@@ -277,6 +315,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
                    help="the chosen ad has too little data for R2 (R1's not_enough_data) and the user wants it "
                         "refreshed anyway: the diagnosis is marked so, and the user picks the stage at G1a "
                         "(tm decide G1a override). The windows are optional then (both or none)")
+    p.add_argument("--ad", help="the diagnosed ad's id (default: the ad picked at G1); its name and the ranking's "
+                                "numbers are kept in the diagnosis, for the report (issue #171)")
     p.add_argument("--json", action="store_true")
 
 
@@ -308,8 +348,12 @@ def _run(args: argparse.Namespace) -> int:
             if missing:
                 raise ValueError(f"tm diagnose needs {', '.join(missing)} (from the ranking, flow.md#a1a); "
                                  "for an ad with too little data, --too-little-data.")
-            d = diagnose(_window_arg(args.peak, run), _window_arg(args.latest, run), args.account_ratio,
-                         run_config(run))
+            windows = [_window_arg(args.peak, run), _window_arg(args.latest, run)]
+            d = diagnose(*windows, args.account_ratio, run_config(run))
+        if all(windows):   # what it was judged on, for the report (issue #171)
+            d.windows = {"peak": window_to_json(windows[0]), "latest": window_to_json(windows[1])}
+        if args.ad:
+            d.ad = ad_of(run, args.ad)
         target = record(run, d)
     except (OSError, ValueError, ReadOnlyError) as exc:
         return cli.fail(args, str(exc))

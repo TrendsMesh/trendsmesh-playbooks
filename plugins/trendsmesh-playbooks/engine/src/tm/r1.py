@@ -547,21 +547,29 @@ class Picked:
                 "skipped": [{"file": rel(p), "why": why} for p, why in self.skipped]}
 
 
+ACCOUNT_LEVELS = ("account", "ad_account")   # the Meta MCP names the account level ad_account (issue #171)
+
+
 def weekly(tool_input: object) -> tuple[str | None, str | None]:
-    """("ad" or "account", None) for the input of a weekly ads_get_ad_entities read (`level` ad or account,
-    `time_increment` 7, as a number or text); else (None, why it is not one of R1's reads)."""
+    """("ad" or "account", None) for the input of a weekly ads_get_ad_entities read (`level` ad, or account as
+    `ACCOUNT_LEVELS` name it, `time_increment` 7, as a number or text); else (None, why it is not one of R1's
+    reads)."""
     given = tool_input if isinstance(tool_input, dict) else {}
     level, step = given.get("level"), given.get("time_increment")
     step = None if step is None else str(step).strip()
+    if level in ACCOUNT_LEVELS:
+        level = "account"
     if level not in ("ad", "account"):
         return None, f"not an ad or account read (level {level})" if level else "no level"
     if step == str(WEEKLY):
         return level, None
     if step == "1":
-        return None, "daily rows (time_increment 1)"
-    if step is None and level == "ad" and given.get("filtering"):
-        return None, "the ids of the ads that spent (flow.md#a1 step 2a), not weekly rows"
-    return None, f"not weekly (time_increment {step})" if step else "not weekly (no time_increment)"
+        why = "daily rows (time_increment 1)"
+    elif step is None and level == "ad" and given.get("filtering"):
+        why = "the ids of the ads that spent (flow.md#a1 step 2a), not weekly rows"
+    else:
+        why = f"not weekly (time_increment {step})" if step else "not weekly (no time_increment)"
+    return None, f"an account read: {why}" if level == "account" else why
 
 
 def _version(path: Path) -> int:
@@ -743,7 +751,9 @@ def _run(args: argparse.Namespace) -> int:
         took = payload["picked"]
         text += (f"\nTook the collector's weekly reads: ads {', '.join(took['ads'])}; account "
                  + (', '.join(took['account']) if took["account_from"] == "account" else "from the ad rows")
-                 + (f"; left out {len(took['skipped'])} other reads" if took["skipped"] else "") + ".")
+                 + (f"; left out {len(took['skipped'])} other reads: "
+                    + "; ".join(f"{s['file']} ({s['why']})" for s in took["skipped"]) if took["skipped"] else "")
+                 + ".")
     cli.emit(args, payload, text)
     return 0
 

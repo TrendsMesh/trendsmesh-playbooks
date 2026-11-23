@@ -316,6 +316,24 @@ def test_the_upload_pages_show_the_paused_proposal_and_take_only_go_ahead_or_ski
     assert "ads_activate" not in now and "ACTIVE" not in now
 
 
+@pytest.mark.parametrize("checkin", ["upload_offer", "upload"])
+def test_the_upload_pages_show_what_was_spent(run, checkin):
+    """Issue #172 item 4: the plan showed the cost before the run; the last pages show what was actually spent, per
+    budget: planned, approved and spent (run.json)."""
+    _uploaded(run)
+    s = state.load(run)
+    s.budgets, s.planned, s.spend = {"ai_usd": 20.0, "voice_credits": 3000.0}, {"ai_usd": 12.5}, {"ai_usd": 11.75}
+    if checkin == "upload":
+        s.decisions.append({"checkin": "upload_offer", "choice": "propose", "by": "user",
+                            "at": "2999-01-01T00:00:00+00:00"})
+    state.save(run, s)
+    if checkin == "upload":
+        assert _propose(run, proposal()) == []
+    now = _now(_html(run, run_page.build(run, _ask(run, checkin))))
+    assert "Budgets in this run" in now and "AI generation (USD)" in now and "Voice credits" in now
+    assert "11.75" in now and "12.5" in now
+
+
 def test_the_plan_page_shows_the_talking_persons_rows_the_plans_situation_first_with_a_pick(run):
     """Issue #100: CA5's table on the plan's page, each row with its model, what it needs and today's price."""
     _checked_through(run, "production_plan")

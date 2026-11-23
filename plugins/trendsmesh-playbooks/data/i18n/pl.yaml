@@ -2,8 +2,9 @@
 # the organic video pages' strings (organic.*), the run page's own words that an Organic AI video run page needs
 # (run_page.*: the template's, issue #60), every playbook's start card and name (run_page.start, run_page.playbook:
 # issue #156), Create an ad's promise phrases (checks.promise_*), the Smart App Control message
-# (env.smart_app_control and env.smart_app_control_unnamed, issue #123) and the words of an update's environments
-# (env.freed, env.install_failed, doctor.earlier, issue #161); every other
+# (env.smart_app_control and env.smart_app_control_unnamed, issue #123), the words of an update's environments
+# (env.freed, env.install_failed, doctor.earlier, issue #161) and Refresh an ad's diagnosis report (diagnosis.*,
+# issue #171); every other
 # string Polish needs is the agent's translation, kept in the plugin data folder (tm i18n export / import), and a kept
 # translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
 
@@ -26,6 +27,76 @@ strings:
   doctor:
     # a missing tier an earlier plugin version had (issue #161)
     earlier: "Aktualizacja do {version} instaluje {what} jeszcze raz (miała je wcześniejsza wersja): około {size}, około {minutes} min."
+  diagnosis:
+    # Refresh an ad: the diagnosis report when the run ends at G1a (issue #171), Markdown: keep the table pipes
+    title: "Raport z diagnozy: {ad}"
+    written: "Napisany {when}. Run zakończył się na diagnozie, więc w reklamie nic nie zmieniono."
+    heading_checked: Co sprawdzono
+    heading_shows: Co pokazują dane
+    heading_fix: Co poprawić
+    heading_spent: Co wydano
+    unnamed_ad: reklama wybrana do diagnozy
+    ad: "Reklama: {name}."
+    ad_id: "Reklama: {name} (id {id})."
+    ranked: "W rankingu ({ranking}): słabnie, miejsce {rank}, wartość do odzyskania {value}."
+    in_ranking: "W rankingu ({ranking}): wartość do odzyskania {value}."
+    every_ad: "Każda reklama konta w historii objętej rankingiem ({ranking})."
+    the_ranking: ranking
+    peak: Najlepszy okres
+    latest: Ostatni okres
+    window: "{label}: {start} – {stop}, wydatki {spend}, wyniki {results}, koszt wyniku {cpr} (źródło: {source})."
+    account_ratio: "Reszta konta: jej wyniki na wydaną kwotę w ostatnim okresie to {ratio} razy tyle, co w najlepszym (1 to bez zmian)."
+    col_funnel: Lejek
+    col_best: Najlepszy okres
+    col_latest: Ostatni okres
+    col_ladder: Kto ogląda dalej (z tych na poprzednim kroku)
+    dropped: "{step} (spadek)"
+    metric:
+      hook_rate: Odsetek, który ogląda pierwszą ćwiartkę (hook rate)
+      middle_rate: Z nich odsetek, który ogląda do ThruPlay (środek)
+      ctr: Kliknięcia na wyświetlenie (CTR)
+      conversion: Wyniki na kliknięcie (konwersja)
+      frequency: Częstotliwość
+      cpm: Koszt 1000 wyświetleń
+    structural_weak: "Sprawdzenie struktury (każde wgranie tego filmu): plik jest najsłabszy w kroku {step}{at} w każdym z nich. To poprawka na kolejny film, a nie powód, dla którego ta reklama słabnie."
+    structural_at: " w {start}–{stop} s"
+    structural_none: "Sprawdzenie struktury (każde wgranie tego filmu): żaden krok nie jest słaby z założenia."
+    structural_not_run: Sprawdzenia struktury nie uruchomiono.
+    verdict: "Werdykt: {stage}. {why}"
+    also_seen: "W danych widać też: {stages}."
+    why:
+      no_refresh: Odświeżenie kreacji tego nie naprawi (R2).
+      unsupported: Odświeżanie tego w tej reklamie nie jest jeszcze obsługiwane.
+      too_little_data: "Ta reklama ma za mało danych do diagnozy (mniej niż {n} wyników w okresie do porównania), więc nie da się powiedzieć, która jej część słabnie."
+      declined: Użytkownik zdecydował, żeby jej nie odświeżać.
+    stage:
+      hook: początek
+      middle: środek
+      promise_cta: obietnica lub wezwanie do działania
+      fatigue: zmęczenie obrazem
+      landing: strona docelowa
+      account: całe konto
+      auction: aukcja
+      unclear: brak wyraźnego etapu
+    material:
+      text_cards: plansze z tekstem
+      vo_captions: lektor z napisami
+      talking_head: mówiąca osoba
+      static: statyczna grafika
+      unknown: ten rodzaj reklamy
+    fix:
+      landing: "Ludzie klikają reklamę tak samo często jak wcześniej, a mniej z tych, którzy klikają, kupuje, zapisuje się lub instaluje: spadek jest po kliknięciu. Sprawdź stronę docelową w ostatnim okresie: jak szybko otwiera się na telefonie, cenę i ofertę wobec tego, co obiecuje reklama, dostępność i czas dostawy, koszyk lub formularz i krok płatności oraz każdą zmianę na stronie od najlepszego okresu. Analityka sklepu pokaże, na którym kroku odwiedzający odpadają."
+      account: "Całe konto spadło mniej więcej tak samo jak ta reklama, więc przyczyna leży poza filmem. Sprawdź konto: zmiany budżetu lub stawek, piksel i śledzenie konwersji (czy zdarzenia nadal się liczą), sezon i rynek, ofertę i ceny oraz nowych konkurentów w Bibliotece reklam."
+      auction: "Wzrósł tylko koszt dotarcia (CPM): reklama nadal działa na ludzi, którzy ją widzą, a dotarcie do nich kosztuje więcej. Sprawdź konto: sezon i konkurencję, wielkość grup odbiorców i ich nakładanie się między zestawami reklam oraz strategię stawek."
+      unclear: "Żaden krok lejka nie zmienił się na tyle, żeby wskazać przyczynę, więc nowa kreacja byłaby zgadywaniem. Sprawdź, czy śledzenie konwersji liczy zdarzenia, i wróć do tego za kilka tygodni, z większą ilością danych."
+      nothing: "Nic: żadna reklama nie wymaga teraz odświeżenia."
+      declined: "Diagnoza wskazuje na: {stage}, a to odświeżenie może zmienić; użytkownik zdecydował, żeby teraz tego nie odświeżać. Może to zrobić nowy run."
+      too_little_data: "Poczekaj, aż reklama zbierze więcej wyników, albo odśwież ją wbrew diagnozie w nowym runie, samodzielnie wybierając część reklamy."
+      unsupported: "Diagnoza wskazuje na: {stage}, część filmu, a odświeżanie jej nie jest jeszcze obsługiwane dla typu: {material}. Przekaż powyższe liczby osobie, która montuje reklamę (montażyście lub twórcy), jako brief nowej wersji."
+    no_winner: "Żadna reklama konta nie jest słabnącym zwycięzcą: żadna nie doszła wcześniej do lepszego kosztu wyniku, by potem go stracić. Nic nie wymaga teraz odświeżenia; sprawdź ponownie, gdy koszt wyniku którejś reklamy wzrośnie."
+    spent_nothing: "Nic: w tym runie nie wydano pieniędzy."
+    spent: "Ten run wydał {amounts}, zanim diagnoza go zakończyła, i nic więcej."
+    spent_item: "{amount} ({kind})"
   organic:
     # the playbook's name in the pages' top bar, as the run page names it (run_page.playbook.organic_video, issue #60)
     playbook: Organiczne wideo AI
