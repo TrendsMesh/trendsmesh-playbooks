@@ -253,13 +253,15 @@ it says.
 - Look in the brand assets folder first for the chosen ad's video (name, length and look matching
   the ad's creative from `ads_get_creatives` / `ads_get_ad_videos`). Copy it in and record it in
   one step: `tm record --run R --file 01_base/<ad_id>_original.<ext> --stage 01_base --copy-from
-  "<its full path>" --json` (the source recorded is that path). Ask whether a better source
+  "<its full path>" --length-s <the video's length from the saved ads_get_ad_videos answer> --json`
+  (the source recorded is that path). A file more than 1 s or 5 % off the ad's length is refused and
+  not copied: it is another video or another cut; say so and ask for the right file. Ask whether a better source
   exists: the editing project, clean clips without captions, a higher resolution, language
   versions, separate voice and music tracks.
 - Not there: the stop in SKILL.md section 7, recorded with `tm stop`, then wait. It asks for the
   file's path, or for the user to drop the file into the chat. Once they have: `tm resume`, `tm
-  next`, then the same `tm record --copy-from` with the path they gave, or the dropped file's
-  path. Check it is the ad's video (length and look) before you go on.
+  next`, then the same `tm record --copy-from ... --length-s ...` with the path they gave, or the
+  dropped file's path. Check it is the ad's video (its look too) before you go on.
 - Last resort, only when the user cannot get the file: the low-quality preview, recorded with
   "low-quality preview, not the original" in the manifest, and said in every output that uses it.
 

@@ -180,6 +180,9 @@ def _setup_record(p: argparse.ArgumentParser) -> None:
     p.add_argument("--copy-from", dest="copy_from", metavar="PATH",
                    help="copy this file (any path: the brand folder, Downloads, a file dropped in the chat) to --file "
                         "first; its full path is the source (refresh-ad A2, issue #143). Never overwrites")
+    p.add_argument("--length-s", dest="length_s", type=float, metavar="SECONDS",
+                   help="the ad's video length (from ads_get_ad_videos): an original (01_base/*_original.*) whose own "
+                        "length is more than 1 s or 5 %% off it is refused, and nothing is copied (issue #171)")
     p.add_argument("--parent")
     p.add_argument("--prompt")
     p.add_argument("--params", help="a JSON object, or the path of a JSON file holding one")
@@ -208,6 +211,32 @@ def _copy_in(run: RunFolder, given: str, rel: str) -> str:
     return str(src.resolve())
 
 
+ORIGINAL = re.compile(r"^01_base/[^/]+_original\.[^/]+$")   # refresh-ad A2: the ad's own video file
+LENGTH_SLACK_S, LENGTH_SLACK = 1.0, 0.05                     # an original may be off the ad by max(1 s, 5 %)
+
+
+def check_length(path: Path, rel: str, length_s: float) -> None:
+    """Refuse an original (`ORIGINAL`) whose length (ffprobe) is off the ad's `length_s` by more than
+    max(LENGTH_SLACK_S, LENGTH_SLACK of it): it is another video, or another cut of it (issue #171)."""
+    import subprocess
+
+    from tm.tools import _common as tools_common
+
+    if length_s <= 0:
+        raise ValueError(f"--length-s must be the ad's length in seconds, above 0 (not {length_s:g}).")
+    try:
+        found = float(tools_common.probe(path).get("duration") or 0)
+    except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+        raise ValueError(f"The length of {path} can't be read with ffprobe ({exc.__class__.__name__}): check it is "
+                         f"the ad's video. Nothing was copied or recorded.") from None
+    slack = max(LENGTH_SLACK_S, LENGTH_SLACK * length_s)
+    if found <= 0 or abs(found - length_s) > slack:
+        raise ValueError(f"{path.name} runs {found:.1f} s and the ad's video {length_s:.1f} s (more than "
+                         f"{slack:.1f} s apart), so it is not this ad's video, or another cut of it. Nothing was copied "
+                         f"or recorded as {rel}: ask the user for the file of this ad (ads_get_ad_videos names its "
+                         "length and thumbnail).")
+
+
 def _run_record(args: argparse.Namespace) -> int:
     try:
         run = RunFolder.open(Path(args.run))
@@ -216,6 +245,11 @@ def _run_record(args: argparse.Namespace) -> int:
             raise ValueError("--params must be a JSON object, for example '{\"seconds\": 8}'.")
         raw = run.given(args.raw_response_file).read_text(encoding="utf-8") if args.raw_response_file else None
         source = args.source
+        rel = str(args.file).replace("\\", "/")
+        if args.length_s is not None and ORIGINAL.match(rel):
+            given = Path(args.copy_from).expanduser() if args.copy_from else run.given(args.file, missing_ok=True)
+            if given.is_file():   # a missing file is _copy_in's (or the manifest's) to name
+                check_length(given, rel, args.length_s)
         if args.copy_from:
             copied = _copy_in(run, args.copy_from, args.file)
             source = source or copied

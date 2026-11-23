@@ -13,6 +13,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
   numbers and the two windows it was judged on, and the report is written in the run's working language (Polish
   ships with the plugin). A language not translated yet gets the English report and a line saying how to translate
   it.
+- **Refresh an ad: a video file of another length than the ad is refused.** `tm record --copy-from` took a 26.9 s
+  file for a 52.9 s ad. With the ad's length (`--length-s`, from Meta's answer), an original more than 1 s or 5 %
+  off it is refused, naming both lengths, and nothing is copied.
 
 ## 0.14.0
 
