@@ -600,6 +600,54 @@ def test_cover_is_reached_by_the_oldest_card_of_the_last_page(tmp_path):
     ids, covered, listed = research_digest.updated_lists(run, since)
     assert covered == {"all"} and listed and ids == {"x", "y", "zz"}       # h was updated before since
 
+def test_a_card_without_updated_at_is_dated_by_its_last_seen_date(tmp_path):
+    """Issue #168: live list_trends cards came with updated_at null. A card's date is its updated_at, else its
+    proof.last_seen_at; a list dated by last_seen_at reaches back only when every card of its last page was last
+    seen before the previous run's date (the list is sorted by updates, not by that date)."""
+    prev, run = _weekly(tmp_path, {"g": _trend("Milky nails", "too_late")}, [{"id": "g", "name": "Milky nails"}],
+                        pool_ids=["g"])
+    _videos(prev, "g", [("g1", "2026-10-20")])
+    research_digest.load_previous(run)
+    since = date(2026, 10, 27)
+
+    def card(tid, seen):
+        return {"id": tid, "kind": "topic_trend", "name": tid.upper(), "updated_at": None,
+                "proof": {"last_seen_at": seen}}
+
+    trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50}, {"data": [
+        card("x", "2026-11-02T08:00:00Z"), card("y", "2026-10-20T08:00:00Z")], "page": 1, "has_more": True})
+    ids, covered, _ = research_digest.updated_lists(run, since)
+    assert ids == {"x"} and covered == set()                  # y was last seen before 27 Oct; x newer: page on
+    trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50, "page": 2}, {"data": [
+        card("z", "2026-10-21T08:00:00Z"), card("w", "2026-10-26T23:00:00Z")], "page": 2, "has_more": True})
+    ids, covered, _ = research_digest.updated_lists(run, since)
+    assert ids == {"x"} and covered == {"all"}
+    plan = research_digest.fetch_plan(run, {})
+    assert plan["reuse"] == ["g"] and plan["note"] is None
+
+
+def test_a_list_without_any_date_is_read_five_pages_and_reuses_nothing(tmp_path):
+    """Issue #168: with no updated_at and no last_seen_at on the cards, nothing tells how far back a page reaches: the
+    list is read for 5 pages (250 cards), nothing is reused, and the plan's note says so plainly."""
+    prev, run = _weekly(tmp_path, {"g": _trend("Milky nails", "too_late")}, [{"id": "g", "name": "Milky nails"}],
+                        pool_ids=["g"])
+    _videos(prev, "g", [("g1", "2026-10-20")])
+    research_digest.load_previous(run)
+    for page_no in range(1, 6):
+        trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50, "page": page_no}, {"data": [
+            {"id": f"t{page_no}", "kind": "topic_trend", "name": "T", "updated_at": None}],
+            "page": page_no, "has_more": True})
+    plan = research_digest.fetch_plan(run, {})
+    assert plan["reuse"] == [] and plan["fetch"] == ["g"]
+    assert plan["undated"] is True
+    assert "no update dates" in plan["note"] and "every trend is fetched again" in plan["note"]
+    # a list that is complete (no page follows) still covers: a dateless card counts as updated, the rest are not
+    trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50, "page": 6}, {"data": [],
+                                                                                         "page": 6, "has_more": False})
+    plan = research_digest.fetch_plan(run, {})
+    assert plan["reuse"] == ["g"] and plan["undated"] is False
+
+
 def test_cover_needs_a_plain_list_with_one_limit(tmp_path):
     prev, run = _weekly(tmp_path, {"g": _trend("Milky nails", "too_late")}, [{"id": "g", "name": "Milky nails"}],
                         pool_ids=["g"])

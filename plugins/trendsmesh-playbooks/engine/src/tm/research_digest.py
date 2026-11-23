@@ -58,6 +58,7 @@ CALLED = ("act_now", "past_peak")                    # TR9: the calls checked a 
 REFETCH = ("act_now", "still_rising", "past_peak")   # TR8: fetched again whether updated or not
 SECONDS_PER_CALL = 2.5   # issue #8: 142 get_trend_videos calls took about 6 minutes, rate limits included
 UPDATED_LISTS = "list_updated_*.json"
+UNDATED_PAGES = 5         # issue #168: a list whose cards carry no update date is read this far (250 cards), no more
 DEFAULT_FEED = "global"                              # list_trends' feed when none is given
 COVER_INPUTS = ("sort", "trend_type", "page", "limit")   # what may be given to a list that counts as cover
 CALLS = Path("library") / "trend_calls.jsonl"
@@ -239,6 +240,46 @@ def _on_or_before(when: object, since: date) -> bool:
         return False                                   # an unreadable date proves nothing
 
 
+def _before(when: object, since: date) -> bool:
+    try:
+        return isinstance(when, str) and d(when) < since
+    except ValueError:
+        return False
+
+
+def reaches_back(cards: list, since: date) -> bool:
+    """Whether a page of a list sorted `updated` reaches back to `since`: its oldest `updated_at` is on or before it,
+    or (issue #168: cards dated by `proof.last_seen_at`, which the list is not sorted by) every card of the page was
+    last changed before it."""
+    cards = [c for c in cards if isinstance(c, dict)]
+    return (_on_or_before(trends.oldest_updated_at(cards, updates_only=True), since)
+            or (bool(cards) and all(_before(trends.card_date(c), since) for c in cards)))
+
+
+def list_since(run: RunFolder) -> date | None:
+    """The previous run's reference date (00_raw/prev_snapshot.json's `params.ref`): how far back this week's list of
+    updated trends is read; None before `tm research previous` (or in a first run)."""
+    try:
+        return date.fromisoformat(_snapshot(run.path / PREV_SNAPSHOT)["params"]["ref"])
+    except (OSError, ValueError, KeyError, TypeError, Stop):
+        return None
+
+
+def page_on(cards: list, page_no: object, has_more: bool, since: date | None) -> tuple[bool, str | None]:
+    """Whether to read the next page of a list sorted `updated` (issue #168), and a note when the reason is worth
+    saying: no when nothing follows, when the page reaches back to `since`, or when `UNDATED_PAGES` pages are read and
+    this one has no update date (`updated_at`) on any card."""
+    if not has_more:
+        return False, None
+    if since is not None and reaches_back(cards, since):
+        return False, None
+    if trends.oldest_updated_at(cards, updates_only=True) is None and isinstance(page_no, int) \
+            and page_no >= UNDATED_PAGES:
+        return False, (f"these cards carry no update date, so the list is read for {UNDATED_PAGES} pages only: "
+                       "stop here; the fetch plan then fetches every trend again")
+    return True, None
+
+
 def _narrowed(tool_input: dict | None) -> bool:
     """Whether a saved list may not list every updated trend: an input other than `sort`,
     `trend_type`, `page` and `limit` (a `q` text, another feed, `include_general`, `as_of` ...) is
@@ -251,13 +292,19 @@ def _narrowed(tool_input: dict | None) -> bool:
 
 def updated_lists(run: RunFolder, since: date) -> tuple[set[str], set[str], bool]:
     """This run's `lists/list_updated_*` answers (TrendsMesh list_trends sort=updated): the ids
-    updated after `since` (a card without a readable `updated_at` counts as updated), the trend
-    types whose list is known to reach back to `since` ("all" for a list of every type), and whether
-    any list is saved. A list reaches back when every page from page 1 to its last saved page is
-    saved, and that last page says no page follows or its oldest card was updated on or before
-    `since` (`trends.oldest_updated_at`), and its pages were asked with one `limit`. A list given any other input (`q`, another
+    updated after `since` (a card is dated by `trends.card_date`: `updated_at`, else `proof.last_seen_at`; one
+    without either counts as updated), the trend types whose list is known to reach back to `since` ("all" for a
+    list of every type), and whether any list is saved. A list reaches back when every page from page 1 to its last
+    saved page is saved, and that last page says no page follows or reaches back (`reaches_back`), and its pages
+    were asked with one `limit`. A list given any other input (`q`, another
     `feed`, `include_general` ...) adds its updated ids but never reaches back: it may not list
     every trend."""
+    ids, covered, _, listed = _lists(run, since)
+    return ids, covered, listed
+
+
+def _lists(run: RunFolder, since: date) -> tuple[set[str], set[str], set[str], bool]:
+    """`updated_lists`, with the kinds whose list does not reach back and carries no update date (`_covered`)."""
     folder = run.path / trends.RESEARCH / "lists"
     files = sorted(folder.glob(UPDATED_LISTS)) if folder.is_dir() else []
     ids: set[str] = set()
@@ -274,20 +321,29 @@ def updated_lists(run: RunFolder, since: date) -> tuple[set[str], set[str], bool
         else:
             kind, page_no = (m.group(1), int(m.group(2))) if m else ("all", 1)
         cards = [c for c in trends.items(answer) if isinstance(c, dict) and c.get("id")]
-        ids |= {c["id"] for c in cards if not _on_or_before(c.get("updated_at"), since)}
+        ids |= {c["id"] for c in cards if not _on_or_before(trends.card_date(c), since)}
         if _narrowed(tool_input):
             continue
         pages.setdefault(kind, set()).add(page_no)
         limits.setdefault(kind, set()).add((tool_input or {}).get("limit"))
         if kind not in last or (page_no, order) > last[kind][:2]:
             last[kind] = (page_no, order, answer)
-    covered = set()
+    covered, undated = _covered(last, pages, limits, since)
+    return ids, covered, undated, bool(files)
+
+
+def _covered(last: dict, pages: dict, limits: dict, since: date) -> tuple[set[str], set[str]]:
+    """The kinds whose list reaches back to `since`, and the kinds whose list does not and whose last page carries
+    no update date (`updated_at`) on any card (issue #168: then the fetch plan says so plainly)."""
+    covered, undated = set(), set()
     for kind, (last_page, _, answer) in last.items():
         cards = [c for c in trends.items(answer) if isinstance(c, dict)]
         every_page = pages[kind] >= set(range(1, last_page + 1)) and len(limits[kind]) == 1
-        if every_page and (_no_next_page(answer) or _on_or_before(trends.oldest_updated_at(cards), since)):
+        if every_page and (_no_next_page(answer) or reaches_back(cards, since)):
             covered.add(kind)
-    return ids, covered, bool(files)
+        elif trends.oldest_updated_at(cards, updates_only=True) is None:
+            undated.add(kind)
+    return covered, undated
 
 
 def _pages(run: RunFolder, trend_id: str) -> int:
@@ -306,7 +362,7 @@ def _plan(run: RunFolder) -> dict:
                 "minutes_estimate": minutes(len(current)), "since": None, "previous_run": rel, "note": note}
     snap = _snapshot(stored)
     since = date.fromisoformat(snap["params"]["ref"])
-    updated, covered, listed = updated_lists(run, since)
+    updated, covered, undated, listed = _lists(run, since)
     again = {tid for tid, t in snap["trends"].items() if t.get("bucket") in REFETCH}
 
     def known_not_updated(tid: str) -> bool:
@@ -317,6 +373,10 @@ def _plan(run: RunFolder) -> dict:
     if not listed:
         note = ("no list of updated trends is saved (TrendsMesh list_trends, sort updated), so nothing is known to "
                 "be unchanged and every trend is fetched")
+    elif not covered and undated:              # issue #168: the cards carry no date to tell how far back a page goes
+        note = (f"TrendsMesh's list of updated trends gives no update dates (its cards have no updated_at and no "
+                f"last-seen date), so this run cannot tell which trends are unchanged since {since.isoformat()}: every "
+                f"trend is fetched again (the list is read for {UNDATED_PAGES} pages only, never more)")
     elif not covered:
         note = (f"the saved list of updated trends does not reach back to {since.isoformat()} (its last page has "
                 "more, and its last card is newer), so every trend is fetched; list more pages to reuse some")
@@ -328,6 +388,7 @@ def _plan(run: RunFolder) -> dict:
     calls = sum(_pages(prev, t) or 1 for t in fetch)
     return {"fetch": fetch, "reuse": reuse, "check": sorted(t for t in snap["trends"] if t not in evaluated),
             "calls_estimate": calls, "minutes_estimate": minutes(calls), "since": since.isoformat(),
+            "undated": bool(undated) and not covered,
             "previous_run": rel, "note": note}
 
 

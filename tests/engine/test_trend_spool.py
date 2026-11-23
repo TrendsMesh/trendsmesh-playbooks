@@ -164,6 +164,36 @@ def test_updated_list_summary_says_its_oldest_card(ws, capsys):
     assert none["oldest_updated_at"] is None
 
 
+def test_updated_list_summary_says_whether_to_read_the_next_page(ws, capsys):
+    """Issue #168: the summary dates a card by updated_at, else proof.last_seen_at, and says `read_next_page`: no
+    once a page reaches back to the previous run's date (00_raw/prev_snapshot.json), or once 5 pages without an
+    update date are read (the live cards came with updated_at null, and paging on while null read 143 pages)."""
+    _on(ws, capsys)
+    run = ws / RUN_REL
+    (run / "00_raw").mkdir(exist_ok=True)
+    (run / "00_raw" / "prev_snapshot.json").write_text(json.dumps({"params": {"ref": "2026-10-27"}, "trends": {}}),
+                                                     encoding="utf-8")
+
+    def page(no, cards, more=True):
+        return _summary(trend_spool.handle(_event(ws, "list_trends", {"sort": "updated", "limit": 50, "page": no},
+                                                  {"data": cards, "page": no, "has_more": more}), ws))
+
+    seen_new = {"id": "a", "kind": "topic_trend", "name": "A", "updated_at": None,
+                "proof": {"last_seen_at": "2026-11-02T08:00:00Z"}}
+    seen_old = {"id": "b", "kind": "topic_trend", "name": "B", "proof": {"last_seen_at": "2026-10-20T08:00:00Z"}}
+    got = page(1, [seen_new, seen_old])
+    assert got["oldest_updated_at"] == "2026-10-20T08:00:00Z" and got["read_next_page"] is True
+    assert page(2, [seen_old])["read_next_page"] is False                    # every card seen before 27 Oct
+    updated = {"id": "c", "kind": "topic_trend", "name": "C", "updated_at": "2026-10-26T08:00:00Z"}
+    assert page(2, [updated, seen_new])["read_next_page"] is False            # an update on or before 27 Oct
+    assert page(2, [seen_new], more=False)["read_next_page"] is False         # nothing follows
+    bare = {"id": "d", "kind": "topic_trend", "name": "D", "updated_at": None}
+    first = page(1, [bare])
+    assert first["read_next_page"] is True and first["no_dates"] is True and first["oldest_updated_at"] is None
+    fifth = page(5, [bare])
+    assert fifth["read_next_page"] is False and "5 pages" in fifth["note"]
+
+
 def test_get_trend_saved_not_replaced(ws, capsys):
     _on(ws, capsys)
     card = {"id": "t1", "kind": "topic_trend", "name": "Glass skin"}

@@ -36,7 +36,7 @@ what each does in a weekly run is under the step. In order:
 |---|---|---|
 | 1 | `cd` into the workspace, `tm run new --playbook trend-research --name <name> --after <last run>`, `tm config write --from-previous`, then the level if the user asked for one | A0 |
 | 2 | `tm research previous` (the snapshot, map, split and config of last week) | A2 |
-| 3 | `tm trends collect on`, the searches of last week's split, and the `list_trends sort=updated` list (unfiltered, from page 1 back to last week's date) | B1 |
+| 3 | `tm trends collect on`, the searches of last week's split, and the `list_trends sort=updated` list (unfiltered, from page 1 while `read_next_page`; at most 5 pages without dates) | B1 |
 | 4 | the map (with last week's review carried over) | B2, B3 |
 | 5 | the rising hooks, then `tm research map-change` | B4 |
 | 5b | the hooks' fit scores, then `tm research hook-fit` (the shortlist) | B4 |
@@ -204,11 +204,17 @@ TR1. The engine counts; you choose the phrases.
    row with its source. A thin leaf stays a leaf; depth 2 is still the limit.
 6. **A weekly run** also saves the updated list: `list_trends` with `sort` `updated` and **no
    filter** (no `trend_type`, `q` or `feed`), `limit` 50, from **page 1**, then the next `page`
-   while `has_more`, and stop once a page's summary gives an `oldest_updated_at` on or before the
-   previous run's reference date (its run date minus `growth.lag_days`, 2 days: the fetch plan's
-   `since`). When `oldest_updated_at` is null (the cards carry no `updated_at`), keep paging while
-   `has_more`. Without a list that reaches back that far, the fetch plan cannot tell what is
-   unchanged and fetches everything (its `note` says so: then list more pages).
+   **while the page's summary says `read_next_page: true`**, and stop when it says `false`. The
+   engine decides it against the previous run's reference date (its run date minus
+   `growth.lag_days`, 2 days: the fetch plan's `since`, from A2's `00_raw/prev_snapshot.json`): a
+   card is dated by its `updated_at`, else its `proof.last_seen_at` (`oldest_updated_at` is the
+   oldest of them). It stops once a page's oldest `updated_at` is on or before that date, or every
+   card on the page was last seen before it, or nothing follows. **When the cards carry no date at
+   all** (`no_dates: true`), it stops after **5 pages** (250 cards), never more: the fetch plan then
+   reuses nothing, fetches every trend again, and its `note` says so. Tell the user that note in
+   one plain line ("TrendsMesh's list gave no update dates, so this week fetches every trend
+   again"). Without a list that reaches back, for another reason, the plan's `note` says what is
+   missing (list more pages while `read_next_page` is true).
 7. `tm done B1 --run R` once `to_search` is empty.
 
 <a id="b2"></a>

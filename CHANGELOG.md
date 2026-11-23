@@ -15,6 +15,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
   record (`library/trend_calls.jsonl`). Now a call younger than 7 days (`digest.min_call_age_days`) is shown as
   "too early to judge" on the digest, is not written to the track record and does not count in the hit rate. The
   page says these calls are not judged later.
+- **Trend research: the weekly update reads the trends' own dates, and never pages through the whole list.**
+  TrendsMesh's list of updated trends came with no update date on its cards, so the run read about 143 pages and
+  still fetched every trend again. Now a card's date is its update date, else the day it was last seen, and the
+  list stops as soon as it reaches last week's run. When the cards carry no date at all, the run reads 5 pages at
+  most, fetches every trend again, and says so in one plain line.
 
 ## 0.14.0
 

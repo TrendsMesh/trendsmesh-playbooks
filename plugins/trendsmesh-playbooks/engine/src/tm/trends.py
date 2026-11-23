@@ -203,19 +203,35 @@ def _part(value: Any, fallback: str) -> str:
     return part
 
 
-def oldest_updated_at(cards: list) -> str | None:
-    """The oldest readable `updated_at` of these cards, as written, or None when none carries one
-    (a list sorted `updated` pages back until it reaches the previous run's date)."""
-    found = []
-    for c in cards:
-        when = c.get("updated_at") if isinstance(c, dict) else None
-        if not isinstance(when, str):
-            continue
-        try:
-            at = datetime.fromisoformat(when.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        found.append((at if at.tzinfo else at.replace(tzinfo=timezone.utc), when))
+def _moment(when: object) -> datetime | None:
+    if not isinstance(when, str):
+        return None
+    try:
+        at = datetime.fromisoformat(when.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return at if at.tzinfo else at.replace(tzinfo=timezone.utc)
+
+
+def updated_at(card: object) -> str | None:
+    """The card's readable `updated_at`, as written, else None."""
+    when = card.get("updated_at") if isinstance(card, dict) else None
+    return when if _moment(when) is not None else None
+
+
+def card_date(card: object) -> str | None:
+    """When a listed card last changed, as written: its readable `updated_at`, else its `proof.last_seen_at` (issue
+    #168: live list_trends cards came with `updated_at` null), else None."""
+    if not isinstance(card, dict):
+        return None
+    proof = card.get("proof") if isinstance(card.get("proof"), dict) else {}
+    return updated_at(card) or next((w for w in (proof.get("last_seen_at"),) if _moment(w) is not None), None)
+
+
+def oldest_updated_at(cards: list, *, updates_only: bool = False) -> str | None:
+    """The oldest date of these cards (`card_date`; `updates_only`: their `updated_at` alone), as written, or None
+    when none carries one (a list sorted `updated` pages back until it reaches the previous run's date)."""
+    found = [(_moment(w), w) for w in map(updated_at if updates_only else card_date, cards) if w]
     return min(found)[1] if found else None
 
 
