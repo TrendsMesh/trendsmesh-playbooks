@@ -13,6 +13,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **An idea in its own look no longer comes with your channel's style ticked.** On the ideas page, an idea made in
   another look than the channel's (for example a whiteboard) had "Your channel's style" picked in advance. Such an
   idea now has its first suggested style picked; your channel's style is still there to choose.
+- **On Free, an idea's reasons and the week plan can no longer pass a guess off as data.** The ideas and week checks
+  let "rising, 300 creators, 2M views" through in an idea's reason, although Free has no trend stage and no number
+  without its source. They now refuse a stage or a count in an idea's title, reason and steps, as the guesses check
+  does, and a percentage counts too.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

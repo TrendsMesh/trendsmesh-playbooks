@@ -287,7 +287,10 @@ TrendsMesh; every later step (D1 on) is the same as on Paid.
    id (g1, ...) with its `role` and **no `pick`** (a guess has no evidence videos); the approach is
    **Inspire** only (a Recreate needs two real videos repeating now, which only TrendsMesh gives),
    its weak link named; "why now" says where the trend was seen, never a stage or a number of yours.
-   `tm organic proposals check` refuses picks and a Recreate on Free.
+   `tm organic proposals check` refuses picks and a Recreate on Free, and, as the guesses check does,
+   a lifecycle stage or a count (creators, views, a percentage) in a proposal's `title`, `why` or
+   `beats`: a number lives only in its guess's `quote`. The week check does the same for each idea's
+   `title` and `why`.
 5. **C2, the ideas page** shows at the top that the ideas are guesses, each trend with a Guess label
    and where it was seen, and one "With TrendsMesh" box per idea: what TrendsMesh would show instead
    (creators, how early, two real videos to copy). Say the `notice` from `tm next` with the card. The

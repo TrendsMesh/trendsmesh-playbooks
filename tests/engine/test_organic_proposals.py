@@ -188,6 +188,24 @@ def test_recreate_needs_two_evidence_videos(tmp_path):
     assert set(_fields(_problems(run, data))) == {"m1.plugin.weak_link", "m6.plugin.weak_link", "m2.approach"}
 
 
+def test_on_free_an_ideas_words_hold_no_stage_and_no_count(tmp_path):
+    """Issue #170 item 1: on Free, "rising, 300 creators, 2M views" in a why, a title or a beat is refused, as in the
+    guesses check; on Paid it is TrendsMesh's data, and the same words pass."""
+    from tm import evidence
+
+    run = _idea_run(tmp_path)
+    data = exampleedu.proposals()
+    data["proposals"][0]["why"] = "rising, 300 creators, 2M views"
+    data["proposals"][1]["title"] = "Act now: the 2M views quiz"
+    data["proposals"][2]["beats"] = [*data["proposals"][2]["beats"], "300 creators already did it"]
+    said = {"m1.why", "m2.title", f"m3.beats[{len(data['proposals'][2]['beats']) - 1}]"}
+    assert not said & set(_fields(_problems(run, data)))
+    s = state.load(run)
+    s.evidence = evidence.GUESS
+    state.save(run, s)
+    assert said <= set(_fields(_problems(run, data)))
+
+
 def test_unknown_or_ambiguous_prefix_refused(tmp_path):
     run = _idea_run(tmp_path)
     full = exampleedu.full_ids()["c20bfd65"]

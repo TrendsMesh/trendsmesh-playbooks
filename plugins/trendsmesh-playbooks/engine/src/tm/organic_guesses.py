@@ -47,9 +47,10 @@ _DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # A lifecycle stage is TrendsMesh's, never a guess's (English and Polish, the page languages).
 _STAGE = re.compile(r"\b(rising|act now|too late|past peak|peaking|on the rise|rośnie|rosnąc\w*|za późno|"
                     r"po szczycie|działaj teraz)\b", re.IGNORECASE)
-# A count a reader would take as data: a number with a unit of reach.
-_COUNT = re.compile(r"\d[\d.,\s]*\s*(k|m|mln|tys\.?|%|views?|creators?|videos?|posts?|wyświetle\w*|twórc\w*|"
-                    r"film\w*)\b", re.IGNORECASE)
+# A count a reader would take as data: a number with a unit of reach, or a percentage ("%" is no word character, so
+# it stands outside the word boundary: "40% more" is a count too).
+_COUNT = re.compile(r"\d[\d.,\s]*\s*(%|(k|m|mln|tys\.?|views?|creators?|videos?|posts?|wyświetle\w*|twórc\w*|"
+                    r"film\w*)\b)", re.IGNORECASE)
 
 
 def is_free(run: RunFolder) -> bool:
@@ -60,6 +61,37 @@ def is_free(run: RunFolder) -> bool:
 
 def _text(value: object) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def as_data(text: object) -> str | None:
+    """What in `text` would pass a guess off as TrendsMesh data: "stage" (a lifecycle stage), "count" (a number with a
+    unit of reach), else None. The one rule of the guesses check, applied on Free to the ideas and the week too."""
+    if not isinstance(text, str):
+        return None
+    if _STAGE.search(text):
+        return "stage"
+    if _COUNT.search(text):
+        return "count"
+    return None
+
+
+def wording(idea: dict, where: str, keys: tuple[str, ...], out: list[Problem]) -> None:
+    """Issue #170: on Free an idea's own words (`keys`; a list's items one by one) give no lifecycle stage and no
+    number without its source (`as_data`): the guess's number lives in its `quote`, with the source's link."""
+    for key in keys:
+        value = idea.get(key)
+        texts = [(f"{where}.{key}[{i}]", t) for i, t in enumerate(value)] if isinstance(value, list) \
+            else [(f"{where}.{key}", value)]
+        for field, text in texts:
+            kind = as_data(text)
+            if kind == "stage":
+                out.append(Problem(field, f"{text!r} gives a lifecycle stage, and on Free there is none: only "
+                                          "TrendsMesh measures one.", "Say what you saw, not how far along it is."))
+            elif kind == "count":
+                out.append(Problem(field, f"{text!r} holds a count, which would read as TrendsMesh data, and on Free "
+                                          "no number appears without its source.",
+                                   "Drop the number: it belongs only in the guess's quote, with its source's link "
+                                   f"({FILE_PATTERN}), and the page shows it there."))
 
 
 def check(data: object, *, today: date | None = None) -> list[Problem]:
@@ -90,11 +122,11 @@ def check(data: object, *, today: date | None = None) -> list[Problem]:
         for key in ("name", "what"):
             if not _text(g.get(key)):
                 out.append(Problem(f"{at}.{key}", f"The guess has no {key}.", f"Write its {key}, one line."))
-            elif _STAGE.search(g[key]):
+            elif as_data(g[key]) == "stage":
                 out.append(Problem(f"{at}.{key}", f"{g[key]!r} gives a lifecycle stage, and on Free there is none: "
                                                   "only TrendsMesh measures one.",
                                    "Say what you saw, not how far along it is."))
-            elif _COUNT.search(g[key]):
+            elif as_data(g[key]) == "count":
                 out.append(Problem(f"{at}.{key}", f"{g[key]!r} holds a count, which would read as data.",
                                    "Put a number only in quote, as its source shows it, with the source's link."))
         source, url, quote = g.get("source"), g.get("url"), g.get("quote")
@@ -113,7 +145,7 @@ def check(data: object, *, today: date | None = None) -> list[Problem]:
         if quote is not None and not (_text(quote) and url):
             out.append(Problem(f"{at}.quote", "A number needs the link of the source that shows it.",
                                "Give the link, or drop the number."))
-        if quote is not None and _text(quote) and _STAGE.search(quote):
+        if quote is not None and _text(quote) and as_data(quote) == "stage":
             out.append(Problem(f"{at}.quote", f"{quote!r} gives a lifecycle stage.", "Quote the number alone."))
         day = g.get("seen_on")
         if not (isinstance(day, str) and _DAY.fullmatch(day)):

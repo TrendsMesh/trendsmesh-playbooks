@@ -903,8 +903,11 @@ def check(run: RunFolder, data: object, cfg: dict) -> list[Problem]:
     by_channel: dict[str, str | None] = {}
     kinds: dict[str, set] = {}
     resolved: dict[str, list[str]] = {}
+    free = organic_guesses.is_free(run)
     for p in proposals:
         pid = p["id"]
+        if free:   # issue #170: a guess's words never read as TrendsMesh data
+            organic_guesses.wording(p, pid, ("title", "why", "beats"), out)
         slug = run_channel(p["channel"], data, channels)
         by_channel[pid] = slug
         if slug is None:

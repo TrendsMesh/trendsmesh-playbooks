@@ -415,8 +415,11 @@ def check(run: RunFolder, week: object, cfg: dict) -> list[Problem]:
     own = (state.load(run).organic or {}).get("started") or {}
     own = {k: v.get("run") for k, v in own.items() if isinstance(v, dict)}
     entries = []
+    free = organic_guesses.is_free(run)
     for kind in ("slots", "reserves"):
         for i, idea in enumerate(week[kind]):
+            if free:   # issue #170: a guess's words never read as TrendsMesh data
+                organic_guesses.wording(idea, f"{kind}[{i}]", ("title", "why"), out)
             entries.append((_called(kind, idea), _idea_problems(run, week, idea, f"{kind}[{i}]", used, own, out)))
     one_used(entries, "slots", out)
     return out

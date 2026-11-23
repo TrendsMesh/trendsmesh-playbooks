@@ -174,3 +174,22 @@ def test_the_ideas_page_shows_the_guess_and_what_trendsmesh_would_add():
     assert "With TrendsMesh" in html and "— creators · — videos · stage —" in html
     assert "Recreate needs TrendsMesh" in html and ">Guess<" in html
     assert html.count("With TrendsMesh") == 1      # one box per idea, never one per trend
+
+
+@pytest.mark.parametrize("text,kind", [
+    ("rising, 300 creators, 2M views", "stage"), ("Rośnie od tygodnia", "stage"), ("300 creators on it", "count"),
+    ("2M views on the hashtag", "count"), ("40% more saves", "count"), ("A POV opener the kids copy", None),
+    ("Top 5 fruit", None)])
+def test_one_rule_finds_a_stage_or_a_count_in_any_words(text, kind):
+    """Issue #170 item 1: the rule `tm organic guesses check` applies to a guess's words, shared by the proposals
+    and week checks on Free."""
+    assert organic_guesses.as_data(text) == kind
+
+
+def test_an_ideas_words_on_free_hold_no_stage_and_no_count():
+    p = {"title": "POV: you finally", "why": "rising, 300 creators, 2M views", "beats": ["Hook", "2M views on it"]}
+    out: list[Problem] = []
+    organic_guesses.wording(p, "m1", ("title", "why", "beats"), out)
+    assert _fields(out) == ["m1.why", "m1.beats[1]"]
+    assert "lifecycle stage" in out[0].what and "Free" in out[0].what
+    assert "count" in out[1].what and "source" in out[1].todo
