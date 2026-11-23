@@ -101,7 +101,7 @@ the pack check that last changed its script, style or section, counts.
 
 A subagent builds the animation from its own prompt, `tm organic atlas-prompt ... --animation --from
 03_wip/<item>/storyboard_vNN.js` (the accepted storyboard's module, the user's notes on it and the pack's
-length in it; it asks for no storyboard), about 15 minutes, and about 2.5 minutes to render 750 frames: the
+length in it, at the storyboard's frame, voiceover, content and SRT; it asks for no storyboard), about 15 minutes, and about 2.5 minutes to render 750 frames: the
 module
 `03_wip/<item>/explainer_vNN.js`, then its page with `tm organic atlas-page --run R --item <item> --module
 03_wip/<item>/explainer_vNN.js --json`: `03_wip/<item>/explainer_vNN.html`, a page whose every frame is a

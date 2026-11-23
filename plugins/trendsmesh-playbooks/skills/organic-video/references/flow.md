@@ -1346,11 +1346,13 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      registry's ★ lip-sync model (its recipe, e.g. `kling-avatar-v2.md`) on the close-up frame; its contact sheet is
      checked for burned-in text.
    - **an animation** (free, no take, no QA tool): its own prompt first, `tm organic atlas-prompt
-     --run R --item <item> --style <the picked number> --voiceover --animation --from
-     03_wip/<item>/storyboard_vNN.js --aspect 9:16 --content 03_wip/<item>/content_v01.txt --srt <the
-     word SRT> --json` (refused until the storyboard is accepted; `--from` is the module the accepted
-     sheet was drawn from, and any other is refused; the prompt carries that module, the user's notes
-     on the storyboard from the images check-in and the pack's length, and asks for no storyboard).
+     --run R --item <item> --style <the picked number> --animation --from
+     03_wip/<item>/storyboard_vNN.js --json` (refused until the storyboard is accepted; `--from` is the
+     module the accepted sheet was drawn from, and any other is refused; the frame, the voiceover, the
+     content file and the word SRT are the storyboard prompt's, so `--aspect`, `--voiceover`,
+     `--content` and `--srt` can be left out, and one that differs from the storyboard's is refused; the
+     prompt carries that module, the user's notes on the storyboard from the images check-in and the
+     pack's length, and asks for no storyboard).
      A subagent writes the animation's style module from it, `03_wip/<item>/explainer_v01.js` (about
      15 minutes, appending to `03_wip/<item>/_progress.txt`); `tm organic atlas-page --run R --item
      <item> --module 03_wip/<item>/explainer_v01.js --json` builds its page (`window.seek`,

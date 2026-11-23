@@ -393,3 +393,39 @@ def test_the_full_animations_prompt_comes_from_the_accepted_storyboards_module(m
     code, out = _cli(capsys, "organic", "atlas-prompt", "--run", str(run.path), "--item", "m1", "--style", "14",
                      "--from", "03_wip/M1/storyboard_v01.js")
     assert code == 1 and "give --animation with it" in out["message"]
+
+
+def _accept_storyboard(run, capsys, popen):
+    """M1's storyboard_v01.js drawn into a sheet and picked (the accepted storyboard of the full animation)."""
+    from test_atlas_prompt import _draws_storyboard
+
+    module = atlas_prompt.module_path(atlas_prompt.find_style("14")).read_text(encoding="utf-8")
+    (run.path / "03_wip" / "M1" / "storyboard_v01.js").write_text(module, encoding="utf-8")
+    assert _cli(capsys, "organic", "atlas-page", "--run", str(run.path), "--item", "M1", "--storyboard", "--module",
+                "03_wip/M1/storyboard_v01.js")[0] == 0
+    popen.act = _draws_storyboard(panels=6)
+    code, out = _cli(capsys, "organic", "storyboard", "--run", str(run.path), "--item", "M1", "--page",
+                     "03_wip/M1/storyboard_v01.html")
+    assert code == 0, out
+    assert _cli(capsys, "organic", "pick", "--run", str(run.path), "--stage", "storyboard", "--name", "M1", "--file",
+                out["sheet"], "--reason", "kept")[0] == 0
+
+
+@pytest.mark.private_data
+def test_the_full_animation_takes_its_frame_and_voiceover_from_the_storyboards_prompt(m1, capsys, popen):
+    """Issue 173 item 1: `--animation` with no --aspect builds at the storyboard prompt's frame (9:16 here, not 16:9)
+    and keeps its voiceover; a flag that says otherwise is refused, one that agrees passes."""
+    run = m1
+    _accept_storyboard(run, capsys, popen)
+    argv = ("organic", "atlas-prompt", "--run", str(run.path), "--item", "m1", "--style", "14", "--animation")
+    code, out = _cli(capsys, *argv, "--aspect", "1:1")
+    assert code == 1 and "storyboard" in out["message"] and "9:16" in out["message"] and "1:1" in out["message"], out
+    (run.path / "brief.txt").write_text("the topic", encoding="utf-8")
+    code, out = _cli(capsys, *argv, "--content", "brief.txt")
+    assert code == 1 and "--content" in out["message"], out
+    code, out = _cli(capsys, *argv)
+    assert code == 0, out
+    params = json.loads(next(r for r in reversed(manifest.rows(run)) if r["file"] == out["file"])["params"])
+    assert params["aspect"] == "9:16" and params["voiceover"] is True and params["animation"] is True, params
+    assert "1080" in (run.path / out["file"]).read_text(encoding="utf-8")
+    assert _cli(capsys, *argv, "--aspect", "9:16", "--voiceover")[0] == 0
