@@ -96,6 +96,7 @@ def _load_commands() -> None:
     import tm.offer  # noqa: F401
     import tm.organic  # noqa: F401
     import tm.page  # noqa: F401
+    import tm.permissions  # noqa: F401
     import tm.r2  # noqa: F401
     import tm.r2b  # noqa: F401
     import tm.r4  # noqa: F401

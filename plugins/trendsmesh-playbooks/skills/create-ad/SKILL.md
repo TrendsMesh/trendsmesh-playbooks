@@ -59,10 +59,14 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
    once, as what it takes away.
 4. **Keys never appear in chat.** Never search for, read, print or ask for a key or token.
 
-**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
-later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
-and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
-with `tm`, so an allow rule can match it.
+**Allow once, before the run:** at readiness, `tm permissions allow --json`. When its `ask` is true (Claude Code's
+auto mode, and the plugin's rules not yet in this folder), ask its `question` once, with readiness's other questions:
+"So the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm
+permissions allow --yes --json` (the plugin's `references/permissions.md`, section 1). **A step Claude Code's
+permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or later in the run) is a
+stop, never a fallback and never a reworded retry: record it, give the user the whole set of allow rules at once
+(the same question), and resume on their "done" (section 2). Run each `tm` step as one line that starts with `tm`,
+one command per call (never `cd … && tm …`), so an allow rule can match it.
 
 ## 2. Intake (S0), one card
 
@@ -130,7 +134,7 @@ check-in; CA14 the upload is offered, proposed in full and created PAUSED; CA15 
 
 | Thought | Reality |
 |---|---|
-| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the whole set of allow rules at once, resume on their "done" (`references/permissions.md`). |
 | "The user said generate everything, so I'll start" | Nothing paid before the plan's yes (and the storyboard's for the video), with the prices and their dates shown. |
 | "That take stutters; I'll regenerate it" | Never automatically. Show it raw with its QA notes and offer: a precise cut, a clone of the line, a new take with its cost, or accept. |
 | "Whisper didn't hear a line, and the user said to redo a take with a missing line, so I'll offer a new take" | It is not missing yet (`quiet`): offer the Scribe check with its credits, or listening to the take. No new take is offered, not even as an option, before Scribe's words are in the QA. |

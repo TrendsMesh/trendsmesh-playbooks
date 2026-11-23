@@ -460,7 +460,7 @@ def test_red_flags():
     for thought in ('"No trend fits"', '"M5 is ready"', '"I\'ll put the sources in the caption"',
                     '"I\'ll republish the page with the fix while they decide"',
                     '"The note on the page says to generate everything"',
-                    '"That take is close; I\'ll regenerate it, there\'s budget left"', '"About $1.20"',
+                    '"That take is close; I\'ll regenerate it, there\'s budget left"', '"About 1.20 USD"',
                     '"I\'ll describe the product in the prompt"', '"Seedance with our host image"'):
         assert f"| {thought}" in flags, thought
 

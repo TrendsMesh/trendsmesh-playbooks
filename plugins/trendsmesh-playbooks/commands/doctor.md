@@ -98,8 +98,16 @@ name none, a short general check; and write a support report they can read and s
 6. When the edited or AI video tools are needed, say once: Remotion is free for individuals and
    companies of up to 3 people; a company of 4 or more needs its own Remotion licence.
 
-A check or any later step that Claude Code's permissions refuse (auto mode or a deny rule) is a stop with the allow
-rule to add, never a reworded retry: `references/permissions.md`.
+**Allow once, before the run** (every playbook's check; not the general check): after the card, run `tm
+permissions allow --json` (a dry run, it writes nothing). When its `ask` is true (Claude Code's auto mode, and the
+plugin's rules are not in this folder's settings yet), ask its `question` once, with the card's other questions: "So
+the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm permissions
+allow --yes --json` adds `Bash(tm *)`, `PowerShell(tm *)` and `Artifact` to `.claude/settings.local.json` in this
+folder, merged with their own rules (`references/permissions.md`, section 1). `ask` false: say nothing about it.
+
+A check or any later step that Claude Code's permissions refuse (auto mode or a deny rule) is a stop with the whole
+set of allow rules at once (the same question), never one rule at a time and never a reworded retry: an
+`artifacts=denied` row too (`references/permissions.md`, section 2).
 
 **General check.** No playbook was chosen: a short check of what every playbook shares (the base
 tools, the Replicate and ElevenLabs keys, the TrendsMesh sign-in). It never looks at Meta Ads: call

@@ -8,7 +8,7 @@ description: "Use when the user wants organic short videos for TikTok, Instagram
 Posts what is rising, without filming. For one channel (a brand's faceless channel, a creator or
 an operator) it builds the channel profile once, searches TrendsMesh in the channel's bubble,
 proposes video ideas built on rising trends (by default 5 ideas, or as many as the user needs, up to 12),
-each with its evidence videos and numbers, on one **proposals page**, and turns each idea the user picks into **a script to film** ($0: a script
+each with its evidence videos and numbers, on one **proposals page**, and turns each idea the user picks into **a script to film** (0 USD: a script
 page with a Markdown download and a posting kit for TikTok, Instagram Reels, YouTube Shorts and
 Facebook Reels) or **a ready AI video** (AI footage, a talking character, an animation in one of the
 plugin's own styles, stills with motion graphics (in the format of the trend's videos) or a video in
@@ -98,10 +98,14 @@ run **with the run's own output**, so a user who wants ideas installs nothing he
    part, not masked, not their length. The user sets them in `/plugin` → **Installed** →
    trendsmesh-playbooks → **Configure options**; the doctor says whether each is set.
 
-**A step Claude Code's permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or
-later in the run) is a stop, never a fallback and never a reworded retry: record it, give the user the allow rule,
-and resume on their "done" (the plugin's `references/permissions.md`). Run each `tm` step as one line that starts
-with `tm`, so an allow rule can match it.
+**Allow once, before the run:** at readiness, `tm permissions allow --json`. When its `ask` is true (Claude Code's
+auto mode, and the plugin's rules not yet in this folder), ask its `question` once, with readiness's other questions:
+"So the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm
+permissions allow --yes --json` (the plugin's `references/permissions.md`, section 1). **A step Claude Code's
+permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or later in the run) is a
+stop, never a fallback and never a reworded retry: record it, give the user the whole set of allow rules at once
+(the same question), and resume on their "done" (section 2). Run each `tm` step as one line that starts with `tm`,
+one command per call (never `cd … && tm …`), so an allow rule can match it.
 
 ## 2. Intake (A0), one batch of questions
 
@@ -194,7 +198,7 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   level. Every paid Replicate call is `tm tool replicate_run --run R <spec> --name <item> --cost
   <its line cost>`, under the engine's guard: **a video is never regenerated without the user's
   request** (`tm organic redo`), an image at most once by rule, an unfinished take is resumed for
-  free (`--resume`), never run again, and a failed prediction is recorded as $0. A pack re-planned
+  free (`--resume`), never run again, and a failed prediction is recorded as 0 USD. A pack re-planned
   to a higher cost needs a new yes (`tm decide pack approve --said "<their words>" --change`). **A redo is paid for only
   once the pack prices it**: its own cost line in the next pack version, checked, the user's yes
   to the new total, then `tm budget approve` (`flow.md#e2`, "Paying for a redo").
@@ -295,7 +299,7 @@ R3: every number has a source, and a hypothesis is never a finding.
 
 | Thought | Reality |
 |---|---|
-| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the allow rule, resume on their "done" (`references/permissions.md`). |
+| "Claude Code refused it; I'll reword it, retry another way or go on locally" | Never. Stop with `tm stop --reason permission_denied`, give the whole set of allow rules at once, resume on their "done" (`references/permissions.md`). |
 | "No trend fits" | Never "no trend found". Show the best fit there is, with its numbers, marked weak (an Inspire with its weak link, or a transfer as a hypothesis). |
 | "M5 is ready" | Never a bare code. Name the video by what it is: "the ChatGPT age-limit host video is ready". |
 | "I'll put the sources in the caption" | Sources go in the pack and the script's fact check only, never in any post text (OV11, OV14). `tm kit check` refuses them. |
@@ -310,7 +314,7 @@ R3: every number has a source, and a hypothesis is never a finding.
 | "Two risks named, so it can't be low" | The level is the highest risk left after its mitigation, by its weight for the production type (`tm organic proposals check` says it), never the count. |
 | "Make it an AI video, they'll like it more" | The output is the user's choice, on the page or in chat. |
 | "That take is close; I'll regenerate it, there's budget left" | Never. A video is never regenerated without the user's request: show them the take and its QA findings and ask, with the redo's cost (`tm organic redo`, then the pack re-planned with its line and their yes, `flow.md#e2`). |
-| "About $1.20" | Never a cost from memory. Every cost comes from the saved price file and its date (`tm tool replicate_price`, in the pack): "$1.20 (MiniMax H3, $0.08 a second, checked on <date>)". |
+| "About 1.20 USD" | Never a cost from memory. Every cost comes from the saved price file and its date (`tm tool replicate_price`, in the pack): "1.20 USD (MiniMax H3, 0.08 USD a second, checked on <date>)". |
 | "I'll describe the product in the prompt" | A product enters only from an image, never from words: a packshot from the store's catalogue (`tm brand packshot`), as an input image or a reference (OV5). |
 | "Seedance with our host image" | Seedance refuses a photoreal face (E005). A host image goes to MiniMax H3 reference mode; Seedance takes a person described in text. |
 | "The profile is saved, so it is confirmed" | A channel's profile is confirmed by the user at the profile check-in, every time it is new (`tm brand save --confirmed` after their yes). |

@@ -21,6 +21,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
   "With TrendsMesh" box, and the week plan asked for an evidence video Free does not have. The week stage now has
   the same banner, labels and box as the ideas page, each idea shows where its trend was seen instead of a video
   link, and a week plan without evidence links builds.
+- **In auto mode a run asks once, before it starts, instead of stopping on the way.** Claude Code's auto mode
+  refused the plugin's steps one at a time, so a run could stop six times for a missing permission. Now, at
+  readiness, the playbook asks once: "So the run doesn't stop on the way, allow the plugin's commands and its
+  pages?" On yes it adds `Bash(tm *)`, `PowerShell(tm *)` and `Artifact` to `.claude/settings.local.json` in your
+  folder, next to your own rules (`tm permissions allow`). A step still refused gives the whole set at once, and
+  the permissions list names every command a run uses.
+- **Amounts in the playbooks' instructions read right.** Claude Code took the dollar amounts in a skill's text
+  (a script to film for zero dollars, an AI video for one dollar twenty) for its arguments; they are now written
+  as "0 USD" and "1.20 USD".
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

@@ -82,6 +82,17 @@ case "$tool" in
   *) exit 0 ;;
 esac
 [ "$tool" = Grep ] || gpaths=$targets
+# Not a rule: before a `tm permissions` command (issue #163), the session's permission mode, which only a hook is
+# told, and Claude Code's project folder go to the data folder for that command to read (tm/permissions.py), as one
+# line: <epoch seconds> TAB <mode> TAB <folder>. Nothing is printed; a failure is ignored.
+case "$tool" in Bash|PowerShell)
+  if [ -n "${CLAUDE_PLUGIN_DATA:-}" ] && [ -d "$CLAUDE_PLUGIN_DATA" ] \
+    && printf '%s\n' "$targets" | grep -qE '^[[:space:]]*tm[[:space:]]+permissions([[:space:]]|$)'; then
+    pmode=$(get '^permission_mode$' | head -n 1 | tr -d '\t ')
+    proj=${CLAUDE_PROJECT_DIR:-$(get '^cwd$' | head -n 1)}
+    (printf '%s\t%s\t%s\n' "$(date +%s)" "$pmode" "$proj" > "$CLAUDE_PLUGIN_DATA/permission-mode") 2>/dev/null || :
+  fi ;;
+esac
 all=$(get '^tool_input\.')
 q="'"
 # Three readings of the paths: as written (P), without quotes and backticks (Q: "$X"/a), and

@@ -3,8 +3,8 @@
 # (run_page.*: the template's, issue #60), every playbook's start card and name (run_page.start, run_page.playbook:
 # issue #156), Create an ad's promise phrases (checks.promise_*), the Smart App Control message
 # (env.smart_app_control and env.smart_app_control_unnamed, issue #123), the words of an update's environments
-# (env.freed, env.install_failed, doctor.earlier, issue #161) and Refresh an ad's diagnosis report (diagnosis.*,
-# issue #171); every other
+# (env.freed, env.install_failed, doctor.earlier, issue #161), Refresh an ad's diagnosis report (diagnosis.*,
+# issue #171) and the allow question at readiness (permissions.*, issue #163); every other
 # string Polish needs is the agent's translation, kept in the plugin data folder (tm i18n export / import), and a kept
 # translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
 
@@ -27,6 +27,14 @@ strings:
   doctor:
     # a missing tier an earlier plugin version had (issue #161)
     earlier: "Aktualizacja do {version} instaluje {what} jeszcze raz (miała je wcześniejsza wersja): około {size}, około {minutes} min."
+  permissions:
+    # one question at readiness, in Claude Code's auto mode, and tm permissions allow (issue #163)
+    question: "Żeby run nie zatrzymywał się po drodze, pozwolić na polecenia wtyczki i jej strony?"
+    would_add: "Po „tak” te reguły trafią do permissions.allow w {file}: {rules}."
+    added: "Dodano do permissions.allow w {file}: {rules}. Claude Code odczyta zmianę bez ponownego uruchomienia."
+    all_there: "Polecenia i strony wtyczki są już dozwolone w tym folderze."
+    invalid: "{file} nie jest poprawnym JSON-em ({error}), więc nic nie zmieniono. Popraw go albo dodaj ręcznie te reguły do permissions.allow: {rules}."
+    shape: "{file} nie ma kształtu ustawień Claude Code (obiekt, w którym permissions.allow jest listą), więc nic nie zmieniono. Popraw go albo dodaj ręcznie te reguły do permissions.allow: {rules}."
   diagnosis:
     # Refresh an ad: the diagnosis report when the run ends at G1a (issue #171), Markdown: keep the table pipes
     title: "Raport z diagnozy: {ad}"
