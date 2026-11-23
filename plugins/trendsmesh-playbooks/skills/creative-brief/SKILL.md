@@ -325,7 +325,7 @@ finding. R6: formats follow placements. R7: primary text, headline and thumbnail
 | "It's a hook, but call it a format" | A `hook_trend` is a hook, "Rising hook", in every output (CB6). |
 | "I'll pick the persona from the grid myself" | `tm audience pick` applies CB1, after the hypothesis is recorded. |
 | "No TrendsMesh, so call my idea a rising trend" | A guess run's first glance row is "Hook (agent's guess)", and nothing says "Rising". |
-| "The budget is probably $500" | An optional value nobody gave is "to set". Never invented. |
+| "The budget is probably 500 USD" | An optional value nobody gave is "to set". Never invented. |
 | "Ask everything at once to save time" | One product question, then one card; after that, one plain question at a time. |
 
 ## References

@@ -8,7 +8,7 @@ description: "Use when the user wants organic short videos for TikTok, Instagram
 Posts what is rising, without filming. For one channel (a brand's faceless channel, a creator or
 an operator) it builds the channel profile once, searches TrendsMesh in the channel's bubble,
 proposes video ideas built on rising trends (by default 5 ideas, or as many as the user needs, up to 12),
-each with its evidence videos and numbers, on one **proposals page**, and turns each idea the user picks into **a script to film** ($0: a script
+each with its evidence videos and numbers, on one **proposals page**, and turns each idea the user picks into **a script to film** (0 USD: a script
 page with a Markdown download and a posting kit for TikTok, Instagram Reels, YouTube Shorts and
 Facebook Reels) or **a ready AI video** (AI footage, a talking character, an animation in one of the
 plugin's own styles, stills with motion graphics (in the format of the trend's videos) or a video in
@@ -198,7 +198,7 @@ describe a step's work, read its section in `references/flow.md` (the `ref`): ne
   level. Every paid Replicate call is `tm tool replicate_run --run R <spec> --name <item> --cost
   <its line cost>`, under the engine's guard: **a video is never regenerated without the user's
   request** (`tm organic redo`), an image at most once by rule, an unfinished take is resumed for
-  free (`--resume`), never run again, and a failed prediction is recorded as $0. A pack re-planned
+  free (`--resume`), never run again, and a failed prediction is recorded as 0 USD. A pack re-planned
   to a higher cost needs a new yes (`tm decide pack approve --said "<their words>" --change`). **A redo is paid for only
   once the pack prices it**: its own cost line in the next pack version, checked, the user's yes
   to the new total, then `tm budget approve` (`flow.md#e2`, "Paying for a redo").
@@ -314,7 +314,7 @@ R3: every number has a source, and a hypothesis is never a finding.
 | "Two risks named, so it can't be low" | The level is the highest risk left after its mitigation, by its weight for the production type (`tm organic proposals check` says it), never the count. |
 | "Make it an AI video, they'll like it more" | The output is the user's choice, on the page or in chat. |
 | "That take is close; I'll regenerate it, there's budget left" | Never. A video is never regenerated without the user's request: show them the take and its QA findings and ask, with the redo's cost (`tm organic redo`, then the pack re-planned with its line and their yes, `flow.md#e2`). |
-| "About $1.20" | Never a cost from memory. Every cost comes from the saved price file and its date (`tm tool replicate_price`, in the pack): "$1.20 (MiniMax H3, $0.08 a second, checked on <date>)". |
+| "About 1.20 USD" | Never a cost from memory. Every cost comes from the saved price file and its date (`tm tool replicate_price`, in the pack): "1.20 USD (MiniMax H3, 0.08 USD a second, checked on <date>)". |
 | "I'll describe the product in the prompt" | A product enters only from an image, never from words: a packshot from the store's catalogue (`tm brand packshot`), as an input image or a reference (OV5). |
 | "Seedance with our host image" | Seedance refuses a photoreal face (E005). A host image goes to MiniMax H3 reference mode; Seedance takes a person described in text. |
 | "The profile is saved, so it is confirmed" | A channel's profile is confirmed by the user at the profile check-in, every time it is new (`tm brand save --confirmed` after their yes). |
