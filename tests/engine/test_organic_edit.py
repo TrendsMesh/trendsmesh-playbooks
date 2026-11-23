@@ -451,7 +451,7 @@ def test_a_real_cover_is_measured_and_moved(drawn, monkeypatch, capsys):
                            "--face", "380,300,320,360", "--json"])
     out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert code == 0, out
-    assert out["changes"] and out["changes"][0].startswith("moved down")
+    assert out["changes"][0] == cover_fit.STATIC_SAID and out["changes"][1].startswith("moved down")
     assert out["outputs"] == ["04_final/kits/cover_M5_v01.png"]
     fitted = json.loads((drawn.path / out["props"]).read_text(encoding="utf-8"))["captions"][0]
     assert 260 + fitted["offsetY"] >= 660                     # below the head (y 120 to 660)

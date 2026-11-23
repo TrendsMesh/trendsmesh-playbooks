@@ -11,7 +11,19 @@ export type OverlayKind = "hook" | "label" | "number" | "cta" | "end";
 // `ink`: the text on the accent, dark or white by contrast; `logo`: the brand's logo PNG in the run, on the end card
 // (without one the card shows the brand's name only)
 // `size`: the size it is drawn at, px at 1080, instead of its kind's (a face's fix, issue #139)
-export type Overlay = { kind: OverlayKind; family: Look; sub?: string; brand?: string; accent?: string; ink?: string; logo?: string; size?: number };
+// `fill`: the colour of the words instead of the family's white, their outline the opposite (a light picture under
+// a cover's text); `backing`: a dark box behind a hook, label or CTA that has none (tm tool cover_fit, issue #165)
+export type Overlay = { kind: OverlayKind; family: Look; sub?: string; brand?: string; accent?: string; ink?: string; logo?: string; size?: number; fill?: string; backing?: boolean };
+
+// A still (the cover) is drawn at this frame of every animation, with no exit: each one has ended (issue #165)
+export const SETTLED = 1000;
+// A colour is dark when its relative luminance is under 0.18 (then its outline is white)
+const dark = (hex: string) => {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return false;
+  const lin = (v: string) => { const s = parseInt(v, 16) / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * lin(m[1]) + 0.7152 * lin(m[2]) + 0.0722 * lin(m[3]) < 0.18;
+};
 
 const DARK = "#111111";
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
@@ -44,9 +56,11 @@ const parse = (text: string) => {
 const STROKE: Partial<Record<Look, number>> = { outline: 0.15, karaoke: 0.14, pop: 0.13, marker: 0.15 };
 
 // One line of overlay text in the family's look; words animate in one after another where the family does that.
-const Words: React.FC<{ text: string; family: Look; size: number; k: number; accent: string; frame: number; fps: number; onBox?: boolean; ink?: string }> = ({ text, family, size, k, accent, frame, fps, onBox, ink = DARK }) => {
+const Words: React.FC<{ text: string; family: Look; size: number; k: number; accent: string; frame: number; fps: number; onBox?: boolean; ink?: string; fill?: string }> = ({ text, family, size, k, accent, frame, fps, onBox, ink = DARK, fill }) => {
   const words = parse(family === "quiet" ? text.toLowerCase() : family === "pop" ? text.toUpperCase() : text);
   const gap = (0.08 + (onBox && family === "marker" ? 0 : (STROKE[family] ?? 0)) / 2) * size;
+  const light = fill ?? "#fff"; // the words' colour, and their outline the opposite
+  const edge = fill && dark(fill) ? "#fff" : "#000";
   return (
     <>
       {words.map(({ w, key }, i) => {
@@ -55,7 +69,7 @@ const Words: React.FC<{ text: string; family: Look; size: number; k: number; acc
         switch (family) {
           case "outline": {
             const p = interpolate(f, [0, 5], [0.6, 1], { ...clamp, easing: Easing.out(Easing.back(2.2)) });
-            Object.assign(s, { fontWeight: 900, color: key ? accent : "#fff", transform: `scale(${p})`, opacity: f < 0 ? 0 : 1, textShadow: shadow(k) }, stroke(0.15 * size));
+            Object.assign(s, { fontWeight: 900, color: key ? accent : light, transform: `scale(${p})`, opacity: f < 0 ? 0 : 1, textShadow: shadow(k) }, stroke(0.15 * size, edge));
             break;
           }
           case "pill":
@@ -64,38 +78,38 @@ const Words: React.FC<{ text: string; family: Look; size: number; k: number; acc
               : { fontWeight: 800 });
             break;
           case "block":
-            Object.assign(s, { fontWeight: 700, color: key ? accent : "#fff" });
+            Object.assign(s, { fontWeight: 700, color: key ? accent : light });
             break;
           case "karaoke": {
             // read-along: the line is there at once, dimmed, and each word lights up in turn
             const lit = f >= 0;
-            Object.assign(s, { fontWeight: 800, color: lit && key ? accent : "#fff", opacity: lit ? 1 : 0.45, textShadow: shadow(k) }, stroke(0.14 * size));
+            Object.assign(s, { fontWeight: 800, color: lit && key ? accent : light, opacity: lit ? 1 : 0.45, textShadow: shadow(k) }, stroke(0.14 * size, edge));
             break;
           }
           case "pop": {
             const sp = spring({ frame: Math.max(0, f), fps, config: { damping: 9, stiffness: 240, mass: 0.6 } });
-            Object.assign(s, { fontWeight: 900, color: key ? accent : "#fff", opacity: f < 0 ? 0 : 1, transform: `translateY(${(1 - sp) * 40 * k}px) scale(${0.55 + 0.45 * sp})`, textShadow: shadow(k) }, stroke(0.13 * size));
+            Object.assign(s, { fontWeight: 900, color: key ? accent : light, opacity: f < 0 ? 0 : 1, transform: `translateY(${(1 - sp) * 40 * k}px) scale(${0.55 + 0.45 * sp})`, textShadow: shadow(k) }, stroke(0.13 * size, edge));
             break;
           }
           case "native":
             Object.assign(s, { fontWeight: 600 });
             break;
           case "quiet":
-            Object.assign(s, { fontWeight: key ? 700 : 500, color: "#fff" });
+            Object.assign(s, { fontWeight: key ? 700 : 500, color: light });
             break;
           case "marker": {
             const p = key ? ease(frame - 5, 8) : 0;
             const covered = p > 0.45;
             Object.assign(s, {
               fontWeight: 800,
-              color: covered ? ink : "#fff",
+              color: covered ? ink : light,
               backgroundImage: key ? `linear-gradient(${accent}, ${accent})` : undefined,
               backgroundRepeat: "no-repeat",
               backgroundPosition: "left center",
               backgroundSize: `${p * 100}% 80%`,
               padding: key ? `0 ${0.12 * size}px` : undefined,
               textShadow: covered || onBox ? undefined : shadow(k),
-              ...(covered || onBox ? {} : stroke(0.15 * size)),
+              ...(covered || onBox ? {} : stroke(0.15 * size, edge)),
             });
             break;
           }
@@ -126,9 +140,9 @@ const boxOf = (family: Look, k: number, accent: string, kind: OverlayKind, ink: 
   }
 };
 
-// Whole-overlay entrance and exit, per family
-const motion = (family: Look, frame: number, fps: number, dur: number, k: number): React.CSSProperties => {
-  const out = interpolate(frame, [dur - 4, dur], [1, 0], clamp);
+// Whole-overlay entrance and exit, per family (a still: the entrance ended, no exit)
+const motion = (family: Look, frame: number, fps: number, dur: number, k: number, still = false): React.CSSProperties => {
+  const out = still ? 1 : interpolate(frame, [dur - 4, dur], [1, 0], clamp);
   switch (family) {
     case "pill": {
       const sp = spring({ frame, fps, config: { damping: 11, stiffness: 220, mass: 0.6 } });
@@ -152,16 +166,22 @@ const motion = (family: Look, frame: number, fps: number, dur: number, k: number
 
 const SIZES: Record<OverlayKind, number> = { hook: 62, label: 40, number: 150, cta: 54, end: 96 };
 
-export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFamily: string; durFrames: number; language?: string }> = ({ text, o, k, fontFamily: brandFont, durFrames, language }) => {
+// `still`: a still (the cover, issue #165): every word in its final state, whatever the frame
+export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFamily: string; durFrames: number; language?: string; still?: boolean }> = ({ text, o, k, fontFamily: brandFont, durFrames, language, still = false }) => {
   const fontFamily = o.family === "native" ? loadFor("TikTokSans", language, ["500", "600", "700", "800", "900"]) : brandFont;
-  const frame = useCurrentFrame();
+  const live = useCurrentFrame();
+  const frame = still ? SETTLED : live;
+  const nudge = (f: number) => (still ? 0 : Math.sin(f)); // the CTA's arrow and button move only in the video
   const { fps } = useVideoConfig();
   const accent = o.accent ?? "#FFD84D";
   const ink = o.ink ?? DARK;
   const fam = o.family;
   const base = (o.size ?? SIZES[o.kind] * (fam === "pop" && o.kind !== "number" ? 1.25 : fam === "quiet" ? 0.85 : 1)) * k;
-  const m = motion(fam, frame, fps, durFrames, k);
-  const box = boxOf(fam, k, accent, o.kind, ink);
+  const m = motion(fam, frame, fps, durFrames, k, still);
+  const own = boxOf(fam, k, accent, o.kind, ink);
+  // a backing where the family draws no box (a light picture under the text, issue #165): block's dark box
+  const box: React.CSSProperties = o.backing && Object.keys(own).length === 0
+    ? { background: "rgba(10,10,10,0.66)", borderRadius: 18 * k, padding: `${14 * k}px ${28 * k}px` } : own;
   const onBox = Object.keys(box).length > 0 && fam !== "pop";
 
   if (o.kind === "number") {
@@ -232,7 +252,7 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
             {fam === "pill" ? <span style={{ fontWeight: 900 }}>{o.brand ?? "brand"}</span> : <Words text={o.brand ?? "brand"} family={fam === "marker" ? "outline" : fam} size={base} k={k} accent={accent} frame={frame - 4} fps={fps} />}
           </div>
           <div style={{ fontSize: 46 * k, fontWeight: 600, opacity: 0.92, textShadow: fam === "pill" ? undefined : shadow(k, 0.4) }}>{fam === "quiet" ? text.toLowerCase() : text}</div>
-          <div style={{ marginTop: 10 * k, fontSize: 50 * k, fontWeight: 800, padding: `${18 * k}px ${50 * k}px`, borderRadius: 999, background: fam === "pill" ? DARK : fam === "quiet" ? "rgba(255,255,255,0.2)" : accent, color: fam === "pill" ? accent : fam === "quiet" ? "#fff" : ink, border: fam === "quiet" ? `${1.5 * k}px solid rgba(255,255,255,0.45)` : undefined, transform: `scale(${1 + 0.04 * Math.sin(Math.max(0, frame - 10) / 5)})` }}>
+          <div style={{ marginTop: 10 * k, fontSize: 50 * k, fontWeight: 800, padding: `${18 * k}px ${50 * k}px`, borderRadius: 999, background: fam === "pill" ? DARK : fam === "quiet" ? "rgba(255,255,255,0.2)" : accent, color: fam === "pill" ? accent : fam === "quiet" ? "#fff" : ink, border: fam === "quiet" ? `${1.5 * k}px solid rgba(255,255,255,0.45)` : undefined, transform: `scale(${1 + 0.04 * nudge(Math.max(0, frame - 10) / 5)})` }}>
             {fam === "quiet" ? (o.sub ?? "link in bio").toLowerCase() : fam === "pop" ? (o.sub ?? "Link in bio").toUpperCase() : o.sub ?? "Link in bio"}
           </div>
         </div>
@@ -252,15 +272,15 @@ export const OverlayLook: React.FC<{ text: string; o: Overlay; k: number; fontFa
     textWrap: "balance",
     letterSpacing: label ? 0.06 * size : undefined,
     textTransform: label && fam !== "quiet" ? "uppercase" : undefined,
-    color: fam === "pill" || ((fam === "marker" || fam === "pop") && label) ? ink : "#fff",
+    color: fam === "pill" || ((fam === "marker" || fam === "pop") && label) ? ink : o.fill ?? "#fff",
     ...box,
   } as React.CSSProperties;
-  const arrow = o.kind === "cta" ? <span style={{ display: "inline-block", marginLeft: 0.25 * size, transform: `translateX(${Math.sin(frame / 4) * 6 * k}px)`, fontWeight: 900 }}>→</span> : null;
+  const arrow = o.kind === "cta" ? <span style={{ display: "inline-block", marginLeft: 0.25 * size, transform: `translateX(${nudge(frame / 4) * 6 * k}px)`, fontWeight: 900 }}>→</span> : null;
   const labelFamily: Look = label && (fam === "marker" || fam === "pop") ? "pill" : fam; // a label on a sticker reads dark
   return (
     <div style={{ textAlign: "center", ...m }}>
       <div style={line}>
-        <Words text={text} family={labelFamily} size={size} k={k} accent={accent} frame={frame} fps={fps} onBox={onBox} ink={ink} />
+        <Words text={text} family={labelFamily} size={size} k={k} accent={accent} frame={frame} fps={fps} onBox={onBox} ink={ink} fill={o.fill} />
         {arrow}
       </div>
     </div>
