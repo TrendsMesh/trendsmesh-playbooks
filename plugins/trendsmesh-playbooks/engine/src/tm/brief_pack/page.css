@@ -85,6 +85,7 @@
 .brief .on-request span { opacity: .75; font-size: 13px; }
 .brief .phone .on-request { aspect-ratio: auto; height: 100%; border-radius: 22px; }
 .brief .anim-style { display: flex; align-items: center; gap: 10px; font-size: 13px; opacity: .85; }
+.brief .anim-file { font-size: 12px; opacity: .75; overflow-wrap: anywhere; }
 .brief .anim-style img { width: 36px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 6px; }
 .brief .toggle { display: flex; gap: 6px; margin-top: 8px; }
 .brief .toggle button { flex: 1; font-size: 13px; padding: 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); }

@@ -4,6 +4,14 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **The creative brief page plays a 720p preview of each animatic, so a styled animatic fits on it.** A library-style
+  animatic is rendered at full size, 25 to 36 MB for 15 seconds, over the page's 15 MB a file. Each render now also
+  gets a 720p preview with its bitrate set from its length (about 2 MB for 15 seconds, never over 12 MB), which the
+  page plays; the full-size MP4 stays in the run's renders folder, and the page says where.
+- **The brief page is always rebuilt, even when an animatic is too big for it.** An animatic over the page's limit
+  even as a preview (a very long one) is left out, and its concept shows the local file's path where the animatic
+  would play, instead of the whole page staying on its old version with the check-in still open. The hint to draw
+  fewer formats, which cannot change by then, is gone.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

@@ -21,8 +21,9 @@ style is a Stop that names the style step. A beat's `animatic` block gives the p
 time is kept: the animatics question gives no fixed time (#148 line 157 as changed by @piotr-lezon).
 
 A version is never used twice (the next free `vNN` by default). With `render`, `atlas.render` draws each page into
-`03_wip/animatic/renders/<C>_animatic_<fmt>_<ver>.mp4` with its stills, and a new `04_final/brief_pack_vNN.json`
-names them (`animatic/<file>`, the page's paths). Nothing is written when a concept cannot be drawn or the renderer is
+`03_wip/animatic/renders/<C>_animatic_<fmt>_<ver>.mp4` with its stills and its 720p preview `..._720p.mp4` (issue
+#162: what the brief page plays, at most PREVIEW_MAX_BYTES), and a new `04_final/brief_pack_vNN.json` names them
+(`animatic/<file>`, the page's paths; the previews as `animatic.preview.<fmt>`, {path, bytes}). Nothing is written when a concept cannot be drawn or the renderer is
 not there (a Stop); paths in the answer are run-relative.
 """
 
@@ -33,6 +34,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
@@ -170,8 +172,80 @@ def write_new(path: Path, text: str) -> None:
         fh.write(text)
 
 
+# --- the page's preview of a render (issue #162 item 1) ------------------------------------------------------------
+# A render is drawn at its frame (1080 wide) with no bitrate cap, so a styled animatic runs to tens of MB, over the
+# Artifact tool's 15 MB a file. The page plays a 720p preview instead, its bitrate set from its length so it stays at
+# or under PREVIEW_MAX_BYTES; the full-size file stays beside it, as it was.
+PREVIEW_SHORT = 720                     # the preview's shorter side
+PREVIEW_MAX_BYTES = 12 * 10**6          # under page.MAX_FILE_BYTES, with room for the container
+PREVIEW_AUDIO_KBPS = 128
+PREVIEW_KBPS_MAX = 2500                 # a short animatic's cap: plenty for 720p; CRF keeps simple frames smaller
+PREVIEW_KBPS_MIN = 100
+PREVIEW_CRF = 23
+PREVIEW_STEP = 0.75                     # each try's bitrate after one over the budget, as tools/deliver.py steps down
+PREVIEW_TRIES = 4
+PREVIEW_MODEL = "ffmpeg libx264 (720p preview)"
+
+
+def preview_of(mp4: Path) -> Path:
+    """Where a render's preview is kept: beside it, `<stem>_720p.mp4`."""
+    return Path(mp4).with_name(f"{Path(mp4).stem}_720p.mp4")
+
+
+def preview_kbps(seconds: float, budget: int | None = None) -> int:
+    """The video bitrate (kb/s) that keeps a preview of `seconds` with its sound under `budget` (PREVIEW_MAX_BYTES),
+    8 % kept for the container; at most PREVIEW_KBPS_MAX, at least PREVIEW_KBPS_MIN."""
+    budget = PREVIEW_MAX_BYTES if budget is None else budget
+    total = budget * 8 / 1000 * 0.92 / max(float(seconds), 0.1)
+    return int(max(PREVIEW_KBPS_MIN, min(PREVIEW_KBPS_MAX, total - PREVIEW_AUDIO_KBPS)))
+
+
+def _encode_preview(src: Path, part: Path, kbps: int, scale: str, sound: bool) -> None:
+    c.run_ffmpeg(["-i", c.media(src), "-map", "0:v:0", *(["-map", "0:a:0"] if sound else []), "-vf", scale,
+                  "-c:v", "libx264", "-preset", "medium", "-pix_fmt", "yuv420p", "-crf", str(PREVIEW_CRF),
+                  "-maxrate", f"{kbps}k", "-bufsize", f"{kbps * 2}k",
+                  *(["-c:a", "aac", "-b:a", f"{PREVIEW_AUDIO_KBPS}k"] if sound else ["-an"]),
+                  "-movflags", "+faststart", "-f", "mp4", str(part)])
+
+
+def make_preview(src: Path, duration: float | None = None) -> dict:
+    """The 720p preview of the render `src` (`preview_of`): its shorter side PREVIEW_SHORT (never scaled up), its
+    bitrate from its length (`preview_kbps`), stepped down (PREVIEW_STEP, PREVIEW_TRIES tries) while it is over
+    PREVIEW_MAX_BYTES; the last try is kept when none fits (the page then leaves it out). {path, bytes, kbps}.
+    FileExistsError when the preview is there already (never over a file); ffmpeg's error when it cannot be read."""
+    src = Path(src)
+    out = preview_of(src)
+    if out.exists():
+        raise FileExistsError(f"{out.name} already exists, and files are never overwritten.")
+    info = c.probe(src)
+    if not info.get("has_video"):
+        raise ValueError(f"{src.name} has no video to preview.")
+    seconds = duration or info.get("duration") or 1
+    w, h = info["width"], info["height"]
+    side = min(PREVIEW_SHORT, w, h)
+    scale = (f"scale={side}:-2" if w <= h else f"scale=-2:{side}") + ":flags=lanczos"
+    part = out.with_name(f".{out.stem}.{os.getpid()}.part.mp4")
+    kbps, size, step = preview_kbps(seconds), 0, preview_kbps(seconds)
+    try:
+        for _ in range(PREVIEW_TRIES):
+            kbps = step
+            part.unlink(missing_ok=True)
+            _encode_preview(src, part, kbps, scale, bool(info.get("has_audio")))
+            size = part.stat().st_size
+            if size <= PREVIEW_MAX_BYTES:
+                break
+            step = max(PREVIEW_KBPS_MIN, int(kbps * PREVIEW_STEP))
+        if out.exists():
+            raise FileExistsError(f"{out.name} already exists, and files are never overwritten.")
+        os.replace(part, out)
+    finally:
+        part.unlink(missing_ok=True)
+    return {"path": out, "bytes": size, "kbps": kbps}
+
+
 def _render(run: RunFolder, items: list[dict], version: str, fps: int) -> None:
-    """Each page drawn into renders/ with its stills, each file with a manifest row."""
+    """Each page drawn into renders/ with its stills and its 720p preview (`make_preview`; one that cannot be made is
+    `preview_error`, and the page serves the full-size file), each file with a manifest row."""
     renders = run.path / RENDERS
     renders.mkdir(parents=True, exist_ok=True)
     for done, item in enumerate(items):
@@ -194,6 +268,16 @@ def _render(run: RunFolder, items: list[dict], version: str, fps: int) -> None:
                         params={"fps": fps, "render_s": item["render_s"], "page_errors": item["page_errors"]})
         for still in stills:
             manifest.record(run, still, "03_wip", SOURCE, parent=item["mp4"], model=MODEL, cost="0")
+        try:
+            made = make_preview(mp4, info.get("duration") if isinstance(info.get("duration"), (int, float)) else None)
+        except (subprocess.CalledProcessError, OSError, ValueError, KeyError, TypeError) as exc:
+            said = exc.stderr.decode("utf-8", "replace").strip() if isinstance(exc, subprocess.CalledProcessError) \
+                and exc.stderr else str(exc)
+            item["preview_error"] = (said.splitlines() or [type(exc).__name__])[-1]
+            continue
+        item["preview"] = {"path": _rel(run, made["path"]), "bytes": made["bytes"]}
+        manifest.record(run, item["preview"]["path"], "03_wip", SOURCE, parent=item["mp4"], model=PREVIEW_MODEL,
+                        cost="0", params={"kbps": made["kbps"], "bytes": made["bytes"]})
 
 
 def _brief_with_renders(run: RunFolder, rel: str, brief: dict, items: list[dict], formats: list[str],
@@ -202,8 +286,12 @@ def _brief_with_renders(run: RunFolder, rel: str, brief: dict, items: list[dict]
     `default` (the format the page plays first) stays the concept's own when that one was drawn,
     else the first format drawn."""
     paths: dict[str, dict] = {}
+    previews: dict[str, dict] = {}
     for item in items:
         paths.setdefault(item["concept"], {})[item["format"]] = f"{PAGE_DIR}/{Path(item['mp4']).name}"
+        if item.get("preview"):                                             # the page's 720p copy (issue #162)
+            previews.setdefault(item["concept"], {})[item["format"]] = {
+                "path": f"{PAGE_DIR}/{Path(item['preview']['path']).name}", "bytes": item["preview"]["bytes"]}
     new = copy.deepcopy(brief)
     for concept in new["concepts"]:
         if isinstance(concept, dict) and concept.get("id") in paths:
@@ -212,7 +300,8 @@ def _brief_with_renders(run: RunFolder, rel: str, brief: dict, items: list[dict]
             own = before.get("default")
             default = own if isinstance(own, str) and own in drawn else formats[0]
             kept = {k: before[k] for k in STYLE_KEYS if k in before}       # a styled concept's style and poster
-            concept["animatic"] = {**drawn, "default": default, **kept}
+            shown = {"preview": previews[concept["id"]]} if concept["id"] in previews else {}
+            concept["animatic"] = {**drawn, "default": default, **kept, **shown}
     target = run.next_version(FINAL, STEM, "json")
     write_new(target, json.dumps(new, ensure_ascii=False, indent=1) + "\n")
     out = _rel(run, target)

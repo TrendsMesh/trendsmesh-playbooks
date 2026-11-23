@@ -4,11 +4,17 @@
 # issue #156), Create an ad's promise phrases (checks.promise_*), the Smart App Control message
 # (env.smart_app_control and env.smart_app_control_unnamed, issue #123), the words of an update's environments
 # (env.freed, env.install_failed, doctor.earlier, issue #161) and Refresh an ad's diagnosis report (diagnosis.*,
-# issue #171); every other
+# issue #171), and the creative brief page's animatic file lines (brief.animatic_full_file, brief.animatic_local_file,
+# issue #162); every other
 # string Polish needs is the agent's translation, kept in the plugin data folder (tm i18n export / import), and a kept
 # translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
 
 strings:
+  brief:
+    # the page plays a 720p preview of each animatic; under it, where the full-size MP4s are (issue #162)
+    animatic_full_file: "Pełny rozmiar: {path}"
+    # an animatic too big for the page even as a preview: left out, its local file named instead (issue #162)
+    animatic_local_file: "Plik lokalny: {path}"
   common:
     # the reply button after a page with decisions is shown (issue #83 point 5)
     reply_saved: Zapisane, odczytaj moje wybory
