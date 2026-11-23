@@ -5,13 +5,14 @@ item 4, owner decision #148 line 2 as changed by @piotr-lezon).
     formats_of(run), fps_of(run)  the formats drawn (`animatic.formats`, the audience pick's, or both), the fps
     not_rendered(run, ...)        the concepts' formats with no MP4 in the renders folder
     rendered_gap(run)             the step check `animatics_rendered`
-    choose_styles(brief, ids)     each concept's library style, ranked for its format
+    choose_styles(brief, ids)     each concept's library style, matched to its format, hook, idea and tone (`matched`)
     style(run, brief_path, ...)   `tm brief animatic --style`: the styles in a new brief, a build prompt per concept
 
 Every animatic is drawn in a library style; there is no sketch (the fixed scenes of the handoff's `scenes.js` no
 longer draw animatics, and the plugin no longer ships them). `style` (`tm brief animatic --style auto`, part of D2's
-make) writes each named concept's `animatic.style` (the styleId, chosen by `atlas_prompt.ranked` from the concept's
-format, no two concepts alike, the channel's own style first with `own`) and `animatic.poster` (the style's poster,
+make) writes each named concept's `animatic.style` (the styleId, chosen by `matched` from the concept's format, hook,
+idea and tone against the styles' cards (issue #162 item 3: a concept nothing matched is said plainly, reason `none`),
+no two concepts alike, the channel's own style first with `own`) and `animatic.poster` (the style's poster,
 copied into renders/), and a build prompt `<C>_prompt_vNN.txt` (`atlas_prompt.build`, the animatic mode). A subagent
 writes the style module `<C>_style_vNN.js`; `build` draws each concept from its latest module (written from its latest
 prompt, one beat per beat of the brief: the brief's beats are its own, no frames list is read), a page
@@ -30,6 +31,7 @@ not there (a Stop); paths in the answer are run-relative.
 from __future__ import annotations
 
 import copy
+import functools
 import json
 import os
 import re
@@ -317,11 +319,13 @@ ASPECTS = {"9x16": "9:16", "4x5": "4:5"}
 # A concept's format (an ad's plugin.axes.format, an organic brief's organic.format), as words, to the channel type
 # and tone `atlas_prompt.ranked` takes: the first row with a word in it wins.
 FORMAT_RANKS = (
-    (("screen recording", "screencast", "demo", "tutorial", "how to", "how-to", "walkthrough", "explainer", "tips"),
+    (("screen recording", "screencast", "demo", "tutorial", "how to", "how-to", "walkthrough", "explainer", "tips",
+      "top-down", "hands only"),
      "howto_education", ("technical", "calm")),
     (("ugc", "phone video", "unboxing", "review", "haul", "before and after", "comparison", "product"),
      "shop_product", ("raw", "bold")),
-    (("talking head", "selfie", "testimonial", "confession", "vlog", "story", "day in", "routine", "interview"),
+    (("talking head", "selfie", "testimonial", "confession", "vlog", "story", "day in", "routine", "interview",
+      "on camera", "front-camera"),
      "lifestyle_vlog", ("warm", "friendly")),
     (("skit", "pov", "comedy", "meme", "prank", "sketch", "reaction"), "entertainment_skits", ("playful", "bold")),
     (("news", "stat", "stats", "data", "chart", "ranking", "quiz", "list", "facts"), "news_explainers",
@@ -329,8 +333,92 @@ FORMAT_RANKS = (
     (("dance", "music", "song", "lip sync", "lip-sync", "transition"), "music_dance", ("bold", "edgy")),
 )
 REASONS = {"given": "the style asked for", "channel": "the channel's own style", "type": "it suits this format",
-           "tone": "its tone fits this format", "other": "the library's next free style",
-           "rejected": "the library's next free style"}
+           "tone": "its tone fits the concept", "words": "its card says what the concept is about",
+           "none": ("nothing in the concept's format, hook, idea or tone matched a library style, so this is only the "
+                    "first one no other concept has: have the user pick a style or confirm this one")}
+# Issue #162 item 3: the concept's own words, scored against each style's card. A word of the tone in other words
+# (`TONE_HINTS`), the words never scored (`_STOP`: a card's or a brief's everyday words), and the weights: a style that
+# suits the format, then each tone word in common, then each other word in common.
+TONE_HINTS = {"fun": "playful", "funny": "playful", "humor": "playful", "humour": "playful", "humorous": "playful",
+              "witty": "playful", "cheeky": "playful", "luxury": "premium", "luxurious": "premium",
+              "exclusive": "premium", "upscale": "premium", "cozy": "warm", "cosy": "warm", "heartfelt": "warm",
+              "caring": "warm", "emotional": "warm", "relaxing": "calm", "relaxed": "calm", "quiet": "calm",
+              "gentle": "calm", "soothing": "calm", "serene": "calm", "urgent": "serious", "grave": "serious",
+              "tense": "serious", "honest": "raw", "authentic": "raw", "unfiltered": "raw", "gritty": "raw",
+              "vintage": "retro", "throwback": "nostalgic", "rebellious": "edgy", "provocative": "edgy",
+              "sharp": "edgy", "practical": "technical", "precise": "technical", "expert": "technical",
+              "loud": "bold", "confident": "bold", "energetic": "bold", "dreamlike": "dreamy", "magical": "dreamy",
+              "classy": "elegant", "refined": "elegant", "approachable": "friendly", "casual": "friendly",
+              "futurist": "futuristic", "innovative": "futuristic"}
+_STOP = frozenset("""
+about above after again against also among another anything around away back because been before being below
+between both bring brings but came come comes could does doing done down during each either else even ever every
+feel feels first from good great have having here into just keep keeps kind kinds less like little made make makes
+many more most much must never next none only other others over poor right same should show shows some such suits
+suited than that their them then there these they thing things this those though through told under until very want
+weak well were what when where which while whole with within without would your yours style styles look looks
+video videos frame frames screen text texts shot shots seen scene scenes topic topics good better best strong
+excellent ideal great wrong anything every everything something told tell tells telling
+white black blue green yellow pink purple orange brown grey gray gold silver colour color colours colors hand hands
+side sides line lines page pages part parts piece pieces small large big voice voiceover caption captions camera
+inside outside front onto
+""".split())
+SCORE_TYPE, SCORE_TONE, SCORE_WORD = 3, 2, 1
+
+
+def _stem(word: str) -> str:
+    """A word as it is compared: lower case, a plural's -s and -ies taken off."""
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 4 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _words(text: object) -> set[str]:
+    """The words of `text` that can match: four letters or more, not in _STOP, stemmed."""
+    if not isinstance(text, str):
+        return set()
+    return {_stem(w) for w in re.findall(r"[a-z]+", text.lower()) if len(w) >= 4 and w not in _STOP}
+
+
+def concept_words(brief: dict, concept: dict) -> tuple[set[str], list[str]]:
+    """The words a concept is about (its hook, its idea: title, one-liner, key message, an organic brief's topic, an
+    ad's angle and hook type) and its tone words (`atlas_prompt.TONES`, directly or by TONE_HINTS, from the brief's
+    tone and the concept's words)."""
+    hook = concept.get("hook") if isinstance(concept.get("hook"), dict) else {}
+    organic = concept.get("organic") if isinstance(concept.get("organic"), dict) else {}
+    plugin = concept.get("plugin") if isinstance(concept.get("plugin"), dict) else {}
+    axes = plugin.get("axes") if isinstance(plugin.get("axes"), dict) else {}
+    texts = [hook.get("text"), hook.get("description"), concept.get("title"), concept.get("one_liner"),
+             concept.get("key_message"), organic.get("topic"), axes.get("angle"), axes.get("hook_type")]
+    words = set().union(*(_words(t) for t in texts))
+    tone_block = brief.get("tone") if isinstance(brief.get("tone"), dict) else {}
+    tone_text = " ".join(t for t in (tone_block.get("tone"), concept.get("tone")) if isinstance(t, str))
+    said = {w for w in re.findall(r"[a-z]+", tone_text.lower())} | words
+    tones = [t for t in atlas_prompt.TONES if t in said or any(TONE_HINTS.get(w) == t for w in said)]
+    return words - set(tones), tones
+
+
+@functools.lru_cache(maxsize=None)
+def _card_words(style_id: str) -> frozenset[str]:
+    """A style's words: its name, family, description and what it suits (the part before the first `;`, which
+    goes on to what it is poor for)."""
+    s = atlas_prompt.find_style(style_id)
+    suits = str(s.get("suits") or "").split(";", 1)[0]
+    return frozenset(_words(" ".join(str(s.get(k) or "") for k in ("name", "category", "description")) + " " + suits))
+
+
+def _why(card: dict) -> str:
+    """The reason in words: what in the concept the style matched, or plainly that nothing did."""
+    parts = []
+    if card.get("type_match"):
+        parts.append(REASONS["type"])
+    if card.get("shared_tone"):
+        parts.append(f"its tone is {', '.join(card['shared_tone'])}")
+    if card.get("matched"):
+        parts.append(f"its card speaks of {', '.join(card['matched'])}, as the concept does")
+    return "; ".join(parts) if parts else REASONS["none"]
 
 
 def style_of(concept: object) -> str | None:
@@ -367,14 +455,38 @@ def _card(key: object) -> dict:
     return atlas_prompt.find_style(sid if sid else str(key).strip())
 
 
+def matched(brief: dict, concept: dict, own: str | None = None) -> list[dict]:
+    """Every style ranked for a concept (issue #162 item 3), each card with `reason`, `why`, `matched` (the concept's
+    words its card has) and `shared_tone`: the channel's own style (`own`) first; then by score, a style that suits
+    the concept's format (`rank_args`: SCORE_TYPE), each tone word in common with the concept's (the format's, the
+    brief's tone and the concept's words: SCORE_TONE) and each other word of the concept's hook and idea in its card
+    (SCORE_WORD), ties in `atlas_prompt.ranked`'s order. `reason`: channel, words, type, tone, or none when nothing
+    matched (said plainly in `why`, never a silent fallback)."""
+    kind, format_tone = rank_args(concept_format(concept))
+    words, tones = concept_words(brief, concept)
+    tone = list(dict.fromkeys([*format_tone, *tones]))
+    ranked = atlas_prompt.ranked(channel_type=kind, tone=tone, own=own)
+    scored = []
+    for n, s in enumerate(ranked):
+        hits = sorted(words & _card_words(s["styleId"]))
+        typed = kind in s["tags"]["channels"] if kind else False
+        reason = ("channel" if s["reason"] == "channel" else "words" if hits else "type" if typed
+                  else "tone" if s["shared_tone"] else "none")
+        card = {**s, "reason": reason, "matched": hits, "type_match": typed}
+        card["why"] = REASONS["channel"] if reason == "channel" else _why(card)
+        score = SCORE_TYPE * typed + SCORE_TONE * len(s["shared_tone"]) + SCORE_WORD * len(hits)
+        scored.append((reason != "channel", -score, n, card))
+    return [card for *_, card in sorted(scored, key=lambda x: x[:3])]
+
+
 def choose_styles(brief: dict, concepts: list[str], given: str | None = "auto", own: object = None) -> dict[str, dict]:
-    """{concept id: its style card with `reason`}: `given` (a number or styleId) for every concept named, else each
-    concept's first style in `atlas_prompt.ranked` for its format (`rank_args`), the channel's own style (`own`)
-    first, else one no other concept of the brief has (three formats get three looks). A ValueError for an unknown
-    style."""
+    """{concept id: its style card with `reason`, `why` and `matched`}: `given` (a number or styleId) for every
+    concept named, else each concept's first style in `matched` (its format, hook, idea and tone against the
+    styles' cards), the channel's own style (`own`) first, else one no other concept of the brief has (three
+    concepts get three looks). A ValueError for an unknown style."""
     if given not in (None, "auto"):
         card = _card(given)
-        return {cid: {**card, "reason": "given"} for cid in concepts}
+        return {cid: {**card, "reason": "given", "why": REASONS["given"], "matched": []} for cid in concepts}
     own_id = _card(own)["styleId"] if own is not None else None
     listed = [x for x in brief.get("concepts") or [] if isinstance(x, dict)]
     taken = [sid for x in listed if x.get("id") not in concepts and (sid := atlas_prompt.style_id(style_of(x)))]
@@ -382,8 +494,7 @@ def choose_styles(brief: dict, concepts: list[str], given: str | None = "auto", 
     for x in listed:
         if x.get("id") not in concepts:
             continue
-        kind, tone = rank_args(concept_format(x))
-        ranked = atlas_prompt.ranked(channel_type=kind, tone=tone, own=own_id)
+        ranked = matched(brief, x, own_id)
         pick = ranked[0] if own_id else next((s for s in ranked if s["styleId"] not in taken), ranked[0])
         taken.append(pick["styleId"])
         out[x["id"]] = pick
@@ -533,7 +644,7 @@ def style(run: RunFolder, brief_path: Path | None, *, concepts: list[str] | None
                         params={"style": card["styleId"], "formats": drawn, "module": module,
                                 "pictures": {p["name"]: p["file"] for p in pics}})
         rows.append({"concept": cid, "style": card["styleId"], "name": card["name"], "reason": card["reason"],
-                     "why": REASONS.get(card["reason"], ""), "poster": concept["animatic"]["poster"],
+                     "why": card["why"], "matched": card["matched"], "poster": concept["animatic"]["poster"],
                      "prompt": _rel(run, prompt), "module": module})
     return {"brief": out, "formats": drawn, "styles": rows}
 

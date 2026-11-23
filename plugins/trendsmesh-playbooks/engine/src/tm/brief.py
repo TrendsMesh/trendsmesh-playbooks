@@ -351,6 +351,14 @@ def _animatic_style(args: argparse.Namespace, run: RunFolder, named: list[str] |
     message = (f"The animatics' styles: {picks}. Wrote {got['brief']}, which names them, and a build prompt per "
                f"concept. Have a subagent write each concept's style module from its prompt ({todo}), then draw them "
                f"with tm brief animatic --run {args.run} --render --concepts {ids}.")
+    unmatched = [r for r in got["styles"] if r["reason"] == "none"]
+    if unmatched:                     # issue #162 item 3: never a silent fallback
+        names = ", ".join(f"{r['concept']} ({r['name']})" for r in unmatched)
+        message += (f" Nothing in the format, hook, idea or tone of {names} matched a library style: before the "
+                    "subagents write the modules, ask the user to pick a style (offer two or three from tm organic "
+                    "atlas-styles --json, each with a one-line why) or to confirm this one; a style they pick: tm "
+                    "brief animatic --style "
+                    f"<number|styleId> --concepts {','.join(r['concept'] for r in unmatched)}.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
 

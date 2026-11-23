@@ -12,6 +12,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   even as a preview (a very long one) is left out, and its concept shows the local file's path where the animatic
   would play, instead of the whole page staying on its old version with the check-in still open. The hint to draw
   fewer formats, which cannot change by then, is gone.
+- **An animatic's style is matched to its concept.** The style was picked from the concept's format alone, and a
+  format the ranking did not know got "the library's next free style". Now the concept's hook, idea and tone are
+  matched against each style's description and what it suits, and the answer says why each style was picked. When
+  nothing matches, it says so plainly, and Claude asks you to pick the style or confirm it.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

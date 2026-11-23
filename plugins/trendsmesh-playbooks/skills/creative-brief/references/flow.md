@@ -517,11 +517,12 @@ drawn in a library style matched to its concept: there is no sketch (owner decis
 - **Make:** `tm decide animatics make --concepts C1,C3 --run R --said "<their words>"` (the concepts the user named; "all"
   is every concept id), then three steps:
   1. **The styles:** `tm brief animatic --run R --style auto --concepts C1,C3 --json` picks each
-     concept's style from its format with the style ranking, no two concepts alike, and writes a new
-     brief version with `animatic.style` and its poster, and a build prompt per concept. The user
-     named a style: `--style <number|styleId>`. A brief for a channel with its own look: `--own
-     <number|styleId>`, the library style nearest its `video_style`, first. Tell the user each
-     concept's style in one line.
+     concept's style from its format, hook, idea and tone, matched against each style's card, no two
+     concepts alike, and writes a new brief version with `animatic.style` and its poster, and a build
+     prompt per concept. The user named a style: `--style <number|styleId>`. A brief for a channel with
+     its own look: `--own <number|styleId>`, the library style nearest its `video_style`, first. Tell
+     the user each concept's style in one line, with its why (`styles[].why`). A concept nothing
+     matched (`reason: none`): ask the user to pick its style or confirm this one before step 2.
   2. **The modules:** one subagent per concept, in parallel, writes the style module from the
      concept's prompt (the answer's `styles[].prompt` to `styles[].module`): give it the prompt file and
      the module path, and nothing else to do.
