@@ -11,26 +11,31 @@ The layers file says what the edit (S6) draws, bottom to top, in seconds of the 
                  "from" (a video: its own second at the layer's start, 0 by default),
                  "crop": [x, y, w, h] (a picture: the part of the source it shows, px of the source; all of it by
                           default),
-                 "on": "<id>" (drawn on that layer on purpose, as a chip on its card)}]}
+                 "on": "<id>" (drawn on that layer on purpose, as a chip on its card),
+                 "place", "offsetY", "role" (a text: where `tm ad text` put it, and its overlay's kind or caption)}]}
 
 The text is two layers, as organic video's edit has it: `caption` (under the speech, at the bottom) and `overlay`
 (the hook, a number, a tag, a code chip, the logo); a window, a scene card or a capture is a `picture`. Three checks:
 
 - **faces**: for each picture under a layer, at the times both are shown (their first and last moment, the middle and
-  every second between, at most 12), the faces in the picture's own frame (`tm tool cover_fit`'s detector, whose head
-  runs from above the forehead to the chin), placed in the edit's frame through the picture's crop and box. A layer
-  over a head is a collision (a caption over the mouth, a chip over the chin, a window over a face). It carries a
-  `suggestion` that clears every head seen then (issue #139): `{"offsetY": px}`, a move inside the safe zone in px
-  at 1080 wide added to the layer's offsetY (`cover_fit.clear_shift`), else `{"fontSize": n}`, the layer's
-  `fontSize` (px at 1080, when the layers file gives it) × 0.85, never under 32, else null; its message names it.
-  A detection whose head covers 70 % or more of the frame is no face: it is listed under `rejected_faces`.
+  every second between, at most 12), the faces in the picture's own frame (`tm tool cover_fit`'s detector: YuNet, a
+  detection scored 0.8 or more, else Haar when its model is missing; `detector` says which ran; a head runs from
+  above the forehead to the chin), placed in the edit's frame through the picture's crop and box. A layer over a head
+  is a collision (a caption over the mouth, a chip over the chin, a window over a face). A text's carries a
+  `suggestion` (issue #167): `{"place": top | middle | bottom, "offsetY": px at 1080 from that place}`, the place
+  that clears every head seen then and the box of every other text shown with it (at its suggested place when it
+  was given one), tried in the safe zone's thirds: a hook (`role`) at the top, then the middle, then the bottom; the
+  captions at the bottom, then the middle; any other where it is (`place`, else its box's third), then the nearest;
+  from the place itself outwards in 10 px steps; else null (no size fix: a smaller text over a face is still over
+  it); its message names it. A picture over a face has none. A detection whose head covers 70 % or more of the frame
+  is no face: it is listed under `rejected_faces`.
 - **layers**: two layers shown together whose boxes overlap, neither filling the frame, unless one is `on` the other
   (a tag running under the caption band).
 - **sharpness**: a still (png, jpg, webp) drawn larger than its own pixels (more than 5 % up): capture it sharper
   instead (`tm tool site capture` at a device scale of 2 to 3, or of the element itself).
 
 Writes `<edit dir>/qa/<edit stem>_layers_vNN.json` (the next version): {"edit", "layers": {"file", "sha256"}, "size",
-"faces": [{"layer", "at", "head"}], "rejected_faces": [{"layer", "at", "face", "reason"}], "collisions": [{"kind"
+"detector" (yunet, haar), "faces": [{"layer", "at", "head"}], "rejected_faces": [{"layer", "at", "face", "reason"}], "collisions": [{"kind"
 (face, layer, scaled_up), "layer", "with", "at", "box", "other", "suggestion" (a face's), "message"}], "message"}. `tm ad check edit` refuses an edit whose latest layer check has a collision: move
 the layer, render the next version (S6) and check that. Free and local (the breakdown tools).
 """
@@ -57,6 +62,9 @@ TOGETHER = 0.04       # two layers shown together less than this (a frame) are n
 UPSCALE = 1.05        # a still drawn more than 5 % larger than its pixels is scaled up
 FULL = 0.98           # a box covering this much of the frame both ways fills it
 SAFE_TOP, SAFE_BOTTOM = 260, 380   # the safe zone a suggested move stays in, px at 1080 (OrganicCaptions SAFE_1080)
+PLACES = ("top", "middle", "bottom")   # OrganicCaptions' places, the safe zone's thirds
+STEP_PX = 10          # px at 1080 between the offsets a placement tries
+TEXT_MARGIN = 12      # px at 1080 a placed text keeps from another text
 
 
 def _num(value: object) -> bool:
@@ -96,7 +104,9 @@ def read_layers(run, path: Path, size: tuple[int, int]) -> list[dict]:
         if not (_num(start) and _num(end) and 0 <= start < end):
             raise c.ToolError(f"{where} ({lid}) needs a start and an end in seconds, the end after the start.")
         row = {"id": lid, "kind": kind, "start": float(start), "end": float(end), "on": layer.get("on"),
-               "n": n, "fontSize": float(layer["fontSize"]) if _num(layer.get("fontSize")) else None}
+               "n": n, "fontSize": float(layer["fontSize"]) if _num(layer.get("fontSize")) else None,
+               "place": layer.get("place") if layer.get("place") in PLACES else None,
+               "role": layer.get("role") if isinstance(layer.get("role"), str) else None}
         if layer.get("box") is None and kind == "picture":
             row["box"] = (0.0, 0.0, float(width), float(height))
         else:
@@ -185,35 +195,71 @@ def _size(path: Path) -> tuple[int, int]:
     return int(width), int(height)
 
 
-def suggest(box: tuple, heads: list[tuple], size: tuple[int, int], font_size: float | None) -> dict | None:
-    """The placement that clears every head (issue #139): {"offsetY": px} to move the layer by (px at 1080 wide,
-    added to its offsetY; negative is up) when it fits inside the safe zone (`cover_fit.clear_shift`), else
-    {"fontSize": the next smaller size} (× 0.85, never under 32), else None."""
+def _zones(size: tuple[int, int], h: float) -> tuple[float, float, dict[str, float], dict[str, tuple]]:
+    """(the safe zone's top, its bottom, each place's y for a box `h` tall as OrganicCaptions puts it, each place's
+    band of the box's centre: the safe zone in thirds), px of the frame."""
     k = size[0] / 1080
-    shift = cover_fit.clear_shift(box, heads, top=round(SAFE_TOP * k), bottom=round(size[1] - SAFE_BOTTOM * k),
-                                  margin=round(cover_fit.MARGIN * k))
-    if shift:
-        return {"offsetY": round(shift / k)}
-    smaller = smaller_size(font_size)
-    return {"fontSize": smaller} if smaller is not None else None
+    top, bottom = SAFE_TOP * k, size[1] - SAFE_BOTTOM * k
+    third = (bottom - top) / 3
+    anchors = {"top": top, "middle": (top + bottom) / 2 - h / 2, "bottom": bottom - h}
+    bands = {"top": (top, top + third), "middle": (top + third, top + 2 * third), "bottom": (top + 2 * third, bottom)}
+    return top, bottom, anchors, bands
 
 
-def smaller_size(font_size: float | None) -> int | None:
-    """The next size a text is tried at (cover_fit's step), or None when it is at the smallest or unknown."""
-    if font_size is None or font_size <= cover_fit.SMALLEST:
+def _order(layer: dict, box: tuple, size: tuple[int, int]) -> list[str]:
+    """The places a text is tried at, the best first: a hook at the top, then the middle (issue #167); the captions
+    at the bottom, then the middle; any other where it is, then the place nearest to it."""
+    role = layer.get("role") or ("caption" if layer["kind"] == "caption" else None)
+    if role == "hook":
+        return ["top", "middle", "bottom"]
+    if role == "caption":
+        return ["bottom", "middle", "top"]
+    h = box[3] - box[1]
+    _, _, anchors, bands = _zones(size, h)
+    centre = (box[1] + box[3]) / 2
+    here = layer.get("place") if layer.get("place") in PLACES else next(
+        (p for p in PLACES if bands[p][0] <= centre < bands[p][1]), "top" if centre < bands["top"][1] else "bottom")
+    return [here] + sorted((p for p in PLACES if p != here), key=lambda p: abs(anchors[p] - box[1]))
+
+
+def suggest(layer: dict, box: tuple, heads: list[tuple], others: list[tuple], size: tuple[int, int]) -> dict | None:
+    """The placement that clears every head seen and every other text shown with it (issue #167): {"place": top |
+    middle | bottom, "offsetY": px at 1080 from that place (negative is up)}, the layer's own place and offset
+    (`tm ad text` sets both). Tried at each place in `_order`, from the place itself outwards in STEP_PX steps while
+    the text's centre stays in that third of the safe zone and the text inside it; the first that clears wins. None
+    when nothing clears: no size fix for a face (a smaller text over a face is still over it)."""
+    k = size[0] / 1080
+    h = box[3] - box[1]
+    top, bottom, anchors, bands = _zones(size, h)
+    if h > bottom - top:
         return None
-    return max(cover_fit.SMALLEST, round(font_size * cover_fit.SHRINK))
+    face_margin, text_margin = cover_fit.MARGIN * k, TEXT_MARGIN * k
+    step = STEP_PX * k
+    for where in _order(layer, box, size):
+        lo, hi = bands[where]
+        found = None
+        for n in range(0, int((bottom - top) / step) + 2):
+            for dy in ((0.0,) if n == 0 else (-n * step, n * step)):
+                y = anchors[where] + dy
+                if y < top - 0.5 or y + h > bottom + 0.5 or (n and not lo <= y + h / 2 <= hi):
+                    continue
+                moved = (box[0], y, box[2], y + h)
+                if not any(cover_fit._overlaps(moved, head, face_margin) for head in heads) and \
+                        not any(cover_fit._overlaps(moved, other, text_margin) for other in others):
+                    found = round(dy / k)
+                    break
+            if found is not None:
+                return {"place": where, "offsetY": found}
+    return None
 
 
-def _advice(suggestion: dict | None, font_size: float | None) -> str:
+def _advice(suggestion: dict | None) -> str:
     if suggestion is None:
-        return "move it clear of the face and the chin"
-    if "offsetY" in suggestion:
-        dy = suggestion["offsetY"]
-        smaller = smaller_size(font_size)
-        return (f"move it {'up' if dy < 0 else 'down'} {abs(dy)} px" +
-                (f", or set its size to {smaller}" if smaller is not None else ""))
-    return f"set its size to {suggestion['fontSize']} (no room to move it inside the safe zone)"
+        return ("no place in the safe zone clears the face and the other text: move it by hand (another time, a "
+                "shorter text) and pin it")
+    dy = suggestion.get("offsetY") or 0
+    return f"place it at the {suggestion['place']}" + (f", {'up' if dy < 0 else 'down'} {abs(dy)} px from there"
+                                                       if dy else "")
 
 
 def check(run, layers: list[dict], size: tuple[int, int], scratch: Path,
@@ -222,6 +268,7 @@ def check(run, layers: list[dict], size: tuple[int, int], scratch: Path,
     faces: list[dict] = []
     collisions: list[dict] = []
     heads: dict[tuple[str, float], list[tuple]] = {}
+    moved: dict[str, tuple] = {}      # the texts already given a placement, at their new place (issue #167)
     rejected = [] if rejected is None else rejected
     for n, low in enumerate(layers):
         if low["kind"] == "picture":
@@ -240,7 +287,7 @@ def check(run, layers: list[dict], size: tuple[int, int], scratch: Path,
             if span is None:
                 continue
             if low["kind"] == "picture" and not fills(high["box"], size):
-                hit = _face_hit(low, high, span, scratch, heads, faces, size, rejected)
+                hit = _face_hit(low, high, span, scratch, heads, faces, size, rejected, layers, moved)
                 if hit:
                     collisions.append(hit)
             if (not fills(low["box"], size) and not fills(high["box"], size)
@@ -254,9 +301,10 @@ def check(run, layers: list[dict], size: tuple[int, int], scratch: Path,
 
 
 def _face_hit(picture: dict, layer: dict, span: tuple[float, float], scratch: Path,
-              heads: dict, faces: list[dict], size: tuple[int, int], rejected: list[dict]) -> dict | None:
-    """The first face the layer covers while both are shown, with the placement that clears every head seen then
-    (`suggest`), or None."""
+              heads: dict, faces: list[dict], size: tuple[int, int], rejected: list[dict],
+              layers: list[dict] | None = None, moved: dict | None = None) -> dict | None:
+    """The first face the layer covers while both are shown, with the placement of a text that clears every head
+    seen then and every other text shown with it, at its new place when it was given one (`suggest`), or None."""
     box = _edges(layer["box"])
     src_size = _size(picture["path"])
     hit = None
@@ -277,11 +325,21 @@ def _face_hit(picture: dict, layer: dict, span: tuple[float, float], scratch: Pa
     if hit is None:
         return None
     at, head = hit
-    suggestion = suggest(box, seen, size, layer.get("fontSize"))
+    suggestion = None
+    if layer["kind"] in ("caption", "overlay"):
+        moved = {} if moved is None else moved
+        others = [moved.get(x["id"], _edges(x["box"])) for x in layers or []
+                  if x["id"] != layer["id"] and x["kind"] in ("caption", "overlay") and not fills(x["box"], size)
+                  and together(x, layer) and x.get("on") != layer["id"] and layer.get("on") != x["id"]]
+        suggestion = suggest(layer, box, seen, others, size)
+        if suggestion is not None:
+            k = size[0] / 1080
+            y = _zones(size, box[3] - box[1])[2][suggestion["place"]] + suggestion["offsetY"] * k
+            moved[layer["id"]] = (box[0], y, box[2], y + box[3] - box[1])
     return {"kind": "face", "layer": layer["id"], "with": picture["id"], "at": at,
             "box": list(layer["box"]), "other": list(head), "suggestion": suggestion,
             "message": f"{layer['id']} covers a face in {picture['id']} at {at:.2f} s (the head at "
-                       f"{', '.join(str(v) for v in head)}): {_advice(suggestion, layer.get('fontSize'))}"}
+                       f"{', '.join(str(v) for v in head)}): {_advice(suggestion)}"}
 
 
 def _sha(path: Path) -> str:
@@ -318,6 +376,7 @@ def main(argv: list[str] | None = None) -> int:
     layers = read_layers(run, layers_path, size)
     scratch = Path(tempfile.mkdtemp(prefix="tm-layers-"))
     rejected: list[dict] = []
+    cover_fit._last.clear()
     try:
         faces, collisions = check(run, layers, size, scratch, rejected)
     finally:
@@ -328,15 +387,17 @@ def main(argv: list[str] | None = None) -> int:
             f"No layer covers a face or another layer, and no still is scaled up ({len(layers)} layers, "
             f"{len(faces)} face sightings).")
     data = {"edit": c.rel(run, edit), "layers": {"file": c.rel(run, layers_path), "sha256": _sha(layers_path)},
-            "size": list(size), "faces": faces, "rejected_faces": rejected, "collisions": collisions,
+            "size": list(size), "detector": cover_fit.detector_used(), "faces": faces, "rejected_faces": rejected,
+            "collisions": collisions,
             "message": said}
     out.parent.mkdir(parents=True, exist_ok=True)
     c.write_json(out, data, newline="\n")
     c.record(run, out, "tm tool layer_check", c.rel(run, edit), params={"layers": c.rel(run, layers_path),
                                                                         "collisions": len(collisions)},
-             model="OpenCV Haar faces (tm tool cover_fit's)", cost="0 (local)")
+             model=f"{cover_fit.DETECTORS[cover_fit.detector_used()]} (tm tool cover_fit's)", cost="0 (local)")
     return c.finish(a, {"tool": "layer_check", "outputs": [c.rel(run, out)], "collisions": collisions,
-                        "faces": len(faces), "message": said}, f"Wrote {c.rel(run, out)}. {said}")
+                        "faces": len(faces), "detector": cover_fit.detector_used(), "message": said},
+                    f"Wrote {c.rel(run, out)}. {said}")
 
 
 if __name__ == "__main__":

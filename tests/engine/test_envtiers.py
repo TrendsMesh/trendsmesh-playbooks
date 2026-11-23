@@ -184,6 +184,7 @@ def _video_install(monkeypatch, tmp_path, *, done_before: bool, probes: list):
         if probes.pop(0):
             raise _common.ToolError("Remotion test render failed: npm error could not determine executable to run")
     monkeypatch.setattr(render, "probe", probe)
+    monkeypatch.setattr("tm.face_model.fetch", lambda timeout=60: None)   # no network (test_face_model.py)
     return steps
 
 

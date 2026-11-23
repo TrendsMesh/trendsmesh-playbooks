@@ -29,9 +29,11 @@ page and one in chat count the same. Rules: `rules.md`.
   font's name and the logo on the card and say where each came from; a font the site serves itself may be licensed
   for the web only, so ask whether the brand's licence covers its ads. What it could not take (`missing`) is asked
   in question 4: the logo (SVG, or a PNG with transparency) and the font's TTF or OTF. It takes each logo image's
-  largest `srcset` file and puts an SVG that names the brand first; when the best logo is a raster under 600 px on
-  its longer side, `missing` says so, and question 4 asks for the logo as an SVG, or a PNG with transparency at
-  least 600 px wide (the end card never scales it up, CA10).
+  largest `srcset` file and puts an SVG that names the brand first; each logo's PNG is cropped to what it draws (an
+  SVG drawn larger first). When every logo that names the brand is too small once cropped (under 600 px on its
+  longer side, or drawing under 30 % of its picture, a strip around a small icon; `small` in the list), `missing`
+  says the logo is too small, and question 4 asks for a better logo file: an SVG, or a PNG with transparency at least
+  600 px wide (the end card never scales it up, CA10).
 - **The card is the start card** (issue #131): `tm page intake --run R --known <file> --json` (what you
   pre-filled, `{question id: value}`), published as the run's new private artifact with the answer's
   `capabilities`, `tm page published --page intake`, `tm page await --page intake`, the reply button; then one
@@ -296,7 +298,9 @@ page and one in chat count the same. Rules: `rules.md`.
   the speech, from the cut's own transcript (`tm tool transcribe --run R 03_wip/edit_cut_vNN.mp4`; mark the 1–2
   words that carry a line `"key": true` in it), and **overlays** proposed on the storyboard, written to
   `03_wip/edit_text_vNN.json`: `{"overlays": [{"from", "to", "text", "overlay": {"kind": "hook" | "label" |
-  "number" | "cta" | "end", "sub"?, "brand"?, "hold"?}}]}` (the hook at the top from 0 s, `"hold": true` to keep it
+  "number" | "cta" | "end", "sub"?, "brand"?, "hold"?}, "place"?, "offsetY"?, "pinned"?}]}` (`place` top, middle
+  or bottom and `offsetY` px at 1080 from it, where a face's fix or a hand puts it; `"pinned": true` keeps it where
+  it is, S7) (the hook at the top from 0 s, `"hold": true` to keep it
   the whole ad; a number counts up to its figure; the end card shows the brand's logo, its name, a line and the
   CTA; `*word*` marks a key word). Then `tm ad text --run R --cut 03_wip/edit_cut_vNN.mp4 --words <the transcript>
   --overlays 03_wip/edit_text_vNN.json --pictures 03_wip/edit_pictures_vNN.json --json`: it draws them in the set
@@ -304,12 +308,18 @@ page and one in chat count the same. Rules: `rules.md`.
   `03_wip/edit_layers_vNN.json` from the same props, the pictures and each caption's and overlay's box, for the
   layer check (S7). Keep the text off the faces, off the windows and off each other (CA10): move an overlay
   (`place`, its time) or a window, and run it again.
-- **The brand's text set:** saved, it is used without asking. None saved yet: the default `outline` (`native` for a
-  UGC concept, one meant to look filmed in the app), with the brand's colour (`--accent`), and saved once the user
-  accepts the edit at the review, with the brand's font and logo from the inventory: `tm brand text-style save
-  --run R --kind brand --name <the brand> --look <set> --accent <colour> --font <its font file> --logo <its PNG>
-  --note "<their words>" --json` (its font replaces Montserrat in every set but `native`; without a logo the end card
-  shows the brand's name). One ad in another set: `--look <set>` on `tm ad text`, the saved one unchanged.
+- **The brand's text set:** saved, it is used without asking. None saved yet (the brand's first ad): `tm ad text`
+  draws the first ad already in the brand's look, a set made for this run from the inventory
+  (`02_research/brand_vNN.json`: its first font file and its first logo PNG that names the brand and is not too
+  small) in the default `outline` (`--look native` for a UGC concept, one meant to look filmed in the app), with the
+  brand's colour (`--accent`); nothing is saved yet. Its answer says so and gives the command that keeps it
+  (`save_text_set`). Show the set with the edit at its review (the `review` check-in): the user accepts the two
+  together (Hands-off: by the check-in's rule, the note saying so), and only then run that command with their words
+  (`tm brand text-style save --run R --kind brand --name <the brand> --look
+  <set> --accent <colour> --font <its font file> --logo <its PNG> --note "<their words>" --json`; its font replaces
+  Montserrat in every set but `native`; without a logo the end card shows the brand's name). A change they ask for
+  (another set, colour or logo) goes into the next version first, and the save takes what they approved. One ad in
+  another set: `--look <set>` on `tm ad text`, the saved one unchanged.
 - Then **the loudness pass through the plugin**: `tm tool deliver finish --run R 03_wip/edit_mix_vNN.mp4`, with `--gain
   START-END:+DB` on a quiet line (a whisper) and `--compress` to even the speech: it limits, levels to the run's
   −14 LUFS with the true peak under −1.5 dBFS, and writes the edit's next version, `03_wip/edit_vNN.mp4`. Never set
@@ -325,10 +335,18 @@ page and one in chat count the same. Rules: `rules.md`.
 - Measure the latest edit like a take: `tm tool take_qa --run R 03_wip/edit_vNN.mp4 --lang <market language>
   --script <the board's lines>`, and its layers: `tm tool layer_check --run R 03_wip/edit_vNN.mp4 --layers
   03_wip/edit_layers_vNN.json` finds a caption or an overlay over a face (in the take's own frames, through the
-  window's crop and box), two layers over each other, and a still scaled up. A text over a face comes with its fix
-  (`suggestion`: a move that clears the head inside the safe zone, else the next smaller size; a detection covering
-  70 % or more of the frame is no face, listed in `rejected_faces`): run `tm ad text` again with the same files and
-  it takes the fix into the next `edit_text_vNN.json` and says what it moved or shrank; give that file from then on.
+  window's crop and box), two layers over each other, and a still scaled up. Faces are found with YuNet, a
+  detection scored 0.8 or more (a hoodie, a hand or a site capture is no face), downloaded with the video tools;
+  `detector` says `haar` when its model is missing (the older detector, which takes more for a face). A text over a
+  face comes with its fix (`suggestion`: `{"place", "offsetY"}`, a place in the frame that clears every head and
+  every other text shown with it: a hook at the top, else the middle; the captions at the bottom, else the middle;
+  never a smaller size; null when nothing clears; a detection covering 70 % or more of the frame is no face, listed
+  in `rejected_faces`): run `tm ad text` again with the same files and it takes the fix into the next
+  `edit_text_vNN.json` and says where it placed it; give that file from then on. A placement made by hand is kept:
+  `tm ad text` takes no fix when `--overlays` is another file than the one the last render drew (it says so,
+  `fixes_skipped`), and never moves or resizes an overlay marked `"pinned": true` (the captions:
+  `{"captions": {"pinned": true}}` in the overlays file). Pin a text the user placed, or one you placed by hand when
+  the suggestion was null.
   A collision is moved in a new version (S6) before anything is shown: the user never sees it, so the message names no path to the failing version and
   offers no "rough look" at it, even when the new version can't be made in this session (say what stops it and
   that the run continues from there). Write what was checked next to the version,

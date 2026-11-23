@@ -4,6 +4,22 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Create an ad: the first ad for a brand already uses the brand's font and logo.** With no text set saved yet, the
+  edit is drawn in a set made for that ad from what was read off the site: its font, and its logo on the end card
+  (it used to be Montserrat and the brand's name as text). You approve the set together with the edit, and it is
+  saved for the brand's later ads only then.
+- **Create an ad: a logo read off the site is cropped to what it draws, and one that is too small is said plainly.**
+  A logo saved as a wide strip with a small icon in the middle is cropped to the icon, and an SVG logo is drawn
+  larger first. When the cropped logo is still small (under 600 px on its longer side, or under 30 % of its
+  picture), the asset list says it is too small and asks you for a better file.
+- **Create an ad: text over a face on a selfie take is moved to a free place in one go.** The edit check now suggests
+  a place in the frame (the top, the middle or the bottom) that clears the face and every other caption shown at
+  the same time, with a hook kept at the top or else the middle, instead of shrinking the text. A change you make by
+  hand is never overwritten by the next automatic fix, and an overlay marked `"pinned": true` stays where it is.
+- **Faces are found with OpenCV's YuNet detector, so a hoodie, a hand or a site capture is no longer a face.** Its
+  small model (about 230 KB, MIT licence) is downloaded once with the video tools and checked against a pinned
+  checksum. Until it is there, the older detector is used, and the edit check and the cover fit say which one ran.
+
 ## 0.14.0
 
 - **Linux: TrendsMesh calls are paced right on Ubuntu 26.04 too.** Its `mkdir` and `date` (uutils coreutils)

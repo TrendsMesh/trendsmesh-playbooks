@@ -4,8 +4,11 @@
                [--pictures <picture layers>] [--look L] [--accent #RRGGBB] [--json]
 
 The cut stays ffmpeg's (the pictures, the windows, the sound, with no text). The captions and the overlays are drawn
-over it with Remotion's `OrganicCaptions`, in the brand's saved text set (`tm.text_sets`; the default `outline` when
-none is saved, `--look` for this ad only), with its accent, its font and its logo:
+over it with Remotion's `OrganicCaptions`, in the brand's saved text set (`tm.text_sets`; `--look` for this ad only),
+with its accent, its font and its logo. With none saved (the brand's first ad, issue #166), a set made for this run
+from the site's inventory (`text_sets.from_inventory`: the default `outline`, the inventory's first font file and its
+first logo PNG that names the brand and is not too small; the default alone when it has neither); the answer gives
+the `tm brand text-style save` that keeps it (`save_text_set`), run once the user approves the edit at the review:
 
 - **captions** from the words of the cut's own transcript (`--words`: `tm tool transcribe` of the cut, or Scribe's),
   in the set's word groups (`organic_edit.caption_layer`), at the bottom; a word marked `"key": true` is a key word;
@@ -19,18 +22,22 @@ Writes `03_wip/edit_mix_vNN.props.json`, renders it to `03_wip/edit_mix_vNN.mp4`
 file) from the same props: the picture layers given with `--pictures` (`{"layers": [...]}`, kind picture, as S6 always
 wrote them), then each overlay and caption with its box (`text_boxes`), so `tm tool layer_check` (S7) checks them.
 
-A face's fix (issue #139): when the latest `tm tool layer_check` is of the latest edit_layers file, each face
+A face's fix (issues #139, #167): when the latest `tm tool layer_check` is of the latest edit_layers file, each face
 collision's `suggestion` of a text layer is taken into the overlays before drawing (`face_fixes`, `apply_fixes`): an
-overlay's own `offsetY` (added, px at 1080) or `size` (px at 1080), matched by its text and start, and the captions'
-`{"captions": {"offsetY", "fontSize"}}`. They are kept in the overlays file's next version (`edit_text_vNN.json`),
-which the answer names (`overlays_file`, `changes`), so the next version keeps them and no fix is taken twice.
+overlay's own `place` and `offsetY` (px at 1080 from that place; an older check's bare `offsetY` is added, its
+`size` set), matched by its text and start, and the captions' `{"captions": {"place", "offsetY", "fontSize"}}`.
+They are kept in the overlays file's next version (`edit_text_vNN.json`), which the answer names (`overlays_file`,
+`changes`), so the next version keeps them and no fix is taken twice. A placement made by hand is never overwritten:
+no fix is taken when `--overlays` is not the file the latest props were drawn from (`last_overlays`; the answer says
+so, `fixes_skipped`), and an overlay with `"pinned": true` (the captions with `{"captions": {"pinned": true}}`) is
+never moved or resized.
 
 `text_boxes` places each text as `OrganicCaptions.tsx` lays it out (the safe zone, the column, the place and
 `offsetY`, the set's sizes by kind) and estimates its width from its letters: about 0.6 of the size a letter for the
 sets' own fonts, and for the brand's font its own average letter width (its OS/2 table, `font_letter`) with a margin,
 or a wide guess when the file can't be read (WOFF2), so a box is at least as large as the text drawn. An end card
-fills the frame. Each text layer also carries its `text` and the `fontSize` it is drawn at (px at 1080), which the
-layer check steps down for a size fix.
+fills the frame. Each text layer also carries its `text`, the `fontSize` it is drawn at (px at 1080), its `place`,
+`offsetY` and `role` (the overlay's kind, or caption), which the layer check places it by.
 """
 
 from __future__ import annotations
@@ -43,7 +50,7 @@ import struct
 import zlib
 from pathlib import Path
 
-from tm import cli, manifest, organic_edit as oe
+from tm import cli, config, manifest, organic_edit as oe
 from tm.runfolder import RunFolder
 from tm.stops import AGAIN, Stop
 from tm.tools import _common as c
@@ -175,7 +182,8 @@ def text_boxes(props: dict, letter: float = LETTER) -> list[dict]:
             w, h = min(col, line + pad), lines * size * LINE + 0.2 * size
             box = _box(left + (col - w) / 2, _place(place, h, k, height, shift), w, h, width, height)
         layer = {"id": f"{kind}_{n[kind]}", "kind": kind, "start": cap["from"], "end": cap["to"], "box": box,
-                 "text": text}
+                 "text": text, "place": place, "offsetY": _px(cap.get("offsetY") or 0),
+                 "role": ov.get("kind", "hook") if ov else ("caption" if kind == "caption" else "hook")}
         if drawn is not None:
             layer["fontSize"] = round(drawn, 1) if drawn % 1 else int(drawn)   # px at 1080: the layer check's step
         out.append(layer)
@@ -186,6 +194,11 @@ def text_boxes(props: dict, letter: float = LETTER) -> list[dict]:
 
 def _number(v: object) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _px(v: object) -> int | float:
+    v = float(v) if _number(v) else 0.0
+    return int(v) if v.is_integer() else round(v, 1)
 
 
 def _read_overlays(run: RunFolder, given: str) -> tuple[str, list[dict], dict]:
@@ -254,29 +267,61 @@ def face_fixes(run: RunFolder) -> list[tuple[dict, dict]]:
     return out
 
 
+def last_overlays(run: RunFolder) -> str | None:
+    """The overlays file the latest `tm ad text` props were drawn from (their manifest row's `overlays`), else None
+    (issue #167: a fix is taken only into the file the last render drew, never over a change made by hand)."""
+    for row in reversed(manifest.rows(run)):
+        if row["source"] != "tm ad text" or not row["file"].endswith(".props.json"):
+            continue
+        try:
+            params = json.loads(row["params"]) if row["params"] else {}
+        except ValueError:
+            return None
+        found = params.get("overlays") if isinstance(params, dict) else None
+        return found if isinstance(found, str) else None
+    return None
+
+
 def _fix_words(what: str, fix: dict) -> str:
+    if fix.get("place") in oe.PLACES:
+        dy = fix.get("offsetY") or 0
+        return f"{what} placed at the {fix['place']}" + (f", {'up' if dy < 0 else 'down'} {abs(dy)} px" if dy else "")
     if "offsetY" in fix:
         return f"{what} moved {'up' if fix['offsetY'] < 0 else 'down'} {abs(fix['offsetY'])} px"
     return f"{what} set to size {fix['fontSize']}"
 
 
+def _take(fix: dict, size_key: str, *targets: dict) -> bool:
+    """One fix into an overlay's or the captions' entry (and its parsed copy): a placement (`place`, with its own
+    `offsetY` set, issue #167), an older check's move (`offsetY`, added) or size. False when it says nothing usable."""
+    if not (fix.get("place") in oe.PLACES or _number(fix.get("offsetY")) or _number(fix.get("fontSize"))):
+        return False
+    for where in targets:
+        if fix.get("place") in oe.PLACES:
+            where["place"] = fix["place"]
+            where["offsetY"] = fix["offsetY"] if _number(fix.get("offsetY")) else 0
+        elif _number(fix.get("offsetY")):
+            where["offsetY"] = (where.get("offsetY") or 0) + fix["offsetY"]
+        else:
+            where[size_key] = fix["fontSize"]
+    return True
+
+
 def apply_fixes(data: dict, given: list[dict], fixes: list[tuple[dict, dict]]) -> list[str]:
-    """The face fixes taken into the overlays file's data (in place): an overlay's own `offsetY` (added) or `size`,
-    matched by its text and start; the captions' `{"captions": {offsetY, fontSize}}`. What changed, in words."""
+    """The face fixes taken into the overlays file's data (in place): an overlay's own `place` and `offsetY` (a
+    placement; an older check's `offsetY` is added) or `size`, matched by its text and start; the captions'
+    `{"captions": {place, offsetY, fontSize}}`. An overlay with `"pinned": true`, and the captions with
+    `{"captions": {"pinned": true}}`, were placed by hand: never moved or resized (issue #167). What changed, in
+    words."""
     changes: list[str] = []
     done: set[int] = set()
     caps_done = False
     for layer, fix in fixes:
         if layer["kind"] == "caption":
-            if caps_done:
+            caps = data.get("captions") if isinstance(data.get("captions"), dict) else {}
+            if caps_done or caps.get("pinned") is True or not _take(fix, "fontSize", caps):
                 continue
-            caps = data.setdefault("captions", {})
-            if _number(fix.get("offsetY")):
-                caps["offsetY"] = caps.get("offsetY", 0) + fix["offsetY"]
-            elif _number(fix.get("fontSize")):
-                caps["fontSize"] = fix["fontSize"]
-            else:
-                continue
+            data["captions"] = caps
             caps_done = True
             changes.append(_fix_words("the captions", fix) + " (they covered a face)")
             continue
@@ -284,11 +329,7 @@ def apply_fixes(data: dict, given: list[dict], fixes: list[tuple[dict, dict]]) -
             if i in done or str(item.get("text", "")).replace("*", "") != layer.get("text") \
                     or abs(float(item.get("from") or 0) - float(layer.get("start") or 0)) > 0.01:
                 continue
-            if _number(fix.get("offsetY")):
-                raw["offsetY"] = item["offsetY"] = (item.get("offsetY") or 0) + fix["offsetY"]
-            elif _number(fix.get("fontSize")):
-                raw["size"] = item["size"] = fix["fontSize"]
-            else:
+            if raw.get("pinned") is True or not _take(fix, "size", raw, item):
                 break
             done.add(i)
             changes.append(_fix_words(f"\"{layer['text']}\"", fix) + " (it covered a face)")
@@ -306,7 +347,13 @@ def text(run: RunFolder, cut: str, *, overlays: str, words: str | None = None, p
         raise Stop(f"--accent must be a colour as #RRGGBB (the brand's), not {accent!r}; {AGAIN}.")
     over_rel, given, over_data = _read_overlays(run, overlays)
     shown = _read_pictures(run, pictures)
-    changes = apply_fixes(over_data, given, face_fixes(run))
+    fixes, skipped = face_fixes(run), None
+    last = last_overlays(run)
+    if fixes and last is not None and last != over_rel:   # another file than the last render's: a change by hand
+        skipped = (f"the last layer check's fixes were not taken: {over_rel} is not the overlays file the last "
+                   f"render drew ({last}), so its placement is kept as it is")
+        fixes = []
+    changes = apply_fixes(over_data, given, fixes)
     if changes:     # the layer check's fixes, kept in the next overlays file so the next version keeps them
         stem = re.sub(r"_v\d+$", "", Path(over_rel).name.removesuffix(".json")) or "edit_text"
         target = run.next_version("wip", stem, "json")
@@ -318,11 +365,13 @@ def text(run: RunFolder, cut: str, *, overlays: str, words: str | None = None, p
     if not found.get("is_video", found.get("has_video")):
         raise Stop(f"{cut_rel} is not a video: give the ffmpeg cut of the edit, without its text; {AGAIN}.")
     duration = float(found["duration"])
-    saved = text_sets.for_run(run)
+    saved = text_sets.for_run(run) or text_sets.from_inventory(run)   # the first ad: the inventory's (issue #166)
     kit = text_sets.into_run(run, saved) if saved else {}
     look = look_id or kit.get("look") or oe.DEFAULT_LOOK
     style = oe.default_style(caption="", overlay="", look=look, accent=accent.upper() if accent else kit.get("accent"),
                              font=kit.get("font"), logo=kit.get("logo"))
+    if cap_fix.get("place") in oe.PLACES:
+        style["captions"]["place"] = cap_fix["place"]
     if _number(cap_fix.get("offsetY")):
         style["captions"]["offsetY"] = cap_fix["offsetY"]
     if _number(cap_fix.get("fontSize")):
@@ -333,6 +382,11 @@ def text(run: RunFolder, cut: str, *, overlays: str, words: str | None = None, p
         wpath, words_rel = oe._inside(run, words, "words file")
         caps = oe.caption_layer(oe._read_words(wpath, words_rel), style)
     tops = oe.overlay_entries(given, style, total=duration)
+    drawn = [o for o in given if not (oe.overlays_off(style) and not (isinstance(o.get("overlay"), dict)
+                                                                       and o["overlay"].get("kind") == "end"))]
+    for item, entry in zip(drawn, tops):
+        if item.get("place") in oe.PLACES:   # its own place (a face's fix, issue #167), over the style's and the hold's
+            entry["place"] = item["place"]
     props = {"width": int(found["width"]), "height": int(found["height"]), "fps": round(float(found["fps"]) or 30),
              "keepAudio": True, "segments": [{"src": cut_rel, "start": 0, "end": round(duration, 3)}],
              "captions": tops + caps, **({"brandFont": style["font"]} if style.get("font") else {})}
@@ -340,8 +394,9 @@ def text(run: RunFolder, cut: str, *, overlays: str, words: str | None = None, p
     props_path = mix.with_name(mix.name.removesuffix(".mp4") + ".props.json")
     c.write_json(props_path, props, newline="\n")
     c.record(run, props_path, "tm ad text", cut_rel, cost="free",
-             params={"look": look, "text_set": saved["file"] if saved else None, "overlays": over_rel,
-                     "words": words_rel, "captions": len(caps)})
+             params={"look": look, "text_set": saved["file"] if saved else None,
+                     **({"text_set_run_only": True} if saved and saved.get("run_only") else {}),
+                     "overlays": over_rel, "words": words_rel, "captions": len(caps)})
     done = render.video(run, "OrganicCaptions", props_path, mix)
     nn = max(_nn(run.next_version("wip", EDIT, "mp4")), _nn(run.next_version("wip", LAYERS, "json")))
     layers_path = run.path / WIP / f"{LAYERS}_v{nn:02d}.json"
@@ -349,8 +404,31 @@ def text(run: RunFolder, cut: str, *, overlays: str, words: str | None = None, p
     c.write_json(layers_path, {"layers": shown + text_boxes(props, letter)}, newline="\n")
     c.record(run, layers_path, "tm ad text", c.rel(run, props_path), cost="free")
     return {"props": c.rel(run, props_path), "mix": c.rel(run, done), "layers": c.rel(run, layers_path),
-            "look": look, "text_set": saved["file"] if saved else None, "captions": len(caps), "overlays": len(tops),
-            "overlays_file": over_rel, "changes": changes}
+            "look": look, "text_set": saved["file"] if saved else None,
+            "text_set_saved": bool(saved) and not saved.get("run_only"),
+            "save_text_set": _save_command(run, look, accent or kit.get("accent"), saved),
+            "captions": len(caps), "overlays": len(tops),
+            "overlays_file": over_rel, "changes": changes, "fixes_skipped": skipped}
+
+
+def _save_command(run: RunFolder, look: str, accent: str | None, saved: dict | None) -> str | None:
+    """The `tm brand text-style save` that keeps a run-only set (issue #166), run once the user approves the edit
+    at the review; None when the set is saved already or there is none."""
+    if not saved or not saved.get("run_only"):
+        return None
+    try:
+        brand = (config.load(run).get("brand") or {}).get("product") or "<the brand>"
+    except ValueError:
+        brand = "<the brand>"
+    font = saved.get("font") or {}
+    parts = [f"tm brand text-style save --run R --kind brand --name \"{brand}\" --look {look}"]
+    if accent:
+        parts.append(f"--accent {accent.upper()}")
+    if font.get("file"):
+        parts.append(f"--font {font['file']} --family \"{font['family']}\"")
+    if saved.get("logo"):
+        parts.append(f"--logo {saved['logo']}")
+    return " ".join(parts + ["--note \"<their words>\""])
 
 
 def add_parser(sub) -> argparse.ArgumentParser:
@@ -379,5 +457,11 @@ def run_cli(args: argparse.Namespace, run: RunFolder) -> int:
     if out["changes"]:
         message += (f" From the last layer check: {'; '.join(out['changes'])}. Kept in {out['overlays_file']}: "
                     "give that file next time.")
+    if out["fixes_skipped"]:
+        message += f" Note: {out['fixes_skipped']}."
+    if out["save_text_set"]:
+        message += (f" No text set is saved for the brand yet: this edit is drawn in a set made for this run from "
+                    f"{out['text_set']} (the brand's font and logo). Show it at the review; once the user approves "
+                    f"the edit, save the set with it: {out['save_text_set']}.")
     cli.emit(args, {"status": "done", **out, "message": message}, message)
     return 0

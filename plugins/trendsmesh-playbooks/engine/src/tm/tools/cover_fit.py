@@ -5,8 +5,10 @@
 
 The cover props are OrganicCaptions' (a frame of the final's picture and 2 to 7 words in the hook's style). The frame
 is drawn without its text (`render.draft_still`, a scratch file never recorded) and the faces in it are found with
-OpenCV's Haar detectors (frontal and profile, both ways; `--face` adds one the detector missed, px at 1080×1920). A
-detected face is the eyes to the chin, so the head counts (`head`: half its height above it, a sixth of its width on
+OpenCV's YuNet detector, a detection scored 0.8 or more (issue #167: its model from `tm env install video`,
+`tm.face_model`), else, while that model is missing or fails its checksum, its Haar detectors (frontal and profile,
+both ways); `detector` says which ran (`--face` adds one the detector missed, px at 1080×1920). A detected face is
+the forehead or the eyes to the chin, so the head counts (`head`: half its height above it, a sixth of its width on
 each side). The text is drawn and measured (the pixels it changes), and while it covers a head it is moved
 (`offsetY`) to the nearer side where it clears the head and stays inside the 3:4 crop (y 240 to 1680), else made
 smaller (`fontSize` × 0.85, not under 32; an overlay drawn in a text set through its `overlay.size`) and placed
@@ -27,7 +29,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from tm import organic_edit, organic_final, render
+from tm import face_model, organic_edit, organic_final, render
 from tm.tools import _common as c
 
 CROP = (240, 1680)      # the 3:4 crop of a 1080×1920 cover, y at 1080 wide
@@ -74,30 +76,84 @@ def not_a_face(face: tuple[int, int, int, int], size: tuple[int, int]) -> bool:
     return w * h >= REJECT_SHARE * width * height
 
 
-def faces(png: Path, rejected: list | None = None) -> list[tuple[int, int, int, int]]:
-    """The faces OpenCV's Haar detectors find in a picture, (x, y, w, h). A detection that is no face
-    (`not_a_face`) is left out, and added to `rejected` as {face, reason} when a list is given."""
-    import cv2
-    import numpy as np
+YUNET, HAAR = "yunet", "haar"
+DETECTORS = {YUNET: f"OpenCV YuNet faces (score {face_model.SCORE} or more)",
+             HAAR: "OpenCV Haar faces (YuNet's model is missing or failed its checksum)"}
+YUNET_SIDE = 960        # the longer side YuNet looks at (a 1080×1920 frame at half size)
+_last: list[str] = []   # the detector the latest `faces` ran
 
-    img = cv2.imdecode(np.fromfile(str(png), dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
-    if img is None:
-        raise c.ToolError(f"{c.name_of(png)} cannot be read as a picture.")
+
+def detector_used() -> str:
+    """Which detector found the faces (`DETECTORS`' key): the one the latest `faces` ran, else the one it would."""
+    return _last[-1] if _last else (YUNET if face_model.usable() else HAAR)
+
+
+def _yunet(cv2, img, model: Path) -> list[tuple[int, int, int, int]]:
+    """YuNet's detections scored SCORE or more, (x, y, w, h) in the picture's px. Its box runs from the forehead to
+    the chin, as Haar's frontal one does, so `head` is the same for both."""
+    height, width = img.shape[:2]
+    scale = min(1.0, YUNET_SIDE / max(width, height))
+    pic = cv2.resize(img, (round(width * scale), round(height * scale))) if scale < 1 else img
+    size = (pic.shape[1], pic.shape[0])
+    net = cv2.FaceDetectorYN.create(str(model), "", size, face_model.SCORE, 0.3, 50)
+    net.setInputSize(size)
+    _, rows = net.detect(pic)
+    out = []
+    for row in rows if rows is not None else []:
+        if float(row[14]) < face_model.SCORE:
+            continue
+        x, y, w, h = (float(v) / scale for v in row[:4])
+        out.append((int(round(x)), int(round(y)), int(round(w)), int(round(h))))
+    return out
+
+
+def _haar(cv2, img) -> list[tuple[int, int, int, int]]:
+    """The Haar detectors' detections (frontal and profile, both ways), (x, y, w, h)."""
     side = max(48, img.shape[1] // 16)
-    found: list[tuple[int, int, int, int]] = []
+    out = []
     for name, flip in (("haarcascade_frontalface_default.xml", False), ("haarcascade_profileface.xml", False),
                        ("haarcascade_profileface.xml", True)):
         cascade = cv2.CascadeClassifier(str(Path(cv2.data.haarcascades) / name))
         pic = cv2.flip(img, 1) if flip else img
         for x, y, w, h in cascade.detectMultiScale(pic, scaleFactor=1.1, minNeighbors=6, minSize=(side, side)):
             x = img.shape[1] - x - w if flip else x
-            box = (int(x), int(y), int(w), int(h))
-            if not_a_face(box, (img.shape[1], img.shape[0])):
-                if rejected is not None and not any(r["face"] == list(box) for r in rejected):
-                    rejected.append({"face": list(box), "reason": NOT_A_FACE})
-                continue
-            if not any(_overlaps(head(box), head(f), 0) for f in found):
-                found.append(box)
+            out.append((int(x), int(y), int(w), int(h)))
+    return out
+
+
+def faces(png: Path, rejected: list | None = None) -> list[tuple[int, int, int, int]]:
+    """The faces in a picture, (x, y, w, h): OpenCV's YuNet detector, a detection scored 0.8 or more (issue #167:
+    a hoodie, a hand or a site capture is no face), when its model is in the data folder and passes its checksum
+    (`tm.face_model`), else the Haar detectors; `detector_used` says which ran. A detection that is no face
+    (`not_a_face`) is left out, and added to `rejected` as {face, reason} when a list is given."""
+    import cv2
+    import numpy as np
+
+    raw = np.fromfile(str(png), dtype=np.uint8)
+    model = face_model.usable()
+    detections, used = None, HAAR
+    if model is not None:
+        img = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+        if img is None:
+            raise c.ToolError(f"{c.name_of(png)} cannot be read as a picture.")
+        try:
+            detections, used = _yunet(cv2, img, model), YUNET
+        except (cv2.error, AttributeError):   # an OpenCV without YuNet, or a model it cannot load: Haar's
+            detections = None
+    if detections is None:
+        img = cv2.imdecode(raw, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            raise c.ToolError(f"{c.name_of(png)} cannot be read as a picture.")
+        detections = _haar(cv2, img)
+    _last[:] = [used]
+    found: list[tuple[int, int, int, int]] = []
+    for box in detections:
+        if not_a_face(box, (img.shape[1], img.shape[0])):
+            if rejected is not None and not any(r["face"] == list(box) for r in rejected):
+                rejected.append({"face": list(box), "reason": NOT_A_FACE})
+            continue
+        if not any(_overlaps(head(box), head(f), 0) for f in found):
+            found.append(box)
     return found
 
 
@@ -260,6 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     given = [_box(f) for f in a.face]
     scratch = Path(tempfile.mkdtemp(prefix="tm-cover-"))
     rejected: list[dict] = []
+    _last.clear()
     try:
         fitted, found, changes = fit(run, data, a.frame, given, scratch, rejected)
     finally:
@@ -271,6 +328,7 @@ def main(argv: list[str] | None = None) -> int:
         c.write_json(props_path, fitted, newline="\n")
         c.record(run, props_path, "tm tool cover_fit", rel, params={"faces": [list(f) for f in found],
                                                                      "rejected_faces": rejected,
+                                                                     "detector": detector_used(),
                                                                      "changes": changes}, cost="0 (local)")
     pid = organic_final.idea_id(run) or "cover"
     out = c.output(run, a.out, organic_final.KITS, f"cover_{pid}", "png")
@@ -284,7 +342,8 @@ def main(argv: list[str] | None = None) -> int:
         said += (f" {len(rejected)} detection(s) left out: they cover almost the whole frame, so they are not a "
                  "face.")
     payload = {"tool": "cover_fit", "outputs": [c.rel(run, done)], "props": c.rel(run, props_path),
-               "faces": [list(f) for f in found], "rejected_faces": rejected, "changes": changes, "message": said}
+               "faces": [list(f) for f in found], "detector": detector_used(), "rejected_faces": rejected,
+               "changes": changes, "message": said}
     return c.finish(a, payload, f"Wrote {c.rel(run, done)}. {said} Then: tm tool deliver cover --run <run> "
                                 f"{c.rel(run, done)}.")
 
