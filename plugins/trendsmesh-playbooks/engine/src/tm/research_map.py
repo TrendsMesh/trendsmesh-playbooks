@@ -20,7 +20,8 @@ Added to the original map: `pool_ids` (every trend id the searches returned, for
 threshold, marked "weak match", so the page never says there are no trends in the category).
 
 The engine sets the obvious cases aside before the agent reads the map (issue #129, the owner's #148 line 7):
-noise and contradicted trends (as before), in a weekly run every trend last week's review dropped (carried over
+noise (a noise word in the trend's name; one only in its description keeps the trend, marked `mentions` for the
+review, issue #169) and contradicted trends (as before), in a weekly run every trend last week's review dropped (carried over
 from `00_raw/prev_category_map.json`, `carried_over` on the row), then, when more than `review.max_trends` (50)
 remain, every trend below the best 50 by best match (ties: more creators first) goes to `set_aside`, each with
 its reason ("rank 73 by match (41)"). The cut is made before the review's drops, so applying the review never
@@ -213,7 +214,19 @@ def _record(tid: str, entry: dict, query: str) -> dict:
             "reach": card.get("reach"), "since": card.get("since"),
             "active_for_days": card.get("active_for_days"), "momentum": card.get("momentum"),
             "sensitivity_level": card.get("sensitivity_level"), "what_it_is": card.get("what_it_is"),
-            "seasonal": trends.seasonal_tag(card)}
+            "seasonal": trends.seasonal_tag(card), **_mentions(card)}
+
+
+def _mentions(card: dict) -> dict:
+    """`{"mentions": [word, ...]}`, the noise words only in the card's description (issue #169: kept, "check:
+    mentions <word>" at the review), else {}."""
+    words = trends.noise_mentions(card)
+    return {"mentions": words} if words else {}
+
+
+def check_label(r: dict) -> str:
+    """"check: mentions soccer, election" for a row with noise words in its description only, else ""."""
+    return f"check: mentions {', '.join(r['mentions'])}" if r.get("mentions") else ""
 
 
 def _reasons(card: dict, exclude: list[str]) -> list[str]:
@@ -442,12 +455,14 @@ def _markdown(m: dict) -> str:
     lines += ["", f"**To review (kept):** {len(kept)} trends. **Set aside by the engine:** {len(aside)}. "
               f"**Dropped (noise, contradicted, reviews):** {len(dropped)}. "
               f"**Below the match threshold everywhere:** {m['below_threshold']}.", "", "## To review", "",
-              f"The best {m.get('max_trends', len(kept))} by match (and any restored): read every one.", "",
+              f"The best {m.get('max_trends', len(kept))} by match (and any restored): read every one. A trend marked "
+              "\"check: mentions <word>\" has a noise word (news, sport, politics) in its description only, which sums "
+              "up its videos: keep it when the trend itself fits the category, drop it otherwise.", "",
               "| Group | Sub-category | Kind | Trend | What it is | Match | Creators | Videos | Status | Seasonal |",
               "|---|---|---|---|---|---|---|---|---|---|"]
     for r in kept:
         rc = r.get("reach") or {}
-        name = r["name"] + (" (restored)" if r.get("restored") else "")
+        name = r["name"] + (" (restored)" if r.get("restored") else "") + (f" ({check_label(r)})" if r.get("mentions") else "")
         what = " ".join(str(r.get("what_it_is") or "").split()).replace("|", "/")
         lines.append(f"| {r['group']} | {r['sub_category']} | {r['kind']} | {name} | {what} | {r['match']:.0f} | "
                      f"{rc.get('creators', '?')} | {rc.get('videos', '?')} | {r['status']} | {_seasonal(r)} |")

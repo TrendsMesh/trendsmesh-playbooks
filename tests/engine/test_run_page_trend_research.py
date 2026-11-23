@@ -103,6 +103,19 @@ def test_the_settled_stages_say_what_was_decided_from_the_runs_files(tmp_path):
     assert "03_wip/picks_v01.json</li></ul></details>" in g2 and "Source:" not in g2   # folded (#132)
 
 
+def test_the_map_stage_names_the_trends_to_check(tmp_path):
+    """Issue #169: a kept trend with a noise word only in its description is named on G1, with the word."""
+    run, _ = _uroda(tmp_path)
+    path = run.path / "02_research" / "category_map_v01.json"
+    cmap = json.loads(path.read_text(encoding="utf-8"))
+    cmap["kept"][0] = {**cmap["kept"][0], "name": "Krem z filtrem na co dzień", "mentions": ["football"]}
+    path.write_text(json.dumps(cmap, ensure_ascii=False), encoding="utf-8")
+    _decide(run, "G1", "accept")
+    g1 = _settled(_build(run))
+    g1 = g1[g1.index('id="stage-G1"'):]
+    assert "<dt>To check: a noise word in the description only</dt><dd>Krem z filtrem na co dzień (football)</dd>" in g1
+
+
 def test_a_weekly_schedule_and_the_page_check_in_are_named_in_words(tmp_path):
     run, _ = _uroda(tmp_path)
     _decide(run, "G3", "keep_local", by="rule", note="no publishing tool")

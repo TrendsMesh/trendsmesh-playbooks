@@ -229,7 +229,7 @@ state, the earlier check-ins folded under "Already settled", read-only.
   await --page run_page` holds the publish while the user chooses, and `tm page decision --record` lifts it.
 - **Trend research**: the page is `report` (`04_final/report_vNN/`), the report's own link, kept across weeks
   (a weekly run republishes to the link of the run it follows). G0 and G1 are versions of it before the report
-  exists; from E1 on, `tm research report` builds the report as the page's content, and every later `tm page
+  exists (a weekly run's carry last week's report, under a "Last week's report" line, issue #168); from E1 on, `tm research report` builds the report as the page's content, and every later `tm page
   build` (G2, G3, GS) keeps the same report above its check-ins. Publish it with the build's `capabilities`
   (the run's one set: the decisions db, the start card's, the CSV downloads); `--local` only without a publishing tool.
 - **Creative brief**: G0 (A1) and G1 (B1) are run page stages (`tm page build --ask`); from C1 on the brief's

@@ -36,7 +36,7 @@ what each does in a weekly run is under the step. In order:
 |---|---|---|
 | 1 | `cd` into the workspace, `tm run new --playbook trend-research --name <name> --after <last run>`, `tm config write --from-previous`, then the level if the user asked for one | A0 |
 | 2 | `tm research previous` (the snapshot, map, split and config of last week) | A2 |
-| 3 | `tm trends collect on`, the searches of last week's split, and the `list_trends sort=updated` list (unfiltered, from page 1 back to last week's date) | B1 |
+| 3 | `tm trends collect on`, the searches of last week's split, and the `list_trends sort=updated` list (unfiltered, from page 1 while `read_next_page`; at most 5 pages without dates) | B1 |
 | 4 | the map (with last week's review carried over) | B2, B3 |
 | 5 | the rising hooks, then `tm research map-change` | B4 |
 | 5b | the hooks' fit scores, then `tm research hook-fit` (the shortlist) | B4 |
@@ -204,11 +204,17 @@ TR1. The engine counts; you choose the phrases.
    row with its source. A thin leaf stays a leaf; depth 2 is still the limit.
 6. **A weekly run** also saves the updated list: `list_trends` with `sort` `updated` and **no
    filter** (no `trend_type`, `q` or `feed`), `limit` 50, from **page 1**, then the next `page`
-   while `has_more`, and stop once a page's summary gives an `oldest_updated_at` on or before the
-   previous run's reference date (its run date minus `growth.lag_days`, 2 days: the fetch plan's
-   `since`). When `oldest_updated_at` is null (the cards carry no `updated_at`), keep paging while
-   `has_more`. Without a list that reaches back that far, the fetch plan cannot tell what is
-   unchanged and fetches everything (its `note` says so: then list more pages).
+   **while the page's summary says `read_next_page: true`**, and stop when it says `false`. The
+   engine decides it against the previous run's reference date (its run date minus
+   `growth.lag_days`, 2 days: the fetch plan's `since`, from A2's `00_raw/prev_snapshot.json`): a
+   card is dated by its `updated_at`, else its `proof.last_seen_at` (`oldest_updated_at` is the
+   oldest of them). It stops once a page's oldest `updated_at` is on or before that date, or every
+   card on the page was last seen before it, or nothing follows. **When the cards carry no date at
+   all** (`no_dates: true`), it stops after **5 pages** (250 cards), never more: the fetch plan then
+   reuses nothing, fetches every trend again, and its `note` says so. Tell the user that note in
+   one plain line ("TrendsMesh's list gave no update dates, so this week fetches every trend
+   again"). Without a list that reaches back, for another reason, the plan's `note` says what is
+   missing (list more pages while `read_next_page` is true).
 7. `tm done B1 --run R` once `to_search` is empty.
 
 <a id="b2"></a>
@@ -218,6 +224,10 @@ TR1. The engine counts; you choose the phrases.
   searches, tags each trend with its sub-category, drops noise (news, sport, politics, names) and
   contradicted trends, and tags seasonal trends (they stay: TR3's seasonal guard decides). Output:
   `02_research/category_map_vNN.json` and `.md`.
+- A noise word drops a trend only when it is in the trend's **name** (as a whole word). A noise word
+  only in the description (a summary of the trend's videos: one video about a match puts "soccer"
+  in it) keeps the trend, marked **"check: mentions <word>"** under To review (`mentions` in the
+  JSON). Your excluded terms (`trends.exclude_terms`) drop a trend wherever they are.
 - The engine sets the obvious cases aside, so you review a short list: in a weekly run, every trend
   last week's review dropped stays dropped ("last week's review: <its reason>"), and when more than
   `review.max_trends` (50) trends remain, only the best 50 by match (ties: more creators) are **To
@@ -236,6 +246,9 @@ TR1. The engine counts; you choose the phrases.
   50). Never read or score the set-aside ones one by one. Drop the
   off-category ones and re-tag wrong sub-categories, each with a reason (lesson 2: dementia via
   "anti-aging", fan edits via "k-beauty"). Seasonal trends inside the category are not noise.
+  A trend marked "check: mentions <word>" is judged like the others, from its name and what it is:
+  keep it when the trend itself is in the category (a live gift battle in marketing tools, whatever
+  one video was about), drop it when the word is what the trend is about.
   A seasonal trend whose card shows the category's own craft is inside it, even when it is framed
   as a costume, a cosplay or a skit (for beauty: makeup, face paint, skin, hair or nails done for
   the look); drop a seasonal trend only when its card shows none of it (a mask, food, crafts).
@@ -453,6 +466,13 @@ Only when the weekly digest is an output (the engine skips it otherwise). TR8 an
   video page** and names them: fetch each (`get_trend_videos`, every page), then run it again. A
   call whose saved videos have no dated video with a creator is `unknown`, never dropped: say
   which.
+- **Calls too early to judge.** A call made fewer than `digest.min_call_age_days` (7) days before
+  this run (by the two runs' reference dates: a run the same day, or a day early) had no time to
+  play out. The digest marks every call of last time `too_early` (its `plugin.too_early` gives the
+  age and the minimum), needs no videos for them, writes none to `library/trend_calls.jsonl` and
+  counts none in the hit rate. They are not judged later (next week checks this week's calls): the
+  page says so, and so do you, in one line ("last week's calls are too early to judge: made N days
+  ago"). Never call them missed or held.
 - The digest's numbers feed the picks' `digest_reading` (D3): the week in one minute and what to
   do this week.
 - `tm done F2 --run R`.
@@ -545,8 +565,8 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
 - **`tm research picks check --run R --file 03_wip/picks_vNN.json --json`**. Exit 2 lists each
   problem: fix it as a new version and check again. Exit 0 gives the weighted totals: order the
   picks by them. Record the file.
-- `tm done D3 --run R`. G2 follows (`checkin-cards.md`): on its own at Check every step, in the
-  report card at Just the big calls, by rule in Hands-off.
+- `tm done D3 --run R`. The picks check-in (G2) comes **after the report** (E1), so the user
+  accepts the picks with the report in front of them: go on to E1.
 
 <a id="e1"></a>
 ## E1 Build the page
@@ -569,12 +589,18 @@ TR3's review, TR4 to TR6. Start from D2's draft picks when it wrote one (the lat
   sample first, raw counts under "Raw counts in the sample". The hooks' two lists ("Hooks for
   <category>") follow your B4 judgement, and a seasonal trend's note names its event as you did at
   B3 or B4; a run made before those judgements keeps its word-matched lists and English event names.
-- `tm done E1 --run R`. G3 follows: on its own at Check every step (the page's link and the views);
-  at Just the big calls the card **"Approve the picks and the page"** is shown once, here, for G2
-  and G3 together, and each is recorded on its own: `tm decide G2 accept --said "<their words>" --run R`, then `tm
+- `tm done E1 --run R`. G2 and then G3 follow, with the report on the page (issue #168). At Check
+  every step each on its own: **G2** (the picks, `checkin-cards.md`), then **G3** (the page's link
+  and the views). At Just the big calls the card **"Approve the picks and the page"** is shown once,
+  here, for G2 and G3 together, and each is recorded on its own: `tm decide G2 accept --said "<their words>" --run R`, then `tm
   decide G3 publish --run R` or `tm decide G3 keep_local --said "<their words>" --run R` (their choices differ, so the
-  card's own id is not used). Hands-off: G3 by rule, `keep_local` when neither `Artifact` nor
-  `publish_files` is in the session, otherwise `publish`.
+  card's own id is not used). Hands-off: G2 by rule, then G3 by rule, `keep_local` when neither
+  `Artifact` nor `publish_files` is in the session, otherwise `publish`.
+- **When G2 changes the picks** (the user drops, adds or reorders one): write the change as a new
+  picks version, `tm research picks check` it, then build the report again (`tm research report`
+  with the new picks: a new `04_final/report_vNN/`), build and publish the page with the G2 card
+  again (`tm page build --run R --ask 03_wip/ask_G2.json`), and record G2 only after the user sees
+  the rebuilt report. G3 then approves the rebuilt page.
 
 <a id="e2"></a>
 ## E2 Publish

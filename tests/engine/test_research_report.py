@@ -469,6 +469,28 @@ def test_first_run_has_no_digest_view(tmp_path, capsys):
 HALLO, OLD_HALLO = "d7" * 16, "e8" * 16
 
 
+def test_calls_too_early_to_judge_are_shown_as_such(tmp_path):
+    """Issue #169: a digest whose calls are younger than digest.min_call_age_days says they are too early to judge
+    and that they are not judged later; it never shows them as kept, stalled or unknown, nor counts them."""
+    run, _ = _uroda(tmp_path)
+    digest = _read(run.path / "02_research" / "digest_v01.json")
+    for c in digest["calls"]:
+        c.update(held=None, new_creators_since=None, plugin={"verdict": "too_early", "in_map": True,
+                                                              "reidentified_as": None})
+    digest["hit_rate"] = {"act_now": [None, 0], "past_peak": [None, 0]}
+    digest["plugin"] = {"unknown_calls": {"act_now": 0, "past_peak": 0}, "ended_checked": True, "prev_rebuilt": False,
+                        "too_early": {"age_days": 0, "min_days": 7}}
+    _write(run.path / "02_research" / "digest_v02.json", digest)
+    text = (research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+            / "index.html").read_text(encoding="utf-8")
+    assert "Too early to judge: these calls were made 0 days ago, and a call needs 7 days to play out." in text
+    assert "They are not judged later: next week checks this week's calls." in text
+    assert "… Last week: act now · Too early to judge" in text
+    strip = text.split("<div class='counts six'>")[1].split("</div></section>")[0]
+    assert strip.startswith("<div class='count'><b>—</b><span>") and "calls: too early to judge</span>" in strip
+    assert "Unknown: TrendsMesh" not in text and "unknown)" not in text and "Stalled" not in text
+
+
 def test_reidentified_rows_show_their_true_stage(tmp_path):
     run, _ = _uroda(tmp_path)
     growth = _read(run.path / "02_research" / "growth_v01.json")

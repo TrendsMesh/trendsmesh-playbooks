@@ -33,8 +33,10 @@ own link (issue #131): the same link every week. At each `ask` from `tm next`:
    `skills/refresh-ad/references/checkin-cards.md`, "The run page", step 1: `checkin`, `title`, `lede`,
    `question`, `context`, `options` with your recommendation first). Plain words: no trend ids or file names.
 2. **Build:** `tm page build --run R --ask 03_wip/ask_<id>.json --json` (the page `report`; from E1 on, the
-   report is the page's content and the check-in sits under it). Without a publishing tool: `--local`, and
-   give the `index.html` path.
+   report is the page's content and the check-in sits under it). **A weekly run before E1** (G0, G1) is built
+   over **last week's report**, under a "Last week's report" line, so whoever has the link always sees a
+   report; this week's E1 report replaces it. A first run has no report before E1: the check-in alone.
+   Without a publishing tool: `--local`, and give the `index.html` path.
 3. **Publish** to the link `tm page link --run R --page report --json` gives (a weekly run: last week's), with
    the build's `artifact` and `capabilities`, the files listed first; record it with `tm page published --run
    R --page report --url <url> --version <version> --json`. The first publish of the first run is a new
@@ -56,8 +58,9 @@ the market, the working language and the market language (`references/languages.
 (after any change the user asks for).
 
 **G1 · Accept the category map** (after B4). The sub-categories, each with its count of trends;
-what was kept; what was dropped and why (noise, contradicted, and your review's drops with their
-reasons, so the user can restore any); the re-tags; the weak matches, if the map stayed thin
+what was kept, and among it each trend marked "check: mentions <word>" (a news, sport or politics
+word only in its description: say the word and what you decided); what was dropped and why (noise,
+contradicted, and your review's drops with their reasons, so the user can restore any); the re-tags; the weak matches, if the map stayed thin
 ("weak match": its closest trends, never "no trends"); the shortlisted hooks in fit order, in two
 lists: **used in your category** ("used in your category: N of the M captions read", with your
 line on why) and
@@ -72,7 +75,7 @@ the new map as the G1 card above. Apply any drops or re-tags the user asks for (
 version, the map rebuilt). On the user's go-ahead, record `tm decide G1 accept --said "<their words>" --change --run R
 --note "<their words, and what changed in the map>"`, then `tm next`.
 
-**G2 · Accept the picks** (after D3). Per pick, in order: its stage (act now / still rising); its
+**G2 · Accept the picks** (after E1, with the report on the page; issue #168). Per pick, in order: its stage (act now / still rising); its
 band and the velocity index ("top 10% of <category> topics", "2.3× the new creators of a typical
 <category> trend") first, then the raw counts ("7 new creators in TrendsMesh evidence in 14
 days"); why now; the risk; the paid verdict ("none found in Ad Library titles", "a few advertisers:
@@ -80,7 +83,8 @@ days"); why now; the risk; the paid verdict ("none found in Ad Library titles", 
 its reason ("Moved by review"), and the lens lines when there is a focus. The card says what the
 evidence shows plainly and words the rest as advice or a guess (`flow.md#d3`, R3): "try …", "may
 suit …", never "works" or "fits" as a fact. Choice: `accept` (after any change the user asks for,
-as a new picks version, checked again).
+as a new picks version, checked again, and the report built again so the page shows the new picks:
+`flow.md#e1`).
 
 **G3 · Approve the report on the page** (after E1). The run page's link (the report is on it,
 private until they share it), the views it has (category report; the weekly digest, or "it comes

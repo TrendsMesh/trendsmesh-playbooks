@@ -708,6 +708,16 @@ def tr_b3(ws: Path, run: Path) -> None:
                for r in cmap.get("set_aside") or [] if r["name"] not in review.get("drop", {})}
     if restore:
         review["restore"] = {**review.get("restore", {}), **restore}
+    # Issue #169: a noise word only in a trend's description no longer drops it (the map keeps it, with `mentions`,
+    # for the review). The dry run dropped such a trend ("Selfie videos making funny faces at camera": football in
+    # its description), so the review drops it, with the dry run's reason.
+    dry_run = {r["name"]: r["dropped_because"] for r in _fix("category_map.json")["dropped"]}
+    review["drop"] = {**review.get("drop", {}), **{
+        r["name"]: "; ".join(dry_run[r["name"]]) for r in [*cmap.get("kept", []), *(cmap.get("set_aside") or [])]
+        if r.get("mentions") and r["name"] in dry_run and r["name"] not in review.get("drop", {})}}
+    review["restore"] = {n: why for n, why in (review.get("restore") or {}).items() if n not in review["drop"]}
+    if not review["restore"]:
+        review.pop("restore")
     place(ws, run, "03_wip/map_review_v01.json", review, "the relevance review (eval fixture: the dry run's map_review_v01)")
     tm(ws, "research", "map", "--run", str(run), "--split", str(run / "03_wip/split_v01.json"),
        "--review", str(run / "03_wip/map_review_v01.json"))
@@ -847,6 +857,15 @@ def tr_main(scn: str, ws: Path) -> tuple[Path, dict]:
         if end["action"] != "done":
             raise SystemExit(f"run 1 did not finish: {end}")
         run = tr_run(ws, "2026-11-04", "hands_off", [], after=first)
+        # The beauty data's two reference dates (27 Oct, 2 Nov) are 6 days apart; the plugin judges calls from
+        # digest.min_call_age_days (7, issue #169), so this run's config lowers it to 6 and the call check runs.
+        _, _, _, RunFolder = _engine()
+        from tm import config  # noqa: E402
+        folder = RunFolder.open(run)
+        cfg = config.load(folder)
+        cfg["digest"] = {**(cfg.get("digest") or {}), "min_call_age_days": 6}
+        config.save(folder, cfg)
+        tm(ws, "config", "check", "--run", str(run))
         return run, tr_drive(ws, run, stop_at="F2")
     if scn == "tr_stale_at_b3":
         global TR_AT

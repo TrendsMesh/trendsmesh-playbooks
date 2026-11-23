@@ -209,9 +209,10 @@ def _videos(run: RunFolder, trend_id: str, creators_and_days: list[tuple[str, st
 
 
 def _weekly(tmp_path, prev_trends: dict, now_kept: list[dict], *, pool_ids: list[str] | None = None,
-            rebuilt: bool = False) -> tuple[RunFolder, RunFolder]:
+            rebuilt: bool = False, min_call_age: int | None = 6) -> tuple[RunFolder, RunFolder]:
     """A previous nails run holding `prev_trends` in its snapshot, and this week's run after it, with
-    `now_kept` as its map (each row an id and a name)."""
+    `now_kept` as its map (each row an id and a name). The two runs' reference dates are 6 days apart (27 Oct,
+    2 Nov), so this week's config judges calls from 6 days (`min_call_age`; None: the default, 7, issue #169)."""
     ws = tmp_path / "ws"
     prev = RunFolder.create(ws, "nails", REBUILT_AS_OF, playbook=TREND_RESEARCH)
     research_config.write_from_intake(prev, {"category": {"phrase": "nails"}, "market": "US", "language": "en"})
@@ -226,6 +227,10 @@ def _weekly(tmp_path, prev_trends: dict, now_kept: list[dict], *, pool_ids: list
     s.previous_run = prev.path.relative_to(ws).as_posix()
     state.save(now, s)
     research_config.write_from_previous(now)
+    if min_call_age is not None:
+        cfg = config.load(now)
+        cfg["digest"]["min_call_age_days"] = min_call_age
+        config.save(now, cfg)
     kept = [{"kind": "topic_trend", "group": "nails", "sub_category": "nails", "status": "confirmed", **row}
             for row in now_kept]
     (now.path / "02_research" / "category_map_v01.json").write_text(json.dumps(
@@ -308,6 +313,35 @@ def test_call_check_covers_trend_that_left_the_map(tmp_path, capsys):
     assert rows["d"]["verdict"] == "unknown" and rows["d"]["held"] is None
     assert rows["d"]["metrics_now"] == {"new_creators_since": None, "bucket_now": None, "velocity_index": None}
     assert {r["call_run"] for r in rows.values()} == {"2026-10-29_nails"}
+
+
+def test_calls_younger_than_the_minimum_age_are_too_early_and_never_recorded(tmp_path, capsys):
+    """Issue #169: a call made fewer than `digest.min_call_age_days` (7) days ago had no time to play out: it is
+    "too early to judge", shown in the digest, never written to the library nor counted in the hit rate, and it
+    needs no fetched videos (nothing is judged)."""
+    prev_trends = {"a": _trend("Chrome nails", "act_now"), "e": _trend("Halloween nail stickers", "past_peak"),
+                   "f": _trend("French tip manicures", "still_rising")}
+    _, run = _weekly(tmp_path, prev_trends, [{"id": "a", "name": "Chrome nails"}], pool_ids=sorted(prev_trends),
+                     min_call_age=None)
+    research_digest.load_previous(run)
+    _videos(run, "a", [("a1", "2026-10-20"), ("a2", "2026-10-30")])          # e has no videos: no stop
+    _get_trend(run, "e", {"id": "e", "kind": "topic_trend", "name": "Halloween nail stickers", "momentum": "over"})
+    research_growth.compute(run, AS_OF, research_map.settings(config.load(run)))
+    assert research_map.settings(config.load(run))["digest"]["min_call_age_days"] == 7
+    assert main(["research", "digest", "--run", str(run.path), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    digest = _read(run.path / payload["json"])
+    calls = {c["id"]: c for c in digest["calls"]}
+    assert set(calls) == {"a", "e"}
+    for c in calls.values():
+        assert c["held"] is None and c["new_creators_since"] is None and c["plugin"]["verdict"] == "too_early"
+    assert digest["hit_rate"] == {"act_now": [None, 0], "past_peak": [None, 0]}
+    assert digest["plugin"]["too_early"] == {"age_days": 6, "min_days": 7}
+    assert digest["plugin"]["unknown_calls"] == {"act_now": 0, "past_peak": 0}
+    assert digest["plugin"]["calls_added"] == 0
+    assert not (tmp_path / "ws" / "library" / "trend_calls.jsonl").exists()
+    assert research_digest.calls_summary(tmp_path / "ws")["calls"] == {}
+    assert "too early to judge" in payload["message"] and "6 days" in payload["message"]
 
 
 def test_new_uses_pool_ids_with_stored_snapshot(tmp_path):
@@ -565,6 +599,54 @@ def test_cover_is_reached_by_the_oldest_card_of_the_last_page(tmp_path):
         "page": 2, "has_more": True})
     ids, covered, listed = research_digest.updated_lists(run, since)
     assert covered == {"all"} and listed and ids == {"x", "y", "zz"}       # h was updated before since
+
+def test_a_card_without_updated_at_is_dated_by_its_last_seen_date(tmp_path):
+    """Issue #168: live list_trends cards came with updated_at null. A card's date is its updated_at, else its
+    proof.last_seen_at; a list dated by last_seen_at reaches back only when every card of its last page was last
+    seen before the previous run's date (the list is sorted by updates, not by that date)."""
+    prev, run = _weekly(tmp_path, {"g": _trend("Milky nails", "too_late")}, [{"id": "g", "name": "Milky nails"}],
+                        pool_ids=["g"])
+    _videos(prev, "g", [("g1", "2026-10-20")])
+    research_digest.load_previous(run)
+    since = date(2026, 10, 27)
+
+    def card(tid, seen):
+        return {"id": tid, "kind": "topic_trend", "name": tid.upper(), "updated_at": None,
+                "proof": {"last_seen_at": seen}}
+
+    trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50}, {"data": [
+        card("x", "2026-11-02T08:00:00Z"), card("y", "2026-10-20T08:00:00Z")], "page": 1, "has_more": True})
+    ids, covered, _ = research_digest.updated_lists(run, since)
+    assert ids == {"x"} and covered == set()                  # y was last seen before 27 Oct; x newer: page on
+    trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50, "page": 2}, {"data": [
+        card("z", "2026-10-21T08:00:00Z"), card("w", "2026-10-26T23:00:00Z")], "page": 2, "has_more": True})
+    ids, covered, _ = research_digest.updated_lists(run, since)
+    assert ids == {"x"} and covered == {"all"}
+    plan = research_digest.fetch_plan(run, {})
+    assert plan["reuse"] == ["g"] and plan["note"] is None
+
+
+def test_a_list_without_any_date_is_read_five_pages_and_reuses_nothing(tmp_path):
+    """Issue #168: with no updated_at and no last_seen_at on the cards, nothing tells how far back a page reaches: the
+    list is read for 5 pages (250 cards), nothing is reused, and the plan's note says so plainly."""
+    prev, run = _weekly(tmp_path, {"g": _trend("Milky nails", "too_late")}, [{"id": "g", "name": "Milky nails"}],
+                        pool_ids=["g"])
+    _videos(prev, "g", [("g1", "2026-10-20")])
+    research_digest.load_previous(run)
+    for page_no in range(1, 6):
+        trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50, "page": page_no}, {"data": [
+            {"id": f"t{page_no}", "kind": "topic_trend", "name": "T", "updated_at": None}],
+            "page": page_no, "has_more": True})
+    plan = research_digest.fetch_plan(run, {})
+    assert plan["reuse"] == [] and plan["fetch"] == ["g"]
+    assert plan["undated"] is True
+    assert "no update dates" in plan["note"] and "every trend is fetched again" in plan["note"]
+    # a list that is complete (no page follows) still covers: a dateless card counts as updated, the rest are not
+    trends.save_answer(run, "list_trends", {"sort": "updated", "limit": 50, "page": 6}, {"data": [],
+                                                                                         "page": 6, "has_more": False})
+    plan = research_digest.fetch_plan(run, {})
+    assert plan["reuse"] == ["g"] and plan["undated"] is False
+
 
 def test_cover_needs_a_plain_list_with_one_limit(tmp_path):
     prev, run = _weekly(tmp_path, {"g": _trend("Milky nails", "too_late")}, [{"id": "g", "name": "Milky nails"}],

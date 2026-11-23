@@ -69,7 +69,7 @@ video or create-ad run the page tools' answers (never a Meta read), unchanged (b
 | Tool | Saved to (`02_research/`) | You see |
 |---|---|---|
 | `search_trends` | `search/search_<about>[_<type>][_pNN].json` | `{saved_to, results, has_more, page, cards: [{id, kind, name, match, creators, status}]}`, and `total` when the answer gives one (then `has_more` says whether the pages so far hold fewer cards than it) |
-| `list_trends` | `lists/list_<sort>_<type>_pNN.json` | the same summary as a search; with `sort` `updated` also `oldest_updated_at`, the oldest `updated_at` on the page (null when no card has one), to page back to the previous run's date |
+| `list_trends` | `lists/list_<sort>_<type>_pNN.json` | the same summary as a search; with `sort` `updated` also `oldest_updated_at`, the oldest card date on the page (`updated_at`, else `proof.last_seen_at`; null when no card has one, with `no_dates: true`), and `read_next_page`: whether to list the next page, back to the previous run's date and at most 5 pages without dates (a `note` says why it stops there) |
 | `get_trend_videos` | `videos/<trend_id>_pNN.json` | `{saved_to, trend_id, page, videos, has_more, newest, oldest, creators_on_page}` |
 | `get_trend` | `trend_<trend_id>.json` | the whole card (it is small) |
 | `get_usage` | `usage/usage_<time>.json` | the whole answer |

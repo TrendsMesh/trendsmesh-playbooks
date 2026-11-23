@@ -74,6 +74,30 @@ What changed in each version of the TrendsMesh playbooks plugin.
   three words side by side now match one word of the other side, either way.
 - **Create an ad: the last pages show what the run spent.** The plan showed the cost before the run; the upload
   pages now show each budget as planned, approved and spent, as Refresh an ad's pages do.
+- **Trend research: a trend is no longer dropped for one video's topic.** A trend's description sums up its
+  videos, so one video about a match put "soccer" in it, and a gift-battle or makeup trend was dropped as sport
+  or politics. Now a news, sport or politics word drops a trend only when it is in the trend's name. A word only
+  in the description keeps the trend, marked "check: mentions <word>" on the category map check-in, where Claude
+  keeps or drops it and says why. The report still lists every dropped trend by name. Your own excluded terms drop
+  a trend wherever they appear.
+- **Trend research: last week's calls are judged only once they had a week to play out.** A weekly run started
+  the same day, or a day early, judged fresh "act now" calls as missed after 0 days and wrote them to your track
+  record (`library/trend_calls.jsonl`). Now a call younger than 7 days (`digest.min_call_age_days`) is shown as
+  "too early to judge" on the digest, is not written to the track record and does not count in the hit rate. The
+  page says these calls are not judged later.
+- **Trend research: the weekly update reads the trends' own dates, and never pages through the whole list.**
+  TrendsMesh's list of updated trends came with no update date on its cards, so the run read about 143 pages and
+  still fetched every trend again. Now a card's date is its update date, else the day it was last seen, and the
+  list stops as soon as it reaches last week's run. When the cards carry no date at all, the run reads 5 pages at
+  most, fetches every trend again, and says so in one plain line.
+- **Trend research: the shared link shows last week's report while this week's is made.** A weekly run's first
+  check-ins replaced last week's whole report at the shared link, so whoever had it saw only a question for
+  several minutes. Now they are built over last week's report, under a "Last week's report" line, until this
+  week's report is ready and replaces it.
+- **Trend research: you accept the picks with the report in front of you.** At "Check every step" the picks
+  check-in came before the report was built. Now it comes right after the report, then the page check-in. If you
+  change the picks, the report is built again before your answer is recorded. "Just the big calls" still shows
+  the picks and the page on one card.
 
 ## 0.14.0
 

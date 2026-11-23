@@ -4,16 +4,17 @@ link, and a done run's page has nothing open and ends with "Done"."""
 
 import json
 import re
+import shutil
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
 import requests
 
 from test_research_report import _cfg, _uroda
-from tm import flow, page, research_report, run_page, state
+from tm import flow, page, research_config, research_report, run_page, state
 from tm.cli import main
 from tm.flow import set_level
-from tm.playbooks import CREATIVE_BRIEF
+from tm.playbooks import CREATIVE_BRIEF, TREND_RESEARCH
 from tm.runfolder import RunFolder
 
 URL = "https://claude.ai/artifact/Ab3dEfGh1jKlMnOpQrStUv"
@@ -64,6 +65,45 @@ def test_the_report_page_keeps_one_link_across_weeks(tmp_path):
     run_page.build(run, _ask(run, "G0"))
     page.record_published(run, "report", None, "v1", URL)
     assert page.published(run, "report")["url"] == URL
+
+
+def test_a_weekly_runs_check_ins_show_last_weeks_report_until_its_own_is_built(tmp_path):
+    """Issue #168: a weekly run's check-ins before E1 go to the same link as last week's report. They are built over
+    last week's report, under a "Last week's report" label, so whoever has the link always sees a report; from E1
+    on, this week's report replaces it, without the label."""
+    first, _ = _uroda(tmp_path)
+    research_report.build(first, first.path / "03_wip" / "picks_v01.json", cfg=_cfg(first))
+    ws = first.path.parents[2]
+    run = RunFolder.create(ws, "uroda", date(2026, 11, 11), playbook=TREND_RESEARCH)
+    s = state.load(run)
+    s.previous_run = first.path.relative_to(ws).as_posix()
+    state.save(run, s)
+    research_config.write_from_previous(run)
+
+    built = run_page.build(run, _ask(run, "G0"))
+    folder = run.path / built["folder"]
+    html = (folder / "index.html").read_text(encoding="utf-8")
+    label = "This week&#x27;s update is being made"
+    assert label in html
+    assert 'id="view-report"' in html and "Krem z filtrem na co dzień" in html       # last week's report body
+    assert html.index(label) < html.index('id="view-report"') and 'data-checkin="G0"' in html
+    assert (folder / "report.json").is_file() and (folder / "assets").is_dir()        # its files, for its links
+    assert built["open"] == ["G0"]
+
+    # this week's report is built (E1): it replaces last week's, with no label
+    for f in ("02_research", "03_wip"):
+        shutil.copytree(first.path / f, run.path / f, dirs_exist_ok=True)
+    research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
+    later = run_page.build(run, _ask(run, "G2"))
+    html = (run.path / later["folder"] / "index.html").read_text(encoding="utf-8")
+    assert 'id="view-report"' in html and label not in html
+
+
+def test_a_first_runs_check_ins_before_e1_have_no_report(tmp_path):
+    run, _ = _uroda(tmp_path)
+    built = run_page.build(run, _ask(run, "G0"))
+    html = (run.path / built["folder"] / "index.html").read_text(encoding="utf-8")
+    assert 'id="view-report"' not in html and "update is being made" not in html
 
 
 # --- the start card, the run page and the brief's page share one link ------------------------------------

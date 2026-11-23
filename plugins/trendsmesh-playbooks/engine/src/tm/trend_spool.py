@@ -513,8 +513,10 @@ def _more(answer: dict, tool_input: dict, page: Any, results: int) -> bool:
     return done + results < total
 
 
-def summary(tool: str, tool_input: dict, answer: dict, saved_to: str) -> dict:
-    """What Claude sees of a search, a list or a video page: where it is saved and the gist."""
+def summary(tool: str, tool_input: dict, answer: dict, saved_to: str, run: RunFolder | None = None) -> dict:
+    """What Claude sees of a search, a list or a video page: where it is saved and the gist. A list sorted `updated`
+    says its oldest card date and whether to read its next page (`read_next_page`, issue #168), against `run`'s
+    previous run date."""
     page = answer.get("page") if isinstance(answer.get("page"), int) else tool_input.get("page", 1)
     if tool == "get_trend_videos":
         vids, more = trends.videos(answer)
@@ -531,7 +533,14 @@ def summary(tool: str, tool_input: dict, answer: dict, saved_to: str) -> dict:
     if total is not None:
         out = {**out, "total": total}
     if tool == "list_trends" and tool_input.get("sort") == "updated":
+        from tm import research_digest        # it imports this module
         out["oldest_updated_at"] = trends.oldest_updated_at(cards)   # page on until the previous run's date
+        if out["oldest_updated_at"] is None and cards:
+            out["no_dates"] = True
+        since = research_digest.list_since(run) if run is not None else None
+        out["read_next_page"], note = research_digest.page_on(cards, page, out["has_more"], since)
+        if note:
+            out["note"] = note
     return out
 
 
@@ -679,7 +688,7 @@ def handle(event: dict, workspace: Path) -> dict | None:
         return _not_saved(str(exc), rel_run, tool)
     saved_to = path.relative_to(Path(workspace)).as_posix()
     if summarisable(tool, answer):
-        gist = summary(tool, tool_input, answer, saved_to)
+        gist = summary(tool, tool_input, answer, saved_to, run)
         shaped = _shaped(response, gist)
         if shaped is None and big is not None:        # the notice in a shape of its own: the summary as text
             shaped = json.dumps(gist, ensure_ascii=False)

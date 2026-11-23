@@ -203,19 +203,35 @@ def _part(value: Any, fallback: str) -> str:
     return part
 
 
-def oldest_updated_at(cards: list) -> str | None:
-    """The oldest readable `updated_at` of these cards, as written, or None when none carries one
-    (a list sorted `updated` pages back until it reaches the previous run's date)."""
-    found = []
-    for c in cards:
-        when = c.get("updated_at") if isinstance(c, dict) else None
-        if not isinstance(when, str):
-            continue
-        try:
-            at = datetime.fromisoformat(when.replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        found.append((at if at.tzinfo else at.replace(tzinfo=timezone.utc), when))
+def _moment(when: object) -> datetime | None:
+    if not isinstance(when, str):
+        return None
+    try:
+        at = datetime.fromisoformat(when.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return at if at.tzinfo else at.replace(tzinfo=timezone.utc)
+
+
+def updated_at(card: object) -> str | None:
+    """The card's readable `updated_at`, as written, else None."""
+    when = card.get("updated_at") if isinstance(card, dict) else None
+    return when if _moment(when) is not None else None
+
+
+def card_date(card: object) -> str | None:
+    """When a listed card last changed, as written: its readable `updated_at`, else its `proof.last_seen_at` (issue
+    #168: live list_trends cards came with `updated_at` null), else None."""
+    if not isinstance(card, dict):
+        return None
+    proof = card.get("proof") if isinstance(card.get("proof"), dict) else {}
+    return updated_at(card) or next((w for w in (proof.get("last_seen_at"),) if _moment(w) is not None), None)
+
+
+def oldest_updated_at(cards: list, *, updates_only: bool = False) -> str | None:
+    """The oldest date of these cards (`card_date`; `updates_only`: their `updated_at` alone), as written, or None
+    when none carries one (a list sorted `updated` pages back until it reaches the previous run's date)."""
+    found = [(_moment(w), w) for w in map(updated_at if updates_only else card_date, cards) if w]
     return min(found)[1] if found else None
 
 
@@ -347,22 +363,31 @@ def seasonal_tag(card: dict) -> str | None:
     return next((w for w in SEASONAL if re.search(rf"\b{re.escape(w)}\b", text)), None)
 
 
+def _noise_word(text: str, words: list[str]) -> str | None:
+    return next((w for w in words if re.search(rf"\b{re.escape(w)}\b", text)), None)
+
+
 def noise_reasons(card: dict, exclude: list[str]) -> list[str]:
-    """Why a card is noise (one word per group, excluded terms, a possessive proper name); [] when
-    it is not."""
+    """Why a card is noise (one word per group in its name, excluded terms in its name or description, a
+    possessive proper name); [] when it is not. A noise word only in the description is no reason (issue
+    #169: the description sums up the trend's videos, so one video about a match puts "soccer" in it):
+    `noise_mentions` names it, to check at the review."""
+    name = (card.get("name") or "").lower()
+    reasons = [f"{group}: {w}" for group, words in NOISE_GROUPS.items() if (w := _noise_word(name, words))]
     text = _text_of(card)
-    reasons = []
-    for group, words in NOISE_GROUPS.items():
-        for w in words:
-            if re.search(rf"\b{re.escape(w)}\b", text):
-                reasons.append(f"{group}: {w}")
-                break
     for w in exclude:
         if re.search(rf"\b{re.escape(w.lower())}\b", text):
             reasons.append(f"excluded term: {w}")
     if re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+(?:'s|’s)\b", card.get("name") or ""):
         reasons.append("possessive proper name (celebrity / news item)")
     return reasons
+
+
+def noise_mentions(card: dict) -> list[str]:
+    """The noise words (one per group) only in the card's description, not in its name: the trend stays in
+    the map, marked "check: mentions <word>" for the review (issue #169)."""
+    name, what = (card.get("name") or "").lower(), (card.get("what_it_is") or "").lower()
+    return [w for words in NOISE_GROUPS.values() if not _noise_word(name, words) and (w := _noise_word(what, words))]
 
 
 # --- the fields a run needs -------------------------------------------------------------------

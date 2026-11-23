@@ -256,7 +256,23 @@ def test_noise_keeps_halloween_makeup_and_curly_vs_straight():
     assert trends.seasonal_tag(curly) is None
     assert trends.noise_reasons(curly, []) == []
 
-    news = {"name": "Taylor Swift's lip shade", "what_it_is": "Fans copy it after the election scandal."}
+    news = {"name": "Taylor Swift's election lip shade", "what_it_is": "Fans copy it after the scandal."}
     assert trends.noise_reasons(news, ["Lip"]) == [
-        "politics/elections: election", "news/disaster/crime: scandal", "excluded term: Lip",
-        "possessive proper name (celebrity / news item)"]
+        "politics/elections: election", "excluded term: Lip", "possessive proper name (celebrity / news item)"]
+    assert trends.noise_mentions(news) == ["scandal"]
+
+
+def test_noise_word_only_in_the_description_keeps_the_trend_to_check():
+    """Issue #169: a description summarises the trend's videos, so one video about a match puts "soccer" in it. A
+    noise word in the name drops the trend; one only in the description keeps it, to check at G1."""
+    pk = {"name": "TikTok LIVE PK gift battles", "what_it_is": "Creators battle for gifts; one PK was a soccer bet."}
+    assert trends.noise_reasons(pk, []) == []
+    assert trends.noise_mentions(pk) == ["soccer"]
+    grwm = {"name": "Get-ready-with-me makeup routine", "what_it_is": "A GRWM before voting in the election, "
+            "or before a football game."}
+    assert trends.noise_reasons(grwm, []) == [] and trends.noise_mentions(grwm) == ["football", "election"]
+    named = {"name": "Soccer goal celebrations", "what_it_is": "Players copy a soccer celebration."}
+    assert trends.noise_reasons(named, []) == ["sport: soccer"] and trends.noise_mentions(named) == []
+    # whole words only, and an excluded term (the user's own word) drops the trend wherever it is
+    assert trends.noise_mentions({"name": "Wardrobe edits", "what_it_is": "Footballers' wives style"}) == []
+    assert trends.noise_reasons({"name": "Glow", "what_it_is": "Sephora haul"}, ["Sephora"]) == ["excluded term: Sephora"]
