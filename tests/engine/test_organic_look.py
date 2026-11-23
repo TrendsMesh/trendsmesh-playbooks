@@ -171,6 +171,19 @@ def test_the_channel_style_comes_first_and_is_picked_in_advance():
     assert [o["value"] for o in organic_proposals.style_options(old, _channel(video_style="collage"))] == ["channel"]
 
 
+def test_an_idea_in_its_own_look_has_its_first_suggested_style_picked_in_advance():
+    """Issue #173 item 3: an idea with `look: other` is not in the channel's style, so its first suggested style is
+    picked in advance (on the page, in the run page's plan and in a decision the page leaves without a style)."""
+    p = _proposal("animation", styles=_styles(7, 4), look="other")
+    own = _channel(video_style="paper cut-out collage")
+    assert organic_proposals.style_options(p, own)[0]["value"] == "channel"         # still offered, first
+    assert organic_proposals.default_style(p, own) == organic_proposals.style_value(7)
+    assert organic_proposals._style({}, p, own) == organic_proposals.style_value(7)
+    assert organic_proposals.default_style({**p, "plugin": {**p["plugin"], "look": "channel"}}, own) == "channel"
+    alone = _proposal("animation", look="other")                         # nothing else offered: the channel's
+    assert organic_proposals.default_style(alone, own) == "channel"
+
+
 def test_decisions_carry_the_look_and_the_style():
     p = _proposal("animation", styles=_styles(7, 4), aesthetic="flat paper, warm light")
     data = _file(p)

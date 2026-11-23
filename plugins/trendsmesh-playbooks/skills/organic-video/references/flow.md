@@ -177,7 +177,9 @@ posts.
      `video_style`, the product as given in `catalogue` (null for "nothing sold"), the product role
      and its `product_needs`); a section the user did not touch keeps its default, and one filled
      from the chat that they left as it was counts as their answer (`from_chat`, not
-     `defaults_kept`). **From chat**: write their answer one line per question
+     `defaults_kept`). Channels are split on new lines and on commas outside brackets ("Brand
+     (official, new)" is one); when the answer has `confirm_channels` (two or more), read the names
+     back to the user and ask whether that is right before `tm config write`. **From chat**: write their answer one line per question
      (`channel: <name>`, `output: ai_video`, `level: big_calls`, `budget: 8` …; the ids are the
      page's) to a file in the run and read it with `--text`, or write the answers file yourself as
      below. Then go on with `tm config write` (the level is set from the answers);
@@ -285,11 +287,15 @@ TrendsMesh; every later step (D1 on) is the same as on Paid.
    id (g1, ...) with its `role` and **no `pick`** (a guess has no evidence videos); the approach is
    **Inspire** only (a Recreate needs two real videos repeating now, which only TrendsMesh gives),
    its weak link named; "why now" says where the trend was seen, never a stage or a number of yours.
-   `tm organic proposals check` refuses picks and a Recreate on Free.
+   `tm organic proposals check` refuses picks and a Recreate on Free, and, as the guesses check does,
+   a lifecycle stage or a count (creators, views, a percentage) in a proposal's `title`, `why` or
+   `beats`: a number lives only in its guess's `quote`. The week check does the same for each idea's
+   `title` and `why`.
 5. **C2, the ideas page** shows at the top that the ideas are guesses, each trend with a Guess label
    and where it was seen, and one "With TrendsMesh" box per idea: what TrendsMesh would show instead
    (creators, how early, two real videos to copy). Say the `notice` from `tm next` with the card. The
-   week (I2) works the same way; its flexible day needs fresh guesses (a new `guess_trends_vNN`,
+   week (I2) works the same way: the week stage of the run page has the same banner, a Guess label
+   with where each idea's trend was seen, and a "With TrendsMesh" box per idea; its flexible day needs fresh guesses (a new `guess_trends_vNN`,
    checked) instead of fresh searches.
 
 <a id="b1"></a>
@@ -434,7 +440,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      the topic's tone, a style the user rejected for it earlier last: `../../references/animation-styles.md`,
      "The pick"), each `{"style": <number>, "why": "<one line>"}`, your pick first. A channel whose profile
      has its own look (`video_style`), or that picked one style 3 times or more, gets it first on the page as
-     "Your channel's style", picked in advance: name the library style nearest it as `plugin.channel_style`
+     "Your channel's style", picked in advance (for an idea with `plugin.look: other`, its first style in
+     `plugin.styles` is picked instead): name the library style nearest it as `plugin.channel_style`
      (`{"style": <number>, "why": "<one line>"}`); it counts as one of the 2 to 3, so `styles` then has 1 to 2;
    - the risk level with each hit of OV4's nine items named with its mitigation, **never a
      percentage**. **The level is the highest risk left after its mitigation, never the number of
@@ -488,7 +495,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    type). Per idea the stage asks produce / maybe later / skip, the output, how involved (the three
    levels), the platforms, the taste answers and a note, with "Produce all" and a live count with the
    estimated cost. It also shows the look (a field the user may change), an animation's styles (each as a
-   playing loop with its name and its why, the channel's own style first and picked in advance; then every
+   playing loop with its name and its why, the channel's own style first and picked in advance, except for an
+   idea in another look, whose first suggested style is picked; then every
    style by family, a loop playing on a click, any of them to pick instead), under the
    output what an AI video of the idea needs installed (size and time) when anything is missing, where
    the risk level comes from ("Highest risk: several characters, in AI footage (medium)"), and the video,
@@ -582,8 +590,9 @@ and a series continues (brainrot part 2).
    day** (`weekly.per_week` slots on `weekly.days`, `day` as `mon` … `sun` or the handoff's `pon` … `niedz`,
    with `date`, `time`) and **at least one reserve** (an idea to swap in). Each idea (slot or reserve)
    has `id` (w1, w2 …, r1 …: letters, digits, `_` and `-`; it names its production run), `title`,
-   `format`, `why` (with numbers and their source), `trend` (its name, as the page shows it),
-   `evidence` (a video link), `output` (`video` or `script`), `seconds` (the video's planned length;
+   `format`, `why` (with numbers and their source; on Free where the trend was seen, never a stage or
+   a number), `trend` (its name, as the page shows it), `evidence` (a video link; none on Free: leave
+   it out, and the page shows each guess with where it was seen), `output` (`video` or `script`), `seconds` (the video's planned length;
    needed for AI footage, a talking character and a video in sections), `images` (the pictures it
    plans; needed for stills with motion graphics, else one first frame per 15 s), `cost_script` (USD; a
    script is $0), `production` (in words), `risk` (low, medium, high), and **the plugin block**
@@ -1346,11 +1355,13 @@ A 15 s take takes 4 to 6 minutes: show it in the task list, with a status line p
      registry's ★ lip-sync model (its recipe, e.g. `kling-avatar-v2.md`) on the close-up frame; its contact sheet is
      checked for burned-in text.
    - **an animation** (free, no take, no QA tool): its own prompt first, `tm organic atlas-prompt
-     --run R --item <item> --style <the picked number> --voiceover --animation --from
-     03_wip/<item>/storyboard_vNN.js --aspect 9:16 --content 03_wip/<item>/content_v01.txt --srt <the
-     word SRT> --json` (refused until the storyboard is accepted; `--from` is the module the accepted
-     sheet was drawn from, and any other is refused; the prompt carries that module, the user's notes
-     on the storyboard from the images check-in and the pack's length, and asks for no storyboard).
+     --run R --item <item> --style <the picked number> --animation --from
+     03_wip/<item>/storyboard_vNN.js --json` (refused until the storyboard is accepted; `--from` is the
+     module the accepted sheet was drawn from, and any other is refused; the frame, the voiceover, the
+     content file and the word SRT are the storyboard prompt's, so `--aspect`, `--voiceover`,
+     `--content` and `--srt` can be left out, and one that differs from the storyboard's is refused; the
+     prompt carries that module, the user's notes on the storyboard from the images check-in and the
+     pack's length, and asks for no storyboard).
      A subagent writes the animation's style module from it, `03_wip/<item>/explainer_v01.js` (about
      15 minutes, appending to `03_wip/<item>/_progress.txt`); `tm organic atlas-page --run R --item
      <item> --module 03_wip/<item>/explainer_v01.js --json` builds its page (`window.seek`,

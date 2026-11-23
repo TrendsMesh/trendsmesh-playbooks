@@ -306,9 +306,12 @@ def _setup(p: argparse.ArgumentParser) -> None:
                                                       "03_wip/<item>/storyboard_vNN.js")
     a.add_argument("--picture", action="append", default=[], metavar="NAME=FILE",
                    help="with --layout: one of the user's own pictures in the run (an images item with no model)")
-    a.add_argument("--aspect", choices=("9:16", "4:5", "1:1"), help="the frame to build for (9:16 here; 16:9 without it)")
-    a.add_argument("--content", help="a text file in the run: the topic, the script and what each line shows")
-    a.add_argument("--srt", help="the voiceover's word SRT (<stem>.words.srt), with --voiceover")
+    a.add_argument("--aspect", choices=("9:16", "4:5", "1:1"), help="the frame to build for (9:16 here; 16:9 without it; with "
+                                                                  "--animation, the storyboard's)")
+    a.add_argument("--content", help="a text file in the run: the topic, the script and what each line shows (with "
+                                     "--animation, the storyboard's)")
+    a.add_argument("--srt", help="the voiceover's word SRT (<stem>.words.srt), with --voiceover (with --animation, "
+                                 "the storyboard's)")
     a.add_argument("--json", action="store_true")
     a = sub.add_parser("atlas-page", help="build the page of a style module Claude wrote: <module>.html beside it (free)")
     a.add_argument("--run", required=True, help="the run folder")
@@ -843,6 +846,10 @@ def _choice_decisions(args: argparse.Namespace, run: RunFolder) -> int:
         if a["currency"] != "USD":
             message += (f" The account currency is {a['currency']}: add fx_rate (1 USD in {a['currency']}, with its "
                         "source) in the answers' next version before writing the config.")
+        if got["confirm_channels"]:
+            message += (f" The answer names {len(a['channels'])} channels: {'; '.join(a['channels'])}. Read them back "
+                        "to the user and ask whether that is right before writing the config; on a no, write their "
+                        "answer in chat form (a line `channel: <name>`, one channel per line) and read it with --text.")
         message += _product_next(got["profile_answers"])
     else:
         got = taste.take(run, file=file, text=text)
@@ -1099,8 +1106,6 @@ def _atlas_prompt(args: argparse.Namespace) -> int:
     from tm import atlas_prompt, organic_qa   # they read the pack, which imports this module
 
     run = RunFolder.open(Path(args.run))
-    if args.srt and not args.voiceover:
-        raise ValueError("--srt times the animation to the voiceover: give --voiceover with it.")
     if args.from_module and not args.animation:
         raise ValueError("--from names the accepted storyboard's module of the full animation: give --animation with it.")
     if args.picture and not args.layout:
@@ -1114,6 +1119,10 @@ def _atlas_prompt(args: argparse.Namespace) -> int:
     if args.layout and not stills:
         raise ValueError(f"{item} is an animation, not a stills item: --layout is for a stills video's layout; use "
                          "--storyboard first, then --animation.")
+    if args.animation:
+        _as_storyboard(run, item, args)
+    if args.srt and not args.voiceover:
+        raise ValueError("--srt times the animation to the voiceover: give --voiceover with it.")
     insert = item != str(pack["id"])
     if insert and args.aspect != "9:16":
         raise ValueError(f"{item} is an {'insert' if stills else 'animation insert'} in the video's 9:16 edit: build its "
@@ -1157,6 +1166,47 @@ def _atlas_prompt(args: argparse.Namespace) -> int:
     cli.emit(args, {"status": "done", "file": rel, "item": item, "style": style["styleId"], "chars": len(text),
                     "duration": seconds, "message": message}, message)
     return 0
+
+
+def _as_storyboard(run: RunFolder, item: str, args: argparse.Namespace) -> None:
+    """Issue #173: the full animation is built at the storyboard's frame, voiceover, content and srt, read from the
+    item's latest storyboard prompt's manifest row; a flag left out takes its value there, one that differs is
+    refused. Nothing changes without a storyboard prompt on record."""
+    row = next((r for r in reversed(manifest.rows(run)) if r["source"] == ATLAS_PROMPT
+                and r["file"].casefold().startswith(f"03_wip/{item}/".casefold())
+                and (_params_of(r).get("storyboard") is True)), None)
+    if row is None:
+        return
+    params = _params_of(row)
+    board = {"aspect": params.get("aspect") if isinstance(params.get("aspect"), str) else None,
+             "voiceover": bool(params.get("voiceover")), "content": row.get("parent") or None,
+             "srt": params.get("srt") or None}
+    given = {"aspect": args.aspect, "voiceover": args.voiceover or None,
+             "content": audience.inside(run, args.content)[1] if args.content else None,
+             "srt": audience.inside(run, args.srt)[1] if args.srt else None}
+    shown = {"aspect": lambda v: v or "16:9 (no --aspect)", "voiceover": lambda v: "no --voiceover",
+             "content": lambda v: v or "no --content", "srt": lambda v: v or "no --srt"}
+    for key, value in given.items():
+        if value is None:
+            continue
+        same = (value == board[key] if key in ("aspect", "voiceover")
+                else value.casefold() == str(board[key] or "").casefold())
+        if not same:
+            flag = "--voiceover" if key == "voiceover" else f"--{key} {value}"
+            raise ValueError(f"{flag} differs from the storyboard the user accepted, whose prompt {row['file']} has "
+                             f"{shown[key](board[key])}: the full animation is built as its storyboard was. Leave "
+                             f"--{key} out (the animation takes it from the storyboard), or make and accept a new "
+                             "storyboard with the new setting first.")
+    args.aspect, args.voiceover = board["aspect"], board["voiceover"]
+    args.content, args.srt = board["content"], board["srt"]
+
+
+def _params_of(row: dict) -> dict:
+    try:
+        params = json.loads(row["params"]) if row.get("params") else {}
+    except ValueError:
+        params = {}
+    return params if isinstance(params, dict) else {}
 
 
 def _length(pack: dict, item: str) -> float | None:

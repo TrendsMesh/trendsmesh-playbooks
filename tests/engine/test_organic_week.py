@@ -222,6 +222,23 @@ def test_week_page_matches_original_after_wording_table(tmp_path, capsys):
 
 
 @pytest.mark.private_data
+def test_on_free_a_week_ideas_words_hold_no_stage_and_no_count(tmp_path):
+    """Issue #170 item 1: the week check applies the guesses rule to each idea's title and why on Free only."""
+    from tm import evidence
+
+    run = _week_run(tmp_path)
+    data = exampleedu.week()
+    data["slots"][0]["why"] = "rising, 300 creators, 2M views"
+    data["reserves"][0]["title"] = "The 2M views quiz"
+    said = {"slots[0].why", "reserves[0].title"}
+    assert not said & set(p.field for p in _problems(run, data))
+    s = state.load(run)
+    s.evidence = evidence.GUESS
+    state.save(run, s)
+    assert said <= set(p.field for p in _problems(run, data))
+
+
+@pytest.mark.private_data
 def test_over_budget_week_cannot_be_approved(tmp_path, capsys):
     """$5 for the week. The manifest's meter: $2.94 as planned, $1.48 with Wednesday as a script, $2.81 after
     Monday's swap for r2. With r2 a 30 s video priced at $2.494 that swap makes $5.43: the decisions are

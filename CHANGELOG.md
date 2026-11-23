@@ -4,6 +4,23 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **An organic video's animation keeps its storyboard's frame.** Building the full animation without `--aspect`
+  made a 16:9 prompt and page although the accepted storyboard was 9:16. The animation now takes its frame,
+  voiceover, content and word SRT from the storyboard's prompt, and a setting that differs from it is refused.
+- **A comma inside brackets no longer splits a channel's name in two.** "Brand (official, new)" on the organic
+  video start page became two channels with no warning. Only commas outside brackets and new lines split now, and
+  when the answer names two or more channels, Claude reads them back to you before going on.
+- **An idea in its own look no longer comes with your channel's style ticked.** On the ideas page, an idea made in
+  another look than the channel's (for example a whiteboard) had "Your channel's style" picked in advance. Such an
+  idea now has its first suggested style picked; your channel's style is still there to choose.
+- **On Free, an idea's reasons and the week plan can no longer pass a guess off as data.** The ideas and week checks
+  let "rising, 300 creators, 2M views" through in an idea's reason, although Free has no trend stage and no number
+  without its source. They now refuse a stage or a count in an idea's title, reason and steps, as the guesses check
+  does, and a percentage counts too.
+- **On Free, the week page says its trends are guesses.** The week stage had no banner, no "Guess" labels and no
+  "With TrendsMesh" box, and the week plan asked for an evidence video Free does not have. The week stage now has
+  the same banner, labels and box as the ideas page, each idea shows where its trend was seen instead of a video
+  link, and a week plan without evidence links builds.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.
