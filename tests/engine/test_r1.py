@@ -535,3 +535,32 @@ def test_r1_given_ad_files_takes_the_collected_account(tmp_path, capsys):
     code, out = _picked(capsys, run, "--ads", str(ads))
     assert code == 0, out
     assert out["picked"]["ads"] == [str(ads)] and out["picked"]["account"] == ["01_base/meta/ads_get_ad_entities_v01.json"]
+
+
+# --- issue #171 item 1: the Meta MCP's own level name, and every read left out named -----------------------------
+
+def test_r1_takes_an_ad_account_read_as_the_account(tmp_path, capsys):
+    """The Meta MCP names the account level `ad_account`: it is R1's account read, not a skipped one."""
+    run = RunFolder.create(tmp_path, "adacc", date(2026, 11, 5))
+    _saved(run, WEEKLY_AD, A + B)
+    _saved(run, {**WEEKLY_AD, "level": "ad_account"}, A + B)
+    code, out = _picked(capsys, run)
+    assert code == 0, out
+    assert out["picked"]["account"] == ["01_base/meta/ads_get_ad_entities_v02.json"]
+    assert out["picked"]["account_from"] == "account" and out["picked"]["skipped"] == []
+
+
+def test_r1_names_each_read_it_left_out_and_why(tmp_path, capsys):
+    """A read left out (an account read among them) is named in the text with its reason, never only counted."""
+    run = RunFolder.create(tmp_path, "left", date(2026, 11, 5))
+    _saved(run, WEEKLY_AD, A + B)
+    _saved(run, {**WEEKLY_AD, "level": "campaign"}, A + B)
+    _saved(run, {**WEEKLY_ACCOUNT, "time_increment": 1}, A + B)
+    capsys.readouterr()
+    code = main(["r1", "--run", str(run.path), "--today", "2026-11-05"])
+    text = capsys.readouterr().out
+    assert code == 0, text
+    meta = "01_base/meta/ads_get_ad_entities_"
+    assert f"{meta}v02.json (not an ad or account read (level campaign))" in text
+    assert f"{meta}v03.json (an account read: daily rows (time_increment 1))" in text
+    assert "account from the ad rows" in text

@@ -4,6 +4,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Refresh an ad: an account read the Meta connector names `ad_account` is used.** It used to be left out as
+  "not an ad or account read", and the account trend was built from the ad rows without a word. Every saved read
+  the ranking leaves out is now named with its reason.
+
 ## 0.14.0
 
 - **Linux: TrendsMesh calls are paced right on Ubuntu 26.04 too.** Its `mkdir` and `date` (uutils coreutils)
