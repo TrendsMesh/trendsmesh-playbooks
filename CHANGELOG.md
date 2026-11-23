@@ -10,6 +10,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A comma inside brackets no longer splits a channel's name in two.** "Brand (official, new)" on the organic
   video start page became two channels with no warning. Only commas outside brackets and new lines split now, and
   when the answer names two or more channels, Claude reads them back to you before going on.
+- **An idea in its own look no longer comes with your channel's style ticked.** On the ideas page, an idea made in
+  another look than the channel's (for example a whiteboard) had "Your channel's style" picked in advance. Such an
+  idea now has its first suggested style picked; your channel's style is still there to choose.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

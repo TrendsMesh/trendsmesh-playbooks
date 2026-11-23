@@ -436,7 +436,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
      the topic's tone, a style the user rejected for it earlier last: `../../references/animation-styles.md`,
      "The pick"), each `{"style": <number>, "why": "<one line>"}`, your pick first. A channel whose profile
      has its own look (`video_style`), or that picked one style 3 times or more, gets it first on the page as
-     "Your channel's style", picked in advance: name the library style nearest it as `plugin.channel_style`
+     "Your channel's style", picked in advance (for an idea with `plugin.look: other`, its first style in
+     `plugin.styles` is picked instead): name the library style nearest it as `plugin.channel_style`
      (`{"style": <number>, "why": "<one line>"}`); it counts as one of the 2 to 3, so `styles` then has 1 to 2;
    - the risk level with each hit of OV4's nine items named with its mitigation, **never a
      percentage**. **The level is the highest risk left after its mitigation, never the number of
@@ -490,7 +491,8 @@ Read `rules.md` (OV2 to OV5, OV14) and `lessons.md` (lessons 3 to 5, 20, 21) fir
    type). Per idea the stage asks produce / maybe later / skip, the output, how involved (the three
    levels), the platforms, the taste answers and a note, with "Produce all" and a live count with the
    estimated cost. It also shows the look (a field the user may change), an animation's styles (each as a
-   playing loop with its name and its why, the channel's own style first and picked in advance; then every
+   playing loop with its name and its why, the channel's own style first and picked in advance, except for an
+   idea in another look, whose first suggested style is picked; then every
    style by family, a loop playing on a click, any of them to pick instead), under the
    output what an AI video of the idea needs installed (size and time) when anything is missing, where
    the risk level comes from ("Highest risk: several characters, in AI footage (medium)"), and the video,

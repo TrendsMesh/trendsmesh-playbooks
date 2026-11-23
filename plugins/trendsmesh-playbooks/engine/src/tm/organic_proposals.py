@@ -403,9 +403,16 @@ def style_options(p: dict, profile: dict | None) -> list[dict]:
 
 
 def default_style(p: dict, profile: dict | None) -> str | None:
-    """The style picked in advance: the channel's own when it has one, else the agent's first suggestion."""
+    """The style picked in advance: the channel's own when it has one, else the agent's first suggestion. An idea in
+    its own look (`plugin.look: other`, issue #173) takes its first suggestion over the channel's style (which stays
+    offered); with no suggestion, the channel's."""
     options = style_options(p, profile)
-    return options[0]["value"] if options else None
+    if not options:
+        return None
+    plugin = p.get("plugin") if isinstance(p.get("plugin"), dict) else {}
+    if plugin.get("look") == "other":
+        return next((o["value"] for o in options if not o["channel"]), options[0]["value"])
+    return options[0]["value"]
 
 
 def _look(p: dict, pid: str, out: list[Problem]) -> None:
@@ -1013,7 +1020,7 @@ def _style(doc: dict, p: dict, base: dict) -> str | None:
     given = given if given == CHANNEL_STYLE else style_value(given)
     if offered and given is not None and (given in offered or given != CHANNEL_STYLE):
         return given
-    return offered[0] if offered else None
+    return default_style(p, base)
 
 
 def style_fields(p: dict, row: dict, base: dict) -> dict:
