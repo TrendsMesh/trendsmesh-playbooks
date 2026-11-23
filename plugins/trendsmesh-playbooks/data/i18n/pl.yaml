@@ -329,6 +329,8 @@ strings:
       q_animation: Obejrzyj animację, myśląc o lektorze. Przy „Popraw” napisz, który moment zmienić i jak.
       label_motion: "Grafika w ruchu: {name}"
       q_motion: "Obejrzyj render: obrazy, tekst i tempo. Zaakceptuj ten, z którego powstanie wideo; przy „Popraw” napisz, co zmienić."
+      label_text_set: Zestaw napisów
+      q_text_set: "Którego zestawu napisów mają używać filmy tego kanału? Każdy jest narysowany na Twoich słowach. Wybierz jeden: zapiszemy go dla kanału i użyje go każdy następny film (możesz go zmienić w każdej chwili)."
       cap_final: Gotowy film {version}
       cap_cover: Okładka
       cap_packshot: Zdjęcie produktu
