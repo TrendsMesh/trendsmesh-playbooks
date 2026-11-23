@@ -853,19 +853,22 @@ def tr_main(scn: str, ws: Path) -> tuple[Path, dict]:
         # The name is the brief's; the run stops at F2, the step before D1 (ruling F11). Run 1 (29 Oct, the weekly digest chosen) done, its page published as art_mock_1; run 2 (4 Nov)
         # after it, Hands-off, everything before the digest done (ruling F11: the agent runs the digest).
         first = tr_run(ws, "2026-10-29", "hands_off", ["category_report", "weekly_digest"])
+        # The beauty data's two reference dates (27 Oct, 2 Nov) are 6 days apart; the plugin judges calls from
+        # digest.min_call_age_days (7, issue #169), so run 1's config sets 6 before it runs, and run 2 copies
+        # it with the rest (--from-previous): the same setting in both weeks, and the call check runs.
+        _, _, _, RunFolder = _engine()
+        from tm import config  # noqa: E402
+        folder = RunFolder.open(first)
+        cfg = config.load(folder)
+        cfg["digest"] = {**(cfg.get("digest") or {}), "min_call_age_days": 6}
+        config.save(folder, cfg)
+        tm(ws, "config", "check", "--run", str(first))
         end = tr_drive(ws, first)
         if end["action"] != "done":
             raise SystemExit(f"run 1 did not finish: {end}")
         run = tr_run(ws, "2026-11-04", "hands_off", [], after=first)
-        # The beauty data's two reference dates (27 Oct, 2 Nov) are 6 days apart; the plugin judges calls from
-        # digest.min_call_age_days (7, issue #169), so this run's config lowers it to 6 and the call check runs.
-        _, _, _, RunFolder = _engine()
-        from tm import config  # noqa: E402
-        folder = RunFolder.open(run)
-        cfg = config.load(folder)
-        cfg["digest"] = {**(cfg.get("digest") or {}), "min_call_age_days": 6}
-        config.save(folder, cfg)
-        tm(ws, "config", "check", "--run", str(run))
+        if config.load(RunFolder.open(run))["digest"]["min_call_age_days"] != 6:
+            raise SystemExit("run 2 did not copy digest.min_call_age_days from run 1")
         return run, tr_drive(ws, run, stop_at="F2")
     if scn == "tr_stale_at_b3":
         global TR_AT
