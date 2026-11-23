@@ -24,7 +24,9 @@ the trend left this week's map (Review Focus 2): its own fresh videos, else thos
 came back as (names sharing >= 60 % of their words, V25). A call with no saved video page stops the
 digest (nothing written) until its videos are fetched, so `verdict: "unknown"` means only that
 TrendsMesh had no dated video with a creator, never that nobody fetched them. A creator is
-`trends.creator_of` (F17). Added to the original digest: `plugin` on each call and re-identified row
+`trends.creator_of` (F17). Calls made fewer than `digest.min_call_age_days` (7) days before this run's reference date
+had no time to play out (issue #169): each is `verdict: "too_early"` (held None), no video is needed, nothing goes to
+the library and the hit rate counts none. They are not judged later either: next week compares with this week. Added to the original digest: `plugin` on each call and re-identified row
 and a top-level `plugin`; the original keys keep their meaning.
 """
 
@@ -61,6 +63,7 @@ COVER_INPUTS = ("sort", "trend_type", "page", "limit")   # what may be given to 
 CALLS = Path("library") / "trend_calls.jsonl"
 SCHEMA = "pb4-call/1"
 VERDICTS = ("held", "missed", "unknown")
+TOO_EARLY = "too_early"          # issue #169: younger than digest.min_call_age_days, never judged nor recorded
 SOURCE = "tm research digest"
 _STOP_WORDS = {"and", "the", "with", "videos", "content"}
 
@@ -463,8 +466,10 @@ def diff(run: RunFolder, prev_snapshot: Path, cfg: dict) -> Path:
 
     then, now_ref = date.fromisoformat(prev["params"]["ref"]), date.fromisoformat(now["params"]["ref"])
     called = [(tid, p) for tid, p in pt.items() if p.get("bucket") in CALLED]
-    unfetched = [(tid, p) for tid, p in called if not trends.video_files(run, tid)
-                 and not (renamed.get(tid) and trends.video_files(run, renamed[tid]))]
+    age, min_age = (now_ref - then).days, cfg["digest"]["min_call_age_days"]
+    early = age < min_age                              # issue #169: too early to judge any call of that run
+    unfetched = [] if early else [(tid, p) for tid, p in called if not trends.video_files(run, tid)
+                                  and not (renamed.get(tid) and trends.video_files(run, renamed[tid]))]
     if unfetched:
         shown = ", ".join(f"{p['name']!r} ({tid})" for tid, p in unfetched)
         raise Stop(f"The call check needs this week's videos of every call of the previous run, and these have none "
@@ -476,6 +481,10 @@ def diff(run: RunFolder, prev_snapshot: Path, cfg: dict) -> Path:
     s = state.load(run)
     for tid, p in called:
         as_now = renamed.get(tid)
+        if early:
+            calls.append({"id": tid, "name": p["name"], "call": p["bucket"], "new_creators_since": None, "held": None,
+                          "plugin": {"verdict": TOO_EARLY, "in_map": tid in nt, "reidentified_as": as_now}})
+            continue
         videos = trends.load_videos(run, tid) or (trends.load_videos(run, as_now) if as_now else [])
         joined = _joined(videos, then, now_ref)        # None: TrendsMesh had no dated video with a creator
         held = None if joined is None else (joined > 0 if p["bucket"] == "act_now" else joined == 0)
@@ -504,7 +513,9 @@ def diff(run: RunFolder, prev_snapshot: Path, cfg: dict) -> Path:
            "down": down, "ended": ended, "calls": calls, "hit_rate": {b: _rate(calls, b) for b in CALLED},
            "plugin": {"prev_snapshot": prev_name, "now_snapshot": now_path.name, "prev_rebuilt": rebuilt,
                       "ended_checked": not rebuilt,
-                      "unknown_calls": {b: sum(c["call"] == b and c["held"] is None for c in calls) for b in CALLED},
+                      "unknown_calls": {b: sum(c["call"] == b and c["plugin"]["verdict"] == "unknown" for c in calls)
+                                        for b in CALLED},
+                      **({"too_early": {"age_days": age, "min_days": min_age}} if early else {}),
                       "call_run": call_run, "calls_file": CALLS.as_posix(), "calls_added": len(pending)}}
     target = run.next_version(trends.RESEARCH, STEM, "json")
     target.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -3,7 +3,8 @@ decided choice in words.
 
 The report itself (`tm research report`, tm.research_report) is the page's content; these stages are the decisions
 that shaped it, so each shows a few facts, not the report again: the seed phrases and market (G0), the map's counts
-and the shortlisted hooks in their two lists (G1), the picks (G2), the views (G3) and how next week's run starts
+the trends kept to check (a noise word in the description only, issue #169) and the shortlisted hooks in their two
+lists (G1), the picks (G2), the views (G3) and how next week's run starts
 (GS). Their words are `run_page.trend_research.*`; the views' names are the report's own (`report.view_*`).
 """
 
@@ -71,8 +72,12 @@ def _map(ctx: Context) -> list[dict]:
     used = [t["id"] for t in hooks if t["plugin"]["use"] == "in_category"]
     transfer = [t["id"] for t in hooks if t["plugin"]["use"] == "transfer"]
     rows = {t["id"]: t for t in hooks}
+    # issue #169: kept, with a noise word only in the description (a summary of the videos): the user checks them
+    check = ", ".join(f"{r.get('name') or r.get('id')} ({', '.join(map(str, r['mentions']))})"
+                      for r in cmap.get("kept") or [] if isinstance(r, dict) and r.get("mentions"))
     return _facts([(_w(ctx, "fact.subcategories"), len(cmap.get("queries") or [])),
                    (_w(ctx, "fact.kept"), len(cmap.get("kept") or [])),
+                   (_w(ctx, "fact.to_check"), check),
                    (_w(ctx, "fact.dropped"), len(cmap.get("dropped") or [])),
                    (_w(ctx, "fact.hooks_used", category=_category(ctx)), _names(used, rows)),
                    (_w(ctx, "fact.hooks_transfer"), _names(transfer, rows))], ctx.rel(path))

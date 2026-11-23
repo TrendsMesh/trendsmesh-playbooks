@@ -57,7 +57,8 @@ DEFAULTS: dict = {
     "paid": {"too_late_min_creators": 30},
     "scoring": {"weights": {c: 1 for c in CRITERIA}},
     "benchmark": {"source": "meta_ad_library"},
-    "digest": {"map_change_share": 0.25, "schedule": "weekly_monday", "channel": "link"},
+    # issue #169: a call younger than min_call_age_days is "too early to judge" (never recorded)
+    "digest": {"map_change_share": 0.25, "schedule": "weekly_monday", "channel": "link", "min_call_age_days": 7},
     "delivery": {"channel": "artifact"},
 }
 
@@ -111,6 +112,7 @@ NUMBERS = {  # path: (integer?, lowest, highest, lowest allowed?, highest allowe
     "picks.valid_days": _COUNT,
     "paid.too_late_min_creators": _COUNT,
     "digest.map_change_share": _SHARE,
+    "digest.min_call_age_days": _FROM0,
     "fx_rate": _ABOVE0,
     **{f"scoring.weights.{c}": (False, 0, None, True, True) for c in CRITERIA},
 }

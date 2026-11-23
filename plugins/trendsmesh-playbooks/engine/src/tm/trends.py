@@ -347,22 +347,31 @@ def seasonal_tag(card: dict) -> str | None:
     return next((w for w in SEASONAL if re.search(rf"\b{re.escape(w)}\b", text)), None)
 
 
+def _noise_word(text: str, words: list[str]) -> str | None:
+    return next((w for w in words if re.search(rf"\b{re.escape(w)}\b", text)), None)
+
+
 def noise_reasons(card: dict, exclude: list[str]) -> list[str]:
-    """Why a card is noise (one word per group, excluded terms, a possessive proper name); [] when
-    it is not."""
+    """Why a card is noise (one word per group in its name, excluded terms in its name or description, a
+    possessive proper name); [] when it is not. A noise word only in the description is no reason (issue
+    #169: the description sums up the trend's videos, so one video about a match puts "soccer" in it):
+    `noise_mentions` names it, to check at the review."""
+    name = (card.get("name") or "").lower()
+    reasons = [f"{group}: {w}" for group, words in NOISE_GROUPS.items() if (w := _noise_word(name, words))]
     text = _text_of(card)
-    reasons = []
-    for group, words in NOISE_GROUPS.items():
-        for w in words:
-            if re.search(rf"\b{re.escape(w)}\b", text):
-                reasons.append(f"{group}: {w}")
-                break
     for w in exclude:
         if re.search(rf"\b{re.escape(w.lower())}\b", text):
             reasons.append(f"excluded term: {w}")
     if re.search(r"\b[A-Z][a-z]+ [A-Z][a-z]+(?:'s|’s)\b", card.get("name") or ""):
         reasons.append("possessive proper name (celebrity / news item)")
     return reasons
+
+
+def noise_mentions(card: dict) -> list[str]:
+    """The noise words (one per group) only in the card's description, not in its name: the trend stays in
+    the map, marked "check: mentions <word>" for the review (issue #169)."""
+    name, what = (card.get("name") or "").lower(), (card.get("what_it_is") or "").lower()
+    return [w for words in NOISE_GROUPS.values() if not _noise_word(name, words) and (w := _noise_word(what, words))]
 
 
 # --- the fields a run needs -------------------------------------------------------------------

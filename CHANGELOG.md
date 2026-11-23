@@ -4,6 +4,18 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Trend research: a trend is no longer dropped for one video's topic.** A trend's description sums up its
+  videos, so one video about a match put "soccer" in it, and a gift-battle or makeup trend was dropped as sport
+  or politics. Now a news, sport or politics word drops a trend only when it is in the trend's name. A word only
+  in the description keeps the trend, marked "check: mentions <word>" on the category map check-in, where Claude
+  keeps or drops it and says why. The report still lists every dropped trend by name. Your own excluded terms drop
+  a trend wherever they appear.
+- **Trend research: last week's calls are judged only once they had a week to play out.** A weekly run started
+  the same day, or a day early, judged fresh "act now" calls as missed after 0 days and wrote them to your track
+  record (`library/trend_calls.jsonl`). Now a call younger than 7 days (`digest.min_call_age_days`) is shown as
+  "too early to judge" on the digest, is not written to the track record and does not count in the hit rate. The
+  page says these calls are not judged later.
+
 ## 0.14.0
 
 - **Linux: TrendsMesh calls are paced right on Ubuntu 26.04 too.** Its `mkdir` and `date` (uutils coreutils)

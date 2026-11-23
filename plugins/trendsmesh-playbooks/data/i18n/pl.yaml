@@ -665,7 +665,19 @@ strings:
       pack_voice: Kredyty ElevenLabs
       pack_cap: Limit budżetu na run
   # the run page's own words (engine/src/tm/run_page/template.py), which an Organic AI video page needs in Polish
+  report:
+    # issue #169: last week's calls are younger than digest.min_call_age_days, so none is judged
+    stat_calls_too_early: "zeszłotygodniowe typy „działaj teraz”: za wcześnie na ocenę"
+    call_too_early: Za wcześnie na ocenę
+    calls_too_early_note:
+      one: "Za wcześnie na ocenę: te typy wskazano {days} dzień temu, a typ potrzebuje {min} dni, żeby się sprawdzić. Nie będą ocenione później: w przyszłym tygodniu sprawdzimy typy z tego tygodnia."
+      few: "Za wcześnie na ocenę: te typy wskazano {days} dni temu, a typ potrzebuje {min} dni, żeby się sprawdzić. Nie będą ocenione później: w przyszłym tygodniu sprawdzimy typy z tego tygodnia."
+      many: "Za wcześnie na ocenę: te typy wskazano {days} dni temu, a typ potrzebuje {min} dni, żeby się sprawdzić. Nie będą ocenione później: w przyszłym tygodniu sprawdzimy typy z tego tygodnia."
   run_page:
+    trend_research:
+      fact:
+        # issue #169: kept trends whose description (a summary of their videos) holds a news, sport or politics word
+        to_check: "Do sprawdzenia: słowo z wiadomości, sportu lub polityki tylko w opisie"
     top:
       brand: TrendsMesh
       title: '{playbook}: {run}'

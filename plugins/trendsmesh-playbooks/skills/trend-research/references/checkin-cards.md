@@ -56,8 +56,9 @@ the market, the working language and the market language (`references/languages.
 (after any change the user asks for).
 
 **G1 · Accept the category map** (after B4). The sub-categories, each with its count of trends;
-what was kept; what was dropped and why (noise, contradicted, and your review's drops with their
-reasons, so the user can restore any); the re-tags; the weak matches, if the map stayed thin
+what was kept, and among it each trend marked "check: mentions <word>" (a news, sport or politics
+word only in its description: say the word and what you decided); what was dropped and why (noise,
+contradicted, and your review's drops with their reasons, so the user can restore any); the re-tags; the weak matches, if the map stayed thin
 ("weak match": its closest trends, never "no trends"); the shortlisted hooks in fit order, in two
 lists: **used in your category** ("used in your category: N of the M captions read", with your
 line on why) and

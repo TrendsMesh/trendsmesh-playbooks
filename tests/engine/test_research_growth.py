@@ -355,7 +355,7 @@ def test_growth_stops_before_the_hooks_path(tmp_path, capsys):
     """Saved rising hook lists but no hooks_in_category yet: growth would leave the hooks out."""
     run = beauty.make_run(tmp_path)
     handoff_map = beauty.handoff("02_research/category_map.json")
-    research_map.build(run, beauty.split_of(handoff_map), beauty.handoff("03_wip/map_review_v01.json"), _cfg())
+    research_map.build(run, beauty.split_of(handoff_map), beauty.review(), _cfg())
     with pytest.raises(Stop, match="tm research hooks"):
         research_growth.compute(run, AS_OF, _cfg())
     assert main(["research", "growth", "--run", str(run.path), "--json"]) == 2

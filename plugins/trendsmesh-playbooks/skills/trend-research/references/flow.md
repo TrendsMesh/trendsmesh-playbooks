@@ -218,6 +218,10 @@ TR1. The engine counts; you choose the phrases.
   searches, tags each trend with its sub-category, drops noise (news, sport, politics, names) and
   contradicted trends, and tags seasonal trends (they stay: TR3's seasonal guard decides). Output:
   `02_research/category_map_vNN.json` and `.md`.
+- A noise word drops a trend only when it is in the trend's **name** (as a whole word). A noise word
+  only in the description (a summary of the trend's videos: one video about a match puts "soccer"
+  in it) keeps the trend, marked **"check: mentions <word>"** under To review (`mentions` in the
+  JSON). Your excluded terms (`trends.exclude_terms`) drop a trend wherever they are.
 - The engine sets the obvious cases aside, so you review a short list: in a weekly run, every trend
   last week's review dropped stays dropped ("last week's review: <its reason>"), and when more than
   `review.max_trends` (50) trends remain, only the best 50 by match (ties: more creators) are **To
@@ -236,6 +240,9 @@ TR1. The engine counts; you choose the phrases.
   50). Never read or score the set-aside ones one by one. Drop the
   off-category ones and re-tag wrong sub-categories, each with a reason (lesson 2: dementia via
   "anti-aging", fan edits via "k-beauty"). Seasonal trends inside the category are not noise.
+  A trend marked "check: mentions <word>" is judged like the others, from its name and what it is:
+  keep it when the trend itself is in the category (a live gift battle in marketing tools, whatever
+  one video was about), drop it when the word is what the trend is about.
   A seasonal trend whose card shows the category's own craft is inside it, even when it is framed
   as a costume, a cosplay or a skit (for beauty: makeup, face paint, skin, hair or nails done for
   the look); drop a seasonal trend only when its card shows none of it (a mask, food, crafts).
@@ -453,6 +460,13 @@ Only when the weekly digest is an output (the engine skips it otherwise). TR8 an
   video page** and names them: fetch each (`get_trend_videos`, every page), then run it again. A
   call whose saved videos have no dated video with a creator is `unknown`, never dropped: say
   which.
+- **Calls too early to judge.** A call made fewer than `digest.min_call_age_days` (7) days before
+  this run (by the two runs' reference dates: a run the same day, or a day early) had no time to
+  play out. The digest marks every call of last time `too_early` (its `plugin.too_early` gives the
+  age and the minimum), needs no videos for them, writes none to `library/trend_calls.jsonl` and
+  counts none in the hit rate. They are not judged later (next week checks this week's calls): the
+  page says so, and so do you, in one line ("last week's calls are too early to judge: made N days
+  ago"). Never call them missed or held.
 - The digest's numbers feed the picks' `digest_reading` (D3): the week in one minute and what to
   do this week.
 - `tm done F2 --run R`.

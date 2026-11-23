@@ -51,7 +51,8 @@ def test_config_defaults_match_playbook_numbers(run):
     assert cfg["scoring"]["weights"] == {k: 1 for k in ("growth", "earliness", "spread", "confidence",
                                                         "fit", "transfer", "feasibility")}
     assert cfg["benchmark"] == {"source": "meta_ad_library"}
-    assert cfg["digest"] == {"map_change_share": 0.25, "schedule": "weekly_monday", "channel": "link"}
+    assert cfg["digest"] == {"map_change_share": 0.25, "schedule": "weekly_monday", "channel": "link",
+                             "min_call_age_days": 7}
     assert cfg["delivery"] == {"channel": "artifact"}
     assert (cfg["currency"], cfg["fx_rate"], cfg["focus"], cfg["market_lang"]) == ("USD", None, None, None)
     assert cfg["category"] == {"inputs": [], "phrase": "uroda", "seeds": ["pielęgnacja twarzy"]}

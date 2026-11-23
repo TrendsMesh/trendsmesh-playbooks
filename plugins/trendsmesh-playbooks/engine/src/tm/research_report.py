@@ -525,6 +525,7 @@ class _Page:
 
         a_n = dg["hit_rate"]["act_now"][1]
         held = [c for c in dg["calls"] if c["call"] == "act_now"]
+        early = (dg.get("plugin") or {}).get("too_early")   # issue #169: the calls are too young to judge
         cooled = [x for x in dg["down"] if seasonal(x)] + [x for x in dg.get("reidentified", []) if seasonal(x)]
         slowing = [x for x in dg["down"] if not seasonal(x)]
         new_live = [x for x in dg["new"] if (trends_.get(x["id"]) or {}).get("bucket") in ("act_now", "still_rising")]
@@ -534,7 +535,9 @@ class _Page:
         for c in sorted(held, key=lambda c: (c["held"] is not True, -(c.get("new_creators_since") or 0))):
             as_now = (c.get("plugin") or {}).get("reidentified_as")
             now_id = c["id"] if c["id"] in trends_ else as_now if as_now in trends_ else None
-            if c["held"] is None:
+            if (c.get("plugin") or {}).get("verdict") == research_digest.TOO_EARLY:
+                mark, verdict = "…", tr("report.call_too_early")
+            elif c["held"] is None:
                 mark, verdict = "?", tr("report.call_unknown")
             else:
                 mark, verdict = ("✓", tr("report.call_kept")) if c["held"] else ("✗", tr("report.call_stalled"))
@@ -584,11 +587,14 @@ class _Page:
         unknown = (plug.get("unknown_calls") or {}).get("act_now")
         if not isinstance(unknown, int):
             unknown = sum(c["held"] is None for c in held)
+        calls_note = (tr.plural("report.calls_too_early_note", early["age_days"], days=early["age_days"],
+                                min=early["min_days"]) if early else tr("report.calls_note", then=E(then)))
         reid = "".join(f"<li>{E(x['was'])} → {E(x['name'])}</li>" for x in dg.get("reidentified", []))
         summary = "".join(f"<li>{E(s)}</li>" for s in reading.get("summary", []))
         todo = "".join(f"<li>{E(s)}</li>" for s in reading.get("todo", []))
         kept = sum(c['held'] is True for c in held)
-        stats = [(f"{kept}/{a_n}", tr("report.stat_calls_unknown", unknown=unknown) if unknown
+        stats = [("—", tr("report.stat_calls_too_early")) if early else
+                 (f"{kept}/{a_n}", tr("report.stat_calls_unknown", unknown=unknown) if unknown
                   else tr("report.stat_calls")),
                  (str(len(dg["up"])), tr.plural("report.stat_moved_up", len(dg["up"]))),
                  (str(len(new_live)), tr.plural("report.stat_new_rising", len(new_live))),
@@ -619,7 +625,7 @@ class _Page:
                 f"<p>{tr('report.new_on_radar_note', then=E(then))}</p></div>"
                 f"<div class='cards small'>{new_html or none}</div>{also}</section>"
                 f"<section style='--c:var(--act)'><div class='sec-head'><h2>{tr('report.calls_heading')}</h2>"
-                f"<p>{tr('report.calls_note', then=E(then))}</p></div>"
+                f"<p>{calls_note}</p></div>"
                 f"<div class='cards small'>{calls_html or none}</div></section>"
                 f"<section style='--c:var(--late)'><div class='sec-head'><h2>{tr('report.cooling_heading')}</h2></div>"
                 f"<div class='tw'><table><tr><th>{tr('report.col_trend')}</th><th>{tr('report.col_stage')}</th>"

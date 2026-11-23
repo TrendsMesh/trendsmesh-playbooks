@@ -346,10 +346,17 @@ def _digest(args: argparse.Namespace, run: RunFolder, cfg: dict) -> int:
         held = sum(c["held"] is True for c in out["calls"] if c["call"] == b)
         rates.append(f"{research_growth.LABEL[b].lower()} held {held} of {checked}"
                      + (f" ({rate:.0%})" if rate is not None else ""))
-    unknown = [c for c in out["calls"] if c["held"] is None]
+    unknown = [c for c in out["calls"] if (c.get("plugin") or {}).get("verdict") == "unknown"]
     text = (f"Wrote {payload['json']} against {plug['prev_snapshot']}: {counts['new']} new, {counts['reidentified']} "
-            f"under a new id, {counts['up']} moved up, {counts['down']} moved down, {counts['ended']} ended. "
-            f"Calls: {'; '.join(rates)}")
+            f"under a new id, {counts['up']} moved up, {counts['down']} moved down, {counts['ended']} ended. ")
+    early = plug.get("too_early")
+    if early:      # issue #169
+        payload["too_early"] = early
+        text += (f"Calls: {len(out['calls'])} too early to judge (made {early['age_days']} days ago, fewer than "
+                 f"{early['min_days']}): none is written to {plug['calls_file']} and none is judged later; the page "
+                 "says so")
+    else:
+        text += f"Calls: {'; '.join(rates)}"
     text += (f"; {len(unknown)} unknown (TrendsMesh has no dated video with a creator for them): "
              + ", ".join(f"{c['name']!r} ({c['id']})" for c in unknown) + "." if unknown else ".")
     text += f" Added {plug['calls_added']} rows to {plug['calls_file']}."

@@ -39,11 +39,14 @@ def handoff_map():
 @pytest.mark.private_data
 def test_map_rebuilds_beauty_kept_and_dropped(tmp_path, capsys, handoff_map):
     run = beauty.make_run(tmp_path)
-    review = beauty.handoff("03_wip/map_review_v01.json")
-    out = research_map.build(run, beauty.split_of(handoff_map), review, _cfg())
+    out = research_map.build(run, beauty.split_of(handoff_map), beauty.review(), _cfg())
+    reference = beauty.reference_map()          # issue #169: a description-only noise word is dropped by the review
 
-    assert out["kept"] == handoff_map["kept"]
-    assert out["dropped"] == handoff_map["dropped"]
+    def by_name(rows):
+        return sorted(rows, key=lambda r: r["name"])
+
+    assert out["kept"] == reference["kept"]
+    assert by_name(out["dropped"]) == by_name(reference["dropped"])
     assert (out["root"], out["min_match"], out["min_relevant"]) == ("beauty", 40, 10)
     # every relevant result is in kept or dropped, so the counts rebuild; `results` needs the raw 50
     assert [{k: q[k] for k in ("query", "parent", "relevant", "file")} for q in out["queries"]] == \
@@ -61,7 +64,8 @@ def test_map_rebuilds_beauty_kept_and_dropped(tmp_path, capsys, handoff_map):
     cfg = config.load(run)
     cfg["review"] = {"max_trends": beauty.NO_CUT}
     config.save(run, cfg)
-    copied = beauty.copy_input(run, "03_wip/map_review_v01.json")
+    copied = run.path / "03_wip" / "map_review_v02.json"
+    _write_json(copied, beauty.review())
     split = _write_json(run.path / "03_wip" / "split_v01.json", beauty.split_of(handoff_map))
     assert main(["research", "map", "--run", str(run.path), "--split", split, "--review", str(copied),
                  "--json"]) == 0
@@ -69,7 +73,7 @@ def test_map_rebuilds_beauty_kept_and_dropped(tmp_path, capsys, handoff_map):
     assert payload["status"] == "done" and payload["json"] == "02_research/category_map_v02.json"
     assert (payload["kept"], payload["dropped"], payload["below_threshold"]) == (52, 12, 0)
     again = json.loads((run.path / payload["json"]).read_text(encoding="utf-8"))
-    assert again["kept"] == handoff_map["kept"] and again["dropped"] == handoff_map["dropped"]
+    assert again["kept"] == reference["kept"] and by_name(again["dropped"]) == by_name(reference["dropped"])
     assert (run.path / "02_research" / "category_map_v02.md").is_file()
 
 
@@ -261,6 +265,26 @@ def _thin_run(tmp_path, *, nothing_relevant: bool = False) -> tuple[RunFolder, d
         {"query": "sunscreen", "parent": "body moisture", "depth": 2, "source": "list_topics"}]}
     trends.save_answer(run, "search_trends", {"about": "body moisture"}, {"data": [card("w2", "Lotion layering", 20)]})
     return run, split
+
+
+def test_noise_word_in_the_description_only_is_kept_to_check(tmp_path):
+    """Issue #169: a noise word in a trend's name drops it; one only in its description (a summary of its videos)
+    keeps it, marked "check: mentions <word>" on the map the agent reviews at G1."""
+    run = RunFolder.create(tmp_path / "ws", "tools", date(2026, 11, 7), playbook=TREND_RESEARCH)
+    research_config.write_from_intake(run, {"category": {"phrase": "marketing tools"}, "market": "US", "language": "en"})
+    cards = [{"id": "pk", "kind": "topic_trend", "name": "TikTok LIVE PK gift battles", "status": "confirmed",
+              "what_it_is": "Creators battle for gifts; one PK was a soccer bet.", "match": {"score": 60}},
+             {"id": "nfl", "kind": "topic_trend", "name": "NFL draft reactions", "status": "confirmed",
+              "what_it_is": "Fans react to picks.", "match": {"score": 60}}]
+    trends.save_answer(run, "search_trends", {"about": "marketing tools"}, {"data": cards})
+    split = {"root": "marketing tools", "queries": [{"query": "marketing tools", "parent": None, "depth": 0,
+                                                     "source": "seed"}]}
+    out = research_map.build(run, split, None, _cfg())
+    assert [(r["id"], r.get("mentions")) for r in out["kept"]] == [("pk", ["soccer"])]
+    assert [(r["id"], r["dropped_because"]) for r in out["dropped"]] == [("nfl", ["sport: nfl"])]
+    md = (run.path / "02_research" / "category_map_v01.md").read_text(encoding="utf-8")
+    assert "| TikTok LIVE PK gift battles (check: mentions soccer) |" in md
+    assert "| NFL draft reactions | marketing tools | sport: nfl |" in md.split("## Dropped")[1]
 
 
 def test_map_files_resolve_inside_the_run_from_the_workspace(tmp_path, capsys, monkeypatch):

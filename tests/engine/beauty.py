@@ -22,7 +22,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from tm import research_config, research_growth, research_map, trends
+from tm import config, research_config, research_growth, research_map, trends
 from tm.playbooks import TREND_RESEARCH
 from tm.runfolder import RunFolder
 
@@ -34,11 +34,37 @@ ROOT = "beauty"
 CARD_FIELDS = ("id", "kind", "name", "status", "reach", "since", "active_for_days", "momentum",
                "sensitivity_level", "what_it_is")
 HOOK_LIST = Path(trends.RESEARCH) / "lists" / "list_rising_hook_trend_all_p01.json"
+# The reference's weekly digest checked calls of 29 Oct on 4 Nov: reference dates 27 Oct and 2 Nov, 6 days apart. The
+# plugin judges calls from `digest.min_call_age_days` (7, issue #169), so the beauty run's config lowers it to 6.
+CALL_AGE = 6
 
 
 def handoff(rel: str) -> Any:
     """A JSON file of the beauty dry run, by its path inside the example folder."""
     return json.loads((BEAUTY / rel).read_text(encoding="utf-8"))
+
+
+# Issue #169: the reference map dropped this trend for "football" in its description alone. The map keeps such a
+# trend now, marked "check: mentions football", and the agent's review drops it, as the reference did.
+CHECKED_AT_REVIEW = {"Selfie videos making funny faces at camera": ("sport: football", ["football"])}
+
+
+def review() -> dict:
+    """The reference's agent review (map_review_v01.json), with the drops of `CHECKED_AT_REVIEW` (issue #169)."""
+    r = handoff("03_wip/map_review_v01.json")
+    return {**r, "drop": {**r.get("drop", {}), **{n: why for n, (why, _) in CHECKED_AT_REVIEW.items()}}}
+
+
+def reference_map() -> dict:
+    """The reference category map as the plugin builds it from `review()`: a trend of `CHECKED_AT_REVIEW` is dropped
+    by the review, its noise word under `mentions` (issue #169)."""
+    m = handoff("02_research/category_map.json")
+    for r in m["dropped"]:
+        if r["name"] in CHECKED_AT_REVIEW:
+            why, words = CHECKED_AT_REVIEW[r["name"]]
+            r["mentions"] = words
+            r["dropped_because"] = ["agent review: " + why]
+    return m
 
 
 def search_answers(category_map: dict) -> dict[str, list[dict]]:
@@ -80,6 +106,9 @@ def make_run(tmp_path: Path) -> RunFolder:
     run = RunFolder.create(tmp_path / "ws", ROOT, CREATED, playbook=TREND_RESEARCH)
     research_config.write_from_intake(run, {"category": {"inputs": [ROOT], "phrase": ROOT, "seeds": []},
                                             "market": "US", "language": "en"})
+    saved = config.load(run)
+    saved["digest"]["min_call_age_days"] = CALL_AGE
+    config.save(run, saved)
     videos = run.path / trends.RESEARCH / "videos"
     videos.mkdir(parents=True)
     for f in sorted((BEAUTY / "02_research" / "videos").glob("*.json")):
@@ -116,6 +145,7 @@ def cfg(**sections) -> dict:
     out["review"]["max_trends"] = out["hooks"]["max_candidates"] = NO_CUT
     out["category"]["phrase"] = ROOT
     out["market"], out["language"] = "US", "en"
+    out["digest"]["min_call_age_days"] = CALL_AGE
     for name, values in sections.items():
         out[name].update(values)
     return out
@@ -218,7 +248,7 @@ def mapped_run(tmp_path: Path) -> RunFolder:
     fit scores of `fit_scores`, a shortlist as long as the reference's kept hooks, and their videos."""
     run = make_run(tmp_path)
     handoff_map = handoff("02_research/category_map.json")
-    research_map.build(run, split_of(handoff_map), handoff("03_wip/map_review_v01.json"), cfg())
+    research_map.build(run, split_of(handoff_map), review(), cfg())
     reference = handoff("02_research/hooks_in_category.json")
     research_growth.hook_fit(run, fit_scores(reference), cfg(hooks={"shortlist": len(reference["kept"])}))
     research_growth.hooks(run, hook_use(run), cfg())
