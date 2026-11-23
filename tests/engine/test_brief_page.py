@@ -383,7 +383,7 @@ def test_oversized_page_writes_nothing(run, capsys, monkeypatch):
     code, out = _cli(capsys, "brief", "page", "--run", str(run.path))
     assert code == 2 and out["status"] == "stop"
     assert "too big to publish" in out["message"] and "Nothing was written" in out["message"]
-    assert "--single-file" in out["message"] and "animatic.formats" in out["message"]
+    assert "--single-file" in out["message"] and "animatic.formats" not in out["message"]   # fixed after A1 (#162)
     assert "smaller" not in out["message"]                            # no advice without a tool behind it
     assert _final(run) == before_final and manifest.rows(run) == before_rows
     assert brief_page.built_gap(run) is not None

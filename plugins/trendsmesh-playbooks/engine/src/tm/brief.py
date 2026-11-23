@@ -247,6 +247,9 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
                f"{'inlined' if args.single_file else 'copied'}")
     message += (f", {len(missing)} thumbnail{'' if len(missing) == 1 else 's'} missing ({', '.join(missing)}): the page "
                 "shows the clip links without them." if missing else ".")
+    if got.get("media_dropped"):              # issue #162 item 2: left out, never the whole page held back
+        message += (f" Too big for the page even as a 720p preview, so left out: {'; '.join(got['media_dropped'])}. "
+                    "The concept shows that local file's path where the animatic would play; tell the user where it is.")
     if args.single_file:
         message += f" The file is {got['bytes'] / 2**20:.1f} MiB."
     else:
@@ -348,8 +351,39 @@ def _animatic_style(args: argparse.Namespace, run: RunFolder, named: list[str] |
     message = (f"The animatics' styles: {picks}. Wrote {got['brief']}, which names them, and a build prompt per "
                f"concept. Have a subagent write each concept's style module from its prompt ({todo}), then draw them "
                f"with tm brief animatic --run {args.run} --render --concepts {ids}.")
+    unmatched = [r for r in got["styles"] if r["reason"] == "none"]
+    if unmatched:                     # issue #162 item 3: never a silent fallback
+        names = ", ".join(f"{r['concept']} ({r['name']})" for r in unmatched)
+        message += (f" Nothing in the format, hook, idea or tone of {names} matched a library style: before the "
+                    "subagents write the modules, ask the user to pick a style (offer two or three from tm organic "
+                    "atlas-styles --json, each with a one-line why) or to confirm this one; a style they pick: tm "
+                    "brief animatic --style "
+                    f"<number|styleId> --concepts {','.join(r['concept'] for r in unmatched)}.")
     cli.emit(args, {"status": "done", **got, "message": message}, message)
     return 0
+
+
+def _previews_said(run: RunFolder, items: list[dict]) -> str:
+    """Issue #162: what the page plays of each render: its 720p preview (the full-size MP4 stays in the renders
+    folder), the full-size file when no preview could be made, and a local-file line for a file over the Artifact
+    tool's limit a file (the page is built without it)."""
+    made = [i for i in items if i.get("preview")]
+    out = ""
+    if made:
+        sizes = ", ".join(f"{i['concept']} {i['format']} {i['preview']['bytes'] / 10**6:.1f} MB" for i in made)
+        out += (f" The page plays a 720p preview of each ({sizes}); the full-size MP4s stay in "
+                f"{animatic.RENDERS}.")
+    failed = [i for i in items if i.get("preview_error")]
+    if failed:
+        out += (" No preview could be made of " + "; ".join(f"{Path(i['mp4']).name} ({i['preview_error']})"
+                                                          for i in failed)
+                + ", so the page serves the full-size file.")
+    big = [Path(i["mp4"]).name for i in items
+           if (i["preview"]["bytes"] if i.get("preview") else (run.path / i["mp4"]).stat().st_size) > page.MAX_FILE_BYTES]
+    if big:
+        out += (f" {', '.join(big)} {'is' if len(big) == 1 else 'are'} still over the page's limit of a file even so: "
+                "tm brief page builds the page without it, and the concept names the local file instead.")
+    return out
 
 
 def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
@@ -389,10 +423,7 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
         errors = [f"{Path(i['mp4']).name}: {'; '.join(map(str, i['page_errors']))}" for i in items if i["page_errors"]]
         if errors:
             message += " The page reported errors while drawing, so look at the stills: " + " | ".join(errors) + "."
-        over = page.over_limits({i["mp4"]: (run.path / i["mp4"]).stat().st_size for i in items})
-        if over:
-            message += (f" These MP4s are too big for one published page ({over}): make the animatic shorter "
-                        "before building the page.")
+        message += _previews_said(run, items)
     cli.emit(args, {"status": "done", "version": version, "items": items, "brief": brief, "message": message},
              message)
     return 0

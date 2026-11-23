@@ -30,6 +30,18 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **Amounts in the playbooks' instructions read right.** Claude Code took the dollar amounts in a skill's text
   (a script to film for zero dollars, an AI video for one dollar twenty) for its arguments; they are now written
   as "0 USD" and "1.20 USD".
+- **The creative brief page plays a 720p preview of each animatic, so a styled animatic fits on it.** A library-style
+  animatic is rendered at full size, 25 to 36 MB for 15 seconds, over the page's 15 MB a file. Each render now also
+  gets a 720p preview with its bitrate set from its length (about 2 MB for 15 seconds, never over 12 MB), which the
+  page plays; the full-size MP4 stays in the run's renders folder, and the page says where.
+- **The brief page is always rebuilt, even when an animatic is too big for it.** An animatic over the page's limit
+  even as a preview (a very long one) is left out, and its concept shows the local file's path where the animatic
+  would play, instead of the whole page staying on its old version with the check-in still open. The hint to draw
+  fewer formats, which cannot change by then, is gone.
+- **An animatic's style is matched to its concept.** The style was picked from the concept's format alone, and a
+  format the ranking did not know got "the library's next free style". Now the concept's hook, idea and tone are
+  matched against each style's description and what it suits, and the answer says why each style was picked. When
+  nothing matches, it says so plainly, and Claude asks you to pick the style or confirm it.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

@@ -1,8 +1,8 @@
 """Issue #138 item 4 (owner decision #148 line 2, as changed by @piotr-lezon): a creative brief's animatic is always
 drawn in one of the 49 library styles; the fixed sketch scenes are gone.
 
-`tm brief animatic --style auto` picks each named concept's style with `atlas_prompt.ranked` from the concept's format
-(a talking head, a screen recording and a UGC phone video get different styles; the channel's own style first with
+`tm brief animatic --style auto` picks each named concept's style (`animatic.matched`) from the concept's format,
+hook, idea and tone, against the styles' cards (issue #162 item 3; a talking head, a screen recording and a UGC phone video get different styles; the channel's own style first with
 `--own`), writes it into a new brief version as `animatic.style` with its poster, and writes each concept's build
 prompt. A subagent writes the style module; `tm brief animatic --render` builds its page with `atlas_prompt.module_page`
 and draws it with `atlas.render`. A concept without a style is refused. The brief page shows the style's name and
@@ -104,16 +104,56 @@ def test_three_formats_get_three_styles_chosen_by_the_ranking():
     picked = animatic.choose_styles(brief, ["C1", "C2", "C3"])
     ids = [picked[c]["styleId"] for c in ("C1", "C2", "C3")]
     assert len(set(ids)) == 3                                       # three formats, three looks
-    taken: list[str] = []
     for cid in ("C1", "C2", "C3"):
-        kind, tone = animatic.rank_args(animatic.concept_format(_concept(brief, cid)))
-        first = next(s for s in atlas_prompt.ranked(channel_type=kind, tone=tone) if s["styleId"] not in taken)
-        assert picked[cid]["styleId"] == first["styleId"], cid       # the ranking's first free style
-        taken.append(first["styleId"])
+        kind, _ = animatic.rank_args(animatic.concept_format(_concept(brief, cid)))
+        card = picked[cid]
+        assert kind in card["tags"]["channels"], cid                 # each suits its format
+        assert card["reason"] != "none" and card["why"], cid         # and says why
     assert animatic.rank_args("talking head")[0] == "lifestyle_vlog"
     assert animatic.rank_args("screen recording")[0] == "howto_education"
     assert animatic.rank_args("UGC phone video")[0] == "shop_product"
     assert animatic.rank_args(None) == (None, ())
+
+
+def test_the_style_matches_the_concepts_hook_idea_and_tone():
+    """Issue #162 item 3: the concept's own words (its hook, idea and the brief's tone) are scored against each
+    style's description and what it suits, so a format no row of FORMAT_RANKS knows still gets a matched style."""
+    brief = _ad()
+    brief["tone"]["tone"] = "serious, a little tense"
+    c1 = _concept(brief, "C1")
+    c1["plugin"]["axes"]["format"] = "carousel"
+    c1["title"] = "The case of the missing money"
+    c1["one_liner"] = "An investigation into where the household money goes, cracked like a mystery."
+    c1["hook"]["text"] = "Who took the grocery money?"
+    picked = animatic.choose_styles(brief, ["C1"])["C1"]
+    assert picked["styleId"] == "noir" and picked["reason"] == "words", picked["reason"]
+    assert {"investigation", "mystery", "money"} <= set(picked["matched"])
+    assert "investigation" in picked["why"] and "serious" in picked["why"]
+
+
+def _unmatched(brief: dict) -> dict:
+    """Every concept in words no style's card has (Polish) and in a format FORMAT_RANKS does not know."""
+    brief["tone"]["tone"] = "ciepły"
+    for c in brief["concepts"]:
+        c["plugin"]["axes"].update(format="karuzela", angle="marnowanie jedzenia", hook_type="lista")
+        c.update(title="Lodówka", one_liner="Rodzic otwiera lodówkę.", key_message="Mniej marnowania.",
+                 hook={"text": "Co wyrzucam co tydzień", "style": "top", "description": "Tekst na ekranie."})
+    return brief
+
+
+def test_nothing_matched_is_said_plainly_and_the_agent_asks(run, capsys):
+    """Never a silent fallback: with nothing to match, the reason says so, and the answer tells the agent to have
+    the user pick a style or confirm this one."""
+    picked = animatic.choose_styles(_unmatched(_ad()), ["C1"])["C1"]
+    assert picked["reason"] == "none" and picked["matched"] == []
+    assert "nothing" in picked["why"].lower() and "next free style" not in picked["why"]
+    (run.path / V01).write_text(json.dumps(_unmatched(_ad()), ensure_ascii=False), encoding="utf-8")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1")
+    assert code == 0, out
+    assert out["styles"][0]["reason"] == "none"
+    message = out["message"]
+    assert "matched" in message and "pick" in message and "confirm" in message
+    assert "--style <number|styleId> --concepts C1" in message
 
 
 def test_the_channels_own_style_comes_first_and_a_given_style_is_kept():

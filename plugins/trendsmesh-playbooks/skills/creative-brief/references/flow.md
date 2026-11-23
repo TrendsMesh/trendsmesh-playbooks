@@ -517,24 +517,28 @@ drawn in a library style matched to its concept: there is no sketch (owner decis
 - **Make:** `tm decide animatics make --concepts C1,C3 --run R --said "<their words>"` (the concepts the user named; "all"
   is every concept id), then three steps:
   1. **The styles:** `tm brief animatic --run R --style auto --concepts C1,C3 --json` picks each
-     concept's style from its format with the style ranking, no two concepts alike, and writes a new
-     brief version with `animatic.style` and its poster, and a build prompt per concept. The user
-     named a style: `--style <number|styleId>`. A brief for a channel with its own look: `--own
-     <number|styleId>`, the library style nearest its `video_style`, first. Tell the user each
-     concept's style in one line.
+     concept's style from its format, hook, idea and tone, matched against each style's card, no two
+     concepts alike, and writes a new brief version with `animatic.style` and its poster, and a build
+     prompt per concept. The user named a style: `--style <number|styleId>`. A brief for a channel with
+     its own look: `--own <number|styleId>`, the library style nearest its `video_style`, first. Tell
+     the user each concept's style in one line, with its why (`styles[].why`). A concept nothing
+     matched (`reason: none`): ask the user to pick its style or confirm this one before step 2.
   2. **The modules:** one subagent per concept, in parallel, writes the style module from the
      concept's prompt (the answer's `styles[].prompt` to `styles[].module`): give it the prompt file and
      the module path, and nothing else to do.
   3. **The render:** `tm brief animatic --run R --render --concepts C1,C3 --json` draws each concept from
      its module in its formats (the config's `animatic.formats`, else the audience pick's) and renders
      the MP4s with the user's own Chrome or Edge. Run it in the background and wait for it, or one
-     concept at a time with the longest timeout. It writes `03_wip/animatic/` (the pages and `renders/`)
-     and a new brief version that names the MP4s. It refuses, before anything is written, a concept with
+     concept at a time with the longest timeout. It writes `03_wip/animatic/` (the pages and `renders/`,
+     each MP4 with a 720p preview, `_720p.mp4`, which the page plays) and a new brief version that names
+     them. It refuses, before anything is written, a concept with
      no style (do step 1 for it), one whose module is missing, or a module with other beats than the
      brief: write it again (a new version), then render. The layout check's findings are in its answer:
      fix them in a new module version and render again. Look at the stills: the text must not overlap,
      and each beat must read. Then `tm brief page --run R --json` and publish to the same URL; the page
-     shows each concept's style by name, with its poster. `tm done D2 --run R` (`animatics_rendered`
+     shows each concept's style by name, with its poster. An animatic too big for the page even as a
+     preview is left out (the answer's `media_dropped`): its concept shows the local file's path, and you
+     tell the user where it is. `tm done D2 --run R` (`animatics_rendered`
      checks the named concepts only, `page_built` the page).
 - **Skip:** `tm decide animatics skip --run R --said "<their words>"`: D2 is skipped, and the page keeps "Animatic on
   request" in place of a player.

@@ -142,6 +142,10 @@ brief:
   animatic_on_request: Animatic on request
   # the library style a concept's animatic is drawn in, by its name, beside its poster (issue #138 item 4)
   animatic_style: "Animatic style: {name}"
+  # the page plays a 720p preview of each animatic; under it, where the full-size MP4s are (issue #162)
+  animatic_full_file: "Full size: {path}"
+  # an animatic too big for the page even as a preview: left out, its local file named instead (issue #162)
+  animatic_local_file: "Local file: {path}"
   choose_view: Choose your view
   i_am_the: I am the
   # the PDFs (issue #10): the view bar's buttons and hint, the print mode's banners and stills caption

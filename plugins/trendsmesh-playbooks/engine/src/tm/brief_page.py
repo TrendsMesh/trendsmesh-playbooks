@@ -40,6 +40,11 @@ republished, so a row equal to the earlier decisions file's is marked `carried`;
 page refuses a carried approval unless the user kept it in chat (`--keep-carried`). A viewer's decision note is data: it is kept as a string and shown to the user, never
 acted on.
 
+The animatics (issue #162): the page plays each format's 720p preview (`animatic.preview`, `_with_previews`) and says
+where the full-size MP4 is; a file still over the Artifact tool's limit a file (or the biggest one, for a page over
+the limit in all) is left out (`_too_big`, `_left_out`), and the concept names that local file where the animatic
+would play, so the page is always rebuilt (the build's `media_dropped` lists them).
+
 The PDFs (issue #10, `tm.brief_pdf`): a folder build prints `pdf/brief_pack-full.pdf` and one PDF per view
 from the page's print mode (`render(..., stills=...)`: one view or all, no view bar, sidebar or decision
 forms, each animatic as its stills, a banner), and the page's view bar gets two buttons that save them (the
@@ -380,11 +385,33 @@ def _tech(rows, tr: i18n.Translator) -> str:
 def _placeholder(c: dict, ahead: set[str] | None, tr: i18n.Translator) -> str:
     """Issue #133: what stands where a concept's animatic plays before there is one (they are made on request, CB11,
     #145), never an empty player: the concept's hook, and "Animatic on request" while one may still come (`ahead`,
-    the concepts whose animatic is on request or asked for; None, every concept)."""
+    the concepts whose animatic is on request or asked for; None, every concept). An animatic too big for the page
+    (issue #162, `animatic.local`) has its local file's line instead."""
     hook = c.get("hook") if isinstance(c.get("hook"), dict) else {}
     text = f'<b>{E(hook["text"])}</b>' if hook.get("text") else ''
-    line = f'<span>{W(tr, "brief.animatic_on_request")}</span>' if ahead is None or c.get("id") in ahead else ''
+    local = _local_files(c.get("animatic"))
+    line = (''.join(f'<span>{W(tr, "brief.animatic_local_file", path=E(p))}</span>' for p in local) if local else
+            f'<span>{W(tr, "brief.animatic_on_request")}</span>' if ahead is None or c.get("id") in ahead else '')
     return f'<div class="on-request">{text}{line}</div>'
+
+
+def _local_files(a) -> list[str]:
+    """Issue #162 item 2: the run paths of a concept's animatics left off the page as too big (`animatic.local`, set
+    by `build`), in the formats' order."""
+    local = a.get("local") if isinstance(a, dict) else None
+    return [local[f] for f in FORMATS if isinstance(local, dict) and isinstance(local.get(f), str)]
+
+
+def _file_lines(a, tr: i18n.Translator) -> list[str]:
+    """Issue #162: under a playing animatic, where its full-size files are (`animatic.full`: the page plays their
+    720p previews) and the local file of a format left off the page (`animatic.local`)."""
+    if not isinstance(a, dict):
+        return []
+    full = a.get("full") if isinstance(a.get("full"), dict) else {}
+    paths = [full[f] for f in FORMATS if isinstance(full.get(f), str)]
+    out = [f'<p class="anim-file">{W(tr, "brief.animatic_full_file", path=E(", ".join(paths)))}</p>'] if paths else []
+    return out + [f'<p class="anim-file">{W(tr, "brief.animatic_local_file", path=E(p))}</p>'
+                  for p in _local_files(a)]
 
 
 def _style_line(a, tr: i18n.Translator) -> str:
@@ -424,6 +451,7 @@ def concept_html(c, idx, total, stills=None, tr: i18n.Translator | None = None, 
            f'<p class="keymsg"><b>{W(tr, "brief.key_message")}</b> {E(c["key_message"])}</p>',
            f'<p class="hyp"{v("decision", "strategy", "media-buyer")}><b>{W(tr, "brief.what_this_tests")}</b> {E(c["hypothesis"])}</p>',
            *[x for x in (_style_line(a, tr),) if x],
+           *(_file_lines(a, tr) if src else []),     # without a player, the placeholder names the local files
            '</div>',
            player,
            '</header>']
@@ -865,6 +893,69 @@ def _swap(brief: dict, new: dict[str, str]) -> dict:
     return out
 
 
+def _with_previews(run: RunFolder, brief: dict) -> dict:
+    """Issue #162 item 1: the brief as the page shows it: each animatic format with a 720p preview in the renders
+    folder (`animatic.preview.<fmt>.path`, written by `tm brief animatic --render`) names the preview, and
+    `animatic.full` keeps the full-size file's run path for the line that says where it is. A format without its
+    preview keeps its full-size file. `preview` itself is not shown."""
+    out = copy.deepcopy(brief)
+    for c in out["concepts"]:
+        a = c.get("animatic") if isinstance(c, dict) else None
+        if not isinstance(a, dict):
+            continue
+        previews = a.pop("preview", None)
+        previews = previews if isinstance(previews, dict) else {}
+        full = {}
+        for f in FORMATS:
+            p = previews.get(f)
+            path = p.get("path") if isinstance(p, dict) else None
+            if not (isinstance(a.get(f), str) and a[f] and isinstance(path, str) and path
+                    and find_media(run, path, (RENDERS,)) is not None):
+                continue
+            whole = find_media(run, a[f], (RENDERS,))
+            if whole is not None:
+                full[f] = whole.relative_to(run.path).as_posix()
+            a[f] = path
+        if full:
+            a["full"] = full
+    return out
+
+
+def _left_out(brief: dict, dropped: dict[str, str]) -> dict:
+    """Issue #162 item 2: the brief without the animatic files too big for the page (`dropped`: the page's path ->
+    the local file's run path): each such format moves to `animatic.local` (its line names the file), and a
+    concept's `default` moves to a format that still plays."""
+    out = copy.deepcopy(brief)
+    for c in out["concepts"]:
+        a = c.get("animatic") if isinstance(c, dict) else None
+        if not isinstance(a, dict):
+            continue
+        for f in FORMATS:
+            if isinstance(a.get(f), str) and a[f] in dropped:
+                a.setdefault("local", {})[f] = dropped[a[f]]
+                if isinstance(a.get("full"), dict):
+                    a["full"].pop(f, None)
+                del a[f]
+        playing = [f for f in FORMATS if isinstance(a.get(f), str) and a[f]]
+        if playing and a.get("default") not in playing:
+            a["default"] = playing[0]
+    return out
+
+
+def _too_big(planned: dict[str, int], animatics: dict[str, str]) -> list[str]:
+    """The animatic files to leave off the page so it fits the Artifact tool's limits (`page.over_limits`), by their
+    page paths: each one over the limit a file; else, for a page over the limit in all, the biggest one, when the
+    rest would fit without the animatics. [] when leaving animatics out cannot make it fit (too many files, or another
+    file too big): the page stops then. `animatics`: the page path of each animatic still on the page -> its ref."""
+    big = [p for p in animatics if planned.get(p, 0) > page.MAX_FILE_BYTES]
+    if big:
+        return big
+    rest = {p: n for p, n in planned.items() if p not in animatics}
+    if len(planned) > page.MAX_FILES or page.over_limits(rest) or not animatics:
+        return []
+    return [max(animatics, key=lambda p: planned.get(p, 0))]
+
+
 def _data_uri(path: Path) -> str:
     mime = _MIME.get(path.suffix.lower(), "application/octet-stream")
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
@@ -917,7 +1008,9 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
     `04_final/brief_pack_vNN/` (index.html plus the media it names), or with `single_file` into
     `04_final/brief_pack_vNN.html` with every media file inlined (CB12's fallback). Nothing is
     written when a decision is awaited, an animatic the brief names is not rendered, the brief
-    cannot make a page, or the folder would be over the Artifact tool's limits (each a Stop). A missing
+    cannot make a page, or the folder would be over the Artifact tool's limits with every animatic left out (each a
+    Stop). The page plays each animatic's 720p preview when it has one; an animatic too big for the page is left out
+    and listed in `media_dropped` ("<id> <format>: <local file>"), the concept naming its local file. A missing
     thumbnail is listed in `media_missing` (a single file leaves its image out). A folder build prints the
     PDFs (`_print_pdfs`, `pdfs`), each with a manifest row; without them `pdf_note` says why. The page and its
     PDFs are in the run's working language, or in English while that language's table lacks a word of it:
@@ -936,7 +1029,8 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
                    "thumbnail and the day it was saved in a new brief version. Then build the page from that version. "
                    "A clip it cannot find in the trend's saved video pages is read with get_trend_videos, or taken "
                    "out of the brief. Nothing was written. The run continues from the same place.")
-    refs = _refs(brief)
+    shown = _with_previews(run, brief)                    # the 720p previews the page plays (issue #162)
+    refs = _refs(shown)
     served = {ref: _served(ref) for _, _, ref in refs}
     found = {ref: find_media(run, ref) for _, _, ref in refs}
     no_animatic = [f"{cid} {ref}" for cid, kind, ref in refs if kind == "animatic" and found[ref] is None]
@@ -947,49 +1041,66 @@ def build(run: RunFolder, brief_path: Path | None = None, *, single_file: bool =
                    f"run continues from the same place.")
     missing = sorted({ref for ref, f in found.items() if f is None})
     present = {ref: f for ref, f in found.items() if f is not None}
+    dropped: dict[str, str] = {}                          # an animatic too big for the page -> its local file
     if single_file:
         # a standalone file cannot reach a thumbnail that is not there: its <img> is left out
         inline = {ref: _data_uri(f) for ref, f in present.items()} | {ref: "" for ref in missing}
-        html_text, views = render(_swap(brief, inline), pl.lang, frame=frame, ahead=ahead)
+        html_text, views = render(_swap(shown, inline), pl.lang, frame=frame, ahead=ahead)
         out = run.next_version(FINAL, STEM, "html")
         out.parent.mkdir(parents=True, exist_ok=True)
         with open(out, "x", encoding="utf-8", newline="\n") as fh:    # never over an earlier file
             fh.write(html_text)
     else:
-        html_text, views = render(_swap(brief, served), pl.lang, frame=frame, ahead=ahead)
-        planned = {"index.html": len(html_text.encode("utf-8"))}
-        planned |= {served[ref]: f.stat().st_size for ref, f in present.items()}
-        over = page.over_limits(planned)
-        if over:
-            raise Stop(f"The page would be too big to publish as one artifact: {over}. Nothing was written. Draw "
-                       "fewer formats (animatic.formats in config.yaml) or shorter beats in the brief, render the "
-                       "animatics again and build again; or build one file with --single-file for a recipient "
-                       "without claude.ai. The run continues from the same place.")
+        kinds = {ref: kind for _, kind, ref in refs}
+        while True:      # issue #162 item 2: an animatic too big for the page is left out, never the whole page
+            html_text, views = render(_swap(_left_out(shown, dropped), served), pl.lang, frame=frame, ahead=ahead)
+            planned = {"index.html": len(html_text.encode("utf-8"))}
+            planned |= {served[ref]: f.stat().st_size for ref, f in present.items() if ref not in dropped}
+            over = page.over_limits(planned)
+            if not over:
+                break
+            animatics = {served[ref]: ref for ref in present if kinds[ref] == "animatic" and ref not in dropped}
+            out_now = _too_big(planned, animatics)
+            if not out_now:
+                raise Stop(f"The page would be too big to publish as one artifact: {over}. Nothing was written. "
+                           "Build one file with --single-file for a recipient without claude.ai. The run continues "
+                           "from the same place.")
+            for served_at in out_now:
+                ref = animatics[served_at]
+                full = next((c["animatic"].get("full", {}).get(f) for c in shown["concepts"]
+                             if isinstance(c.get("animatic"), dict)
+                             for f in FORMATS if c["animatic"].get(f) == ref), None)
+                dropped[ref] = full or present[ref].relative_to(run.path).as_posix()
+        page_brief = _left_out(shown, dropped)
+        kept = {ref: f for ref, f in present.items() if ref not in dropped}
         out = page.new_folder(run, PAGE)
         (out / "assets").rmdir()           # this page serves its media under the brief's own paths
-        for ref, f in present.items():
+        for ref, f in kept.items():
             dest = out / served[ref]
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(f, dest)
         try:
-            pdfs, pdf_note = _print_pdfs(run, out, brief, served, present, missing, views, planned, pl.lang, ahead)
+            pdfs, pdf_note = _print_pdfs(run, out, page_brief, served, kept, missing, views, planned, pl.lang, ahead)
         except OSError as exc:                   # the page is written all the same: PDFs are its extra
             brief_pdf.remove(out)
             pdfs, pdf_note = {}, f"printing them failed: {exc}"
         if pdfs:
-            html_text = render(_swap(brief, served), pl.lang, pdfs=pdfs, frame=frame, ahead=ahead)[0]
+            html_text = render(_swap(page_brief, served), pl.lang, pdfs=pdfs, frame=frame, ahead=ahead)[0]
         with open(out / "index.html", "x", encoding="utf-8", newline="\n") as fh:
             fh.write(html_text)
+    left_out = [f"{cid} {f}: {dropped[ref]}" for cid, kind, ref in refs if ref in dropped
+                for c in shown["concepts"] if c.get("id") == cid
+                for f in FORMATS if (c.get("animatic") or {}).get(f) == ref]
     out_rel = out.relative_to(run.path).as_posix()
     if not single_file:                          # before the page's row, which decided_page takes as the last
         for key, served_at in pdfs.items():
             manifest.record(run, f"{out_rel}/{served_at}", FINAL, PDF_SOURCE, parent=out_rel, model=brief_pdf.MODEL,
                             cost="0", params={"view": key})
     params = {"brief_sha256": stepchecks.sha256(path), "views": views, "single_file": single_file,
-              "media_missing": missing}
+              "media_missing": missing, "media_dropped": left_out}
     manifest.record(run, out_rel, FINAL, SOURCE, parent=rel, params=params | ({} if single_file else {"pdfs": pdfs}))
-    result = {"views": views, "media_copied": len(present), "media_missing": missing, "brief": rel, "lang": pl.lang,
-              "chat_answers": chat_answers(brief, frame)}
+    result = {"views": views, "media_copied": len(present) - len(dropped), "media_missing": missing,
+              "media_dropped": left_out, "brief": rel, "lang": pl.lang, "chat_answers": chat_answers(brief, frame)}
     if pl.warning:
         result["language_warning"] = pl.warning
     if single_file:
