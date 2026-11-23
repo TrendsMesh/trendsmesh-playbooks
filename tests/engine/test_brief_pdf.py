@@ -377,7 +377,7 @@ def test_no_pdfs_tells_the_user_the_page_has_no_download_buttons(run, monkeypatc
 def test_capabilities_declare_the_downloads(capsys):
     assert main(["brief", "capabilities", "--json"]) == 0
     caps = json.loads(capsys.readouterr().out)["capabilities"]
-    assert caps["downloads"] is True and set(caps) == {"db", "user", "downloads"}
+    assert caps["downloads"] == {} and set(caps) == {"db", "user", "downloads"}
 
 
 # --- CB13 on the creator PDF ----------------------------------------------------------------------------------------

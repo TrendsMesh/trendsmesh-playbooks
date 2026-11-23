@@ -12,7 +12,6 @@ import pytest
 from test_brief_flow import _leaf, _tm_commands
 from test_frontmatter import front_matter
 from tm import cli, flow, model_registry, organic_config, organic_pack, paths, playbooks, state
-from tm.organic_pages import CAPABILITIES
 from tm.playbooks import ORGANIC_VIDEO
 from tm.runfolder import RunFolder
 
@@ -199,12 +198,13 @@ def test_tool_commands_use_the_tools_own_flags():
 
 
 def test_flow_declares_what_the_engine_declares():
-    """The capabilities flow.md tells the agent to declare are organic_pages.CAPABILITIES, verbatim."""
+    """The capabilities flow.md tells the agent to declare are the ones the command returns, the run's one set
+    (issue #153), never a set written out by hand."""
     flow_md = _text(SKILL / "references" / "flow.md")
-    for page, anchor in (("script", "e3"),):
-        found = re.search(r"`(\{.*?\})`", _section(flow_md, anchor).split("`capabilities` =", 1)[1], re.S)
-        assert found, anchor
-        assert json.loads(found.group(1)) == CAPABILITIES[page], anchor
+    for anchor in ("e3",):
+        section = re.sub(r"\s+", " ", _section(flow_md, anchor))
+        assert "`capabilities` = the `capabilities` it returns" in section, anchor
+        assert "CAPABILITIES[" not in section, anchor
     for anchor in ("c2", "e3"):
         section = re.sub(r"\s+", " ", _section(flow_md, anchor))
         assert "`Artifact` publish" in section and "declaration" in section, anchor   # declared in the publish, checked
@@ -309,7 +309,7 @@ def test_week_steps_name_the_engine_commands():
         "i4": ["tm organic deliver-week --run R", "week_delivery", "05_results/posting_plan_vNN.json",
                "tm page await --run R --page week_delivery", "collection `gate_edit`",
                "tm organic decisions --run R --page week_delivery", "in that day's own run",
-               "CAPABILITIES[\"gate\"]", "tm done I4", "only when the channel profile already holds"],
+               "`capabilities` = the `capabilities` it returns", "tm done I4", "only when the channel profile already holds"],
         "i5": ["../../references/schedule.md", "create_scheduled_task", "weekly-pack-", "weekly.run_day",
                "tm schedule --run R --how desktop_task", "tm schedule --run R --how by_hand",
                "'plan my week of videos'", "**On `by_hand`**, as soon as the check-in is decided",

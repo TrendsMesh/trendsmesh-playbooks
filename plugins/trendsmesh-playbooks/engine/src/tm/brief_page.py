@@ -86,7 +86,7 @@ COLLECTION = "decisions"
 CAPABILITIES = {"db": {"rules": [{"path": "decisions", "read": "view", "write": "owner"},
                                  {"path": "decisions/{self}", "read": "view", "write": "interact"}]},
                 "user": {"scopes": ["profile"]},
-                "downloads": True}                    # the PDFs' buttons (issue #10)
+                "downloads": {}}                      # the PDFs' buttons (issue #10); `{}` as every page (#153)
 AWAITING = ("People are deciding on the page now. A new version would change it under them. Read their decisions "
             "first (`tm brief decisions`), then build again. If the team decided another way (in chat, say), "
             "record it with `tm brief choose --source chat` and stop waiting with `tm brief await --run <run> "

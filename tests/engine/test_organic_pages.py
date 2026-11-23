@@ -321,7 +321,7 @@ def test_new_folder_refused_while_deciding(tmp_path, capsys):
     assert code == 0 and page.awaiting(run, "proposals") is None
     assert _build(run, capsys)["folder"] == "04_final/proposals_v02"
     code, out = _cli(capsys, "page", "await", "--run", str(run.path), "--page", "proposals")
-    assert code == 1                                                       # no --version
+    assert code == 2 and "proposals_v02" in out["message"]                 # no --version, v02 not published (#153)
 
 
 @pytest.mark.private_data

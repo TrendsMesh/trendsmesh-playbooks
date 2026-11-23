@@ -17,7 +17,8 @@ with the only active decision blocks on the page. Every decided check-in (asked 
 rule) is a folded stage in "Already settled", its decision a read-only summary from run.json. So the page never
 holds two versions of one question, and an earlier decision cannot be saved again by a click.
 
-The page saves a choice in the artifact's db (`CAPABILITIES`: the owner reads and writes `decisions`) as the
+The page saves a choice in the artifact's db (`CAPABILITIES`: the owner reads and writes `decisions`; the publish
+declares the run's one set, `page.run_capabilities`, issue #153) as the
 document `decisions/<checkin>`, with the ask id it was made on and, for a stage that takes more than a choice (a
 pick, a choice per item, notes per scene or pinned at a time, edited copy: tm.run_page.detail), its `detail`, taken
 back only as far as the build offered it (`.build.json` `offer`). `decision` reads it only through tm.page's reader
@@ -519,7 +520,7 @@ def build(run: RunFolder, ask_file: Path | None = None, *, local: bool = False) 
             "chat_answers": built["chat_answers"],
             "settled": len(m["settled"]), "ask": saved["_id"] if saved else None, "local": local,
             "lang": m["lang"], "title": m["title"], **({"language_warning": m["warning"]} if m["warning"] else {}), "artifact": page.artifact_args(listed),
-            **({} if local else {"capabilities": CAPABILITIES}),
+            **({} if local else {"capabilities": page.run_capabilities(run)}),
             "published": page.published(run, page_name(run)) if not local else None}
 
 

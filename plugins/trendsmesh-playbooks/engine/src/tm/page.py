@@ -358,6 +358,55 @@ def published(run: RunFolder, page: str) -> dict | None:
     return s.pages[newest] if newest == page else {**s.pages[newest], "page": newest}
 
 
+# --- the capabilities every page of a run declares (issue #153) -------------------------------------------
+
+# A playbook's pages, by what each declares on its own: the start card and the run page in every playbook, then
+# its own pages. organic_pages.CAPABILITIES' names, else `run_page`, `report` (tm.research_report) and `brief_pack`.
+RUN_PAGES = {"refresh-ad": ("intake", "run_page", "models"),
+             "create-ad": ("intake", "run_page", "models"),
+             "trend-research": ("intake", "run_page", "report"),
+             "creative-brief": ("intake", "run_page", "brief_pack"),
+             "organic-video": ("intake", "run_page", "proposals", "gate", "script", "week", "taste", "models")}
+
+
+def _own_capabilities(name: str) -> dict:
+    from tm import brief_page, research_report, run_page   # they import this module
+    from tm.organic_pages import CAPABILITIES
+
+    known = {"run_page": run_page.CAPABILITIES, "report": research_report.CAPABILITIES,
+             "brief_pack": brief_page.CAPABILITIES}
+    return known.get(name) or CAPABILITIES[name]
+
+
+def run_capabilities(run: RunFolder | str | None) -> dict:
+    """The one `capabilities` object every page of a run declares at every publish (issue #153): the union of what
+    the playbook's pages need (`RUN_PAGES`). A publish replaces the stored declaration whole, so the pages that share
+    one link must declare the same: the `user` profile scope, every db rule (one per path; a later page's rule for the
+    same path wins, so a creative brief's `decisions` are its brief page's: everyone reads, each writes their own),
+    and `downloads`. `run` is a run folder or a playbook (its skill name or id)."""
+    from tm import playbooks
+
+    playbook = state.load(run).playbook if isinstance(run, RunFolder) else run
+    skill = playbooks.get(playbook).skill if playbook else None
+    rules: dict[str, dict] = {}
+    scopes: list[str] = []
+    user = downloads = False
+    for name in RUN_PAGES.get(skill, ("intake", "run_page")):
+        own = _own_capabilities(name)
+        for rule in (own.get("db") or {}).get("rules") or []:
+            rules[rule["path"]] = dict(rule)
+        if "user" in own:
+            user = True
+            scopes += [s for s in (own["user"] or {}).get("scopes") or [] if s not in scopes]
+        downloads = downloads or "downloads" in own
+    out: dict = {"db": {"rules": list(rules.values())}} if rules else {}
+    if user:
+        out["user"] = {"scopes": scopes} if scopes else {}
+    if downloads:
+        out["downloads"] = {}
+    return out
+
+
 def linked(playbook: str | None, page: str) -> tuple[str, ...]:
     """The pages of a run that share one link (issue #131): the start card, the run page and (in a creative brief)
     the brief's page, each published to the link the first of them got; any other page has its own."""
@@ -410,17 +459,27 @@ def awaiting(run: RunFolder, page: str) -> dict | None:
     return found if isinstance(found, dict) else None
 
 
-def await_(run: RunFolder, page: str, version: str, stage: str | None = None) -> dict:
-    """Mark that people decide on the published `page` (artifact version `version`) from now on. Stop
-    when its publish is not recorded in this run, or while people decide on another version of it and their
-    decisions are not read (`_new_version`; `note` in the answer when its store was empty)."""
+def await_(run: RunFolder, page: str, version: str | None = None, stage: str | None = None) -> dict:
+    """Mark that people decide on the published `page` (artifact version `version`, by default the version `tm page
+    published` recorded: issue #153) from now on. Stop when its publish is not recorded in this run, or while people
+    decide on another version of it and their decisions are not read (`_new_version`; `note` in the answer when its
+    store was empty)."""
     _check_name(page)
-    if not (isinstance(version, str) and version.strip()):
-        raise ValueError("--version is the artifact version people decide on, the version id the last publish returned.")
     s = state.load(run)
-    if not (s.pages.get(page) or {}).get("slug"):
+    record = s.pages.get(page) or {}
+    if not record.get("slug"):
         raise Stop(f"The page's publish is not recorded: publish it, then record it with tm page published --page "
                    f"{page}, before waiting for decisions on it. The run continues from the same place.")
+    if version is None or (isinstance(version, str) and not version.strip()):
+        latest = latest_folder(run, page)
+        built = latest.relative_to(run.path).as_posix() if latest else None
+        if built and built != record.get("folder"):
+            raise Stop(f"The latest build of the {page} page ({built}) is not recorded as published (the recorded "
+                       f"publish is {record.get('folder')}): publish it, record it with tm page published --page "
+                       f"{page}, then wait for decisions on it. The run continues from the same place.")
+        version = record.get("version")
+    if not (isinstance(version, str) and version.strip()):
+        raise ValueError("--version is the artifact version people decide on, the version id the last publish returned.")
     note = _new_version(run, page, version, "awaited")
     waiting = {"version": version, "at": _now()}
     if stage is not None:
@@ -731,7 +790,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     pu.add_argument("--url", help="the artifact's claude.ai URL")
     li = sub.add_parser("link", help="where the page was last published, in this run or the runs it follows")
     aw = sub.add_parser("await", help="people decide on the published page now: no new version until read")
-    aw.add_argument("--version", help="the artifact version people decide on")
+    aw.add_argument("--version", help="the artifact version people decide on (default: the one tm page published "
+                                      "recorded)")
     aw.add_argument("--clear", action="store_true", help="stop waiting without reading decisions")
     for sp in (fl, pu, li, aw):
         sp.add_argument("--run", required=True, help="the run folder")
@@ -762,7 +822,7 @@ def _files(args: argparse.Namespace, run: RunFolder) -> int:
     rel = folder.relative_to(run.path).as_posix()
     told = summary(listed)
     cli.emit(args, {"status": "done", "folder": rel, "files": listed, "artifact": artifact_args(listed),
-                    "summary": told},
+                    "summary": told, "capabilities": run_capabilities(run)},
              "\n".join([f"{rel}:"] + [f"  {f['as']}  {f['path']}" for f in listed] + [summary_text(told)]))
     return 0
 
@@ -839,7 +899,6 @@ def _build(args: argparse.Namespace, run: RunFolder) -> int:
 
 def _intake(args: argparse.Namespace, run: RunFolder) -> int:
     from tm import start_card
-    from tm.organic_pages import CAPABILITIES
 
     if args.read:
         if args.known:
@@ -864,8 +923,8 @@ def _intake(args: argparse.Namespace, run: RunFolder) -> int:
     got = start_card.build(run, known=known)
     lines = got.get("chat_answers") or []
     message = (f"Built the start card in {got['folder']} ({got['sections']} questions). Publish it first, as the run's "
-               f"new link: tm page files --run {args.run} --page {start_card.PAGE}, the Artifact tool with "
-               f"organic_pages.CAPABILITIES[\"intake\"] as its capabilities; record it with tm page published --page "
+               f"new link: tm page files --run {args.run} --page {start_card.PAGE}, the Artifact tool with the "
+               f"capabilities this returns (the run's one set: every page of the run declares the same); record it with tm page published --page "
                f"{start_card.PAGE}, wait with tm page await --page {start_card.PAGE}, then end your turn with the "
                f"reply button \"{reply_button(run)}\". The run page goes to the same link later. An answer in chat "
                f"counts the same: tm page intake --read --text <file>.")
@@ -873,7 +932,7 @@ def _intake(args: argparse.Namespace, run: RunFolder) -> int:
         message += " " + got["language_warning"]
     if lines:
         message += "\nAnswers in chat (one line each):\n" + "\n".join(f"  {x}" for x in lines)
-    cli.emit(args, {"status": "done", **got, "capabilities": CAPABILITIES["intake"], "reply_button": reply_button(run),
+    cli.emit(args, {"status": "done", **got, "capabilities": run_capabilities(run), "reply_button": reply_button(run),
                     "message": message}, message)
     return 0
 

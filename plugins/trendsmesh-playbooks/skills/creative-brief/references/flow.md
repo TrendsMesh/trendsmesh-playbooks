@@ -477,7 +477,7 @@ CB10, CB13, R7, CB8. Only with the briefs (the review pack alone skips D1 to E1)
   briefs, with the page's capabilities; checking the declaration is there.
 - `tm done D3 --run R`. G3 follows: **each concept is decided on the page**, per concept:
   **Approve**, **Ask for changes** (with a note) or **Drop**. At Check every step it is asked on its
-  own (`tm brief await --run R --stage G3 --version <published version>`, the card in chat with the
+  own (`tm brief await --run R --stage G3`, the card in chat with the
   page link, `checkin-cards.md`). When the user says the team has decided, read the decisions: one
   unfiltered `ArtifactData` list (`action: "list"`, the page's `url`, collection `decisions`,
   `query: {"limit": 1000}`, no cursor; the older tools: one `db_list` on the slug), then `tm brief
@@ -582,7 +582,7 @@ them with `tm brief choose` first):
 ## E2 Hand-off
 
 - **The review pack alone:** C1's page is the one people decide on, per concept (approve, ask for
-  changes, drop): `tm brief await --run R --stage C1 --version <published version>`, then the same
+  changes, drop): `tm brief await --run R --stage C1`, then the same
   reading as at D3 (`tm brief decisions --run R --stage C1`, the notes quoted whole), then `tm brief
   choose --run R [--drop <ids>] --source page|chat` (a drop: the new version checked with `--stage
   concepts`, built and published). In Hands-off: `tm brief choose --run R --source rule`.

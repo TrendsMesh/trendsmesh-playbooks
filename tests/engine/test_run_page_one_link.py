@@ -48,7 +48,7 @@ def test_trend_research_check_ins_are_versions_of_the_report_page(tmp_path):
     assert run_page.page_name(run) == research_report.PAGE == "report"
     first = run_page.build(run, _ask(run, "G0"))                 # before E1: the check-in alone
     assert first["folder"].startswith("04_final/report_v") and first["page"] == "report"
-    assert first["capabilities"] == run_page.CAPABILITIES
+    assert first["capabilities"] == page.run_capabilities(run)
     _decide(run, "G0", "accept", minutes=1)
     research_report.build(run, run.path / "03_wip" / "picks_v01.json", cfg=_cfg(run))
     later = run_page.build(run, _ask(run, "G2"))                  # after E1: the report above the check-in

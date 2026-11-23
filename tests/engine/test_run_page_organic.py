@@ -126,7 +126,7 @@ def images(tmp_path):
 def test_the_images_check_in_is_a_stage_of_the_run_page_in_its_look(images):
     built = run_page.build(images, _ask(images, "images"))
     html = _html(images, built)
-    assert built["open"] == ["images"] and built["capabilities"] == run_page.CAPABILITIES
+    assert built["open"] == ["images"] and built["capabilities"] == page.run_capabilities(images)
     assert "theme" not in built and 'class="top"' in html and "Organic AI video" in html     # the top bar and its pill
     assert "--accent:#B7791F" not in html and "Source+Sans" not in html                     # never the old look
     now = html.split('<section class="decision"')[0]

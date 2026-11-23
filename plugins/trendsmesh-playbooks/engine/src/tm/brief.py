@@ -7,8 +7,10 @@
     tm brief pick --run R --file F [--json]          the top concepts by score that stay distinct (CB6); since
                                                      issue #145 no step drops by it: Hands-off keeps every concept
     tm brief page --run R [--file F] [--single-file] [--json]   the page from brief.json (CB12, CB13)
-    tm brief capabilities [--json]                   the page's capabilities, for its publish (HANDOFF §4)
-    tm brief await --run R --stage C1|G3|G4 --version V [--clear]   people decide on the page now
+    tm brief capabilities [--json]                   the page's capabilities, for its publish (HANDOFF §4): the
+                                                     run's one set, as every page of a creative brief run declares
+    tm brief await --run R --stage C1|G3|G4 [--version V] [--clear]   people decide on the page now (the version:
+                                                     the one tm page published recorded, unless given)
     tm brief decisions --run R --stage S [--file F | --text F] [--json]   03_wip/decisions_<stage>_vNN.json
     tm brief choose --run R [--drop C2[,C3]] --source page|chat|rule [--decisions F] [--keep-carried] [--json]
     tm brief animatic --run R --style auto|<style> [--own <style>] [--concepts ...] [--json]   CB11, first: the
@@ -58,6 +60,7 @@ from urllib.parse import urlsplit
 from tm import (animatic, audience, brief_checks, brief_config, brief_organic, brief_page, brief_research, cli, flow,
                 library, manifest, page, seeds, state,
                 stepchecks, trend_spool, trends)
+from tm.playbooks import CREATIVE_BRIEF
 from tm.runfolder import ReadOnlyError, RunFolder
 from tm.stops import AGAIN, Stop
 
@@ -109,7 +112,8 @@ def _setup_page(sub) -> None:
     c = sub.add_parser("await", help="people decide on the published page now: no new page version until read")
     c.add_argument("--run", required=True, help="the run folder")
     c.add_argument("--stage", choices=brief_page.STAGES, help="the check-in decided on the page")
-    c.add_argument("--version", help="the artifact version people decide on")
+    c.add_argument("--version", help="the artifact version people decide on (default: the one tm page published "
+                                     "recorded)")
     c.add_argument("--clear", action="store_true", help="stop waiting without reading decisions")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("decisions", help="read the decisions taken on the page (a saved db read, or copied text)")
@@ -253,18 +257,20 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
                     "Tell the user so, with why, when you give them the page: one view for someone outside the "
                     "team then has no PDF to send. `tm brief page` again, once the cause is fixed, prints them.")
         message += (" Publish it with the Artifact tool (tm page files --page brief_pack gives its file_path and "
-                    "files), declaring the decisions db and the downloads (tm brief capabilities) in the same publish.")
+                    "files), with the capabilities this returns in the same publish (the run's one set, as tm brief "
+                    "capabilities prints: the decisions db, the start card's and the downloads).")
     if got.get("language_warning"):
         message += " " + got["language_warning"]
     if got.get("chat_answers"):
         message += "\nAnswers in chat (one line each):\n" + "\n".join(f"  {x}" for x in got["chat_answers"])
-    cli.emit(args, {"status": "done", **got, "message": message}, message)
+    caps = {} if args.single_file else {"capabilities": page.run_capabilities(run)}
+    cli.emit(args, {"status": "done", **got, **caps, "message": message}, message)
     return 0
 
 
 def _capabilities(args: argparse.Namespace) -> int:
-    cli.emit(args, {"status": "done", "capabilities": brief_page.CAPABILITIES},
-             json.dumps(brief_page.CAPABILITIES))
+    caps = page.run_capabilities(CREATIVE_BRIEF)     # every page of the run declares the same (issue #153)
+    cli.emit(args, {"status": "done", "capabilities": caps}, json.dumps(caps))
     return 0
 
 

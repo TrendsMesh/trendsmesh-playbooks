@@ -243,7 +243,7 @@ the category.
   it is up for, and the check-ins already settled are folded below it, read-only (never in the
   creator's view). Who decides stays the same: the team, each person their own. It is published per the plugin's `references/pages.md`, "Pages that take decisions":
   to the run's link (`tm page link --run R --page brief_pack`: the start card's and run page's) with
-  `tm brief capabilities` as its `capabilities`, a new artifact only when the run has no link yet (the
+  `tm brief capabilities` as its `capabilities` (the run's one set, the start card's too), a new artifact only when the run has no link yet (the
   older tools: `publish_files`, then `read_declaration` and `declare_capabilities`), the stored
   declaration checked in its result, then `tm page published` with the version it returns; later
   versions go to the same URL with the same capabilities, the declaration checked again.

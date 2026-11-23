@@ -7,8 +7,9 @@
     week        the week plan (I2), `tm organic page week`
 
 Shared here:
-- `CAPABILITIES[page]`: what each page declares as the `capabilities` of its publish (the Artifact
-  tool's; with the older tools, `declare_capabilities` after the first publish). A page's db holds one collection; its rules
+- `CAPABILITIES[page]`: what each page needs as the `capabilities` of its publish (the Artifact
+  tool's; with the older tools, `declare_capabilities` after the first publish). Every page of a run declares the
+  union of its pages' needs, `page.run_capabilities` (issue #153). A page's db holds one collection; its rules
   let the owner read and write that collection and every document in it (PB02's rule shape,
   `brief_page.CAPABILITIES`). `downloads` is the original's own (`window.claude.use('downloads')` in
   gate_page.py and script_page.py). The live check against `describe_capabilities` is acceptance's
