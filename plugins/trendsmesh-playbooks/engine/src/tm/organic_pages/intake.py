@@ -204,7 +204,7 @@ def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None) 
     week = bool(got["data"].get("week"))
     tr = organic_pages.translator(organic_pages.page_lang(got["data"]).lang)
     from_chat = {s["id"] for s in got["data"]["sections"] if s.get("from_chat")}
-    channels = [c.strip() for c in re.split(r"[,\n]", a["channel"]["text"]) if c.strip()]
+    channels = split_channels(a["channel"]["text"])
     if not channels:
         raise Stop(f"The intake page names no channel. Ask the user for the channel's name, then read their answer "
                    f"from chat (--text, a line `channel: <name>`); {AGAIN}.")
@@ -241,7 +241,29 @@ def take(run: RunFolder, *, file: Path | None = None, text: Path | None = None) 
     answers_rel = _write(run, ANSWERS, answers)
     profile_rel = choices.record(run, PAGE, PROFILE, {"answers_file": answers_rel, "profile": profile}, got)
     return {"answers": answers_rel, "profile": profile_rel, "intake": answers, "profile_answers": profile,
-            "from": got["from"], "source": got["source"], "done": got["done"], "folder": got["folder"]}
+            "from": got["from"], "source": got["source"], "done": got["done"], "folder": got["folder"],
+            "confirm_channels": len(channels) > 1}
+
+
+OPENS, CLOSES = "([{", ")]}"
+
+
+def split_channels(text: str) -> list[str]:
+    """The channels the user named, one per line or separated by commas outside brackets (issue #173: "Brand
+    (official, new)" is one channel)."""
+    found, part, depth = [], [], 0
+    for ch in text or "":
+        if ch in OPENS:
+            depth += 1
+        elif ch in CLOSES:
+            depth = max(depth - 1, 0)
+        if ch == "\n" or (ch == "," and depth == 0):
+            found.append("".join(part))
+            part, depth = [], depth if ch == "," else 0
+            continue
+        part.append(ch)
+    found.append("".join(part))
+    return [c.strip() for c in found if c.strip()]
 
 
 def _write(run: RunFolder, stem: str, body: dict) -> str:

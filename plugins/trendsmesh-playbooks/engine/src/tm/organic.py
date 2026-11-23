@@ -846,6 +846,10 @@ def _choice_decisions(args: argparse.Namespace, run: RunFolder) -> int:
         if a["currency"] != "USD":
             message += (f" The account currency is {a['currency']}: add fx_rate (1 USD in {a['currency']}, with its "
                         "source) in the answers' next version before writing the config.")
+        if got["confirm_channels"]:
+            message += (f" The answer names {len(a['channels'])} channels: {'; '.join(a['channels'])}. Read them back "
+                        "to the user and ask whether that is right before writing the config; on a no, write their "
+                        "answer in chat form (a line `channel: <name>`, one channel per line) and read it with --text.")
         message += _product_next(got["profile_answers"])
     else:
         got = taste.take(run, file=file, text=text)

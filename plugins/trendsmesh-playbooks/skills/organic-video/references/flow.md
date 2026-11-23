@@ -177,7 +177,9 @@ posts.
      `video_style`, the product as given in `catalogue` (null for "nothing sold"), the product role
      and its `product_needs`); a section the user did not touch keeps its default, and one filled
      from the chat that they left as it was counts as their answer (`from_chat`, not
-     `defaults_kept`). **From chat**: write their answer one line per question
+     `defaults_kept`). Channels are split on new lines and on commas outside brackets ("Brand
+     (official, new)" is one); when the answer has `confirm_channels` (two or more), read the names
+     back to the user and ask whether that is right before `tm config write`. **From chat**: write their answer one line per question
      (`channel: <name>`, `output: ai_video`, `level: big_calls`, `budget: 8` …; the ids are the
      page's) to a file in the run and read it with `--text`, or write the answers file yourself as
      below. Then go on with `tm config write` (the level is set from the answers);

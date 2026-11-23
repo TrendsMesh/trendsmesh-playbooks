@@ -136,6 +136,26 @@ def test_an_intake_answer_in_chat_counts_the_same(tmp_path):
     assert got["intake"]["level"] == "hands_off" and got["intake"]["budget"] == {"per_run_usd": 8.0}
     assert got["intake"]["output"] == "script"                           # untouched: the free default
     assert got["profile_answers"]["platforms"] == ["tiktok", "youtube"]
+    assert got["confirm_channels"] is True                              # two channels: read back to the user
+
+
+def test_a_comma_inside_brackets_does_not_split_a_channel(tmp_path, capsys):
+    """Issue #173 item 2: "Brand (official, new)" is one channel; only commas outside brackets and new lines split,
+    and two or more channels are read back to the user (the answer's flag, said in the message)."""
+    run = _run(tmp_path)
+    intake.build(run)
+    said = run.path / "03_wip" / "intake_chat_v01.txt"
+    said.write_text("channel: Brand (official, new)\n", encoding="utf-8")
+    got = intake.take(run, text=said)
+    assert got["intake"]["channels"] == ["Brand (official, new)"] and got["confirm_channels"] is False
+    said = run.path / "03_wip" / "intake_chat_v02.txt"
+    said.write_text("channel: Brand [PL, EN], Brand Kids\n", encoding="utf-8")
+    code, out = _cli(capsys, "organic", "decisions", "--run", str(run.path), "--page", "intake", "--text",
+                     str(said))
+    assert code == 0 and out["confirm_channels"] is True, out
+    answers = json.loads((run.path / out["answers"]).read_text(encoding="utf-8"))
+    assert answers["channels"] == ["Brand [PL, EN]", "Brand Kids"]
+    assert "2 channels" in out["message"] and "Brand [PL, EN]; Brand Kids" in out["message"], out["message"]
 
 
 def _known(run, body, name="intake_known_v01.json"):
