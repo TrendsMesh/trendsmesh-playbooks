@@ -996,7 +996,9 @@ def test_a_refused_publish_is_recorded_as_denied_with_the_allow_step(row, pb):
     it = item(r, row)
     assert not it.ok and it.warn and not it.pending and it.fixer == "user"
     assert it.fix.startswith("Claude Code's permission settings refused to publish a page")
-    assert "`Artifact`" in it.fix and "permissions.allow" in it.fix and "tell me and I check again" in it.fix
+    assert "`Artifact`" in it.fix and "permissions.allow" in it.fix and "then I check again" in it.fix
+    # issue #163: the whole set at once, added by `tm permissions allow` after a yes
+    assert "`Bash(tm *)`" in it.fix and "`PowerShell(tm *)`" in it.fix and "tm permissions allow --yes" in it.fix
     missing = item(doctor.check(outputs, False, {"trendsmesh": "ok", "meta": "ok", "artifacts": "missing"},
                                 playbook=pb), row)
     assert "permission" not in missing.fix

@@ -263,7 +263,7 @@ checks:
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
     fix_by_state:
-      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, the plugin's rules (`Bash(tm *)`, `PowerShell(tm *)` and `Artifact`) go into permissions.allow in .claude/settings.local.json in the folder you work in: say yes and I add them with `tm permissions allow --yes` (or approve it when Claude Code asks), then I check again."
     warn: true
     warn_note: "Without shared page links the report is otherwise complete."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
@@ -276,7 +276,7 @@ checks:
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
     fix_by_state:
-      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, the plugin's rules (`Bash(tm *)`, `PowerShell(tm *)` and `Artifact`) go into permissions.allow in .claude/settings.local.json in the folder you work in: say yes and I add them with `tm permissions allow --yes` (or approve it when Claude Code asks), then I check again."
     warn: true
     warn_note: "Without shared page links you get the page as a local file, and decisions are taken here in chat."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
@@ -333,7 +333,7 @@ checks:
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so the page is saved as a file you can open and share."}
     fix_by_state:
-      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, the plugin's rules (`Bash(tm *)`, `PowerShell(tm *)` and `Artifact`) go into permissions.allow in .claude/settings.local.json in the folder you work in: say yes and I add them with `tm permissions allow --yes` (or approve it when Claude Code asks), then I check again."
     warn: true
     warn_note: "Without shared page links you get each page as a local file, and choices are taken here in chat."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
@@ -426,7 +426,7 @@ checks:
     fixer: user
     fix: {any: "This session can't publish claude.ai artifacts (it has no Artifact tool), so each step is shown here in chat and saved as a file."}
     fix_by_state:
-      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, add `Artifact` to permissions.allow in .claude/settings.local.json in the folder you work in (or approve it when Claude Code asks), then tell me and I check again."
+      denied: "Claude Code's permission settings refused to publish a page, so pages stay local files and decisions are taken here in chat. To allow shared pages, the plugin's rules (`Bash(tm *)`, `PowerShell(tm *)` and `Artifact`) go into permissions.allow in .claude/settings.local.json in the folder you work in: say yes and I add them with `tm permissions allow --yes` (or approve it when Claude Code asks), then I check again."
     warn: true
     warn_note: "Without shared page links, each step is shown here in chat and decided here."
     unchecked: "Not checked yet: I look whether this session can publish shared page links, then look again."
