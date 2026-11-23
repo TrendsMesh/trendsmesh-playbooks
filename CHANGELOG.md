@@ -25,6 +25,8 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A brand name heard as two words no longer reads as a missing line.** The take's check (Create an ad and Organic
   AI video) said "the rest is missing" when the voice said the brand as two words where the script has one. Two or
   three words side by side now match one word of the other side, either way.
+- **Create an ad: the last pages show what the run spent.** The plan showed the cost before the run; the upload
+  pages now show each budget as planned, approved and spent, as Refresh an ad's pages do.
 
 ## 0.14.0
 

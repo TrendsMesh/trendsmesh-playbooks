@@ -714,9 +714,12 @@ def _upload(ctx: Context) -> list[dict]:
 
 # --- the check-ins --------------------------------------------------------------------------------
 
+# The last pages show what the run spent, per budget: planned, approved, spent (run.json; issue #172), as Refresh an
+# ad's money stages do.
 COMPONENTS = {"concept": (_concept,), "board": (_board,), "plan": (_plan,), "visual": (_gate("visual"),),
               "audio": (_gate("audio"),), "takes": (_takes,), "storyboard": (_storyboard,),
-              "review": (_review,), "copy": (_copy,), "upload_offer": (_upload_offer,), "upload": (_upload,)}
+              "review": (_review,), "copy": (_copy,), "upload_offer": (_upload_offer, refresh_ad._budgets),
+              "upload": (_upload, refresh_ad._budgets)}
 
 
 def materials(ctx: Context, checkin: str) -> list[dict]:
