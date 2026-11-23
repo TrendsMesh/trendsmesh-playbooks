@@ -1,1 +1,1 @@
-{"slug": "art_mock_7", "version": "ver_mock_1", "read": "owner", "capabilities": {"db": {"rules": [{"path": "decisions", "read": "owner", "write": "owner"}]}, "user": {"scopes": ["profile"]}}}
+{"slug": "art_mock_7", "version": "ver_mock_1", "read": "owner", "capabilities": {"db": {"rules": [{"path": "intake", "read": "owner", "write": "owner"}, {"path": "decisions", "read": "owner", "write": "owner"}, {"path": "models", "read": "owner", "write": "owner"}]}, "user": {"scopes": ["profile"]}, "downloads": {}}}
