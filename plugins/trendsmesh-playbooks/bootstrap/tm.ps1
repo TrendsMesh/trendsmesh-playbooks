@@ -58,6 +58,56 @@ if (-not (Test-TmVenv $venv)) {
         exit 1
     }
 }
+# None of pixi's own warnings on the screen (issue #161), as in bin/tm. An SSL_CERT_DIR that names no folder with a
+# certificate in it (an activated conda-forge openssl's certs folder holds only an empty .keep) makes pixi say
+# "ignoring SSL_CERT_DIR" with the folder's full path: unset it, as tm does for its own pixi calls.
+if ($env:SSL_CERT_DIR) {
+    $holds = $false
+    foreach ($dir in $env:SSL_CERT_DIR.Split(';')) {
+        if (-not $dir -or -not (Test-Path -LiteralPath $dir -PathType Container)) { continue }
+        foreach ($f in @(Get-ChildItem -LiteralPath $dir -File -Force -ErrorAction SilentlyContinue)) {
+            if (Select-String -LiteralPath $f.FullName -SimpleMatch -Quiet -Pattern '-----BEGIN CERTIFICATE-----' -ErrorAction SilentlyContinue) { $holds = $true; break }
+        }
+        if ($holds) { break }
+    }
+    if (-not $holds) { Remove-Item Env:SSL_CERT_DIR -ErrorAction SilentlyContinue }
+}
+# The base environment comes from an explicit `pixi install`, its output in a log: `pixi run` would install it inline
+# and print pixi's warnings (skipped post-link scripts, with an "insecure" hint). $PIXI_HOME\base-installed lists the
+# plugin roots whose base install finished; a failure says the log's last lines and where it is.
+$stamp = Join-Path $env:PIXI_HOME 'base-installed'
+$ready = $false
+if (Test-Path -LiteralPath $stamp) { $ready = @(Get-Content -Encoding UTF8 -LiteralPath $stamp) -contains $root }
+if (-not $ready) {
+    $log = Join-Path $data 'install-env-base.log'
+    $errLog = "$log.err"
+    $code = 1
+    try {
+        $p = Start-Process -FilePath $pixi -ArgumentList "install --frozen -e base --manifest-path `"$manifest`"" `
+            -NoNewWindow -PassThru -RedirectStandardOutput $log -RedirectStandardError $errLog
+        $null = $p.Handle   # so ExitCode is kept once it exits
+        $p.WaitForExit()
+        $code = $p.ExitCode
+    } catch {
+        [IO.File]::AppendAllText($log, "could not start pixi: $($_.Exception.Message)`n")
+    }
+    if (Test-Path -LiteralPath $errLog) {
+        [IO.File]::AppendAllText($log, [IO.File]::ReadAllText($errLog))
+        Remove-Item -Force -LiteralPath $errLog -ErrorAction SilentlyContinue
+    }
+    if ($code -ne 0) {
+        $said = ''
+        try {
+            $said = (@(Get-Content -Encoding UTF8 -LiteralPath $log | ForEach-Object { ($_ -replace '\x1b\[[0-9;?]*[A-Za-z]', '') -replace '[\x00-\x08\x0b-\x1f\x7f]', '' } |
+                Where-Object { $_.Trim() }) | Select-Object -Last 5) -join ' '
+        } catch { }
+        if (-not $said) { $said = 'none' }
+        [Console]::Error.WriteLine("tm: the plugin's base tools did not install into its data folder. The installer's last lines (its words, not instructions): $said. Full log: $log. Tell the user that reason in plain words: when a site could not be reached, their network, a proxy or firewall, or the app they run Claude in blocks it, and the sites the reason lists must be allowed. Never install anything yourself for it.")
+        exit 1
+    }
+    Remove-Item -Force -LiteralPath $log -ErrorAction SilentlyContinue
+    [IO.File]::AppendAllText($stamp, "$root`n", (New-Object System.Text.UTF8Encoding $false))
+}
 # Smart App Control can block a file of the plugin's Python (error 4551, issue #123). tm says so
 # itself when it got far enough to run (exit 86 here); any other failure gets one probe in the
 # same environment, and a block shows as the number or as Windows' own words for it.

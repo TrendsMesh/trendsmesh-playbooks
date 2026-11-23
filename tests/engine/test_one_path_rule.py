@@ -247,8 +247,9 @@ def test_every_run_file_argument_says_where_it_is_read():
     assert vague == []
 
 
-def test_env_install_json_prints_one_object(monkeypatch, capsys):
-    monkeypatch.setattr(envtiers, "clean_stale", lambda: [])
+def test_env_install_json_prints_one_object(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(envtiers, "clean", lambda: envtiers.Cleaned())
+    monkeypatch.setattr(envtiers.paths, "data_dir", lambda: tmp_path)   # pixi's log (#161): never the real data folder
     monkeypatch.setattr(envtiers, "_pixi_env", lambda: {})
     monkeypatch.setattr(envtiers.paths, "pixi_bin", lambda: Path("pixi"))
     monkeypatch.setattr(envtiers, "_manifest", lambda: Path("pixi.toml"))

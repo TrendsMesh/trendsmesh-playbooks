@@ -93,6 +93,8 @@ class Item:
     state: str = ""  # a key row: works, unusable (connected but unusable), missing, unchecked (#66)
     free: bool = False  # the TrendsMesh row of a run on Free, the user's choice (issue #106): shown, not a warning
     pending: bool = False  # not checked yet, and Claude checks it itself in a moment (issue #124): not a blocker
+    tier: str = ""  # an env_tier row: its tier
+    earlier: bool = False  # a missing tier an earlier plugin version had (issue #161): the update sets it up again
 
 
 @dataclass(frozen=True)
@@ -306,10 +308,11 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
                 free_shown = True
             continue
         ok, unchecked, size, vars, key_state, key_fix = False, False, 0, {}, "", ""
-        probe_fix = ""
+        probe_fix, tier, earlier = "", "", False
         if kind == "env_tier":
-            t = envtiers.TIERS[e["tier"]]
+            tier, t = e["tier"], envtiers.TIERS[e["tier"]]
             ok, size = present[e["tier"]], t.approx_mb
+            earlier = not ok and envtiers.earlier_install(tier)
             vars = {"tier": e["tier"], "size": _size(t.approx_mb), "minutes": _minutes(t.approx_mb)}
             if ok and e["tier"] == "video":   # the files are in place: does a render work? (issue #124)
                 result, tail = _video_probe()
@@ -376,13 +379,16 @@ def check(outputs: set[str], voice: bool, mcp: dict[str, McpState], *,
             note = evidence.CHOOSE_NOTE   # not chosen yet: the choice is the user's (on Paid, the row's own note)
         who = "agent" if unchecked and "mcp" in e else fixer
         items.append(Item(id_, name, ok, who, fix, size if not ok else 0, unchecked, warn, note if warn else "",
-                          later, key_state, pending=not ok and unchecked and who == "agent"))
+                          later, key_state, pending=not ok and unchecked and who == "agent", tier=tier,
+                          earlier=earlier and not ok))
     return Readiness(items, all(i.ok or i.warn or i.pending for i in items))
 
 
-def card(r: Readiness, *, general: bool = False) -> str:
+def card(r: Readiness, *, general: bool = False, freed_mb: int = 0) -> str:
     """The readiness card. `general`: the general check's card (no playbook chosen), which speaks of the plugin, not
-    of a run, and ends with how to check one playbook."""
+    of a run, and ends with how to check one playbook. `freed_mb`: what removing an earlier plugin version's tools
+    freed just before (`envtiers.clean`, issue #161), said in one line. A missing tier an earlier version had gets
+    one line too: the update sets it up once more, with the size and time."""
     # A row Claude has not checked yet is pending: Claude checks it in a moment, nothing for the user to do (issue
     # #124). One the user would check (the cloning plan) is checked later, when it matters: a warning.
     pending = [i for i in r.items if i.pending]
@@ -411,6 +417,8 @@ def card(r: Readiness, *, general: bool = False) -> str:
     lines += [f"- ⏳ {i.name}: checking in a moment" for i in pending]
     lines += [f"- ⚠️ {i.name}" for i in warned]
     lines += [f"- ❌ {i.name}" for i in bad]
+    if freed_mb:
+        lines += ["", i18n.t("env.freed", size=_size(freed_mb))]
     if warned:
         lines += ["", "**You can go on without these:**"]
         lines += [f"- {i.fix}" for i in warned]
@@ -420,6 +428,11 @@ def card(r: Readiness, *, general: bool = False) -> str:
     if agent:
         lines += ["", "**I can fix these for you, once you say yes:**"]
         lines += [f"- {i.fix}" for i in agent]
+        again = [i for i in agent if i.earlier]
+        if again:
+            mb = sum(i.size_mb for i in again)
+            lines.append("- " + i18n.t("doctor.earlier", version=__version__, size=_size(mb), minutes=_minutes(mb),
+                                       what=_and([i18n.t(f"env.tier.{i.tier}") for i in again])))
         total = sum(i.size_mb for i in agent)
         if total:
             lines.append(f"- Together: about {_size(total)}, about {_minutes(total)} min.")
@@ -620,7 +633,7 @@ def _run(args: argparse.Namespace) -> int:
             if general or playbook != playbooks.get("organic-video").id or production not in organic_proposals.PRODUCTIONS:
                 raise ValueError(f"--production is organic video's production type, one of "
                                  f"{', '.join(organic_proposals.PRODUCTIONS)}.")
-        envtiers.clean_stale()  # free the disk an earlier plugin version's tiers still hold
+        cleaned = envtiers.clean()  # free the disk an earlier plugin version's tiers still hold (issue #161)
         mode = args.mode or offer.mode_status(paths.workspace())["mode"]
         r = check(outputs, args.voice, mcp, caption_removal=args.caption_removal, facts=facts,
                   playbook=playbook, production=production, mode=mode, meta_account=meta_account)
@@ -635,14 +648,14 @@ def _run(args: argparse.Namespace) -> int:
             except OSError:
                 tail = "(the log could not be read)"
         report = support_report(r, tail, meta_account=meta_account)
-    shown = card(r, general=general)
+    shown = card(r, general=general, freed_mb=cleaned.freed_mb)
     text = shown + (f"\n\nSupport report written to: {report}\n{i18n.t('doctor.report.send')}" if report else "")
     payload = {"status": "ready" if r.ready else "stop", "ready": r.ready,
                "playbook": None if general else playbook, "mode": mode,
                "items": [asdict(i) for i in r.items], "card": shown,
                "warnings": [i.id for i in r.items if i.warn and not i.ok and not i.pending],
                "pending": [i.id for i in r.items if i.pending], "meta_account": meta_account,
-               "report": str(report) if report else None}
+               "report": str(report) if report else None, "freed_mb": cleaned.freed_mb}
     cli.emit(args, payload, text)
     return 0 if r.ready else 2   # ready allows pending rows; 2 only for a row that is really missing
 

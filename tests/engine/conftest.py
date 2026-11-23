@@ -184,6 +184,15 @@ def _no_real_ocr(monkeypatch):
     monkeypatch.setattr(_ocr, "reader", lambda: None)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_earlier_install(monkeypatch):
+    """The doctor says when a missing tier was installed for an earlier plugin version (`envtiers.earlier_install`,
+    issue #161), which reads the data folder: in the tests none was, whatever this computer has. A test of it keeps
+    the real function from before this fixture ran (test_envtiers.py `REAL_EARLIER`)."""
+    from tm import envtiers
+    monkeypatch.setattr(envtiers, "earlier_install", lambda tier: False)
+
+
 @pytest.fixture
 def animatic_ready(monkeypatch):
     """The Atlas renderer can draw here: the `animatic` tier set up and a browser found (`atlas.missing()` is None),

@@ -171,6 +171,47 @@ fi
 got=$(env -u TM_PLUGIN_ROOT -u TM_PLUGIN_DATA sh "$ROOT/bin/tm" ping) || fail "bin/tm with paths.json only"
 echo "$got" | grep -qF '[ping]' || fail "bin/tm paths.json fallback"
 
+# bin/tm installs the base environment itself, once per plugin root, with its output in a log (issue #161): pixi's
+# own warnings never reach the screen, a failure says the log's last lines, and an SSL_CERT_DIR with no certificate
+# in it is not handed to pixi.
+BD="$TMP/base data"; mkdir -p "$BD/pixi/bin"
+cat > "$BD/pixi/bin/pixi" <<'STUB'
+#!/bin/sh
+echo "$1 SSL_CERT_DIR=${SSL_CERT_DIR-unset}" >> "$(dirname "$0")/calls"
+if [ "$1" = install ]; then
+  echo " WARN Skipped running the post-link scripts because run-post-link-scripts = false"
+  echo "ignoring SSL_CERT_DIR: no certificates found in /somewhere" >&2
+  [ -z "${TM_STUB_INSTALL_FAILS:-}" ] || { printf '\033[31merror\033[0m: could not reach conda.anaconda.org\n\n' >&2; exit 1; }
+fi
+exit 0
+STUB
+chmod +x "$BD/pixi/bin/pixi"
+fake_venv "$BD" >/dev/null
+btm() { env "$@" TM_PLUGIN_ROOT="$ROOT" TM_PLUGIN_DATA="$BD" sh "$ROOT/bin/tm" ping; }  # btm VAR=value...
+out=$(btm 2>&1) || fail "bin/tm with its base install: $out"
+[ -z "$out" ] || fail "bin/tm must keep pixi's install output off the screen: $out"
+[ "$(grep -c '^install' "$BD/pixi/bin/calls")" = 1 ] && grep -q '^run' "$BD/pixi/bin/calls" \
+  || fail "bin/tm must install base, then run: $(cat "$BD/pixi/bin/calls")"
+[ ! -e "$BD/install-env-base.log" ] || fail "the base install's log must go once the install went well"
+btm >/dev/null 2>&1 || fail "bin/tm's second call"
+[ "$(grep -c '^install' "$BD/pixi/bin/calls")" = 1 ] || fail "bin/tm must install base once per plugin root"
+rm -f "$BD/pixi/base-installed"; : > "$BD/pixi/bin/calls"
+if btm TM_STUB_INSTALL_FAILS=1 2> "$TMP/err"; then fail "bin/tm must fail when the base install fails"; fi
+grep -qF "the plugin's base tools did not install" "$TMP/err" && grep -qF "error: could not reach conda.anaconda.org" "$TMP/err" \
+  && grep -qF "Full log: $BD/install-env-base.log" "$TMP/err" || fail "bin/tm must say the base install's last lines: $(cat "$TMP/err")"
+! grep -q "$(printf '\033')" "$TMP/err" && [ "$(wc -l < "$TMP/err" | tr -d ' ')" = 1 ] \
+  || fail "bin/tm must say a failed base install in one line, without colour codes: $(cat "$TMP/err")"
+! grep -q '^run' "$BD/pixi/bin/calls" || fail "bin/tm must not run tm when the base install failed"
+mkdir -p "$TMP/certs empty" "$TMP/certs proxy"; : > "$TMP/certs empty/.keep"
+printf -- '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n' > "$TMP/certs proxy/corp.crt"
+: > "$BD/pixi/bin/calls"
+btm SSL_CERT_DIR="$TMP/certs empty" >/dev/null 2>&1 || fail "bin/tm with an empty SSL_CERT_DIR"
+grep -qx 'install SSL_CERT_DIR=unset' "$BD/pixi/bin/calls" && grep -qx 'run SSL_CERT_DIR=unset' "$BD/pixi/bin/calls" \
+  || fail "bin/tm must not hand pixi an SSL_CERT_DIR with no certificate: $(cat "$BD/pixi/bin/calls")"
+: > "$BD/pixi/bin/calls"
+btm SSL_CERT_DIR="$TMP/certs proxy" >/dev/null 2>&1 || fail "bin/tm with a proxy's SSL_CERT_DIR"
+grep -qxF "run SSL_CERT_DIR=$TMP/certs proxy" "$BD/pixi/bin/calls" || fail "bin/tm must keep a proxy's SSL_CERT_DIR: $(cat "$BD/pixi/bin/calls")"
+
 if [ -z "$WIN" ]; then
 
 # A failed pixi install is never silent (final review I10). The installer comes from a fake curl:
