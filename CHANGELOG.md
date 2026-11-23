@@ -22,6 +22,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 - **A Mixkit music search with several words finds tracks.** Mixkit searches the words as one phrase, so "upbeat
   tech" listed nothing, with no word why. When the phrase lists nothing, each word is now searched and the tracks
   merged, and the answer says so; when nothing matches at all, it says that too.
+- **A brand name heard as two words no longer reads as a missing line.** The take's check (Create an ad and Organic
+  AI video) said "the rest is missing" when the voice said the brand as two words where the script has one. Two or
+  three words side by side now match one word of the other side, either way.
 
 ## 0.14.0
 

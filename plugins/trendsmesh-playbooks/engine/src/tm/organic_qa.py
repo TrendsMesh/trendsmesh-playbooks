@@ -119,9 +119,37 @@ def words_of(transcript: dict) -> list[str]:
     return [w["word"] for s in transcript.get("segments") or [] for w in s.get("words") or []]
 
 
+JOIN_MAX = 3   # a word said (or written) as up to this many words side by side still counts as one (issue #172)
+
+
+def _joined(tokens: list[tuple[str, object, object]], other: set[str]) -> list[tuple[str, object, list]]:
+    """`tokens` as (word, group, mark) with each run of 2 to JOIN_MAX side by side, in one group, whose letters
+    together are a word of `other` made one word: a brand the script writes as one word and Scribe hears as two (or
+    the reverse) matches, with no list of brands. Each word comes out as (word, group, [the marks it is made of])."""
+    out, i = [], 0
+    while i < len(tokens):
+        for n in range(min(JOIN_MAX, len(tokens) - i), 1, -1):
+            run = tokens[i:i + n]
+            if len({g for _, g, _ in run}) == 1 and "".join(t for t, _, _ in run) in other:
+                out.append(("".join(t for t, _, _ in run), run[0][1], [m for _, _, m in run]))
+                i += n
+                break
+        else:
+            out.append((tokens[i][0], tokens[i][1], [tokens[i][2]]))
+            i += 1
+    return out
+
+
+def _aligned(want: list[tuple[str, object, object]], heard: list[tuple[str, object, object]]):
+    """Both sides' words, with compound words joined against the other side (`_joined`)."""
+    return (_joined(want, {t for t, _, _ in heard}), _joined(heard, {t for t, _, _ in want}))
+
+
 def match(script: str, words: list[str]) -> float:
-    """The longest common subsequence of the script's words and the heard words ÷ the script's word count."""
-    want, heard = _plain(script), _plain(" ".join(words))
+    """The longest common subsequence of the script's words and the heard words ÷ the script's word count; a word of
+    one side said as 2 to 3 words on the other counts as one (`_joined`)."""
+    want, heard = _aligned([(t, 0, None) for t in _plain(script)], [(t, 0, None) for t in _plain(" ".join(words))])
+    want, heard = [t for t, _, _ in want], [t for t, _, _ in heard]
     if not want:
         raise ValueError("The script has no words to match the take against.")
     row = [0] * (len(heard) + 1)
@@ -148,16 +176,19 @@ def line_hits(lines: list[str], words: list[dict]) -> list[dict]:
     """Which of each line's words were heard, from the same alignment as `match` (the longest common subsequence of
     the lines' words, in order, and the heard words). One {heard, first, last} per line: `heard` the share of its
     words heard (0 to 1), `first` and `last` the indexes in `words` of its first and last heard word (None when
-    none was heard)."""
-    want = [(tok, n) for n, line in enumerate(lines) for tok in _plain(line)]
-    heard = [(tok, j) for j, w in enumerate(words) for tok in _plain(str(w.get("word", "")))]
+    none was heard). A word of a line said as 2 to 3 heard words counts as one, and the reverse (`_joined`, within a
+    line)."""
+    want, heard = _aligned([(tok, n, n) for n, line in enumerate(lines) for tok in _plain(line)],
+                           [(tok, 0, j) for j, w in enumerate(words) for tok in _plain(str(w.get("word", "")))])
+    want = [(tok, n) for tok, n, _ in want]
+    heard = [(tok, marks) for tok, _, marks in heard]   # marks: the indexes in `words` the heard word is made of
     rows, cols = len(want), len(heard)
     table = [[0] * (cols + 1) for _ in range(rows + 1)]
     for i in range(rows - 1, -1, -1):
         for k in range(cols - 1, -1, -1):
             table[i][k] = (table[i + 1][k + 1] + 1 if want[i][0] == heard[k][0]
                            else max(table[i + 1][k], table[i][k + 1]))
-    got: dict[int, list[int]] = {}
+    got: dict[int, list[list[int]]] = {}
     i = k = 0
     while i < rows and k < cols:
         if want[i][0] == heard[k][0] and table[i][k] == table[i + 1][k + 1] + 1:
@@ -168,10 +199,10 @@ def line_hits(lines: list[str], words: list[dict]) -> list[dict]:
         else:
             k += 1
     out = []
-    for n, line in enumerate(lines):
-        found, total = got.get(n, []), len(_plain(line))
+    for n in range(len(lines)):
+        found, total = got.get(n, []), sum(1 for _, m in want if m == n)
         out.append({"heard": round(len(found) / total, 3) if total else 1.0,
-                    "first": found[0] if found else None, "last": found[-1] if found else None})
+                    "first": found[0][0] if found else None, "last": found[-1][-1] if found else None})
     return out
 
 

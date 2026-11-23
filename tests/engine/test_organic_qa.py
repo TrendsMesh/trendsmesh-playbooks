@@ -62,6 +62,22 @@ def test_match_keeps_polish_letters_and_drops_punctuation():
         organic_qa.match(" … ", ["a"])
 
 
+def test_a_name_said_as_two_or_three_words_matches_the_scripts_one_word_and_the_reverse():
+    """Issue #172 item 3: Scribe hears the brand as two words where the script writes one (or the reverse); 2 to 3
+    words heard (or written) side by side make one word, with no brand list."""
+    assert organic_qa.match("Try TrendsMesh today", ["Try", "Trends", "Mesh", "today."]) == 1.0
+    assert organic_qa.match("Try Trends Mesh today", ["Try", "TrendsMesh", "today"]) == 1.0
+    assert organic_qa.match("Pay with PayPalPlus", ["pay", "with", "Pay", "Pal", "Plus"]) == 1.0
+    assert organic_qa.match("Try Trends-Mesh today", ["Try", "trends", "mesh", "today"]) == 1.0
+    words = [{"word": w} for w in ("Try", "Trends", "Mesh", "today.", "Now", "go.")]
+    assert organic_qa.line_hits(["Try TrendsMesh today.", "Now go."], words) == [
+        {"heard": 1.0, "first": 0, "last": 3}, {"heard": 1.0, "first": 4, "last": 5}]
+    words = [{"word": w} for w in ("Try", "TrendsMesh", "today")]
+    assert organic_qa.line_hits(["Try Trends Mesh today."], words) == [{"heard": 1.0, "first": 0, "last": 2}]
+    words = [{"word": w} for w in ("Try", "Trends", "today")]                    # a word truly missing still counts
+    assert organic_qa.line_hits(["Try TrendsMesh today."], words) == [{"heard": 0.667, "first": 0, "last": 2}]
+
+
 def test_slow_take_suggests_speed():
     cfg = organic_config.defaults()
     assert organic_qa.rubric_takes({**QA_PASS, "wps": 2.4}, cfg)["speed"] == 1.21   # 2.9 / 2.4, under 1.25
