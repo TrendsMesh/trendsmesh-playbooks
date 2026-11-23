@@ -9,9 +9,12 @@
 #
 # The call log is <workspace>/.trendsmesh/pace.jsonl, the workspace being the event's cwd or the nearest folder
 # above it holding .trendsmesh/ or runs/0N-..., never the home folder or above it; else the cwd. The lock is the
-# folder .trendsmesh/pace.lock (mkdir is atomic; tm trends pace takes the same one) with the time it was taken in
-# pace.lock/t: Claude Code runs the hooks of parallel calls at the same time. EVAL_TM_PACE=off (a claude plugin
-# eval case's env:, mocks have no limits) turns it off. It never fails a call: anything unexpected lets it go.
+# file .trendsmesh/pace.lock holding the time it was taken (tm trends pace takes the same one), made by the
+# shell's own noclobber redirection, an exclusive create: Claude Code runs the hooks of parallel calls at the
+# same time. Never mkdir's exit status: Ubuntu 26.04's mkdir (uutils coreutils) exits 0 when another call made
+# the folder first. An older version's lock is the folder pace.lock with the time in pace.lock/t, and it is
+# waited for the same way. EVAL_TM_PACE=off (a claude plugin eval case's env:, mocks have no limits) turns it
+# off. It never fails a call: anything unexpected lets it go.
 [ "${EVAL_TM_PACE:-}" != off ] || exit 0
 case $0 in */*) HERE=${0%/*} ;; *) HERE=. ;; esac
 ROOT=${HERE%/*}
@@ -62,10 +65,10 @@ at="$ws/.trendsmesh"
 [ -d "$at" ] || mkdir -p "$at" 2>/dev/null || exit 0
 lock="$at/pace.lock"
 tries=0
-while ! mkdir "$lock" 2>/dev/null; do
+while ! (set -C; : > "$lock") 2>/dev/null; do
   # a lock is held for milliseconds: one older than 5 s, or one still there after 250 tries, was left by a killed hook
   held=
-  [ -f "$lock/t" ] && read -r held < "$lock/t" 2>/dev/null
+  if [ -d "$lock" ]; then { read -r held < "$lock/t"; } 2>/dev/null; else { read -r held < "$lock"; } 2>/dev/null; fi
   case $held in ''|*[!0-9]*) held= ;; esac
   if [ -n "$held" ] && stamp && [ $((now - held)) -gt 5000 ] || [ "$tries" -ge 250 ]; then
     rm -rf "$lock" 2>/dev/null
@@ -85,7 +88,7 @@ if ! stamp; then                                           # no clock in millise
   printf '{"cwd": "%s", "tool_name": "%s"}' "$esc" "$tool" | sh "$ROOT/bin/tm" trends pace 2>/dev/null
   exit 0
 fi
-printf '%s' "$now" > "$lock/t"
+printf '%s' "$now" > "$lock"
 lim="$at/pace-limits.tsv"
 [ -f "$lim" ] || lim=/dev/null
 log="$at/pace.jsonl"

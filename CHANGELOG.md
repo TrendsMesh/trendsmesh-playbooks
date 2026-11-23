@@ -4,6 +4,11 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Linux: parallel TrendsMesh calls are paced one at a time on Ubuntu 26.04 too.** Its `mkdir` (uutils coreutils)
+  exits 0 when another call has just made the same folder, so parallel calls could all take the pacer's lock at
+  once: a call went without waiting, or another call's booking was lost. The lock is now a file made by an
+  exclusive create, in the hook and in `tm trends pace`, and a lock folder left by an older version is still
+  waited for.
 - **The models' prices were read again on 22 November.** The Replicate prices and ElevenLabs rates that match
   their provider's page carry the new date. Music v2.5 and the v4 voices keep their dates of
   12 November, and the caption-removal model its date of 5 November, until they are checked by hand.

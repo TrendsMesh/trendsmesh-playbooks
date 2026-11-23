@@ -520,6 +520,18 @@ took=$(( $(now_ms) - start ))
 [ "$took" -ge 1700 ] && [ "$took" -lt 5000 ] || fail "three searches at 2 per 1.5 s took $took ms"
 spread=$(sed 's/.*"t":\([0-9]*\).*/\1/' "$PL" | sort -n | awk 'NR == 1 { f = $1 } END { print $1 - f }')
 [ "$spread" -ge 1800 ] || fail "the third search was booked $spread ms after the first (at least 1.5 s + 300 ms)"
+# The same with a mkdir that exits 0 when the folder is there already (Ubuntu 26.04's, uutils coreutils): the lock
+# is the shell's own exclusive create, never mkdir's exit status, so the three are still counted one at a time.
+mkdir -p "$TMP/mkdir0"
+printf '#!/bin/sh\n"%s" "$@" 2>/dev/null\nexit 0\n' "$(command -v mkdir)" > "$TMP/mkdir0/mkdir"
+chmod +x "$TMP/mkdir0/mkdir"
+rm -f "$PL" "$TMP"/pace-out-*
+for i in 1 2 3; do pevent search_trends | PATH="$TMP/mkdir0:$PATH" sh -c "$cmd" > "$TMP/pace-out-$i" 2>&1 & done
+wait
+[ "$(cat "$TMP"/pace-out-*)" = "" ] && [ "$(wc -l < "$PL")" -eq 3 ] || fail "with a mkdir that always exits 0, parallel calls booked: $(cat "$PL")"
+spread=$(sed 's/.*"t":\([0-9]*\).*/\1/' "$PL" | sort -n | awk 'NR == 1 { f = $1 } END { print $1 - f }')
+[ "$spread" -ge 1800 ] || fail "with a mkdir that always exits 0, the third search was booked $spread ms after the first"
+[ ! -e "$PW/.trendsmesh/pace.lock" ] || fail "the pacer left its lock"
 # Another tool is not held back by the search window.
 start=$(now_ms)
 out=$(pevent get_trend | sh -c "$cmd" 2>&1)
@@ -536,9 +548,19 @@ printf 'budget\t0\t%s\t%s\t*\t2026-11-22 00:00 UTC\n' "$(( $(now_ms) - 60000 ))"
 out=$(pevent get_trend_videos | sh -c "$cmd" 2>&1)
 printf '%s' "$out" | grep -q 'TrendsMesh allows 0 more calls until 2026-11-22 00:00 UTC' || fail "a spent budget was not said: $out"
 rm -f "$PW/.trendsmesh/pace-limits.tsv"
-# A lock left by a killed hook (older than 5 s) is taken over.
-mkdir -p "$PW/.trendsmesh/pace.lock" && printf '%s' "$(( $(now_ms) - 9000 ))" > "$PW/.trendsmesh/pace.lock/t"
+# A lock left by a killed hook (older than 5 s) is taken over: the file with its time, and an older version's folder.
+printf '%s' "$(( $(now_ms) - 9000 ))" > "$PW/.trendsmesh/pace.lock"
 out=$(pevent get_trend | sh -c "$cmd" 2>&1) && [ -z "$out" ] && [ ! -e "$PW/.trendsmesh/pace.lock" ] || fail "a stale lock held the pacer: $out"
+mkdir -p "$PW/.trendsmesh/pace.lock" && printf '%s' "$(( $(now_ms) - 9000 ))" > "$PW/.trendsmesh/pace.lock/t"
+out=$(pevent get_trend | sh -c "$cmd" 2>&1) && [ -z "$out" ] && [ ! -e "$PW/.trendsmesh/pace.lock" ] || fail "an older version's stale lock held the pacer: $out"
+# A lock that is held (taken just now) is waited for: the call goes once its holder lets it go.
+printf '%s' "$(now_ms)" > "$PW/.trendsmesh/pace.lock"
+( sleep 0.3; rm -f "$PW/.trendsmesh/pace.lock" ) &
+start=$(now_ms)
+out=$(pevent get_trend | sh -c "$cmd" 2>&1)
+took=$(( $(now_ms) - start ))
+wait
+[ -z "$out" ] && [ "$took" -ge 250 ] && [ ! -e "$PW/.trendsmesh/pace.lock" ] || fail "a held lock was not waited for ($took ms): $out"
 # Under claude plugin eval a case can turn it off (mocks have no limits); nothing is booked.
 lines=$(wc -l < "$PL")
 out=$(pevent get_trend | EVAL_TM_PACE=off sh -c "$cmd" 2>&1)

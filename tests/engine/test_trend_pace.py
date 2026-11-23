@@ -162,6 +162,31 @@ def test_the_hook_denies_with_the_reason_and_books_nothing(tmp_path):
 def test_a_stale_lock_is_taken_over_and_a_fresh_one_waited_for(tmp_path):
     clock = Clock()
     lock = tmp_path / ".trendsmesh" / trend_pace.LOCK
+    lock.parent.mkdir(parents=True)
+    lock.write_text(str(NOW - 9000), encoding="utf-8")                           # the lock is a file with its time
+    assert trend_pace.pace(_event(tmp_path), now_ms=clock.ms, sleep=clock.sleep) is None
+    assert not lock.exists()
+    lock.write_text(str(NOW), encoding="utf-8")                                  # fresh: waited for, then broken
+    assert trend_pace.pace(_event(tmp_path), now_ms=clock.ms, sleep=clock.sleep) is None
+    assert clock.slept and not lock.exists()
+
+
+def test_the_lock_is_made_by_an_exclusive_create_not_mkdir(tmp_path, monkeypatch):
+    """Ubuntu 26.04's mkdir exits 0 when the folder is there already; the lock never depends on a folder made."""
+    made = []
+    real_open = trend_pace.os.open
+    def spy(path, flags, *a):
+        made.append((Path(path).name, bool(flags & trend_pace.os.O_EXCL)))
+        return real_open(path, flags, *a)
+    monkeypatch.setattr(trend_pace.os, "open", spy)
+    assert trend_pace.pace(_event(tmp_path), now_ms=Clock().ms, sleep=lambda s: None) is None
+    assert (trend_pace.LOCK, True) in made
+    assert not (tmp_path / ".trendsmesh" / trend_pace.LOCK).exists()
+
+
+def test_an_older_versions_lock_folder_is_taken_over_and_waited_for(tmp_path):
+    clock = Clock()
+    lock = tmp_path / ".trendsmesh" / trend_pace.LOCK
     lock.mkdir(parents=True)
     (lock / "t").write_text(str(NOW - 9000), encoding="utf-8")
     assert trend_pace.pace(_event(tmp_path), now_ms=clock.ms, sleep=clock.sleep) is None

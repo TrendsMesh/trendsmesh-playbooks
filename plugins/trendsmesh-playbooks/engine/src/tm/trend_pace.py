@@ -8,8 +8,10 @@ limiter without Python (the owner's #148 line 12: Python costs about 0.5-1.5 s p
 same limiter in Python, which pace-mcp.sh hands over to when it has no clock in milliseconds, and which
 writes the limits the shell reads (`learn`). The three keep one call log per workspace,
 `<workspace>/.trendsmesh/pace.jsonl` (`{"t": <ms>, "tool": "<short name>"}` per line), under one lock,
-the folder `.trendsmesh/pace.lock` (made with mkdir, so the shell and Python share it). Claude Code runs the
-PreToolUse hooks of parallel calls at the same time (seen on 2.1.319), so the lock counts them one at a time.
+the file `.trendsmesh/pace.lock` with the time it was taken, made by an exclusive create (`O_EXCL`; the shell's
+noclobber redirection is the same, so the shell and Python share it). Claude Code runs the PreToolUse hooks of
+parallel calls at the same time (seen on 2.1.319), so the lock counts them one at a time. An older version's
+lock, the folder `pace.lock` with the time in `pace.lock/t`, is waited for and taken over the same way.
 
 A call goes ahead at the first moment T (now, or a moment a logged call leaves a window) at which, for every
 window that applies to it, fewer than `limit` logged calls are closer to T than the window plus MARGIN_MS
@@ -311,24 +313,31 @@ def _lock(folder: Path, now_ms: Callable[[], int], sleep: Callable[[float], None
     deadline = now_ms() + int(LOCK_WAIT_S * 1000)
     while True:
         try:
-            lock.mkdir()
-            (lock / "t").write_text(str(now_ms()), encoding="utf-8")
-            return lock
-        except FileExistsError:
+            fd = os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+        except (FileExistsError, IsADirectoryError, PermissionError):   # Windows: an older version's folder
             try:
-                held = int((lock / "t").read_text(encoding="utf-8") or 0)
+                held = int((lock / "t" if lock.is_dir() else lock).read_text(encoding="utf-8") or 0)
             except (OSError, ValueError):
                 held = 0
+            if now_ms() > deadline + 1000:     # it cannot be taken over (a folder that refuses): the call goes
+                raise TimeoutError(f"{lock} could not be taken")
             if (held and now_ms() - held > STALE_LOCK_MS) or now_ms() > deadline:
                 _unlock(lock)                  # its owner was killed: take it
                 continue
             sleep(0.02)
+            continue
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(str(now_ms()))
+        return lock
 
 
 def _unlock(lock: Path) -> None:
     try:
-        (lock / "t").unlink(missing_ok=True)
-        lock.rmdir()
+        if lock.is_dir():                      # an older version's folder
+            (lock / "t").unlink(missing_ok=True)
+            lock.rmdir()
+        else:
+            lock.unlink(missing_ok=True)
     except OSError:
         pass
 
