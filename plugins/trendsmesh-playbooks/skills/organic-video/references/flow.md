@@ -1250,10 +1250,10 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
        one), the suggested one first. The images stage then has its own **Text set** item (issue
        #165): the three stills side by side, the first drawn marked as the suggestion, one click to
        pick (never add the stills as media to the question, and draw nothing again). Recording the
-       stage (`tm page decision images --record`) makes the picked style the latest, approves it
-       with their note and saves it for the channel; its `then` says which set and where. In chat
-       the same pick is the line `text-set: accept; choice: <set>` read with `tm organic decisions
-       --run R --page gate_images --text <file>`. When the item stays undecided, ask in chat which
+       stage's answer (below) makes the picked style the latest, approves it with their note and
+       saves it for the channel; its `then` says which set and where. In chat the same pick is the
+       line `text-set: accept; choice: <set>`, read as the stage's other chat answers are. When the
+       item stays undecided, ask in chat which
        set the channel's videos use. When the brand has its own font or logo files, save the set
        again with them: `tm brand text-style save --run R --kind channel --name <channel> --style
        <the approved 03_wip/text_style_vNN.json> --font <file> --logo <file> --note "<their words>"
