@@ -148,8 +148,8 @@ check-in is asked again with the new images, and F1 is closed after the user's a
 style** on the first frame (the still beside every item, or the PNG in chat): the captions at the
 bottom and the overlays at the top, as the edit will draw them. With the channel's saved text set it
 is that set, said by name and not asked again (it can be changed any time); the first time, the three
-sets that fit the channel side by side: pick one, which every later video uses, or say what to change
-(a change is drawn and shown again, free; `flow.md#f1`).
+sets that fit the channel side by side, as the stage's own "Text set" item: one click picks one, which
+every later video uses, or say what to change (a change is drawn and shown again, free; `flow.md#f1`).
 
 **Pick the takes** (`video`, inside F2, before `tm done F2`; its own card at Check every step). The run page's link (the takes stage), then
 in chat each take with its **QA findings in words**: how much of the script was heard, where the
