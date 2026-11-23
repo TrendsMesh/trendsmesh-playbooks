@@ -23,6 +23,8 @@ import yaml
 from tm import envtiers, paths
 from tm.envtiers import TIERS
 
+REAL_EARLIER = envtiers.earlier_install   # conftest stubs it (`_no_real_earlier_install`)
+
 REPO = Path(__file__).resolve().parents[2]
 PLUGIN = REPO / "plugins" / "trendsmesh-playbooks"
 ENV = PLUGIN / "env"
@@ -305,3 +307,28 @@ def test_the_venvs_of_plugin_versions_that_are_gone_are_removed(windows, tmp_pat
     busy.mkdir(parents=True)
     assert envtiers.clean_stale() == [old]
     assert mine.is_dir() and busy.is_dir() and not old.exists()
+
+
+def test_an_update_from_0_14_0_knows_the_earlier_venvs_and_removes_them_once_replaced(windows, tmp_path):
+    """Issue #161: the 0.14.0 folder stays in Claude Code's cache after the update, so its venvs are an earlier
+    install of the tier (the doctor says so) and go once this version has the tier: its pixi environment and venv."""
+    import os
+    import time
+
+    root, data = windows
+    old_root = tmp_path / "cache" / "0.14.0"
+    (old_root / "env").mkdir(parents=True)
+    os.utime(old_root, (time.time() - 3600, time.time() - 3600))
+    old = {}
+    for env in ("base", "voice"):
+        old[env] = data / "venvs" / f"{env}-{paths.venv_key(old_root)}"
+        (old[env] / "Scripts").mkdir(parents=True)
+        (old[env] / paths.VENV_MARKER).write_text(json.dumps({"plugin_root": str(old_root)}), encoding="utf-8")
+    assert REAL_EARLIER("voice") and REAL_EARLIER("base") and not REAL_EARLIER("ai")
+    mine = _finish("base", root, data)
+    assert envtiers.clean().removed == []          # this version's base has no pixi environment yet
+    meta = data / "envs" / "trendsmesh-playbooks-222" / "envs" / "base" / "conda-meta"
+    meta.mkdir(parents=True)
+    (meta / "pixi").write_text(json.dumps({"manifest_path": str(root / "env" / "pixi.toml")}), encoding="utf-8")
+    assert envtiers.clean().removed == [old["base"]]
+    assert mine.is_dir() and old["voice"].is_dir() and not old["base"].exists()

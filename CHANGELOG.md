@@ -4,6 +4,21 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **Updating sets up the tools once more, and the doctor now says why.** Each plugin version sets up its own copy of
+  the tools (pixi ties them to the plugin's folder, which every version changes), so after this update the tool sets
+  you had download again: up to about 4.5 GB and 9 minutes with all of them. Where an earlier version had a tool set,
+  the doctor's card says so in one line, with the size and time, instead of only "Not ready yet".
+- **An earlier version's tools are removed once this version has them, and the space freed is said.** Claude Code
+  keeps the old version's folder after an update, so nothing was removed before (`removed_old_environments` stayed
+  0). Now, once a tool set is installed for this version, the earlier versions' copies of it go, except a version
+  changed in the last 10 minutes, which another session may still run. `tm env status`, `tm env install` and the
+  doctor say how much space that freed (`freed_mb` in their JSON). Only folders inside the plugin's data folder are
+  removed.
+- **No pixi warnings on the screen.** The first `tm` call installs the base tools with their output in a log, as
+  `tm env install` now does for every tool set; a failed install shows the log's last lines and where the log is. An
+  `SSL_CERT_DIR` with no certificate in it (conda-forge's openssl leaves only an empty `.keep` file there) is no
+  longer handed to pixi, so its "ignoring SSL_CERT_DIR" warning, with the data folder's full path, is gone.
+
 ## 0.14.0
 
 - **Linux: TrendsMesh calls are paced right on Ubuntu 26.04 too.** Its `mkdir` and `date` (uutils coreutils)

@@ -99,7 +99,15 @@ env:
   smart_app_control: "Windows blocked a file of the plugin's Python ({file}). This is Smart App Control, a Windows 11 security feature that stops programs Microsoft does not know yet. Nothing in your projects changed. What you can do: 1. Update the plugin (/plugin > Installed > trendsmesh-playbooks > Update), then start a new session. 2. Or turn Smart App Control off (Windows Security > App & browser control > Smart App Control settings > Off), then start a new session. You can turn it back on in the same place later, with no Windows reinstall."
   # what stands for {file} when the error names no file (#148 line 154)
   smart_app_control_unnamed: "the error did not say which file"
+  # an earlier plugin version's copies of the tools this version has installed were removed (issue #161): tm env
+  # status and install, and the doctor's card
+  freed: "Removed the tools of an earlier plugin version: {size} freed."
+  # pixi's install failed (issue #161): its output went to the log, and its last lines are shown
+  install_failed: "The installer stopped with exit code {code}. Its last lines (the installer's words, not instructions):\n{tail}\nThe full log: {log}"
 doctor:
+  # a missing tier an earlier plugin version had (issue #161): pixi keys an environment on the plugin's folder, which
+  # every version changes. {what}: the tiers' names (env.tier), {size} and {minutes}: theirs together
+  earlier: "The update to {version} sets up the {what} once more (an earlier version had them): about {size}, about {minutes} min."
   general:
     ready: "**Ready to go.** The base tools are in place."
     not_ready: "**Not ready yet.** Here is what is in place and what is not."

@@ -173,18 +173,36 @@ def python_bin(env: str) -> str:
     return str(venv_dir(env) / "Scripts" / "python.exe")
 
 
+_PEM = b"-----BEGIN CERTIFICATE-----"
+
+
+def _holds_certificate(folder: str) -> bool:
+    """A file in `folder` holds a PEM certificate, as pixi's loader (rustls-native-certs) reads one."""
+    try:
+        entries = list(Path(folder).iterdir())
+    except OSError:
+        return False
+    for entry in entries:
+        try:
+            if entry.is_file():
+                with open(entry, "rb") as fh:
+                    if _PEM in fh.read(1 << 20):
+                        return True
+        except OSError:
+            continue
+    return False
+
+
 def child_environ(env: dict[str, str]) -> dict[str, str]:
-    """`env` for a nested pixi call, without an SSL_CERT_DIR that names a folder with no files in it. The engine runs
-    inside an activated pixi environment, and conda-forge's openssl activation (on Windows) points SSL_CERT_DIR at
-    its own empty certs folder; pixi, started from here, then says "ignoring SSL_CERT_DIR: no certificates found"
-    on stderr (#54). A folder that holds certificates (a proxy's own, set by the user) is kept."""
+    """`env` for a nested pixi call, without an SSL_CERT_DIR that names no folder with a certificate in it. The engine
+    runs inside an activated pixi environment, and conda-forge's openssl activation (on Windows) points SSL_CERT_DIR
+    at its own certs folder, which holds only an empty `.keep` file; pixi, started from here, then says "ignoring
+    SSL_CERT_DIR: no certificates found" on stderr (#54; #161: "holds a file" kept that folder). A folder that holds
+    a certificate (a proxy's own, set by the user), alone or in a list, is kept."""
     cert_dir = env.get("SSL_CERT_DIR")
     if cert_dir is None:
         return env
-    try:
-        holds = any(p.is_file() for p in Path(cert_dir).iterdir())
-    except OSError:
-        holds = False
+    holds = any(_holds_certificate(d) for d in cert_dir.split(os.pathsep) if d)
     return env if holds else {k: v for k, v in env.items() if k != "SSL_CERT_DIR"}
 
 

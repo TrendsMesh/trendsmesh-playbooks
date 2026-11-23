@@ -100,6 +100,36 @@ def test_missing_tier_is_agent_fix_with_size(monkeypatch):
     assert "2.5 GB" in card
 
 
+def test_a_tier_an_earlier_version_had_says_the_update_sets_it_up_again(monkeypatch):
+    """Issue #161: after an update every tier is installed again (pixi keys an environment on the plugin's folder).
+    The card says why, in one line with the size and time, for the tiers an earlier version had."""
+    from tm import __version__
+
+    monkeypatch.setattr(doctor.envtiers, "installed", lambda t: t not in ("breakdown", "video", "voice"))
+    monkeypatch.setattr(doctor.envtiers, "earlier_install", lambda t: t in ("breakdown", "video"))
+    r = doctor.check({"edited_video"}, True, ALL_OK)
+    assert item(r, "tier_breakdown").earlier and not item(r, "tier_voice").earlier
+    card = doctor.card(r)
+    line = [x for x in card.splitlines() if "once more" in x]
+    assert line == [f"- The update to {__version__} sets up the video breakdown tools and video editing tools once "
+                    "more (an earlier version had them): about 3.0 GB, about 6 min."]
+    monkeypatch.setattr(doctor.envtiers, "earlier_install", lambda t: False)
+    assert "once more" not in doctor.card(doctor.check({"edited_video"}, True, ALL_OK))
+
+
+def test_the_card_says_the_space_an_earlier_versions_tools_freed(monkeypatch, capsys):
+    """Issue #161: the doctor removes an earlier version's copy of a tier this version has, and says the space."""
+    monkeypatch.setattr(doctor.envtiers, "clean", lambda: envtiers.Cleaned([Path("x")], 2_600_000_000))
+    assert cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "trendsmesh=ok,meta=ok", "--json"]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got["freed_mb"] == 2600
+    assert "Removed the tools of an earlier plugin version: 2.6 GB freed." in got["card"]
+    monkeypatch.setattr(doctor.envtiers, "clean", lambda: envtiers.Cleaned())
+    assert cli.main(["doctor", "--outputs", "creative_brief", "--mcp", "trendsmesh=ok,meta=ok", "--json"]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got["freed_mb"] == 0 and "freed" not in got["card"]
+
+
 def test_voice_adds_elevenlabs_checks(world):
     r = doctor.check({"edited_video"}, True, ALL_OK)
     assert not item(r, "elevenlabs_api_key").ok
