@@ -4,6 +4,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
+  draft or the pack on the page, the next page build still said people were deciding on it, and only
+  `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.
+
 ## 0.14.0
 
 - **Linux: TrendsMesh calls are paced right on Ubuntu 26.04 too.** Its `mkdir` and `date` (uutils coreutils)

@@ -635,7 +635,8 @@ def from_page_note(note: str, lang: str = "en") -> str:
 
 def record(run: RunFolder, checkin: str) -> dict:
     """Record the choice saved on the page with `flow.decide`, as an answer from chat, the note marked "(from the
-    page)". A check-in decided before this question was put on the page is changed (`--change`)."""
+    page)". A check-in decided before this question was put on the page is changed (`--change`). The wait for
+    decisions on the run page ends, whatever the stage (issue #164)."""
     got = decision(run, checkin)
     words.reset()
     lang = words.page_lang(run).lang
@@ -647,7 +648,8 @@ def record(run: RunFolder, checkin: str) -> dict:
     prepare = PREPARED.get(state.load(run).playbook)
     prepared = prepare(run, checkin, got) if prepare else {}
     flow.decide(run, checkin, got["choice"], by="user", note=note, change=change)
-    files = {"answer": _save_answer(run, checkin, got)} if got["detail"] else {}
+    page.clear_await(run, page_name(run))      # the choice people made on the page is read: nobody waits (#164)
+    files ={"answer": _save_answer(run, checkin, got)} if got["detail"] else {}
     files.update(prepared)
     if files_of:
         files.update(files_of(run, checkin, got))
