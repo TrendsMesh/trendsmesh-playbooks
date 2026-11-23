@@ -9,7 +9,7 @@ from datetime import date
 import pytest
 
 from test_research_report import _picks_file, _uroda
-from tm import config, organic_config, page, run_page, state
+from tm import config, flow, organic_config, page, run_page, state
 from tm.cli import main
 from tm.flow import set_level
 from tm.playbooks import CREATE_AD, CREATIVE_BRIEF, ORGANIC_VIDEO, REFRESH_AD, TREND_RESEARCH
@@ -36,6 +36,8 @@ def _run(tmp_path, playbook):
     set_level(r, "every_step")
     if playbook == ORGANIC_VIDEO:
         config.save(r, {**organic_config.defaults(), "languages": {"working": "en", "market": "en"}})
+    if playbook == CREATIVE_BRIEF:                     # the kind comes before the start card (issue #156)
+        flow.decide(r, "brief_kind", "ad", by="user", note=None, said="an ad")
     return r
 
 

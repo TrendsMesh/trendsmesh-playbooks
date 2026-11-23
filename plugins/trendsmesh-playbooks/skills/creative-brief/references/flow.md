@@ -141,8 +141,8 @@ list (step 2); one that is not in the account is the product's landing page (`--
    (`references/brand-and-audience.md`): write `03_wip/brand_v01.json` in the `brand/1` shape, and
    `tm brand check --run R --file 03_wip/brand_v01.json --json` (exit 2 lists what to fix). If the user
    points to a brand guide (a file or a link), read it and use it (`guide`).
-6. **The card is the start card** (issue #131): `tm page intake --run R --known <file> --json` (the known
-   file: what steps 1 to 5 derived, `{question id: value}`), published as the run's new private artifact with
+6. **The card is the start card** (issue #131): `tm page intake --run R --known <file> --lang <the conversation's language> --json` (the
+   card in the language you are talking in; the known file: what steps 1 to 5 derived, `{question id: value}`), published as the run's new private artifact with
    the answer's `capabilities`, `tm page published --page intake`, `tm page await --page intake`, the reply
    button; then one unfiltered `ArtifactData` list (collection `intake`) and `tm page intake --run R --read
    --json` (an answer in chat: `--read --text <file>`), which writes `03_wip/start_answers_vNN.json`. Without
@@ -607,8 +607,16 @@ The rules that apply: `rules.md`, "Organic brief". Every step's files are record
 <a id="o1"></a>
 ## O1 Start card
 
-The organic video brief's one card, in the form of organic-video's start page: one message with
-every field, each optional value nobody gave shown as **"to set"**:
+The organic video brief's start card: the run's first page, as the ad brief's (`#a1` step 6), built for
+the organic brief once `brief_kind` is `organic` (`tm page intake` stops until it is decided). `tm page intake
+--run R [--known <file>] --lang <the conversation's language> --json`, published as the run's new private
+artifact with the answer's `capabilities`, `tm page published --page intake`, `tm page await --page intake`, the
+reply button; then one unfiltered `ArtifactData` list (collection `intake`) and `tm page intake --run R --read
+--json` (an answer in chat: `--text <file>`, one line each). Its questions: the product or brand, the channel,
+its platforms, whether it is a business account, the channel's bubble, the goal (the product's role), who films,
+the languages, the recipients, the number of concepts and the level; no ad account, landing page, media buyer,
+customer voice or review pack. Without a publishing tool, or when the user answers in chat, the same in one
+message, each optional value nobody gave shown as **"to set"**:
 
 - the **product or brand**, in any form (a link, a description, a photo, or none: a channel that sells
   nothing); a link is saved as its own text with `tm page fetch --run R --url <url> --name <short name>
@@ -628,7 +636,8 @@ Then the answers file `03_wip/intake_answers_v01.json` (the config's shape plus 
 films}`, `product: {name, category_phrase}` with the channel's topic as the category phrase when
 nothing is sold; `outputs` is `organic_brief, page`), `tm config write --run R --answers
 03_wip/intake_answers_v01.json`, `tm config check --run R --json`, then `tm done O1 --run R`
-(`intake_written`). G0o follows (`checkin-cards.md`).
+(`intake_written`). G0o follows (`checkin-cards.md`): a run page stage that shows the start card's answers,
+on the same link.
 
 <a id="o2"></a>
 ## O2 Channel context

@@ -279,25 +279,37 @@ _FONT_LINK = re.compile(r'<link href="https://fonts\.googleapis\.com/css2\?[^"]*
 _WRAP = '<div class="wrap">'
 
 
-def _bar_words(lang: str | i18n.Translator) -> tuple[str, str]:
+def _bar_words(lang: str | i18n.Translator, playbook: str | None = None) -> tuple[str, str]:
     """The top bar's words in `lang`: the playbook's name, and the brand (in English when `lang`'s table lacks the
-    run page's words: a language translated for the organic pages only)."""
+    run page's words: a language translated for the organic pages only). The name is `playbook`'s (issue #156: a
+    page of choices is any playbook's, the start card and the Models page), `run_page.playbook.<its skill>`; Organic
+    AI video's (no `playbook`) is the organic pages' own when that table lacks the run page's."""
     tr = translator(lang)
+    en = i18n.translator(i18n.ENGLISH)
     try:
         brand = tr(BRAND_KEY)
     except i18n.Missing:
-        brand = i18n.translator(i18n.ENGLISH)(BRAND_KEY)
-    return tr(PLAYBOOK_KEY), brand
+        brand = en(BRAND_KEY)
+    if playbook is None:
+        return tr(PLAYBOOK_KEY), brand
+    from tm import playbooks
+    key = "run_page.playbook." + playbooks.get(playbook).skill.replace("-", "_")
+    try:
+        name = tr(key)
+    except i18n.Missing:
+        name = tr(PLAYBOOK_KEY) if playbooks.get(playbook).id == playbooks.ORGANIC_VIDEO else en(key)
+    return name, brand
 
 
-def look(page: str, lang: str | i18n.Translator) -> str:
-    """`page` (a whole built page, `<head>` and its wrap) in the TrendsMesh look, its top bar in `lang`. A part of a
-    page (a script, a fragment) and a page already in the look are left as they are."""
+def look(page: str, lang: str | i18n.Translator, playbook: str | None = None) -> str:
+    """`page` (a whole built page, `<head>` and its wrap) in the TrendsMesh look, its top bar in `lang`, naming
+    `playbook` (Organic AI video when None). A part of a page (a script, a fragment) and a page already in the look
+    are left as they are."""
     if "</head>" not in page or _WRAP not in page or f'<style id="{LOOK_ID}">' in page:
         return page
     from tm.run_page import template    # the run page reads these pages' modules: imported when used
 
-    name, brand = _bar_words(lang)
+    name, brand = _bar_words(lang, playbook)
     css = (f"{_ROOTS}{{{template.theme_tokens()}{_AS_THEME}}}{_HEADINGS}"
            f"{template.theme_section('top bar')}.wrap>.top{{padding:0}}")
     page = _FONT_LINK.sub(lambda _: f'<link href="{template.E(template.FONTS)}" rel="stylesheet">', page, count=1)

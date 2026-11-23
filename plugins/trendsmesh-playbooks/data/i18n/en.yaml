@@ -808,7 +808,7 @@ organic:
     cap_with_voiceover: "{take} with the voiceover"
   # the pages of choices (organic_pages/choices.py): the intake, the style, voice and music, the models (#83, #86)
   choices:
-    eyebrow: "Organic AI video · {page}"
+    eyebrow: "{page}"    # the top bar names the playbook (issue #156)
     page_intake: start questions
     page_taste: style, voice and music
     page_models: models
@@ -1562,6 +1562,32 @@ run_page:
     length_short: 15–20 s for Reels and Stories
     length_feed: 30–45 s for the Feed
     materials: The materials you have (music, a voice-over, footage, product shots, a logo, a brand guide)
+    # the organic video brief's card (creative brief O1, issue #156)
+    product_or_brand: The product or brand (optional)
+    product_or_brand_hint: 'A link or a description; leave it empty for a channel that sells nothing.'
+    channel: The channel
+    channel_hint: Its name and its link, if it has one.
+    platforms: Its platforms
+    platforms_tiktok: TikTok
+    platforms_instagram: Instagram
+    platforms_youtube: YouTube
+    platforms_facebook: Facebook
+    business: Is it a business account?
+    business_hint: A business account gets only sounds licensed for business use; a personal one gets the trending sounds, each with its licence shown.
+    business_yes: Yes, a business or brand account
+    business_no: No, a personal or creator account
+    bubble: The channel's bubble
+    bubble_hint: What it films, its topic and who watches it.
+    goal: What the videos are for (the product's role)
+    goal_reach: Reach, more people see the channel
+    goal_followers: More followers
+    goal_traffic: Traffic to the product
+    goal_sales: Sales of the product
+    films: Who films
+    films_self: You
+    films_creator: A creator
+    films_team: A team
+    recipients_publisher: Publisher
   # how involved the user is (the run's level), as the start card and the intake stage show it (issue #131)
   level:
     every_step: Check every step

@@ -13,6 +13,15 @@ What changed in each version of the TrendsMesh playbooks plugin.
   command that builds a page now gives one set for the whole run (and `tm page files` gives it too).
 - **Waiting for decisions on a page needs no version number.** `tm page await` and `tm brief await` take the
   version recorded when the page was published, and say so plainly when the latest build is not published yet.
+- **Each start card and Models page shows its own playbook's name.** The start cards of Trend research, Creative
+  brief, Refresh an ad and Create an ad, and the Models page of Create an ad and Refresh an ad, said "Organic AI
+  video" in their top bar and heading.
+- **An organic video brief gets its own start card.** It asks about the channel, its platforms and bubble, whether
+  it is a business account, what the videos are for, who films, the recipients and the level, with no ad account,
+  landing page, media buyer, customer voice or review pack. Claude asks what the brief is for before building it.
+- **The start card is in the language you are talking in.** Claude passes the conversation's language to the card
+  (`tm page intake --lang`), and its languages question starts from that language, not "en, en". Polish start
+  cards ship with the plugin.
 
 ## 0.14.0
 

@@ -81,6 +81,7 @@ MAX_TEXT = 4000
 START_PAGE = "intake"          # the start card, the first page of a run (tm.start_card, tm.organic_pages.intake)
 # the check-in whose stage shows the start card's answers; any other playbook's run page leads with its own stage
 START_AT = {playbooks.CREATIVE_BRIEF: "G0", playbooks.TREND_RESEARCH: "G0", playbooks.CREATE_AD: "intake"}
+START_AT_ORGANIC_BRIEF = "G0o"
 
 
 def linked(playbook: str | None) -> tuple[str, ...]:
@@ -328,6 +329,8 @@ def model(run: RunFolder, folder: Path | None, *, local: bool) -> tuple[dict, di
     component = COMPONENTS.get(s.playbook, lambda c, cid: [])
 
     start_key = START_AT.get(s.playbook, START_PAGE)
+    if s.playbook == playbooks.CREATIVE_BRIEF and flow.kind_of(s) == "organic":
+        start_key = START_AT_ORGANIC_BRIEF       # the organic brief's start card is confirmed at G0o (issue #156)
 
     def stage_blocks(key: str, ask: dict | None) -> list[dict]:
         out = start_blocks(ctx) if key == start_key else []      # the start card's answers (issue #131)

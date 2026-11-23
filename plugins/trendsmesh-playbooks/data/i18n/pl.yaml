@@ -1,6 +1,7 @@
 # The plugin's own Polish of the string table (data/i18n/en.yaml), read by tm.i18n: what a Polish page says. It holds
 # the organic video pages' strings (organic.*), the run page's own words that an Organic AI video run page needs
-# (run_page.*: the template's, issue #60), Create an ad's promise phrases (checks.promise_*) and the Smart App
+# (run_page.*: the template's, issue #60), every playbook's start card and name (run_page.start, run_page.playbook:
+# issue #156), Create an ad's promise phrases (checks.promise_*) and the Smart App
 # Control message (env.smart_app_control and env.smart_app_control_unnamed, issue #123); every other
 # string Polish needs is the agent's translation, kept in the plugin data folder (tm i18n export / import), and a kept
 # translation wins over this file. Keep {placeholders} and <markup> as in English; never translate keys.
@@ -266,7 +267,7 @@ strings:
       q_animation_voiceover: "Obejrzyj ją z podłożonym lektorem. Muzyka dochodzi w montażu. Przy Popraw napisz, który moment zmienić i jak."
       cap_with_voiceover: "{take} z lektorem"
     choices:
-      eyebrow: "Organiczne wideo AI · {page}"
+      eyebrow: "{page}"
       page_intake: pytania na start
       page_taste: styl, głos i muzyka
       page_models: modele
@@ -664,13 +665,103 @@ strings:
       pack_total: Razem
       pack_voice: Kredyty ElevenLabs
       pack_cap: Limit budżetu na run
-  # the run page's own words (engine/src/tm/run_page/template.py), which an Organic AI video page needs in Polish
+  # the run page's own words (engine/src/tm/run_page/template.py), which an Organic AI video page needs in Polish, and
+  # every playbook's start card (run_page.start, the playbooks' names: issue #156)
   run_page:
     top:
       brand: TrendsMesh
       title: '{playbook}: {run}'
     playbook:
+      refresh_ad: Odświeżenie reklamy
+      create_ad: Nowa reklama
+      trend_research: Badanie trendów
       organic_video: Organiczne wideo AI
+      creative_brief: Brief kreatywny
+    start:
+      title: '{playbook}: start'
+      lede: Wszystkie pytania na start na jednej stronie, przy każdym zaznaczona domyślna odpowiedź. Zmień to, co się nie zgadza, i naciśnij Gotowe.
+      category: Kategoria
+      category_hint: Krótka fraza, na przykład „uroda” albo „paznokcie”.
+      market: Rynek
+      market_hint: Kraj, na przykład US albo PL.
+      languages: Język pracy i język rynku
+      languages_hint: Dwa kody języków, najpierw język pracy (na przykład pl, pl).
+      focus: Na czym się skupić (opcjonalnie)
+      focus_hint: Kto czyta raport, marka albo podkategoria; dane zostają dla całej kategorii.
+      outputs: Co dostajesz
+      outputs_category_report: Raport kategorii (zawsze)
+      outputs_weekly_digest: Tygodniowe podsumowanie, ta sama strona za tydzień
+      outputs_paid_view: Płatne kontra organiczne (Biblioteka reklam Meta)
+      outputs_everything: Pakiet do przeglądu, briefy i strona
+      outputs_review_pack: Sam pakiet do przeglądu
+      outputs_creative_brief: Brief kreatywny
+      outputs_edited_video: Zmontowane wideo
+      outputs_ai_video: Wideo AI
+      outputs_live_test: Test na żywo (wydaje budżet reklamowy i publikuje reklamy; ma własny budżet)
+      currency: Waluta kwot na stronie
+      level: Jak bardzo chcesz brać udział?
+      level_every_step: Sprawdzaj każdy krok
+      level_big_calls: Tylko najważniejsze decyzje
+      level_hands_off: Bez zatrzymywania
+      product: Produkt
+      account: Konto reklamowe
+      landing: Strona docelowa
+      brand: Marka (za czym stoi, jej ton, jej obietnice)
+      recipients: Dla kogo są briefy
+      recipients_decision: Osoba decyzyjna
+      recipients_strategy: Strateg
+      recipients_creator: Twórca
+      recipients_editor: Montażysta
+      recipients_media_buyer: Media buyer
+      concepts: Ile koncepcji
+      concepts_1: '1'
+      concepts_2: '2'
+      concepts_3: '3'
+      concepts_4: '4'
+      concepts_5: '5'
+      to_set: Budżet, termin, kto zatwierdza, prawa twórcy i jego honorarium
+      to_set_hint: Każde z nich zostaje „do ustalenia”, dopóki ktoś go nie poda.
+      voice: Gdzie wypowiadają się klienci (opcjonalnie)
+      voice_hint: Linki do opinii, eksporty, profile społecznościowe albo konkurenci; bez nich bierzemy głos kategorii.
+      off_limits: Czego unikać?
+      assets_dir: Folder z materiałami marki
+      rules: Zasady marki i wymogi prawne
+      budget_ai: Budżet na AI w USD
+      budget_voice: Kredyty ElevenLabs
+      voice_rights: Masz prawa do głosu w tej reklamie
+      voice_rights_yes: Tak, mam je
+      voice_rights_no: Nie
+      persona: Dla kogo jest reklama i czym ta osoba się zajmuje
+      sells: Co reklama sprzedaje (produkt, jedną funkcję, proces albo ofertę)
+      length: Długość i miejsca wyświetlania
+      length_short: 15–20 s do Reels i Stories
+      length_feed: 30–45 s do Feedu
+      materials: Materiały, które masz (muzyka, lektor, nagrania, zdjęcia produktu, logo, księga marki)
+      product_or_brand: Produkt albo marka (opcjonalnie)
+      product_or_brand_hint: Link albo opis; zostaw puste, jeśli kanał niczego nie sprzedaje.
+      channel: Kanał
+      channel_hint: Jego nazwa i link, jeśli jest.
+      platforms: Jego platformy
+      platforms_tiktok: TikTok
+      platforms_instagram: Instagram
+      platforms_youtube: YouTube
+      platforms_facebook: Facebook
+      business: Czy to konto firmowe?
+      business_hint: Konto firmowe dostaje tylko dźwięki z licencją na użytek komercyjny; konto prywatne dostaje dźwięki na czasie, każdy z widoczną licencją.
+      business_yes: Tak, konto firmowe albo marki
+      business_no: Nie, konto prywatne albo twórcy
+      bubble: Bańka kanału
+      bubble_hint: Co kanał nagrywa, o czym jest i kto go ogląda.
+      goal: Po co są te filmy (rola produktu)
+      goal_reach: Zasięg, więcej osób widzi kanał
+      goal_followers: Więcej obserwujących
+      goal_traffic: Ruch do produktu
+      goal_sales: Sprzedaż produktu
+      films: Kto nagrywa
+      films_self: Ty
+      films_creator: Twórca
+      films_team: Zespół
+      recipients_publisher: Osoba publikująca
     organic_video:
       stage:
         reuse_profile: Zapisany profil kanału

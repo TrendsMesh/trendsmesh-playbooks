@@ -132,6 +132,8 @@ def test_create_ad_and_refresh_ad_get_the_models_page_through_tm_models(tmp_path
                  '{"images": 1, "video_seconds": 8}', "--json"])
     out = json.loads(capsys.readouterr().out)
     assert code == 0 and (run.path / out["folder"] / "index.html").is_file(), out
+    html = (run.path / out["folder"] / "index.html").read_text(encoding="utf-8")
+    assert '<span class="pill dark">Refresh an ad</span>' in html and "Organic AI video" not in html   # #156
     code = main(["models", "decisions", "--run", str(run.path), "--by-rule", "--json"])
     out = json.loads(capsys.readouterr().out)
     assert code == 0, out

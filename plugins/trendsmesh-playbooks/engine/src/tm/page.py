@@ -805,6 +805,8 @@ def _setup(p: argparse.ArgumentParser) -> None:
     de.add_argument("--record", action="store_true", help="record it (tm decide, the note marked from the page)")
     it = sub.add_parser("intake", help="the start card, the run's first page (tm.start_card), or --read its answers")
     it.add_argument("--known", help="a JSON file of what the run already knows: {question id: value}")
+    it.add_argument("--lang", help="the conversation's language (a tag such as pl): the card's language, and the "
+                                   "languages question's default answer")
     it.add_argument("--read", action="store_true", help="read the answers into 03_wip/start_answers_vNN.json")
     src = it.add_mutually_exclusive_group()
     src.add_argument("--file", help="with --read: a saved ArtifactData answer in the run folder (default: the newest "
@@ -901,8 +903,8 @@ def _intake(args: argparse.Namespace, run: RunFolder) -> int:
     from tm import start_card
 
     if args.read:
-        if args.known:
-            raise ValueError("--known is for building the start card, not for --read.")
+        if args.known or args.lang:
+            raise ValueError("--known and --lang are for building the start card, not for --read.")
         got = start_card.take(run, file=run.given(args.file) if args.file else None,
                               text=run.given(args.text) if args.text else None)
         message = (f"Read the start card from {got['from']} ({got['source']}) into {got['file']}. Write the config's "
@@ -920,7 +922,7 @@ def _intake(args: argparse.Namespace, run: RunFolder) -> int:
     known = cli.read_json(run.given(args.known)) if args.known else None
     if known is not None and not isinstance(known, dict):
         raise ValueError("--known must be a JSON object: {question id: value}.")
-    got = start_card.build(run, known=known)
+    got = start_card.build(run, known=known, lang=args.lang)
     lines = got.get("chat_answers") or []
     message = (f"Built the start card in {got['folder']} ({got['sections']} questions). Publish it first, as the run's "
                f"new link: tm page files --run {args.run} --page {start_card.PAGE}, the Artifact tool with the "
