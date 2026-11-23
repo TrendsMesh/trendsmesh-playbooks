@@ -17,6 +17,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   let "rising, 300 creators, 2M views" through in an idea's reason, although Free has no trend stage and no number
   without its source. They now refuse a stage or a count in an idea's title, reason and steps, as the guesses check
   does, and a percentage counts too.
+- **On Free, the week page says its trends are guesses.** The week stage had no banner, no "Guess" labels and no
+  "With TrendsMesh" box, and the week plan asked for an evidence video Free does not have. The week stage now has
+  the same banner, labels and box as the ideas page, each idea shows where its trend was seen instead of a video
+  link, and a week plan without evidence links builds.
 - **A check-in approved on the run page ends the wait, at every stage.** After you approved the profile, the script
   draft or the pack on the page, the next page build still said people were deciding on it, and only
   `tm page await --clear` got past it. Recording the choice from the page now always ends the wait.

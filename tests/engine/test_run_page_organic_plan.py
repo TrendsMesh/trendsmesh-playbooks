@@ -243,6 +243,61 @@ def test_the_week_check_in_is_a_stage_with_the_calendar_and_the_budget_bar(week_
     assert week_page.built_gap(week_run) is None
 
 
+def _free_week(tmp_path):
+    """A week run on Free at its week check-in: its guesses checked, each idea built on one with no evidence link."""
+    from tm import evidence, organic_guesses
+
+    run = _run(tmp_path, "weekly_plan")
+    s = state.load(run)
+    s.evidence = evidence.GUESS
+    state.save(run, s)
+    guesses = {"lang": "en", "guesses": [
+        {"id": f"g{n}", "kind": "hook_trend", "name": f"POV opener {n}", "what": "a first-person opener",
+         "source": "creative_center", "url": f"https://ads.tiktok.com/x{n}", "seen_on": "2026-11-13", "quote": None}
+        for n in (1, 2, 3)]}
+    stepchecks.mark(run, organic_guesses.KEY, _checked(run, f"{organic_guesses.STEM}_v01.json", guesses))
+    week = _week()
+    for n, idea in enumerate([*week["slots"], *week["reserves"]], start=1):
+        idea.pop("evidence")
+        idea["trend"] = f"POV opener {n}"
+        idea["plugin"]["trends"] = [{"id": f"g{n}"}]
+    _checked(run, "week_v01.json", week)
+    _to(run, "week")
+    return run
+
+
+def test_the_free_week_says_its_trends_are_guesses_and_what_trendsmesh_would_add(tmp_path):
+    """Issue #170 item 2: on Free the week stage has the ideas stage's banner, a Guess label with where each trend
+    was seen (no evidence video: the guess's source line, linked), and a "With TrendsMesh" box per idea."""
+    run = _free_week(tmp_path)
+    html = _html(run, run_page.build(run, _ask(run, "week")))
+    now = html.split('<section class="decision"')[0]
+    data = re.search(r'<script type="application/json" class="ovw-ideas">(.*?)</script>', now, re.S)
+    ideas, shown = json.loads(data.group(1)), now.replace(data.group(0), "")
+    assert "These ideas are my guesses from what I could see" in shown
+    assert shown.count(">Guess<") == 3 and "Seen on TikTok Creative Center, 2026-11-13" in shown
+    assert 'href="https://ads.tiktok.com/x1"' in shown
+    assert shown.count("With TrendsMesh") == 3 and "— creators · — videos · stage —" in shown   # two days, a reserve
+    assert "Seen on TikTok Creative Center" in ideas["r1"]["ev"]          # a swapped-in reserve shows its own source
+
+
+def test_a_paid_week_has_no_guess_labels(week_run):
+    html = _html(week_run, run_page.build(week_run, _ask(week_run, "week")))
+    now = html.split('<section class="decision"')[0]
+    assert "my guesses" not in now and ">Guess<" not in now and "With TrendsMesh" not in now
+    assert 'href="https://example.com/e"' in now
+
+
+def test_the_old_week_page_builds_without_evidence():
+    """Issue #170 item 2: `evidence` is optional in the schema (Free has none), so the standalone page reads it as
+    missing instead of failing."""
+    week = _week()
+    for idea in [*week["slots"], *week["reserves"]]:
+        idea.pop("evidence")
+    html, _ = week_page.page_html(week)
+    assert '"evidence": null' in html or '"evidence":null' in html
+
+
 def test_the_week_approved_on_the_page_is_the_decisions_file_and_the_yes(week_run, capsys):
     run_page.build(week_run, _ask(week_run, "week"))
     _answer(week_run, "week", "week_v01", "approve", idea={"wed": "r1"}, output={"wed": "script"},

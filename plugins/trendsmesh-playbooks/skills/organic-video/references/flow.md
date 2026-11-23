@@ -294,7 +294,8 @@ TrendsMesh; every later step (D1 on) is the same as on Paid.
 5. **C2, the ideas page** shows at the top that the ideas are guesses, each trend with a Guess label
    and where it was seen, and one "With TrendsMesh" box per idea: what TrendsMesh would show instead
    (creators, how early, two real videos to copy). Say the `notice` from `tm next` with the card. The
-   week (I2) works the same way; its flexible day needs fresh guesses (a new `guess_trends_vNN`,
+   week (I2) works the same way: the week stage of the run page has the same banner, a Guess label
+   with where each idea's trend was seen, and a "With TrendsMesh" box per idea; its flexible day needs fresh guesses (a new `guess_trends_vNN`,
    checked) instead of fresh searches.
 
 <a id="b1"></a>
@@ -589,8 +590,9 @@ and a series continues (brainrot part 2).
    day** (`weekly.per_week` slots on `weekly.days`, `day` as `mon` … `sun` or the handoff's `pon` … `niedz`,
    with `date`, `time`) and **at least one reserve** (an idea to swap in). Each idea (slot or reserve)
    has `id` (w1, w2 …, r1 …: letters, digits, `_` and `-`; it names its production run), `title`,
-   `format`, `why` (with numbers and their source), `trend` (its name, as the page shows it),
-   `evidence` (a video link), `output` (`video` or `script`), `seconds` (the video's planned length;
+   `format`, `why` (with numbers and their source; on Free where the trend was seen, never a stage or
+   a number), `trend` (its name, as the page shows it), `evidence` (a video link; none on Free: leave
+   it out, and the page shows each guess with where it was seen), `output` (`video` or `script`), `seconds` (the video's planned length;
    needed for AI footage, a talking character and a video in sections), `images` (the pictures it
    plans; needed for stills with motion graphics, else one first frame per 15 s), `cost_script` (USD; a
    script is $0), `production` (in words), `risk` (low, medium, high), and **the plugin block**

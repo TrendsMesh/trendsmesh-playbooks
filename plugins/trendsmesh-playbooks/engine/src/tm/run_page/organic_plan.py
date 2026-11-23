@@ -435,9 +435,54 @@ def _week(ctx: Context) -> list[dict]:
              "notes": {"type": "notes", "keys": keyed}}
     words = {k: _w(lang, "week." + k) for k in WEEK_UI if k != "meta" and not k.startswith("day_")}
     words |= {"decision": _w(lang, "decision"), "output": _w(lang, "output"), "total": _w(lang, "page.total")}
+    words |= {k: _w(lang, "proposals." + k) for k in FREE_UI}
+    free = organic_guesses.is_free(run)
+    for idea in organic_week.ideas(week):   # Free (issue #170): each idea's guesses, where its evidence would be
+        it = ideas[str(idea["id"])]
+        it["guesses"] = _week_guesses(run, idea, lang) if free else []
+        it["ev"] = _week_ev(it, words)
+    banner = _w(lang, "proposals.free_banner", sources=_w(lang, "proposals.free_sources")) if free else ""
     return [{"kind": "ov_week", "days": days, "ideas": ideas, "reserves": reserves, "budget": budget, "meta": meta,
              "note": week.get("note") or "", "words": words, "how": _w(lang, "page.how_week"), "assets": _first(ctx),
-             "offer": offer}]
+             "offer": offer, "banner": banner}]
+
+
+FREE_UI = ("guess", "with_tm", "with_tm_stats", "with_tm_videos", "recreate_needs")   # the ideas stage's, on the week
+
+
+def _week_guesses(run: RunFolder, idea: dict, lang: str) -> list[dict]:
+    """The guesses a week idea builds on (Free, issue #170): its kind, name, where it was seen and the link."""
+    from tm import organic_research
+
+    words = {src: _w(lang, f"proposals.seen_{src}") for src in organic_guesses.SOURCES}
+    out = []
+    for t in (idea.get("plugin") or {}).get("trends") or []:
+        found, _ = organic_research.card(run, str((t or {}).get("id")))
+        g = (found or {}).get("guess")
+        if g:
+            kind = KIND.get(g.get("kind"))
+            out.append({"kind": _w(lang, "proposals." + kind) if kind else str(g.get("kind") or ""),
+                        "name": g.get("name") or "", "seen": organic_guesses.source_line(g, words),
+                        "url": g.get("url") or ""})
+    return out
+
+
+def _week_ev(i: dict, w: dict) -> str:
+    """What a week idea rests on, as HTML: its trend linked to its evidence video, or on Free each guess with its
+    Guess label and where it was seen, and one "With TrendsMesh" box. The page's script shows it for an idea swapped
+    in."""
+    if not i.get("guesses"):
+        return (f'<a href="{E(i["evidence"])}" target="_blank" rel="noopener">{E(w["trend"])} {E(i.get("trend"))} ↗</a>'
+                if i.get("evidence") else f'{E(w["trend"])} {E(i.get("trend"))}')
+    rows = []
+    for g in i["guesses"]:
+        seen = (f'<a href="{E(g["url"])}" target="_blank" rel="noopener">{E(g["seen"])} ↗</a>' if g["url"]
+                else E(g["seen"]))
+        rows.append(f'<p class="small"><span class="pill">{E(g["kind"])}</span> <span class="pill">{E(w["guess"])}</span> '
+                    f'<b>{E(g["name"])}</b></p><p class="small soft">{seen}</p>')
+    return ("".join(rows) + '<div class="ovw-with-tm" style="border:1px dashed currentColor;padding:8px;border-radius:8px">'
+            f'<p class="small"><b>{E(w["with_tm"])}</b></p><p class="small soft">{E(w["with_tm_stats"])}</p>'
+            f'<p class="small soft">+ {E(w["with_tm_videos"])}</p><p class="small soft">{E(w["recreate_needs"])}</p></div>')
 
 
 def _week_settled(ctx: Context) -> list[dict]:
@@ -688,14 +733,13 @@ def _week_card(day: dict, b: dict, live: bool) -> str:
     key = day["key"]
     cost = i["cost_script"] if day["output"] == "script" else i["cost_video"]
     risk = w.get(f"risk_{i.get('risk')}") or str(i.get("risk") or "")
-    ev = (f'<a href="{E(i["evidence"])}" target="_blank" rel="noopener">{E(w["trend"])} {E(i.get("trend"))} ↗</a>'
-          if i.get("evidence") else f'{E(w["trend"])} {E(i.get("trend"))}')
+    ev = i.get("ev") or _week_ev(i, w)
     parts = [f'<p class="small ovw-fmt">{E(i.get("format"))}</p><h3 class="ovw-t">{E(i.get("title"))}</h3>'
              f'<p class="small ovw-why">{E(i.get("why"))}</p><div class="chips"><span class="pill ovw-risk">'
              f'{E(w["risk"])} {E(risk)}</span>' + (f'<span class="pill">{E(day["time"])}</span>' if day["time"] else "")
              + f'<span class="pill num ovw-cost">{_usd(cost)}</span></div>'
              f'<p class="small soft ovw-prod">{E(w["production"])} {E(i.get("production"))}</p>'
-             f'<p class="small ovw-ev">{ev}</p>']
+             f'<div class="small ovw-ev">{ev}</div>']
     if live:
         parts.append(_radios(f"ovw-o-{key}", _path("output", key), [("video", w["video"]), ("script", w["script"])],
                              day["output"], True, f'{w["output"]} {day["name"]}'))
@@ -730,12 +774,15 @@ def _week_html(b: dict, ds, lang: str, live: bool) -> str:
         cal.append(f'<div class="ovw-day"><p class="ovw-dh"><b>{E(d["name"])}</b> <span class="small soft">'
                    f'{E(d["date"])}</span></p>{body}</div>')
     res = "".join(f'<div class="card"><p class="small ovw-fmt">{E(b["ideas"][r].get("format"))}</p><h3>'
-                  f'{E(b["ideas"][r].get("title"))}</h3><p class="small">{E(b["ideas"][r].get("why"))}</p><p class="small soft">'
+                  f'{E(b["ideas"][r].get("title"))}</h3><p class="small">{E(b["ideas"][r].get("why"))}</p>'
+                  + (f'<div class="small ovw-ev">{b["ideas"][r]["ev"]}</div>' if b["ideas"][r].get("guesses") else "")
+                  + '<p class="small soft">'
                   + E(w["reserve_cost"].replace("{v}", format(b["ideas"][r]["cost_video"], ".2f"))
                       .replace("{s}", format(b["ideas"][r]["cost_script"], ".2f"))) + "</p></div>"
                   for r in b["reserves"])
     data = json.dumps(b["ideas"], ensure_ascii=False).replace("</", "<\\/").replace("<!--", "<\\u0021--")
-    return (_assets(b) + f'<div class="ovw" data-live="{1 if live else 0}"><p class="small soft">{E(b["meta"])}</p>'
+    banner = f'<p class="small soft">{E(b["banner"])}</p>' if b.get("banner") else ""   # Free (issue #170)
+    return (_assets(b) + f'<div class="ovw" data-live="{1 if live else 0}">{banner}<p class="small soft">{E(b["meta"])}</p>'
             + (f'<p class="small soft">{E(b["note"])}</p>' if b["note"] else "") + bar
             + f'<h3>{E(w["calendar"])}</h3><div class="ovw-cal">{"".join(cal)}</div>'
             + (f'<h3>{E(w["reserves"])}</h3><div class="ovw-res">{res}</div>' if res else "")
@@ -838,6 +885,7 @@ SCRIPT = r"""
           card.classList.toggle('skip', dec === 'skip');
           card.querySelector('.ovw-t').textContent = i.title || ''; card.querySelector('.ovw-fmt').textContent = i.format || '';
           card.querySelector('.ovw-why').textContent = i.why || ''; card.querySelector('.ovw-cost').textContent = '$' + cost.toFixed(2);
+          const ev = card.querySelector('.ovw-ev'); if (ev && typeof i.ev === 'string') ev.innerHTML = i.ev;
         });
         cards.forEach(card => { const sel = card.querySelector('select.ovw-swap'); if (sel) Array.from(sel.options).forEach(o => { o.disabled = !!used[o.value] && used[o.value] !== card.dataset.day; }); });
         over = total > budget + 1e-9;

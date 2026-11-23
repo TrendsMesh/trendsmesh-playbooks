@@ -238,7 +238,7 @@ def render(week: dict, lang: str | None = None) -> str:
         cal.append(f'<div class="day"><div class="dh">{esc(name)}<span>{esc(date)}</span></div>{body}</div>')
     res = "".join(f'<div class="card"><div class="fmt">{esc(r["format"])}</div><div class="t">{esc(r["title"])}</div><p class="why">{esc(r["why"])}</p>'
                   f'<p class="small">{esc(L["res_cost"].replace("{v}", format(r["cost_video"], ".2f")).replace("{s}", format(r["cost_script"], ".2f")))}</p></div>' for r in w["reserves"])
-    ideas_js = {i["id"]: {k: i[k] for k in ("title", "format", "why", "trend", "evidence", "cost_video", "cost_script", "production", "risk")} for i in ideas}
+    ideas_js = {i["id"]: {k: i.get(k) for k in ("title", "format", "why", "trend", "evidence", "cost_video", "cost_script", "production", "risk")} for i in ideas}   # evidence: none on Free (issue #170)
     pfs = " · ".join(PF[p] for p in w["platforms"])
     labels_js = _script({k: L[k] for k in L if k != "days"})
     week_js = _script(dict(week=w['week'], budget=w['budget'], slots=[dict(slot=s['slot'], id=s['id'], output=s.get('output', 'video')) for s in w['slots']], reserves=[]))
