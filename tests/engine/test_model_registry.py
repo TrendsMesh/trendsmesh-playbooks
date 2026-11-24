@@ -17,7 +17,7 @@ def _ids(rows):
 
 def test_the_shipped_registry_and_aliases_pass_their_own_check():
     assert reg.validate(reg.load(), reg.aliases()) == []
-    assert reg.checked() == date(2026, 11, 22)
+    assert reg.checked() == date(2026, 11, 24)
 
 
 def test_the_stars_are_section_4s():
@@ -59,7 +59,7 @@ def test_the_groups_of_photos_and_image_to_video():
 ])
 def test_section_4s_prices(model, variant, usd, per):
     price = reg.price(model, variant)
-    assert (price["usd"], price["per"], price["checked"]) == (usd, per, "2026-11-22")
+    assert (price["usd"], price["per"], price["checked"]) == (usd, per, "2026-11-24")
 
 
 def test_a_price_per_15_s_is_what_the_issue_shows():
@@ -178,8 +178,8 @@ def test_the_disclosure_markers_cover_every_paid_model():
 
 
 def test_the_registry_is_stale_after_30_days():
-    assert not reg.stale(date(2026, 12, 22))
-    assert reg.stale(date(2026, 12, 23))
+    assert not reg.stale(date(2026, 12, 24))
+    assert reg.stale(date(2026, 12, 25))
 
 
 def _cli(capsys, *argv):

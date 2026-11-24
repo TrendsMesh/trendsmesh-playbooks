@@ -19,7 +19,7 @@
 # the maintainer applies exactly the decisions the owner writes there.
 
 version: 1
-checked: 2026-11-22          # the day the prices were read on Replicate and ElevenLabs
+checked: 2026-11-24          # the day the prices were read on Replicate and ElevenLabs
 tested: 2026-11-17           # the owner's blind test that set the groups and the stars
 
 tasks:
@@ -434,7 +434,7 @@ models:
     cannot: [language_code]
     tested: {date: 2026-11-05, result: "Refresh an ad's line among the original's sentences (variants.md section 3)"}
     variants:
-      default: {send: {}, price: {credits: 1.0, per: character, checked: 2026-11-22}}
+      default: {send: {}, price: {credits: 1.0, per: character, checked: 2026-11-24}}
     tasks: {}
 
   - id: eleven_flash_v2_5
@@ -447,7 +447,7 @@ models:
     cannot: []
     tested: {date: 2026-11-12, result: "not suggested"}
     variants:
-      default: {send: {}, price: {credits: 0.5, per: character, checked: 2026-11-22}}
+      default: {send: {}, price: {credits: 0.5, per: character, checked: 2026-11-24}}
     tasks: {}
 
   - id: eleven_text_to_sound_v3
@@ -489,7 +489,7 @@ models:
     cannot: []
     tested: {date: 2026-11-17, result: "suggested voice changer"}
     variants:
-      default: {send: {}, price: {credits: 1000, per: minute, checked: 2026-11-22}}
+      default: {send: {}, price: {credits: 1000, per: minute, checked: 2026-11-24}}
     tasks:
       voice_changer: [{variant: default, group: suggested, star: true}]
 
@@ -548,7 +548,7 @@ models:
     cannot: []
     tested: {date: 2026-11-12, result: "kept as it is"}
     variants:
-      default: {send: {}, price: {credits: 330, per: minute, checked: 2026-11-22}}
+      default: {send: {}, price: {credits: 330, per: minute, checked: 2026-11-24}}
     tasks:
       transcription: [{variant: default, group: suggested, star: true}]
 

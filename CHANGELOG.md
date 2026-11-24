@@ -4,6 +4,9 @@ What changed in each version of the TrendsMesh playbooks plugin.
 
 ## Unreleased
 
+- **The models' prices were read again on 24 November.** The Replicate prices and ElevenLabs rates that match
+  their provider's page carry the new date. Music v2.5 and the v4 voices keep their dates of 12 November, and the
+  caption-removal model its date of 5 November, until they are checked by hand.
 - **You pick your channel's text set on the images page of its first video.** The three text sets were only shown
   as pictures beside the images, and the pick had to go through a note. The images stage now has its own "Text
   set" item with the three sets drawn on your words: one click picks one, and recording the stage saves it for the
