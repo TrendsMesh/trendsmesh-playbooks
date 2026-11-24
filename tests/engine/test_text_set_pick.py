@@ -57,6 +57,40 @@ def test_a_pick_that_is_not_the_latest_style_is_made_the_latest_approved_and_sav
     assert got["owner"] == ["channel", "exampleedu"]
 
 
+def _brand_inventory(run):
+    """What `tm tool site brand` left in the run: the brand's font and its logo, listed in 02_research/brand_v01.json."""
+    folder = run.path / "02_research" / "brand"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "Brand-Bold.ttf").write_bytes(b"\x00\x01\x00\x00 a font")
+    (folder / "logo.png").write_bytes(b"\x89PNG logo")
+    (run.path / "02_research" / "brand_v01.json").write_text(json.dumps(
+        {"fonts": [{"family": "Brand Sans", "files": [{"file": "02_research/brand/Brand-Bold.ttf"}]}],
+         "logos": [{"png": "02_research/brand/logo.png", "names_brand": True}]}), encoding="utf-8")
+
+
+@pytest.mark.private_data
+def test_a_pick_is_saved_with_the_brands_font_and_logo_when_the_run_has_them(first):
+    """#176 line 74: the save adds them itself; nothing depends on Claude saving the set again."""
+    run, drawn = first
+    _brand_inventory(run)
+    got = text_sets.take_pick(run, drawn["pop"][0], note="pop")
+    saved = text_sets.for_run(run)
+    assert saved["font"]["family"] == "Brand Sans" and saved["font"]["file"].endswith("/text/brand-bold_v01.ttf")
+    assert saved["logo"].endswith("/text/logo_v01.png")
+    assert got["brand_files"] == {"font": "02_research/brand_v01.json", "logo": "02_research/brand_v01.json"}
+    said = organic_gates.text_set_said({"text_set": got})
+    assert "with the brand's font Brand Sans and logo" in said
+
+
+@pytest.mark.private_data
+def test_a_pick_without_the_brands_files_saves_the_set_as_drawn(first):
+    run, drawn = first
+    got = text_sets.take_pick(run, drawn["pop"][0], note="pop")
+    saved = text_sets.for_run(run)
+    assert saved["font"] is None and saved["logo"] is None and got["brand_files"] == {}
+    assert "brand's font" not in organic_gates.text_set_said({"text_set": got})
+
+
 @pytest.mark.private_data
 def test_a_pick_of_the_latest_style_copies_nothing(first):
     run, drawn = first

@@ -2,17 +2,21 @@
 with its accent, font and logo, picked once and used in every run, organic video's and Create an ad's alike.
 
     tm brand text-style save --run R --kind channel|brand --name N (--style 03_wip/text_style_vNN.json | --look L)
-                             [--accent #RRGGBB] [--font FILE] [--family NAME] [--logo FILE.png] --note "<their words>"
+                             [--accent #RRGGBB] [--font FILE] [--family NAME] [--logo FILE.png] [--no-brand-files]
+                             --note "<their words>"
     tm brand text-style show --run R | --name N --kind K [--workspace W]
 
 The set is kept beside the profile, in the same library folder, as its own append-only versions:
 `library/brands/<slug>/text_style_vNN.json` or `library/channels/<slug>/text_style_vNN.json`:
 
     {"schema": "text_style/1", "kind", "name", "look", "accent": "#RRGGBB" | null, "ink": "#111111" | "#FFFFFF",
-     "font": {"family", "file"} | null, "logo": "<library file>" | null, "note", "saved", "run"}
+     "font": {"family", "file"} | null, "logo": "<library file>" | null, "note", "saved", "run",
+     "brand_files"?: {"font"?, "logo"?: where the save took them from}}
 
 Its font and logo are copied once into `<that folder>/text/` (never overwritten), so a later run has them without
-the site or the user again. The profile schemas (`brand/1`, `channel/1`) are unchanged: Create an ad has no brand
+the site or the user again. A save given no font or no logo adds the brand's by itself when the plugin has it
+(`brand_kit`, #176 line 74): the run's `02_research/brand_vNN.json` (`tm tool site brand`), else the saved set of a
+brand the run is for; `brand_files` says where from. A font or logo given wins; `--no-brand-files` leaves them out. The profile schemas (`brand/1`, `channel/1`) are unchanged: Create an ad has no brand
 profile of its own (its brand is config.yaml's `brand.product`), and a set may be kept for a brand that has none yet.
 
 Whose set a run uses (`for_run`): organic video's, its channel's (config.yaml `channels`, the first), else the store
@@ -110,7 +114,7 @@ def _usable(source: Path, what: str, types: tuple[str, ...]) -> None:
 def _keep(folder: Path, source: Path, what: str, types: tuple[str, ...]) -> str:
     _usable(source, what, types)
     ext = source.suffix.lower()
-    stem = _slug(source.stem).lower() or what
+    stem = _slug(re.sub(r"_v\d+$", "", source.stem)).lower() or what   # another set's kept file: no second _vNN
     versions = brand._versions(folder, stem, re.escape(ext.lstrip(".")))
     kept = brand._write_new(folder, stem, source.read_bytes(), (versions[-1][0] if versions else 0) + 1, ext)
     return kept.as_posix()
@@ -126,8 +130,11 @@ def problems(look: object, accent: object) -> list[str]:
 
 
 def save(workspace: Path, kind: str, name: str, *, look: str, accent: str | None = None, font: Path | None = None,
-         font_family: str | None = None, logo: Path | None = None, run: RunFolder | None, note: str) -> Path:
-    """The set as the next `text_style_vNN.json` of the brand's or channel's library folder (the module docstring)."""
+         font_family: str | None = None, logo: Path | None = None, run: RunFolder | None, note: str,
+         brand_files: bool = True) -> Path:
+    """The set as the next `text_style_vNN.json` of the brand's or channel's library folder (the module docstring).
+    A font or logo not given is the brand's, when the plugin has it (`brand_kit`; `brand_files=False` leaves them
+    out); the saved file's `brand_files` names where each one added came from."""
     accent = accent.upper() if isinstance(accent, str) and oe.COLOUR.fullmatch(accent) else accent
     bad = problems(look, accent)
     if bad:
@@ -135,6 +142,14 @@ def save(workspace: Path, kind: str, name: str, *, look: str, accent: str | None
     for given, what, types in ((font, "font", FONT_TYPES), (logo, "logo", LOGO_TYPES)):
         if given is not None:
             _usable(Path(given), what, types)       # before anything is written
+    added = {}
+    if run is not None and brand_files and (font is None or logo is None):
+        kit = brand_kit(run)
+        if font is None and kit["font"]:
+            font, font_family = kit["font"]["path"], font_family or kit["font"]["family"]
+            added["font"] = kit["font"]["from"]
+        if logo is None and kit["logo"]:
+            logo, added["logo"] = kit["logo"]["path"], kit["logo"]["from"]
     folder = _folder(workspace, kind, name)
     ws = Path(workspace)
     kept_font = None
@@ -145,6 +160,8 @@ def save(workspace: Path, kind: str, name: str, *, look: str, accent: str | None
     data = {"schema": SCHEMA, "kind": kind, "name": name, "look": look, "accent": accent,
             "ink": accent_ink(accent) if accent else DARK, "font": kept_font, "logo": kept_logo, "note": note,
             "saved": date.today().isoformat(), "run": run.path.name if run is not None else None}
+    if added:
+        data["brand_files"] = added
     versions = brand._versions(folder, STEM)
     text = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
     return brand._write_new(folder, STEM, text, (versions[-1][0] if versions else 0) + 1)
@@ -165,8 +182,8 @@ def take_pick(run: RunFolder, style: str, *, note: str, sha256: str | None = Non
     """The user's pick of the sets drawn the first time (issue #165): the picked style made the latest (its bytes as
     the next `03_wip/text_style_vNN.json` when it is not, so the still drawn from it is still its look), approved
     (`organic_edit.approve`) and saved for the run's first owner, the channel (`save`). {style, picked_from, look,
-    approved, saved: the library file | None, owner: [kind, name] | None}; a run that names no owner is approved
-    only."""
+    approved, saved: the library file | None, owner: [kind, name] | None, brand_files: {font?, logo?: where the save took the
+    brand's from} (`save`), font_family}; a run that names no owner is approved only."""
     data = check_pick(run, style, sha256)
     path, rel, _ = oe._style_at(run, style)
     latest_style = run.latest(oe.WIP, oe.STYLE_STEM, "json")
@@ -180,15 +197,18 @@ def take_pick(run: RunFolder, style: str, *, note: str, sha256: str | None = Non
                         params={"look": data.get("look"), "picked_from": rel})
     approved = oe.approve(run, target_rel, by=by, note=note)
     whose = owners(run)
-    saved = None
+    saved, added, family = None, {}, None
     if whose:
         kind, name = whose[0]
         given = _from_style(run, target_rel)
         file = save(trend_spool.workspace_of(run), kind, name, look=given["look"], accent=given["accent"],
                     font=given["font"], font_family=given["font_family"], logo=given["logo"], run=run, note=note)
         saved = file.relative_to(trend_spool.workspace_of(run)).as_posix()
+        kept = json.loads(file.read_text(encoding="utf-8"))
+        added = kept.get("brand_files") or {}
+        family = kept["font"]["family"] if kept.get("font") else None
     return {"style": target_rel, "picked_from": rel, "look": data.get("look"), "approved": approved,
-            "saved": saved, "owner": list(whose[0]) if whose else None}
+            "saved": saved, "owner": list(whose[0]) if whose else None, "brand_files": added, "font_family": family}
 
 
 def latest(workspace: Path, kind: str, name: str) -> dict | None:
@@ -267,15 +287,10 @@ def for_run(run: RunFolder) -> dict | None:
 INVENTORY = ("02_research", "brand", "json")   # `tm tool site brand`'s inventory of the brand's font and logo
 
 
-def from_inventory(run: RunFolder) -> dict | None:
-    """A run-only set for Create an ad's first ad of a brand (issue #166), when no set is saved: the default look
-    with the first font file and the first logo PNG that names the brand (not one flagged too small) of the latest
-    `02_research/brand_vNN.json`, as {"look", "accent": None, "ink", "font": {"family", "file"} | None,
-    "logo": file | None, "file": the inventory, "run_only": True}, the files relative to the run (already in it).
-    None when the run is not an ad's, or the inventory has neither a font nor a logo. Never saved: the user approves
-    it with the edit, and `tm brand text-style save` keeps it then."""
-    if state.load(run).playbook != CREATE_AD:
-        return None
+def _inventory(run: RunFolder) -> tuple[dict | None, str | None, str] | None:
+    """(font {"family", "file"} | None, logo | None, the inventory) of the run's latest `02_research/brand_vNN.json`
+    (`tm tool site brand`): its first font file the sets draw, and its first logo PNG that names the brand and is not
+    flagged too small, both in the run; None without a readable inventory."""
     path = run.latest(*INVENTORY)
     if path is None:
         return None
@@ -296,10 +311,60 @@ def from_inventory(run: RunFolder) -> dict | None:
     logo = next((x["png"] for x in data.get("logos") or [] if isinstance(x, dict) and x.get("names_brand")
                  and not x.get("small") and isinstance(x.get("png"), str) and (run.path / x["png"]).is_file()),
                 None)
-    if font is None and logo is None:
+    return font, logo, path.relative_to(run.path).as_posix()
+
+
+def from_inventory(run: RunFolder) -> dict | None:
+    """A run-only set for Create an ad's first ad of a brand (issue #166), when no set is saved: the default look
+    with the first font file and the first logo PNG that names the brand (not one flagged too small) of the latest
+    `02_research/brand_vNN.json`, as {"look", "accent": None, "ink", "font": {"family", "file"} | None,
+    "logo": file | None, "file": the inventory, "run_only": True}, the files relative to the run (already in it).
+    None when the run is not an ad's, or the inventory has neither a font nor a logo. Never saved: the user approves
+    it with the edit, and `tm brand text-style save` keeps it then."""
+    if state.load(run).playbook != CREATE_AD:
         return None
+    found = _inventory(run)
+    if found is None or (found[0] is None and found[1] is None):
+        return None
+    font, logo, file = found
     return {"look": oe.DEFAULT_LOOK, "accent": None, "ink": DARK, "font": font, "logo": logo,
-            "file": path.relative_to(run.path).as_posix(), "run_only": True}
+            "file": file, "run_only": True}
+
+
+def brand_kit(run: RunFolder) -> dict:
+    """The brand's font and logo that a save adds when it is given none (#176 line 74, the gap of issue #166), each
+    from the first place that has it: the run's inventory (`_inventory`, `tm tool site brand`), else the latest saved
+    set of a brand the run is for (`owners`: Create an ad's brand, the store an organic channel sells, refresh-ad's
+    product) whose library file is there. {"font": {"family", "path", "from"} | None, "logo": {"path", "from"} | None};
+    only files the plugin already has, nothing is downloaded."""
+    kit: dict = {"font": None, "logo": None}
+    found = _inventory(run)
+    if found is not None:
+        font, logo, file = found
+        if font:
+            kit["font"] = {"family": font["family"], "path": run.path / font["file"], "from": file}
+        if logo:
+            kit["logo"] = {"path": run.path / logo, "from": file}
+    ws = trend_spool.workspace_of(run)
+    for kind, name in owners(run):
+        if kit["font"] and kit["logo"]:
+            break
+        if kind != "brand":
+            continue
+        try:
+            saved = latest(ws, kind, name)
+        except Stop:
+            continue
+        if not saved:
+            continue
+        font = saved.get("font") if isinstance(saved.get("font"), dict) else None
+        if kit["font"] is None and font and isinstance(font.get("file"), str) and (ws / font["file"]).is_file():
+            kit["font"] = {"family": font.get("family") or Path(font["file"]).stem, "path": ws / font["file"],
+                           "from": saved["file"]}
+        logo = saved.get("logo")
+        if kit["logo"] is None and isinstance(logo, str) and (ws / logo).is_file():
+            kit["logo"] = {"path": ws / logo, "from": saved["file"]}
+    return kit
 
 
 def _copy(run: RunFolder, ws: Path, library: str, what: str) -> str:
@@ -337,6 +402,19 @@ def into_run(run: RunFolder, saved: dict) -> dict:
             "logo": _copy(run, ws, saved["logo"], "logo") if saved.get("logo") else None}
 
 
+def brand_files_said(added: dict, family: str | None) -> str:
+    """" with the brand's font F and logo (where from)" for what a save added by itself, "" when nothing."""
+    parts = []
+    if added.get("font"):
+        parts.append(f"font {family}" if family else "font")
+    if added.get("logo"):
+        parts.append("logo")
+    if not parts:
+        return ""
+    sources = list(dict.fromkeys(v for v in (added.get("font"), added.get("logo")) if v))
+    return f" with the brand's {' and '.join(parts)} ({', '.join(sources)})"
+
+
 # --- tm brand text-style --------------------------------------------------------------------------------
 
 def add_parser(sub) -> None:
@@ -352,6 +430,8 @@ def add_parser(sub) -> None:
     t.add_argument("--font", help="the brand's font file (TTF, OTF, WOFF, WOFF2), in the run")
     t.add_argument("--family", help="the font's family name (default: the file's name)")
     t.add_argument("--logo", help="the brand's logo, a PNG in the run")
+    t.add_argument("--no-brand-files", action="store_true",
+                   help="save: without the brand's font and logo the save adds by itself when none is given")
     t.add_argument("--note", help="save: the user's words")
     t.add_argument("--workspace", help="show without --run: default the current workspace")
     t.add_argument("--json", action="store_true")
@@ -400,8 +480,12 @@ def run_cli(args: argparse.Namespace) -> int:
                  accent=args.accent or given["accent"],
                  font=run.given(args.font) if args.font else given["font"],
                  font_family=args.family or given["font_family"],
-                 logo=run.given(args.logo) if args.logo else given["logo"], run=run, note=args.note)
+                 logo=run.given(args.logo) if args.logo else given["logo"], run=run, note=args.note,
+                 brand_files=not args.no_brand_files)
     rel = saved.relative_to(trend_spool.workspace_of(run)).as_posix()
-    message = f"Saved {rel}: every run of this {args.kind} uses the {look} set from now on."
-    cli.emit(args, {"status": "done", "file": rel, "message": message}, message)
+    kept = json.loads(saved.read_text(encoding="utf-8"))
+    added = kept.get("brand_files") or {}
+    message = (f"Saved {rel}: every run of this {args.kind} uses the {look} set from now on"
+               f"{brand_files_said(added, kept['font']['family'] if kept.get('font') else None)}.")
+    cli.emit(args, {"status": "done", "file": rel, "brand_files": added, "message": message}, message)
     return 0

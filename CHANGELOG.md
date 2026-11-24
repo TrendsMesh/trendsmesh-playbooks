@@ -11,6 +11,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   as pictures beside the images, and the pick had to go through a note. The images stage now has its own "Text
   set" item with the three sets drawn on your words: one click picks one, and recording the stage saves it for the
   channel, so the next videos use it without asking.
+- **A saved text set keeps the brand's font and logo by itself.** A set picked on the page, or saved without
+  naming them, was kept without the brand's font and logo, unless Claude remembered to save it again with them.
+  The save now adds the font and logo the plugin already has (the ones read from the brand's site in this run, or
+  those of the brand's saved set) and says so; a font or logo you give still wins.
 - **The cover always shows the whole hook, readable.** A cover drawn from the first frame showed only the hook's
   first word in a set whose words animate in, and its white words could land on a white shape. The cover is now
   drawn with every word in place, and when the picture behind the text is too close to its colour, the words turn

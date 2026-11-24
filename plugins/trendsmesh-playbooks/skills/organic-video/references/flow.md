@@ -1254,11 +1254,12 @@ Show a task list with the times (two images about 1 minute) and a one-line statu
        saves it for the channel; its `then` says which set and where. In chat the same pick is the
        line `text-set: accept; choice: <set>`, read as the stage's other chat answers are. When the
        item stays undecided, ask in chat which
-       set the channel's videos use. When the brand has its own font or logo files, save the set
-       again with them: `tm brand text-style save --run R --kind channel --name <channel> --style
-       <the approved 03_wip/text_style_vNN.json> --font <file> --logo <file> --note "<their words>"
-       --json` (its font replaces Montserrat in every set but `native`, always TikTok Sans; the end
-       card shows the logo, or the brand's name without one). By rule (Just the big calls,
+       set the channel's videos use. The save adds the brand's font and logo by itself when the
+       plugin has them (the run's `02_research/brand_vNN.json` from `tm tool site brand`, else the
+       saved set of the store the channel sells); the `then` names them. Its font replaces
+       Montserrat in every set but `native`, always TikTok Sans; the end card shows the logo, or
+       the brand's name without one. Only files the user gives in chat need `--font <file> --logo
+       <file>` on `tm brand text-style save` (they win over the brand's). By rule (Just the big calls,
        Hands-off): the first of the three, drawn last again as the latest (`--look <it>`), approved
        `--by rule --note "the suggested text set"`, and saved with `tm brand text-style save`.
      - **A change** (another set, a size, a place) is a new version of the style (sizes in px at

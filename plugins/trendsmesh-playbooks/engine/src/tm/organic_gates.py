@@ -1127,8 +1127,10 @@ def text_set_said(got: dict) -> str:
     if not ts:
         return ""
     if ts["saved"]:
+        from tm import text_sets   # it reads organic modules: imported where it is used
+        brand = text_sets.brand_files_said(ts.get("brand_files") or {}, ts.get("font_family"))
         return (f" The channel's text set is now {ts['look']}: approved ({ts['style']}) and saved for "
-                f"{ts['owner'][0]} {ts['owner'][1]} ({ts['saved']}), so every next video uses it without asking; tell "
-                "the user it can be changed any time.")
+                f"{ts['owner'][0]} {ts['owner'][1]} ({ts['saved']}){brand}, so every next video uses it without "
+                "asking; tell the user it can be changed any time.")
     return (f" The {ts['look']} text set is approved for this video ({ts['style']}); the run names no channel, so it "
             "is not saved for one (tm brand text-style save).")

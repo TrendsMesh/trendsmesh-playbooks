@@ -128,6 +128,91 @@ def test_a_run_only_set_comes_from_an_ads_inventory_only(ws):
     assert text_sets.from_inventory(organic) is None and text_sets.from_inventory(_ad(ws, "Empty")) is None
 
 
+# --- the save adds the brand's font and logo by itself (#176 line 74, the gap of issue #166) -------------
+
+INVENTORY = {"fonts": [{"family": "Brand Sans", "files": [{"file": "02_research/brand/Brand-Bold.ttf"}]}],
+             "logos": [{"png": "02_research/brand/logo.png", "names_brand": True}]}
+
+
+def _inventory(run, data=INVENTORY):
+    files = _files(run)
+    (run.path / "02_research" / "brand_v01.json").write_text(json.dumps(data), encoding="utf-8")
+    return files
+
+
+def test_a_save_in_a_run_with_the_brands_inventory_keeps_its_font_and_logo(ws):
+    run = _organic(ws)
+    _inventory(run)
+    saved = text_sets.save(ws, "channel", "exampleedu", look="pop", run=run, note="pop")
+    data = json.loads(saved.read_text(encoding="utf-8"))
+    assert data["font"] == {"family": "Brand Sans", "file": "library/channels/exampleedu/text/brand-bold_v01.ttf"}
+    assert data["logo"] == "library/channels/exampleedu/text/logo_v01.png"
+    assert data["brand_files"] == {"font": "02_research/brand_v01.json", "logo": "02_research/brand_v01.json"}
+    assert (ws / data["logo"]).read_bytes() == b"\x89PNG logo"
+
+
+def test_a_save_without_the_brands_files_is_as_before(ws):
+    run = _organic(ws)
+    _files(run)                                              # files, but no inventory naming them
+    data = json.loads(text_sets.save(ws, "channel", "exampleedu", look="pop", run=run, note="pop")
+                      .read_text(encoding="utf-8"))
+    assert data["font"] is None and data["logo"] is None and "brand_files" not in data
+    _inventory(run, {"fonts": [], "logos": [{"png": "02_research/brand/logo.png", "names_brand": False},
+                                            {"png": "02_research/brand/logo.png", "names_brand": True,
+                                             "small": True}]})
+    data = json.loads(text_sets.save(ws, "channel", "exampleedu", look="pop", run=run, note="pop")
+                      .read_text(encoding="utf-8"))
+    assert data["font"] is None and data["logo"] is None   # a customer's logo, a small one: not the brand's
+
+
+def test_a_font_and_logo_given_win_and_the_brands_can_be_left_out(ws, capsys):
+    run = _organic(ws)
+    _inventory(run)
+    other = run.path / "02_research" / "Other.otf"
+    other.write_bytes(b"OTTO other")
+    data = json.loads(text_sets.save(ws, "channel", "exampleedu", look="pop", font=other, run=run, note="x")
+                      .read_text(encoding="utf-8"))
+    assert data["font"] == {"family": "Other", "file": "library/channels/exampleedu/text/other_v01.otf"}
+    assert data["logo"].endswith("logo_v01.png") and data["brand_files"] == {"logo": "02_research/brand_v01.json"}
+    code, out = _cli(capsys, "brand", "text-style", "save", "--run", str(run.path), "--kind", "channel",
+                     "--name", "exampleedu", "--look", "pill", "--no-brand-files", "--note", "no logo")
+    assert code == 0, out
+    data = json.loads((ws / out["file"]).read_text(encoding="utf-8"))
+    assert data["font"] is None and data["logo"] is None and "brand's" not in out["message"]
+
+
+def test_the_command_says_what_the_brand_added(ws, capsys):
+    run = _organic(ws)
+    _inventory(run)
+    code, out = _cli(capsys, "brand", "text-style", "save", "--run", str(run.path), "--kind", "channel",
+                     "--name", "exampleedu", "--look", "pill", "--note", "the pill")
+    assert code == 0, out
+    assert out["brand_files"] == {"font": "02_research/brand_v01.json", "logo": "02_research/brand_v01.json"}
+    assert "with the brand's font Brand Sans and logo (02_research/brand_v01.json)" in out["message"]
+
+
+def test_a_channel_save_takes_its_stores_font_and_logo_from_the_stores_saved_set(ws):
+    """Create an ad saved the brand's set with its files; the channel selling that brand gets them too."""
+    store = {"schema": "brand/1", "kind": "brand", "brand": "Pet Store", "stands_for": "Calm pets at home.",
+             "tone": ["warm", "plain", "dry"], "off_limits": [], "off_limits_asked": True, "claims": [],
+             "competitors": [], "guide": {"source": "none", "where": ""}, "drafted_from": ["landing"],
+             "confirmed": None, "catalog": {"products": [{"name": "Fountain", "packshot": None, "problems": []}]}}
+    brand.save(ws, store, run=None)
+    brand.save(ws, {**EXAMPLEEDU, "channel": "Cat Corner", "store": "Pet Store", "product_role": "incidental"},
+               run=None)
+    ad = _ad(ws)
+    font, logo = _files(ad)
+    text_sets.save(ws, "brand", "Pet Store", look="pill", font=font, font_family="Pet Sans", logo=logo, run=ad,
+                   note="the ad's set")
+    run = _organic(ws, "cat-corner")
+    data = json.loads(text_sets.save(ws, "channel", "cat-corner", look="marker", run=run, note="marker")
+                      .read_text(encoding="utf-8"))
+    assert data["font"] == {"family": "Pet Sans", "file": "library/channels/cat-corner/text/brand-bold_v01.ttf"}
+    assert data["logo"] == "library/channels/cat-corner/text/logo_v01.png"
+    assert data["brand_files"] == {"font": "library/brands/pet-store/text_style_v01.json",
+                                   "logo": "library/brands/pet-store/text_style_v01.json"}
+
+
 def test_a_bad_look_accent_or_file_is_refused(ws):
     run = _organic(ws)
     with pytest.raises(Stop, match="look must be one of"):
