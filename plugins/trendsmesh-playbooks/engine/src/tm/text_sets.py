@@ -204,7 +204,7 @@ def take_pick(run: RunFolder, style: str, *, note: str, sha256: str | None = Non
         file = save(trend_spool.workspace_of(run), kind, name, look=given["look"], accent=given["accent"],
                     font=given["font"], font_family=given["font_family"], logo=given["logo"], run=run, note=note)
         saved = file.relative_to(trend_spool.workspace_of(run)).as_posix()
-        kept = json.loads(file.read_text(encoding="utf-8"))
+        kept = cli.read_json(file)
         added = kept.get("brand_files") or {}
         family = kept["font"]["family"] if kept.get("font") else None
     return {"style": target_rel, "picked_from": rel, "look": data.get("look"), "approved": approved,
@@ -483,7 +483,7 @@ def run_cli(args: argparse.Namespace) -> int:
                  logo=run.given(args.logo) if args.logo else given["logo"], run=run, note=args.note,
                  brand_files=not args.no_brand_files)
     rel = saved.relative_to(trend_spool.workspace_of(run)).as_posix()
-    kept = json.loads(saved.read_text(encoding="utf-8"))
+    kept = cli.read_json(saved)
     added = kept.get("brand_files") or {}
     message = (f"Saved {rel}: every run of this {args.kind} uses the {look} set from now on"
                f"{brand_files_said(added, kept['font']['family'] if kept.get('font') else None)}.")
