@@ -43,6 +43,7 @@ def _data(run, capsys):
 
 # --- text_sets.take_pick -----------------------------------------------------------------------------
 
+@pytest.mark.private_data
 def test_a_pick_that_is_not_the_latest_style_is_made_the_latest_approved_and_saved(first):
     run, drawn = first
     style = drawn["outline"][0]
@@ -56,6 +57,7 @@ def test_a_pick_that_is_not_the_latest_style_is_made_the_latest_approved_and_sav
     assert got["owner"] == ["channel", "exampleedu"]
 
 
+@pytest.mark.private_data
 def test_a_pick_of_the_latest_style_copies_nothing(first):
     run, drawn = first
     got = text_sets.take_pick(run, drawn["pop"][0], note="pop")
@@ -64,6 +66,7 @@ def test_a_pick_of_the_latest_style_copies_nothing(first):
     assert text_sets.for_run(run)["look"] == "pop"
 
 
+@pytest.mark.private_data
 def test_a_run_naming_no_channel_is_approved_and_not_saved(first, monkeypatch):
     run, drawn = first
     monkeypatch.setattr(text_sets, "owners", lambda run: [])
@@ -71,6 +74,7 @@ def test_a_run_naming_no_channel_is_approved_and_not_saved(first, monkeypatch):
     assert got["saved"] is None and got["owner"] is None and organic_edit.approved_style(run) is not None
 
 
+@pytest.mark.private_data
 def test_a_style_changed_since_it_was_drawn_is_refused(first):
     run, drawn = first
     style = drawn["native"][0]
@@ -82,6 +86,7 @@ def test_a_style_changed_since_it_was_drawn_is_refused(first):
 
 # --- the images check-in ------------------------------------------------------------------------------
 
+@pytest.mark.private_data
 def test_the_first_videos_images_page_has_the_text_set_item(first, capsys):
     run, drawn = first
     data = _data(run, capsys)
@@ -99,6 +104,7 @@ def test_the_first_videos_images_page_has_the_text_set_item(first, capsys):
                for line in organic_gates.chat_answers(data))
 
 
+@pytest.mark.private_data
 def test_with_a_saved_set_or_fewer_than_three_drawn_there_is_no_text_set_item(tmp_path, remotion, capsys):  # noqa: F811
     run = _m5(tmp_path, picked=False, final=False)
     _draw(run, capsys, "outline", "native")
@@ -110,6 +116,7 @@ def test_with_a_saved_set_or_fewer_than_three_drawn_there_is_no_text_set_item(tm
     assert [it["id"] for it in _data(run, capsys)["items"]] == ["images-host"]
 
 
+@pytest.mark.private_data
 def test_a_choice_alone_is_the_pick_and_accept_alone_takes_the_suggested_set(first, capsys):
     run, _ = first
     data = _data(run, capsys)
@@ -121,6 +128,7 @@ def test_a_choice_alone_is_the_pick_and_accept_alone_takes_the_suggested_set(fir
     assert rows["images-host"]["action"] is None                     # an image's choice alone stays undecided
 
 
+@pytest.mark.private_data
 def test_the_pick_in_chat_approves_and_saves_the_set(first, capsys):
     run, drawn = first
     _ready(run, capsys, "gate_images", "images")
@@ -134,6 +142,7 @@ def test_the_pick_in_chat_approves_and_saves_the_set(first, capsys):
     assert organic_edit.approved_style(run)[0] == drawn["pop"][0]
 
 
+@pytest.mark.private_data
 def test_a_pick_whose_style_changed_stops_before_anything_is_written(first, capsys):
     run, drawn = first
     _ready(run, capsys, "gate_images", "images")
@@ -146,6 +155,7 @@ def test_a_pick_whose_style_changed_stops_before_anything_is_written(first, caps
     assert text_sets.for_run(run) is None
 
 
+@pytest.mark.private_data
 def test_a_dropped_or_undecided_text_set_saves_nothing(first, capsys):
     run, _ = first
     _ready(run, capsys, "gate_images", "images")
