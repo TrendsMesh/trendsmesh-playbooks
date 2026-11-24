@@ -280,9 +280,10 @@ the category.
   `references/pages.md`, "Pages that take decisions".
 - **Animatics on request** (CB11): after G3 the agent asks whether to make animatics, and for which
   concepts (`checkin-cards.md`); `tm decide animatics make --concepts C1,C3 --said "<their words>"` makes those alone
-  (D2), each drawn in a library style matched to the concept (`tm brief animatic --style auto`, a subagent's style
-  module per concept, then `--render`), then the page is built and published again to the same URL; `skip` makes
-  none.
+  (D2), each drawn in a library style matched to the concept (`tm brief animatic --style auto` with `--keywords`:
+  each concept's format, tone and hook in English, whatever the brief's language; the user picks a style only when
+  nothing scores), a subagent's style module per concept, then `--render`), then the page is built and published
+  again to the same URL; `skip` makes none.
 - **Hands-off never waits:** `tm brief choose --source rule` (every concept kept), `tm decide G3
   accept --by rule`; G3 and G4 are published as is, and no animatic is made (`tm decide animatics
   skip --by rule`).

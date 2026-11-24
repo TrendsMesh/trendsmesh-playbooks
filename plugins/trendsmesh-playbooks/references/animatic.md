@@ -39,10 +39,14 @@ block says what the storyboard shows:
 
 Three calls, for the concepts the user named:
 
-1. **The styles:** `tm brief animatic --run R --style auto --concepts C1,C3 --json` picks each
-   concept's style with the style ranking (`atlas_prompt.ranked`) for the concept's format
-   (`plugin.axes.format`, an organic brief's `organic.format`): a talking head, a screen recording and
-   a UGC phone video get different looks, and no two concepts of the brief share one. A brief for a
+1. **The styles:** `tm brief animatic --run R --style auto --concepts C1,C3 --keywords "C1:
+   format=...; tone=...; hook=..." "C3: ..." --json` picks each concept's style with the style ranking
+   (`atlas_prompt.ranked`) for the concept's format (`plugin.axes.format`, an organic brief's
+   `organic.format`), scored on its tone, hook and idea words against each style's card (never what a
+   style is poor for): a talking head, a screen recording and a UGC phone video get different looks,
+   and no two concepts of the brief share one. `--keywords` gives each concept's format, tone and hook
+   in a few English words, in English whatever the brief's language (the cards are English): always
+   pass them; the user is asked to pick a style only when nothing scored (`reason: none`). A brief for a
    channel puts the channel's own look first when it has one: `--own <number|styleId>`, the library
    style nearest the channel profile's `video_style` (`tm organic atlas-styles --channel <name>` lists
    it first). The user named a style: `--style <number|styleId>` gives it to every concept named. It

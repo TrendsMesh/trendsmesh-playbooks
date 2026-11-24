@@ -12,6 +12,7 @@ Every animatic is drawn in a library style; there is no sketch (the fixed scenes
 longer draw animatics, and the plugin no longer ships them). `style` (`tm brief animatic --style auto`, part of D2's
 make) writes each named concept's `animatic.style` (the styleId, chosen by `matched` from the concept's format, hook,
 idea and tone against the styles' cards (issue #162 item 3: a concept nothing matched is said plainly, reason `none`),
+with the English keywords Claude gives for its format, tone and hook whatever the brief's language, #176 line 54),
 no two concepts alike, the channel's own style first with `own`) and `animatic.poster` (the style's poster,
 copied into renders/), and a build prompt `<C>_prompt_vNN.txt` (`atlas_prompt.build`, the animatic mode). A subagent
 writes the style module `<C>_style_vNN.js`; `build` draws each concept from its latest module (written from its latest
@@ -455,15 +456,55 @@ def _card(key: object) -> dict:
     return atlas_prompt.find_style(sid if sid else str(key).strip())
 
 
-def matched(brief: dict, concept: dict, own: str | None = None) -> list[dict]:
+KEYWORD_KINDS = ("format", "tone", "hook")
+
+
+def keywords_arg(values: list[str] | None, concepts: list[str]) -> dict[str, dict[str, str]]:
+    """`--keywords` (#176 line 54): `C1: format=talking head; tone=warm, friendly; hook=fridge, food waste` per
+    concept, the English words Claude gives for its format, tone and hook whatever the brief's language. {concept
+    id: {kind: words}}; a ValueError for a value it cannot read, a kind other than KEYWORD_KINDS, an empty one, or a
+    concept not named."""
+    out: dict[str, dict[str, str]] = {}
+    for value in values or []:
+        cid, sep, rest = value.partition(":")
+        cid = cid.strip()
+        if not sep or not re.fullmatch(r"[A-Za-z0-9_-]+", cid):
+            raise ValueError(f"--keywords {value!r}: write it as 'C1: format=...; tone=...; hook=...' (the concept's "
+                             "id, a colon, then format, tone and hook in English, each kind=words, split by ';').")
+        if cid not in concepts:
+            raise ValueError(f"--keywords {value!r}: {cid} is not one of the concepts named ({', '.join(concepts)}).")
+        kinds = out.setdefault(cid, {})
+        for part in (p.strip() for p in rest.split(";")):
+            if not part:
+                continue
+            kind, eq, words = (x.strip() for x in part.partition("="))
+            if not eq or kind.lower() not in KEYWORD_KINDS or not words:
+                raise ValueError(f"--keywords {value!r}: {part!r} is not one of format=..., tone=..., hook=... "
+                                 "with words after the '='.")
+            kinds[kind.lower()] = words
+        if not kinds:
+            raise ValueError(f"--keywords {value!r}: give at least one of format=..., tone=..., hook=....")
+    return out
+
+
+def matched(brief: dict, concept: dict, own: str | None = None, keywords: dict | None = None) -> list[dict]:
     """Every style ranked for a concept (issue #162 item 3), each card with `reason`, `why`, `matched` (the concept's
     words its card has) and `shared_tone`: the channel's own style (`own`) first; then by score, a style that suits
     the concept's format (`rank_args`: SCORE_TYPE), each tone word in common with the concept's (the format's, the
     brief's tone and the concept's words: SCORE_TONE) and each other word of the concept's hook and idea in its card
-    (SCORE_WORD), ties in `atlas_prompt.ranked`'s order. `reason`: channel, words, type, tone, or none when nothing
-    matched (said plainly in `why`, never a silent fallback)."""
-    kind, format_tone = rank_args(concept_format(concept))
+    (SCORE_WORD), ties in `atlas_prompt.ranked`'s order. `keywords` (#176 line 54: {format, tone, hook}, the English
+    words Claude gives, whatever the brief's language) count with the concept's own: the format's first for
+    `rank_args`, its tone words as tones, the format's and hook's words as words. `reason`: channel, words, type,
+    tone, or none when nothing scored (said plainly in `why`, never a silent fallback)."""
+    keywords = keywords or {}
+    kind, format_tone = rank_args(keywords.get("format"))
+    if kind is None:
+        kind, format_tone = rank_args(concept_format(concept))
     words, tones = concept_words(brief, concept)
+    words |= _words(keywords.get("format")) | _words(keywords.get("hook"))
+    said = set(re.findall(r"[a-z]+", str(keywords.get("tone") or "").lower()))
+    tones = [*tones, *(t for t in atlas_prompt.TONES if t in said or any(TONE_HINTS.get(w) == t for w in said))]
+    words -= set(tones)
     tone = list(dict.fromkeys([*format_tone, *tones]))
     ranked = atlas_prompt.ranked(channel_type=kind, tone=tone, own=own)
     scored = []
@@ -479,11 +520,13 @@ def matched(brief: dict, concept: dict, own: str | None = None) -> list[dict]:
     return [card for *_, card in sorted(scored, key=lambda x: x[:3])]
 
 
-def choose_styles(brief: dict, concepts: list[str], given: str | None = "auto", own: object = None) -> dict[str, dict]:
+def choose_styles(brief: dict, concepts: list[str], given: str | None = "auto", own: object = None,
+                  keywords: dict[str, dict] | None = None) -> dict[str, dict]:
     """{concept id: its style card with `reason`, `why` and `matched`}: `given` (a number or styleId) for every
     concept named, else each concept's first style in `matched` (its format, hook, idea and tone against the
-    styles' cards), the channel's own style (`own`) first, else one no other concept of the brief has (three
-    concepts get three looks). A ValueError for an unknown style."""
+    styles' cards, with the English `keywords` Claude gave for it, {concept id: {format, tone, hook}}), the
+    channel's own style (`own`) first, else one no other concept of the brief has (three concepts get three looks).
+    A ValueError for an unknown style."""
     if given not in (None, "auto"):
         card = _card(given)
         return {cid: {**card, "reason": "given", "why": REASONS["given"], "matched": []} for cid in concepts}
@@ -494,7 +537,7 @@ def choose_styles(brief: dict, concepts: list[str], given: str | None = "auto", 
     for x in listed:
         if x.get("id") not in concepts:
             continue
-        ranked = matched(brief, x, own_id)
+        ranked = matched(brief, x, own_id, (keywords or {}).get(x["id"]))
         pick = ranked[0] if own_id else next((s for s in ranked if s["styleId"] not in taken), ranked[0])
         taken.append(pick["styleId"])
         out[x["id"]] = pick
@@ -593,19 +636,24 @@ def _number(path: Path) -> int:
 
 
 def style(run: RunFolder, brief_path: Path | None, *, concepts: list[str] | None = None, given: str | None = "auto",
-          own: object = None, formats: list[str] | None = None) -> dict:
+          own: object = None, formats: list[str] | None = None, keywords: list[str] | None = None) -> dict:
     """`tm brief animatic --style`: each concept named (default: all) gets its library style (`choose_styles`) in a
     new brief version, as `animatic.style` with its poster (`animatic.poster`, copied beside the renders; earlier MP4s
     are left out), and a build prompt `03_wip/animatic/<C>_prompt_vNN.txt` (`atlas_prompt.build`, the
     animatic mode, at the first format's frame) for the subagent that writes the style module `<C>_style_vNN.js`.
-    {brief, formats, styles: [{concept, style, name, reason, why, poster, prompt, module}]}. ValueError for an
-    unknown style or concept, Stop for a brief or picture that cannot be drawn: nothing is written then."""
+    {brief, formats, styles: [{concept, style, name, reason, why, poster, prompt, module}]}. `keywords` are the
+    `--keywords` values (`keywords_arg`: each concept's English format, tone and hook words, #176 line 54), only with
+    `given` auto. ValueError for an unknown style or concept, keywords it cannot read or with a given style, Stop for a brief or picture that cannot be drawn: nothing is written then."""
     from tm import brief_page   # brief_page -> brief_checks -> this module
 
     _, rel, brief = brief_page.load_brief(run, brief_path)
     drawn = formats_of(run) if formats is None else _checked_formats(formats, "--formats")
     named = [concept["id"] for concept in _concepts(rel, brief, concepts)]
-    picked = choose_styles(brief, named, given, own)
+    if keywords and given not in (None, "auto"):
+        raise ValueError("--keywords go with --style auto: they match a style to each concept; a style given by its "
+                         "number or styleId is used as it is.")
+    said = keywords_arg(keywords, named)
+    picked = choose_styles(brief, named, given, own, said)
     pictures = {x["id"]: _pictures(run, rel, x) for x in brief["concepts"]
                 if isinstance(x, dict) and x.get("id") in picked}
     new = copy.deepcopy(brief)
@@ -621,7 +669,8 @@ def style(run: RunFolder, brief_path: Path | None, *, concepts: list[str] | None
     write_new(target, json.dumps(new, ensure_ascii=False, indent=1) + "\n")
     out = _rel(run, target)
     manifest.record(run, out, FINAL, STYLE_SOURCE, parent=rel,
-                    params={"animatic_styles": {cid: card["styleId"] for cid, card in picked.items()}})
+                    params={"animatic_styles": {cid: card["styleId"] for cid, card in picked.items()},
+                            **({"animatic_keywords": said} if said else {})})
     (run.path / WIP).mkdir(parents=True, exist_ok=True)
     rows = []
     for concept in new["concepts"]:

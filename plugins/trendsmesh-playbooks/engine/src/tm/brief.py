@@ -13,8 +13,9 @@
                                                      the one tm page published recorded, unless given)
     tm brief decisions --run R --stage S [--file F | --text F] [--json]   03_wip/decisions_<stage>_vNN.json
     tm brief choose --run R [--drop C2[,C3]] --source page|chat|rule [--decisions F] [--keep-carried] [--json]
-    tm brief animatic --run R --style auto|<style> [--own <style>] [--concepts ...] [--json]   CB11, first: the
-                                                     library styles and build prompts (issue #138 item 4)
+    tm brief animatic --run R --style auto|<style> [--own <style>] [--concepts ...] [--keywords "C1: format=..;
+        tone=..; hook=.." ...] [--json]              CB11, first: the library styles and build prompts (issue #138
+                                                     item 4), matched on the English keywords (#176 line 54)
     tm brief animatic --run R [--concepts C1 ...] [--formats 9x16 4x5] [--render] [--json]   then each concept
                                                      drawn from its style module (#148 line 2: always styled)
     tm brief evidence --run R [--json]               the clips' thumbnails and as-of dates (CB8)
@@ -152,6 +153,9 @@ def _setup_media(sub) -> None:
                         "its build prompt for the style module")
     c.add_argument("--own", metavar="STYLE",
                    help="with --style auto: the library style nearest the channel's own video style, first")
+    c.add_argument("--keywords", nargs="+", action="append", metavar="'C1: format=..; tone=..; hook=..'",
+                   help="with --style auto: each concept's format, tone and hook in English keywords, whatever the "
+                        "brief's language; the style is scored on them (and on the concept's own words)")
     c.add_argument("--json", action="store_true")
     c = sub.add_parser("evidence", help=f"keep the evidence clips' thumbnails in {brief_page.EVIDENCE} and their "
                                         "as-of dates (CB8)")
@@ -343,8 +347,9 @@ def _animatic_style(args: argparse.Namespace, run: RunFolder, named: list[str] |
     if args.render:
         raise ValueError("--style comes before --render: it chooses the styles and writes the build prompts; a "
                          "subagent then writes each style module, and tm brief animatic --render draws them.")
+    said = [v for group in args.keywords or [] for v in group]
     got = animatic.style(run, run.latest(brief_checks.FINAL, brief_checks.STEM, "json"), concepts=named,
-                         given=args.style, own=args.own, formats=args.formats)
+                         given=args.style, own=args.own, formats=args.formats, keywords=said)
     picks = "; ".join(f"{r['concept']}: {r['name']} ({r['why']})" for r in got["styles"])
     todo = "; ".join(f"{r['concept']}: {r['prompt']} -> {r['module']}" for r in got["styles"])
     ids = ",".join(r["concept"] for r in got["styles"])
@@ -352,7 +357,13 @@ def _animatic_style(args: argparse.Namespace, run: RunFolder, named: list[str] |
                f"concept. Have a subagent write each concept's style module from its prompt ({todo}), then draw them "
                f"with tm brief animatic --run {args.run} --render --concepts {ids}.")
     unmatched = [r for r in got["styles"] if r["reason"] == "none"]
-    if unmatched:                     # issue #162 item 3: never a silent fallback
+    given = set(animatic.keywords_arg(said, [r["concept"] for r in got["styles"]]))
+    bare = [r["concept"] for r in unmatched if r["concept"] not in given]
+    if bare:                          # #176 line 54: the keywords first, the question only when nothing scores
+        message += (f" No keywords for {', '.join(bare)}: run this again with --keywords "
+                    "'<id>: format=<words>; tone=<words>; hook=<words>' per concept, in English whatever the "
+                    "brief's language (the style is scored on them), before asking the user anything.")
+    elif unmatched:                   # issue #162 item 3: never a silent fallback
         names = ", ".join(f"{r['concept']} ({r['name']})" for r in unmatched)
         message += (f" Nothing in the format, hook, idea or tone of {names} matched a library style: before the "
                     "subagents write the modules, ask the user to pick a style (offer two or three from tm organic "
@@ -390,6 +401,8 @@ def _animatic(args: argparse.Namespace, run: RunFolder) -> int:
     named = cli.ids_arg(args.concepts) or None
     if args.own is not None and args.style is None:
         raise ValueError("--own goes with --style auto: it puts the channel's own style first.")
+    if args.keywords and args.style is None:
+        raise ValueError("--keywords go with --style auto: they match a style to each concept.")
     if args.style is not None:
         return _animatic_style(args, run, named)
     items = animatic.build(run, run.latest(brief_checks.FINAL, brief_checks.STEM, "json"), concepts=named,

@@ -516,13 +516,19 @@ drawn in a library style matched to its concept: there is no sketch (owner decis
 
 - **Make:** `tm decide animatics make --concepts C1,C3 --run R --said "<their words>"` (the concepts the user named; "all"
   is every concept id), then three steps:
-  1. **The styles:** `tm brief animatic --run R --style auto --concepts C1,C3 --json` picks each
-     concept's style from its format, hook, idea and tone, matched against each style's card, no two
-     concepts alike, and writes a new brief version with `animatic.style` and its poster, and a build
-     prompt per concept. The user named a style: `--style <number|styleId>`. A brief for a channel with
-     its own look: `--own <number|styleId>`, the library style nearest its `video_style`, first. Tell
-     the user each concept's style in one line, with its why (`styles[].why`). A concept nothing
-     matched (`reason: none`): ask the user to pick its style or confirm this one before step 2.
+  1. **The styles:** `tm brief animatic --run R --style auto --concepts C1,C3 --keywords "C1:
+     format=talking head; tone=warm, friendly; hook=fridge, food waste" "C3: format=...; tone=...;
+     hook=..." --json` picks each concept's style from its format, hook, idea and tone, matched
+     against each style's card, no two concepts alike, and writes a new brief version with
+     `animatic.style` and its poster, and a build prompt per concept. Always pass `--keywords`, one
+     per concept: its format, tone and hook in a few English words each, **in English whatever the
+     brief's language** (the styles' cards are English, so a Polish brief's own words match
+     nothing; the style is scored on these keywords). The user named a style: `--style
+     <number|styleId>` (no keywords). A brief for a channel with its own look: `--own
+     <number|styleId>`, the library style nearest its `video_style`, first. Tell the user each
+     concept's style in one line, with its why (`styles[].why`), in the user's language. Ask the user
+     only when nothing scored (`reason: none` with keywords given): to pick its style or confirm this
+     one before step 2.
   2. **The modules:** one subagent per concept, in parallel, writes the style module from the
      concept's prompt (the answer's `styles[].prompt` to `styles[].module`): give it the prompt file and
      the module path, and nothing else to do.

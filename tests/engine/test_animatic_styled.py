@@ -143,17 +143,82 @@ def _unmatched(brief: dict) -> dict:
 
 def test_nothing_matched_is_said_plainly_and_the_agent_asks(run, capsys):
     """Never a silent fallback: with nothing to match, the reason says so, and the answer tells the agent to have
-    the user pick a style or confirm this one."""
+    the user pick a style or confirm this one (#176 line 54: with keywords given, and only when nothing scores)."""
     picked = animatic.choose_styles(_unmatched(_ad()), ["C1"])["C1"]
     assert picked["reason"] == "none" and picked["matched"] == []
     assert "nothing" in picked["why"].lower() and "next free style" not in picked["why"]
     (run.path / V01).write_text(json.dumps(_unmatched(_ad()), ensure_ascii=False), encoding="utf-8")
-    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1",
+                     "--keywords", "C1: hook=lodówka")
     assert code == 0, out
+    assert "No keywords" not in out["message"]
     assert out["styles"][0]["reason"] == "none"
     message = out["message"]
     assert "matched" in message and "pick" in message and "confirm" in message
     assert "--style <number|styleId> --concepts C1" in message
+
+
+POLISH_KEYWORDS = {"format": "carousel, list", "tone": "warm, friendly", "hook": "fridge, food waste, weekly list"}
+
+
+def test_a_polish_concept_with_english_keywords_gets_a_style_without_the_question(run, capsys):
+    """#176 line 54: the style is scored on the English keywords Claude passes for the concept's format, tone and
+    hook, whatever the brief's language; a Polish concept with them is matched, and nobody is asked."""
+    picked = animatic.choose_styles(_unmatched(_ad()), ["C1"], keywords={"C1": POLISH_KEYWORDS})["C1"]
+    assert picked["reason"] != "none", picked["why"]
+    assert "warm" in picked["shared_tone"] or picked["matched"], picked
+    (run.path / V01).write_text(json.dumps(_unmatched(_ad()), ensure_ascii=False), encoding="utf-8")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1",
+                     "--keywords", "C1: format=carousel, list; tone=warm, friendly; hook=fridge, food waste")
+    assert code == 0, out
+    assert out["styles"][0]["reason"] != "none"
+    assert "pick a style" not in out["message"]
+    params = [json.loads(r["params"]) for r in manifest.rows(run) if r["file"] == out["brief"]]
+    assert params and params[-1]["animatic_keywords"]["C1"]["tone"] == "warm, friendly"
+
+
+def test_the_keywords_hook_words_meet_the_styles_card_but_never_its_poor_for_part():
+    """The hook keywords count as the concept's own words do: against the card's name, description and the
+    positive part of `suits`; what a style is poor for never counts."""
+    brief = _unmatched(_ad())
+    picked = animatic.choose_styles(brief, ["C1"], keywords={"C1": {"hook": "investigation, mystery, money",
+                                                                     "tone": "serious"}})["C1"]
+    assert picked["styleId"] == "noir" and {"investigation", "mystery"} <= set(picked["matched"])
+    poor = {}
+    for s in atlas_prompt.ranked():
+        parts = str(atlas_prompt.find_style(s["styleId"]).get("suits") or "").split(";", 1)
+        if len(parts) == 2:
+            poor = {"id": s["styleId"], "words": animatic._words(parts[1]) - animatic._card_words(s["styleId"])}
+            if poor["words"]:
+                break
+    assert poor.get("words"), "no style's card has a poor-for word of its own"
+    cards = animatic.matched(brief, _concept(brief, "C1"),
+                             keywords={"hook": ", ".join(sorted(poor["words"]))})
+    card = next(c for c in cards if c["styleId"] == poor["id"])
+    assert card["matched"] == []
+
+
+def test_only_a_concept_nothing_scores_on_asks_and_no_keywords_says_to_pass_them(run, capsys):
+    """The question comes only when nothing scores; when no keywords were given, the answer first says to pass
+    them in English."""
+    (run.path / V01).write_text(json.dumps(_unmatched(_ad()), ensure_ascii=False), encoding="utf-8")
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1")
+    assert code == 0, out
+    assert "--keywords" in out["message"] and "English" in out["message"]
+
+
+@pytest.mark.parametrize("given", ["C1 format=carousel", "C1: colour=red", "C9: tone=warm", "C1: tone="])
+def test_keywords_that_cannot_be_read_are_refused(run, capsys, given):
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "auto", "--concepts", "C1",
+                     "--keywords", given)
+    assert code != 0 and "--keywords" in out.get("message", json.dumps(out)), out
+    assert run.latest("04_final", "brief_pack", "json").name == "brief_pack_v01.json"     # nothing written
+
+
+def test_keywords_go_with_style_auto(run, capsys):
+    code, out = _cli(capsys, "brief", "animatic", "--run", str(run.path), "--style", "noir", "--concepts", "C1",
+                     "--keywords", "C1: tone=warm")
+    assert code != 0 and "--keywords" in json.dumps(out), out
 
 
 def test_the_channels_own_style_comes_first_and_a_given_style_is_kept():
