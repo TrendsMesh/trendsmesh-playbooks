@@ -195,10 +195,12 @@ def test_the_week_check_writes_each_videos_cost_and_its_source(tmp_path, capsys)
 @pytest.mark.private_data
 def test_week_page_matches_original_after_wording_table(tmp_path, capsys):
     """The week page the plugin builds from ExampleEdu's week (with its plugin blocks) is the reference page, made by
-    the handoff's weekly_page.py under Python 3.12 (fixtures/organic/README.md), once the wording table is applied."""
+    the handoff's weekly_page.py under Python 3.12 (fixtures/organic/README.md), once the wording table is applied,
+    and but for the plugin's own changes: each video's cost from the model registry, as the week check wrote it
+    (#137), and no "meta" label in the script, the page writing the count in the form the number takes (issue #3)."""
     run = _week_run(tmp_path)
     assert organic_week.checked_gap(run) is not None and week_page.built_gap(run) is not None
-    _checked(run, capsys)
+    checked = json.loads(_checked(run, capsys).read_text(encoding="utf-8"))
     assert organic_week.checked_gap(run) is None and stepchecks.run("week_checked", run) is None
     out = _page(run, capsys)
     assert out["folder"] == "04_final/week_v01" and out["lang"] == "pl"
@@ -206,7 +208,14 @@ def test_week_page_matches_original_after_wording_table(tmp_path, capsys):
     golden = (FIXTURES / "week_golden.html").read_text(encoding="utf-8").replace("\r", "")
     priced = re.search(r'<p class="small">Koszty wideo: [^<]*</p>', built)   # #137: where the costs come from
     assert priced and "2026-" in priced[0]
-    assert built.replace(priced[0], "") == worded(golden, "pl")
+    want = worded(golden, "pl")
+    meta = re.search(r'"meta": "[^"]*", ', want)
+    assert meta and "{n}" in meta[0] and '"meta": ' not in built
+    want = want.replace(meta[0], "")
+    for idea in checked["slots"] + checked["reserves"]:
+        want, n = re.subn(rf'("{idea["id"]}": {{[^{{}}]*?"cost_video": )[0-9.]+', rf"\g<1>{idea['cost_video']}", want)
+        assert n == 1, idea["id"]
+    assert built.replace(priced[0], "") == want
     assert week_page.built_gap(run) is None and stepchecks.run("week_page_built", run) is None
     week = exampleedu.week()
     week["note"] = week["note"].replace("Suchy", "Mokry")

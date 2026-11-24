@@ -326,17 +326,25 @@ def test_new_folder_refused_while_deciding(tmp_path, capsys):
 
 @pytest.mark.private_data
 def test_record_published_keeps_awaiting(tmp_path, capsys):
+    """A publish keeps the wait for decisions; a new version while people decide is refused until their store is
+    read (issue #90), and once a read shows it empty they decide on the new version."""
     run = _idea_run(tmp_path)
     _check(run, capsys)
     _build(run, capsys)
     _published(run)
     waiting = page.await_(run, "proposals", "v1")
+    _published(run)                                                        # the same version again
+    record = state.load(run).pages["proposals"]
+    assert record["awaiting"] == waiting and record["version"] == "v1"
+    with pytest.raises(page.Deciding, match="version v2 is not recorded"):
+        _published(run, "v2")                                              # their decisions are not read
+    _save_db(run, _db_text(), _later(1))                                   # read: nobody has decided yet
     _published(run, "v2")                                                  # republished to the same slug
     record = state.load(run).pages["proposals"]
-    assert record["awaiting"] == waiting and record["version"] == "v2"
+    assert record["version"] == "v2" and record["awaiting"] == {**waiting, "version": "v2", "at": record["published_at"]}
     code, out = _cli(capsys, "page", "published", "--run", str(run.path), "--page", "proposals", "--slug", SLUG,
-                     "--version", "v3")
-    assert code == 0 and "awaiting" not in out and page.awaiting(run, "proposals") == waiting
+                     "--version", "v2")
+    assert code == 0 and "awaiting" not in out and page.awaiting(run, "proposals") == record["awaiting"]
     # 0.5.0 kept the brief page's wait in brief.awaiting: read, it is where every page keeps it
     brief = RunFolder.create(tmp_path / "ws", "ld", date(2026, 11, 7), playbook=CREATIVE_BRIEF)
     raw = json.loads((brief.path / "run.json").read_text(encoding="utf-8"))
@@ -649,6 +657,10 @@ def test_capabilities_pinned():
                  "downloads": {}},
         "script": {"downloads": {}},
         "week": {"db": rules("week"), "user": {"scopes": ["profile"]}},
+        # the plugin's own pages, none of the handoff's: the intake, the taste picks and the Models page
+        "intake": {"db": rules("intake"), "user": {"scopes": ["profile"]}},
+        "taste": {"db": rules("taste"), "user": {"scopes": ["profile"]}},
+        "models": {"db": rules("models"), "user": {"scopes": ["profile"]}},
     }
     assert set(brief_page.CAPABILITIES) >= {"db", "user"}                  # PB02's shape: db rules and user scopes
     assert "db.collection('decisions')" in proposals.JS and "db.doc('decisions/' + pid)" in proposals.JS

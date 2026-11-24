@@ -96,9 +96,12 @@ def test_rules_are_verbatim_from_flows_section_g():
     # the plugin's middle-run clauses (Task 12 fix round 1), after FLOWS' text, which stays verbatim
     middle = {"G2": "; in a middle run, recut (the re-cut of the middle)",
               "G3": "; in a middle run, the register of the diagnosed causes and the re-cut direction"}
+    # the owner's departures from FLOWS, on purpose: G11 is never decided by rule (issue 22)
+    departed = {"G11": "none: the launch is always the user's, at every level"}
     cat = checkins.load()
     for cid in G_IDS + ["E2b"]:
-        assert cat.checkins[cid].rule == defaults[cid] + middle.get(cid, ""), cid
+        want = departed.get(cid, defaults[cid] + middle.get(cid, ""))
+        assert cat.checkins[cid].rule == want, cid
 
 
 @pytest.mark.private_data

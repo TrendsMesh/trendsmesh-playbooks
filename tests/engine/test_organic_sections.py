@@ -58,6 +58,61 @@ def _code(path: Path) -> str:
     return text
 
 
+# Issue 3 (video fonts follow the market language): each composition loads its font through fonts.ts, in the subsets
+# of a `language` prop, instead of a Google Font in latin only. The handoff's lines -> the plugin's, in each file.
+_LANGUAGE_PROP = ("  // the market language (BCP 47); picks the font subsets, or the fallback family (fonts.ts). tm render "
+                  "fills it in.\n  language?: string;\n")
+FONT_DEPARTURES = {
+    "RankingList": (
+        ('import { loadFont } from "@remotion/google-fonts/Montserrat";\nimport { SAFE_1080 } from "./OrganicCaptions";\n'
+         '\nconst { fontFamily } = loadFont("normal", { weights: ["700", "800", "900"], subsets: ["latin"] });\n',
+         'import { SAFE_1080 } from "./OrganicCaptions";\nimport { compFont, loadFor } from "./fonts";\n'),
+        ("  showSafeZone?: boolean;\n", "  showSafeZone?: boolean;\n" + _LANGUAGE_PROP),
+        ('accent = "#FF8A1F", showSafeZone }) => {\n',
+         'accent = "#FF8A1F", showSafeZone, language }) => {\n'
+         '  const fontFamily = loadFor(compFont("RankingList"), language, ["700", "800", "900"]);\n'),
+    ),
+    "RankingSplit": (
+        ('import { loadFont } from "@remotion/google-fonts/Poppins";\n', ""),
+        ('import { RankItem, rankingSeconds } from "./RankingList";\n\n'
+         'const { fontFamily } = loadFont("normal", { weights: ["700", "800"], subsets: ["latin"] });\n'
+         'const italic = loadFont("italic", { weights: ["800"], subsets: ["latin"] });\n',
+         'import { RankItem, rankingSeconds } from "./RankingList";\nimport { compFont, loadFor } from "./fonts";\n'),
+        ("  showSafeZone?: boolean;\n", "  showSafeZone?: boolean;\n" + _LANGUAGE_PROP),
+        ("rowH = 88, showSafeZone }) => {\n",
+         "rowH = 88, showSafeZone, language }) => {\n"
+         '  const fontFamily = loadFor(compFont("RankingSplit"), language, ["700", "800"]);\n'
+         '  const italicFamily = loadFor(compFont("RankingSplit"), language, ["800"], "italic");\n'),
+        ("fontFamily: italic.fontFamily,", "fontFamily: italicFamily,"),
+    ),
+    "QuizGrid": (
+        ('import { loadFont } from "@remotion/google-fonts/Montserrat";\nimport { SAFE_1080 } from "./OrganicCaptions";\n',
+         'import { SAFE_1080 } from "./OrganicCaptions";\nimport { compFont, loadFor } from "./fonts";\n'),
+        ('const { fontFamily } = loadFont("normal", { weights: ["700", "800", "900"], subsets: ["latin"] });\n',
+         'const quizFont = (language?: string) => loadFor(compFont("QuizGrid"), language, ["700", "800", "900"]);\n'),
+        ("  background: string;\n", "  background: string;\n" + _LANGUAGE_PROP),
+        ("export const QuizGrid: React.FC<QuizGridProps> = (p) => {\n",
+         "export const QuizGrid: React.FC<QuizGridProps> = (p) => {\n  const fontFamily = quizFont(p.language);\n"),
+        ("<Countdown n={n}", "<Countdown fontFamily={fontFamily} n={n}"),
+        ("React.FC<{ n: number; k: number; cx: number; cy: number }> = ({ n, k, cx, cy }) => {\n",
+         "React.FC<{ fontFamily: string; n: number; k: number; cx: number; cy: number }> = ({ fontFamily, n, k, cx, cy }) "
+         "=> {\n"),
+        ("top: number; bottom: number }> = ({ p, k, left, width, top, bottom }) => {\n",
+         "top: number; bottom: number }> = ({ p, k, left, width, top, bottom }) => {\n"
+         "  const fontFamily = quizFont(p.language);\n"),
+    ),
+}
+
+
+def _handoff_code(name: str) -> str:
+    """The handoff's composition with the plugin's font changes (FONT_DEPARTURES), each found once in it."""
+    text = _code(HANDOFF_REMOTION / f"{name}.tsx")
+    for old, new in FONT_DEPARTURES[name]:
+        assert text.count(old) == 1, (name, old)
+        text = text.replace(old, new)
+    return text
+
+
 def _blocks(root: str) -> dict[str, str]:
     """Each `<Composition ... />` of a Root.tsx, by its id."""
     return {re.search(r'id="(\w+)"', b).group(1): b for b in re.findall(r"<Composition\n.*?\n  />", root, re.S)}
@@ -127,15 +182,15 @@ def _rendered(run, comp, props, rel, *, kind="render", frame=None):
 
 @pytest.mark.private_data
 def test_compositions_registered():
-    """The handoff's three motion-graphics compositions, as text (RankingSplit's evidence comment aside), and their
-    <Composition> blocks from the handoff's Root.tsx after the three already there (refresh-ad's two unchanged); render's COMPS
-    and its Comp Literal name all six."""
+    """The handoff's three motion-graphics compositions, as text (RankingSplit's evidence comment and the fonts of issue
+    3 aside), and their <Composition> blocks from the handoff's Root.tsx after the three already there (refresh-ad's
+    two unchanged); render's COMPS and its Comp Literal name all six."""
     root, original = _text(REMOTION / "Root.tsx"), _text(HANDOFF_REMOTION / "Root.tsx")
     ours, theirs = _blocks(root), _blocks(original)
     assert list(ours) == ["HookSwap", "WordCaptions", "OrganicCaptions", *MOTION]
     assert all(ours[name] == theirs[name] for name in ours)
     for name in MOTION:
-        assert _code(REMOTION / f"{name}.tsx") == _code(HANDOFF_REMOTION / f"{name}.tsx"), name
+        assert _code(REMOTION / f"{name}.tsx") == _handoff_code(name), name
     for line in ('import { RankingList, RankingListProps, rankingListDefaults, rankingSeconds } from "./RankingList";',
                  'import { RankingSplit, RankingSplitProps, rankingSplitDefaults, rankingSplitSeconds } from '
                  '"./RankingSplit";',
@@ -684,12 +739,14 @@ def test_tm_render_records_what_a_motion_render_is_made_under(tmp_path, monkeypa
     (the stills item's pack check, the picks it shows, when it was made); in another playbook's run it records none."""
     run, _ = _picked_cards(tmp_path)
     monkeypatch.setenv("TM_PLUGIN_DATA", str(tmp_path / "data"))        # never this computer's plugin folders
+    render.work_dir().mkdir(parents=True)                               # the props with their language go there
 
     def fake_sh(argv, cwd, what):
         Path(argv[5]).write_bytes(b"rendered")                         # the part file, renamed when done
 
     monkeypatch.setattr(render, "_need_setup", lambda: None)
     monkeypatch.setattr(render, "_sync_src", lambda: None)
+    monkeypatch.setattr(render.video_fonts, "check", lambda *a, **k: None)   # the font tables need the real setup
     monkeypatch.setattr(render, "_sh", fake_sh)
     props = _quiz_props([f"03_wip/{n}_v01_0.png" for n in CARDS])
     props["music"]["src"] = "03_wip/donut_v01_0.png"                    # any file of the run, not decoded here

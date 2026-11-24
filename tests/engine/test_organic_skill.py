@@ -538,10 +538,49 @@ def test_every_model_the_engine_routes_to_has_its_recipe():
     for name, model in {**named, "gpt-image-2.md": "openai/gpt-image-2", "kling-avatar-v2.md": "kwaivgi/kling-avatar-v2"}.items():
         assert model in _text(RECIPES / name), (name, model)
 
+# The owner's changes to the handoff's hard rules, each one line of it -> the plugin's lines (an added line keeps the
+# handoff's line above it): a topic's anchor is the channel's subjects and hooks and formats get a fit score (#84),
+# the channel's type sets the split (#85), two text layers in a text set (#89, #117), a shot's own sound muted under a
+# voiceover, the cover checked by `tm tool cover_fit`.
+OV_DEPARTURES = (
+    ("- Relevance needs a niche anchor term next to the activity term, to avoid shared-word noise.",
+     "- A topic's relevance needs an anchor term next to the activity term, to avoid shared-word noise: the subjects "
+     "the channel covers, from its profile, not only the niche's own words.\n"
+     "- Hooks and formats get no word filter (they say how a video opens and is told, not what it is about): each gets "
+     "a fit score for this channel, can it carry what the channel films and how it tells it, shown on the shortlist "
+     "with one line on why (issue #84)."),
+    ("- Sounds need a niche-relevance score from their description and the evidence captions.",
+     "- Sounds need a niche-relevance score from their description and the evidence captions.\n"
+     "- The channel's type (its profile) sets how many trends of each kind are pulled, out of 12 (a news channel 6 "
+     "topics, a music channel 6 sounds). A trend with a weak fit never takes a place just to keep the split: its "
+     "places go to the type's leading kind. At least half of the proposals are built on that kind, and the proposals "
+     "page says why it leads (issue #85)."),
+    ("- **Captions:**\n  - talking: word groups from the transcript;\n  - narrated: phrase by phrase from the TTS "
+     "timestamps;",
+     "- **Text on screen, two layers** (issue 89), in a style the user approves at the images check-in: one of the 8 "
+     "text sets (issue 117), the channel's saved one in every video (the first time the user picks it from three; "
+     "default `outline`, `native` for UGC), in the brand's colour, font and logo:\n"
+     "  - **captions** under the voiceover, TikTok style: 2 to 4 words at a time from the recording's word times "
+     "(talking: from the transcript), white with a black outline, at the bottom, made by `tm organic captions`;\n"
+     "  - **overlays** at the top, in a box: only the hook, the key number and the closing question;"),
+    ("  - formats with a known caption style: the copied style (OV3).",
+     "  - formats with a known caption style: the copied style (OV3).\n"
+     "- **An AI shot's own sound is muted under a voiceover** (MiniMax H3 always makes sound); kept only when the "
+     "user asks."),
+    ("- **Cover:** a caption-free frame + 2–4 words, clear of the face, inside the 3:4 crop.",
+     "- **Cover:** a caption-free frame + 2–4 words, clear of the face (`tm tool cover_fit` checks it and moves or "
+     "shrinks the text), inside the 3:4 crop."),
+)
+
+
 @pytest.mark.private_data
 def test_rules_hold_ov1_to_ov14_verbatim():
+    """Verbatim but for the owner's changes (OV_DEPARTURES), each still found in the handoff's text."""
     playbook = _text(SPEC / "PLAYBOOK.md")
     hard = playbook.split("## 4. Hard rules (OV1–OV14)\n", 1)[1].split("\n## 5. ", 1)[0].strip()
+    for handoff, ours in OV_DEPARTURES:
+        assert hard.count(handoff) == 1, handoff
+        hard = hard.replace(handoff, ours)
     rules = _text(SKILL / "references" / "rules.md")
     assert hard in rules
     for n in range(1, 15):
