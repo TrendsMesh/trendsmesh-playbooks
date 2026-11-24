@@ -262,6 +262,17 @@ def test_no_browser_builds_the_page_without_pdfs(run, capsys):
     assert json.loads(manifest.rows(run)[-1]["params"])["pdfs"] == {}
 
 
+def test_the_no_pdf_line_names_the_single_file_to_send(run, capsys):
+    """#176 line 84: without PDFs, the answer names `--single-file` as the way to one HTML file to send, so the
+    agent offers it in its last message."""
+    _write_brief(run, _with_animatics(run, _brief()))
+    assert main(["brief", "page", "--run", str(run.path), "--json"]) == 0
+    message = json.loads(capsys.readouterr().out)["message"]
+    line = message[message.index("No PDFs"):]
+    assert f"tm brief page --run {run.path} --single-file" in line
+    assert "one HTML file" in line and "final message" in line
+
+
 def test_a_failed_print_or_pdfs_over_the_limits_leave_them_out(run, monkeypatch, capsys):
     monkeypatch.setattr(brief_pdf, "browser", lambda: Path("/Applications/Chrome"))
     _write_brief(run, _with_animatics(run, _brief()))

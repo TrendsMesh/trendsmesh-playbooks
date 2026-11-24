@@ -262,7 +262,10 @@ def _page(args: argparse.Namespace, run: RunFolder) -> int:
                     "the page, and its buttons download them." if pdfs else
                     f" No PDFs: {got['pdf_note']}. The page works without them, but it has no download buttons. "
                     "Tell the user so, with why, when you give them the page: one view for someone outside the "
-                    "team then has no PDF to send. `tm brief page` again, once the cause is fixed, prints them.")
+                    "team then has no PDF to send. `tm brief page` again, once the cause is fixed, prints them. "
+                    "To send the page to someone meanwhile, offer one HTML file with the media inside: "
+                    f"tm brief page --run {args.run} --single-file (04_final/brief_pack_vNN.html); always say "
+                    "so in your final message.")
         message += (" Publish it with the Artifact tool (tm page files --page brief_pack gives its file_path and "
                     "files), with the capabilities this returns in the same publish (the run's one set, as tm brief "
                     "capabilities prints: the decisions db, the start card's and the downloads).")

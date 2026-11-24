@@ -427,7 +427,8 @@ team decides per concept on D3's page.
      them and without its download buttons, and the answer says why: `pdfs` empty, `pdf_note`).
      **No PDFs is never silent:** tell the user, when you give them the page, that it has no
      download buttons and why (`pdf_note`), so one view for someone outside the team has no PDF
-     to send yet; `tm brief page` again once the cause is fixed prints them. The page folder is numbered on its own: `brief_pack_v01/` built from `brief_pack_v02.json`
+     to send yet; `tm brief page` again once the cause is fixed prints them. Offer the one HTML
+     file to send meanwhile (`tm brief page --run R --single-file`), in your final message too. The page folder is numbered on its own: `brief_pack_v01/` built from `brief_pack_v02.json`
      (the version `tm brief evidence` wrote) is the latest page. Whether a page is built from the
      latest brief is `tm done C1`'s check (`page_built`), never the numbers: don't build again
      only because they differ.

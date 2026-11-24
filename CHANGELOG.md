@@ -8,6 +8,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   concept's own words, and their descriptions are in English, so a Polish concept matched nothing and you were
   always asked to pick a style. Claude now gives each concept's format, tone and hook in English keywords, whatever
   the brief's language, and the style is scored on them; you are asked only when nothing fits.
+- **A brief page without PDFs always comes with the offer of one file to send.** When the PDFs could not be
+  printed (for example, Chrome could not start), Claude's last message could leave out that the page can also be
+  made as one HTML file to send to someone. The answer of `tm brief page` now names that file's command, and Claude
+  offers it.
 - **The models' prices were read again on 24 November.** The Replicate prices and ElevenLabs rates that match
   their provider's page carry the new date. Music v2.5 and the v4 voices keep their dates of 12 November, and the
   caption-removal model its date of 5 November, until they are checked by hand.
