@@ -56,6 +56,29 @@ name in a comment. A result folder from before the rename carries the old name.
 | `user_skips_sign_in_is_not_asked_again` | `skip_sign_in_once` |
 | `vo_shortened_with_bridging_line` | `vo_bridging_line` |
 
+## The #153 to #173 run, one branch (all cases, 2026-11-23 and 24)
+
+Not a release run: issues #153, #156 and #161 to #173 on `wave-10-153-173`. Every case once (`evals/run.sh
+--report-issue --ablation none -j 3 --max-cost-usd 500`), then each failing case again on its own, twice.
+
+- **First run (b1da73f): 72 of 82 passed.** No failure came from the batch's plugin changes: two were scaffolds
+  that predated its rules, the rest passed on their own or fail the same way on `dev`.
+- **Final run (553094b): 73 of 82** (2916 s). Two of its nine failures were the machine, not the plugin: with
+  under 2.5 GB free, organic video's readiness check stopped for disk space (`ov_intake_two_languages`,
+  `ov_profile_one_card`; both passed in the first run, and once each on their own).
+- The engine suite (on 19c0b8b; the later commit changes eval mocks only): the 8 known failures, nothing new.
+
+| Found | Kind | Fix |
+|---|---|---|
+| `tr_weekly_link`: this week's config judged calls at 6 days, last week's and the default at 7 (#169), with no reason recorded, so the agent paused before the page to ask | scaffold | run 1's config sets 6 before it runs and run 2 copies it (`--from-previous`). Then 1.00, and in the final run |
+| `cb_page_decisions_from_db`: after declaring, the agent read the declaration again and the mock still said "none" (the wave 1 fix of that mock was not in the private repo); the vote, dated 7 November, looked older than the publish; and the judges read "I published the page" as a republish | scaffold, grader | `declare_capabilities` answers the stored rules (the run's one set), the vote has no date, the grader says the first publish is expected (all three in the private repo). Then 1.00 twice |
+| `ov_page`, `ov_props`, `ov_spage`, `ov_week`, `ra_page`: `read_declaration` answered one page's own rules, not the run's one set (#153) | scaffold | the mocks answer `page.run_capabilities` of the playbook |
+| `ca_caption_on_face` (the recorded layer check not found), `ov_week`, `ov_pack_cost_with_dates`, `ov_kit_rules_polish`, `tr_g1_review`, `tr_picks_card_relative_numbers`, `ra_local_checkin` | variance | none: each passed twice on its own |
+| `ov_page`, run on its own to try the new mock: 0.83 twice (once it stopped on the fixture's 1-pixel images, once it wrote the note into the video's prompt), then 1.00; 1.00 in both full runs | variance | none |
+| `cb_no_artifacts_local_page`: Chrome could not print the PDFs inside the agent's sandbox, and the message then left out the offer of one file to send on (both full runs; 1.00 three times on its own) | variance | none; the no-PDF line of `tm brief page` could name the single file |
+| `ov_kit_rules_polish` in the final run: `posting-kit.md` read with Bash, not the Read tool (as in Wave 5) | variance | none |
+| `ca_presenter_page` (answered in chat, no page), `middle_recuts` (variants with a cost but no level), `no_trendsmesh_guess` (the Free choice not saved), `tr_paid_wording` (the same four ads for every search) | already on `dev` | none here |
+
 ## The #123 to #147 run, one branch (all cases, 2026-11-21 and 22)
 
 Not a release run: issues #123 to #147 in four waves on `wave-9-123-147`. Every case once (`evals/run.sh
