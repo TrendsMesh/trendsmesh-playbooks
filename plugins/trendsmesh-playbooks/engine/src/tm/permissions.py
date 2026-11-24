@@ -11,13 +11,19 @@ folder, never shared), merged with what is there: the user's own rules and keys 
 a rule already there is not added again, a missing file is made, and a file that is not valid JSON (or not
 settings' shape) is refused with nothing written. Without `--yes` it is a dry run that writes nothing: which rules
 are there (in that file, the project's shared `.claude/settings.json` or the user's `~/.claude/settings.json`),
-which are missing, the session's permission mode, and `ask`, whether to ask the question.
+which are missing, which this system needs (`needed`), the session's permission mode, and `ask`, whether to ask
+the question.
+
+Only a missing rule the user's system needs brings the question (change request on #176 line 65): on a Mac or Linux
+Claude Code runs tm through its Bash tool, so a missing `PowerShell(tm *)` asks nothing there; on Windows it may run tm
+through its Bash tool (Git Bash) or its PowerShell tool, so both shells' rules count. A yes still adds every missing
+rule of the set, PowerShell's included, so the folder is covered from any system.
 
 The mode: Claude Code gives hooks the session's `permission_mode`. The key guard (`bootstrap/guard-secrets.sh`, a
 PreToolUse hook) writes it, for a `tm permissions` command only, to `<data>/permission-mode` as one line,
 `<epoch seconds>\\t<mode>\\t<project folder>` (CLAUDE_PROJECT_DIR, else the call's cwd), just before the command
 runs. A record older than FRESH_S seconds, of another folder, or with no mode reads as "unknown", and an unknown mode
-asks whenever a rule is missing: a question too many costs less than a run that stops again and again.
+asks whenever a needed rule is missing: a question too many costs less than a run that stops again and again.
 TM_PERMISSION_MODE (tests and the evals' sandbox, where no hook runs) gives the mode instead.
 """
 
@@ -26,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -34,8 +41,17 @@ from tm import cli, i18n, paths
 RULES = ("Bash(tm *)", "PowerShell(tm *)", "Artifact")
 # The older spelling of a prefix rule Claude Code still reads as the same rule.
 SAME = {"Bash(tm:*)": "Bash(tm *)", "PowerShell(tm:*)": "PowerShell(tm *)"}
+# The rules a system without Claude Code's PowerShell tool (a Mac, Linux) needs; Windows needs all of RULES.
+NOT_WINDOWS = ("Bash(tm *)", "Artifact")
 FRESH_S = 120
 MODE_FILE = "permission-mode"
+
+
+def needed(windows: bool | None = None) -> list[str]:
+    """The rules whose absence brings the question (`windows`: which system; default the one tm runs on)."""
+    if windows is None:
+        windows = sys.platform == "win32"
+    return list(RULES) if windows else [r for r in RULES if r in NOT_WINDOWS]
 
 
 def _config_dir() -> Path:
@@ -144,9 +160,10 @@ def _run(args: argparse.Namespace) -> int:
     target = project / ".claude" / "settings.local.json"
     have = _present(project)
     missing = [r for r in RULES if r not in have]
-    ask = bool(missing) and mode in ("auto", "unknown")
+    need = needed()
+    ask = any(r in missing for r in need) and mode in ("auto", "unknown")
     payload = {"status": "ok", "mode": mode, "file": str(target), "present": [r for r in RULES if r in have],
-               "missing": missing, "ask": ask, "question": i18n.t("permissions.question"), "added": [],
+               "missing": missing, "needed": need, "ask": ask, "question": i18n.t("permissions.question"), "added": [],
                "written": False}
     if args.yes and missing:
         try:

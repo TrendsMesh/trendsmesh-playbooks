@@ -99,11 +99,13 @@ name none, a short general check; and write a support report they can read and s
    companies of up to 3 people; a company of 4 or more needs its own Remotion licence.
 
 **Allow once, before the run** (every playbook's check; not the general check): after the card, run `tm
-permissions allow --json` (a dry run, it writes nothing). When its `ask` is true (Claude Code's auto mode, and the
-plugin's rules are not in this folder's settings yet), ask its `question` once, with the card's other questions: "So
-the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm permissions
-allow --yes --json` adds `Bash(tm *)`, `PowerShell(tm *)` and `Artifact` to `.claude/settings.local.json` in this
-folder, merged with their own rules (`references/permissions.md`, section 1). `ask` false: say nothing about it.
+permissions allow --json` (a dry run, it writes nothing). When its `ask` is true (Claude Code's auto mode, and a rule
+this system needs is not in this folder's settings yet: on a Mac or Linux a missing `PowerShell(tm *)` alone doesn't
+count), ask its `question` once, with the card's other questions: "So the run doesn't stop on the way, allow the
+plugin's commands and its pages?" Only on the user's yes, `tm permissions allow --yes --json` adds whichever of
+`Bash(tm *)`, `PowerShell(tm *)` and `Artifact` are missing (all three, on any system) to
+`.claude/settings.local.json` in this folder, merged with their own rules (`references/permissions.md`, section 1).
+`ask` false: say nothing about it.
 
 A check or any later step that Claude Code's permissions refuse (auto mode or a deny rule) is a stop with the whole
 set of allow rules at once (the same question), never one rule at a time and never a reworded retry: an

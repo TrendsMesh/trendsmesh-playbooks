@@ -52,18 +52,22 @@ tm permissions allow --json
 
 (a dry run: it writes nothing). It says which of the three rules the folder already has (in the folder's
 `.claude/settings.local.json` or `.claude/settings.json`, or the user's `~/.claude/settings.json`), Claude Code's
-permission mode for this session (`mode`, read by the plugin's hook; `unknown` when it could not be read), and
-`ask`:
+permission mode for this session (`mode`, read by the plugin's hook; `unknown` when it could not be read), the rules
+this system needs (`needed`), and `ask`. Only a rule the system needs counts: on a Mac or Linux that is `Bash(tm *)`
+and `Artifact`, so a missing `PowerShell(tm *)` alone asks nothing; on Windows, where Claude Code may run `tm`
+through its Bash tool or its PowerShell tool, all three count.
 
-- `ask` false (every rule is there, or the session is not in auto mode): say nothing about permissions.
-- `ask` true (auto mode, or a mode that could not be read, and a rule is missing): ask once, in the user's
-  language, in the words of its `question`: "So the run doesn't stop on the way, allow the plugin's commands and its
-  pages?" Add in one line that it goes into `.claude/settings.local.json` in this folder (only them, only this
-  folder) and that they can take it out there at any time. Ask it together with readiness's other questions, never
-  as a stop of its own.
-  - **Yes**: `tm permissions allow --yes --json`. It adds the missing rules to `permissions.allow` in that file,
-    after the user's own rules, keeping everything else in it as it is (it makes the file when there is none);
-    Claude Code reads the change without a restart. Say in one line what was added.
+- `ask` false (every rule this system needs is there, or the session is not in auto mode): say nothing about
+  permissions.
+- `ask` true (auto mode, or a mode that could not be read, and a rule this system needs is missing): ask once, in
+  the user's language, in the words of its `question`: "So the run doesn't stop on the way, allow the plugin's
+  commands and its pages?" Add in one line that it goes into `.claude/settings.local.json` in this folder (only
+  them, only this folder) and that they can take it out there at any time. Ask it together with readiness's other
+  questions, never as a stop of its own.
+  - **Yes**: `tm permissions allow --yes --json`. It adds every missing rule of the three (on a Mac or Linux
+    `PowerShell(tm *)` too, when it is missing) to `permissions.allow` in that file, after the user's own rules,
+    keeping everything else in it as it is (it makes the file when there is none); Claude Code reads the change
+    without a restart. Say in one line what was added.
   - **No**, or no answer: go on. A later refusal is handled as in section 2, with the same rules.
   - It refuses a file that is not valid JSON (exit 1, nothing written): give the user its message (the file, and
     the rules to add by hand), and go on.

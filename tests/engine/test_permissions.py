@@ -142,7 +142,7 @@ def test_only_auto_mode_asks(project, capsys, mode, ask):
 
 def test_an_unknown_mode_asks_when_rules_are_missing(project, capsys):
     """No record (the hook did not run, or an older Claude Code sent no mode), a stale one, or another project's:
-    the mode is unknown, and the question is asked whenever the rules are missing (#163 decision)."""
+    the mode is unknown, and the question is asked whenever the needed rules are missing (#163 decision)."""
     code, out = answer(capsys)
     assert out["mode"] == "unknown" and out["ask"] is True
     record("default", project, age=600)
@@ -175,3 +175,55 @@ def test_the_evals_sandbox_gives_the_mode_without_a_hook(project, capsys, monkey
     code, out = answer(capsys)
     assert out["mode"] == "default" and out["ask"] is False
     assert out["file"] == str(project / ".claude" / "settings.local.json")
+
+
+# Change request on #176 line 65: only the rules the user's system needs bring the question; a yes still adds the
+# whole set.
+
+def own_rules(proj, rules):
+    (proj / ".claude").mkdir(exist_ok=True)
+    (proj / ".claude" / "settings.local.json").write_text(json.dumps({"permissions": {"allow": rules}}),
+                                                          encoding="utf-8")
+
+
+def test_the_rules_each_system_needs():
+    assert permissions.needed(windows=False) == ["Bash(tm *)", "Artifact"]
+    assert permissions.needed(windows=True) == RULES
+
+
+@pytest.mark.parametrize("platform", ["darwin", "linux"])
+def test_on_a_mac_or_linux_a_missing_powershell_rule_asks_nothing(project, capsys, monkeypatch, platform):
+    monkeypatch.setattr(permissions.sys, "platform", platform)
+    record("auto", project)
+    own_rules(project, ["Bash(tm *)", "Artifact"])
+    code, out = answer(capsys)
+    assert code == 0 and out["ask"] is False and out["needed"] == ["Bash(tm *)", "Artifact"]
+    assert out["missing"] == ["PowerShell(tm *)"]
+
+
+@pytest.mark.parametrize("platform", ["darwin", "linux"])
+def test_on_a_mac_or_linux_a_yes_still_adds_the_powershell_rule(project, capsys, monkeypatch, platform):
+    monkeypatch.setattr(permissions.sys, "platform", platform)
+    record("auto", project)
+    own_rules(project, ["Artifact"])
+    code, out = answer(capsys)
+    assert out["ask"] is True and out["missing"] == ["Bash(tm *)", "PowerShell(tm *)"]
+    code, out = answer(capsys, "--yes")
+    assert code == 0 and out["added"] == ["Bash(tm *)", "PowerShell(tm *)"] and out["missing"] == []
+    assert settings(project)["permissions"]["allow"] == ["Artifact", "Bash(tm *)", "PowerShell(tm *)"]
+
+
+@pytest.mark.parametrize("have, missing", [(["Bash(tm *)", "Artifact"], ["PowerShell(tm *)"]),
+                                           (["PowerShell(tm *)", "Artifact"], ["Bash(tm *)"])])
+def test_on_windows_both_shells_rules_count(project, capsys, monkeypatch, have, missing):
+    """On Windows Claude Code may run tm through its Bash tool (Git Bash) or its PowerShell tool, so either rule
+    missing brings the question."""
+    monkeypatch.setattr(permissions.sys, "platform", "win32")
+    record("auto", project)
+    own_rules(project, have)
+    code, out = answer(capsys)
+    assert code == 0 and out["ask"] is True and out["needed"] == RULES and out["missing"] == missing
+    code, out = answer(capsys, "--yes")
+    assert out["added"] == missing
+    code, out = answer(capsys)
+    assert out["ask"] is False and out["missing"] == []

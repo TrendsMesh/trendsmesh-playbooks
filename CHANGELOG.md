@@ -12,6 +12,10 @@ What changed in each version of the TrendsMesh playbooks plugin.
   printed (for example, Chrome could not start), Claude's last message could leave out that the page can also be
   made as one HTML file to send to someone. The answer of `tm brief page` now names that file's command, and Claude
   offers it.
+- **On a Mac or Linux the allow question no longer comes for a Windows-only rule.** A folder that already allowed
+  `Bash(tm *)` and `Artifact` was still asked at readiness, because `PowerShell(tm *)`, which only Windows uses, was
+  missing. Now only the rules your system needs bring the question (on Windows all three, since Claude Code may run
+  the plugin through Bash or PowerShell there); a yes still adds every missing one, PowerShell's included.
 - **The models' prices were read again on 24 November.** The Replicate prices and ElevenLabs rates that match
   their provider's page carry the new date. Music v2.5 and the v4 voices keep their dates of 12 November, and the
   caption-removal model its date of 5 November, until they are checked by hand.

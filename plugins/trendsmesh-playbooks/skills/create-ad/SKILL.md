@@ -60,9 +60,10 @@ ad's Meta notes, `../refresh-ad/references/meta-mcp.md`, and its TrendsMesh sign
 4. **Keys never appear in chat.** Never search for, read, print or ask for a key or token.
 
 **Allow once, before the run:** at readiness, `tm permissions allow --json`. When its `ask` is true (Claude Code's
-auto mode, and the plugin's rules not yet in this folder), ask its `question` once, with readiness's other questions:
-"So the run doesn't stop on the way, allow the plugin's commands and its pages?" Only on the user's yes, `tm
-permissions allow --yes --json` (the plugin's `references/permissions.md`, section 1). **A step Claude Code's
+auto mode, and a rule this system needs not yet in this folder; on a Mac or Linux a missing `PowerShell(tm *)`
+alone doesn't count), ask its `question` once, with readiness's other questions: "So the run doesn't stop on the
+way, allow the plugin's commands and its pages?" Only on the user's yes, `tm permissions allow --yes --json` (the
+plugin's `references/permissions.md`, section 1). **A step Claude Code's
 permissions refuse** (a decision, a spend, a paid call or a page publish, at readiness or later in the run) is a
 stop, never a fallback and never a reworded retry: record it, give the user the whole set of allow rules at once
 (the same question), and resume on their "done" (section 2). Run each `tm` step as one line that starts with `tm`,
