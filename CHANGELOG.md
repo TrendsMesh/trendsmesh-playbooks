@@ -2,7 +2,7 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
-## Unreleased
+## 0.14.1
 
 - **A brief in Polish gets its animatics' styles without an extra question.** The styles were matched on the
   concept's own words, and their descriptions are in English, so a Polish concept matched nothing and you were
