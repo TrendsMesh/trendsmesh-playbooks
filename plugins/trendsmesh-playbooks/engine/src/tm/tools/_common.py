@@ -331,10 +331,27 @@ def frame_row(frames, *, width: int, columns: int, height: int = -2,
 _IMAGE_FORMATS = ("image2", "png_pipe", "jpeg_pipe", "webp_pipe", "bmp_pipe", "tiff_pipe", "gif")
 
 
+PROBE_TRIES = 3   # ffprobe's JSON read again when it comes back cut short
+
+
+def ffprobe_json(path: Path | str, *args: str) -> dict:
+    """ffprobe's JSON answer about `path` (`args` say what to show). On Windows ffprobe now and then exits 0 with
+    its answer cut short of the closing brace (1 in about 60 runs of the layer_check tests on the CI's Windows
+    runner), so an answer that doesn't parse is read again, up to PROBE_TRIES times in all."""
+    for attempt in range(1, PROBE_TRIES + 1):
+        out = subprocess.run([ffprobe_bin(), "-v", "error", *args, "-of", "json", media(path)],
+                             capture_output=True, check=True).stdout
+        try:
+            return json.loads(out.decode("utf-8", "replace"))
+        except json.JSONDecodeError as exc:
+            if attempt == PROBE_TRIES:
+                raise ToolError(f"ffprobe's answer about {name_of(path)} could not be read {PROBE_TRIES} times "
+                                f"in a row ({exc}). Run the step again.") from None
+    raise AssertionError("unreachable")
+
+
 def probe(path: Path | str) -> dict:
-    out = subprocess.run([ffprobe_bin(), "-v", "error", "-show_streams", "-show_format", "-of", "json",
-                          media(path)], capture_output=True, check=True).stdout
-    data = json.loads(out.decode("utf-8", "replace"))
+    data = ffprobe_json(path, "-show_streams", "-show_format")
     video = next((s for s in data.get("streams", []) if s.get("codec_type") == "video"), None)
     audio = any(s.get("codec_type") == "audio" for s in data.get("streams", []))
     fmt = data.get("format", {})

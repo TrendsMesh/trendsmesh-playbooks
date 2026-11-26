@@ -131,9 +131,7 @@ def _probe(path: Path) -> dict:
     """{width, height, vcodec, acodec, sample_rate, lufs} of a video (ffprobe, then ffmpeg's ebur128)."""
     from tm.tools.take_qa import loudness
 
-    out = subprocess.run([c.ffprobe_bin(), "-v", "error", "-show_streams", "-of", "json", c.media(path)],
-                         capture_output=True, check=True).stdout
-    streams = json.loads(out.decode("utf-8", "replace")).get("streams") or []
+    streams = c.ffprobe_json(path, "-show_streams").get("streams") or []
     video = next((s for s in streams if s.get("codec_type") == "video"), {})
     audio = next((s for s in streams if s.get("codec_type") == "audio"), {})
     return {"width": video.get("width"), "height": video.get("height"), "vcodec": video.get("codec_name"),

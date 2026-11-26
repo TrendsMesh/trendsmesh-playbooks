@@ -21,7 +21,6 @@ row with a `channel` column (the folder's channel or brand). Another channel's f
 from __future__ import annotations
 
 import csv
-import json
 import re
 import subprocess
 from pathlib import Path
@@ -35,10 +34,7 @@ TEMPO_SR = 11025
 
 def _probe(path: Path) -> dict:
     tags = "title,artist,genre,comment,copyright,licence,source"
-    out = subprocess.run([c.ffprobe_bin(), "-v", "error", "-show_entries", f"format=duration:format_tags={tags}",
-                          "-of", "json", c.media(path)],
-                         capture_output=True, check=True).stdout
-    fmt = json.loads(out.decode("utf-8", "replace")).get("format", {})
+    fmt = c.ffprobe_json(path, "-show_entries", f"format=duration:format_tags={tags}").get("format", {})
     return {"duration": float(fmt.get("duration") or 0),
             "tags": {k.lower(): v for k, v in (fmt.get("tags") or {}).items()}}
 

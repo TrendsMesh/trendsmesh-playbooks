@@ -2,6 +2,12 @@
 
 What changed in each version of the TrendsMesh playbooks plugin.
 
+## Unreleased
+
+- **On Windows, a video step no longer stops now and then on "Expecting ',' delimiter".** ffprobe, which reads a
+  video's size and length, sometimes answered without its last line, and the step stopped with that error. The
+  answer is now read again (3 times at most), and when it still can't be read, the step says so plainly.
+
 ## 0.14.1
 
 - **A brief in Polish gets its animatics' styles without an extra question.** The styles were matched on the
