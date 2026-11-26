@@ -49,9 +49,11 @@ def _layers(run, layers, version=1):
     return f"03_wip/edit_layers_v{version:02d}.json"
 
 
-def _check(capsys, run, layers):
+def _check(capsys, run, layers, refused=False):
     code = layer_check.main(["--run", str(run.path), "03_wip/edit_v01.mp4", "--layers", layers, "--json"])
     out = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    if not refused:   # a check that fails says why here, not as a KeyError on "collisions" (the Windows CI of #181)
+        assert "collisions" in out, f"layer_check answered {out.get('status')}: {out.get('message')}"
     return code, out
 
 
@@ -230,7 +232,7 @@ def test_a_layers_file_that_does_not_say_enough_is_refused(ad, one_face, capsys)
         ([{"id": "a", "kind": "picture", "start": 0, "end": 1, "src": "03_wip/none.mp4"}], "does not exist"),
         ([TAKE, TAKE], "twice"),
     ]:
-        code, out = _check(capsys, ad, _layers(ad, layers))
+        code, out = _check(capsys, ad, _layers(ad, layers), refused=True)
         assert code == 1 and fragment in out["message"], (layers, out)
     assert not (ad.path / "03_wip" / "qa").exists()
 
